@@ -68,6 +68,8 @@ pnpm demo:sessions          # Demo A + B against real Muse, writes evidence JSON
 pnpm bench:context          # Demo C: baseline history vs retrieved memory
 pnpm eval:retrieval         # 22 retrieval questions, optional real Muse answers
 pnpm demo:tools             # real Muse plans tools; writes approved through the API
+pnpm demo:showcase          # Demos A, B, D, E end to end (fresh database recommended)
+pnpm eval:comparison        # persistent memory vs inline facts (n=4 per configuration)
 ```
 
 `pnpm bench:retrieval` on the reference machine:
@@ -107,7 +109,9 @@ default.
 | Muse-generated planning forms + submission loop | 4 | **Complete**, verified live |
 | Typed tool registry, permissions, audit log | 5 | **Complete** |
 | Muse-planned tool calls with write approval | 5 | **Complete**, verified live |
-| Phase 6 comparison, demo video, submission | 6 | Harness built, comparison not run |
+| Evaluation comparison (n=4 per configuration) | 6 | **Complete**, measured |
+| Integrated showcase (Demos A–E) | 6 | **8/8 checks**, real Muse |
+| Demo video, repository visibility, submission | 6 | **Owner action pending** |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.
@@ -258,6 +262,28 @@ scripts/           benchmarks, Muse probe, browser verification
 
 ---
 
+## Evaluation (measured)
+
+`pnpm eval:comparison` — two tasks × two trials, single call per configuration:
+
+| Metric | Facts inline | Memory | Delta |
+| --- | --- | --- | --- |
+| Input tokens (mean) | 16,849 | 16,916.5 | +67.5 |
+| Correct answers | 4/4 | 4/4 | — |
+| Retrieved memories (mean) | 0 | 2.5 | — |
+
+Correction check: the superseded memory is absent from active retrieval. Project isolation:
+0 leaked memories. Across a multi-turn task, memory removes a setup turn (2 turns / 33,671
+tokens → 1 turn / 16,900). Sample size is small; no significance is claimed. Full report:
+[docs/EVALUATION_REPORT.md](docs/EVALUATION_REPORT.md).
+
+## Submission materials
+
+- [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
+- [Submission description](docs/HACKATHON_SUBMISSION.md)
+- [Demo script](docs/DEMO_SCRIPT.md) and [video storyboard](docs/VIDEO_STORYBOARD.md)
+- [Evaluation report](docs/EVALUATION_REPORT.md) and [architecture overview](docs/ARCHITECTURE_OVERVIEW.md)
+
 ## Known limitations
 
 Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
@@ -271,7 +297,10 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 - **Memory costs tokens on the answering call** (~37 in our measured task) but removes setup
   turns; the whole-task input roughly halved in Demo C.
 - **Deletion is irreversible through the API.** That is the guarantee, not a bug.
-- **Single-user, loopback-only.** No authentication or rate limiting.
+- **Single-user, loopback-only.** No authentication or rate limiting; not production-ready for
+  public multi-user hosting.
+- **Repository is private**, so commit links are 404 when logged out; visibility is an
+  administrative decision, not a technical one.
 
 ---
 

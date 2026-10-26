@@ -1,0 +1,1705 @@
+{
+  "generated_at": "2026-10-26T22:56:06.968Z",
+  "model": "muse-wonder-1.0",
+  "project": "montys-memory-meadow",
+  "sessions": {
+    "a": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+    "b": "be863bb5-d1d1-4953-aaeb-7ab1cf14cec5",
+    "c": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+    "d": "33ba7bee-75f0-43bb-86fe-902959eff971",
+    "e": "3fa63c9b-ff74-4a4c-94c3-a26461737445"
+  },
+  "checks": [
+    {
+      "name": "Demo A: new session recalls requirements without transcript",
+      "pass": true,
+      "detail": "answer=\"We're building a children's memory game using Phaser, targeting mobile web.\" · 2 memories"
+    },
+    {
+      "name": "Demo B: correction supersedes the previous platform",
+      "pass": true,
+      "detail": "1 superseded record(s)"
+    },
+    {
+      "name": "Demo B: new session uses the current platform",
+      "pass": true,
+      "detail": "answer=\"We’re now targeting desktop browsers. Yes, that changed — the previous target was mobile web.\""
+    },
+    {
+      "name": "Demo D: Muse generates a valid planning interface",
+      "pass": true,
+      "detail": "\"Monty's Memory Meadow: First Playable Milestone\" with 8 fields"
+    },
+    {
+      "name": "Demo D: structured submission reaches the agent",
+      "pass": true,
+      "detail": "agent continued with \"Continuing with **Playable meadow loop**: - Ages 3–5, desktop - 3×4 grid (12 cards), meadow-animals theme - Mouse-click-to-flip with card-flip animation - Sing…\""
+    },
+    {
+      "name": "Demo E: tool calls require approval",
+      "pass": true,
+      "detail": "2 pending: memory.create, task.create"
+    },
+    {
+      "name": "Demo E: approved tool calls execute",
+      "pass": true,
+      "detail": "3 executed"
+    },
+    {
+      "name": "Demo E: new session retrieves project state and tasks",
+      "pass": true,
+      "detail": "answer=\"**Monty's Memory Meadow** — a children's memory matching game built with Phaser. - **Platform:** Desktop browsers - **First milestone:** \"Playable meadow loop\" for ages 3-5 — a single fixed level with a 3x4 grid (12 cards), meadow-animals …\""
+    }
+  ],
+  "passed": 8,
+  "total": 8,
+  "transcript": {
+    "demoA": {
+      "session": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+      "turn": {
+        "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+        "user_message": {
+          "id": "9eebdb5a-9a25-4a90-a128-8106d62e606c",
+          "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+          "sequence": 0,
+          "role": "user",
+          "content": "We are building a children memory game using Phaser. The target platform is mobile web. The art direction is colourful illustrated farmyard scenery. Remember these requirements.",
+          "status": "complete",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "latency_ms": null,
+          "context": null,
+          "created_at": "2026-10-26T22:54:47.607Z"
+        },
+        "assistant_message": {
+          "id": "7b538e73-312f-428c-a345-4bbd450b5946",
+          "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+          "sequence": 1,
+          "role": "assistant",
+          "content": "Noted: a children's memory game in Phaser for mobile web, with colourful illustrated farmyard scenery.\n\nThese saves are still awaiting your approval, so they are not stored yet until you approve them.",
+          "status": "complete",
+          "input_tokens": 17069,
+          "output_tokens": 312,
+          "latency_ms": 4953,
+          "context": {
+            "prompt_characters": 2197,
+            "memory_characters": 146,
+            "history_messages": 0,
+            "history_messages_dropped": 0,
+            "sections": {
+              "system": 767,
+              "constraints": 0,
+              "memories": 638,
+              "corrections": 0,
+              "history": 0,
+              "request": 214,
+              "tools": 572
+            },
+            "memory_ids": [
+              "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "e8d3a712-e543-4341-baa7-67809ac80ba8",
+              "03395a44-9e9e-4d4b-9ed6-559e096243a3"
+            ],
+            "estimated_tokens": 550,
+            "warnings": []
+          },
+          "created_at": "2026-10-26T22:55:01.488Z",
+          "memories": [
+            {
+              "memory_id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "score": 0.975,
+              "evidence": "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 52,
+              "memory": {
+                "id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "We are building a children memory game using Phaser.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.605Z",
+                "updated_at": "2026-10-26T22:54:47.605Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "e8d3a712-e543-4341-baa7-67809ac80ba8",
+              "score": 0.888521,
+              "evidence": "keyword match (78% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 34,
+              "memory": {
+                "id": "e8d3a712-e543-4341-baa7-67809ac80ba8",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "The target platform is mobile web.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.606Z",
+                "updated_at": "2026-10-26T22:54:47.606Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+              "score": 0.715324,
+              "evidence": "keyword match (35% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "preference",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 60,
+              "memory": {
+                "id": "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+                "type": "preference",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "The art direction is colourful illustrated farmyard scenery.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.606Z",
+                "updated_at": "2026-10-26T22:54:47.606Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            }
+          ]
+        },
+        "retrieval": {
+          "query": "We are building a children memory game using Phaser. The target platform is mobile web. The art direction is colourful illustrated farmyard scenery. Remember these requirements.",
+          "project_id": "montys-memory-meadow",
+          "candidate_count": 3,
+          "selected_count": 3,
+          "excluded_count": 0,
+          "excluded_by": {
+            "count_budget": 0,
+            "character_budget": 0,
+            "duplicate": 0
+          },
+          "characters_used": 146,
+          "character_budget": 4000,
+          "memory_budget": 8,
+          "truncated_count": 0,
+          "memory_ids": [
+            "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "e8d3a712-e543-4341-baa7-67809ac80ba8",
+            "03395a44-9e9e-4d4b-9ed6-559e096243a3"
+          ],
+          "latency_ms": 1.546,
+          "weights": {
+            "relevance": 0.4,
+            "scope": 0.2,
+            "confidence": 0.15,
+            "validation": 0.1,
+            "recency": 0.1,
+            "type_priority": 0.05
+          },
+          "query_mode": "relaxed"
+        },
+        "context": {
+          "prompt_characters": 2197,
+          "memory_characters": 146,
+          "history_messages": 0,
+          "history_messages_dropped": 0,
+          "sections": {
+            "system": 767,
+            "constraints": 0,
+            "memories": 638,
+            "corrections": 0,
+            "history": 0,
+            "request": 214,
+            "tools": 572
+          },
+          "memory_ids": [
+            "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "e8d3a712-e543-4341-baa7-67809ac80ba8",
+            "03395a44-9e9e-4d4b-9ed6-559e096243a3"
+          ],
+          "estimated_tokens": 550,
+          "warnings": []
+        },
+        "usage": {
+          "input_tokens": 17069,
+          "output_tokens": 312,
+          "cached_input_tokens": 16756,
+          "reasoning_tokens": 247
+        },
+        "captures": [
+          {
+            "memory_id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "content": "We are building a children memory game using Phaser.",
+            "type": "technical_decision",
+            "reason": "explicit user request",
+            "superseded_ids": [],
+            "created": true
+          },
+          {
+            "memory_id": "e8d3a712-e543-4341-baa7-67809ac80ba8",
+            "content": "The target platform is mobile web.",
+            "type": "technical_decision",
+            "reason": "explicit user request",
+            "superseded_ids": [],
+            "created": true
+          },
+          {
+            "memory_id": "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+            "content": "The art direction is colourful illustrated farmyard scenery.",
+            "type": "preference",
+            "reason": "explicit user request",
+            "superseded_ids": [],
+            "created": true
+          }
+        ],
+        "candidates": []
+      },
+      "recall": {
+        "session_id": "be863bb5-d1d1-4953-aaeb-7ab1cf14cec5",
+        "user_message": {
+          "id": "de14b456-40ef-4b42-824d-2b071d8856fc",
+          "session_id": "be863bb5-d1d1-4953-aaeb-7ab1cf14cec5",
+          "sequence": 0,
+          "role": "user",
+          "content": "What game are we building, which engine are we using, and what is the target platform?",
+          "status": "complete",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "latency_ms": null,
+          "context": null,
+          "created_at": "2026-10-26T22:55:01.500Z"
+        },
+        "assistant_message": {
+          "id": "bc88b447-9c15-4544-bbd1-094163d70b25",
+          "session_id": "be863bb5-d1d1-4953-aaeb-7ab1cf14cec5",
+          "sequence": 1,
+          "role": "assistant",
+          "content": "We're building a children's memory game using Phaser, targeting mobile web.",
+          "status": "complete",
+          "input_tokens": 16903,
+          "output_tokens": 195,
+          "latency_ms": 4984,
+          "context": {
+            "prompt_characters": 1395,
+            "memory_characters": 86,
+            "history_messages": 0,
+            "history_messages_dropped": 0,
+            "sections": {
+              "system": 767,
+              "constraints": 0,
+              "memories": 501,
+              "corrections": 0,
+              "history": 0,
+              "request": 123,
+              "tools": 0
+            },
+            "memory_ids": [
+              "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "e8d3a712-e543-4341-baa7-67809ac80ba8"
+            ],
+            "estimated_tokens": 349,
+            "warnings": []
+          },
+          "created_at": "2026-10-26T22:55:06.485Z",
+          "memories": [
+            {
+              "memory_id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "score": 0.975,
+              "evidence": "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 52,
+              "memory": {
+                "id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "We are building a children memory game using Phaser.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.605Z",
+                "updated_at": "2026-10-26T22:54:47.605Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "e8d3a712-e543-4341-baa7-67809ac80ba8",
+              "score": 0.888521,
+              "evidence": "keyword match (78% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 34,
+              "memory": {
+                "id": "e8d3a712-e543-4341-baa7-67809ac80ba8",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "The target platform is mobile web.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.606Z",
+                "updated_at": "2026-10-26T22:54:47.606Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            }
+          ]
+        },
+        "retrieval": {
+          "query": "What game are we building, which engine are we using, and what is the target platform?",
+          "project_id": "montys-memory-meadow",
+          "candidate_count": 2,
+          "selected_count": 2,
+          "excluded_count": 0,
+          "excluded_by": {
+            "count_budget": 0,
+            "character_budget": 0,
+            "duplicate": 0
+          },
+          "characters_used": 86,
+          "character_budget": 4000,
+          "memory_budget": 8,
+          "truncated_count": 0,
+          "memory_ids": [
+            "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "e8d3a712-e543-4341-baa7-67809ac80ba8"
+          ],
+          "latency_ms": 0.625,
+          "weights": {
+            "relevance": 0.4,
+            "scope": 0.2,
+            "confidence": 0.15,
+            "validation": 0.1,
+            "recency": 0.1,
+            "type_priority": 0.05
+          },
+          "query_mode": "relaxed"
+        },
+        "context": {
+          "prompt_characters": 1395,
+          "memory_characters": 86,
+          "history_messages": 0,
+          "history_messages_dropped": 0,
+          "sections": {
+            "system": 767,
+            "constraints": 0,
+            "memories": 501,
+            "corrections": 0,
+            "history": 0,
+            "request": 123,
+            "tools": 0
+          },
+          "memory_ids": [
+            "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "e8d3a712-e543-4341-baa7-67809ac80ba8"
+          ],
+          "estimated_tokens": 349,
+          "warnings": []
+        },
+        "usage": {
+          "input_tokens": 16903,
+          "output_tokens": 195,
+          "cached_input_tokens": 16756,
+          "reasoning_tokens": 173
+        },
+        "captures": [],
+        "candidates": []
+      }
+    },
+    "demoB": {
+      "session": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+      "turn": {
+        "session_id": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+        "user_message": {
+          "id": "13f671fd-d3cf-4430-ae01-792ffa536755",
+          "session_id": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+          "sequence": 0,
+          "role": "user",
+          "content": "We have changed the target platform. The game will now prioritize desktop browsers instead of mobile web. Remember this correction.",
+          "status": "complete",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "latency_ms": null,
+          "context": null,
+          "created_at": "2026-10-26T22:55:06.499Z"
+        },
+        "assistant_message": {
+          "id": "25c4d146-526f-4064-8628-5dfe5e8c4810",
+          "session_id": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+          "sequence": 1,
+          "role": "assistant",
+          "content": "Noted — the target is now desktop browsers, replacing mobile web.\n\nThe memory save hasn't run yet; it's awaiting your approval. Approve it to persist the correction.",
+          "status": "complete",
+          "input_tokens": 17045,
+          "output_tokens": 335,
+          "latency_ms": 5704,
+          "context": {
+            "prompt_characters": 2031,
+            "memory_characters": 120,
+            "history_messages": 0,
+            "history_messages_dropped": 0,
+            "sections": {
+              "system": 767,
+              "constraints": 0,
+              "memories": 535,
+              "corrections": 290,
+              "history": 0,
+              "request": 168,
+              "tools": 263
+            },
+            "memory_ids": [
+              "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+              "eac9d028-e673-4df2-94a3-76eb2fe461da"
+            ],
+            "estimated_tokens": 508,
+            "warnings": ["included 1 superseded record(s) as labelled history"]
+          },
+          "created_at": "2026-10-26T22:55:16.956Z",
+          "memories": [
+            {
+              "memory_id": "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+              "score": 0.975,
+              "evidence": "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 68,
+              "memory": {
+                "id": "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "The game will now prioritize desktop browsers instead of mobile web.",
+                "source": {
+                  "session_id": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:55:06.498Z",
+                "updated_at": "2026-10-26T22:55:06.498Z",
+                "expires_at": null,
+                "supersedes": ["e8d3a712-e543-4341-baa7-67809ac80ba8"],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "score": 0.575,
+              "evidence": "keyword match (0% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 52,
+              "memory": {
+                "id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "We are building a children memory game using Phaser.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.605Z",
+                "updated_at": "2026-10-26T22:54:47.605Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            }
+          ]
+        },
+        "retrieval": {
+          "query": "We have changed the target platform. The game will now prioritize desktop browsers instead of mobile web. Remember this correction.",
+          "project_id": "montys-memory-meadow",
+          "candidate_count": 2,
+          "selected_count": 2,
+          "excluded_count": 0,
+          "excluded_by": {
+            "count_budget": 0,
+            "character_budget": 0,
+            "duplicate": 0
+          },
+          "characters_used": 120,
+          "character_budget": 4000,
+          "memory_budget": 8,
+          "truncated_count": 0,
+          "memory_ids": [
+            "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+            "eac9d028-e673-4df2-94a3-76eb2fe461da"
+          ],
+          "latency_ms": 0.944,
+          "weights": {
+            "relevance": 0.4,
+            "scope": 0.2,
+            "confidence": 0.15,
+            "validation": 0.1,
+            "recency": 0.1,
+            "type_priority": 0.05
+          },
+          "query_mode": "relaxed"
+        },
+        "context": {
+          "prompt_characters": 2031,
+          "memory_characters": 120,
+          "history_messages": 0,
+          "history_messages_dropped": 0,
+          "sections": {
+            "system": 767,
+            "constraints": 0,
+            "memories": 535,
+            "corrections": 290,
+            "history": 0,
+            "request": 168,
+            "tools": 263
+          },
+          "memory_ids": [
+            "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+            "eac9d028-e673-4df2-94a3-76eb2fe461da"
+          ],
+          "estimated_tokens": 508,
+          "warnings": ["included 1 superseded record(s) as labelled history"]
+        },
+        "usage": {
+          "input_tokens": 17045,
+          "output_tokens": 335,
+          "cached_input_tokens": 16756,
+          "reasoning_tokens": 272
+        },
+        "captures": [
+          {
+            "memory_id": "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+            "content": "The game will now prioritize desktop browsers instead of mobile web.",
+            "type": "technical_decision",
+            "reason": "superseded an earlier technical decision",
+            "superseded_ids": ["e8d3a712-e543-4341-baa7-67809ac80ba8"],
+            "created": true
+          }
+        ],
+        "candidates": []
+      },
+      "recall": {
+        "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+        "user_message": {
+          "id": "4338e1cc-636a-46ce-8fd8-b70b685dc53f",
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "sequence": 0,
+          "role": "user",
+          "content": "What platform are we targeting now, and did that change?",
+          "status": "complete",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "latency_ms": null,
+          "context": null,
+          "created_at": "2026-10-26T22:55:16.968Z"
+        },
+        "assistant_message": {
+          "id": "56af1e4b-c0c4-47ad-b4f9-9ef120f245ac",
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "sequence": 1,
+          "role": "assistant",
+          "content": "We’re now targeting desktop browsers.\n\nYes, that changed — the previous target was mobile web.",
+          "status": "complete",
+          "input_tokens": 17008,
+          "output_tokens": 173,
+          "latency_ms": 4385,
+          "context": {
+            "prompt_characters": 1828,
+            "memory_characters": 180,
+            "history_messages": 0,
+            "history_messages_dropped": 0,
+            "sections": {
+              "system": 767,
+              "constraints": 0,
+              "memories": 672,
+              "corrections": 290,
+              "history": 0,
+              "request": 93,
+              "tools": 0
+            },
+            "memory_ids": [
+              "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+              "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+              "eac9d028-e673-4df2-94a3-76eb2fe461da"
+            ],
+            "estimated_tokens": 457,
+            "warnings": ["included 1 superseded record(s) as labelled history"]
+          },
+          "created_at": "2026-10-26T22:55:21.354Z",
+          "memories": [
+            {
+              "memory_id": "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+              "score": 0.575,
+              "evidence": "no keyword match · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "preference",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 60,
+              "memory": {
+                "id": "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+                "type": "preference",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "The art direction is colourful illustrated farmyard scenery.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.606Z",
+                "updated_at": "2026-10-26T22:54:47.606Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+              "score": 0.575,
+              "evidence": "no keyword match · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 68,
+              "memory": {
+                "id": "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "The game will now prioritize desktop browsers instead of mobile web.",
+                "source": {
+                  "session_id": "9919e5a9-84e2-45ce-beb3-87614a80dcd4",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:55:06.498Z",
+                "updated_at": "2026-10-26T22:55:06.498Z",
+                "expires_at": null,
+                "supersedes": ["e8d3a712-e543-4341-baa7-67809ac80ba8"],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "score": 0.574999,
+              "evidence": "no keyword match · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 52,
+              "memory": {
+                "id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "We are building a children memory game using Phaser.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.605Z",
+                "updated_at": "2026-10-26T22:54:47.605Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            }
+          ]
+        },
+        "retrieval": {
+          "query": "What platform are we targeting now, and did that change?",
+          "project_id": "montys-memory-meadow",
+          "candidate_count": 3,
+          "selected_count": 3,
+          "excluded_count": 0,
+          "excluded_by": {
+            "count_budget": 0,
+            "character_budget": 0,
+            "duplicate": 0
+          },
+          "characters_used": 180,
+          "character_budget": 4000,
+          "memory_budget": 8,
+          "truncated_count": 0,
+          "memory_ids": [
+            "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+            "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+            "eac9d028-e673-4df2-94a3-76eb2fe461da"
+          ],
+          "latency_ms": 0.853,
+          "weights": {
+            "relevance": 0.4,
+            "scope": 0.2,
+            "confidence": 0.15,
+            "validation": 0.1,
+            "recency": 0.1,
+            "type_priority": 0.05
+          },
+          "query_mode": "fallback"
+        },
+        "context": {
+          "prompt_characters": 1828,
+          "memory_characters": 180,
+          "history_messages": 0,
+          "history_messages_dropped": 0,
+          "sections": {
+            "system": 767,
+            "constraints": 0,
+            "memories": 672,
+            "corrections": 290,
+            "history": 0,
+            "request": 93,
+            "tools": 0
+          },
+          "memory_ids": [
+            "bb68ac84-61e9-4cbf-b74e-1031513e92cb",
+            "03395a44-9e9e-4d4b-9ed6-559e096243a3",
+            "eac9d028-e673-4df2-94a3-76eb2fe461da"
+          ],
+          "estimated_tokens": 457,
+          "warnings": ["included 1 superseded record(s) as labelled history"]
+        },
+        "usage": {
+          "input_tokens": 17008,
+          "output_tokens": 173,
+          "cached_input_tokens": 16756,
+          "reasoning_tokens": 145
+        },
+        "captures": [],
+        "candidates": []
+      }
+    },
+    "demoD": {
+      "surface": {
+        "id": "2390022f-e6e1-4d98-9418-32d37a5c072d",
+        "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+        "message_id": "10cca3c6-139a-4192-a691-f12c6afd7ab1",
+        "title": "Monty's Memory Meadow: First Playable Milestone",
+        "spec": {
+          "version": 1,
+          "title": "Monty's Memory Meadow: First Playable Milestone",
+          "description": "Define the scope and key design decisions for the first playable desktop milestone of Monty's Memory Meadow so the team can build and test the core memory game.",
+          "blocks": [
+            {
+              "kind": "heading",
+              "text": "Monty's Memory Meadow: First Playable Milestone",
+              "level": 2
+            },
+            {
+              "kind": "text",
+              "text": "Define the scope and key design decisions for the first playable desktop milestone of Monty's Memory Meadow so the team can build and test the core memory game."
+            },
+            {
+              "kind": "form",
+              "id": "plan",
+              "title": "Create milestone plan",
+              "fields": [
+                {
+                  "id": "milestone_name",
+                  "label": "Milestone name",
+                  "type": "text",
+                  "required": true,
+                  "placeholder": "e.g. Meadow Match Alpha"
+                },
+                {
+                  "id": "target_age_range",
+                  "label": "Target age range",
+                  "type": "select",
+                  "required": true,
+                  "options": [
+                    {
+                      "value": "ages-3-5",
+                      "label": "Ages 3-5"
+                    },
+                    {
+                      "value": "ages-5-7",
+                      "label": "Ages 5-7"
+                    },
+                    {
+                      "value": "ages-7-9",
+                      "label": "Ages 7-9"
+                    },
+                    {
+                      "value": "ages-4-8-mixed",
+                      "label": "Ages 4-8 mixed"
+                    }
+                  ]
+                },
+                {
+                  "id": "grid_size",
+                  "label": "Starting card grid size",
+                  "type": "select",
+                  "required": true,
+                  "options": [
+                    {
+                      "value": "3-x-4-12-cards",
+                      "label": "3 x 4 (12 cards)"
+                    },
+                    {
+                      "value": "4-x-4-16-cards",
+                      "label": "4 x 4 (16 cards)"
+                    },
+                    {
+                      "value": "4-x-5-20-cards",
+                      "label": "4 x 5 (20 cards)"
+                    },
+                    {
+                      "value": "5-x-6-30-cards",
+                      "label": "5 x 6 (30 cards)"
+                    }
+                  ]
+                },
+                {
+                  "id": "card_theme",
+                  "label": "Card picture theme for this milestone",
+                  "type": "select",
+                  "required": true,
+                  "options": [
+                    {
+                      "value": "meadow-animals",
+                      "label": "Meadow animals"
+                    },
+                    {
+                      "value": "farm-animals",
+                      "label": "Farm animals"
+                    },
+                    {
+                      "value": "flowers-and-insects",
+                      "label": "Flowers and insects"
+                    },
+                    {
+                      "value": "woodland-animals",
+                      "label": "Woodland animals"
+                    },
+                    {
+                      "value": "mixed-meadow-set",
+                      "label": "Mixed meadow set"
+                    }
+                  ]
+                },
+                {
+                  "id": "desktop_interactions",
+                  "label": "Desktop interactions to include",
+                  "type": "multiselect",
+                  "required": true,
+                  "options": [
+                    {
+                      "value": "mouse-click-to-flip",
+                      "label": "Mouse click to flip"
+                    },
+                    {
+                      "value": "hover-highlight",
+                      "label": "Hover highlight"
+                    },
+                    {
+                      "value": "keyboard-navigation",
+                      "label": "Keyboard navigation"
+                    },
+                    {
+                      "value": "mouse-drag-and-drop",
+                      "label": "Mouse drag and drop"
+                    }
+                  ]
+                },
+                {
+                  "id": "included_features",
+                  "label": "Features included in the first playable",
+                  "type": "multiselect",
+                  "required": true,
+                  "options": [
+                    {
+                      "value": "card-flip-animation",
+                      "label": "Card flip animation"
+                    },
+                    {
+                      "value": "match-sound-effects",
+                      "label": "Match sound effects"
+                    },
+                    {
+                      "value": "move-counter",
+                      "label": "Move counter"
+                    },
+                    {
+                      "value": "timer",
+                      "label": "Timer"
+                    },
+                    {
+                      "value": "win-screen",
+                      "label": "Win screen"
+                    },
+                    {
+                      "value": "restart-button",
+                      "label": "Restart button"
+                    },
+                    {
+                      "value": "score-stars",
+                      "label": "Score stars"
+                    }
+                  ]
+                },
+                {
+                  "id": "difficulty_options",
+                  "label": "Difficulty options to include",
+                  "type": "select",
+                  "required": false,
+                  "options": [
+                    {
+                      "value": "single-fixed-level",
+                      "label": "Single fixed level"
+                    },
+                    {
+                      "value": "easy-medium-hard",
+                      "label": "Easy / Medium / Hard"
+                    },
+                    {
+                      "value": "increasing-grid-size",
+                      "label": "Increasing grid size"
+                    },
+                    {
+                      "value": "timed-challenge",
+                      "label": "Timed challenge"
+                    }
+                  ]
+                },
+                {
+                  "id": "success_criteria",
+                  "label": "How will we know this milestone is done?",
+                  "type": "textarea",
+                  "required": true,
+                  "placeholder": "e.g. A child can complete a full game on desktop Chrome using only a mouse, with no blocking bugs."
+                }
+              ],
+              "submit_label": "Create milestone plan",
+              "save_to_memory": {
+                "type": "project"
+              }
+            }
+          ]
+        },
+        "status": "active",
+        "created_at": "2026-10-26T22:55:29.492Z",
+        "submitted_at": null,
+        "events": []
+      },
+      "submission": {
+        "surface": {
+          "id": "2390022f-e6e1-4d98-9418-32d37a5c072d",
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "message_id": "10cca3c6-139a-4192-a691-f12c6afd7ab1",
+          "title": "Monty's Memory Meadow: First Playable Milestone",
+          "spec": {
+            "version": 1,
+            "title": "Monty's Memory Meadow: First Playable Milestone",
+            "description": "Define the scope and key design decisions for the first playable desktop milestone of Monty's Memory Meadow so the team can build and test the core memory game.",
+            "blocks": [
+              {
+                "kind": "heading",
+                "text": "Monty's Memory Meadow: First Playable Milestone",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "text": "Define the scope and key design decisions for the first playable desktop milestone of Monty's Memory Meadow so the team can build and test the core memory game."
+              },
+              {
+                "kind": "form",
+                "id": "plan",
+                "title": "Create milestone plan",
+                "fields": [
+                  {
+                    "id": "milestone_name",
+                    "label": "Milestone name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. Meadow Match Alpha"
+                  },
+                  {
+                    "id": "target_age_range",
+                    "label": "Target age range",
+                    "type": "select",
+                    "required": true,
+                    "options": [
+                      {
+                        "value": "ages-3-5",
+                        "label": "Ages 3-5"
+                      },
+                      {
+                        "value": "ages-5-7",
+                        "label": "Ages 5-7"
+                      },
+                      {
+                        "value": "ages-7-9",
+                        "label": "Ages 7-9"
+                      },
+                      {
+                        "value": "ages-4-8-mixed",
+                        "label": "Ages 4-8 mixed"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "grid_size",
+                    "label": "Starting card grid size",
+                    "type": "select",
+                    "required": true,
+                    "options": [
+                      {
+                        "value": "3-x-4-12-cards",
+                        "label": "3 x 4 (12 cards)"
+                      },
+                      {
+                        "value": "4-x-4-16-cards",
+                        "label": "4 x 4 (16 cards)"
+                      },
+                      {
+                        "value": "4-x-5-20-cards",
+                        "label": "4 x 5 (20 cards)"
+                      },
+                      {
+                        "value": "5-x-6-30-cards",
+                        "label": "5 x 6 (30 cards)"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "card_theme",
+                    "label": "Card picture theme for this milestone",
+                    "type": "select",
+                    "required": true,
+                    "options": [
+                      {
+                        "value": "meadow-animals",
+                        "label": "Meadow animals"
+                      },
+                      {
+                        "value": "farm-animals",
+                        "label": "Farm animals"
+                      },
+                      {
+                        "value": "flowers-and-insects",
+                        "label": "Flowers and insects"
+                      },
+                      {
+                        "value": "woodland-animals",
+                        "label": "Woodland animals"
+                      },
+                      {
+                        "value": "mixed-meadow-set",
+                        "label": "Mixed meadow set"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "desktop_interactions",
+                    "label": "Desktop interactions to include",
+                    "type": "multiselect",
+                    "required": true,
+                    "options": [
+                      {
+                        "value": "mouse-click-to-flip",
+                        "label": "Mouse click to flip"
+                      },
+                      {
+                        "value": "hover-highlight",
+                        "label": "Hover highlight"
+                      },
+                      {
+                        "value": "keyboard-navigation",
+                        "label": "Keyboard navigation"
+                      },
+                      {
+                        "value": "mouse-drag-and-drop",
+                        "label": "Mouse drag and drop"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "included_features",
+                    "label": "Features included in the first playable",
+                    "type": "multiselect",
+                    "required": true,
+                    "options": [
+                      {
+                        "value": "card-flip-animation",
+                        "label": "Card flip animation"
+                      },
+                      {
+                        "value": "match-sound-effects",
+                        "label": "Match sound effects"
+                      },
+                      {
+                        "value": "move-counter",
+                        "label": "Move counter"
+                      },
+                      {
+                        "value": "timer",
+                        "label": "Timer"
+                      },
+                      {
+                        "value": "win-screen",
+                        "label": "Win screen"
+                      },
+                      {
+                        "value": "restart-button",
+                        "label": "Restart button"
+                      },
+                      {
+                        "value": "score-stars",
+                        "label": "Score stars"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "difficulty_options",
+                    "label": "Difficulty options to include",
+                    "type": "select",
+                    "required": false,
+                    "options": [
+                      {
+                        "value": "single-fixed-level",
+                        "label": "Single fixed level"
+                      },
+                      {
+                        "value": "easy-medium-hard",
+                        "label": "Easy / Medium / Hard"
+                      },
+                      {
+                        "value": "increasing-grid-size",
+                        "label": "Increasing grid size"
+                      },
+                      {
+                        "value": "timed-challenge",
+                        "label": "Timed challenge"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "success_criteria",
+                    "label": "How will we know this milestone is done?",
+                    "type": "textarea",
+                    "required": true,
+                    "placeholder": "e.g. A child can complete a full game on desktop Chrome using only a mouse, with no blocking bugs."
+                  }
+                ],
+                "submit_label": "Create milestone plan",
+                "save_to_memory": {
+                  "type": "project"
+                }
+              }
+            ]
+          },
+          "status": "submitted",
+          "created_at": "2026-10-26T22:55:29.492Z",
+          "submitted_at": "2026-10-26T22:55:29.496Z",
+          "events": [
+            {
+              "id": "7de20c39-bc20-424c-92f1-19b1f57e7e4d",
+              "surface_id": "2390022f-e6e1-4d98-9418-32d37a5c072d",
+              "action_id": "plan",
+              "values": {
+                "milestone_name": "Playable meadow loop",
+                "target_age_range": "ages-3-5",
+                "grid_size": "3-x-4-12-cards",
+                "card_theme": "meadow-animals",
+                "desktop_interactions": ["mouse-click-to-flip"],
+                "included_features": ["card-flip-animation"],
+                "difficulty_options": "single-fixed-level",
+                "success_criteria": "A short, playable meadow level that children can finish unaided."
+              },
+              "created_at": "2026-10-26T22:55:29.496Z"
+            }
+          ]
+        },
+        "memory": {
+          "id": "8a92c434-ab81-4ae7-9af8-e2634cf1d359",
+          "type": "project",
+          "scope": "project",
+          "project_id": "montys-memory-meadow",
+          "content": "Interface \"Create milestone plan\" was submitted with these values:\n- Milestone name: Playable meadow loop\n- Target age range: ages-3-5\n- Starting card grid size: 3-x-4-12-cards\n- Card picture theme for this milestone: meadow-animals\n- Desktop interactions to include: mouse-click-to-flip\n- Features included in the first playable: card-flip-animation\n- Difficulty options to include: single-fixed-level\n- How will we know this milestone is done?: A short, playable meadow level that children can finish unaided.\n\nContinue the work using these choices.",
+          "source": {
+            "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+            "reference": "ui:2390022f-e6e1-4d98-9418-32d37a5c072d"
+          },
+          "confidence": 0.9,
+          "validation_status": "verified",
+          "status": "active",
+          "created_at": "2026-10-26T22:55:29.496Z",
+          "updated_at": "2026-10-26T22:55:29.496Z",
+          "expires_at": null,
+          "supersedes": [],
+          "superseded_by": null,
+          "tags": []
+        },
+        "turn": {
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "user_message": {
+            "id": "3d1b9afb-ee1d-49c5-b742-d6cee8460c1e",
+            "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+            "sequence": 3,
+            "role": "user",
+            "content": "Interface \"Create milestone plan\" was submitted with these values:\n- Milestone name: Playable meadow loop\n- Target age range: ages-3-5\n- Starting card grid size: 3-x-4-12-cards\n- Card picture theme for this milestone: meadow-animals\n- Desktop interactions to include: mouse-click-to-flip\n- Features included in the first playable: card-flip-animation\n- Difficulty options to include: single-fixed-level\n- How will we know this milestone is done?: A short, playable meadow level that children can finish unaided.\n\nContinue the work using these choices.\n\nUse the available project tools to record follow-up work such as tasks.",
+            "status": "complete",
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "latency_ms": null,
+            "context": null,
+            "created_at": "2026-10-26T22:55:29.497Z"
+          },
+          "assistant_message": {
+            "id": "4a5c3ba4-a16f-4bbc-a577-2b9dee09d8eb",
+            "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+            "sequence": 4,
+            "role": "assistant",
+            "content": "Continuing with **Playable meadow loop**:\n\n- Ages 3–5, desktop\n- 3×4 grid (12 cards), meadow-animals theme\n- Mouse-click-to-flip with card-flip animation\n- Single fixed level\n- Done when a child can finish the short meadow level unaided\n\nA follow-up task — “Build Playable meadow loop (3x4, meadow animals)” — and the milestone record are prepared but awaiting your approval. They have not been saved yet.",
+            "status": "complete",
+            "input_tokens": 17483,
+            "output_tokens": 428,
+            "latency_ms": 6022,
+            "context": {
+              "prompt_characters": 3757,
+              "memory_characters": 551,
+              "history_messages": 3,
+              "history_messages_dropped": 0,
+              "sections": {
+                "system": 767,
+                "constraints": 0,
+                "memories": 870,
+                "corrections": 0,
+                "history": 360,
+                "request": 661,
+                "tools": 1091
+              },
+              "memory_ids": ["8a92c434-ab81-4ae7-9af8-e2634cf1d359"],
+              "estimated_tokens": 940,
+              "warnings": []
+            },
+            "created_at": "2026-10-26T22:55:45.967Z",
+            "memories": [
+              {
+                "memory_id": "8a92c434-ab81-4ae7-9af8-e2634cf1d359",
+                "score": 0.97,
+                "evidence": "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+                "memory_type": "project",
+                "scope": "project",
+                "pinned": false,
+                "truncated": false,
+                "characters": 551,
+                "memory": {
+                  "id": "8a92c434-ab81-4ae7-9af8-e2634cf1d359",
+                  "type": "project",
+                  "scope": "project",
+                  "project_id": "montys-memory-meadow",
+                  "content": "Interface \"Create milestone plan\" was submitted with these values:\n- Milestone name: Playable meadow loop\n- Target age range: ages-3-5\n- Starting card grid size: 3-x-4-12-cards\n- Card picture theme for this milestone: meadow-animals\n- Desktop interactions to include: mouse-click-to-flip\n- Features included in the first playable: card-flip-animation\n- Difficulty options to include: single-fixed-level\n- How will we know this milestone is done?: A short, playable meadow level that children can finish unaided.\n\nContinue the work using these choices.",
+                  "source": {
+                    "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+                    "reference": "ui:2390022f-e6e1-4d98-9418-32d37a5c072d"
+                  },
+                  "confidence": 0.9,
+                  "validation_status": "verified",
+                  "status": "active",
+                  "created_at": "2026-10-26T22:55:29.496Z",
+                  "updated_at": "2026-10-26T22:55:29.496Z",
+                  "expires_at": null,
+                  "supersedes": [],
+                  "superseded_by": null,
+                  "tags": []
+                },
+                "memory_available": true
+              }
+            ]
+          },
+          "retrieval": {
+            "query": "Interface \"Create milestone plan\" was submitted with these values:\n- Milestone name: Playable meadow loop\n- Target age range: ages-3-5\n- Starting card grid size: 3-x-4-12-cards\n- Card picture theme for this milestone: meadow-animals\n- Desktop interactions to include: mouse-click-to-flip\n- Features included in the first playable: card-flip-animation\n- Difficulty options to include: single-fixed-level\n- How will we know this milestone is done?: A short, playable meadow level that children can finish unaided.\n\nContinue the work using these choices.\n\nUse the available project tools to record follow-up work such as tasks.",
+            "project_id": "montys-memory-meadow",
+            "candidate_count": 1,
+            "selected_count": 1,
+            "excluded_count": 0,
+            "excluded_by": {
+              "count_budget": 0,
+              "character_budget": 0,
+              "duplicate": 0
+            },
+            "characters_used": 551,
+            "character_budget": 4000,
+            "memory_budget": 8,
+            "truncated_count": 0,
+            "memory_ids": ["8a92c434-ab81-4ae7-9af8-e2634cf1d359"],
+            "latency_ms": 0.728,
+            "weights": {
+              "relevance": 0.4,
+              "scope": 0.2,
+              "confidence": 0.15,
+              "validation": 0.1,
+              "recency": 0.1,
+              "type_priority": 0.05
+            },
+            "query_mode": "relaxed"
+          },
+          "context": {
+            "prompt_characters": 3757,
+            "memory_characters": 551,
+            "history_messages": 3,
+            "history_messages_dropped": 0,
+            "sections": {
+              "system": 767,
+              "constraints": 0,
+              "memories": 870,
+              "corrections": 0,
+              "history": 360,
+              "request": 661,
+              "tools": 1091
+            },
+            "memory_ids": ["8a92c434-ab81-4ae7-9af8-e2634cf1d359"],
+            "estimated_tokens": 940,
+            "warnings": []
+          },
+          "usage": {
+            "input_tokens": 17483,
+            "output_tokens": 428,
+            "cached_input_tokens": 16756,
+            "reasoning_tokens": 291
+          },
+          "captures": [],
+          "candidates": []
+        }
+      }
+    },
+    "demoE": {
+      "session": "3fa63c9b-ff74-4a4c-94c3-a26461737445",
+      "summary": {
+        "session_id": "3fa63c9b-ff74-4a4c-94c3-a26461737445",
+        "user_message": {
+          "id": "bbe783a3-f84e-40ef-893d-22c5088ae675",
+          "session_id": "3fa63c9b-ff74-4a4c-94c3-a26461737445",
+          "sequence": 0,
+          "role": "user",
+          "content": "Summarise the project for a teammate: what are we building, what platform, and what tasks are planned?",
+          "status": "complete",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "latency_ms": null,
+          "context": null,
+          "created_at": "2026-10-26T22:55:57.504Z"
+        },
+        "assistant_message": {
+          "id": "b1b5c062-21cc-4f52-a157-728fac543933",
+          "session_id": "3fa63c9b-ff74-4a4c-94c3-a26461737445",
+          "sequence": 1,
+          "role": "assistant",
+          "content": "**Monty's Memory Meadow** — a children's memory matching game built with Phaser.\n\n- **Platform:** Desktop browsers\n- **First milestone:** \"Playable meadow loop\" for ages 3-5 — a single fixed level with a 3x4 grid (12 cards), meadow-animals theme, mouse-click-to-flip, and card-flip animation\n- **Done when:** A short, playable meadow level that children can finish unaided\n\n**Planned tasks (1 todo, 0 in progress/done):**\n- Build Playable meadow loop (3x4, meadow animals)",
+          "status": "complete",
+          "input_tokens": 17398,
+          "output_tokens": 336,
+          "latency_ms": 4784,
+          "context": {
+            "prompt_characters": 3157,
+            "memory_characters": 603,
+            "history_messages": 0,
+            "history_messages_dropped": 0,
+            "sections": {
+              "system": 767,
+              "constraints": 0,
+              "memories": 1007,
+              "corrections": 0,
+              "history": 0,
+              "request": 139,
+              "tools": 1238
+            },
+            "memory_ids": [
+              "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "8a92c434-ab81-4ae7-9af8-e2634cf1d359"
+            ],
+            "estimated_tokens": 790,
+            "warnings": []
+          },
+          "created_at": "2026-10-26T22:56:06.965Z",
+          "memories": [
+            {
+              "memory_id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+              "score": 0.974998,
+              "evidence": "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "technical_decision",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 52,
+              "memory": {
+                "id": "eac9d028-e673-4df2-94a3-76eb2fe461da",
+                "type": "technical_decision",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "We are building a children memory game using Phaser.",
+                "source": {
+                  "session_id": "de05601e-6466-40c0-b7f6-a12245e3e40b",
+                  "reference": "explicit-command"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:54:47.605Z",
+                "updated_at": "2026-10-26T22:54:47.605Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            },
+            {
+              "memory_id": "8a92c434-ab81-4ae7-9af8-e2634cf1d359",
+              "score": 0.724361,
+              "evidence": "keyword match (39% of best) · project scope · verified · confidence 0.90 · fresh",
+              "memory_type": "project",
+              "scope": "project",
+              "pinned": false,
+              "truncated": false,
+              "characters": 551,
+              "memory": {
+                "id": "8a92c434-ab81-4ae7-9af8-e2634cf1d359",
+                "type": "project",
+                "scope": "project",
+                "project_id": "montys-memory-meadow",
+                "content": "Interface \"Create milestone plan\" was submitted with these values:\n- Milestone name: Playable meadow loop\n- Target age range: ages-3-5\n- Starting card grid size: 3-x-4-12-cards\n- Card picture theme for this milestone: meadow-animals\n- Desktop interactions to include: mouse-click-to-flip\n- Features included in the first playable: card-flip-animation\n- Difficulty options to include: single-fixed-level\n- How will we know this milestone is done?: A short, playable meadow level that children can finish unaided.\n\nContinue the work using these choices.",
+                "source": {
+                  "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+                  "reference": "ui:2390022f-e6e1-4d98-9418-32d37a5c072d"
+                },
+                "confidence": 0.9,
+                "validation_status": "verified",
+                "status": "active",
+                "created_at": "2026-10-26T22:55:29.496Z",
+                "updated_at": "2026-10-26T22:55:29.496Z",
+                "expires_at": null,
+                "supersedes": [],
+                "superseded_by": null,
+                "tags": []
+              },
+              "memory_available": true
+            }
+          ]
+        },
+        "retrieval": {
+          "query": "Summarise the project for a teammate: what are we building, what platform, and what tasks are planned?",
+          "project_id": "montys-memory-meadow",
+          "candidate_count": 2,
+          "selected_count": 2,
+          "excluded_count": 0,
+          "excluded_by": {
+            "count_budget": 0,
+            "character_budget": 0,
+            "duplicate": 0
+          },
+          "characters_used": 603,
+          "character_budget": 4000,
+          "memory_budget": 8,
+          "truncated_count": 0,
+          "memory_ids": [
+            "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "8a92c434-ab81-4ae7-9af8-e2634cf1d359"
+          ],
+          "latency_ms": 1.157,
+          "weights": {
+            "relevance": 0.4,
+            "scope": 0.2,
+            "confidence": 0.15,
+            "validation": 0.1,
+            "recency": 0.1,
+            "type_priority": 0.05
+          },
+          "query_mode": "relaxed"
+        },
+        "context": {
+          "prompt_characters": 3157,
+          "memory_characters": 603,
+          "history_messages": 0,
+          "history_messages_dropped": 0,
+          "sections": {
+            "system": 767,
+            "constraints": 0,
+            "memories": 1007,
+            "corrections": 0,
+            "history": 0,
+            "request": 139,
+            "tools": 1238
+          },
+          "memory_ids": [
+            "eac9d028-e673-4df2-94a3-76eb2fe461da",
+            "8a92c434-ab81-4ae7-9af8-e2634cf1d359"
+          ],
+          "estimated_tokens": 790,
+          "warnings": []
+        },
+        "usage": {
+          "input_tokens": 17398,
+          "output_tokens": 336,
+          "cached_input_tokens": 16756,
+          "reasoning_tokens": 201
+        },
+        "captures": [],
+        "candidates": []
+      },
+      "calls": [
+        {
+          "id": "618796e9-3906-44be-a653-37a2e638252c",
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "message_id": "4a5c3ba4-a16f-4bbc-a577-2b9dee09d8eb",
+          "tool": "project.get",
+          "arguments": {},
+          "status": "executed",
+          "requires_confirmation": false,
+          "result": {
+            "project": {
+              "id": "montys-memory-meadow",
+              "name": "montys-memory-meadow",
+              "description": null,
+              "created_at": "2026-10-26T22:54:47.599Z",
+              "updated_at": "2026-10-26T22:54:47.599Z"
+            },
+            "tasks": {
+              "todo": 0,
+              "in_progress": 0,
+              "done": 0
+            },
+            "memory_count": 4
+          },
+          "error": null,
+          "duration_ms": 2,
+          "created_at": "2026-10-26T22:55:39.943Z",
+          "decided_at": "2026-10-26T22:55:39.943Z",
+          "executed_at": "2026-10-26T22:55:39.943Z"
+        },
+        {
+          "id": "74e4237a-1863-4f62-aa6e-c0cbfd92d9b5",
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "message_id": "f801335a-4e04-4b1d-a820-9c8724ae3609",
+          "tool": "memory.create",
+          "arguments": {
+            "content": "Milestone 'Playable meadow loop': target is desktop browsers (changed from mobile web), ages 3-5, 3x4 12-card meadow-animals grid, mouse-click-to-flip, card-flip animation, single fixed level; done when children can finish the short playable meadow level unaided.",
+            "type": "project",
+            "confidence": 0.9
+          },
+          "status": "executed",
+          "requires_confirmation": true,
+          "result": {
+            "memory_id": "4513a80d-0441-4be7-ba3e-7ebd52d82578",
+            "content": "Milestone 'Playable meadow loop': target is desktop browsers (changed from mobile web), ages 3-5, 3x4 12-card meadow-animals grid, mouse-click-to-flip, card-flip animation, single fixed level; done when children can finish the short playable meadow level unaided.",
+            "created": true
+          },
+          "error": null,
+          "duration_ms": 1,
+          "created_at": "2026-10-26T22:55:39.944Z",
+          "decided_at": "2026-10-26T22:55:45.979Z",
+          "executed_at": "2026-10-26T22:55:45.979Z"
+        },
+        {
+          "id": "fcd688bd-7a17-4dd6-828f-38547ca55583",
+          "session_id": "33ba7bee-75f0-43bb-86fe-902959eff971",
+          "message_id": "8db79095-1943-49c4-95c8-3c70801aa064",
+          "tool": "task.create",
+          "arguments": {
+            "title": "Build Playable meadow loop (3x4, meadow animals)",
+            "description": "For ages 3-5 on desktop browsers: 12-card (3x4) meadow-animals matching level with mouse-click-to-flip and card-flip animation, single fixed level. Done when a short, playable meadow level can be finished unaided by children.",
+            "status": "todo"
+          },
+          "status": "executed",
+          "requires_confirmation": true,
+          "result": {
+            "id": "5710de01-2f96-4997-96e5-54b47cd32c0b",
+            "project_id": "montys-memory-meadow",
+            "title": "Build Playable meadow loop (3x4, meadow animals)",
+            "description": "For ages 3-5 on desktop browsers: 12-card (3x4) meadow-animals matching level with mouse-click-to-flip and card-flip animation, single fixed level. Done when a short, playable meadow level can be finished unaided by children.",
+            "status": "todo",
+            "created_at": "2026-10-26T22:55:51.639Z",
+            "updated_at": "2026-10-26T22:55:51.639Z"
+          },
+          "error": null,
+          "duration_ms": 1,
+          "created_at": "2026-10-26T22:55:39.944Z",
+          "decided_at": "2026-10-26T22:55:51.640Z",
+          "executed_at": "2026-10-26T22:55:51.640Z"
+        }
+      ]
+    }
+  }
+}

@@ -1,19 +1,20 @@
 # Next steps
 
-## Phase 6 — evaluation, demonstration, submission (current)
+Feature freeze is in effect. The remaining work is submission, not development.
 
-The product now demonstrates all three headline behaviours: memory across sessions, correctable
-memory, and a generated interface that drives authorized work. Phase 6 is about proving it and
-shipping it.
+## Owner actions
 
-**Work items**
-1. Run the baseline vs memory-enabled comparison through `tests/evaluation/harness.ts` with
-   several tasks; report measured token/latency/correctness deltas.
-2. Record the demo video following `docs/demo-script.md` (Demos A–E), on a fresh database.
-3. Confirm repository visibility against the Official Rules and make the repo accessible to
-   judges if required (currently private; commit permalinks 404 when logged out).
-4. Final pass on `DEVELOPMENT_LOG.md`, `README.md`, screenshots, and known issues.
-5. Feature freeze; tag the submission commit.
+1. Read the Official Rules on the submission platform; confirm repository visibility, video
+   length, disclosures, and deadline (currently documented as Nov 4, 9:00 PM ET).
+2. Decide repository visibility. It is currently private; if judges must open it, make it
+   public or grant access. Nothing in the code depends on visibility.
+3. Record the 3-minute video using `docs/VIDEO_STORYBOARD.md` and `docs/DEMO_SCRIPT.md` on a
+   fresh database.
+4. Complete the submission form with the repository URL, video URL, and the description in
+   `docs/HACKATHON_SUBMISSION.md`.
+5. Do not claim statistical significance: the comparison uses n=4 per configuration.
 
-**Acceptance:** a reviewer can clone, run `pnpm install && pnpm dev`, and reproduce Demos A–E
-from the script; the comparison report contains measured numbers, not claims.
+## Deferred (explicitly out of scope)
+
+Embeddings/semantic retrieval, additional model providers, shell/filesystem/network tools,
+multi-agent orchestration, authentication, and hosted multi-user deployment.

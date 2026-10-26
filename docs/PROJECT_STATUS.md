@@ -1,8 +1,8 @@
 # Project status
 
 **Last updated:** 2026-10-27
-**Milestone:** Phase 5 — Authorized agent tools
-**State:** Complete and verified
+**Milestone:** Phase 6 — Evaluation, stabilization, and submission preparation
+**State:** Complete — submission-ready with administrative actions pending
 
 ## Implemented
 
@@ -122,6 +122,23 @@ memory.
 - **UI** — a Tool activity panel shows every call with status, arguments, result, and
   Approve/Deny controls; the memory inspector is unchanged.
 
+## Phase 6 — evaluation and submission (added)
+
+- **Evaluation:** `pnpm eval:comparison` — n=4 per configuration; both configurations 4/4
+  correct; memory +67.5 input tokens per call; correction check (superseded excluded) and
+  project isolation (0 leaks) pass. Report: `docs/EVALUATION_REPORT.md`.
+- **Integrated showcase:** `pnpm demo:showcase` — **8/8** checks with real Muse on a fresh
+  database (Demos A, B, D, E); evidence: `docs/benchmarks/showcase.json`.
+- **Browser verification:** 28 checks pass, including generated form completion and
+  submission, with zero console or HTTP errors.
+- **Security/privacy review:** no secrets in history; no tracked `.env` or databases; six
+  bounded tools; no outbound HTTP from the app; generated UI is declarative data only.
+- **Feature freeze** in effect.
+- **Submission materials:** checklist, submission description, evaluation report,
+  architecture overview, demo script, video storyboard.
+- **Pending owner actions:** confirm repository visibility against the Official Rules
+  (currently private), record/upload the video, complete the submission form.
+
 ## Verified
 
 | Command | Result |
@@ -135,7 +152,9 @@ memory.
 | `pnpm demo:sessions` | Demo A and B succeeded with real Muse |
 | `pnpm bench:context` | 3 trials per configuration, 100% correctness |
 | `pnpm eval:retrieval` | 20/22 retrieval, 7/7 sampled answers correct and grounded |
-| focused browser check (tools) | pending call shown, approved in the UI, execution confirmed |
+| `pnpm exec tsx scripts/verify-ui.ts` | **28 checks pass**, zero console/HTTP errors |
+| `pnpm demo:showcase` | **8/8 checks**, real Muse |
+| `pnpm eval:comparison` | n=4; 4/4 both configurations; see evaluation report |
 
 ## Demonstration results (real Muse, `muse-wonder-1.0`)
 
@@ -185,4 +204,5 @@ None requiring input.
 
 ## Next milestone
 
-**Phase 6 — evaluation, demonstration, and submission.** Plan in [NEXT_STEPS.md](NEXT_STEPS.md).
+**Submission.** Complete the owner actions in `docs/SUBMISSION_CHECKLIST.md`: confirm
+visibility, record the video, and submit. No further feature work is planned.

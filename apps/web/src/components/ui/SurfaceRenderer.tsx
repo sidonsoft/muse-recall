@@ -251,7 +251,12 @@ function SurfaceForm({
       }}
     >
       {form.fields.map((field) => (
-        <div key={field.id} className="space-y-1">
+        <div
+          key={field.id}
+          data-field-id={field.id}
+          data-field-type={field.type}
+          className="space-y-1"
+        >
           <label htmlFor={`${form.id}-${field.id}`} className="block text-[11px] text-ink-dim">
             {field.label}
             {field.required ? <span className="text-err"> *</span> : null}

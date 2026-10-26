@@ -141,6 +141,12 @@ async function tools(app: FastifyInstance, sessionId: string) {
   }[];
 }
 
+function firstCall(calls: { id: string }[]): { id: string } {
+  const call = calls[0];
+  if (!call) throw new Error('expected a tool call');
+  return call;
+}
+
 async function decide(
   app: FastifyInstance,
   sessionId: string,
@@ -213,7 +219,7 @@ describe('write tools require approval', () => {
     expect(calls[0]).toMatchObject({ status: 'pending' });
     expect(await taskCount(h)).toBe(0);
 
-    const result = await decide(h.app, s.id, calls[0]!.id, 'approve');
+    const result = await decide(h.app, s.id, firstCall(calls).id, 'approve');
     expect(result.statusCode).toBe(200);
     expect(result.json().data.call.status).toBe('executed');
 
@@ -236,7 +242,7 @@ describe('write tools require approval', () => {
     const calls = await tools(h.app, s.id);
     expect(calls[0]?.status).toBe('pending');
 
-    const result = await decide(h.app, s.id, calls[0]!.id, 'deny');
+    const result = await decide(h.app, s.id, firstCall(calls).id, 'deny');
     expect(result.statusCode).toBe(200);
     expect(result.json().data.call.status).toBe('denied');
 
@@ -250,8 +256,8 @@ describe('write tools require approval', () => {
     await send(h.app, s.id, 'Create one task.');
     const calls = await tools(h.app, s.id);
 
-    await decide(h.app, s.id, calls[0]!.id, 'approve');
-    const second = await decide(h.app, s.id, calls[0]!.id, 'approve');
+    await decide(h.app, s.id, firstCall(calls).id, 'approve');
+    const second = await decide(h.app, s.id, firstCall(calls).id, 'approve');
     expect(second.statusCode).toBe(409);
     expect(second.json().error.code).toBe('tool_call_not_pending');
     expect(await taskCount(h)).toBe(1);
@@ -265,7 +271,7 @@ describe('write tools require approval', () => {
     await send(h.app, a.id, 'Create a task for project A.');
     const calls = await tools(h.app, a.id);
 
-    const result = await decide(h.app, b.id, calls[0]!.id, 'approve');
+    const result = await decide(h.app, b.id, firstCall(calls).id, 'approve');
     expect(result.statusCode).toBe(404);
     expect(await taskCount(h)).toBe(0);
   });
@@ -314,7 +320,7 @@ describe('security', () => {
     expect(calls[0]?.status).toBe('pending');
     expect(await taskCount(h)).toBe(0);
 
-    await decide(h.app, s.id, calls[0]!.id, 'deny');
+    await decide(h.app, s.id, firstCall(calls).id, 'deny');
     expect(await taskCount(h)).toBe(0);
   });
 
@@ -343,7 +349,7 @@ describe('security', () => {
     const pending = await tools(h.app, s.id);
     expect(pending[0]?.status).toBe('pending');
 
-    const result = await decide(h.app, s.id, pending[0]!.id, 'approve');
+    const result = await decide(h.app, s.id, firstCall(pending).id, 'approve');
     expect(result.statusCode).toBe(200);
 
     const calls = await tools(h.app, s.id);

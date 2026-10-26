@@ -1,0 +1,152 @@
+{
+  "generated_at": "2026-10-26T22:52:19.733Z",
+  "run": "puozlz",
+  "model": "muse-wonder-1.0",
+  "trials_per_configuration": 2,
+  "sample_size_per_configuration": 4,
+  "tasks": [
+    {
+      "id": "game",
+      "question": "What game are we building, which engine are we using, and what is the target platform?",
+      "expected": ["phaser", "mobile web"]
+    },
+    {
+      "id": "api",
+      "question": "What does Starlight use for its HTTP server and for storage?",
+      "expected": ["fastify", "postgres"]
+    }
+  ],
+  "baseline": {
+    "description": "Facts supplied inline in a single user message; no persistent memory.",
+    "input_tokens": {
+      "mean": 16849,
+      "samples": [16884, 16829, 16823, 16860]
+    },
+    "prompt_characters": {
+      "mean": 1161.75,
+      "samples": [1328, 1072, 1042, 1205]
+    },
+    "app_added_characters": {
+      "mean": 251
+    },
+    "latency_ms": {
+      "mean": 4999,
+      "samples": [4631, 3784, 3724, 7857]
+    },
+    "correctness": {
+      "passes": 4,
+      "n": 4
+    }
+  },
+  "experimental": {
+    "description": "Fresh session; facts retrieved from project memory as a validated block.",
+    "input_tokens": {
+      "mean": 16916.5,
+      "samples": [16904, 16904, 16929, 16929]
+    },
+    "prompt_characters": {
+      "mean": 1433,
+      "samples": [1382, 1382, 1484, 1484]
+    },
+    "app_added_characters": {
+      "mean": 112
+    },
+    "latency_ms": {
+      "mean": 5003,
+      "samples": [6651, 4592, 4599, 4170]
+    },
+    "correctness": {
+      "passes": 4,
+      "n": 4
+    },
+    "retrieved_memories": {
+      "mean": 2.5,
+      "samples": [2, 2, 3, 3]
+    }
+  },
+  "deltas": {
+    "input_tokens_mean": 67.5,
+    "prompt_characters_mean": 271.25,
+    "latency_ms_mean": 4
+  },
+  "per_task": [
+    {
+      "task": "game",
+      "trial": 1,
+      "baseline": {
+        "tokens": 16884,
+        "chars": 266,
+        "correct": true
+      },
+      "memory": {
+        "tokens": 16904,
+        "chars": 84,
+        "correct": true,
+        "memories": 2
+      }
+    },
+    {
+      "task": "game",
+      "trial": 2,
+      "baseline": {
+        "tokens": 16829,
+        "chars": 266,
+        "correct": true
+      },
+      "memory": {
+        "tokens": 16904,
+        "chars": 84,
+        "correct": true,
+        "memories": 2
+      }
+    },
+    {
+      "task": "api",
+      "trial": 1,
+      "baseline": {
+        "tokens": 16823,
+        "chars": 236,
+        "correct": true
+      },
+      "memory": {
+        "tokens": 16929,
+        "chars": 140,
+        "correct": true,
+        "memories": 3
+      }
+    },
+    {
+      "task": "api",
+      "trial": 2,
+      "baseline": {
+        "tokens": 16860,
+        "chars": 236,
+        "correct": true
+      },
+      "memory": {
+        "tokens": 16929,
+        "chars": 140,
+        "correct": true,
+        "memories": 3
+      }
+    }
+  ],
+  "correction": {
+    "answer": "Desktop browsers.",
+    "answer_has_current": true,
+    "superseded_id": "f7236ebc-579d-481f-8f43-d42245a3b2b2",
+    "current_id": "2159efc3-d489-429d-8c8a-991e82b82926",
+    "superseded_in_active_retrieval": false,
+    "current_in_active_retrieval": true
+  },
+  "isolation": {
+    "leaked_from_other_project": 0,
+    "checked_project": "eval-isolation-puozlz"
+  },
+  "caveats": [
+    "Both configurations pay the Muse CLI baseline (~16.6k input tokens); it dominates raw token totals.",
+    "Facts-inline and memory-block are both single-call configurations; the comparison isolates context source, not turn count.",
+    "Sample size is small (n=4 per configuration); no statistical significance is claimed.",
+    "Answers are scored by expected-term matching, which measures recall of facts, not prose quality."
+  ]
+}

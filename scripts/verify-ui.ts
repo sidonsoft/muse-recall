@@ -310,6 +310,20 @@ try {
   for (let index = 0; index < (await selects.count()); index += 1) {
     await selects.nth(index).selectOption({ index: 1 });
   }
+  const numbers = surface.locator('input[type="number"]');
+  for (let index = 0; index < (await numbers.count()); index += 1) {
+    await numbers.nth(index).fill('5');
+  }
+  // Required multiselect fields need at least one option chosen.
+  const multiGroups = surface.locator('[data-field-type="multiselect"]');
+  for (let index = 0; index < (await multiGroups.count()); index += 1) {
+    await multiGroups.nth(index).locator('label:has(input.sr-only)').first().click();
+  }
+  // Checkbox fields (not the sr-only inputs used by multiselect chips).
+  const checkboxes = surface.locator('input[type="checkbox"]:not(.sr-only)');
+  for (let index = 0; index < (await checkboxes.count()); index += 1) {
+    if (!(await checkboxes.nth(index).isChecked())) await checkboxes.nth(index).check();
+  }
 
   await surface.locator('button[type="submit"]').click();
   await page.getByText(/Interface submitted/).waitFor({ timeout: 180_000 });

@@ -144,3 +144,46 @@ MML_LIVE_MUSE=1 pnpm test      # adds live Muse integration tests
 
 Per-commit verification instructions are in
 [`docs/hackathon-evidence/README.md`](docs/hackathon-evidence/README.md).
+
+---
+
+## Phase 3 — memory-grounded conversations
+
+**Commit:** `0d9df42` · 2026-10-27 08:33:13 +10:00
+
+Agent runtime with persistent sessions, bounded context assembly, streaming turns, explicit
+memory capture, and per-turn retrieval evidence. Verified with 210 tests (212 with live Muse),
+Demo A and B, and a retrieval evaluation (20/22; 7/7 sampled answers memory-grounded).
+
+## Phase 4 — generated interfaces
+
+**Commit:** `cec4320` · 2026-10-27 08:40:29 +10:00
+
+Declarative UI protocol (closed schema, registry, validation), Muse structured-output
+generation via `--output-schema`, inline rendering, and a submission loop that validates values
+against the stored surface, saves the plan as project memory, and continues the agent turn.
+Verified with 238 tests (240 live); real Muse produced an 8-field form in 6.99 s.
+
+## Phase 5 — authorized agent tools
+
+**Commit:** `7ee9c96` · 2026-10-27 08:48:55 +10:00
+
+Typed tool registry with Zod input/output validation, six project/memory tools, a separate
+structured tool-planning step, two-phase approval for writes, project scope from the session,
+and an audit log that includes invalid and denied calls. Verified with 263 tests (265 live),
+13 tool/security integration tests, a real-Muse tool demo, and a browser approval check.
+
+## Phase 6 — evaluation and submission preparation
+
+**Commit:** see `git log -1` on `main`.
+
+- Evaluation: `pnpm eval:comparison` (n=4 per configuration) — both configurations 4/4 correct;
+  memory +67.5 input tokens per call; correction and isolation checks pass.
+- Integrated showcase: `pnpm demo:showcase` — **8/8** checks with real Muse on a fresh database.
+- Product quality and security review recorded; no secrets in history; six bounded tools; no
+  outbound HTTP from the application.
+- Submission materials: `docs/SUBMISSION_CHECKLIST.md`, `docs/HACKATHON_SUBMISSION.md`,
+  `docs/EVALUATION_REPORT.md`, `docs/ARCHITECTURE_OVERVIEW.md`, `docs/DEMO_SCRIPT.md`,
+  `docs/VIDEO_STORYBOARD.md`.
+- Feature freeze. Outstanding items are administrative: repository visibility, video recording,
+  and completing the submission form (owner actions, documented).
