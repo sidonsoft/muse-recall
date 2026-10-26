@@ -10,7 +10,7 @@
  */
 
 export { memoryContentHash, normaliseContent } from './content-hash.js';
-export { describeRetrieval, formatMemoryContext } from './context.js';
+export { describeRetrieval, formatMemoryContext, renderMemoryBlock } from './context.js';
 export type { OpenDatabaseOptions, OpenedDatabase } from './db.js';
 export { openDatabase, sqliteVersion } from './db.js';
 export type { MemoryActor, MemoryEngineOptions } from './engine.js';

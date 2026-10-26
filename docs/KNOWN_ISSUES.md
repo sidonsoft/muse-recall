@@ -152,3 +152,59 @@ process.
 unique token was in the top-8". The corpus is generated from a seeded PRNG and is not a
 real memory database. It does not measure semantic search quality or answer quality.
 **Mitigation:** Stated in the generated report and in [evaluation.md](evaluation.md).
+
+---
+
+## Phase 3 — conversations and capture
+
+### KI-18 — Keyword retrieval misses genuine vocabulary gaps
+
+**Severity:** Medium (functional limitation)
+**Detail:** In the 22-question evaluation two failed: "What is missing from the API?" (the
+memory says "Rate limiting … not implemented yet"; neither word appears in the question) and
+"Is mobile still the priority?" (the corrected memory says "desktop browsers", so "mobile"
+only exists in the superseded record). Both are lexical gaps, not bugs in ranking.
+**Mitigation:** Recency fallback prevents an empty context; the evidence string reports
+"no keyword match", so the failure is visible in the UI.
+**Fix:** Optional embedding retrieval with keyword fallback. The evaluation now demonstrates
+the need, which was the precondition for adding one.
+
+### KI-19 — Correction history competes with history for budget
+
+**Severity:** Low
+**Detail:** `recent_corrections` is dropped first when the prompt budget is exhausted, so a
+very long conversation can lose the "what changed" explanation.
+**Mitigation:** The warning list in the context report records the drop, and the inspector
+shows it.
+
+### KI-20 — The Muse CLI baseline dominates token comparisons
+
+**Severity:** Informational
+**Detail:** Both configurations pay ~16.6k input tokens. Demo C shows memory costing ~37 more
+tokens on the answering call while removing a setup turn; the whole-task saving comes from
+that turn, not from cheaper calls.
+**Mitigation:** Reported explicitly in [evaluation.md](evaluation.md).
+
+### KI-21 — One turn at a time per session
+
+**Severity:** Low
+**Detail:** A second concurrent message returns `409 session_busy` instead of queueing.
+Clients must retry after the stream completes.
+**Mitigation:** The UI disables the composer while streaming.
+
+### KI-22 — Memory capture heuristics can misfire
+
+**Severity:** Medium
+**Detail:** Correction capture uses lexical overlap to pick the record to supersede.
+Announcement-only sentences ("we changed X") are skipped, and a marginal match creates a new
+memory instead of superseding. Unusual phrasing may therefore create a duplicate rather than
+a correction; the user can correct it in the inspector.
+**Mitigation:** Every capture reports what it stored and which record it superseded.
+
+### KI-23 — Repository is private, so commit permalinks are 404 when logged out
+
+**Severity:** Blocking for submission if judges need public access
+**Detail:** `https://github.com/sidonsoft/muse-recall` is private. GitHub returns 404 to
+unauthenticated requests, including commit URLs.
+**Fix:** Confirm the Official Rules' visibility requirement and make the repository public
+(or share it with judging accounts) before submission.

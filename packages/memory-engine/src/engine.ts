@@ -77,6 +77,16 @@ export class MemoryEngine {
     this.clock = options.now ?? (() => new Date());
   }
 
+  /**
+   * Read-only access to the underlying connection.
+   *
+   * Used by adjacent stores (sessions, messages) that live in the same
+   * database but are not part of the memory domain.
+   */
+  get connection(): DatabaseSync {
+    return this.db;
+  }
+
   // -------------------------------------------------------------------------
   // Infrastructure
   // -------------------------------------------------------------------------

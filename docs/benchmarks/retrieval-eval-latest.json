@@ -1,0 +1,666 @@
+{
+  "generated_at": "2026-10-26T22:24:11.993Z",
+  "run": "ptpng9",
+  "model": "muse-wonder-1.0",
+  "seeded_memories": 16,
+  "projects": {
+    "game": "montys-meadow-ptpng9",
+    "api": "starlight-api-ptpng9",
+    "garden": "garden-planner-ptpng9"
+  },
+  "totals": {
+    "questions": 22,
+    "retrieval_passes": 20,
+    "retrieval_rate": 0.9091,
+    "muse_answers": 7,
+    "muse_correct": 7,
+    "muse_grounded": 7
+  },
+  "by_category": {
+    "exact terminology": {
+      "total": 2,
+      "passed": 2
+    },
+    "different vocabulary": {
+      "total": 2,
+      "passed": 2
+    },
+    "indirect question": {
+      "total": 2,
+      "passed": 2
+    },
+    "multiple projects": {
+      "total": 1,
+      "passed": 1
+    },
+    "project isolation": {
+      "total": 1,
+      "passed": 1
+    },
+    "corrected information": {
+      "total": 3,
+      "passed": 2
+    },
+    "missing information": {
+      "total": 2,
+      "passed": 2
+    },
+    "deleted memory": {
+      "total": 1,
+      "passed": 1
+    },
+    "project constraint": {
+      "total": 3,
+      "passed": 3
+    },
+    "project goal": {
+      "total": 1,
+      "passed": 1
+    },
+    "unfinished work": {
+      "total": 2,
+      "passed": 1
+    },
+    "failed approach": {
+      "total": 1,
+      "passed": 1
+    },
+    "contradictory information": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "results": [
+    {
+      "id": "q01",
+      "category": "exact terminology",
+      "project": "montys-meadow-ptpng9",
+      "query": "Which engine does the memory meadow game use?",
+      "expected": "Phaser",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "We are building Monty's Memory Meadow with Phaser.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 146,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · keyword match (43% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "Phaser.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 3
+      }
+    },
+    {
+      "id": "q02",
+      "category": "exact terminology",
+      "project": "montys-meadow-ptpng9",
+      "query": "What art direction are we using?",
+      "expected": "farmyard",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The art direction is colourful illustrated farmyard scenery.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 156,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "Colourful illustrated farmyard scenery.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 3
+      }
+    },
+    {
+      "id": "q03",
+      "category": "different vocabulary",
+      "project": "starlight-api-ptpng9",
+      "query": "What database backs Starlight?",
+      "expected": "Postgres",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "Starlight persists data in Postgres.",
+        "Every Starlight endpoint must require authentication.",
+        "Rate limiting for Starlight is not implemented yet.",
+        "The Starlight API uses Fastify for its HTTP server."
+      ],
+      "query_mode": "relaxed",
+      "selected": 4,
+      "characters": 191,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · keyword match (94% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (85% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (81% of best) · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "Postgres.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 4
+      }
+    },
+    {
+      "id": "q04",
+      "category": "different vocabulary",
+      "project": "starlight-api-ptpng9",
+      "query": "Which framework is the API built on?",
+      "expected": "Fastify",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The Starlight API uses Fastify for its HTTP server.",
+        "Every Starlight endpoint must require authentication."
+      ],
+      "query_mode": "relaxed",
+      "selected": 2,
+      "characters": 104,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "The Starlight API is built on Fastify.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 2
+      }
+    },
+    {
+      "id": "q05",
+      "category": "indirect question",
+      "project": "montys-meadow-ptpng9",
+      "query": "Can the game work without internet?",
+      "expected": "offline",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 2,
+      "characters": 96,
+      "evidence": [
+        "pinned active constraint/goal · keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "Yes — it must run offline, on integrated graphics.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 2
+      }
+    },
+    {
+      "id": "q06",
+      "category": "indirect question",
+      "project": "montys-meadow-ptpng9",
+      "query": "What should we avoid in the renderer?",
+      "expected": "canvas",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "We tried a canvas-only renderer and it broke accessibility, so we abandoned it.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 175,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "Avoid a canvas-only renderer — it broke accessibility and was abandoned.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 3
+      }
+    },
+    {
+      "id": "q07",
+      "category": "multiple projects",
+      "project": "garden-planner-ptpng9",
+      "query": "What is the garden planner frontend built with?",
+      "expected": "React",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The garden planner is built with React and Vite.",
+        "The garden planner must work on a phone screen.",
+        "The garden planner palette should be high-contrast navy.",
+        "The garden planner palette should be warm pastel green."
+      ],
+      "query_mode": "relaxed",
+      "selected": 4,
+      "characters": 206,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · keyword match (48% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (48% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (48% of best) · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": {
+        "answer": "The garden planner frontend is built with React and Vite.",
+        "correct": true,
+        "grounded": true,
+        "memoryCount": 4
+      }
+    },
+    {
+      "id": "q08",
+      "category": "project isolation",
+      "project": "starlight-api-ptpng9",
+      "query": "Which game engine are we using?",
+      "expected": null,
+      "forbidden": "Phaser",
+      "should_find": false,
+      "success": true,
+      "retrieved": [
+        "The Starlight API uses Fastify for its HTTP server.",
+        "Every Starlight endpoint must require authentication."
+      ],
+      "query_mode": "relaxed",
+      "selected": 2,
+      "characters": 104,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q09",
+      "category": "corrected information",
+      "project": "montys-meadow-ptpng9",
+      "query": "What platform do we target now?",
+      "expected": "desktop browsers",
+      "forbidden": "mobile web",
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The target platform is desktop browsers.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 136,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.95 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q10",
+      "category": "corrected information",
+      "project": "montys-meadow-ptpng9",
+      "query": "Did the target platform change?",
+      "expected": "desktop browsers",
+      "forbidden": "mobile web",
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The target platform is desktop browsers.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 136,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.95 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q11",
+      "category": "missing information",
+      "project": "montys-meadow-ptpng9",
+      "query": "What is our marketing budget?",
+      "expected": null,
+      "forbidden": null,
+      "should_find": false,
+      "success": true,
+      "retrieved": [
+        "The game must run offline on integrated graphics.",
+        "The target platform is desktop browsers.",
+        "Ship the first playable build by December 2026.",
+        "The art direction is colourful illustrated farmyard scenery.",
+        "We are building Monty's Memory Meadow with Phaser.",
+        "The sprite animation pipeline is still unfinished.",
+        "We tried a canvas-only renderer and it broke accessibility, so we abandoned it."
+      ],
+      "query_mode": "fallback",
+      "selected": 7,
+      "characters": 375,
+      "evidence": [
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.95 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q12",
+      "category": "deleted memory",
+      "project": "montys-meadow-ptpng9",
+      "query": "What did we decide about Redis for leaderboards?",
+      "expected": null,
+      "forbidden": "Redis",
+      "should_find": false,
+      "success": true,
+      "retrieved": [
+        "The game must run offline on integrated graphics.",
+        "The target platform is desktop browsers.",
+        "Ship the first playable build by December 2026.",
+        "The art direction is colourful illustrated farmyard scenery.",
+        "We are building Monty's Memory Meadow with Phaser.",
+        "The sprite animation pipeline is still unfinished.",
+        "We tried a canvas-only renderer and it broke accessibility, so we abandoned it."
+      ],
+      "query_mode": "fallback",
+      "selected": 7,
+      "characters": 375,
+      "evidence": [
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.95 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q13",
+      "category": "project constraint",
+      "project": "montys-meadow-ptpng9",
+      "query": "Any hard requirements for the game?",
+      "expected": "offline",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 2,
+      "characters": 96,
+      "evidence": [
+        "pinned active constraint/goal · keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q14",
+      "category": "project goal",
+      "project": "montys-meadow-ptpng9",
+      "query": "When do we ship the first playable build?",
+      "expected": "December",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "Ship the first playable build by December 2026.",
+        "We are building Monty's Memory Meadow with Phaser.",
+        "The game must run offline on integrated graphics."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 146,
+      "evidence": [
+        "pinned active constraint/goal · keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (17% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q15",
+      "category": "unfinished work",
+      "project": "montys-meadow-ptpng9",
+      "query": "What is still unfinished?",
+      "expected": "sprite",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The sprite animation pipeline is still unfinished.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 146,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q16",
+      "category": "failed approach",
+      "project": "montys-meadow-ptpng9",
+      "query": "Did we try a canvas renderer?",
+      "expected": "canvas",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "We tried a canvas-only renderer and it broke accessibility, so we abandoned it.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 175,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q17",
+      "category": "project constraint",
+      "project": "starlight-api-ptpng9",
+      "query": "What must every endpoint require?",
+      "expected": "authentication",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": ["Every Starlight endpoint must require authentication."],
+      "query_mode": "relaxed",
+      "selected": 1,
+      "characters": 53,
+      "evidence": [
+        "pinned active constraint/goal · keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q18",
+      "category": "unfinished work",
+      "project": "starlight-api-ptpng9",
+      "query": "What is missing from the API?",
+      "expected": "Rate limiting",
+      "forbidden": null,
+      "should_find": true,
+      "success": false,
+      "retrieved": [
+        "The Starlight API uses Fastify for its HTTP server.",
+        "Every Starlight endpoint must require authentication."
+      ],
+      "query_mode": "relaxed",
+      "selected": 2,
+      "characters": 104,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q19",
+      "category": "corrected information",
+      "project": "montys-meadow-ptpng9",
+      "query": "Is mobile still the priority?",
+      "expected": "desktop browsers",
+      "forbidden": "mobile web",
+      "should_find": true,
+      "success": false,
+      "retrieved": [
+        "The sprite animation pipeline is still unfinished.",
+        "The game must run offline on integrated graphics.",
+        "Ship the first playable build by December 2026."
+      ],
+      "query_mode": "relaxed",
+      "selected": 3,
+      "characters": 146,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · no keyword match · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q20",
+      "category": "contradictory information",
+      "project": "garden-planner-ptpng9",
+      "query": "What palette should the garden planner use?",
+      "expected": "palette",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The garden planner palette should be high-contrast navy.",
+        "The garden planner palette should be warm pastel green.",
+        "The garden planner must work on a phone screen.",
+        "The garden planner is built with React and Vite."
+      ],
+      "query_mode": "relaxed",
+      "selected": 4,
+      "characters": 206,
+      "evidence": [
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "pinned active constraint/goal · keyword match (55% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (55% of best) · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q21",
+      "category": "project constraint",
+      "project": "garden-planner-ptpng9",
+      "query": "What must the garden planner support?",
+      "expected": "phone screen",
+      "forbidden": null,
+      "should_find": true,
+      "success": true,
+      "retrieved": [
+        "The garden planner must work on a phone screen.",
+        "The garden planner palette should be high-contrast navy.",
+        "The garden planner palette should be warm pastel green.",
+        "The garden planner is built with React and Vite."
+      ],
+      "query_mode": "relaxed",
+      "selected": 4,
+      "characters": 206,
+      "evidence": [
+        "pinned active constraint/goal · keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (61% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (61% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (61% of best) · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    },
+    {
+      "id": "q22",
+      "category": "missing information",
+      "project": "garden-planner-ptpng9",
+      "query": "What is the garden planner deadline?",
+      "expected": null,
+      "forbidden": null,
+      "should_find": false,
+      "success": true,
+      "retrieved": [
+        "The garden planner must work on a phone screen.",
+        "The garden planner palette should be high-contrast navy.",
+        "The garden planner palette should be warm pastel green.",
+        "The garden planner is built with React and Vite."
+      ],
+      "query_mode": "relaxed",
+      "selected": 4,
+      "characters": 206,
+      "evidence": [
+        "pinned active constraint/goal · keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh",
+        "keyword match (100% of best) · project scope · verified · confidence 0.90 · fresh"
+      ],
+      "muse": null
+    }
+  ],
+  "memory_ids": {
+    "engine": "7f72e83c-cc30-43f7-9a39-05c3aa44e1db",
+    "platform_old": "53a80c9e-c471-4b99-a4fa-688fa2fc0cb3",
+    "art": "39bb8380-80fb-4888-89a7-b819d8950795",
+    "offline": "9a0415cb-56b4-457e-8bb9-87b52f8983db",
+    "ship": "6aef2637-fa11-4816-9e82-eb3774100c54",
+    "sprites": "1336eb4f-7963-4829-a69a-1a7b2b22a061",
+    "canvas": "7f70bf7e-96b7-46f2-9718-91e4b4586476",
+    "redis_deleted": "c14d06df-9757-485e-bf2e-77baca0cf98b",
+    "server": "7d6c25db-e250-4303-a4c6-c198134539f2",
+    "db": "f8899da1-fa2d-48d0-bfc1-da57c1d826b4",
+    "auth": "e7426111-f901-4b6f-9b3b-ef6ad7d6387b",
+    "ratelimit": "ac6e5fa2-1ea0-4aa2-8fdf-75419018d8c3",
+    "garden_ui": "91c99010-78e9-4c05-907c-959b7ccb280e",
+    "garden_responsive": "f93b1dc4-ff65-4117-a203-4c0e3875c628",
+    "palette_a": "99eb0e5b-d30c-4e0f-bc25-b5b08f02ecbf",
+    "palette_b": "43844315-c5d9-4e66-b8de-84d957673f04"
+  }
+}

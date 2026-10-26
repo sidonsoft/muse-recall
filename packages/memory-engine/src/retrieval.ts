@@ -46,6 +46,17 @@ export interface RetrievalOptions {
 const MAX_CANDIDATES = 200;
 
 /**
+ * When a precise (AND) keyword query yields fewer candidates than this, the
+ * query is re-run with OR semantics.
+ *
+ * Rationale: users ask multi-part questions ("what game, which engine, what
+ * platform"), and no single memory contains every word. Requiring all tokens
+ * would return nothing, which is a worse failure than a slightly wider
+ * candidate set — bm25 still decides the ordering.
+ */
+const MIN_PRECISE_CANDIDATES = 3;
+
+/**
  * Recency half-life per memory type, in days.
  *
  * A technical decision stays relevant longer than a passing contextual fact; a
@@ -139,8 +150,9 @@ export function retrieveMemories(
   });
   const now = options.now ?? new Date();
   const nowIso = now.toISOString();
-  const ftsQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query) : null;
-  const hasQuery = ftsQuery !== null;
+  const preciseQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query, 'and') : null;
+  const broadQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query, 'or') : null;
+  const hasQuery = preciseQuery !== null;
 
   // Without search text, relevance is undefined, so its weight is dropped and
   // the remaining weights renormalise. Scores stay comparable across modes.
@@ -148,13 +160,59 @@ export function retrieveMemories(
 
   const exclusions: RetrievalExclusions = { count_budget: 0, character_budget: 0, duplicate: 0 };
 
-  const scopedRows = loadCandidates(db, {
-    projectId: parsed.project_id,
-    includeGlobal: parsed.include_global,
-    types: parsed.types,
-    ftsQuery,
-    nowIso,
-  });
+  // Progressive relaxation: precise first, broad only when precision starves
+  // the candidate set. The chosen strategy is reported in the metadata so the
+  // inspector can explain a weak match.
+  let scopedRows = preciseQuery
+    ? loadCandidates(db, {
+        projectId: parsed.project_id,
+        includeGlobal: parsed.include_global,
+        types: parsed.types,
+        ftsQuery: preciseQuery,
+        nowIso,
+      })
+    : loadCandidates(db, {
+        projectId: parsed.project_id,
+        includeGlobal: parsed.include_global,
+        types: parsed.types,
+        ftsQuery: null,
+        nowIso,
+      });
+
+  let queryMode: 'precise' | 'relaxed' | 'fallback' | 'none' = preciseQuery ? 'precise' : 'none';
+  if (preciseQuery && broadQuery && scopedRows.length < MIN_PRECISE_CANDIDATES) {
+    const broadRows = loadCandidates(db, {
+      projectId: parsed.project_id,
+      includeGlobal: parsed.include_global,
+      types: parsed.types,
+      ftsQuery: broadQuery,
+      nowIso,
+    });
+    const merged = new Map(scopedRows.map((row) => [row.id, row]));
+    for (const row of broadRows) {
+      const existing = merged.get(row.id);
+      // Keep the better (more negative) bm25 score for rows found by both.
+      if (!existing || (row.bm25 ?? 0) < (existing.bm25 ?? 0)) merged.set(row.id, row);
+    }
+    scopedRows = [...merged.values()];
+    queryMode = 'relaxed';
+  }
+
+  // Last resort: the question shares no vocabulary with any stored memory
+  // ("what platform are we targeting?" after the fact was stored as "desktop
+  // browsers"). Returning nothing guarantees a memory-less answer, so fall back
+  // to recent active memories in scope and let the evidence say "no keyword
+  // match". The budget still bounds what is injected.
+  if (preciseQuery && scopedRows.length === 0) {
+    scopedRows = loadCandidates(db, {
+      projectId: parsed.project_id,
+      includeGlobal: parsed.include_global,
+      types: parsed.types,
+      ftsQuery: null,
+      nowIso,
+    });
+    queryMode = scopedRows.length > 0 ? 'fallback' : 'none';
+  }
 
   // Pinned memories are candidates even when the keyword query misses them.
   const pinnedRows = loadPinned(db, {
@@ -267,6 +325,7 @@ export function retrieveMemories(
     memory_ids: selected.map((entry) => entry.memory.id),
     latency_ms: round(performance.now() - startedAt, 3),
     weights,
+    query_mode: queryMode,
   };
 
   return { results: selected, metadata };

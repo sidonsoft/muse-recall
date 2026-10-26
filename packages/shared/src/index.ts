@@ -12,3 +12,4 @@ export * from './memory.js';
 export * from './meta.js';
 export * from './provider.js';
 export * from './retrieval.js';
+export * from './session.js';

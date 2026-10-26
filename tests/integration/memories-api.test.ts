@@ -38,6 +38,19 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     provider: { kind: 'echo' },
     memoryBudget: { max_memories: 8, max_characters: 4_000, max_memory_characters: 1_000 },
     sweepOnStart: true,
+    agent: {
+      budgets: {
+        max_history_messages: 8,
+        max_history_characters: 6_000,
+        max_memory_characters: 4_000,
+        max_prompt_characters: 24_000,
+        max_message_characters: 8_000,
+        max_correction_history: 3,
+      },
+      autoCapture: 'suggest',
+      includeCorrectionHistory: true,
+      maxOutputTokens: 1_200,
+    },
     serviceVersion: SERVICE_VERSION,
     ...overrides,
   };
@@ -565,7 +578,7 @@ describe('POST /api/retrieval/preview', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/retrieval/preview',
-      payload: { project_id: 'demo-game', query: 'x'.repeat(600) },
+      payload: { project_id: 'demo-game', query: 'x'.repeat(20_000) },
     });
     expect(response.statusCode).toBe(400);
   });
@@ -589,7 +602,7 @@ describe('meta', () => {
     const app = await createTestApp();
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     const { data } = response.json();
-    expect(data.phase).toBe(2);
+    expect(data.phase).toBe(3);
     expect(data.modules.memory_engine).toBe('complete');
     expect(data.memory.default_budget).toMatchObject({ max_memories: 8, max_characters: 4_000 });
     expect(data.memory.weights.relevance).toBe(0.4);

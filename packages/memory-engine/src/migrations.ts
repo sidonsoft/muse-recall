@@ -148,6 +148,115 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 3,
+    name: 'sessions_messages_and_turn_evidence',
+    up: (db) => {
+      db.exec(`
+        -- A conversation. Sessions are independent: a new session never
+        -- inherits another session's transcript, only project memory.
+        CREATE TABLE sessions (
+          id         TEXT PRIMARY KEY,
+          project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+          title      TEXT,
+          status     TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX idx_sessions_project ON sessions (project_id, updated_at DESC);
+        CREATE INDEX idx_sessions_status ON sessions (status, updated_at DESC);
+
+        -- Message ordering is enforced by (session_id, sequence) with a unique
+        -- constraint, not by timestamps: two turns in the same millisecond must
+        -- still have a deterministic order.
+        CREATE TABLE messages (
+          id              TEXT PRIMARY KEY,
+          session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          sequence        INTEGER NOT NULL,
+          role            TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+          content         TEXT NOT NULL,
+          status          TEXT NOT NULL DEFAULT 'complete'
+                            CHECK (status IN ('complete', 'interrupted', 'failed')),
+          input_tokens    INTEGER NOT NULL DEFAULT 0,
+          output_tokens   INTEGER NOT NULL DEFAULT 0,
+          latency_ms      INTEGER,
+          -- Assembled-context accounting for the turn that produced this message.
+          context_json    TEXT,
+          created_at      TEXT NOT NULL,
+          UNIQUE (session_id, sequence)
+        );
+
+        CREATE INDEX idx_messages_session ON messages (session_id, sequence);
+
+        -- Retrieval provenance for a turn.
+        --
+        -- memory_id deliberately has NO foreign key: purging a memory must not
+        -- erase the record that it influenced an answer. No memory content is
+        -- copied here — only the ranking evidence and shape needed to explain
+        -- the turn. Content is resolved at read time, and disappears with the
+        -- memory.
+        CREATE TABLE turn_memories (
+          message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+          memory_id   TEXT NOT NULL,
+          score       REAL NOT NULL,
+          evidence    TEXT NOT NULL,
+          memory_type TEXT NOT NULL,
+          scope       TEXT NOT NULL CHECK (scope IN ('global', 'project')),
+          pinned      INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1)),
+          truncated   INTEGER NOT NULL DEFAULT 0 CHECK (truncated IN (0, 1)),
+          characters  INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL,
+          PRIMARY KEY (message_id, memory_id)
+        );
+
+        CREATE INDEX idx_turn_memories_memory ON turn_memories (memory_id);
+      `);
+    },
+  },
+  {
+    version: 4,
+    name: 'porter_stemming_for_keyword_retrieval',
+    up: (db) => {
+      // The unicode61 tokenizer treats "building" and "build" as different
+      // words, which made ordinary questions miss obvious memories. Porter
+      // stemming fixes the common inflection cases without any new dependency.
+      // The index is rebuilt from the table, so no data is lost.
+      db.exec(`
+        DROP TRIGGER IF EXISTS memories_fts_insert;
+        DROP TRIGGER IF EXISTS memories_fts_content_update;
+        DROP TRIGGER IF EXISTS memories_fts_delete;
+        DROP TABLE IF EXISTS memory_fts;
+
+        CREATE VIRTUAL TABLE memory_fts USING fts5(
+          content,
+          tags,
+          memory_id UNINDEXED,
+          tokenize = 'porter unicode61 remove_diacritics 2'
+        );
+
+        -- Deleted rows stay excluded from the index, matching the soft-delete
+        -- guarantee: tombstones are never retrievable.
+        INSERT INTO memory_fts (content, tags, memory_id)
+          SELECT content, tags, id FROM memories WHERE status != 'deleted';
+
+        CREATE TRIGGER memories_fts_insert AFTER INSERT ON memories BEGIN
+          INSERT INTO memory_fts (content, tags, memory_id)
+          VALUES (new.content, new.tags, new.id);
+        END;
+
+        CREATE TRIGGER memories_fts_content_update AFTER UPDATE OF content, tags ON memories BEGIN
+          DELETE FROM memory_fts WHERE memory_id = old.id;
+          INSERT INTO memory_fts (content, tags, memory_id)
+          VALUES (new.content, new.tags, new.id);
+        END;
+
+        CREATE TRIGGER memories_fts_delete AFTER DELETE ON memories BEGIN
+          DELETE FROM memory_fts WHERE memory_id = old.id;
+        END;
+      `);
+    },
+  },
 ];
 
 /** Highest migration version defined in code. */

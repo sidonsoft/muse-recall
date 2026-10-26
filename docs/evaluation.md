@@ -116,3 +116,67 @@ Fairness rules enforced by the harness:
 
 It is tested in `tests/evaluation/harness.test.ts` against the deterministic
 provider, which proves the instrument works. It does not produce a Muse result.
+
+
+---
+
+## 4. Phase 3 measurements (real Muse)
+
+### Demo C — context efficiency
+
+`pnpm bench:context`, 3 trials per configuration, model `muse-wonder-1.0`.
+
+| Metric | Baseline (history) | Memory-enabled |
+| --- | --- | --- |
+| Turns per task | 2 | 1 |
+| Answering-call input tokens (mean) | 16,863 | 16,900 |
+| Whole-task input tokens (mean) | 33,671 | 16,900 |
+| Application-added characters | 358 (history) | 504 (memory) |
+| Retrieved memory characters | 86 | 86 |
+| Answer latency (mean) | 4,005 ms | 4,074 ms |
+| Correctness | 100% | 100% |
+
+Memory is **not** cheaper per call: it added ~37 input tokens because the memory block's
+headers cost slightly more than the fact sentences in history. The saving is structural — an
+entire setup turn disappears. Full report:
+[`benchmarks/context-efficiency-latest.md`](benchmarks/context-efficiency-latest.md).
+
+### Retrieval evaluation — 22 realistic questions
+
+`pnpm eval:retrieval`, three seeded projects including corrected, deleted, contradictory, and
+missing cases.
+
+| Category | Pass / total |
+| --- | --- |
+| Exact terminology | 2 / 2 |
+| Different vocabulary | 2 / 2 |
+| Indirect questions | 2 / 2 |
+| Multiple projects | 1 / 1 |
+| Project isolation | 1 / 1 |
+| Corrected information | 2 / 3 |
+| Missing information | 2 / 2 |
+| Deleted memory | 1 / 1 |
+| Project constraint | 3 / 3 |
+| Project goal | 1 / 1 |
+| Unfinished work | 1 / 2 |
+| Failed approach | 1 / 1 |
+| Contradictory information | 1 / 1 |
+| **Total** | **20 / 22 (91%)** |
+
+Answer correctness was sampled on 7 questions with real Muse: **7/7 correct and
+memory-grounded** — correctness counted only when the turn's retrieval evidence contained the
+supporting memory.
+
+### Documented failures (and why they matter)
+
+1. **"What is missing from the API?"** — the memory reads "Rate limiting … not implemented
+   yet". The question shares no content words with it; keyword search matched the API name
+   instead.
+2. **"Is mobile still the priority?"** — the corrected memory says "desktop browsers", so
+   "mobile" survives only in the superseded record. Lexical retrieval cannot follow the
+   correction chain from a stale term.
+
+Both are vocabulary gaps rather than ranking bugs. The recency fallback still supplies
+context, and the evidence string reports "no keyword match", so the failure is visible.
+This is the demonstrated need for optional embedding retrieval with a keyword fallback —
+not an assumption.

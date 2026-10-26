@@ -1,149 +1,145 @@
 # Project status
 
 **Last updated:** 2026-10-27
-**Milestone:** Phase 2 — Persistent memory engine
+**Milestone:** Phase 3 — Agent runtime, persistent sessions, and memory-grounded conversations
 **State:** Complete and verified
 
 ## Implemented
 
-### Memory engine (`packages/memory-engine`)
+### Agent runtime (`packages/agent-core`)
 
-- **Storage** — `MemoryEngine` over `node:sqlite`; every mutation runs inside
-  `BEGIN IMMEDIATE`, so a check-then-write cannot interleave with another writer.
-- **Create with provenance** — type, scope, project, source (session + reference),
-  confidence, validation status, tags, optional expiry. Project scope anchors are
-  created on demand (`ensureProject`) so the foreign key stays meaningful.
-- **Deduplication** — SHA-256 over `type|scope|project|normalised content`; identical
-  claims return the existing record (`created: false`) instead of inserting a
-  duplicate. Casing and whitespace are normalised away.
-- **Correction / supersession** — one transaction: insert or reuse the replacement,
-  record supersession edges, flip old rows to `superseded`, append history. Replaying
-  the identical correction is idempotent; correcting an already-superseded record with
-  a *different* fact is a 409 pointing at the replacement.
-- **Deletion** — soft delete removes the FTS row and every read path filters `deleted`
-  out, so deleted content is not recoverable through the API. Tombstones remain
-  internally for integrity. `purge` (maintenance only) accepts deleted/expired rows.
-- **History** — append-only audit trail (`created`, `updated`, `superseded`,
-  `deleted`, `expired`), ordered by insertion, with actor and user-supplied reason.
-- **Retrieval** — SQL hard filters (status, scope, expiry, type) then six weighted
-  components: relevance (FTS5 `bm25`), scope match, confidence, validation, recency
-  (per-type exponential half-life), type priority. Pinned `constraint`/`goal`
-  memories reserve up to two slots so they are never lost to wording.
-- **Budgets** — max memories (8), max characters (4,000), max per-memory characters
-  (1,000, truncated not dropped), all configurable via environment or per request.
-- **Evidence** — every result carries `rank_components`, a weighted `score`, a
-  human-readable `evidence` string, and `pinned`/`truncated` flags. Metadata reports
-  candidate/selected/excluded counts, exclusions by reason, characters used, ids,
-  latency and effective weights.
-- **Context rendering** — `formatMemoryContext` produces a delimited
-  `<retrieved_memories>` block labelled as data-not-instructions, with exact
-  character and estimated-token accounting.
-- **Retention** — `expireStale()` marks active memories past `expires_at` as expired
-  with history; runs at startup.
-- **Schema** — migration 2 adds `superseded_by`, plus scope/status, recency and
-  supersession indexes.
+- **`AgentRuntime`** — session orchestration, an active-turn registry, and cancellation. At
+  most one turn per session: a second concurrent request is rejected with `session_busy`
+  instead of interleaving output.
+- **`SessionStore`** — SQLite-backed sessions and messages. Message order is enforced by a
+  `UNIQUE(session_id, sequence)` constraint with the sequence assigned under
+  `BEGIN IMMEDIATE`, so concurrent writers cannot duplicate or reorder messages.
+- **`TurnProcessor`** — the full lifecycle: validate session and scope → capture explicit
+  memories → persist the user message → retrieve active memory → assemble bounded context →
+  stream the provider → persist the assistant message and its retrieval evidence → report
+  usage and context statistics.
+- **`ContextAssembler`** — delimited sections (`system_instructions`, `project_constraints`,
+  `retrieved_memories`, `recent_corrections`, `conversation_history`, `current_request`)
+  under hard budgets. The current request is never truncated; correction history is dropped
+  first, then oldest history; if request plus system instructions exceed the budget the turn
+  fails with `context_overflow`.
+- **`memory-capture`** — explicit "remember …" handling (leading, trailing, cue-first),
+  correction detection, deterministic supersession targeting by lexical overlap, and
+  candidate extraction that only *proposes* memories for confirmation.
+- **`streaming`** — transport-agnostic events plus an SSE writer that tolerates disconnects.
 
-### API (`apps/server`)
+### Persistence (migrations 3–4)
+
+- `sessions`, `messages`, `turn_memories`.
+- Turn evidence stores ranking metadata only — never memory content. `memory_id` has **no
+  foreign key**, so purging a memory cannot erase the record that it influenced an answer;
+  content is resolved at read time and reports `memory_available: false` once deleted.
+- Migration 4 rebuilds the FTS index with **porter stemming**, so "building" matches "build"
+  and "targeting" matches "target".
+
+### Retrieval changes
+
+- Progressive relaxation: precise (all tokens) → relaxed (any token) when precision starves
+  the candidate set → recency fallback when nothing matches. The chosen strategy is reported
+  as `query_mode` and surfaced in the inspector.
+- Stopwords are removed **before** the 12-token cap; previously a long question spent its
+  whole budget on "what/are/we/the" and dropped the nouns that would have found the memory.
+- Correction history is rendered as a labelled historical section derived from the *active*
+  memory's supersession chain — not a second retrieval of stale records.
+
+### API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/memories` | List/search with project, status, type, text and paging |
-| `POST` | `/api/memories` | Create (201) or deduplicated replay (200) |
-| `GET` | `/api/memories/:id` | Detail: record, provenance, history, supersession chain |
-| `PATCH` | `/api/memories/:id` | In-place edit with history entry |
-| `POST` | `/api/memories/:id/correct` | Transactional supersession |
-| `DELETE` | `/api/memories/:id` | Soft delete with reason |
-| `GET` | `/api/memories/:id/history` | Audit trail |
-| `GET` | `/api/memories/stats` | Lifecycle counts by status and type |
-| `GET` | `/api/projects` | Scope anchors for the inspector |
-| `POST` | `/api/retrieval/preview` | Ranked results, evidence, and the exact prompt block |
+| `POST` | `/api/sessions` | Create a conversation (optional project scope) |
+| `GET` | `/api/sessions` | List conversations |
+| `GET` | `/api/sessions/:id` | Transcript with per-message retrieval evidence |
+| `PATCH` | `/api/sessions/:id` | Rename or archive |
+| `DELETE` | `/api/sessions/:id` | Delete a conversation |
+| `GET` | `/api/sessions/:id/messages/:messageId` | One message and its memory usage |
+| `POST` | `/api/sessions/:id/messages` | SSE turn (`retrieval` → `delta` → `usage` → `completed`) or JSON `TurnResult` |
 
-Domain errors map to stable codes (`memory_not_found` → 404, `memory_conflict` → 409,
-validation → 400). `/api/meta` now reports `memory_engine: complete`, phase 2, and
-the retrieval configuration in force.
+`retrieval` is always emitted before the first `delta`. A disconnected client aborts the
+provider call; the partial answer is persisted as `interrupted`, never `complete`.
 
-### UI (`apps/web`)
+### UI
 
-- **Memory Inspector** replacing the Phase 2 placeholder: search (debounced),
-  project/status/type filters, lifecycle counters, memory cards, detail panel with
-  provenance, tags, supersession links and a history timeline.
-- **Correction workflow** — dedicated form (content, type, confidence, validation,
-  reason) that supersedes and reports what changed.
-- **Edit and delete** — in-place edit with an explicit warning that it rewrites the
-  record; delete requires confirmation and states that the content becomes
-  unrecoverable.
-- **Retrieval explanation** — a second tab runs the real retrieval path and shows
-  the ranked results, per-component score bars, evidence sentences, budget outcome
-  and the exact prompt block with its estimated token cost.
-- **Create** — a compact form so the inspector is usable without curl.
-- Navigation badges now appear only for sections that are not implemented.
+- **Conversations view**: session list, streamed answers, stop button, project-scoped
+  creation, archive/delete, actionable errors, and streaming status.
+- **Memory used** disclosure on every assistant turn: retrieved memory, relevance score,
+  evidence sentence, scope, pinned/truncated flags, and context statistics. It states
+  explicitly that retrieval is evidence a memory was *provided*, not proof the model used it.
+- **Candidate confirmation**: proposed memories appear with a Save button; nothing is stored
+  until the user confirms.
+- Capture can be disabled per message with a checkbox.
 
-### Instrumentation (`scripts/`, `tests/evaluation/`)
+### Verification tooling
 
-- `pnpm bench:retrieval` — deterministic corpus, latency percentiles, selectivity,
-  retrieval accuracy, correction accuracy, stale-memory rate.
-- `pnpm bench:muse-overhead` — repeated real Muse calls measuring token variance and
-  the marginal cost of a memory block.
-- `tests/evaluation/harness.ts` — baseline vs memory-enabled runner with strict
-  fairness rules and refusal to report token deltas without provider usage.
-- `scripts/verify-ui.ts` — 18-check browser journey including the full memory
-  workflow.
+- `scripts/demo-sessions.ts` — Demo A and B over HTTP with real Muse, writing evidence JSON.
+- `scripts/benchmark-context-efficiency.ts` — Demo C: baseline history vs memory retrieval.
+- `scripts/evaluate-retrieval.ts` — 22 realistic retrieval questions with optional real Muse
+  answers and a memory-grounded check.
 
 ## Verified
 
-Commands run on the reference machine (Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.13,
-SQLite 3.53.4 with FTS5).
-
 | Command | Result |
 | --- | --- |
-| `pnpm run lint` | 0 errors |
-| `pnpm run typecheck` | 5/5 projects clean |
-| `pnpm test` | **162 passed**, 3 skipped (live suite opt-in) |
-| `pnpm bench:retrieval` | accuracy 100% (30/30), correction 100% (12/12), stale rate 0.000%, latency p50 0.20 ms |
-| `pnpm bench:muse-overhead` | 8 real calls; baseline 16,630 tokens (CV 0%), memory block +877 tokens |
-| `pnpm exec tsx scripts/verify-ui.ts` | 18 checks passed, **zero console errors, zero HTTP errors** |
-| `MML_LIVE_MUSE=1 pnpm test` | 164 passed, 1 skipped — includes 3 live Muse tests |
+| `pnpm install --frozen-lockfile` | Up to date |
+| `pnpm run lint` | 0 errors (99 files) |
+| `pnpm run typecheck` | 6/6 projects clean |
+| `pnpm test` | **210 passed**, 3 skipped (213) |
+| `MML_LIVE_MUSE=1 pnpm test` | **212 passed** (212) — includes 3 real Muse calls |
+| `pnpm run build` | web + server bundles built |
+| `pnpm demo:sessions` | Demo A and B succeeded with real Muse |
+| `pnpm bench:context` | 3 trials per configuration, 100% correctness |
+| `pnpm eval:retrieval` | 20/22 retrieval, 7/7 sampled answers correct and grounded |
+| `pnpm exec tsx scripts/verify-ui.ts` | 25 checks incl. full conversation flow, zero console/HTTP errors |
 
-Screenshots: [system overview](assets/phase2-ui.png) ·
-[memory detail with history](assets/phase2-ui-memory-detail.png) ·
-[retrieval explanation](assets/phase2-ui-memory-retrieval.png).
+## Demonstration results (real Muse, `muse-wonder-1.0`)
 
-Test breakdown: Phase 1 engine 15, Phase 2 engine 42, context/FTS 9, memory schemas 15,
-provider 15, config 8, HTTP (Phase 1) 16, memory API 32, evaluation harness 9,
-live Muse 3.
+### Demo A — cross-session memory
 
-## Benchmark results
+Session A captured three requirements from one message. A **new** session B, with zero
+history messages, answered:
 
-| Metric | Value |
-| --- | --- |
-| Retrieval latency (p50 / p95) | 0.20 ms / 0.43 ms |
-| Mean candidates per query | 16.3 |
-| Mean selected | 8.0 of 8 budget |
-| Mean characters injected | 507 of 4,000 |
-| Retrieval accuracy (hit@8) | 100% |
-| Correction accuracy | 100% |
-| Stale-memory retrieval rate | 0.000% |
-| Deleted still retrievable | 0 |
-| Muse baseline input tokens | 16,630 (identical across 5 calls) |
-| Marginal cost of ~4k-char memory block | +877 tokens |
+> "A children's memory game, using Phaser, targeting mobile web."
 
-**Memory has not been shown to reduce total model tokens.** It adds ~877 tokens per
-turn while removing the need to re-send history; the net depends on a baseline that
-has not been measured yet. See [evaluation.md](evaluation.md).
+Retrieved 2 memories (86 characters), `history_messages: 0`, prompt 1,395 characters.
+
+### Demo B — correctable memory
+
+Session C corrected the platform. The old record was superseded (1 supersession), and a new
+session D answered:
+
+> "We are now targeting **desktop browsers** for Monty's Memory Meadow. Yes — that changed.
+> It was previously mobile web…"
+
+The superseded value appeared only in the labelled `recent_corrections` section.
+
+### Demo C — context efficiency
+
+| Metric | Baseline (history) | Memory-enabled |
+| --- | --- | --- |
+| Turns per task | 2 | 1 |
+| Answering-call input tokens | 16,863 | 16,900 |
+| Whole-task input tokens | ~33,671 | ~16,900 |
+| Correctness | 100% | 100% |
+
+Memory costs **~37 more tokens on the answering call** but removes an entire setup turn, so
+the whole task used roughly half the tokens. Both configurations pay the Muse CLI's
+~16.6k-token baseline. Memory is **not** claimed to be cheaper per call.
 
 ## Failed / not attempted
 
-- Nothing in Phase 2's scope failed.
-- No restore-after-delete endpoint: by design, deletion is final through the API.
-- No semantic/embedding retrieval: keyword FTS5 only (acceptance criteria met;
-  embeddings are a later enhancement).
-- Phase 3–6 features remain unbuilt and are reported as such by `/api/meta`.
+- No Phase 4 generative UI yet; `/api/meta` reports `ui_protocol: not_implemented`.
+- No tool execution; `agent_tools: not_implemented`.
+- Retrieval missed 2/22 evaluation questions — genuine vocabulary gaps, documented in
+  [KNOWN_ISSUES.md](KNOWN_ISSUES.md) and [evaluation.md](evaluation.md).
 
 ## Blockers
 
-None requiring user input.
+None requiring input.
 
 ## Next milestone
 
-**Phase 3 — agent harness and conversational sessions.** Plan in
-[NEXT_STEPS.md](NEXT_STEPS.md).
+**Phase 4 — dynamic interactive HTML interfaces.** Plan in [NEXT_STEPS.md](NEXT_STEPS.md).

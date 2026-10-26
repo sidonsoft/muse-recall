@@ -168,9 +168,14 @@ function RealityCheck({ meta }: { meta: ServiceMeta | null }) {
       note: 'Real headless calls, streaming, and token usage, verified on this machine.',
     },
     {
-      label: 'Memory engine',
+      label: 'Persistent memory engine',
       status: modules?.memory_engine ?? 'schema_only',
-      note: 'Schema, migration runner, and FTS5 index exist; retrieval lands in Phase 2.',
+      note: 'CRUD, retrieval with budgets and evidence, corrections, deletion, and history.',
+    },
+    {
+      label: 'Agent runtime and sessions',
+      status: modules?.agent_runtime ?? 'not_implemented',
+      note: 'Streaming turns, bounded context, per-turn memory evidence, and cancellations.',
     },
     {
       label: 'Generative UI protocol',

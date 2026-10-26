@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "@mml/agent-core": "workspace:*",
     "@mml/memory-engine": "workspace:*",
     "@mml/muse-provider": "workspace:*",
     "@mml/shared": "workspace:*",

@@ -36,20 +36,20 @@ export function ContextInspector({
       <div className="space-y-4 px-4 py-4">
         <InspectorSection label="Agent state">
           <div className="rounded-lg border border-line bg-surface-2/50 px-3 py-2.5">
-            <p className="text-xs text-ink-dim">Idle — no agent session open.</p>
+            <p className="text-xs text-ink-dim">No turn in progress.</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">
-              The conversational harness lands in Phase 3. Until then the only live path is the
-              provider bench.
+              Per-turn state lives in Conversations: each answer expands to show what was retrieved,
+              the context budget, and token usage.
             </p>
           </div>
         </InspectorSection>
 
         <InspectorSection label="Retrieved memories">
           <div className="rounded-lg border border-dashed border-line px-3 py-2.5">
-            <p className="text-xs text-muted">No agent turn yet</p>
+            <p className="text-xs text-muted">Reported per turn</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">
-              Retrieval runs on demand in the Memory inspector. Injecting it into a prompt is Phase
-              3 work, so nothing is counted here yet.
+              Open <span className="text-ink-dim">Memory used</span> under any answer in
+              Conversations to see what was retrieved, its scores, and the context budget.
             </p>
           </div>
         </InspectorSection>

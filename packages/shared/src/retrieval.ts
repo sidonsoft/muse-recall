@@ -114,6 +114,13 @@ export const RetrievalMetadataSchema = z.object({
   memory_ids: z.array(z.uuid()),
   latency_ms: z.number().min(0),
   weights: RetrievalWeightsSchema,
+  /**
+   * Which candidate strategy was used:
+   * `precise` = all tokens required; `relaxed` = any token (precision was
+   * starving the set); `fallback` = no keyword match at all, so recent active
+   * memories in scope were used; `none` = no query text.
+   */
+  query_mode: z.enum(['precise', 'relaxed', 'fallback', 'none']).default('none'),
 });
 export type RetrievalMetadata = z.infer<typeof RetrievalMetadataSchema>;
 
@@ -127,7 +134,12 @@ export type RetrievalResult = z.infer<typeof RetrievalResultSchema>;
 export const RetrievalRequestSchema = z.object({
   /** Scope to retrieve within. `null` means global memories only. */
   project_id: z.string().min(1).max(128).nullable().default(null),
-  query: z.string().max(500).default(''),
+  /**
+   * Retrieval is called with the user's message, which may be long. The FTS
+   * builder keeps only meaningful tokens, so the bound here matches the message
+   * limit rather than the shape of a search box.
+   */
+  query: z.string().max(16_000).default(''),
   types: z.array(MemoryTypeSchema).max(10).optional(),
   include_global: z.boolean().default(true),
   budget: RetrievalBudgetSchema.partial().optional(),

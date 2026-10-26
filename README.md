@@ -64,6 +64,9 @@ MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
 pnpm bench:retrieval        # retrieval latency, selectivity, accuracy, stale rate
 pnpm bench:muse-overhead    # repeated real Muse calls; token variance and memory cost
 pnpm exec tsx scripts/verify-ui.ts   # drives the real UI in Chrome, fails on any error
+pnpm demo:sessions          # Demo A + B against real Muse, writes evidence JSON
+pnpm bench:context          # Demo C: baseline history vs retrieved memory
+pnpm eval:retrieval         # 22 retrieval questions, optional real Muse answers
 ```
 
 `pnpm bench:retrieval` on the reference machine:
@@ -96,10 +99,12 @@ default.
 | Retrieval: ranking, budgets, evidence, context rendering | 2 | **Complete** |
 | Memory Inspector UI: search, filters, correction, history | 2 | **Complete** |
 | Retrieval + Muse token benchmarks | 2 | **Complete**, measured |
-| Agent harness sessions and context assembly | 3 | Not started |
+| Agent runtime, sessions, streaming, bounded context | 3 | **Complete** |
+| Explicit memory capture + candidate confirmation | 3 | **Complete** |
+| Cross-session retrieval evaluation (22 questions) | 3 | **Complete**, 20/22 |
 | Declarative UI protocol and renderer | 4 | Not started |
 | Tool registry, permissions, audit log | 5 | Not started |
-| Baseline vs. memory-enabled Muse evaluation | 6 | Harness built, comparison not run |
+| Phase 6 comparison, demo video, submission | 6 | Harness built, comparison not run |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.
@@ -128,6 +133,8 @@ retrieve ─► SQL hard filters (status, scope, expiry, type)
 Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 `MEMORY_MAX_CHARACTERS`, `MEMORY_MAX_MEMORY_CHARACTERS`.
 
+![A new conversation answering from project memory](docs/assets/phase3-ui-conversations.png)
+
 ![Memory detail with correction history](docs/assets/phase2-ui-memory-detail.png)
 
 ![Retrieval explanation with score components](docs/assets/phase2-ui-memory-retrieval.png)
@@ -154,6 +161,12 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 | `GET` | `/api/memories/stats` | Lifecycle counts |
 | `GET` | `/api/projects` | Scope anchors |
 | `POST` | `/api/retrieval/preview` | Ranking + evidence + the exact prompt block |
+| `POST` | `/api/sessions` | Create a conversation (optional project scope) |
+| `GET` | `/api/sessions` | List conversations |
+| `GET` | `/api/sessions/:id` | Transcript with per-turn retrieval evidence |
+| `PATCH` | `/api/sessions/:id` | Rename or archive |
+| `DELETE` | `/api/sessions/:id` | Delete a conversation |
+| `POST` | `/api/sessions/:id/messages` | Streaming turn (SSE) or JSON `TurnResult` |
 
 Every route returns `{ ok: true, data }` or `{ ok: false, error: { code, message } }`.
 
@@ -239,8 +252,11 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 - **Memory does not automatically save tokens.** Measured: the Muse CLI has a ~16,630
   token baseline, and a ~4k-character memory block adds ~877 tokens. Whether memory is
   a net saving depends on the history the baseline would otherwise carry.
-- **Retrieval is keyword-only.** No embeddings yet; misses on different vocabulary are
-  expected for types that are not pinned.
+- **Retrieval is keyword-only.** No embeddings yet. In a 22-question evaluation it answered
+  20; the two misses are genuine vocabulary gaps, documented in
+  [docs/evaluation.md](docs/evaluation.md).
+- **Memory costs tokens on the answering call** (~37 in our measured task) but removes setup
+  turns; the whole-task input roughly halved in Demo C.
 - **Deletion is irreversible through the API.** That is the guarantee, not a bug.
 - **Single-user, loopback-only.** No authentication or rate limiting.
 
@@ -248,12 +264,11 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 ## Roadmap
 
-1. **Phase 3 — Harness.** Sessions, bounded context assembly, streaming chat, per-turn
-   memory evidence, Demo A and B rehearsals.
-2. **Phase 4 — Generative UI.** Declarative spec, component registry, validated events.
-3. **Phase 5 — Tools.** Registry, permission model, workspace tools, audit log.
-4. **Phase 6 — Evaluation.** Run the baseline vs memory-enabled comparison through the
-   existing harness, then the demo script and final polish.
+1. **Phase 4 — Generative UI.** Declarative spec, component registry, validated events, and
+   a planning interface that stores its submission as project memory.
+2. **Phase 5 — Tools.** Registry, permission model, workspace tools, audit log.
+3. **Phase 6 — Evaluation and submission.** Baseline comparison, demo video, visibility check
+   for judging, feature freeze.
 
 ---
 

@@ -32,6 +32,9 @@ importers:
       '@fastify/cors':
         specifier: ^11.1.0
         version: 11.3.1
+      '@mml/agent-core':
+        specifier: workspace:*
+        version: link:../../packages/agent-core
       '@mml/memory-engine':
         specifier: workspace:*
         version: link:../../packages/memory-engine
@@ -88,6 +91,21 @@ importers:
       vite:
         specifier: ^7.1.12
         version: 7.3.7(@types/node@26.6.5)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)
+
+  packages/agent-core:
+    dependencies:
+      '@mml/memory-engine':
+        specifier: workspace:*
+        version: link:../memory-engine
+      '@mml/muse-provider':
+        specifier: workspace:*
+        version: link:../muse-provider
+      '@mml/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.7
 
   packages/memory-engine:
     dependencies:

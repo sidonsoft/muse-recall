@@ -220,6 +220,70 @@ try {
     notes.push('deleted memory no longer appears in search');
   }
 
+  // ---- Conversations -----------------------------------------------------
+  log('opening conversations');
+  await page
+    .getByRole('button', { name: /Conversations/ })
+    .first()
+    .click();
+  await page.getByRole('button', { name: /New conversation/ }).waitFor({ timeout: 10_000 });
+  notes.push('conversations view rendered');
+
+  const project = `verify-ui-${runId}`;
+  await page.getByRole('button', { name: /New conversation/ }).click();
+  await page.getByLabel(/Project scope/).fill(project);
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByLabel('Message').waitFor({ timeout: 10_000 });
+
+  await page.getByLabel('Message').fill('Remember that this project uses SQLite in WAL mode.');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+
+  // The assistant turn must complete with retrieval evidence attached.
+  await page
+    .getByRole('button', { name: /Memory used/ })
+    .first()
+    .waitFor({ timeout: 120_000 });
+  notes.push('streamed a real Muse answer through the conversations view');
+
+  await page
+    .getByRole('button', { name: /Memory used/ })
+    .first()
+    .click();
+  const evidenceText = (await page.locator('article').last().textContent()) ?? '';
+  if (!/score \d/.test(evidenceText)) {
+    problems.push('memory evidence did not render a relevance score');
+  } else {
+    notes.push('memory used panel shows retrieved memories with scores');
+  }
+  if (!evidenceText.includes('SQLite in WAL mode')) {
+    problems.push('captured memory was not listed as retrieved in the first turn');
+  } else {
+    notes.push('explicitly captured memory appeared in the same turn retrieval');
+  }
+
+  // A second, independent conversation in the same project must retrieve it.
+  await page.getByRole('button', { name: /New conversation/ }).click();
+  await page.getByLabel(/Project scope/).fill(project);
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByLabel('Message').fill('Which storage does this project use?');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await page
+    .getByRole('button', { name: /Memory used/ })
+    .first()
+    .waitFor({ timeout: 120_000 });
+
+  const secondEvidence = (await page.locator('article').last().textContent()) ?? '';
+  if (!secondEvidence.includes('SQLite in WAL mode')) {
+    problems.push('a new conversation did not retrieve the earlier session memory');
+  } else {
+    notes.push('a new conversation retrieved memory from an earlier session');
+  }
+
+  if (screenshotPath) {
+    await page.screenshot({ path: screenshotName('conversations') });
+    notes.push(`conversations screenshot written to ${screenshotName('conversations')}`);
+  }
+
   // ---- Unbuilt section reports its phase --------------------------------
   await page
     .getByRole('button', { name: /Projects/ })

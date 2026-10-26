@@ -25,6 +25,7 @@ export const ServiceMetaSchema = z.object({
   }),
   modules: z.object({
     memory_engine: ModuleStatusSchema,
+    agent_runtime: ModuleStatusSchema,
     muse_integration: ModuleStatusSchema,
     ui_protocol: ModuleStatusSchema,
     agent_tools: ModuleStatusSchema,

@@ -82,6 +82,17 @@ export class EchoProvider implements ModelProvider {
     for (const chunk of chunkText(text)) {
       yield { type: 'text_delta', text: chunk };
     }
+    // Report usage, like a real provider does: a streaming turn that omits it
+    // would make every accounting display read zero.
+    yield {
+      type: 'usage',
+      usage: {
+        input_tokens: estimateTokens(request),
+        output_tokens: Math.ceil(text.length / 4),
+        cached_input_tokens: 0,
+        reasoning_tokens: 0,
+      },
+    };
     yield {
       type: 'completed',
       text,

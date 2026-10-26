@@ -1,0 +1,133 @@
+{
+  "generated_at": "2026-10-26T22:22:01.586Z",
+  "base_url": "http://127.0.0.1:8787",
+  "project": "montys-memory-meadow",
+  "demo_a": {
+    "session_a": "087f8b24-a0c4-4b94-91e0-f38d38c8a94b",
+    "session_b": "e5a39dc8-c4c8-415d-a2de-cf87bcc7bf30",
+    "captured_turn": {
+      "answer": "Got it. I'll keep those in mind: a children's memory game in Phaser for mobile web, with colourful illustrated farmyard scenery.",
+      "memory_ids": [
+        "97c3431f-a769-4332-bc3b-b009794bae7b",
+        "c7fefd9a-6425-4546-8753-0aa60efb9dab",
+        "af96625d-8cd7-46a3-add4-b5e09af9ca84"
+      ],
+      "memory_contents": [
+        "We are building a children memory game using Phaser.",
+        "The target platform is mobile web.",
+        "The art direction is colourful illustrated farmyard scenery."
+      ],
+      "retrieval_mode": "relaxed",
+      "memory_characters": 146,
+      "prompt_characters": 1623,
+      "history_messages": 0,
+      "input_tokens": 16945,
+      "output_tokens": 228,
+      "latency_ms": 4926,
+      "captures": [
+        {
+          "memory_id": "97c3431f-a769-4332-bc3b-b009794bae7b",
+          "content": "We are building a children memory game using Phaser.",
+          "type": "technical_decision",
+          "reason": "explicit user request",
+          "superseded_ids": [],
+          "created": true
+        },
+        {
+          "memory_id": "c7fefd9a-6425-4546-8753-0aa60efb9dab",
+          "content": "The target platform is mobile web.",
+          "type": "technical_decision",
+          "reason": "explicit user request",
+          "superseded_ids": [],
+          "created": true
+        },
+        {
+          "memory_id": "af96625d-8cd7-46a3-add4-b5e09af9ca84",
+          "content": "The art direction is colourful illustrated farmyard scenery.",
+          "type": "preference",
+          "reason": "explicit user request",
+          "superseded_ids": [],
+          "created": true
+        }
+      ]
+    },
+    "active_memories": [
+      "The art direction is colourful illustrated farmyard scenery.",
+      "The target platform is mobile web.",
+      "We are building a children memory game using Phaser."
+    ],
+    "answer": {
+      "answer": "A children's memory game, using Phaser, targeting mobile web.",
+      "memory_ids": [
+        "97c3431f-a769-4332-bc3b-b009794bae7b",
+        "c7fefd9a-6425-4546-8753-0aa60efb9dab"
+      ],
+      "memory_contents": [
+        "We are building a children memory game using Phaser.",
+        "The target platform is mobile web."
+      ],
+      "retrieval_mode": "relaxed",
+      "memory_characters": 86,
+      "prompt_characters": 1395,
+      "history_messages": 0,
+      "input_tokens": 16903,
+      "output_tokens": 96,
+      "latency_ms": 2904,
+      "captures": []
+    }
+  },
+  "demo_b": {
+    "session_c": "87cc873a-fd1a-4c2c-8a6d-3c38194470f3",
+    "session_d": "64d8c034-4d4b-498e-a008-508df895a9ec",
+    "correction_turn": {
+      "answer": "Noted — corrected to prioritize desktop browsers instead of mobile web.",
+      "memory_ids": [
+        "bd6d444f-3103-436b-b154-d8bfd2d7f03c",
+        "97c3431f-a769-4332-bc3b-b009794bae7b"
+      ],
+      "memory_contents": [
+        "The game will now prioritize desktop browsers instead of mobile web.",
+        "We are building a children memory game using Phaser."
+      ],
+      "retrieval_mode": "relaxed",
+      "memory_characters": 120,
+      "prompt_characters": 1766,
+      "history_messages": 0,
+      "input_tokens": 16989,
+      "output_tokens": 217,
+      "latency_ms": 5550,
+      "captures": [
+        {
+          "memory_id": "bd6d444f-3103-436b-b154-d8bfd2d7f03c",
+          "content": "The game will now prioritize desktop browsers instead of mobile web.",
+          "type": "technical_decision",
+          "reason": "superseded an earlier technical decision",
+          "superseded_ids": ["c7fefd9a-6425-4546-8753-0aa60efb9dab"],
+          "created": true
+        }
+      ]
+    },
+    "superseded_memories": ["The target platform is mobile web."],
+    "answer": {
+      "answer": "We are now targeting **desktop browsers** for Monty's Memory Meadow.\n\nYes — that changed. It was previously mobile web, and we switched to prioritizing desktop instead.",
+      "memory_ids": [
+        "bd6d444f-3103-436b-b154-d8bfd2d7f03c",
+        "af96625d-8cd7-46a3-add4-b5e09af9ca84",
+        "97c3431f-a769-4332-bc3b-b009794bae7b"
+      ],
+      "memory_contents": [
+        "The game will now prioritize desktop browsers instead of mobile web.",
+        "The art direction is colourful illustrated farmyard scenery.",
+        "We are building a children memory game using Phaser."
+      ],
+      "retrieval_mode": "fallback",
+      "memory_characters": 180,
+      "prompt_characters": 1828,
+      "history_messages": 0,
+      "input_tokens": 17008,
+      "output_tokens": 273,
+      "latency_ms": 4557,
+      "captures": []
+    }
+  }
+}

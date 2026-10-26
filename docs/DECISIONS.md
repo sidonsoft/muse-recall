@@ -226,3 +226,87 @@ reported number as synthetic. Report recall at the budget, not "quality".
 **Consequence:** Results are reproducible and honest about their scope. Accuracy here
 proves the engine selects the right record under budget pressure; it does not prove
 semantic search quality.
+
+---
+
+### D020 — Message order is a database guarantee
+
+**Context:** Two concurrent turns in one session could interleave assistant output.
+**Decision:** `messages` has `UNIQUE(session_id, sequence)`; the sequence is assigned inside
+`BEGIN IMMEDIATE`. The runtime additionally rejects a second concurrent turn with
+`session_busy` rather than queueing it.
+**Consequence:** Ordering cannot be corrupted by a race, and a retry is explicit. Cost:
+clients must wait rather than pipeline turns.
+
+---
+
+### D021 — Turn evidence stores metadata, never memory content
+
+**Context:** Provenance must survive memory deletion, but duplicating memory text into
+`turn_memories` would create a second copy of content the user asked to delete.
+**Decision:** Persist only ranking metadata (score, evidence, type, scope, flags, character
+count) with **no foreign key** on `memory_id`. Resolve the current memory at read time and
+report `memory_available: false` when it is gone.
+**Consequence:** An answer's provenance survives a purge; its content does not. The UI says
+so explicitly.
+
+---
+
+### D022 — Context assembly has a documented priority order
+
+**Context:** A prompt can exceed its budget in several places; silently trimming the user's
+request is unacceptable.
+**Decision:** Request and system instructions are never trimmed. Constraints and memories
+are already bounded by retrieval. Correction history is dropped first, then oldest history.
+If request + system exceed the budget, the turn fails with `context_overflow`.
+**Consequence:** Behaviour under pressure is predictable and tested. Cost: a very long
+request fails rather than being silently shortened.
+
+---
+
+### D023 — Progressive keyword relaxation plus porter stemming
+
+**Context:** The first Phase 3 demo question ("what game, which engine, what platform")
+retrieved **nothing**, because FTS5 `AND` required every token and no single memory had all
+of them. A long question also spent its entire 12-token budget on stopwords.
+**Decision:** Filter stopwords before the token cap; try precise `AND`, relax to `OR` when
+fewer than three candidates are found, and fall back to recent active memories when nothing
+matches. Rebuild the FTS index with the porter tokenizer. Report the chosen strategy as
+`query_mode`.
+**Consequence:** Multi-part and inflected questions work. The fallback can surface recent
+but tangential memories, which the evidence string reports as "no keyword match". Two of 22
+evaluation questions still fail on genuine vocabulary gaps (documented, not hidden).
+
+---
+
+### D024 — Automatic memory capture only proposes
+
+**Context:** Silently storing every message would pollute memory and let model phrasing
+become "fact".
+**Decision:** Only explicit user instructions ("remember …", "remember these …") store
+memory, with the session as provenance. Extraction produces candidates returned to the UI
+for confirmation. `MEMORY_AUTO_CAPTURE=off` disables even that.
+**Consequence:** Demo A/B work deterministically; nothing is captured from assistant output.
+
+---
+
+### D025 — Correction history is a labelled section, not stale retrieval
+
+**Context:** Demo B asks "did that change?" — which requires the previous value without
+injecting superseded records into ordinary active retrieval.
+**Decision:** After retrieval, the assembler follows the *active* memory's supersession
+edges and renders replaced records in `<recent_corrections>` with an explicit "historical,
+not current facts" warning. Superseded records never enter the active candidate set.
+**Consequence:** The model can explain a change while ordinary retrieval stays clean.
+
+---
+
+### D026 — SSE with a JSON fallback, and a hijacked socket
+
+**Context:** Streaming is required, but tests and simple clients need a single response.
+**Decision:** `Accept: text/event-stream` streams `retrieval`/`delta`/`usage`/`completed`/
+`error`; any other Accept runs the same turn and returns one `TurnResult`. The SSE path
+hijacks Fastify's reply, aborts the provider on client disconnect, and persists partial
+output as `interrupted`.
+**Consequence:** One turn implementation, two transports, and no misleading "complete"
+message after a cancellation.

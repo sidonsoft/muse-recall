@@ -24,6 +24,14 @@ import {
   RetrievalPreviewSchema,
   type ServiceMeta,
   ServiceMetaSchema,
+  type Session,
+  type SessionDetail,
+  SessionDetailSchema,
+  type SessionList,
+  SessionListSchema,
+  SessionSchema,
+  type TurnResult,
+  TurnResultSchema,
 } from '@mml/shared';
 import { z } from 'zod';
 
@@ -228,6 +236,43 @@ export const api = {
       `/api/memories/${id}`,
       { method: 'DELETE', body: JSON.stringify(reason ? { reason } : {}) },
       (data) => DeleteResultSchema.parse(data),
+    ),
+
+  // --- Conversations ------------------------------------------------------
+
+  createSession: (input: { project_id: string | null; title?: string }) =>
+    request<Session>('/api/sessions', { method: 'POST', body: JSON.stringify(input) }, (data) =>
+      SessionSchema.parse(data),
+    ),
+
+  listSessions: (params: { status?: string; limit?: number } = {}) =>
+    request<SessionList>(`/api/sessions${toQuery({ ...params })}`, { method: 'GET' }, (data) =>
+      SessionListSchema.parse(data),
+    ),
+
+  session: (id: string) =>
+    request<SessionDetail>(`/api/sessions/${id}`, { method: 'GET' }, (data) =>
+      SessionDetailSchema.parse(data),
+    ),
+
+  updateSession: (id: string, patch: { title?: string; status?: 'active' | 'archived' }) =>
+    request<Session>(
+      `/api/sessions/${id}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+      (data) => SessionSchema.parse(data),
+    ),
+
+  deleteSession: (id: string) =>
+    request<{ id: string; deleted: true }>(`/api/sessions/${id}`, { method: 'DELETE' }, (data) =>
+      DeleteResultSchema.parse(data),
+    ),
+
+  /** Non-streaming turn; the streaming path lives in lib/turn-stream.ts. */
+  sendMessage: (id: string, input: { content: string; capture_memories?: boolean }) =>
+    request<TurnResult>(
+      `/api/sessions/${id}/messages`,
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => TurnResultSchema.parse(data),
     ),
 
   // --- Retrieval ----------------------------------------------------------

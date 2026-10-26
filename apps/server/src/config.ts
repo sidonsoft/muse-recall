@@ -1,6 +1,11 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  type AutoCaptureMode,
+  type ContextBudgets,
+  DEFAULT_CONTEXT_BUDGETS,
+} from '@mml/agent-core';
+import {
   MUSE_DEFAULT_MODEL,
   MUSE_DEFAULT_REASONING_EFFORT,
   MUSE_REASONING_EFFORTS,
@@ -54,6 +59,38 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  CONTEXT_MAX_HISTORY_MESSAGES: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(50)
+    .default(DEFAULT_CONTEXT_BUDGETS.max_history_messages),
+  CONTEXT_MAX_HISTORY_CHARACTERS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(200_000)
+    .default(DEFAULT_CONTEXT_BUDGETS.max_history_characters),
+  CONTEXT_MAX_PROMPT_CHARACTERS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(500_000)
+    .default(DEFAULT_CONTEXT_BUDGETS.max_prompt_characters),
+  CONTEXT_MAX_MESSAGE_CHARACTERS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .max(100_000)
+    .default(DEFAULT_CONTEXT_BUDGETS.max_message_characters),
+  CONTEXT_MAX_CORRECTION_HISTORY: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(10)
+    .default(DEFAULT_CONTEXT_BUDGETS.max_correction_history),
+  AGENT_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(64).max(8_000).default(1_200),
+  MEMORY_AUTO_CAPTURE: z.enum(['off', 'suggest']).default('suggest'),
 });
 
 export interface AppConfig {
@@ -71,6 +108,13 @@ export interface AppConfig {
   memoryBudget: RetrievalBudget;
   /** Mark memories past their expiry as expired at startup. */
   sweepOnStart: boolean;
+  /** Conversation context and capture configuration. */
+  agent: {
+    budgets: ContextBudgets;
+    autoCapture: AutoCaptureMode;
+    includeCorrectionHistory: boolean;
+    maxOutputTokens: number;
+  };
   serviceVersion: string;
 }
 
@@ -112,6 +156,19 @@ export function loadConfig(
       max_memory_characters: value.MEMORY_MAX_MEMORY_CHARACTERS,
     },
     sweepOnStart: value.MEMORY_SWEEP_ON_START,
+    agent: {
+      budgets: {
+        max_history_messages: value.CONTEXT_MAX_HISTORY_MESSAGES,
+        max_history_characters: value.CONTEXT_MAX_HISTORY_CHARACTERS,
+        max_memory_characters: value.MEMORY_MAX_CHARACTERS,
+        max_prompt_characters: value.CONTEXT_MAX_PROMPT_CHARACTERS,
+        max_message_characters: value.CONTEXT_MAX_MESSAGE_CHARACTERS,
+        max_correction_history: value.CONTEXT_MAX_CORRECTION_HISTORY,
+      },
+      autoCapture: value.MEMORY_AUTO_CAPTURE,
+      includeCorrectionHistory: true,
+      maxOutputTokens: value.AGENT_MAX_OUTPUT_TOKENS,
+    },
     provider: {
       kind: value.MODEL_PROVIDER,
       museBin: value.MUSE_BIN,

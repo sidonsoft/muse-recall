@@ -10,8 +10,9 @@ function engineWithMemories() {
 describe('toFtsQuery', () => {
   it('quotes every token so operators become literal text', () => {
     expect(toFtsQuery('sqlite storage')).toBe('"sqlite" AND "storage"');
-    expect(toFtsQuery('" OR 1=1 --')).toBe('"or" AND "1" AND "1"');
-    expect(toFtsQuery('NEAR(a b)')).toBe('"near" AND "a" AND "b"');
+    // Stopwords and operators are stripped or quoted, never interpreted.
+    expect(toFtsQuery('" OR 1=1 --')).toBe('"1" AND "1"');
+    expect(toFtsQuery('NEAR(a b)')).toBe('"near" AND "b"');
   });
 
   it('returns null when there is nothing searchable', () => {
@@ -22,6 +23,15 @@ describe('toFtsQuery', () => {
   it('caps the token count', () => {
     const query = toFtsQuery(Array.from({ length: 40 }, () => 'word').join(' '));
     expect(query?.split(' AND ')).toHaveLength(12);
+  });
+
+  it('spends the token budget on meaningful words, not filler', () => {
+    const query = toFtsQuery(
+      'what are we building and which engine are we using and what is the target platform',
+    );
+    expect(query).toContain('"engine"');
+    expect(query).toContain('"platform"');
+    expect(query).not.toContain('"what"');
   });
 
   it('keeps unicode words intact', () => {

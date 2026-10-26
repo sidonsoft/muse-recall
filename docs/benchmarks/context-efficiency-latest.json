@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-10-26T22:25:48.358Z",
+  "model": "muse-wonder-1.0",
+  "trials": 3,
+  "task": {
+    "question": "What game are we building, which engine are we using, and what is the target platform?",
+    "expected_terms": ["phaser", "mobile web"],
+    "facts": [
+      "We are building a children memory game using Phaser.",
+      "The target platform is mobile web.",
+      "The art direction is colourful illustrated farmyard scenery."
+    ]
+  },
+  "baseline": {
+    "description": "No persistent memory; facts supplied in the previous conversation turn.",
+    "turns_per_task": 2,
+    "answering_input_tokens": {
+      "mean": 16863,
+      "samples": [16869, 16860, 16860]
+    },
+    "task_input_tokens": {
+      "mean": 33670,
+      "samples": [33676, 33667, 33667]
+    },
+    "app_added_characters": 349.67,
+    "recalled_characters": 0,
+    "latency_ms": 4860.67,
+    "correctness": 1,
+    "answers": [
+      "- **Game:** Children memory game\n- **Engine:** Phaser\n- **Target platform:** Mobile web",
+      "A children memory game, built with Phaser, targeting mobile web.",
+      "We’re building a children’s memory game using Phaser, targeting mobile web."
+    ]
+  },
+  "memory_enabled": {
+    "description": "Persistent memory retrieved into a fresh session; no prior transcript.",
+    "turns_per_task": 1,
+    "answering_input_tokens": {
+      "mean": 16900,
+      "samples": [16900, 16900, 16900]
+    },
+    "task_input_tokens": {
+      "mean": 16900,
+      "samples": [16900, 16900, 16900]
+    },
+    "app_added_characters": 504,
+    "retrieved_memory_characters": 86,
+    "latency_ms": 4670,
+    "correctness": 1,
+    "answers": [
+      "We're building a children's memory game using Phaser, targeting mobile web.",
+      "A children's memory game, using Phaser, targeting mobile web.",
+      "We're building a children memory game using Phaser, targeting mobile web."
+    ]
+  },
+  "deltas": {
+    "answering_input_tokens": 37,
+    "task_input_tokens": -16770,
+    "turns_saved_per_task": 1,
+    "turns_exercised": {
+      "baseline": 6,
+      "memory": 3
+    }
+  },
+  "caveats": [
+    "Both configurations pay the Muse CLI baseline (~16.6k input tokens); it dominates these numbers.",
+    "The baseline re-sends the fact statement as conversation history on the answering call.",
+    "Memory adds retrieved-memory characters but removes the history re-send.",
+    "A single model, a single machine, and a small synthetic task set: these are measurements, not a general benchmark."
+  ]
+}

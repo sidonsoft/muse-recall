@@ -37,6 +37,19 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     provider: { kind: 'echo' },
     memoryBudget: { max_memories: 8, max_characters: 4_000, max_memory_characters: 1_000 },
     sweepOnStart: true,
+    agent: {
+      budgets: {
+        max_history_messages: 8,
+        max_history_characters: 6_000,
+        max_memory_characters: 4_000,
+        max_prompt_characters: 24_000,
+        max_message_characters: 8_000,
+        max_correction_history: 3,
+      },
+      autoCapture: 'suggest',
+      includeCorrectionHistory: true,
+      maxOutputTokens: 1_200,
+    },
     serviceVersion: SERVICE_VERSION,
     ...overrides,
   };
@@ -162,7 +175,7 @@ describe('GET /api/meta', () => {
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     expect(response.statusCode).toBe(200);
     const { data } = response.json();
-    expect(data.phase).toBe(2);
+    expect(data.phase).toBe(3);
     expect(data.provider.id).toBe('echo');
     expect(data.modules.memory_engine).toBe('complete');
     expect(data.modules.ui_protocol).toBe('not_implemented');

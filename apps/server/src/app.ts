@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import cors from '@fastify/cors';
+import { AgentError, AgentRuntime } from '@mml/agent-core';
 import { type MemoryEngine, MemoryError, probeDatabase } from '@mml/memory-engine';
 import { ProviderError } from '@mml/muse-provider';
 import {
@@ -18,6 +19,7 @@ import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
+import { registerSessionRoutes } from './routes/sessions.js';
 
 export interface AppDependencies {
   config: AppConfig;
@@ -28,6 +30,8 @@ export interface AppDependencies {
   provider: ModelProvider;
   /** Persistent memory engine bound to the same database. */
   engine: MemoryEngine;
+  /** Conversation runtime. Created from `engine`/`provider` when omitted. */
+  runtime?: AgentRuntime;
   /** Injectable so tests can share or reset the tracker. */
   providerHealth?: ProviderHealthTracker;
   /** Monotonic-ish process start time, used for uptime. */
@@ -61,6 +65,19 @@ const GenerateBodySchema = z.object({
  */
 export async function buildApp(dependencies: AppDependencies): Promise<FastifyInstance> {
   const { config, db, dbPath, provider, engine } = dependencies;
+  const runtime =
+    dependencies.runtime ??
+    new AgentRuntime({
+      engine,
+      provider,
+      config: {
+        budgets: config.agent.budgets,
+        memoryBudget: config.memoryBudget,
+        autoCapture: config.agent.autoCapture,
+        includeCorrectionHistory: config.agent.includeCorrectionHistory,
+        maxOutputTokens: config.agent.maxOutputTokens,
+      },
+    });
   const providerHealth = dependencies.providerHealth ?? new ProviderHealthTracker(provider, 60_000);
   const startedAt = dependencies.startedAt ?? Date.now();
 
@@ -106,6 +123,20 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
   app.setErrorHandler((error: unknown, request, reply) => {
     request.log.error({ err: error }, 'request failed');
+
+    if (AgentError.isAgentError(error)) {
+      const status =
+        error.code === 'session_not_found'
+          ? 404
+          : error.code === 'session_busy' || error.code === 'session_archived'
+            ? 409
+            : error.code === 'turn_cancelled'
+              ? 408
+              : error.code === 'provider_failure'
+                ? 502
+                : 400;
+      return reply.status(status).send(apiFailure(error.code, error.message));
+    }
 
     if (MemoryError.isMemoryError(error)) {
       const status =
@@ -166,6 +197,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
   // --- Memory CRUD, correction, deletion, retrieval preview ---------------
   registerMemoryRoutes(app, { engine, config });
+  registerSessionRoutes(app, { runtime });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {
@@ -274,7 +306,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       service: SERVICE_NAME,
       version: config.serviceVersion,
       environment: config.environment,
-      phase: 2,
+      phase: 3,
       provider: {
         id: provider.id,
         name: provider.name,
@@ -283,10 +315,11 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       },
       modules: {
         memory_engine: 'complete',
-        muse_integration: 'partial',
+        agent_runtime: 'complete',
+        muse_integration: 'complete',
         ui_protocol: 'not_implemented',
         agent_tools: 'not_implemented',
-        evaluation: 'not_implemented',
+        evaluation: 'partial',
       },
       memory: memoryMeta(config),
       safety: {
