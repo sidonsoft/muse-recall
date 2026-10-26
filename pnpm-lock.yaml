@@ -26,6 +26,9 @@ importers:
       vitest:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@26.6.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
   apps/server:
     dependencies:
@@ -44,6 +47,9 @@ importers:
       '@mml/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@mml/tool-runtime':
+        specifier: workspace:*
+        version: link:../../packages/tool-runtime
       '@mml/ui-protocol':
         specifier: workspace:*
         version: link:../../packages/ui-protocol
@@ -109,6 +115,9 @@ importers:
       '@mml/shared':
         specifier: workspace:*
         version: link:../shared
+      '@mml/tool-runtime':
+        specifier: workspace:*
+        version: link:../tool-runtime
       zod:
         specifier: ^4.1.12
         version: 4.6.7
@@ -130,6 +139,18 @@ importers:
 
   packages/shared:
     dependencies:
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.7
+
+  packages/tool-runtime:
+    dependencies:
+      '@mml/memory-engine':
+        specifier: workspace:*
+        version: link:../memory-engine
+      '@mml/shared':
+        specifier: workspace:*
+        version: link:../shared
       zod:
         specifier: ^4.1.12
         version: 4.6.7

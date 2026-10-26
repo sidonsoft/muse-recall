@@ -4,6 +4,7 @@ import {
   type AutoCaptureMode,
   type ContextBudgets,
   DEFAULT_CONTEXT_BUDGETS,
+  type ToolSettings,
 } from '@mml/agent-core';
 import {
   MUSE_DEFAULT_MODEL,
@@ -91,6 +92,12 @@ const EnvSchema = z.object({
     .default(DEFAULT_CONTEXT_BUDGETS.max_correction_history),
   AGENT_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(64).max(8_000).default(1_200),
   MEMORY_AUTO_CAPTURE: z.enum(['off', 'suggest']).default('suggest'),
+  TOOLS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  TOOL_MAX_CALLS_PER_TURN: z.coerce.number().int().min(1).max(5).default(3),
+  TOOL_DECISION_MODE: z.enum(['auto', 'always', 'off']).default('auto'),
 });
 
 export interface AppConfig {
@@ -114,6 +121,7 @@ export interface AppConfig {
     autoCapture: AutoCaptureMode;
     includeCorrectionHistory: boolean;
     maxOutputTokens: number;
+    tools: ToolSettings;
   };
   serviceVersion: string;
 }
@@ -168,6 +176,12 @@ export function loadConfig(
       autoCapture: value.MEMORY_AUTO_CAPTURE,
       includeCorrectionHistory: true,
       maxOutputTokens: value.AGENT_MAX_OUTPUT_TOKENS,
+      tools: {
+        enabled: value.TOOLS_ENABLED,
+        approvalPolicy: value.TOOL_APPROVAL_POLICY,
+        maxCallsPerTurn: value.TOOL_MAX_CALLS_PER_TURN,
+        decisionMode: value.TOOL_DECISION_MODE,
+      },
     },
     provider: {
       kind: value.MODEL_PROVIDER,

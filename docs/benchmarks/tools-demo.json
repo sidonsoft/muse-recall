@@ -1,0 +1,463 @@
+{
+  "generated_at": "2026-10-26T22:47:18.460Z",
+  "model": "muse-wonder-1.0",
+  "project": "montys-memory-meadow",
+  "session_ids": {
+    "planning": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+    "recall": "7c6bfb9b-1243-4e30-8ab5-3dda624476c9"
+  },
+  "plan_turn": {
+    "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+    "user_message": {
+      "id": "0a394097-155c-48eb-a3fb-758983a57764",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "sequence": 0,
+      "role": "user",
+      "content": "Create a project task to fix the menu layout, and another task to add sound effects. Use the tools.",
+      "status": "complete",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "latency_ms": null,
+      "context": null,
+      "created_at": "2026-10-26T22:46:35.056Z"
+    },
+    "assistant_message": {
+      "id": "601f00e8-ebf7-4928-ba0b-72c9d37006c8",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "sequence": 1,
+      "role": "assistant",
+      "content": "Neither task has been created yet — both `task.create` calls are awaiting your approval.\n\nApprove them to create “Fix the menu layout” and “Add sound effects.”",
+      "status": "complete",
+      "input_tokens": 16860,
+      "output_tokens": 349,
+      "latency_ms": 5691,
+      "context": {
+        "prompt_characters": 1177,
+        "memory_characters": 0,
+        "history_messages": 0,
+        "history_messages_dropped": 0,
+        "sections": {
+          "system": 767,
+          "constraints": 0,
+          "memories": 0,
+          "corrections": 0,
+          "history": 0,
+          "request": 136,
+          "tools": 270
+        },
+        "memory_ids": [],
+        "estimated_tokens": 295,
+        "warnings": []
+      },
+      "created_at": "2026-10-26T22:46:49.797Z",
+      "memories": []
+    },
+    "retrieval": {
+      "query": "Create a project task to fix the menu layout, and another task to add sound effects. Use the tools.",
+      "project_id": "montys-memory-meadow",
+      "candidate_count": 0,
+      "selected_count": 0,
+      "excluded_count": 0,
+      "excluded_by": {
+        "count_budget": 0,
+        "character_budget": 0,
+        "duplicate": 0
+      },
+      "characters_used": 0,
+      "character_budget": 4000,
+      "memory_budget": 8,
+      "truncated_count": 0,
+      "memory_ids": [],
+      "latency_ms": 1.295,
+      "weights": {
+        "relevance": 0.4,
+        "scope": 0.2,
+        "confidence": 0.15,
+        "validation": 0.1,
+        "recency": 0.1,
+        "type_priority": 0.05
+      },
+      "query_mode": "none"
+    },
+    "context": {
+      "prompt_characters": 1177,
+      "memory_characters": 0,
+      "history_messages": 0,
+      "history_messages_dropped": 0,
+      "sections": {
+        "system": 767,
+        "constraints": 0,
+        "memories": 0,
+        "corrections": 0,
+        "history": 0,
+        "request": 136,
+        "tools": 270
+      },
+      "memory_ids": [],
+      "estimated_tokens": 295,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 16860,
+      "output_tokens": 349,
+      "cached_input_tokens": 16756,
+      "reasoning_tokens": 290
+    },
+    "captures": [],
+    "candidates": []
+  },
+  "initial_calls": [
+    {
+      "id": "01dbc965-2ab4-410f-b3cb-f479a3fc209e",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "message_id": "ac1c06e6-71e2-4435-ab39-a80f77d5c5f7",
+      "tool": "task.create",
+      "arguments": {
+        "title": "Add sound effects",
+        "status": "todo"
+      },
+      "status": "executed",
+      "requires_confirmation": true,
+      "result": {
+        "id": "7ae23dc4-5ce0-4499-b9f8-073266020094",
+        "project_id": "montys-memory-meadow",
+        "title": "Add sound effects",
+        "description": null,
+        "status": "todo",
+        "created_at": "2026-10-26T22:46:49.814Z",
+        "updated_at": "2026-10-26T22:46:49.814Z"
+      },
+      "error": null,
+      "duration_ms": 1,
+      "created_at": "2026-10-26T22:46:44.106Z",
+      "decided_at": "2026-10-26T22:46:49.814Z",
+      "executed_at": "2026-10-26T22:46:49.814Z"
+    },
+    {
+      "id": "6c869b6e-d4be-4fa4-81d8-6130169ab075",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "message_id": "8b5c4bc2-63dd-429e-947e-a9e0a88d2bad",
+      "tool": "task.create",
+      "arguments": {
+        "title": "Fix the menu layout",
+        "status": "todo"
+      },
+      "status": "executed",
+      "requires_confirmation": true,
+      "result": {
+        "id": "86373502-b385-4829-b057-1fcfcb8ab3b4",
+        "project_id": "montys-memory-meadow",
+        "title": "Fix the menu layout",
+        "description": null,
+        "status": "todo",
+        "created_at": "2026-10-26T22:46:56.085Z",
+        "updated_at": "2026-10-26T22:46:56.085Z"
+      },
+      "error": null,
+      "duration_ms": 0,
+      "created_at": "2026-10-26T22:46:44.106Z",
+      "decided_at": "2026-10-26T22:46:56.085Z",
+      "executed_at": "2026-10-26T22:46:56.085Z"
+    }
+  ],
+  "executed_task_creations": [
+    {
+      "id": "01dbc965-2ab4-410f-b3cb-f479a3fc209e",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "message_id": "ac1c06e6-71e2-4435-ab39-a80f77d5c5f7",
+      "tool": "task.create",
+      "arguments": {
+        "title": "Add sound effects",
+        "status": "todo"
+      },
+      "status": "executed",
+      "requires_confirmation": true,
+      "result": {
+        "id": "7ae23dc4-5ce0-4499-b9f8-073266020094",
+        "project_id": "montys-memory-meadow",
+        "title": "Add sound effects",
+        "description": null,
+        "status": "todo",
+        "created_at": "2026-10-26T22:46:49.814Z",
+        "updated_at": "2026-10-26T22:46:49.814Z"
+      },
+      "error": null,
+      "duration_ms": 1,
+      "created_at": "2026-10-26T22:46:44.106Z",
+      "decided_at": "2026-10-26T22:46:49.814Z",
+      "executed_at": "2026-10-26T22:46:49.814Z"
+    },
+    {
+      "id": "6c869b6e-d4be-4fa4-81d8-6130169ab075",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "message_id": "8b5c4bc2-63dd-429e-947e-a9e0a88d2bad",
+      "tool": "task.create",
+      "arguments": {
+        "title": "Fix the menu layout",
+        "status": "todo"
+      },
+      "status": "executed",
+      "requires_confirmation": true,
+      "result": {
+        "id": "86373502-b385-4829-b057-1fcfcb8ab3b4",
+        "project_id": "montys-memory-meadow",
+        "title": "Fix the menu layout",
+        "description": null,
+        "status": "todo",
+        "created_at": "2026-10-26T22:46:56.085Z",
+        "updated_at": "2026-10-26T22:46:56.085Z"
+      },
+      "error": null,
+      "duration_ms": 0,
+      "created_at": "2026-10-26T22:46:44.106Z",
+      "decided_at": "2026-10-26T22:46:56.085Z",
+      "executed_at": "2026-10-26T22:46:56.085Z"
+    }
+  ],
+  "list_turn": {
+    "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+    "user_message": {
+      "id": "ac148e7f-630a-47b4-8c12-b182a4381b21",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "sequence": 6,
+      "role": "user",
+      "content": "List the project tasks and tell me what is planned.",
+      "status": "complete",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "latency_ms": null,
+      "context": null,
+      "created_at": "2026-10-26T22:47:01.202Z"
+    },
+    "assistant_message": {
+      "id": "b0d99575-76e9-4220-bd66-0f939137a029",
+      "session_id": "ca4af311-a120-4a5c-aeef-8e35ed9e8af1",
+      "sequence": 7,
+      "role": "assistant",
+      "content": "In project `montys-memory-meadow`, 2 tasks are planned — both `todo`:\n\n- “Fix the menu layout” — `86373502-b385-4829-b057-1fcfcb8ab3b4`\n- “Add sound effects” — `7ae23dc4-5ce0-4499-b9f8-073266020094`\n\nNo descriptions are set for either task.",
+      "status": "complete",
+      "input_tokens": 17406,
+      "output_tokens": 187,
+      "latency_ms": 4125,
+      "context": {
+        "prompt_characters": 2828,
+        "memory_characters": 0,
+        "history_messages": 6,
+        "history_messages_dropped": 0,
+        "sections": {
+          "system": 767,
+          "constraints": 0,
+          "memories": 0,
+          "corrections": 0,
+          "history": 1415,
+          "request": 88,
+          "tools": 552
+        },
+        "memory_ids": [],
+        "estimated_tokens": 707,
+        "warnings": []
+      },
+      "created_at": "2026-10-26T22:47:08.799Z",
+      "memories": []
+    },
+    "retrieval": {
+      "query": "List the project tasks and tell me what is planned.",
+      "project_id": "montys-memory-meadow",
+      "candidate_count": 0,
+      "selected_count": 0,
+      "excluded_count": 0,
+      "excluded_by": {
+        "count_budget": 0,
+        "character_budget": 0,
+        "duplicate": 0
+      },
+      "characters_used": 0,
+      "character_budget": 4000,
+      "memory_budget": 8,
+      "truncated_count": 0,
+      "memory_ids": [],
+      "latency_ms": 0.4,
+      "weights": {
+        "relevance": 0.4,
+        "scope": 0.2,
+        "confidence": 0.15,
+        "validation": 0.1,
+        "recency": 0.1,
+        "type_priority": 0.05
+      },
+      "query_mode": "none"
+    },
+    "context": {
+      "prompt_characters": 2828,
+      "memory_characters": 0,
+      "history_messages": 6,
+      "history_messages_dropped": 0,
+      "sections": {
+        "system": 767,
+        "constraints": 0,
+        "memories": 0,
+        "corrections": 0,
+        "history": 1415,
+        "request": 88,
+        "tools": 552
+      },
+      "memory_ids": [],
+      "estimated_tokens": 707,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 17406,
+      "output_tokens": 187,
+      "cached_input_tokens": 16756,
+      "reasoning_tokens": 91
+    },
+    "captures": [],
+    "candidates": []
+  },
+  "recall_turn": {
+    "session_id": "7c6bfb9b-1243-4e30-8ab5-3dda624476c9",
+    "user_message": {
+      "id": "b080f852-4446-4f79-a5c6-a763e1788829",
+      "session_id": "7c6bfb9b-1243-4e30-8ab5-3dda624476c9",
+      "sequence": 0,
+      "role": "user",
+      "content": "What tasks are planned for this project?",
+      "status": "complete",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "latency_ms": null,
+      "context": null,
+      "created_at": "2026-10-26T22:47:08.806Z"
+    },
+    "assistant_message": {
+      "id": "e12664f8-a9e7-4b3e-8926-2dbb02e544e5",
+      "session_id": "7c6bfb9b-1243-4e30-8ab5-3dda624476c9",
+      "sequence": 1,
+      "role": "assistant",
+      "content": "For this project, 2 tasks are planned (both `todo`):\n\n- **Fix the menu layout**\n- **Add sound effects**",
+      "status": "complete",
+      "input_tokens": 16978,
+      "output_tokens": 135,
+      "latency_ms": 4354,
+      "context": {
+        "prompt_characters": 1400,
+        "memory_characters": 0,
+        "history_messages": 0,
+        "history_messages_dropped": 0,
+        "sections": {
+          "system": 767,
+          "constraints": 0,
+          "memories": 0,
+          "corrections": 0,
+          "history": 0,
+          "request": 77,
+          "tools": 552
+        },
+        "memory_ids": [],
+        "estimated_tokens": 350,
+        "warnings": []
+      },
+      "created_at": "2026-10-26T22:47:18.456Z",
+      "memories": []
+    },
+    "retrieval": {
+      "query": "What tasks are planned for this project?",
+      "project_id": "montys-memory-meadow",
+      "candidate_count": 0,
+      "selected_count": 0,
+      "excluded_count": 0,
+      "excluded_by": {
+        "count_budget": 0,
+        "character_budget": 0,
+        "duplicate": 0
+      },
+      "characters_used": 0,
+      "character_budget": 4000,
+      "memory_budget": 8,
+      "truncated_count": 0,
+      "memory_ids": [],
+      "latency_ms": 0.662,
+      "weights": {
+        "relevance": 0.4,
+        "scope": 0.2,
+        "confidence": 0.15,
+        "validation": 0.1,
+        "recency": 0.1,
+        "type_priority": 0.05
+      },
+      "query_mode": "none"
+    },
+    "context": {
+      "prompt_characters": 1400,
+      "memory_characters": 0,
+      "history_messages": 0,
+      "history_messages_dropped": 0,
+      "sections": {
+        "system": 767,
+        "constraints": 0,
+        "memories": 0,
+        "corrections": 0,
+        "history": 0,
+        "request": 77,
+        "tools": 552
+      },
+      "memory_ids": [],
+      "estimated_tokens": 350,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 16978,
+      "output_tokens": 135,
+      "cached_input_tokens": 16756,
+      "reasoning_tokens": 98
+    },
+    "captures": [],
+    "candidates": []
+  },
+  "recall_tool_calls": [
+    {
+      "id": "49087ceb-7df2-4f06-acd4-b665b897a609",
+      "session_id": "7c6bfb9b-1243-4e30-8ab5-3dda624476c9",
+      "message_id": "e12664f8-a9e7-4b3e-8926-2dbb02e544e5",
+      "tool": "task.list",
+      "arguments": {
+        "status": "todo",
+        "limit": 20
+      },
+      "status": "executed",
+      "requires_confirmation": false,
+      "result": {
+        "tasks": [
+          {
+            "id": "86373502-b385-4829-b057-1fcfcb8ab3b4",
+            "project_id": "montys-memory-meadow",
+            "title": "Fix the menu layout",
+            "description": null,
+            "status": "todo",
+            "created_at": "2026-10-26T22:46:56.085Z",
+            "updated_at": "2026-10-26T22:46:56.085Z"
+          },
+          {
+            "id": "7ae23dc4-5ce0-4499-b9f8-073266020094",
+            "project_id": "montys-memory-meadow",
+            "title": "Add sound effects",
+            "description": null,
+            "status": "todo",
+            "created_at": "2026-10-26T22:46:49.814Z",
+            "updated_at": "2026-10-26T22:46:49.814Z"
+          }
+        ],
+        "total": 2
+      },
+      "error": null,
+      "duration_ms": 0,
+      "created_at": "2026-10-26T22:47:14.101Z",
+      "decided_at": "2026-10-26T22:47:14.101Z",
+      "executed_at": "2026-10-26T22:47:14.101Z"
+    }
+  ],
+  "summary": {
+    "tasks_created": 2,
+    "read_calls_in_recall_session": 1
+  }
+}

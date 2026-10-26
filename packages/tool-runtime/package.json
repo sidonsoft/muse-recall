@@ -1,0 +1,19 @@
+{
+  "name": "@mml/tool-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed, validated, authorization-aware tool registry for the agent runtime.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mml/memory-engine": "workspace:*",
+    "@mml/shared": "workspace:*",
+    "zod": "^4.1.12"
+  }
+}

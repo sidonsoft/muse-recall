@@ -11,7 +11,7 @@
 
 export type { AgentRuntimeDependencies } from './agent-runtime.js';
 export { AgentRuntime } from './agent-runtime.js';
-export type { AgentConfig, AutoCaptureMode, ContextBudgets } from './config.js';
+export type { AgentConfig, AutoCaptureMode, ContextBudgets, ToolSettings } from './config.js';
 export {
   DEFAULT_AGENT_CONFIG,
   DEFAULT_CONTEXT_BUDGETS,

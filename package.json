@@ -16,6 +16,7 @@
     "build": "pnpm --filter @mml/web run build && pnpm --filter @mml/server run build",
     "db:migrate": "pnpm --filter @mml/server run db:migrate",
     "demo:sessions": "tsx scripts/demo-sessions.ts",
+    "demo:tools": "tsx scripts/demo-tools.ts",
     "dev": "pnpm -r --parallel run dev",
     "dev:server": "pnpm --filter @mml/server run dev",
     "dev:web": "pnpm --filter @mml/web run dev",
@@ -43,6 +44,7 @@
     "playwright-core": "^1.64.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "zod": "^4.6.7"
   }
 }

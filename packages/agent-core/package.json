@@ -15,6 +15,7 @@
     "@mml/memory-engine": "workspace:*",
     "@mml/muse-provider": "workspace:*",
     "@mml/shared": "workspace:*",
+    "@mml/tool-runtime": "workspace:*",
     "zod": "^4.1.12"
   }
 }

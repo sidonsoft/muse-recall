@@ -18,6 +18,7 @@ export default defineConfig({
       '@mml/muse-provider': resolve(import.meta.dirname, 'packages/muse-provider/src/index.ts'),
       '@mml/agent-core': resolve(import.meta.dirname, 'packages/agent-core/src/index.ts'),
       '@mml/ui-protocol': resolve(import.meta.dirname, 'packages/ui-protocol/src/index.ts'),
+      '@mml/tool-runtime': resolve(import.meta.dirname, 'packages/tool-runtime/src/index.ts'),
     },
   },
   test: {

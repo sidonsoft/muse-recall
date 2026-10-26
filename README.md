@@ -67,6 +67,7 @@ pnpm exec tsx scripts/verify-ui.ts   # drives the real UI in Chrome, fails on an
 pnpm demo:sessions          # Demo A + B against real Muse, writes evidence JSON
 pnpm bench:context          # Demo C: baseline history vs retrieved memory
 pnpm eval:retrieval         # 22 retrieval questions, optional real Muse answers
+pnpm demo:tools             # real Muse plans tools; writes approved through the API
 ```
 
 `pnpm bench:retrieval` on the reference machine:
@@ -104,7 +105,8 @@ default.
 | Cross-session retrieval evaluation (22 questions) | 3 | **Complete**, 20/22 |
 | Declarative UI protocol, validation, renderer | 4 | **Complete** |
 | Muse-generated planning forms + submission loop | 4 | **Complete**, verified live |
-| Tool registry, permissions, audit log | 5 | Not started |
+| Typed tool registry, permissions, audit log | 5 | **Complete** |
+| Muse-planned tool calls with write approval | 5 | **Complete**, verified live |
 | Phase 6 comparison, demo video, submission | 6 | Harness built, comparison not run |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
@@ -137,6 +139,8 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 ![A new conversation answering from project memory](docs/assets/phase3-ui-conversations.png)
 
 ![A Muse-generated planning form](docs/assets/phase4-ui-generative-ui.png)
+
+![A pending tool call awaiting approval](docs/assets/phase5-ui-tools.png)
 
 ![Memory detail with correction history](docs/assets/phase2-ui-memory-detail.png)
 
@@ -173,6 +177,9 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 | `GET` | `/api/sessions/:id/ui` | Generated interfaces and their submissions |
 | `POST` | `/api/sessions/:id/ui` | Generate a validated interface for an intent |
 | `POST` | `/api/sessions/:id/ui/:surfaceId/events` | Submit an interface; the agent continues |
+| `GET` | `/api/tools` | The tool registry with JSON input schemas |
+| `GET` | `/api/sessions/:id/tools` | Tool-call audit for a conversation |
+| `POST` | `/api/sessions/:id/tools/:callId/decision` | Approve or deny a pending write |
 
 Every route returns `{ ok: true, data }` or `{ ok: false, error: { code, message } }`.
 
@@ -270,10 +277,8 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 ## Roadmap
 
-1. **Phase 5 — Tools.** Registry, permission model, workspace tools, audit log, and the same
-   approval path for chat and interface events.
-2. **Phase 6 — Evaluation and submission.** Baseline comparison, demo video, visibility check
-   for judging, feature freeze.
+1. **Phase 6 — Evaluation and submission.** Baseline comparison through the existing harness,
+   demo video, repository visibility for judging, feature freeze.
 
 ---
 

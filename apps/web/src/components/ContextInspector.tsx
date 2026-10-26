@@ -55,11 +55,10 @@ export function ContextInspector({
         </InspectorSection>
 
         <InspectorSection label="Tool activity">
-          <p className="text-[11px] text-muted">
-            No tools registered. Approval policy:{' '}
-            <span className="font-mono text-ink-dim">
-              {meta?.safety.tool_approval_policy ?? '—'}
-            </span>
+          <p className="text-[11px] leading-relaxed text-muted">
+            Tool calls and approvals appear in Conversations under{' '}
+            <span className="text-ink-dim">Tool activity</span>. Reads run automatically; writes
+            wait for approval.
           </p>
         </InspectorSection>
 

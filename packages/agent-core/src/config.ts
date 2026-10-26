@@ -33,6 +33,20 @@ export const DEFAULT_CONTEXT_BUDGETS: ContextBudgets = {
 
 export type AutoCaptureMode = 'off' | 'suggest';
 
+/**
+ * Tool authority settings.
+ *
+ * `approvalPolicy` is the only thing that decides whether a write needs a human:
+ * the model cannot mark its own call as safe. `never` exists for tests and must
+ * not be used in a demo.
+ */
+export interface ToolSettings {
+  enabled: boolean;
+  approvalPolicy: 'always' | 'never';
+  maxCallsPerTurn: number;
+  decisionMode: 'auto' | 'always' | 'off';
+}
+
 export interface AgentConfig {
   budgets: ContextBudgets;
   /** Retrieval budget passed to the memory engine. */
@@ -43,6 +57,7 @@ export interface AgentConfig {
   includeCorrectionHistory: boolean;
   maxOutputTokens: number;
   systemInstructions: string;
+  tools: ToolSettings;
 }
 
 /**
@@ -72,4 +87,10 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   includeCorrectionHistory: true,
   maxOutputTokens: 1_200,
   systemInstructions: DEFAULT_SYSTEM_INSTRUCTIONS,
+  tools: {
+    enabled: true,
+    approvalPolicy: 'always',
+    maxCallsPerTurn: 3,
+    decisionMode: 'auto',
+  },
 };

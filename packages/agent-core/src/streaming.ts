@@ -4,6 +4,7 @@ import type {
   RetrievalMetadata,
   RetrievedMemory,
   TokenUsage,
+  ToolCall,
   TurnEvent,
   TurnResult,
 } from '@mml/shared';
@@ -19,6 +20,8 @@ import type { AgentError } from './errors.js';
 export interface StreamingEventHandler {
   retrieval(metadata: RetrievalMetadata, results: RetrievedMemory[]): void | Promise<void>;
   memoryCaptured(captures: CapturedMemory[]): void | Promise<void>;
+  /** Optional so simple handlers and tests do not have to implement it. */
+  toolCall?(calls: ToolCall[]): void | Promise<void>;
   delta(text: string): void | Promise<void>;
   usage(usage: TokenUsage): void | Promise<void>;
   completed(turn: TurnResult): void | Promise<void>;
@@ -39,6 +42,10 @@ export class CollectingHandler implements StreamingEventHandler {
 
   delta(text: string): void {
     this.events.push({ type: 'delta', text });
+  }
+
+  toolCall(calls: ToolCall[]): void {
+    this.events.push({ type: 'tool_call', calls });
   }
 
   usage(usage: TokenUsage): void {
@@ -106,6 +113,10 @@ export class SseStreamHandler implements StreamingEventHandler {
 
   delta(text: string): void {
     this.send('delta', { text });
+  }
+
+  toolCall(calls: ToolCall[]): void {
+    this.send('tool_call', { calls });
   }
 
   usage(usage: TokenUsage): void {

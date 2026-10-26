@@ -10,8 +10,11 @@ import {
   SendMessageInputSchema,
   type Session,
   type TokenUsage,
+  type ToolCall,
   type TurnResult,
 } from '@mml/shared';
+import type { ToolCallStore, ToolRegistry } from '@mml/tool-runtime';
+import { z } from 'zod';
 import type { AgentConfig } from './config.js';
 import {
   type AssembledContext,
@@ -42,12 +45,50 @@ export interface TurnProcessorDependencies {
   engine: MemoryEngine;
   provider: ModelProvider;
   config: AgentConfig;
+  tools?: { registry: ToolRegistry; store: ToolCallStore };
   now?: () => Date;
 }
 
 export interface TurnOptions {
   signal?: AbortSignal;
+  /** `force` decides tools even for a message the heuristic would skip. */
+  tools?: 'auto' | 'force' | 'off';
 }
+
+interface RequestedCall {
+  tool: string;
+  arguments: Record<string, unknown>;
+}
+
+/**
+ * Strict decision schema. `arguments_json` is a string because structured output
+ * cannot express per-tool argument shapes; it is parsed and validated against
+ * the chosen tool's schema immediately afterwards.
+ */
+const TOOL_DECISION_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    calls: {
+      type: 'array',
+      maxItems: 3,
+      items: {
+        type: 'object',
+        properties: {
+          tool: { type: 'string' },
+          arguments_json: { type: 'string' },
+        },
+        required: ['tool', 'arguments_json'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['calls'],
+  additionalProperties: false,
+} as const;
+
+const ToolDecisionSchema = z.object({
+  calls: z.array(z.object({ tool: z.string(), arguments_json: z.string() })).max(5),
+});
 
 const EMPTY_USAGE: TokenUsage = {
   input_tokens: 0,
@@ -61,6 +102,7 @@ export class TurnProcessor {
   private readonly engine: MemoryEngine;
   private readonly provider: ModelProvider;
   private readonly config: AgentConfig;
+  private readonly tools: { registry: ToolRegistry; store: ToolCallStore } | undefined;
   private readonly clock: () => Date;
 
   constructor(dependencies: TurnProcessorDependencies) {
@@ -68,6 +110,7 @@ export class TurnProcessor {
     this.engine = dependencies.engine;
     this.provider = dependencies.provider;
     this.config = dependencies.config;
+    this.tools = dependencies.tools;
     this.clock = dependencies.now ?? (() => new Date());
   }
 
@@ -116,6 +159,16 @@ export class TurnProcessor {
     );
     await handler.retrieval(retrieval.metadata, retrieval.results);
 
+    // 3b. Tool planning and execution. Reads run immediately; writes become
+    // pending approvals. Either way the model sees only validated results.
+    const toolOutcome = await this.runTools({
+      session,
+      content,
+      handler,
+      options,
+      toolHint: options.tools ?? 'auto',
+    });
+
     // 4. Assemble a bounded prompt from history, memory, constraints, and the
     //    request. The current message is the request, so it is excluded from
     //    the history section.
@@ -132,6 +185,7 @@ export class TurnProcessor {
         history,
         retrieval,
         correctionHistory,
+        toolResults: toolOutcome.promptSection,
       },
       this.config.budgets,
     );
@@ -185,6 +239,10 @@ export class TurnProcessor {
           context: assembled.report,
         });
         this.store.recordTurnMemories(partial.id, this.turnMemoryRows(retrieval));
+        this.tools?.store.attachMessage(
+          toolOutcome.calls.map((call) => call.id),
+          partial.id,
+        );
       }
 
       throw agentError;
@@ -212,6 +270,10 @@ export class TurnProcessor {
       context: assembled.report,
     });
     this.store.recordTurnMemories(assistantMessage.id, this.turnMemoryRows(retrieval));
+    this.tools?.store.attachMessage(
+      toolOutcome.calls.map((call) => call.id),
+      assistantMessage.id,
+    );
 
     const assistantWithEvidence = {
       ...assistantMessage,
@@ -400,6 +462,208 @@ export class TurnProcessor {
       .slice(0, this.config.budgets.max_correction_history);
   }
 
+  // -------------------------------------------------------------------------
+  // Tools
+  // -------------------------------------------------------------------------
+
+  private toolContext(session: Session) {
+    return {
+      db: this.engine.connection,
+      memory: this.engine,
+      sessionId: session.id,
+      projectId: session.project_id,
+      now: this.clock,
+    };
+  }
+
+  /** Conservative heuristic so an unrelated chat message does not spend a call. */
+  private shouldConsiderTools(content: string): boolean {
+    return /\b(create|add|make|update|rename|save|store|remember|list|show|find|search|task|tasks|project|milestone|plan)\b/i.test(
+      content,
+    );
+  }
+
+  private async decideTools(content: string, session: Session): Promise<RequestedCall[]> {
+    if (!this.tools) return [];
+    const catalog = this.tools.registry.list();
+    if (catalog.length === 0) return [];
+
+    const recent = this.store
+      .recentMessages(session.id, 8)
+      .map(
+        (message) =>
+          `${message.role === 'user' ? 'USER' : 'ASSISTANT'}: ${message.content.slice(0, 400)}`,
+      )
+      .join('\n');
+
+    const prompt = [
+      'You are the tool-planning step for a project memory companion.',
+      'Available tools:',
+      JSON.stringify(catalog),
+      `Recent conversation:\n${recent}`,
+      `Current request: ${content}`,
+      'Return JSON: {"calls":[{"tool":"<id>","arguments_json":"<json object string>"}]}',
+      'Rules: 0-3 calls; only listed tools; arguments must match that tool input schema;',
+      'do not repeat a call; prefer reads before writes; never invent project ids.',
+    ].join('\n\n');
+
+    try {
+      const response = await this.provider.generate({
+        messages: [{ role: 'user', content: prompt }],
+        response_schema: TOOL_DECISION_JSON_SCHEMA as unknown as Record<string, unknown>,
+        max_output_tokens: 600,
+      });
+      const parsed = ToolDecisionSchema.safeParse(JSON.parse(response.text));
+      if (!parsed.success) return [];
+
+      const requests: RequestedCall[] = [];
+      for (const call of parsed.data.calls) {
+        try {
+          const args: unknown = JSON.parse(call.arguments_json);
+          requests.push({
+            tool: call.tool,
+            arguments:
+              args && typeof args === 'object' && !Array.isArray(args)
+                ? (args as Record<string, unknown>)
+                : {},
+          });
+        } catch {
+          // Invalid JSON becomes an invalid-arguments audit record, not a crash.
+          requests.push({ tool: call.tool, arguments: {} });
+        }
+      }
+      return requests.slice(0, this.config.tools.maxCallsPerTurn);
+    } catch {
+      // Tool planning is best-effort: a provider hiccup must not fail the turn.
+      return [];
+    }
+  }
+
+  private async runTools(args: {
+    session: Session;
+    content: string;
+    handler: StreamingEventHandler;
+    options: TurnOptions;
+    toolHint: 'auto' | 'force' | 'off';
+  }): Promise<{ calls: ToolCall[]; promptSection: string }> {
+    const settings = this.config.tools;
+    if (!this.tools || !settings.enabled) return { calls: [], promptSection: '' };
+    if (args.toolHint === 'off' || settings.decisionMode === 'off') {
+      return { calls: [], promptSection: '' };
+    }
+    if (
+      args.toolHint !== 'force' &&
+      settings.decisionMode === 'auto' &&
+      !this.shouldConsiderTools(args.content)
+    ) {
+      return { calls: [], promptSection: '' };
+    }
+
+    const requests = await this.decideTools(args.content, args.session);
+    if (requests.length === 0) return { calls: [], promptSection: '' };
+
+    const { registry, store } = this.tools;
+    const calls: ToolCall[] = [];
+    const lines: string[] = [];
+    const seen = new Set<string>();
+
+    for (const request of requests) {
+      const key = `${request.tool}:${JSON.stringify(request.arguments)}`;
+      if (seen.has(key)) {
+        lines.push(`Duplicate tool call ignored: ${request.tool}.`);
+        continue;
+      }
+      seen.add(key);
+
+      const tool = registry.get(request.tool);
+      if (!tool) {
+        calls.push(
+          store.create({
+            sessionId: args.session.id,
+            projectId: args.session.project_id,
+            toolId: request.tool,
+            arguments: request.arguments,
+            status: 'invalid',
+            requiresConfirmation: false,
+            error: 'Unknown tool.',
+          }),
+        );
+        lines.push(`Tool "${request.tool}" was rejected: unknown tool.`);
+        continue;
+      }
+
+      const parsedArgs = tool.input.safeParse(request.arguments);
+      if (!parsedArgs.success) {
+        calls.push(
+          store.create({
+            sessionId: args.session.id,
+            projectId: args.session.project_id,
+            toolId: tool.id,
+            arguments: request.arguments,
+            status: 'invalid',
+            requiresConfirmation: tool.requiresConfirmation,
+            error: 'Arguments did not match the tool schema.',
+          }),
+        );
+        lines.push(`Tool "${tool.id}" was rejected: invalid arguments.`);
+        continue;
+      }
+
+      const needsApproval = tool.requiresConfirmation && settings.approvalPolicy === 'always';
+      if (needsApproval) {
+        calls.push(
+          store.create({
+            sessionId: args.session.id,
+            projectId: args.session.project_id,
+            toolId: tool.id,
+            arguments: parsedArgs.data,
+            status: 'pending',
+            requiresConfirmation: true,
+          }),
+        );
+        lines.push(
+          `Tool "${tool.id}" is awaiting user approval and has NOT run. Arguments: ${JSON.stringify(parsedArgs.data)}`,
+        );
+        continue;
+      }
+
+      const invocation = await registry.invoke(
+        tool.id,
+        parsedArgs.data,
+        this.toolContext(args.session),
+      );
+      const status =
+        invocation.status === 'executed'
+          ? 'executed'
+          : invocation.status === 'invalid'
+            ? 'invalid'
+            : 'failed';
+
+      calls.push(
+        store.create({
+          sessionId: args.session.id,
+          projectId: args.session.project_id,
+          toolId: tool.id,
+          arguments: parsedArgs.data,
+          status,
+          requiresConfirmation: tool.requiresConfirmation,
+          ...(invocation.status === 'executed' ? { result: invocation.output } : {}),
+          ...(invocation.error ? { error: invocation.error } : {}),
+          durationMs: invocation.durationMs,
+        }),
+      );
+
+      lines.push(
+        invocation.status === 'executed'
+          ? `Tool "${tool.id}" executed successfully. Result: ${safeStringify(invocation.output)}`
+          : `Tool "${tool.id}" failed: ${invocation.error ?? 'unknown error'}`,
+      );
+    }
+
+    if (calls.length > 0) await args.handler.toolCall?.(calls);
+    return { calls, promptSection: lines.join('\n') };
+  }
+
   private turnMemoryRows(retrieval: RetrievalResult) {
     return retrieval.results.map((result) => ({
       memoryId: result.memory.id,
@@ -444,3 +708,14 @@ export function toAgentError(error: unknown, sessionId?: string): AgentError {
 }
 
 export type { AssembledContext };
+
+/** Compact, bounded rendering of a tool result for the model prompt. */
+function safeStringify(value: unknown): string {
+  try {
+    const text = JSON.stringify(value);
+    if (text === undefined) return 'undefined';
+    return text.length > 2_000 ? `${text.slice(0, 2_000)}…` : text;
+  } catch {
+    return 'unserialisable result';
+  }
+}

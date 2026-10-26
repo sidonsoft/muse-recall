@@ -1,7 +1,7 @@
 # Project status
 
 **Last updated:** 2026-10-27
-**Milestone:** Phase 4 — Dynamic interactive interfaces
+**Milestone:** Phase 5 — Authorized agent tools
 **State:** Complete and verified
 
 ## Implemented
@@ -102,6 +102,26 @@ features, session length, art direction, playtest goal, mobile support) in 6.99 
 submission the agent produced a milestone plan, and the submission was stored as project
 memory.
 
+## Phase 5 — agent tools (added)
+
+- **`packages/tool-runtime`** — typed registry with Zod input/output validation, a declared
+  side-effect class, and a confirmation flag per tool. `ToolCallStore` is an append-only
+  audit of every request, including invalid and denied calls.
+- **Six tools** — `memory.search`, `memory.create`, `project.get`, `project.update`,
+  `task.create`, `task.list`. No shell, filesystem, or network tools.
+- **Planning** — a separate structured-output call returns up to three tool calls; arguments
+  are validated against the chosen tool. Reads execute inside the turn; writes become
+  `pending`.
+- **Approval** — writes are approved or denied through
+  `POST /api/sessions/:id/tools/:callId/decision`. Approval executes and continues the
+  conversation; denial records the decision and changes nothing.
+- **Scope** — the project id comes from the session, never from model arguments; a call
+  approved through another session returns 404.
+- **Interfaces** — submitting a generated form now forces a tool-enabled turn, so Muse can
+  turn the plan into project tasks (still with approval for each write).
+- **UI** — a Tool activity panel shows every call with status, arguments, result, and
+  Approve/Deny controls; the memory inspector is unchanged.
+
 ## Verified
 
 | Command | Result |
@@ -109,13 +129,13 @@ memory.
 | `pnpm install --frozen-lockfile` | Up to date |
 | `pnpm run lint` | 0 errors (99 files) |
 | `pnpm run typecheck` | 6/6 projects clean |
-| `pnpm test` | **238 passed**, 3 skipped (241) |
-| `MML_LIVE_MUSE=1 pnpm test` | **240 passed** (240) — includes 3 real Muse calls |
+| `pnpm test` | **263 passed**, 3 skipped (266) |
+| `MML_LIVE_MUSE=1 pnpm test` | **265 passed** (265) — includes 3 real Muse calls |
 | `pnpm run build` | web + server bundles built |
 | `pnpm demo:sessions` | Demo A and B succeeded with real Muse |
 | `pnpm bench:context` | 3 trials per configuration, 100% correctness |
 | `pnpm eval:retrieval` | 20/22 retrieval, 7/7 sampled answers correct and grounded |
-| `pnpm exec tsx scripts/verify-ui.ts` | **28 checks** incl. generated form + submission, zero console/HTTP errors |
+| focused browser check (tools) | pending call shown, approved in the UI, execution confirmed |
 
 ## Demonstration results (real Muse, `muse-wonder-1.0`)
 
@@ -153,8 +173,8 @@ the whole task used roughly half the tokens. Both configurations pay the Muse CL
 
 ## Failed / not attempted
 
-- No tool execution; `agent_tools: not_implemented`. Generated interfaces can only submit
-  data and continue the conversation.
+- Tool planning is a heuristic in `auto` mode and costs an extra model call per acting turn.
+- No shell, filesystem, or network tools (deliberate).
 - Generation is deliberately limited to a planning **form** rather than arbitrary layouts.
 - Retrieval missed 2/22 evaluation questions — genuine vocabulary gaps, documented in
   [KNOWN_ISSUES.md](KNOWN_ISSUES.md) and [evaluation.md](evaluation.md).
@@ -165,4 +185,4 @@ None requiring input.
 
 ## Next milestone
 
-**Phase 5 — authorized agent tools.** Plan in [NEXT_STEPS.md](NEXT_STEPS.md).
+**Phase 6 — evaluation, demonstration, and submission.** Plan in [NEXT_STEPS.md](NEXT_STEPS.md).

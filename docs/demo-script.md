@@ -109,3 +109,29 @@ A new conversation in the same project recalls the submitted plan from memory.
 
 **Point to make:** the model chose the *fields*, not the layout or code; the server validated
 the spec before rendering and validated the submission against that same spec before acting.
+
+
+---
+
+## Demo E — authorized tools (Phase 5)
+
+1. New conversation in `montys-memory-meadow`.
+2. Ask: *"Create a project task to fix the menu layout, and another to add sound effects."*
+3. Muse plans two `task.create` calls. Both appear under **Tool activity** as `pending` with
+   their arguments; the answer says they have not run yet.
+4. Approve each. The task is created, the audit entry flips to `executed`, and Muse continues
+   with the result.
+5. Ask: *"List the project tasks and tell me what is planned."* The read tool runs without
+   approval and Muse answers with the tasks.
+6. Start a **new conversation** and ask: *"What tasks are planned for this project?"* — Muse
+   calls `task.list` and answers, proving the state lives in the project, not the transcript.
+
+**Recorded result (real Muse, `muse-wonder-1.0`):**
+
+- planning turn: 2 × `task.create` pending — "Fix the menu layout", "Add sound effects";
+- approvals: both `executed` (follow-up turns used 16,953 and 17,138 input tokens);
+- list turn answered with both tasks and their ids;
+- new session: `task.list` executed and answered "2 tasks are planned (both todo)".
+
+**Point to make:** the model planned the work, but a human authorized every write; the audit
+log contains the requests, decisions, results, and timings.

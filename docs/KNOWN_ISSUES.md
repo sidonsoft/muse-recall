@@ -237,3 +237,36 @@ generator for this phase.
 **Detail:** Submitting a form stores a memory and runs an agent turn. In the recorded run the
 continuation used 34,362 input tokens because the summary and retrieved memory were included.
 **Mitigation:** Submission is an explicit user action and the resulting turn is visible.
+
+
+---
+
+## Phase 5 — agent tools
+
+### KI-27 — Each tool-enabled turn costs an extra model call
+
+**Severity:** Medium (cost)
+**Detail:** Tool planning is a separate structured call. In the recorded run approving a task
+cost ~16.9k input tokens for the follow-up turn, and the planning call costs a similar
+baseline. Tools roughly double the token cost of an acting turn.
+**Mitigation:** `TOOL_DECISION_MODE=auto` only plans when the message looks actionable;
+`off` disables tools entirely.
+
+### KI-28 — Tool planning is a heuristic trigger
+
+**Severity:** Low
+**Detail:** In `auto` mode, planning runs only for messages matching an action-word heuristic.
+A message like "the menu needs work" may not trigger a tool call even when one would help.
+`force` (used after an interface submission) and `always` cover the demo paths.
+
+### KI-29 — Approval requires a follow-up turn
+
+**Severity:** Low (UX/cost)
+**Detail:** After approving a write, the agent continues in a new turn. The approval itself
+is not executed inside the original stream.
+
+### KI-30 — No shell, filesystem, or network tools
+
+**Severity:** Informational (by design)
+**Detail:** Phase 5 deliberately ships six project/memory tools only. `WORKSPACE_ROOT` is
+reserved for a later phase; there is no arbitrary command path.

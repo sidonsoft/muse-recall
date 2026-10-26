@@ -3,6 +3,7 @@ import type {
   RetrievalMetadata,
   RetrievedMemory,
   TokenUsage,
+  ToolCall,
   TurnResult,
 } from '@mml/shared';
 
@@ -18,6 +19,7 @@ import type {
 export interface TurnStreamHandlers {
   onRetrieval?: (metadata: RetrievalMetadata, results: RetrievedMemory[]) => void;
   onMemoryCaptured?: (captures: CapturedMemory[]) => void;
+  onToolCall?: (calls: ToolCall[]) => void;
   onDelta?: (text: string) => void;
   onUsage?: (usage: TokenUsage) => void;
   onCompleted?: (turn: TurnResult) => void;
@@ -114,6 +116,11 @@ function dispatch(frame: Frame, handlers: TurnStreamHandlers): void {
     case 'memory_captured': {
       const data = frame.data as { captures: CapturedMemory[] };
       handlers.onMemoryCaptured?.(data.captures);
+      break;
+    }
+    case 'tool_call': {
+      const data = frame.data as { calls: ToolCall[] };
+      handlers.onToolCall?.(data.calls);
       break;
     }
     case 'delta': {

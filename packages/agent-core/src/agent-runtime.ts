@@ -10,6 +10,7 @@ import {
   type TurnResult,
   UpdateSessionInputSchema,
 } from '@mml/shared';
+import type { ToolCallStore, ToolRegistry } from '@mml/tool-runtime';
 import { type AgentConfig, DEFAULT_AGENT_CONFIG, DEFAULT_CONTEXT_BUDGETS } from './config.js';
 import { AgentError } from './errors.js';
 import { SessionStore } from './session-store.js';
@@ -32,6 +33,7 @@ export interface AgentRuntimeDependencies {
   engine: MemoryEngine;
   provider: ModelProvider;
   config?: Partial<AgentConfig>;
+  tools?: { registry: ToolRegistry; store: ToolCallStore };
   now?: () => Date;
 }
 
@@ -52,6 +54,10 @@ export class AgentRuntime {
         ...DEFAULT_CONTEXT_BUDGETS,
         ...(dependencies.config?.budgets ?? {}),
       },
+      tools: {
+        ...DEFAULT_AGENT_CONFIG.tools,
+        ...(dependencies.config?.tools ?? {}),
+      },
     };
 
     this.store = new SessionStore(dependencies.engine.connection, {
@@ -64,6 +70,7 @@ export class AgentRuntime {
       engine: this.engine,
       provider: dependencies.provider,
       config: this.config,
+      tools: dependencies.tools,
       now: dependencies.now,
     });
   }
@@ -118,7 +125,7 @@ export class AgentRuntime {
     sessionId: string,
     input: SendMessageInput,
     handler: StreamingEventHandler,
-    options: { signal?: AbortSignal } = {},
+    options: { signal?: AbortSignal; tools?: 'auto' | 'force' | 'off' } = {},
   ): Promise<TurnResult> {
     if (this.activeTurns.has(sessionId)) {
       throw new AgentError(
@@ -132,11 +139,14 @@ export class AgentRuntime {
     this.activeTurns.set(sessionId, controller);
 
     const forwardAbort = () => controller.abort();
+    // An already-aborted signal will not fire another event, so check first.
+    if (options.signal?.aborted) controller.abort();
     options.signal?.addEventListener('abort', forwardAbort);
 
     try {
       return await this.processor.process(sessionId, input, handler, {
         signal: controller.signal,
+        ...(options.tools ? { tools: options.tools } : {}),
       });
     } finally {
       options.signal?.removeEventListener('abort', forwardAbort);

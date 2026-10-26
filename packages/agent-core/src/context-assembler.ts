@@ -34,6 +34,8 @@ export interface AssembleInput {
   history: Message[];
   retrieval: RetrievalResult;
   correctionHistory?: CorrectionContext[];
+  /** Results of tool calls executed for this turn, already formatted. */
+  toolResults?: string;
 }
 
 export interface AssembledContext {
@@ -73,6 +75,10 @@ export function assembleContext(input: AssembleInput, budgets: ContextBudgets): 
   const constraintsSection = renderConstraints(constraints);
   const memoriesSection = renderMemories(otherMemories);
 
+  const toolSection = input.toolResults
+    ? ['<tool_results>', input.toolResults.trim(), '</tool_results>'].join('\n')
+    : '';
+
   let correctionsSection = renderCorrections(input.correctionHistory ?? [], budgets);
   if (correctionsSection.length > 0 && input.correctionHistory?.length) {
     warnings.push(
@@ -98,6 +104,7 @@ export function assembleContext(input: AssembleInput, budgets: ContextBudgets): 
           request: requestSection.length,
           constraints: constraintsSection.length,
           memories: memoriesSection.length,
+          tools: toolSection.length,
         },
       },
     );
@@ -137,6 +144,7 @@ export function assembleContext(input: AssembleInput, budgets: ContextBudgets): 
     systemSection,
     constraintsSection,
     memoriesSection,
+    toolSection,
     correctionsSection,
     historySection,
     requestSection,
@@ -158,6 +166,7 @@ export function assembleContext(input: AssembleInput, budgets: ContextBudgets): 
       corrections: correctionsSection.length,
       history: historySection.length,
       request: requestSection.length,
+      tools: toolSection.length,
     },
     memory_ids: input.retrieval.results.map((entry) => entry.memory.id),
     estimated_tokens: Math.ceil(prompt.length / 4),

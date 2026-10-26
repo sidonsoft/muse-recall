@@ -344,3 +344,53 @@ fields, declared options, numeric bounds, and length limits, records the event, 
 stores the submission as project memory, and then runs the agent with a structured summary.
 **Consequence:** An interface cannot widen its own authority. The agent continues with
 exactly the data the form declared.
+
+
+---
+
+### D031 — Tool choice is a separate, structured decision step
+
+**Context:** The provider adapter is a stateless text protocol with no native tool calling.
+Parsing tool calls out of streamed prose would be brittle and could mistake a quoted example
+for a real invocation.
+**Decision:** When tools are enabled, a bounded structured-output call returns
+`{calls:[{tool, arguments_json}]}`. Arguments are parsed and validated against the chosen
+tool's Zod schema. Only then does execution or approval happen; the answer is still streamed
+normally afterwards.
+**Consequence:** Tool calls are unambiguous and validated. Cost: one extra model call on
+tool-enabled turns (~16.9k input tokens in the recorded run).
+
+---
+
+### D032 — Writes use a two-phase approval, not a paused stream
+
+**Context:** Pausing an SSE stream mid-turn to wait for a click complicates cancellation,
+timeouts, and reconnect logic.
+**Decision:** A write call is persisted as `pending` and the turn completes with the model
+told it has not run. The user approves or denies through
+`POST /api/sessions/:id/tools/:callId/decision`; approval executes the tool and starts a
+follow-up turn with the result. Denial records the decision and changes nothing.
+**Consequence:** Approval survives a page reload and is trivially testable. Cost: an approval
+costs a follow-up turn.
+
+---
+
+### D033 — Project scope comes from the session, never the model
+
+**Context:** A model-supplied `project_id` would be a cross-project access path.
+**Decision:** `ToolContext.projectId` is taken from the session. Tools either use it or fail
+with "requires a project-scoped conversation"; no tool accepts a project id argument.
+**Consequence:** Cross-project access is structurally impossible, not merely checked. A call
+approved through a different session returns 404.
+
+---
+
+### D034 — The audit log records failures and refusals, not just successes
+
+**Context:** An audit that only lists successful calls cannot answer whether the agent tried
+something it should not have.
+**Decision:** Every requested call is written before it runs with status
+`pending|executed|failed|denied|invalid`, including unknown tools and malformed arguments.
+Results are stored as JSON; no secret material is logged.
+**Consequence:** The demo can be verified from the database, and a prompt-injection attempt
+appears as a denied or pending call rather than disappearing.

@@ -293,6 +293,52 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 6,
+    name: 'project_tasks_and_tool_audit',
+    up: (db) => {
+      db.exec(`
+        -- Project tasks. Created by tools only; there is no arbitrary SQL path.
+        CREATE TABLE project_tasks (
+          id          TEXT PRIMARY KEY,
+          project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          title       TEXT NOT NULL,
+          description TEXT,
+          status      TEXT NOT NULL DEFAULT 'todo'
+                        CHECK (status IN ('todo', 'in_progress', 'done')),
+          created_by  TEXT NOT NULL DEFAULT 'agent',
+          created_at  TEXT NOT NULL,
+          updated_at  TEXT NOT NULL
+        );
+
+        CREATE INDEX idx_project_tasks_project ON project_tasks (project_id, created_at DESC);
+
+        -- Append-only audit of every requested tool call, including invalid and
+        -- denied ones. Arguments and results are stored as JSON so a demo can be
+        -- verified from the database.
+        CREATE TABLE tool_calls (
+          id                    TEXT PRIMARY KEY,
+          session_id            TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          message_id            TEXT REFERENCES messages(id) ON DELETE SET NULL,
+          project_id            TEXT,
+          tool_id               TEXT NOT NULL,
+          arguments_json        TEXT NOT NULL,
+          status                TEXT NOT NULL
+                                  CHECK (status IN ('pending', 'executed', 'failed', 'denied', 'invalid')),
+          requires_confirmation INTEGER NOT NULL DEFAULT 0,
+          result_json           TEXT,
+          error                 TEXT,
+          duration_ms           INTEGER,
+          created_at            TEXT NOT NULL,
+          decided_at            TEXT,
+          executed_at           TEXT
+        );
+
+        CREATE INDEX idx_tool_calls_session ON tool_calls (session_id, created_at ASC);
+        CREATE INDEX idx_tool_calls_status ON tool_calls (status);
+      `);
+    },
+  },
 ];
 
 /** Highest migration version defined in code. */

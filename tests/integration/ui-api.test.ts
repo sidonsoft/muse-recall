@@ -68,6 +68,12 @@ function config(): AppConfig {
       },
       autoCapture: 'suggest',
       includeCorrectionHistory: true,
+      tools: {
+        enabled: false,
+        approvalPolicy: 'always',
+        maxCallsPerTurn: 3,
+        decisionMode: 'off',
+      },
       maxOutputTokens: 1_200,
     },
     serviceVersion: SERVICE_VERSION,
@@ -294,7 +300,7 @@ describe('meta', () => {
     const { app } = await harness();
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     const { data } = response.json();
-    expect(data.phase).toBe(4);
+    expect(data.phase).toBe(5);
     expect(data.modules.ui_protocol).toBe('complete');
   });
 });

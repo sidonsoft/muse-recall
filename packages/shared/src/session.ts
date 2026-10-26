@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { MemorySchema, MemoryTypeSchema } from './memory.js';
 import { TokenUsageSchema } from './provider.js';
 import { RetrievalMetadataSchema, RetrievedMemorySchema } from './retrieval.js';
+import { ToolCallSchema } from './tool.js';
 
 /**
  * Session, message, and turn contracts.
@@ -62,6 +63,8 @@ export const ContextReportSchema = z.object({
     corrections: z.number().int().min(0),
     history: z.number().int().min(0),
     request: z.number().int().min(0),
+    /** Characters of tool results included in the prompt. */
+    tools: z.number().int().min(0).default(0),
   }),
   memory_ids: z.array(z.uuid()),
   /** ~4 chars/token. Always labelled as an estimate where displayed. */
@@ -198,6 +201,7 @@ export const TurnEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('memory_captured'), captures: z.array(CapturedMemorySchema) }),
   z.object({ type: z.literal('delta'), text: z.string() }),
+  z.object({ type: z.literal('tool_call'), calls: z.array(ToolCallSchema) }),
   z.object({ type: z.literal('usage'), usage: TokenUsageSchema }),
   z.object({ type: z.literal('completed'), turn: TurnResultSchema }),
   z.object({

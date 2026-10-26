@@ -7,6 +7,7 @@ import type {
   ServiceMeta,
   Session,
   SessionDetail,
+  ToolCall,
 } from '@mml/shared';
 import type { UiSurfaceRecord } from '@mml/ui-protocol';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -55,6 +56,8 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
   const [showUiPanel, setShowUiPanel] = useState(false);
   const [uiBusy, setUiBusy] = useState(false);
   const [uiError, setUiError] = useState<{ code: string; message: string } | null>(null);
+  const [tools, setTools] = useState<ToolCall[]>([]);
+  const [toolBusy, setToolBusy] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -81,6 +84,15 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
     }
   }, []);
 
+  const refreshTools = useCallback(async (sessionId: string) => {
+    try {
+      const list = await api.sessionTools(sessionId);
+      setTools(list.items);
+    } catch (cause) {
+      setUiError(toError(cause));
+    }
+  }, []);
+
   const refreshDetail = useCallback(async (sessionId: string) => {
     try {
       setDetail(await api.session(sessionId));
@@ -97,11 +109,13 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
     if (!activeId) {
       setDetail(null);
       setSurfaces([]);
+      setTools([]);
       return;
     }
     void refreshDetail(activeId);
     void refreshSurfaces(activeId);
-  }, [activeId, refreshDetail, refreshSurfaces]);
+    void refreshTools(activeId);
+  }, [activeId, refreshDetail, refreshSurfaces, refreshTools]);
 
   /** Generate an interface when the user asks to plan or configure something. */
   async function maybeGenerateInterface(intent: string): Promise<void> {
@@ -137,6 +151,27 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
       setUiError(toError(cause));
     } finally {
       setUiBusy(false);
+    }
+  }
+
+  async function handleToolDecision(callId: string, decision: 'approve' | 'deny'): Promise<void> {
+    if (!activeId) return;
+    setToolBusy(true);
+    setUiError(null);
+    try {
+      await api.decideTool(activeId, callId, decision);
+      await refreshTools(activeId);
+      await refreshDetail(activeId);
+      await refreshSessions();
+      setNotice(
+        decision === 'approve'
+          ? 'Tool approved and executed. The agent continued with the result.'
+          : 'Tool call denied. Nothing was changed.',
+      );
+    } catch (cause) {
+      setUiError(toError(cause));
+    } finally {
+      setToolBusy(false);
     }
   }
 
@@ -210,6 +245,12 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
         {
           onRetrieval: (metadata, results) => setStreamRetrieval({ metadata, results }),
           onMemoryCaptured: (captures) => setStreamCaptures(captures),
+          onToolCall: (calls) =>
+            setTools((current) => {
+              const merged = new Map(current.map((call) => [call.id, call]));
+              for (const call of calls) merged.set(call.id, call);
+              return [...merged.values()];
+            }),
           onDelta: (text) => setStreamText((current) => current + text),
           onCompleted: (turn) => {
             setCandidates(turn.candidates);
@@ -220,6 +261,7 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
             }
             void refreshDetail(activeId);
             void refreshSessions();
+            void refreshTools(activeId);
             void maybeGenerateInterface(content);
           },
           onError: (streamError) => setError(streamError),
@@ -543,6 +585,73 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
 
           <div ref={bottomRef} />
         </div>
+
+        {tools.length > 0 ? (
+          <div className="border-t border-line px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+              Tool activity
+            </p>
+            <ul className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+              {tools.slice(-6).map((call) => (
+                <li
+                  key={call.id}
+                  className="rounded-lg border border-line bg-surface-2/40 px-2 py-1.5"
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusPill
+                      tone={
+                        call.status === 'executed'
+                          ? 'ok'
+                          : call.status === 'pending'
+                            ? 'warn'
+                            : call.status === 'denied'
+                              ? 'idle'
+                              : call.status === 'invalid'
+                                ? 'err'
+                                : 'err'
+                      }
+                    >
+                      {call.status}
+                    </StatusPill>
+                    <span className="font-mono text-[10px] text-ink-dim">{call.tool}</span>
+                    {call.requires_confirmation ? (
+                      <span className="text-[9px] text-muted">· approval required</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-0.5 truncate font-mono text-[9px] text-muted">
+                    {JSON.stringify(call.arguments)}
+                  </p>
+                  {call.error ? <p className="mt-0.5 text-[10px] text-err">{call.error}</p> : null}
+                  {call.result ? (
+                    <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-ink-dim">
+                      {JSON.stringify(call.result)}
+                    </p>
+                  ) : null}
+                  {call.status === 'pending' ? (
+                    <div className="mt-1 flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => void handleToolDecision(call.id, 'approve')}
+                        disabled={toolBusy}
+                        className="rounded border border-ok/40 bg-ok/10 px-2 py-0.5 text-[10px] text-ok disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleToolDecision(call.id, 'deny')}
+                        disabled={toolBusy}
+                        className="rounded border border-line px-2 py-0.5 text-[10px] text-muted disabled:opacity-50"
+                      >
+                        Deny
+                      </button>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="border-t border-line px-3 py-2.5">
           {showUiPanel ? (

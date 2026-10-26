@@ -60,6 +60,12 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       },
       autoCapture: 'suggest',
       includeCorrectionHistory: true,
+      tools: {
+        enabled: false,
+        approvalPolicy: 'always',
+        maxCallsPerTurn: 3,
+        decisionMode: 'off',
+      },
       maxOutputTokens: 1_200,
     },
     serviceVersion: SERVICE_VERSION,

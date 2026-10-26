@@ -49,6 +49,12 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       },
       autoCapture: 'suggest',
       includeCorrectionHistory: true,
+      tools: {
+        enabled: false,
+        approvalPolicy: 'always',
+        maxCallsPerTurn: 3,
+        decisionMode: 'off',
+      },
       maxOutputTokens: 1_200,
     },
     serviceVersion: SERVICE_VERSION,
@@ -602,7 +608,7 @@ describe('meta', () => {
     const app = await createTestApp();
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     const { data } = response.json();
-    expect(data.phase).toBe(4);
+    expect(data.phase).toBe(5);
     expect(data.modules.memory_engine).toBe('complete');
     expect(data.memory.default_budget).toMatchObject({ max_memories: 8, max_characters: 4_000 });
     expect(data.memory.weights.relevance).toBe(0.4);

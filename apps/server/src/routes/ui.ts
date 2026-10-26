@@ -201,10 +201,16 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
       memory = created.memory;
     }
 
+    // A submitted plan is an explicit request to act: let the agent use
+    // project tools (writes still require a separate approval).
     const turn = await runtime.runTurn(
       id,
-      { content: normalised.summary, capture_memories: false },
+      {
+        content: `${normalised.summary}\n\nUse the available project tools to record follow-up work such as tasks.`,
+        capture_memories: false,
+      },
       new CollectingHandler(),
+      { tools: 'force' },
     );
 
     const updated = store.get(surfaceId);

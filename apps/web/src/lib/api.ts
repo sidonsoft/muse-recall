@@ -30,6 +30,12 @@ import {
   type SessionList,
   SessionListSchema,
   SessionSchema,
+  type ToolCallList,
+  ToolCallListSchema,
+  type ToolDecisionResult,
+  ToolDecisionResultSchema,
+  type ToolList,
+  ToolListSchema,
   type TurnResult,
   TurnResultSchema,
 } from '@mml/shared';
@@ -306,6 +312,23 @@ export const api = {
       `/api/sessions/${id}/ui/${surfaceId}/events`,
       { method: 'POST', body: JSON.stringify(input) },
       (data) => UiSubmissionResultSchema.parse(data),
+    ),
+
+  // --- Tools --------------------------------------------------------------
+
+  toolRegistry: () =>
+    request<ToolList>('/api/tools', { method: 'GET' }, (data) => ToolListSchema.parse(data)),
+
+  sessionTools: (id: string) =>
+    request<ToolCallList>(`/api/sessions/${id}/tools`, { method: 'GET' }, (data) =>
+      ToolCallListSchema.parse(data),
+    ),
+
+  decideTool: (id: string, callId: string, decision: 'approve' | 'deny') =>
+    request<ToolDecisionResult>(
+      `/api/sessions/${id}/tools/${callId}/decision`,
+      { method: 'POST', body: JSON.stringify({ decision }) },
+      (data) => ToolDecisionResultSchema.parse(data),
     ),
 
   // --- Retrieval ----------------------------------------------------------
