@@ -16,6 +16,8 @@ export default defineConfig({
       '@mml/shared': resolve(import.meta.dirname, 'packages/shared/src/index.ts'),
       '@mml/memory-engine': resolve(import.meta.dirname, 'packages/memory-engine/src/index.ts'),
       '@mml/muse-provider': resolve(import.meta.dirname, 'packages/muse-provider/src/index.ts'),
+      '@mml/agent-core': resolve(import.meta.dirname, 'packages/agent-core/src/index.ts'),
+      '@mml/ui-protocol': resolve(import.meta.dirname, 'packages/ui-protocol/src/index.ts'),
     },
   },
   test: {

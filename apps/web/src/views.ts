@@ -42,9 +42,9 @@ export const VIEWS: ViewDefinition[] = [
     id: 'projects',
     label: 'Projects',
     icon: 'projects',
-    phase: 4,
+    phase: 6,
     implemented: false,
-    description: 'Project workspaces, generated dashboards, and planning interfaces.',
+    description: 'Project workspaces and cross-project dashboards.',
   },
   {
     id: 'memories',

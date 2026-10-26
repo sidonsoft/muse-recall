@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@mml/shared": "workspace:*",
+    "@mml/ui-protocol": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zod": "^4.1.12"

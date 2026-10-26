@@ -1,7 +1,7 @@
 # Project status
 
 **Last updated:** 2026-10-27
-**Milestone:** Phase 3 — Agent runtime, persistent sessions, and memory-grounded conversations
+**Milestone:** Phase 4 — Dynamic interactive interfaces
 **State:** Complete and verified
 
 ## Implemented
@@ -80,6 +80,28 @@ provider call; the partial answer is persisted as `interrupted`, never `complete
 - `scripts/evaluate-retrieval.ts` — 22 realistic retrieval questions with optional real Muse
   answers and a memory-grounded check.
 
+## Phase 4 — generated interfaces
+
+- **`packages/ui-protocol`** — a closed declarative schema (heading, text, status, progress,
+  tasklist, table, card, form, button), limits (10 blocks, 10 fields, 30 rows), a component
+  allow-list, and a validator. No markup, script, or URL is part of the protocol.
+- **Generation** — `POST /api/sessions/:id/ui` asks Muse for a planning form via
+  `--output-schema`. The result is normalised, validated, and stored against an assistant
+  message. Malformed output is retried once, then rejected with `ui_generation_failed`.
+- **Rendering** — the web app renders the spec through a fixed registry, inline in the
+  transcript. Unknown blocks never reach it: validation rejects them first.
+- **Submission** — `POST /api/sessions/:id/ui/:surfaceId/events` validates values against
+  the stored form (required fields, declared options, numeric bounds, no unknown fields),
+  records the event, stores the submission as project memory when the form asks for it, and
+  runs a normal agent turn with a structured summary.
+- **Inspection** — `GET /api/sessions/:id/ui` returns surfaces with their events.
+
+**Real Muse result:** asked to "Plan the first playable milestone for our Phaser game",
+`muse-wonder-1.0` returned an 8-field form (milestone name, core mechanic, content scope,
+features, session length, art direction, playtest goal, mobile support) in 6.99 s. After
+submission the agent produced a milestone plan, and the submission was stored as project
+memory.
+
 ## Verified
 
 | Command | Result |
@@ -87,13 +109,13 @@ provider call; the partial answer is persisted as `interrupted`, never `complete
 | `pnpm install --frozen-lockfile` | Up to date |
 | `pnpm run lint` | 0 errors (99 files) |
 | `pnpm run typecheck` | 6/6 projects clean |
-| `pnpm test` | **210 passed**, 3 skipped (213) |
-| `MML_LIVE_MUSE=1 pnpm test` | **212 passed** (212) — includes 3 real Muse calls |
+| `pnpm test` | **238 passed**, 3 skipped (241) |
+| `MML_LIVE_MUSE=1 pnpm test` | **240 passed** (240) — includes 3 real Muse calls |
 | `pnpm run build` | web + server bundles built |
 | `pnpm demo:sessions` | Demo A and B succeeded with real Muse |
 | `pnpm bench:context` | 3 trials per configuration, 100% correctness |
 | `pnpm eval:retrieval` | 20/22 retrieval, 7/7 sampled answers correct and grounded |
-| `pnpm exec tsx scripts/verify-ui.ts` | 25 checks incl. full conversation flow, zero console/HTTP errors |
+| `pnpm exec tsx scripts/verify-ui.ts` | **28 checks** incl. generated form + submission, zero console/HTTP errors |
 
 ## Demonstration results (real Muse, `muse-wonder-1.0`)
 
@@ -131,8 +153,9 @@ the whole task used roughly half the tokens. Both configurations pay the Muse CL
 
 ## Failed / not attempted
 
-- No Phase 4 generative UI yet; `/api/meta` reports `ui_protocol: not_implemented`.
-- No tool execution; `agent_tools: not_implemented`.
+- No tool execution; `agent_tools: not_implemented`. Generated interfaces can only submit
+  data and continue the conversation.
+- Generation is deliberately limited to a planning **form** rather than arbitrary layouts.
 - Retrieval missed 2/22 evaluation questions — genuine vocabulary gaps, documented in
   [KNOWN_ISSUES.md](KNOWN_ISSUES.md) and [evaluation.md](evaluation.md).
 
@@ -142,4 +165,4 @@ None requiring input.
 
 ## Next milestone
 
-**Phase 4 — dynamic interactive HTML interfaces.** Plan in [NEXT_STEPS.md](NEXT_STEPS.md).
+**Phase 5 — authorized agent tools.** Plan in [NEXT_STEPS.md](NEXT_STEPS.md).

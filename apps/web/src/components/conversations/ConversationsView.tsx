@@ -8,11 +8,13 @@ import type {
   Session,
   SessionDetail,
 } from '@mml/shared';
+import type { UiSurfaceRecord } from '@mml/ui-protocol';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
 import { formatTimestamp } from '../../lib/format.ts';
 import { streamTurn } from '../../lib/turn-stream.ts';
 import { Icon } from '../Icon.tsx';
+import { SurfaceRenderer, type SurfaceValues } from '../ui/SurfaceRenderer.tsx';
 import { StatusPill } from '../ui.tsx';
 import { MessageBubble } from './MessageBubble.tsx';
 
@@ -48,6 +50,12 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
   const [creating, setCreating] = useState(false);
   const [newProject, setNewProject] = useState('');
 
+  const [surfaces, setSurfaces] = useState<UiSurfaceRecord[]>([]);
+  const [uiIntent, setUiIntent] = useState('');
+  const [showUiPanel, setShowUiPanel] = useState(false);
+  const [uiBusy, setUiBusy] = useState(false);
+  const [uiError, setUiError] = useState<{ code: string; message: string } | null>(null);
+
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -61,6 +69,15 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
       setError(toError(cause));
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const refreshSurfaces = useCallback(async (sessionId: string) => {
+    try {
+      const list = await api.sessionSurfaces(sessionId);
+      setSurfaces(list.items);
+    } catch (cause) {
+      setUiError(toError(cause));
     }
   }, []);
 
@@ -79,10 +96,74 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
   useEffect(() => {
     if (!activeId) {
       setDetail(null);
+      setSurfaces([]);
       return;
     }
     void refreshDetail(activeId);
-  }, [activeId, refreshDetail]);
+    void refreshSurfaces(activeId);
+  }, [activeId, refreshDetail, refreshSurfaces]);
+
+  /** Generate an interface when the user asks to plan or configure something. */
+  async function maybeGenerateInterface(intent: string): Promise<void> {
+    if (!activeId || surfaces.length > 0 || uiBusy) return;
+    if (!/(plan|milestone|interface|form|configure|set up|setup)/i.test(intent)) return;
+
+    setUiBusy(true);
+    setUiError(null);
+    try {
+      await api.generateSurface(activeId, intent);
+      await refreshSurfaces(activeId);
+      await refreshDetail(activeId);
+      setNotice('Muse generated an interface for this task. Fill it in to continue.');
+    } catch (cause) {
+      setUiError(toError(cause));
+    } finally {
+      setUiBusy(false);
+    }
+  }
+
+  async function handleGenerate(): Promise<void> {
+    if (!activeId || uiIntent.trim().length < 3) return;
+    setUiBusy(true);
+    setUiError(null);
+    try {
+      await api.generateSurface(activeId, uiIntent.trim());
+      setUiIntent('');
+      setShowUiPanel(false);
+      await refreshSurfaces(activeId);
+      await refreshDetail(activeId);
+      setNotice('Muse generated an interface for this task.');
+    } catch (cause) {
+      setUiError(toError(cause));
+    } finally {
+      setUiBusy(false);
+    }
+  }
+
+  async function handleSurfaceSubmit(
+    surface: UiSurfaceRecord,
+    input: { action_id: string; values: SurfaceValues },
+  ): Promise<void> {
+    if (!activeId) return;
+    setUiBusy(true);
+    setUiError(null);
+    try {
+      const result = await api.submitSurface(activeId, surface.id, input);
+      await refreshSurfaces(activeId);
+      await refreshDetail(activeId);
+      await refreshSessions();
+      setCandidates([]);
+      setNotice(
+        result.memory
+          ? 'Interface submitted. The plan was saved as project memory and Muse continued.'
+          : 'Interface submitted. Muse continued the conversation.',
+      );
+    } catch (cause) {
+      setUiError(toError(cause));
+    } finally {
+      setUiBusy(false);
+    }
+  }
 
   // Scroll when the transcript grows or a streamed token arrives. The key is
   // referenced in the effect so the dependency is intentional, not incidental.
@@ -139,6 +220,7 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
             }
             void refreshDetail(activeId);
             void refreshSessions();
+            void maybeGenerateInterface(content);
           },
           onError: (streamError) => setError(streamError),
         },
@@ -291,7 +373,9 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           <div className="min-w-0">
             <h2 className="truncate text-[12px] font-semibold text-ink">
-              {activeSession?.title ?? 'No conversation selected'}
+              {activeSession
+                ? (activeSession.title ?? 'Untitled conversation')
+                : 'No conversation selected'}
             </h2>
             <p className="mt-0.5 font-mono text-[10px] text-muted">
               {activeSession
@@ -336,8 +420,34 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
           ) : null}
 
           {activeSession?.messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <div key={message.id} className="space-y-2">
+              <MessageBubble message={message} />
+              {surfaces
+                .filter((surface) => surface.message_id === message.id)
+                .map((surface) => (
+                  <SurfaceRenderer
+                    key={surface.id}
+                    surface={surface}
+                    busy={uiBusy}
+                    onSubmit={(input) => void handleSurfaceSubmit(surface, input)}
+                  />
+                ))}
+            </div>
           ))}
+
+          {surfaces
+            .filter(
+              (surface) =>
+                !activeSession?.messages.some((message) => message.id === surface.message_id),
+            )
+            .map((surface) => (
+              <SurfaceRenderer
+                key={surface.id}
+                surface={surface}
+                busy={uiBusy}
+                onSubmit={(input) => void handleSurfaceSubmit(surface, input)}
+              />
+            ))}
 
           {pendingUser ? (
             <>
@@ -395,6 +505,8 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
 
           {error ? <ErrorBanner error={error} /> : null}
 
+          {uiError ? <ErrorBanner error={uiError} /> : null}
+
           {notice ? (
             <p className="rounded-lg border border-ok/30 bg-ok/5 px-3 py-2 text-[11px] leading-relaxed text-ok">
               {notice}
@@ -433,6 +545,33 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
         </div>
 
         <div className="border-t border-line px-3 py-2.5">
+          {showUiPanel ? (
+            <div className="mb-2 flex items-center gap-2">
+              <input
+                value={uiIntent}
+                onChange={(event) => setUiIntent(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void handleGenerate();
+                  }
+                }}
+                maxLength={500}
+                placeholder="What should the interface help with?"
+                aria-label="Interface intent"
+                className="flex-1 rounded-lg border border-line bg-base/70 px-2 py-1.5 text-[11px] text-ink placeholder:text-muted focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => void handleGenerate()}
+                disabled={uiBusy || uiIntent.trim().length < 3}
+                className="rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[10px] text-ink-dim transition hover:text-ink disabled:opacity-40"
+              >
+                {uiBusy ? 'Generating…' : 'Generate'}
+              </button>
+            </div>
+          ) : null}
+
           <div className="flex items-end gap-2">
             <textarea
               value={input}
@@ -477,15 +616,24 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
           </div>
 
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-            <label className="flex items-center gap-1.5 text-[10px] text-muted">
-              <input
-                type="checkbox"
-                checked={captureEnabled}
-                onChange={(event) => setCaptureEnabled(event.target.checked)}
-                className="size-3 accent-[var(--color-accent)]"
-              />
-              Capture explicit memory instructions
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-[10px] text-muted">
+                <input
+                  type="checkbox"
+                  checked={captureEnabled}
+                  onChange={(event) => setCaptureEnabled(event.target.checked)}
+                  className="size-3 accent-[var(--color-accent)]"
+                />
+                Capture explicit memory instructions
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowUiPanel((current) => !current)}
+                className="rounded border border-line px-1.5 py-0.5 text-[10px] text-muted transition hover:text-ink"
+              >
+                Interface
+              </button>
+            </div>
             <span className="text-[10px] text-muted">
               {stepLabel(streaming, streamRetrieval !== null)}
             </span>

@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@mml/shared': resolve(import.meta.dirname, '../../packages/shared/src/index.ts'),
+      '@mml/ui-protocol': resolve(import.meta.dirname, '../../packages/ui-protocol/src/index.ts'),
     },
   },
   server: {

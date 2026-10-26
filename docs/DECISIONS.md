@@ -310,3 +310,37 @@ hijacks Fastify's reply, aborts the provider on client disconnect, and persists 
 output as `interrupted`.
 **Consequence:** One turn implementation, two transports, and no misleading "complete"
 message after a cancellation.
+
+---
+
+### D028 — Model output is a declarative spec, not markup
+
+**Context:** Letting a model emit HTML or JavaScript would make every generated interface a
+code-execution surface.
+**Decision:** The model emits a closed, validated JSON document (blocks, fields, limits).
+The browser renders it through a fixed registry; unknown block kinds fail validation.
+**Consequence:** The worst case for a bad generation is a rejected request, not script
+execution. Cost: the vocabulary is intentionally small.
+
+---
+
+### D029 — Generation is narrow on purpose
+
+**Context:** The first real structured-output attempt failed: the Muse API's strict JSON
+Schema requires every property in `required`, and our schema marked `submit_label` optional.
+**Decision:** Make all schema properties required (optionals expressed as empty arrays or
+strings), and scope generation to a planning form: Muse chooses fields and options, not
+layout.
+**Consequence:** Generation succeeded on the next attempt with context-appropriate fields.
+Cost: richer surfaces must be composed from the registry rather than freely generated.
+
+---
+
+### D030 — Submissions are validated against the surface, then become a turn
+
+**Context:** A client could post arbitrary values, fields, or option choices.
+**Decision:** The server reloads the stored spec, rejects unknown fields, enforces required
+fields, declared options, numeric bounds, and length limits, records the event, optionally
+stores the submission as project memory, and then runs the agent with a structured summary.
+**Consequence:** An interface cannot widen its own authority. The agent continues with
+exactly the data the form declared.

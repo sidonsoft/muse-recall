@@ -102,7 +102,8 @@ default.
 | Agent runtime, sessions, streaming, bounded context | 3 | **Complete** |
 | Explicit memory capture + candidate confirmation | 3 | **Complete** |
 | Cross-session retrieval evaluation (22 questions) | 3 | **Complete**, 20/22 |
-| Declarative UI protocol and renderer | 4 | Not started |
+| Declarative UI protocol, validation, renderer | 4 | **Complete** |
+| Muse-generated planning forms + submission loop | 4 | **Complete**, verified live |
 | Tool registry, permissions, audit log | 5 | Not started |
 | Phase 6 comparison, demo video, submission | 6 | Harness built, comparison not run |
 
@@ -134,6 +135,8 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 `MEMORY_MAX_CHARACTERS`, `MEMORY_MAX_MEMORY_CHARACTERS`.
 
 ![A new conversation answering from project memory](docs/assets/phase3-ui-conversations.png)
+
+![A Muse-generated planning form](docs/assets/phase4-ui-generative-ui.png)
 
 ![Memory detail with correction history](docs/assets/phase2-ui-memory-detail.png)
 
@@ -167,6 +170,9 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 | `PATCH` | `/api/sessions/:id` | Rename or archive |
 | `DELETE` | `/api/sessions/:id` | Delete a conversation |
 | `POST` | `/api/sessions/:id/messages` | Streaming turn (SSE) or JSON `TurnResult` |
+| `GET` | `/api/sessions/:id/ui` | Generated interfaces and their submissions |
+| `POST` | `/api/sessions/:id/ui` | Generate a validated interface for an intent |
+| `POST` | `/api/sessions/:id/ui/:surfaceId/events` | Submit an interface; the agent continues |
 
 Every route returns `{ ok: true, data }` or `{ ok: false, error: { code, message } }`.
 
@@ -264,10 +270,9 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 ## Roadmap
 
-1. **Phase 4 — Generative UI.** Declarative spec, component registry, validated events, and
-   a planning interface that stores its submission as project memory.
-2. **Phase 5 — Tools.** Registry, permission model, workspace tools, audit log.
-3. **Phase 6 — Evaluation and submission.** Baseline comparison, demo video, visibility check
+1. **Phase 5 — Tools.** Registry, permission model, workspace tools, audit log, and the same
+   approval path for chat and interface events.
+2. **Phase 6 — Evaluation and submission.** Baseline comparison, demo video, visibility check
    for judging, feature freeze.
 
 ---

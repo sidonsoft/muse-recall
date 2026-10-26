@@ -208,3 +208,32 @@ a correction; the user can correct it in the inspector.
 unauthenticated requests, including commit URLs.
 **Fix:** Confirm the Official Rules' visibility requirement and make the repository public
 (or share it with judging accounts) before submission.
+
+---
+
+## Phase 4 — generated interfaces
+
+### KI-24 — Generation depends on a strict structured-output call
+
+**Severity:** Medium
+**Detail:** Muse is asked for a planning form via `--output-schema`. One retry is allowed;
+after that the request fails with `ui_generation_failed`. A prompt or model change can break
+generation even though the rest of the app works.
+**Mitigation:** The failure is explicit and the chat path is unaffected. The protocol and
+submission path are covered by deterministic tests.
+
+### KI-25 — Generated interfaces are planning forms only
+
+**Severity:** Informational
+**Detail:** The renderer supports headings, text, status, progress, task lists, tables,
+cards, forms, and dismiss buttons, but generation emits only a heading, a description, and
+one form. Layout is not model-controlled.
+**Rationale:** A small validated vocabulary is more trustworthy than a general surface
+generator for this phase.
+
+### KI-26 — Interface submission costs a full model turn
+
+**Severity:** Informational
+**Detail:** Submitting a form stores a memory and runs an agent turn. In the recorded run the
+continuation used 34,362 input tokens because the summary and retrieved memory were included.
+**Mitigation:** Submission is an explicit user action and the resulting turn is visible.

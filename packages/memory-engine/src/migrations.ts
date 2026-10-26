@@ -257,6 +257,42 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 5,
+    name: 'ui_surfaces_and_events',
+    up: (db) => {
+      db.exec(`
+        -- A validated, declarative interface generated for a conversation.
+        -- The spec is stored as JSON and re-validated on read, so a corrupted
+        -- row can never be rendered.
+        CREATE TABLE ui_surfaces (
+          id           TEXT PRIMARY KEY,
+          session_id   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          message_id   TEXT REFERENCES messages(id) ON DELETE SET NULL,
+          title        TEXT NOT NULL,
+          spec_json    TEXT NOT NULL,
+          status       TEXT NOT NULL DEFAULT 'active'
+                         CHECK (status IN ('active', 'submitted', 'dismissed')),
+          created_at   TEXT NOT NULL,
+          submitted_at TEXT
+        );
+
+        CREATE INDEX idx_ui_surfaces_session ON ui_surfaces (session_id, created_at DESC);
+
+        -- Append-only record of user submissions. Values are validated against
+        -- the surface before they are written here.
+        CREATE TABLE ui_events (
+          id          TEXT PRIMARY KEY,
+          surface_id  TEXT NOT NULL REFERENCES ui_surfaces(id) ON DELETE CASCADE,
+          action_id   TEXT NOT NULL,
+          values_json TEXT NOT NULL,
+          created_at  TEXT NOT NULL
+        );
+
+        CREATE INDEX idx_ui_events_surface ON ui_events (surface_id, created_at ASC);
+      `);
+    },
+  },
 ];
 
 /** Highest migration version defined in code. */

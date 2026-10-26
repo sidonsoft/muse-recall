@@ -20,6 +20,7 @@ import { SERVICE_NAME } from './config.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
 import { registerSessionRoutes } from './routes/sessions.js';
+import { registerUiRoutes } from './routes/ui.js';
 
 export interface AppDependencies {
   config: AppConfig;
@@ -198,6 +199,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   // --- Memory CRUD, correction, deletion, retrieval preview ---------------
   registerMemoryRoutes(app, { engine, config });
   registerSessionRoutes(app, { runtime });
+  registerUiRoutes(app, { runtime, engine, provider, config });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {
@@ -306,7 +308,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       service: SERVICE_NAME,
       version: config.serviceVersion,
       environment: config.environment,
-      phase: 3,
+      phase: 4,
       provider: {
         id: provider.id,
         name: provider.name,
@@ -317,7 +319,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         memory_engine: 'complete',
         agent_runtime: 'complete',
         muse_integration: 'complete',
-        ui_protocol: 'not_implemented',
+        ui_protocol: 'complete',
         agent_tools: 'not_implemented',
         evaluation: 'partial',
       },

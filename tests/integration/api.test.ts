@@ -175,10 +175,10 @@ describe('GET /api/meta', () => {
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     expect(response.statusCode).toBe(200);
     const { data } = response.json();
-    expect(data.phase).toBe(3);
+    expect(data.phase).toBe(4);
     expect(data.provider.id).toBe('echo');
     expect(data.modules.memory_engine).toBe('complete');
-    expect(data.modules.ui_protocol).toBe('not_implemented');
+    expect(data.modules.ui_protocol).toBe('complete');
     expect(data.safety.generated_code_execution).toBe(false);
   });
 });

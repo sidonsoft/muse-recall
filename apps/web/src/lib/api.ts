@@ -33,6 +33,14 @@ import {
   type TurnResult,
   TurnResultSchema,
 } from '@mml/shared';
+import {
+  type UiGenerationResult,
+  UiGenerationResultSchema,
+  type UiSubmissionResult,
+  UiSubmissionResultSchema,
+  type UiSurfaceList,
+  UiSurfaceListSchema,
+} from '@mml/ui-protocol';
 import { z } from 'zod';
 
 /**
@@ -273,6 +281,31 @@ export const api = {
       `/api/sessions/${id}/messages`,
       { method: 'POST', body: JSON.stringify(input) },
       (data) => TurnResultSchema.parse(data),
+    ),
+
+  // --- Generated interfaces ----------------------------------------------
+
+  sessionSurfaces: (id: string) =>
+    request<UiSurfaceList>(`/api/sessions/${id}/ui`, { method: 'GET' }, (data) =>
+      UiSurfaceListSchema.parse(data),
+    ),
+
+  generateSurface: (id: string, intent: string) =>
+    request<UiGenerationResult>(
+      `/api/sessions/${id}/ui`,
+      { method: 'POST', body: JSON.stringify({ intent }) },
+      (data) => UiGenerationResultSchema.parse(data),
+    ),
+
+  submitSurface: (
+    id: string,
+    surfaceId: string,
+    input: { action_id: string; values: Record<string, string | number | boolean | string[]> },
+  ) =>
+    request<UiSubmissionResult>(
+      `/api/sessions/${id}/ui/${surfaceId}/events`,
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => UiSubmissionResultSchema.parse(data),
     ),
 
   // --- Retrieval ----------------------------------------------------------

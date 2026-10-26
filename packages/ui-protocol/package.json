@@ -1,0 +1,18 @@
+{
+  "name": "@mml/ui-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Declarative, validated UI specifications for model-generated interfaces.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mml/shared": "workspace:*",
+    "zod": "^4.1.12"
+  }
+}

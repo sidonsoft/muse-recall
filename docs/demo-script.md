@@ -91,4 +91,21 @@ claim per-call savings.
    stored as project memory.
 4. New conversation: *"What did we decide for the first milestone?"* → recalls it.
 
-*(Recorded after Phase 4 implementation.)*
+**Recorded result (real Muse, `muse-wonder-1.0`):** asked *"Plan the first playable milestone
+for our Phaser game"*, Muse returned an 8-field form — milestone name, core memory mechanic
+(select), content scope (select), features (multiselect), target session length (number),
+art/audio direction (textarea), playtest goal (textarea), touch support (checkbox) — in 6.99 s.
+The form renders inline, labelled **Generated interface** and "validated spec".
+
+Submitting it:
+
+- validated every value against the stored form;
+- saved the submission as **project memory** with provenance `ui:<surfaceId>`;
+- ran an agent turn that produced a milestone plan with scope, build tasks, and a "done when"
+  section;
+- showed "Interface submitted. The plan was saved as project memory and Muse continued."
+
+A new conversation in the same project recalls the submitted plan from memory.
+
+**Point to make:** the model chose the *fields*, not the layout or code; the server validated
+the spec before rendering and validated the submission against that same spec before acting.

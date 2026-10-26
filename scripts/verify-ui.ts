@@ -284,12 +284,48 @@ try {
     notes.push(`conversations screenshot written to ${screenshotName('conversations')}`);
   }
 
+  // ---- Generative interface ---------------------------------------------
+  log('generating an interface');
+  await page.getByRole('button', { name: /New conversation/ }).click();
+  await page.getByLabel(/Project scope/).fill(`verify-ui-${runId}-ui`);
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByLabel('Message').fill('Help me plan the first milestone for the game');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+
+  const surface = page.getByRole('region', { name: /^Interface:/ });
+  await surface.waitFor({ timeout: 180_000 });
+  notes.push('Muse generated a validated interface inside the conversation');
+
+  // Fill every free-text field and choose the first option of each select, so
+  // the test does not depend on the model's chosen field ids.
+  const textInputs = surface.locator('input[type="text"]');
+  for (let index = 0; index < (await textInputs.count()); index += 1) {
+    await textInputs.nth(index).fill('Verification milestone');
+  }
+  const textareas = surface.locator('textarea');
+  for (let index = 0; index < (await textareas.count()); index += 1) {
+    await textareas.nth(index).fill('Verification details for the first milestone');
+  }
+  const selects = surface.locator('select');
+  for (let index = 0; index < (await selects.count()); index += 1) {
+    await selects.nth(index).selectOption({ index: 1 });
+  }
+
+  await surface.locator('button[type="submit"]').click();
+  await page.getByText(/Interface submitted/).waitFor({ timeout: 180_000 });
+  notes.push('submitted the interface and the agent continued the work');
+
+  if (screenshotPath) {
+    await page.screenshot({ path: screenshotName('generative-ui') });
+    notes.push(`generative UI screenshot written to ${screenshotName('generative-ui')}`);
+  }
+
   // ---- Unbuilt section reports its phase --------------------------------
   await page
     .getByRole('button', { name: /Projects/ })
     .first()
     .click();
-  await page.getByText(/scheduled for Phase 4/i).waitFor({ timeout: 5_000 });
+  await page.getByText(/scheduled for Phase 6/i).waitFor({ timeout: 5_000 });
   notes.push('unbuilt section reports its phase instead of pretending');
   await page
     .getByRole('button', { name: /System/ })
