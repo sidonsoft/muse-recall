@@ -7,6 +7,7 @@
  */
 export * from './api.js';
 export * from './evaluation.js';
+export * from './forge.js';
 export * from './health.js';
 export * from './memory.js';
 export * from './meta.js';

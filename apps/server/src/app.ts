@@ -23,7 +23,10 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
+import { ForgeJobManager } from './forge/runner.js';
+import { ForgeWorkspace } from './forge/workspace.js';
 import { ProviderHealthTracker } from './provider-health.js';
+import { registerForgeRoutes } from './routes/forge.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
 import { registerSessionRoutes } from './routes/sessions.js';
 import { registerToolRoutes } from './routes/tools.js';
@@ -43,6 +46,9 @@ export interface AppDependencies {
   /** Injectable for tests; created by default. */
   toolRegistry?: ToolRegistry;
   toolStore?: ToolCallStore;
+  /** Forge workspace/job manager; created under WORKSPACE_ROOT when omitted. */
+  forgeWorkspace?: ForgeWorkspace;
+  forgeManager?: ForgeJobManager;
   /** Injectable so tests can share or reset the tracker. */
   providerHealth?: ProviderHealthTracker;
   /** Monotonic-ish process start time, used for uptime. */
@@ -93,6 +99,22 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         tools: config.agent.tools,
       },
       tools: { registry: toolRegistry, store: toolStore },
+    });
+  const forgeWorkspace = dependencies.forgeWorkspace ?? new ForgeWorkspace(config.workspaceRoot);
+  const forgeManager =
+    dependencies.forgeManager ??
+    new ForgeJobManager({
+      workspace: forgeWorkspace,
+      engine,
+      ...(config.forge?.museBin ? { museBin: config.forge.museBin } : {}),
+      ...(config.forge
+        ? {
+            maxRuntimeMs: config.forge.maxRuntimeMs,
+            maxCalls: config.forge.maxCalls,
+            maxInputTokens: config.forge.maxInputTokens,
+            reasoningEffort: config.forge.reasoningEffort,
+          }
+        : {}),
     });
   const providerHealth = dependencies.providerHealth ?? new ProviderHealthTracker(provider, 60_000);
   const startedAt = dependencies.startedAt ?? Date.now();
@@ -216,6 +238,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   registerSessionRoutes(app, { runtime });
   registerUiRoutes(app, { runtime, engine, provider, config });
   registerToolRoutes(app, { runtime, engine, registry: toolRegistry, store: toolStore });
+  registerForgeRoutes(app, { manager: forgeManager, workspace: forgeWorkspace, engine });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {

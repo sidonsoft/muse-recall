@@ -98,6 +98,11 @@ const EnvSchema = z.object({
     .transform((value) => value === 'true'),
   TOOL_MAX_CALLS_PER_TURN: z.coerce.number().int().min(1).max(5).default(3),
   TOOL_DECISION_MODE: z.enum(['auto', 'always', 'off']).default('auto'),
+  FORGE_MAX_RUNTIME_MS: z.coerce.number().int().min(10_000).max(1_800_000).default(600_000),
+  FORGE_MAX_CALLS: z.coerce.number().int().min(1).max(100).default(25),
+  FORGE_MAX_INPUT_TOKENS: z.coerce.number().int().min(10_000).max(10_000_000).default(1_500_000),
+  FORGE_MUSE_BIN: z.string().min(1).optional(),
+  FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
 });
 
 export interface AppConfig {
@@ -110,6 +115,13 @@ export interface AppConfig {
   wal: boolean;
   workspaceRoot: string;
   toolApprovalPolicy: 'always' | 'never';
+  forge?: {
+    maxRuntimeMs: number;
+    maxCalls: number;
+    maxInputTokens: number;
+    museBin: string | null;
+    reasoningEffort: 'low' | 'medium' | 'high';
+  };
   provider: ProviderConfig;
   /** Retrieval defaults applied when a request omits a budget. */
   memoryBudget: RetrievalBudget;
@@ -158,6 +170,13 @@ export function loadConfig(
     wal: value.SQLITE_WAL,
     workspaceRoot: resolve(cwd, value.WORKSPACE_ROOT),
     toolApprovalPolicy: value.TOOL_APPROVAL_POLICY,
+    forge: {
+      maxRuntimeMs: value.FORGE_MAX_RUNTIME_MS,
+      maxCalls: value.FORGE_MAX_CALLS,
+      maxInputTokens: value.FORGE_MAX_INPUT_TOKENS,
+      museBin: value.FORGE_MUSE_BIN ?? null,
+      reasoningEffort: value.FORGE_REASONING_EFFORT,
+    },
     memoryBudget: {
       max_memories: value.MEMORY_MAX_MEMORIES,
       max_characters: value.MEMORY_MAX_CHARACTERS,
