@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { openDatabase } from '@mml/memory-engine';
+import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { createModelProvider } from '@mml/muse-provider';
 import { buildApp } from './app.js';
 import { loadConfig, loadDotEnv } from './config.js';
@@ -18,13 +18,22 @@ async function main(): Promise<void> {
   const database = openDatabase({ path: config.databasePath, wal: config.wal });
 
   const provider = createModelProvider(config.provider);
+  const engine = new MemoryEngine(database.db);
   const app = await buildApp({
     config,
     db: database.db,
     dbPath: config.databasePath,
     provider,
+    engine,
     startedAt: Date.now(),
   });
+
+  // Retention runs once at startup so an expired memory is never retrievable
+  // just because the server was down when its deadline passed.
+  if (config.sweepOnStart) {
+    const expired = engine.expireStale();
+    if (expired > 0) app.log.info({ expired }, 'marked expired memories');
+  }
 
   if (provider.id !== 'muse-cli') {
     app.log.warn(

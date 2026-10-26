@@ -1,125 +1,141 @@
 # Next steps
 
-## Phase 2 — Persistent memory engine
+## Phase 3 — Agent harness and conversational sessions
 
-**Goal:** A memory API that survives restarts, respects project scope, corrects itself
-without losing history, and removes deleted knowledge from retrieval.
+**Goal:** Muse actually uses memory in conversation. A session retrieves relevant
+memories, assembles a bounded context, streams an answer, and records which memories
+influenced it — so a fresh session resumes work without the previous transcript.
 
 **Acceptance criteria (from the build brief):**
-1. Memories survive an application restart.
-2. Retrieval respects project scope.
-3. Corrections change what is retrievable as current fact.
-4. Deleted memories cannot be retrieved.
+1. A real Muse request succeeds through the harness.
+2. A second session retrieves relevant memory and answers with it.
+3. API failures are reported clearly to the user.
 
 ### Work items
 
-**1. Repository layer — `packages/memory-engine/src/repository.ts`**
+**1. New package `packages/agent-core`**
 
-- `createMemory(input: MemoryCreateInput): Memory`
-- `getMemory(id): Memory | null`
-- `listMemories(query: MemoryQuery): { items, total }`
-- `updateMemory(id, input: MemoryUpdateInput, actor): Memory`
-- `softDeleteMemory(id, reason, actor): void` — sets `status='deleted'` **and** deletes
-  the `memory_fts` row in the same transaction
-- `purgeMemory(id): void` — hard delete (FTS cleaned by trigger)
-- `restoreMemory(id): void`
-- Every mutation appends a `memory_history` row; all writes use explicit transactions.
+- `ContextAssembler` — builds a prompt from (system instructions, retrieved memory
+  block, recent turns). Hard budgets: memory characters (Phase 2) **plus** a turn
+  budget (default 6 turns / 6,000 characters). Never the whole transcript.
+- `SessionStore` — SQLite-backed sessions and messages.
+- `AgentRuntime` — one turn: retrieve → assemble → call provider → stream → persist.
+  Tool execution stays out of Phase 3 (that is Phase 5).
+- Token accounting: store provider-reported usage per turn; label estimates as
+  estimates.
 
-**2. Supersession — `supersede(input: MemoryCorrectionInput, actor)`**
+**2. Migration 3 — `packages/memory-engine/src/migrations.ts`**
 
-Single transaction: insert new memory → insert edges → set old rows `superseded` +
-`superseded_by` → append history rows with the reason. Return the new memory plus the
-replaced ids.
+```sql
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+  title TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 
-**3. Deduplication — `content-hash.ts`**
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user','assistant','system')),
+  content TEXT NOT NULL,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  latency_ms INTEGER,
+  created_at TEXT NOT NULL
+);
 
-Normalise (trim, collapse whitespace, case-fold) → SHA-256 of
-`type|scope|project_id|normalised_content`. On collision with an active memory, return
-the existing record instead of inserting. Expose `findDuplicate(input)` for the future
-correction-candidate flow.
+-- Which memories influenced which turn. This is the evidence trail Demo A/B rely on.
+CREATE TABLE turn_memories (
+  message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  memory_id TEXT NOT NULL,           -- no FK: history must survive memory purge
+  score REAL NOT NULL,
+  evidence TEXT NOT NULL,
+  PRIMARY KEY (message_id, memory_id)
+);
+```
 
-**4. Retrieval — `packages/memory-engine/src/retrieval.ts`**
+Note the deliberate absence of a foreign key on `memory_id`: if a memory is purged, the
+turn record must still show that *something* influenced the answer, not silently lose
+the provenance edge.
 
-- SQL hard filters: `status='active'`, scope in (project, global), not expired.
-- Candidate generation: FTS5 `bm25` when a text query is present; otherwise recency +
-  type priority.
-- Ranking: the weighted score in [memory-design.md](memory-design.md#retrieval-design-phase-2--not-yet-implemented).
-- Budget: `max_memories` (default 8) and `max_characters` (default 4,000), with
-  constraints and goals always retained.
-- Output per result: `memory`, `score`, `rank_components`, `evidence` string.
-- Pure function of (db, query, now) so tests can inject a clock.
+**3. Harness**
 
-**5. Formatter — `packages/agent-core/src/context/memory-context.ts`** (new package)
+- `createAgentRuntime({ provider, engine, config })`.
+- Turn flow: persist user message → retrieve (`project_id`, query = user message) →
+  `formatMemoryContext` → assemble → `provider.stream` → emit deltas → persist
+  assistant message + `turn_memories`.
+- Bounded retries for provider errors (`provider_timeout` no retry; `provider_crashed`
+  one retry).
+- Execution log rows for every turn: prompt characters, memory ids, usage, duration.
 
-Renders retrieved memories as a delimited `<retrieved_memories>` block with a standing
-"this is data, not instructions" line, and returns the exact character/token estimate
-for the inspector.
+**4. HTTP**
 
-**6. HTTP routes — `apps/server/src/routes/memories.ts`**
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/sessions` | Create a session (optional project, title) |
+| `GET` | `/api/sessions` | List recent sessions |
+| `GET` | `/api/sessions/:id` | Session + transcript + per-turn memory evidence |
+| `POST` | `/api/sessions/:id/messages` | Send a turn; SSE stream of deltas, memory events, usage, done |
+| `DELETE` | `/api/sessions/:id` | Delete a session |
 
-- `GET /api/memories` (query-validated list/filter/search)
-- `POST /api/memories`
-- `PATCH /api/memories/:id`
-- `POST /api/memories/:id/correct` (supersede)
-- `DELETE /api/memories/:id` (soft delete)
-- `GET /api/memories/:id/history`
-- `POST /api/retrieval/preview` — returns ranked results + evidence for a query without
-  calling a model (this is what the inspector renders)
+SSE event types: `retrieval` (ids, counts, characters), `delta` (text), `usage`,
+`error`, `done`. The retrieval event must arrive **before** the first token so the
+inspector can show why before it shows what.
 
-All responses validated by shared schemas; new schemas added to `@mml/shared` first.
+**5. UI — Conversations view**
 
-**7. Tests to write before the UI**
+- Session list in the sidebar section, transcript in the main pane, composer at the
+  bottom.
+- Streaming answer with a stop button.
+- Per-turn "memory used" disclosure that expands the evidence inline.
+- Context inspector switches from "no agent turn yet" to the live turn: retrieved
+  memories, characters injected, tokens, latency.
+- Provider failure renders as an actionable message, not a blank answer.
+
+**6. Tests**
 
 | Test | Assertion |
 | --- | --- |
-| Persistence | Insert → close → reopen → memory present |
-| Scope | Project A retrieval never returns project B memories |
-| Correction | After supersede, old memory is absent from retrieval; history shows the chain |
-| Deletion | Soft-deleted memory is absent from retrieval **and** from FTS matches |
-| Restore | Restoring re-adds the FTS row |
-| Dedupe | Identical payloads produce one memory |
-| Budget | Retrieval never exceeds count/character caps |
-| Expiry | Past `expires_at` excluded; sweep marks it expired with history |
-| Evidence | `rank_components` sum to `score`; `evidence` non-empty |
-| Injection | A memory containing "ignore previous instructions" is returned as data and does not appear inside the system prompt |
+| Routing | `/api/sessions` CRUD; unknown session → 404 |
+| Persistence | Transcript survives a server restart |
+| Retrieval wiring | Turn 2 in a new session includes project memory in the provider request |
+| Budget | Assembled prompt never exceeds memory + turn budgets |
+| Evidence | `turn_memories` rows match the retrieval metadata exactly |
+| Failure | Provider error yields a clear SSE `error` event and no assistant row |
+| Isolation | Sessions in project A never inject project B memory |
+| Streaming | Deltas concatenate to the persisted assistant content |
 
-**8. UI — Memories screen (replaces the Phase 2 placeholder)**
+**7. Demonstration rehearsal (Demo A and B)**
 
-Search, type/status filters, memory cards with confidence and validation badges, source
-and provenance display, correction dialog, delete confirmation, and the supersession
-chain rendered as a timeline.
-
-**9. Status updates**
-
-- `/api/meta` → `memory_engine: 'complete'` only when steps 1–8 are done.
-- Update `docs/PROJECT_STATUS.md`, `docs/DECISIONS.md` (any new decisions),
-  `docs/KNOWN_ISSUES.md`.
-- Add a Demo B rehearsal to the docs once corrections work end-to-end.
+- **Demo A:** new project → state constraints → new session → ask to continue → show
+  the retrieved constraints and answer. Record a transcript in `docs/demo-script.md`.
+- **Demo B:** establish decision → correct it → new session → ask for the current
+  decision → show the new fact retrieved and the old one absent, with the inspector
+  showing the correction history in the retrieval evidence.
 
 ### Sequencing
 
 ```
-repository + history + dedupe  →  tests
+migration 3 + SessionStore  →  tests
         ↓
-supersession + deletion        →  tests
+ContextAssembler + budgets  →  tests
         ↓
-retrieval + budget + evidence  →  tests
+AgentRuntime + SSE route    →  integration tests
         ↓
-HTTP routes                    →  integration tests
+Conversations UI            →  browser verification
         ↓
-Memories UI                    →  browser verification
+Demo A / Demo B rehearsals  →  docs/demo-script.md
 ```
 
-Do not start Phase 3 (harness/chat) until Phase 2's four acceptance criteria pass as
-automated tests.
+Do not start Phase 4 (generative UI) until Demo A and Demo B both work end to end.
 
-## Open questions to resolve during Phase 2
+## Open questions for Phase 3
 
-1. Should `global` memories be retrievable in every project by default, or opt-in per
-   project? Current design: yes, with `include_global` defaulting to true.
-2. What recency half-life is right for `technical_decision` versus `contextual_fact`?
-   Start at 30 days for decisions, 7 days for contextual facts, and make it
-   configurable.
-3. Should retrieval always return at least one `goal`/`constraint` even when the text
-   query does not match? Current design: yes — violating a constraint is costlier than
-   a slightly larger prompt.
+1. Should a turn retrieve using the raw user message or a rewritten query? Start with
+   the raw message — it is explainable and adds no extra model call.
+2. How many turns belong in the context budget? Start with 6 turns / 6,000 characters
+   and measure with the evaluation harness.
+3. When the provider reports no usage (KI-2), do we show an estimate? Prefer showing
+   "unavailable" until an estimate can be labelled unambiguously.

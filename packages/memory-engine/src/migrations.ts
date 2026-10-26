@@ -120,6 +120,34 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    name: 'supersession_pointer_and_retrieval_indexes',
+    up: (db) => {
+      db.exec(`
+        -- The active record that replaced this one. The supersession edge
+        -- table stays authoritative for the full chain; this column makes the
+        -- common "what replaced this?" lookup a single row read.
+        ALTER TABLE memories ADD COLUMN superseded_by TEXT
+          REFERENCES memories(id) ON DELETE SET NULL;
+
+        CREATE INDEX idx_memories_superseded_by ON memories (superseded_by);
+
+        -- Retrieval filters on status + scope first, then ranks. This index
+        -- matches that access pattern so scope isolation stays cheap as the
+        -- memory count grows.
+        CREATE INDEX idx_memories_scope_status
+          ON memories (scope, project_id, status);
+
+        -- Recency ordering for the no-query candidate path.
+        CREATE INDEX idx_memories_status_updated
+          ON memories (status, updated_at DESC);
+
+        -- Reverse edge lookup: "what did this record supersede?"
+        CREATE INDEX idx_supersessions_new ON memory_supersessions (new_id);
+      `);
+    },
+  },
 ];
 
 /** Highest migration version defined in code. */

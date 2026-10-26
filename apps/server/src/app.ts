@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import cors from '@fastify/cors';
-import { probeDatabase } from '@mml/memory-engine';
+import { type MemoryEngine, MemoryError, probeDatabase } from '@mml/memory-engine';
 import { ProviderError } from '@mml/muse-provider';
 import {
   API_ERROR_CODES,
@@ -17,6 +17,7 @@ import { z } from 'zod';
 import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
 import { ProviderHealthTracker } from './provider-health.js';
+import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
 
 export interface AppDependencies {
   config: AppConfig;
@@ -25,6 +26,8 @@ export interface AppDependencies {
   /** Path reported in health output (may be ':memory:'). */
   dbPath: string;
   provider: ModelProvider;
+  /** Persistent memory engine bound to the same database. */
+  engine: MemoryEngine;
   /** Injectable so tests can share or reset the tracker. */
   providerHealth?: ProviderHealthTracker;
   /** Monotonic-ish process start time, used for uptime. */
@@ -57,7 +60,7 @@ const GenerateBodySchema = z.object({
  * exercising the same code path the browser uses.
  */
 export async function buildApp(dependencies: AppDependencies): Promise<FastifyInstance> {
-  const { config, db, dbPath, provider } = dependencies;
+  const { config, db, dbPath, provider, engine } = dependencies;
   const providerHealth = dependencies.providerHealth ?? new ProviderHealthTracker(provider, 60_000);
   const startedAt = dependencies.startedAt ?? Date.now();
 
@@ -103,6 +106,14 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
   app.setErrorHandler((error: unknown, request, reply) => {
     request.log.error({ err: error }, 'request failed');
+
+    if (MemoryError.isMemoryError(error)) {
+      const status =
+        error.code === 'memory_not_found' ? 404 : error.code === 'memory_conflict' ? 409 : 400;
+      return reply
+        .status(status)
+        .send(apiFailure(error.code, error.message, error.details as never));
+    }
 
     if (error instanceof z.ZodError) {
       const details = error.issues.map((issue) => ({
@@ -152,6 +163,9 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       .status(404)
       .send(apiFailure(API_ERROR_CODES.notFound, `No route for ${request.method} ${request.url}`)),
   );
+
+  // --- Memory CRUD, correction, deletion, retrieval preview ---------------
+  registerMemoryRoutes(app, { engine, config });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {
@@ -260,7 +274,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       service: SERVICE_NAME,
       version: config.serviceVersion,
       environment: config.environment,
-      phase: 1,
+      phase: 2,
       provider: {
         id: provider.id,
         name: provider.name,
@@ -268,12 +282,13 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         capabilities,
       },
       modules: {
-        memory_engine: 'schema_only',
+        memory_engine: 'complete',
         muse_integration: 'partial',
         ui_protocol: 'not_implemented',
         agent_tools: 'not_implemented',
         evaluation: 'not_implemented',
       },
+      memory: memoryMeta(config),
       safety: {
         tool_approval_policy: config.toolApprovalPolicy,
         generated_code_execution: false,

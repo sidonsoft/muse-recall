@@ -49,7 +49,7 @@ export function Sidebar({
                 className={`size-4 ${active ? 'text-accent' : 'text-muted group-hover:text-ink-dim'}`}
               />
               <span className="flex-1 truncate">{view.label}</span>
-              {view.phase > 1 ? (
+              {!view.implemented ? (
                 <span className="rounded border border-line px-1 py-px font-mono text-[9px] text-muted">
                   P{view.phase}
                 </span>

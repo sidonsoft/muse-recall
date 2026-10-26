@@ -127,3 +127,102 @@ a README drifts from reality.
 `not_implemented`, …) and the System screen renders that list.
 **Consequence:** A reviewer can see exactly what is real without reading the source.
 Cost: statuses must be updated when a module lands — a deliberate chore.
+
+---
+
+### D012 — Deduplication uses `BEGIN IMMEDIATE`, not a unique index
+
+**Context:** Two writers must not create the same memory twice, but a unique index on
+`content_hash` would also block a legitimate correction that replaces an old fact with
+content that already exists elsewhere.
+**Decision:** Run every mutation inside `BEGIN IMMEDIATE` (write lock taken up front)
+and perform the duplicate check inside that transaction.
+**Consequence:** Race-safe dedupe without constraining the correction semantics. Two
+connections writing the same content produce exactly one row (tested). Cost: writes
+serialise, which is correct for a single-user local-first app.
+
+---
+
+### D013 — A retried correction is only a replay when it asks for the same fact
+
+**Context:** The first implementation treated "all targets already superseded" as an
+idempotent replay and returned whatever replacement it found. Correcting a superseded
+memory to a genuinely different fact then returned the old replacement with HTTP 200,
+silently ignoring the user's intent.
+**Decision:** A replay requires the requested content hash to match the existing
+replacement. Otherwise the call is a 409 that names the record to correct instead.
+**Consequence:** Retried requests stay safe, and a different correction cannot be
+swallowed. Tested in both the engine and the API suites.
+
+---
+
+### D014 — Deletion is final through the API; supersession is not deletion
+
+**Context:** Memory systems routinely conflate "this is wrong now" with "remove this",
+which either destroys the audit trail or leaves stale facts retrievable.
+**Decision:** `superseded` records remain readable as history and are excluded from
+retrieval; `deleted` records are removed from the FTS index and hidden from *every*
+read endpoint, including list filters that ask for them. There is no restore endpoint.
+**Consequence:** Corrections stay auditable (Demo B) while deletion is genuinely final.
+`purge` exists only for retention jobs and refuses rows that are still active.
+
+---
+
+### D015 — Pinned constraints reserve two slots, not the whole budget
+
+**Context:** Constraints and goals must survive a keyword mismatch, but the first
+implementation ranked every pinned memory ahead of everything else. The benchmark
+exposed the consequence immediately: with eight pinned memories in a project, retrieval
+accuracy collapsed to 17% because relevant memories never reached the budget.
+**Decision:** Reserve at most two slots for pinned types, fill the rest by score, and
+sort the final selection by score so the top result is the best match rather than a
+constraint.
+**Consequence:** Constraints are guaranteed (within the reserve) and relevance still
+wins the remaining budget. Accuracy rose from 17% to 100% on the benchmark corpus.
+
+---
+
+### D016 — Retrieval evidence is generated from the scoring components
+
+**Context:** An explanation that is written separately from the score will eventually
+disagree with it.
+**Decision:** `evidence` and `rank_components` are produced in the same pass that
+computes the score, and `weights` are returned in the metadata so a client can
+recompute the sum. A test asserts the weighted sum equals the reported score.
+**Consequence:** The inspector can justify a retrieval without a second code path.
+
+---
+
+### D017 — Project scope anchors are created on demand
+
+**Context:** `memories.project_id` is a foreign key, but Phase 2 has no project
+management UI. Requiring a pre-registered project would make the memory API unusable
+from a clean database.
+**Decision:** `MemoryEngine.ensureProject` inserts the anchor (`id` as name) on the
+first memory written in that scope; `GET /api/projects` lists what exists.
+**Consequence:** The foreign key stays meaningful and a fresh install works
+immediately. Cost: a typo in a project id creates a project — acceptable until project
+management lands in Phase 4.
+
+---
+
+### D018 — User input never reaches FTS5 as an expression
+
+**Context:** Raw text passed to `MATCH` can raise syntax errors or be shaped into a
+query the user did not intend.
+**Decision:** `toFtsQuery` extracts at most twelve word tokens and quotes each one,
+joining them with `AND`.
+**Consequence:** Search is predictable and injection-resistant; hostile strings are
+covered by tests. Cost: no phrase or boolean search syntax is exposed to users.
+
+---
+
+### D019 — The benchmark uses a synthetic corpus and says so
+
+**Context:** Retrieval claims need evidence, but a real user's memory database does not
+exist at build time and would not be shareable if it did.
+**Decision:** Generate a deterministic corpus from a seeded PRNG and label every
+reported number as synthetic. Report recall at the budget, not "quality".
+**Consequence:** Results are reproducible and honest about their scope. Accuracy here
+proves the engine selects the right record under budget pressure; it does not prove
+semantic search quality.

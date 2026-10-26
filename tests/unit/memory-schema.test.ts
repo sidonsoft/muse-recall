@@ -80,6 +80,7 @@ describe('MemoryCorrectionInputSchema', () => {
   it('accepts a well-formed correction', () => {
     const result = MemoryCorrectionInputSchema.safeParse({
       type: 'correction',
+      project_id: 'demo-game',
       content: 'Actually use Postgres',
       supersedes: ['3f1f8b7a-1111-4222-8333-444455556666'],
     });
@@ -89,6 +90,7 @@ describe('MemoryCorrectionInputSchema', () => {
   it('rejects non-uuid supersede targets', () => {
     const result = MemoryCorrectionInputSchema.safeParse({
       type: 'correction',
+      project_id: 'demo-game',
       content: 'Actually use Postgres',
       supersedes: ['not-a-uuid'],
     });

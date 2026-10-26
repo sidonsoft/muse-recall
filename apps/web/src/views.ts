@@ -13,8 +13,10 @@ export interface ViewDefinition {
   id: ViewId;
   label: string;
   icon: IconName;
-  /** Delivery phase from the build brief. 1 means it works today. */
+  /** Delivery phase from the build brief. */
   phase: number;
+  /** True when the section works today; false shows a phase badge. */
+  implemented: boolean;
   /** One line describing what the section will do, shown while unimplemented. */
   description: string;
 }
@@ -25,6 +27,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'System',
     icon: 'system',
     phase: 1,
+    implemented: true,
     description: 'Runtime status for the API, the database, and the Muse integration.',
   },
   {
@@ -32,6 +35,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'Conversations',
     icon: 'chat',
     phase: 3,
+    implemented: false,
     description: 'Chat with the agent harness, with each turn retrieving the memories that matter.',
   },
   {
@@ -39,6 +43,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'Projects',
     icon: 'projects',
     phase: 4,
+    implemented: false,
     description: 'Project workspaces, generated dashboards, and planning interfaces.',
   },
   {
@@ -46,6 +51,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'Memories',
     icon: 'memory',
     phase: 2,
+    implemented: true,
     description: 'Inspect stored memories with provenance, confidence, and correction history.',
   },
   {
@@ -53,6 +59,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'Tools',
     icon: 'tools',
     phase: 5,
+    implemented: false,
     description: 'The tool registry, permission policy, and an audit log of every call.',
   },
   {
@@ -60,6 +67,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'Evaluations',
     icon: 'eval',
     phase: 6,
+    implemented: false,
     description: 'Baseline versus memory-enabled runs, scored on the same tasks.',
   },
   {
@@ -67,6 +75,7 @@ export const VIEWS: ViewDefinition[] = [
     label: 'Settings',
     icon: 'settings',
     phase: 6,
+    implemented: false,
     description: 'Provider, persistence, and safety configuration for this install.',
   },
 ];

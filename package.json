@@ -24,7 +24,10 @@
     "format": "biome format --write .",
     "db:migrate": "pnpm --filter @mml/server run db:migrate",
     "muse:probe": "tsx scripts/probe-muse.ts",
-    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test"
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test",
+    "bench:retrieval": "tsx scripts/benchmark-retrieval.ts",
+    "bench:muse-overhead": "tsx scripts/benchmark-muse-overhead.ts",
+    "verify:browser": "tsx scripts/verify-ui.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

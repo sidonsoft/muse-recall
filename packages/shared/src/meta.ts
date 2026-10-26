@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ModelCapabilitiesSchema } from './provider.js';
+import { RetrievalBudgetSchema, RetrievalWeightsSchema } from './retrieval.js';
 
 /**
  * Build-status vocabulary.
@@ -28,6 +29,11 @@ export const ServiceMetaSchema = z.object({
     ui_protocol: ModuleStatusSchema,
     agent_tools: ModuleStatusSchema,
     evaluation: ModuleStatusSchema,
+  }),
+  /** Retrieval configuration in force for this install, for the inspector. */
+  memory: z.object({
+    default_budget: RetrievalBudgetSchema,
+    weights: RetrievalWeightsSchema,
   }),
   safety: z.object({
     tool_approval_policy: z.enum(['always', 'never']),

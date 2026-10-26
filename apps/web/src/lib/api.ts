@@ -2,11 +2,30 @@ import {
   type ApiEnvelope,
   type HealthResponse,
   HealthResponseSchema,
+  type Memory,
+  type MemoryCorrectionRequestInput,
+  type MemoryCorrectionResult,
+  MemoryCorrectionResultSchema,
+  type MemoryCreateRequest,
+  type MemoryCreateResult,
+  MemoryCreateResultSchema,
+  type MemoryDetail,
+  MemoryDetailSchema,
+  type MemoryListResponse,
+  MemoryListResponseSchema,
+  type MemoryStats,
+  MemoryStatsSchema,
+  type MemoryUpdateInput,
   type ModelResponse,
   ModelResponseSchema,
+  type Project,
+  type RetrievalBudget,
+  type RetrievalPreview,
+  RetrievalPreviewSchema,
   type ServiceMeta,
   ServiceMetaSchema,
 } from '@mml/shared';
+import { z } from 'zod';
 
 /**
  * Typed API client.
@@ -100,6 +119,31 @@ export interface ProviderProbeState {
   verified_with_live_call: boolean;
 }
 
+/** Envelope shapes the client validates but the server does not need to share. */
+const DeleteResultSchema = z.object({ id: z.uuid(), deleted: z.literal(true) });
+const HistoryResultSchema = z.object({ entries: z.array(z.unknown()) });
+const ProjectListSchema = z.object({ items: z.array(z.unknown()) });
+
+export interface MemoryListParams {
+  project_id?: string;
+  all_projects?: boolean;
+  q?: string;
+  type?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+function toQuery(params: Record<string, string | number | boolean | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === '') continue;
+    search.set(key, String(value));
+  }
+  const encoded = search.toString();
+  return encoded.length > 0 ? `?${encoded}` : '';
+}
+
 export const api = {
   health: (options: { live?: boolean } = {}) =>
     request<HealthResponse>(
@@ -123,5 +167,79 @@ export const api = {
       '/api/provider/generate',
       { method: 'POST', body: JSON.stringify(input) },
       (data) => ModelResponseSchema.parse(data),
+    ),
+
+  // --- Memory -------------------------------------------------------------
+
+  listMemories: (params: MemoryListParams = {}) =>
+    request<MemoryListResponse>(
+      `/api/memories${toQuery({ ...params })}`,
+      { method: 'GET' },
+      (data) => MemoryListResponseSchema.parse(data),
+    ),
+
+  memoryStats: () =>
+    request<MemoryStats>('/api/memories/stats', { method: 'GET' }, (data) =>
+      MemoryStatsSchema.parse(data),
+    ),
+
+  projects: () =>
+    request<Project[]>(
+      '/api/projects',
+      { method: 'GET' },
+      (data) => ProjectListSchema.parse(data).items as Project[],
+    ),
+
+  memory: (id: string) =>
+    request<MemoryDetail>(`/api/memories/${id}`, { method: 'GET' }, (data) =>
+      MemoryDetailSchema.parse(data),
+    ),
+
+  memoryHistory: (id: string) =>
+    request<unknown[]>(
+      `/api/memories/${id}/history`,
+      { method: 'GET' },
+      (data) => HistoryResultSchema.parse(data).entries,
+    ),
+
+  createMemory: (input: MemoryCreateRequest) =>
+    request<MemoryCreateResult>(
+      '/api/memories',
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => MemoryCreateResultSchema.parse(data),
+    ),
+
+  updateMemory: (id: string, input: MemoryUpdateInput) =>
+    request<Memory>(
+      `/api/memories/${id}`,
+      { method: 'PATCH', body: JSON.stringify(input) },
+      (data) => MemoryCreateResultSchema.shape.memory.parse(data),
+    ),
+
+  correctMemory: (id: string, input: MemoryCorrectionRequestInput) =>
+    request<MemoryCorrectionResult>(
+      `/api/memories/${id}/correct`,
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => MemoryCorrectionResultSchema.parse(data),
+    ),
+
+  deleteMemory: (id: string, reason?: string) =>
+    request<{ id: string; deleted: true }>(
+      `/api/memories/${id}`,
+      { method: 'DELETE', body: JSON.stringify(reason ? { reason } : {}) },
+      (data) => DeleteResultSchema.parse(data),
+    ),
+
+  // --- Retrieval ----------------------------------------------------------
+
+  retrievalPreview: (input: {
+    project_id: string | null;
+    query: string;
+    budget?: Partial<RetrievalBudget>;
+  }) =>
+    request<RetrievalPreview>(
+      '/api/retrieval/preview',
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => RetrievalPreviewSchema.parse(data),
     ),
 };

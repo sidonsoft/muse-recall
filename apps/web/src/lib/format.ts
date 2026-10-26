@@ -31,3 +31,16 @@ export function formatTimestamp(iso: string | null): string {
     second: '2-digit',
   });
 }
+
+/** Date + time for audit trails, where the day matters as much as the clock. */
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

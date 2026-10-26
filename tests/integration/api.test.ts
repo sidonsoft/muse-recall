@@ -1,4 +1,4 @@
-import { openDatabase } from '@mml/memory-engine';
+import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -35,6 +35,8 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     workspaceRoot: '/tmp/mml-workspaces',
     toolApprovalPolicy: 'always',
     provider: { kind: 'echo' },
+    memoryBudget: { max_memories: 8, max_characters: 4_000, max_memory_characters: 1_000 },
+    sweepOnStart: true,
     serviceVersion: SERVICE_VERSION,
     ...overrides,
   };
@@ -51,6 +53,7 @@ async function createTestApp(
     db: database.db,
     dbPath: ':memory:',
     provider,
+    engine: new MemoryEngine(database.db),
     providerHealth: new ProviderHealthTracker(provider, 0),
     startedAt: Date.now() - 5_000,
   });
@@ -159,9 +162,9 @@ describe('GET /api/meta', () => {
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     expect(response.statusCode).toBe(200);
     const { data } = response.json();
-    expect(data.phase).toBe(1);
+    expect(data.phase).toBe(2);
     expect(data.provider.id).toBe('echo');
-    expect(data.modules.memory_engine).toBe('schema_only');
+    expect(data.modules.memory_engine).toBe('complete');
     expect(data.modules.ui_protocol).toBe('not_implemented');
     expect(data.safety.generated_code_execution).toBe(false);
   });

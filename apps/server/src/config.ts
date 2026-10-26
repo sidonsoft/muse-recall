@@ -8,6 +8,7 @@ import {
   PROVIDER_KINDS,
   type ProviderConfig,
 } from '@mml/muse-provider';
+import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
 import { z } from 'zod';
 
 export const SERVICE_NAME = 'muse-memory-lab' as const;
@@ -31,6 +32,28 @@ const EnvSchema = z.object({
   MUSE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(900_000).default(120_000),
   TOOL_APPROVAL_POLICY: z.enum(['always', 'never']).default('always'),
   WORKSPACE_ROOT: z.string().min(1).default('./workspaces'),
+  MEMORY_MAX_MEMORIES: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(DEFAULT_RETRIEVAL_BUDGET.max_memories),
+  MEMORY_MAX_CHARACTERS: z.coerce
+    .number()
+    .int()
+    .min(200)
+    .max(50_000)
+    .default(DEFAULT_RETRIEVAL_BUDGET.max_characters),
+  MEMORY_MAX_MEMORY_CHARACTERS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .max(8_000)
+    .default(DEFAULT_RETRIEVAL_BUDGET.max_memory_characters),
+  MEMORY_SWEEP_ON_START: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
 });
 
 export interface AppConfig {
@@ -44,6 +67,10 @@ export interface AppConfig {
   workspaceRoot: string;
   toolApprovalPolicy: 'always' | 'never';
   provider: ProviderConfig;
+  /** Retrieval defaults applied when a request omits a budget. */
+  memoryBudget: RetrievalBudget;
+  /** Mark memories past their expiry as expired at startup. */
+  sweepOnStart: boolean;
   serviceVersion: string;
 }
 
@@ -79,6 +106,12 @@ export function loadConfig(
     wal: value.SQLITE_WAL,
     workspaceRoot: resolve(cwd, value.WORKSPACE_ROOT),
     toolApprovalPolicy: value.TOOL_APPROVAL_POLICY,
+    memoryBudget: {
+      max_memories: value.MEMORY_MAX_MEMORIES,
+      max_characters: value.MEMORY_MAX_CHARACTERS,
+      max_memory_characters: value.MEMORY_MAX_MEMORY_CHARACTERS,
+    },
+    sweepOnStart: value.MEMORY_SWEEP_ON_START,
     provider: {
       kind: value.MODEL_PROVIDER,
       museBin: value.MUSE_BIN,

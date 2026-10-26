@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-10-26T22:00:35.961Z",
+  "environment": {
+    "node": "v26.8.1",
+    "platform": "darwin",
+    "sqlite": "3.53.4",
+    "fts": "FTS5"
+  },
+  "corpus": {
+    "memories": 130,
+    "projects": 3,
+    "global_memories": 10,
+    "seed_ms": 36
+  },
+  "retrieval": {
+    "queries": 30,
+    "repeats_per_query": 10,
+    "total_retrievals": 300,
+    "elapsed_ms": 77,
+    "latency_ms": {
+      "mean": 0.2539,
+      "p50": 0.196,
+      "p95": 0.429
+    },
+    "candidates": {
+      "mean": 16.27
+    },
+    "selected": {
+      "mean": 8
+    },
+    "characters": {
+      "mean": 507.1
+    },
+    "accuracy": {
+      "queries": 30,
+      "hits": 30,
+      "rate": 1
+    },
+    "stale_memory_rate": 0
+  },
+  "correction": {
+    "corrections": 12,
+    "accurate": 12,
+    "accuracy_rate": 1,
+    "stale_after_correction": 0,
+    "result_count": 96
+  },
+  "deletion": {
+    "deleted": 10,
+    "still_retrievable": 0
+  },
+  "final_stats": {
+    "total": 142,
+    "active": 120,
+    "superseded": 12,
+    "expired": 0,
+    "deleted": 10,
+    "by_type": {
+      "constraint": 22,
+      "contextual_fact": 13,
+      "failed_approach": 15,
+      "goal": 12,
+      "preference": 21,
+      "technical_decision": 12,
+      "unfinished_task": 23,
+      "verified_solution": 14
+    }
+  }
+}

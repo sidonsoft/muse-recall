@@ -115,6 +115,8 @@ export const MemoryCreateInputSchema = z
     path: ['project_id'],
   });
 export type MemoryCreateInput = z.infer<typeof MemoryCreateInputSchema>;
+/** Looser input shape: fields with defaults may be omitted by callers. */
+export type MemoryCreateRequest = z.input<typeof MemoryCreateInputSchema>;
 
 /** Update an existing memory in place. Lifecycle fields are deliberately absent. */
 export const MemoryUpdateInputSchema = z.object({
@@ -130,8 +132,13 @@ export type MemoryUpdateInput = z.infer<typeof MemoryUpdateInputSchema>;
  * A correction supersedes one or more memories with new content.
  * The old records are retained with `status = 'superseded'`.
  */
-export const MemoryCorrectionInputSchema = z.object({
-  supersedes: z.array(z.uuid()).min(1, 'a correction must supersede at least one memory'),
+/**
+ * Fields shared by "correct a memory" requests.
+ *
+ * Split out so the HTTP layer can accept the path id as an implicit target
+ * while the engine still requires an explicit, non-empty `supersedes` list.
+ */
+export const MemoryCorrectionFieldsSchema = z.object({
   type: MemoryTypeSchema,
   scope: MemoryScopeSchema.default('project'),
   project_id: z.string().min(1).max(128).nullable().default(null),
@@ -140,13 +147,63 @@ export const MemoryCorrectionInputSchema = z.object({
   confidence: ConfidenceSchema.default(0.9),
   validation_status: ValidationStatusSchema.default('verified'),
   tags: z.array(TagSchema).max(16).default([]),
+  /** Why the correction was made; stored in the superseded record's history. */
+  reason: z.string().max(1_000).optional(),
+});
+
+const requireProjectForProjectScope = (value: { scope: MemoryScope; project_id: string | null }) =>
+  value.scope === 'project' ? value.project_id !== null : true;
+
+export const MemoryCorrectionInputSchema = MemoryCorrectionFieldsSchema.extend({
+  supersedes: z.array(z.uuid()).min(1, 'a correction must supersede at least one memory'),
+}).refine(requireProjectForProjectScope, {
+  message: 'project-scoped memories require a project_id',
+  path: ['project_id'],
 });
 export type MemoryCorrectionInput = z.infer<typeof MemoryCorrectionInputSchema>;
+
+/**
+ * HTTP correction body.
+ *
+ * `supersedes` is optional because the addressed memory is always a target;
+ * additional ids may be supplied to replace several records at once.
+ */
+export const MemoryCorrectionRequestSchema = MemoryCorrectionFieldsSchema.extend({
+  supersedes: z.array(z.uuid()).max(20).optional(),
+}).refine(requireProjectForProjectScope, {
+  message: 'project-scoped memories require a project_id',
+  path: ['project_id'],
+});
+export type MemoryCorrectionRequest = z.infer<typeof MemoryCorrectionRequestSchema>;
+export type MemoryCorrectionRequestInput = z.input<typeof MemoryCorrectionRequestSchema>;
+
+/**
+ * Result of a create call.
+ *
+ * `created` is false when an identical memory already existed and was returned
+ * instead of inserting a duplicate — the same idempotency guarantee the API
+ * relies on for retried requests.
+ */
+export const MemoryCreateResultSchema = z.object({
+  memory: MemorySchema,
+  created: z.boolean(),
+});
+export type MemoryCreateResult = z.infer<typeof MemoryCreateResultSchema>;
 
 /** Query filters for the inspector and for retrieval. */
 export const MemoryQuerySchema = z.object({
   project_id: z.string().min(1).max(128).nullable().default(null),
   include_global: z.boolean().default(true),
+  /**
+   * Inspector convenience: ignore scope entirely and list across projects.
+   * Retrieval deliberately has no equivalent — prompts are always scoped.
+   */
+  all_projects: z.boolean().default(false),
+  /**
+   * Lifecycle filters. `deleted` is accepted for completeness but the engine
+   * never returns deleted content — deletion is final from the API's point of
+   * view. Use it only to assert that guarantee in tests.
+   */
   status: z.array(MemoryStatusSchema).default(['active']),
   types: z.array(MemoryTypeSchema).optional(),
   text: z.string().max(500).optional(),
@@ -168,3 +225,62 @@ export const MemoryHistoryEntrySchema = z.object({
   at: z.iso.datetime(),
 });
 export type MemoryHistoryEntry = z.infer<typeof MemoryHistoryEntrySchema>;
+
+/** Paged list response for the inspector. `total` counts all matching rows. */
+export const MemoryListResponseSchema = z.object({
+  items: z.array(MemorySchema),
+  total: z.number().int().min(0),
+  limit: z.number().int().min(1),
+  offset: z.number().int().min(0),
+});
+export type MemoryListResponse = z.infer<typeof MemoryListResponseSchema>;
+
+/**
+ * Everything needed to audit one memory: the record, its provenance, the
+ * records it replaced, the record that replaced it, and the full history.
+ */
+export const MemoryDetailSchema = z.object({
+  memory: MemorySchema,
+  history: z.array(MemoryHistoryEntrySchema),
+  /** Memories this record superseded (older facts it replaced). */
+  supersedes: z.array(MemorySchema),
+  /** The active record that replaced this one, when this one is superseded. */
+  superseded_by: MemorySchema.nullable(),
+});
+export type MemoryDetail = z.infer<typeof MemoryDetailSchema>;
+
+/**
+ * Outcome of a correction.
+ *
+ * `created` is false when the correction was idempotent — the content already
+ * existed as the current fact — so a retried request cannot create a
+ * duplicate chain.
+ */
+export const MemoryCorrectionResultSchema = z.object({
+  memory: MemorySchema,
+  superseded: z.array(MemorySchema),
+  created: z.boolean(),
+});
+export type MemoryCorrectionResult = z.infer<typeof MemoryCorrectionResultSchema>;
+
+/** Aggregate counts for the inspector header and the benchmark. */
+export const MemoryStatsSchema = z.object({
+  total: z.number().int().min(0),
+  active: z.number().int().min(0),
+  superseded: z.number().int().min(0),
+  expired: z.number().int().min(0),
+  deleted: z.number().int().min(0),
+  /** Only types that actually occur, so a stats read never demands all ten. */
+  by_type: z.partialRecord(MemoryTypeSchema, z.number().int().min(0)),
+});
+export type MemoryStats = z.infer<typeof MemoryStatsSchema>;
+
+/** A project, used only as a memory scope anchor in Phase 2. */
+export const ProjectSchema = z.object({
+  id: z.string().min(1).max(128),
+  name: z.string().min(1),
+  description: z.string().nullable(),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(),
+});
+export type Project = z.infer<typeof ProjectSchema>;

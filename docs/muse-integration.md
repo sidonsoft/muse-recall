@@ -92,7 +92,17 @@ text.
 
 ### Measured overhead — important
 
-A one-word answer costs about **16.6k input tokens**:
+A one-word answer costs about **16.6k input tokens**, and that is a *stable* floor, not
+an estimate. Re-measured in Phase 2 with `pnpm bench:muse-overhead` (8 real calls,
+`muse-wonder-1.0`, effort `low`):
+
+| Measurement | Result |
+| --- | --- |
+| 5 identical short calls | 16,630 input tokens each — std dev 0, CV 0% |
+| 2 calls with a 3,989-char memory block | 17,507 input tokens each |
+| Marginal cost of the memory block | +877 tokens |
+
+Earlier observations:
 
 | Prompt | Input tokens | Output | Latency |
 | --- | --- | --- | --- |

@@ -1,8 +1,8 @@
 # Memory design
 
-Phase 1 ships the **storage substrate and its invariants**. Retrieval, dedupe, and
-the correction workflow are Phase 2; this document states both what exists and the
-design those features will implement, clearly marked.
+The memory engine is implemented. This document describes the storage substrate, the
+lifecycle rules, and the retrieval algorithm **as built**, including the places where
+reality forced a design change.
 
 ## Principles
 
@@ -11,12 +11,12 @@ design those features will implement, clearly marked.
 2. **History is append-only.** Corrections never overwrite the past; they add a
    supersession edge and a history row.
 3. **Deletion is not supersession.** Superseded memory remains auditable; deleted
-   memory must vanish from retrieval. Conflating the two is how memory systems end
-   up asserting stale facts.
-4. **Retrieval must be explainable.** Every retrieved memory carries the reason it
-   ranked where it did, so the UI can justify an action.
+   memory vanishes from retrieval. Conflating the two is how memory systems end up
+   asserting stale facts.
+4. **Retrieval must be explainable.** Every retrieved memory carries the component
+   scores and an evidence sentence, so an action can be justified after the fact.
 
-## Schema (implemented — migration 1)
+## Schema (migrations 1–2)
 
 ### `memories`
 
@@ -27,150 +27,154 @@ design those features will implement, clearly marked.
 | `scope` | TEXT | `global` or `project` |
 | `project_id` | TEXT → `projects.id` | Required for project scope, `ON DELETE CASCADE` |
 | `content` | TEXT | The claim, 1–8,000 chars |
-| `source_session_id`, `source_reference` | TEXT | Provenance (nullable, always present) |
+| `source_session_id`, `source_reference` | TEXT | Provenance |
 | `confidence` | REAL | `CHECK 0 ≤ confidence ≤ 1` |
 | `validation_status` | TEXT | `unverified` \| `verified` \| `disputed` |
 | `status` | TEXT | `active` \| `superseded` \| `deleted` \| `expired` |
 | `created_at`, `updated_at`, `expires_at` | TEXT | ISO-8601 |
-| `content_hash` | TEXT | Normalised fingerprint for dedupe |
-| `tags` | TEXT | JSON array of lowercase kebab-case tags |
+| `content_hash` | TEXT | SHA-256 fingerprint for dedupe |
+| `tags` | TEXT | JSON array, lowercase kebab-case |
+| `superseded_by` | TEXT → `memories.id` | The record that replaced this one (migration 2) |
 
-Enforced invariants (by the database, not by convention):
+Database-enforced invariants:
 
-- a project-scoped row **must** name an existing project
-  (`CHECK (scope = 'global' OR project_id IS NOT NULL)` plus the foreign key);
+- a project-scoped row must name an existing project;
 - confidence is a probability;
 - lifecycle and validation vocabularies are closed sets;
 - deleting a project cascades to its memories.
 
 ### `memory_supersessions`
 
-`(new_id, old_id, created_at)` — one row per replaced memory, primary key on the
-pair. A single correction can replace several records, and the old row is never
-mutated except for its `status`.
+`(new_id, old_id, created_at)`, primary key on the pair. One correction can replace
+several records. Edges are never mutated, only inserted.
 
 ### `memory_history`
 
-Append-only audit: `action` (`created`, `updated`, `superseded`, `deleted`,
-`expired`, `purged`), `previous_status`, `next_status`, human-readable `reason`,
-`actor` (`user` | `agent` | `system`), timestamp.
+Append-only: `action` (`created`, `updated`, `superseded`, `deleted`, `expired`,
+`purged`), `previous_status`, `next_status`, `reason`, `actor`, `at`. Ordered by
+`at, rowid` so two events in the same millisecond keep insertion order.
 
 ### `memory_fts`
 
-FTS5 virtual table over `content` and `tags`, `tokenize='unicode61
-remove_diacritics 2'`, with `memory_id` unindexed. Kept in sync by triggers on
-insert, on content/tag update, and on hard delete.
+FTS5 over `content` and `tags` (`unicode61 remove_diacritics 2`), `memory_id`
+unindexed, kept in sync by triggers on insert, content/tag update, and hard delete.
 
-**Soft delete removes the FTS row explicitly.** Status changes intentionally do not
-touch the index (so a `superseded` memory remains searchable for audit), but the
-delete path must call `DELETE FROM memory_fts WHERE memory_id = ?` in the same
-transaction. Phase 2 must implement that and test it — a tombstone that still
-matches a keyword query is a correctness bug, not a cosmetic one.
+**A soft delete removes the FTS row explicitly, in the same transaction.** Status
+changes deliberately do not touch the index, so a superseded memory stays searchable
+for audit; the delete path must clean up. This is tested (`removes content from every
+read path and from the FTS index`).
 
 ## Lifecycle
-
-```
-                 ┌──────────── correction ────────────┐
-                 │                                    ▼
-  create ──► active ──expire by policy──► expired   superseded
-                 │                                    ▲
-                 └──── soft delete ──► deleted        │
-                                          │   supersession edge
-                                     purge│   from a newer memory
-                                          ▼
-                                       (gone)
-```
-
-Rules:
 
 | Transition | Retrieval-visible? | Reversible? |
 | --- | --- | --- |
 | `active` | yes | — |
 | `superseded` | **no** (audit only) | yes, by another correction |
-| `expired` | no | yes |
-| `deleted` (soft) | no, and out of FTS | yes, by restore |
+| `expired` | no (also filtered by `expires_at`) | yes |
+| `deleted` | no, and out of FTS | **no, through the API** |
 | purged (hard) | no, bytes removed | no |
 
-## Retrieval design (Phase 2 — not yet implemented)
+`expireStale()` runs at server start, so a deadline that passed while the server was
+down is enforced before the next retrieval.
 
-Scoring will be a weighted sum over independently observable signals, so the
-inspector can show *why* something ranked:
+## Deduplication
+
+Fingerprint: SHA-256 over `type \0 scope \0 project_id \0 normalise(content)`, where
+normalise applies NFKC, collapses whitespace, trims, and lowercases.
+
+`create()` runs inside `BEGIN IMMEDIATE`; the lookup and the insert cannot interleave
+with another writer. On a hit, the existing active record is returned with
+`created: false`. Editing a memory into a duplicate of another active record is a 409
+(`memory_conflict`) rather than a silent merge.
+
+## Correction / supersession
+
+One transaction:
+
+1. Load every target; a missing or deleted target is `memory_not_found`.
+2. If every target is already inactive, look for one active memory whose supersession
+   edges cover them all. If it exists **and the requested content matches it**, this is a
+   retried request → return it with `created: false`. Otherwise → 409 naming the record
+   to correct instead. (This guard was added after a test showed the naive version
+   silently ignored a different correction — see D013.)
+3. If targets mix active and inactive → 409.
+4. Reuse an existing active memory with the same fingerprint, or insert the replacement.
+5. Insert supersession edges, flip targets to `superseded` with `superseded_by`, append
+   history rows with the user's reason.
+
+A failure at any step rolls the whole transaction back — tested by forcing a trigger to
+abort midway and asserting no partial row survives.
+
+## Retrieval (implemented)
 
 ```
-score = 0.40 · relevance      (FTS5 bm25, normalised)
-      + 0.20 · scope_match    (project exact > global > other project = 0)
-      + 0.15 · confidence
-      + 0.10 · validation     (verified 1.0, unverified 0.6, disputed 0.2)
-      + 0.10 · recency        (exponential decay, configurable half-life)
-      + 0.05 · type_priority  (constraints and goals above contextual facts)
+hard filters (SQL): status = 'active', not expired, scope, project, types
+        ↓
+candidates: FTS5 bm25 (max 200)  +  pinned constraints/goals in scope
+        ↓
+score = 0.40·relevance + 0.20·scope + 0.15·confidence
+      + 0.10·validation + 0.10·recency + 0.05·type_priority
+        ↓
+dedupe by content fingerprint, then select:
+    2 reserved slots for pinned → remaining by score
+        ↓
+budget: ≤ 8 memories, ≤ 4,000 chars, ≤ 1,000 chars each (truncate, don't drop)
+        ↓
+sort by score; return results + metadata + evidence
 ```
 
-Hard filters run in SQL first: `status = 'active'`, scope in (project, global),
-`expires_at IS NULL OR expires_at > now`. Then ranking, then a **context budget**:
+Component definitions:
 
-- max memories per turn (default 8);
-- max characters injected (default ~4,000, roughly 1k tokens);
-- always include active `constraint` and `goal` records for the project even if
-  relevance is marginal, because violating a constraint is worse than a slightly
-  longer prompt.
-
-Each retrieval result carries `rank_components` and a one-line `evidence` string
-(e.g. *"matches 'sqlite' + project scope + verified"*), which is what the inspector
-renders.
-
-**Semantic retrieval** is a pluggable embedding provider. It must degrade to keyword
-search without error when unavailable — an optional dependency may never be a hard
-one.
-
-### Deduplication
-
-Before insert, compute `content_hash` over normalised text (case-folded, whitespace
-collapsed) plus type/scope/project. On collision:
-
-- identical hash + active status → return the existing memory, bump `updated_at`
-  only if provenance or confidence improved;
-- near-duplicate (Phase 2, token Jaccard ≥ threshold) → surface as a candidate
-  correction rather than silently adding a second copy.
-
-### Correction workflow
-
-`supersede(oldIds[], newMemory, reason, actor)` runs in one transaction:
-
-1. insert the new memory (`status='active'`);
-2. insert supersession edges;
-3. set each old row to `status='superseded'`, `superseded_by = new.id`;
-4. append `memory_history` rows for each old row (`action='superseded'`, with
-   `previous_status` and the reason);
-5. append a `created` history row for the new memory.
-
-Retrieval then excludes the old rows automatically, and the inspector shows the
-chain. This is the mechanism Demo B depends on.
-
-### Retention
-
-Policies are declarative per type: `expires_at` for time-boxed facts, and a sweep
-that marks `active → expired` when the deadline passes. Expiry is a status change
-with history, not a deletion. A separate purge job hard-deletes `deleted` rows older
-than a retention window.
-
-## Context hygiene
-
-- Memory content is **delimited untrusted data** in prompts, never merged into
-  system instructions. The formatter wraps it in a
-  `<retrieved_memories>` block with a standing instruction to treat it as data.
-- Memory text may contain prompt-injection attempts; they have no more authority
-  than a web page.
-- The engine records `retrieved_memory_ids` per turn so an action can be traced back
-  to the memories that influenced it.
-
-## Testing plan for Phase 2
-
-| Invariant | Test |
+| Component | Value |
 | --- | --- |
-| Scope isolation | A memory from project A never appears in project B's retrieval |
-| Correction | After supersede, only the new memory is retrievable; the old one is in history |
-| Deletion | Soft-deleted memory is not retrievable and does not match FTS |
-| Dedupe | Identical content is not stored twice |
-| Budget | Retrieval never exceeds the memory/character cap |
-| Evidence | Every result has non-empty rank components summing to its score |
-| Expiry | Past `expires_at` is excluded from retrieval and marked expired by the sweep |
+| `relevance` | `-bm25 / max(-bm25)` over candidates; `0` when there is no query text, and in that case its weight is dropped and the rest renormalised |
+| `scope` | project match `1.0`, global `0.65` |
+| `confidence` | stored confidence |
+| `validation` | verified `1.0`, unverified `0.6`, disputed `0.2` |
+| `recency` | `0.5 ^ (age_days / half_life[type])` |
+| `type_priority` | constraint `1.0` … contextual_fact `0.4` |
+
+Per-type recency half-lives (days): `constraint` 365, `preference` 180, `goal` 180,
+`verified_solution` 90, `failed_approach` 90, `project` 60, `technical_decision` 30,
+`correction` 30, `unfinished_task` 14, `contextual_fact` 7.
+
+### The pinned-slot change
+
+The first implementation ranked **all** pinned memories first. The benchmark showed
+why that is wrong: a project with eight constraints filled the entire budget and
+retrieval accuracy fell to 17%. The fix reserves at most two slots, then fills the rest
+by score, and sorts the final selection by score so the top result is the best match.
+Accuracy rose to 100% on the same corpus. This is recorded as D015 because it is the
+kind of trade-off the design document should have caught earlier.
+
+### Why budgets are configuration
+
+`max_memories`, `max_characters`, and `max_memory_characters` have defaults (8 / 4,000 /
+1,000) but are environment-configurable and overridable per request. A different
+deployment with a bigger context window should raise them rather than patch code.
+
+## Context rendering
+
+`formatMemoryContext` wraps results in `<retrieved_memories>` with a standing statement
+that the contents are data, not instructions, and returns exact character and estimated
+token counts. Tests assert that a memory containing "ignore previous instructions"
+appears after the warning and never leaves the block.
+
+## Testing map
+
+| Invariant | Test file |
+| --- | --- |
+| Persistence across restart | `tests/unit/memory-engine-phase2.test.ts` |
+| Deduplication incl. normalisation | same |
+| Correction chain, multi-target, idempotent replay | same |
+| Transaction rollback under forced failure | same |
+| Deletion removes content and FTS entry | same |
+| Project isolation | same |
+| Budgets, truncation, pinned inclusion | same |
+| Ranking determinism and component sum | same |
+| Invalid input rejection | same |
+| Concurrent writers on two connections | same |
+| FTS query sanitisation | `tests/unit/memory-context.test.ts` |
+| Context block safety and accounting | same |
+| HTTP contract for every endpoint | `tests/integration/memories-api.test.ts` |
+| Retrieval benchmark | `scripts/benchmark-retrieval.ts` |

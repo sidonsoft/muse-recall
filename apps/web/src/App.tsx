@@ -2,6 +2,7 @@ import type { HealthResponse, ModelResponse, ServiceMeta } from '@mml/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ContextInspector } from './components/ContextInspector.tsx';
 import { Icon } from './components/Icon.tsx';
+import { MemoryInspector } from './components/memory/MemoryInspector.tsx';
 import { Overview } from './components/Overview.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { StatusPill } from './components/ui.tsx';
@@ -111,7 +112,11 @@ export function App() {
             />
           ) : null}
 
-          {health && view !== 'overview' ? <PlannedView viewId={view} /> : null}
+          {health && view === 'memories' ? <MemoryInspector meta={meta} /> : null}
+
+          {health && view !== 'overview' && view !== 'memories' ? (
+            <PlannedView viewId={view} />
+          ) : null}
 
           {error && health ? (
             <p className="mt-3 rounded-lg border border-err/30 bg-err/5 px-3 py-2 font-mono text-[11px] text-err">
@@ -158,7 +163,9 @@ function ConnectionError({ message, onRetry }: { message: string; onRetry: () =>
  * pretending the capability exists.
  */
 function PlannedView({ viewId }: { viewId: ViewId }) {
-  const planned = VIEWS.filter((entry) => entry.phase > 1).sort((a, b) => a.phase - b.phase);
+  const planned = VIEWS.filter((entry) => !entry.implemented && entry.phase > 1).sort(
+    (a, b) => a.phase - b.phase,
+  );
 
   return (
     <div className="space-y-4">

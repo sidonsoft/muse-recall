@@ -69,7 +69,38 @@ loopback-only).
 - Every call is appended to a tool audit log with inputs, decision, result, and
   duration.
 
-### Memory as untrusted data (Phase 2)
+### Memory engine controls (implemented in Phase 2)
+
+**Deleted content is unreachable.** A soft delete removes the FTS row in the same
+transaction and every read path (`get`, `list`, `detail`, `history`, retrieval) filters
+`status = 'deleted'` out, including when a caller explicitly requests deleted rows.
+There is no restore endpoint, so deletion is final through the API. Tests assert each of
+these paths.
+
+**Search input is never an FTS expression.** `toFtsQuery` extracts word tokens, quotes
+each one, and joins them with `AND`, so `"`, `*`, `NEAR`, `OR`, and friends are literal
+text. Hostile queries are covered by tests and cannot reshape the SQL.
+
+**Destructive actions are explicit.** Correction, in-place edit, and deletion each have
+their own confirmation surface in the UI; deletion states that the content becomes
+unrecoverable. The engine additionally refuses to purge an active record.
+
+**Supersession cannot silently swallow a request.** Correcting an already-superseded
+memory with a *different* fact returns 409 naming the record to correct, instead of
+returning an unrelated replacement with 200.
+
+**Scope is enforced in SQL, not in JavaScript.** Retrieval builds the scope predicate
+into the query, so a memory from another project never enters the candidate set and
+cannot be leaked by a ranking bug.
+
+**Duplicate requests cannot fork state.** Writes take `BEGIN IMMEDIATE`, so
+check-then-insert serialises; an identical correction replays idempotently.
+
+**History is append-only and content-free where it matters.** History rows record
+actions, actors, and reasons — not memory content — so an audit entry cannot resurrect
+deleted text.
+
+### Memory as untrusted data (Phase 3 wiring)
 
 - Retrieved memories are injected inside a delimited block prefixed with a standing
   instruction that the content is data, not instructions.

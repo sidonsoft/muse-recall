@@ -18,7 +18,16 @@ export type IconName =
   | 'x'
   | 'refresh'
   | 'spark'
-  | 'bolt';
+  | 'bolt'
+  | 'search'
+  | 'edit'
+  | 'trash'
+  | 'history'
+  | 'plus'
+  | 'close'
+  | 'layers'
+  | 'tag'
+  | 'chevronDown';
 
 const PATHS: Record<IconName, string> = {
   chat: 'M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 13 4a8 8 0 0 1 8 8Z',
@@ -36,6 +45,15 @@ const PATHS: Record<IconName, string> = {
   refresh: 'M21 12a9 9 0 1 1-3-6.7M21 3v6h-6',
   spark: 'M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18',
   bolt: 'm13 2-9 12h7l-1 8 9-12h-7l1-8Z',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm10 2-4.35-4.35',
+  edit: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z',
+  trash: 'M3 6h18M8 6V4h8v2M7 6l1 14h8l1-14M10 11v6M14 11v6',
+  history: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 2',
+  plus: 'M12 5v14M5 12h14',
+  close: 'M18 6 6 18M6 6l12 12',
+  layers: 'm12 3 9 5-9 5-9-5 9-5Zm9 9-9 5-9-5m18 4-9 5-9-5',
+  tag: 'M20 12 12 4H4v8l8 8 8-8ZM8 8h.01',
+  chevronDown: 'm6 9 6 6 6-6',
 };
 
 export function Icon({ name, className = 'size-4' }: { name: IconName; className?: string }) {

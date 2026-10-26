@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-10-26T22:01:27.408Z",
+  "model": "muse-wonder-1.0",
+  "reasoning_effort": "low",
+  "environment": {
+    "node": "v26.8.1",
+    "platform": "darwin"
+  },
+  "short_prompt": {
+    "text": "Reply with exactly the single word: READY",
+    "repeats": 5,
+    "input_tokens": {
+      "mean": 16630,
+      "stdev": 0,
+      "min": 16630,
+      "max": 16630,
+      "cv": 0
+    },
+    "samples": [16630, 16630, 16630, 16630, 16630]
+  },
+  "with_memory_block": {
+    "characters": 3989,
+    "repeats": 2,
+    "input_tokens": {
+      "mean": 17507,
+      "stdev": 0,
+      "min": 17507,
+      "max": 17507,
+      "cv": 0
+    },
+    "samples": [17507, 17507]
+  },
+  "marginal_cost": {
+    "memory_block_characters": 3989,
+    "estimated_tokens_at_4_chars": 998,
+    "measured_input_token_delta": 877,
+    "ratio_delta_to_estimate": 0.879
+  },
+  "latency_ms": {
+    "mean": 4643.86,
+    "stdev": 801,
+    "min": 3310,
+    "max": 5670,
+    "cv": 0.1725
+  },
+  "interpretation": {
+    "baseline_overhead_constant": true,
+    "note": "The short-prompt spread indicates whether the CLI baseline prompt is stable. The marginal-cost delta indicates how many input tokens a ~4k character memory block adds."
+  }
+}

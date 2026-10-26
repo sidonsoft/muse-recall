@@ -75,6 +75,21 @@ Every response is `{ ok: true, data }` or `{ ok: false, error: { code, message,
 details? } }`. The error handler never returns a stack trace to the client, and
 malformed JSON maps to `400` rather than a generic `500`.
 
+## Memory engine layers
+
+```
+engine.ts      writes: create, update, correct (supersession), delete, retention
+               every mutation in BEGIN IMMEDIATE
+retrieval.ts   reads: SQL hard filters → weighted scoring → budgeted selection
+context.ts     rendering: delimited prompt block + exact character/token accounting
+rows.ts        row → contract mapping (validated against the shared schema)
+migrations.ts  append-only schema history
+```
+
+Writes and reads are separate modules with no shared mutable state, which is what makes
+the retrieval benchmark and the preview endpoint safe: they cannot change anything.
+Correctness invariants live in `engine.ts` and are tested directly, not through HTTP.
+
 ## Persistence
 
 `node:sqlite` (built into Node ≥ 24) instead of `better-sqlite3`:
@@ -112,18 +127,21 @@ API, which is why the UI can be trusted as a view of real state.
 | Migrations + invariants | Vitest (`:memory:`) | FKs, scope invariant, cascade, FTS sync, supersession history |
 | Provider adapter | Vitest + scripted fake CLI | JSONL parsing, usage aggregation, timeouts, spawn failure, flags |
 | HTTP contract | Vitest + Fastify `inject` | Real routes, real schema, envelope, error mapping |
+| Memory engine | Vitest (`:memory:` and file DBs) | Dedupe, supersession, rollback, deletion/FTS, scope, budgets, determinism, concurrency |
+| Memory API | Vitest + `inject` | Every endpoint, status codes, envelopes, deleted-content guarantees |
+| Retrieval benchmark | Script | Latency, selectivity, recall, correction accuracy, stale rate |
 | Live integration | Vitest, opt-in | Actual Muse inference, structured output, streaming |
-| UI | Playwright-core + system Chrome | Real render, real click-through, zero console errors |
+| UI | Playwright-core + system Chrome | Real render, full memory workflow, zero console/HTTP errors |
 
 The fake-CLI approach is what lets the provider tests be deterministic without
 mocking our own parsing logic: the adapter under test is the real one.
 
 ## Known architectural constraints
 
-- **~16.6k token floor per Muse CLI call.** The CLI injects its own harness prompt
-  even with `--preset empty --no-foreign-personal-context` (measured: 16,630 input
-  tokens for a one-word answer). Context-efficiency comparisons must account for
-  this constant. See [muse-integration.md](muse-integration.md).
+- **~16,630 token floor per Muse CLI call.** Measured as *exactly* 16,630 input tokens
+  across five identical calls (CV 0%); a ~4k-character memory block adds 877 tokens.
+  The floor must be subtracted from any token comparison. See
+  [evaluation.md](evaluation.md).
 - **One process per model call.** Roughly 3.5–5.5 s of startup and streaming latency
   on the reference machine. Fine for a local companion; not a chat-latency design.
   A long-lived `muse serve` adapter is a Phase 3+ option if latency matters.

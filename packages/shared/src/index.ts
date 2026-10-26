@@ -6,7 +6,9 @@
  * Nothing in this package may import a runtime framework or node built-in.
  */
 export * from './api.js';
+export * from './evaluation.js';
 export * from './health.js';
 export * from './memory.js';
 export * from './meta.js';
 export * from './provider.js';
+export * from './retrieval.js';

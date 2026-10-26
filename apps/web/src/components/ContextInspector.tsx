@@ -46,9 +46,10 @@ export function ContextInspector({
 
         <InspectorSection label="Retrieved memories">
           <div className="rounded-lg border border-dashed border-line px-3 py-2.5">
-            <p className="text-xs text-muted">0 retrieved</p>
+            <p className="text-xs text-muted">No agent turn yet</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">
-              Retrieval is implemented in Phase 2. Nothing is injected into a prompt yet.
+              Retrieval runs on demand in the Memory inspector. Injecting it into a prompt is Phase
+              3 work, so nothing is counted here yet.
             </p>
           </div>
         </InspectorSection>
