@@ -1,0 +1,245 @@
+# Git history captured before the documentation checkpoint commit
+# Command: git log --all --pretty=fuller --date=iso
+# Captured (local): 2026-10-26T22:26:43Z
+
+commit 8579c26a4d83a671c914fe3a35bb9d081b1ae2cd
+Author:     Russell Stephens <sidonsoft@gmail.com>
+AuthorDate: 2026-10-27 08:09:38 +1000
+Commit:     Russell Stephens <sidonsoft@gmail.com>
+CommitDate: 2026-10-27 08:09:38 +1000
+
+    feat: Phase 2 persistent memory engine
+    
+    Implement the memory engine, its HTTP surface, a browser inspector, and the
+    benchmark instrumentation that keeps claims about it honest.
+    
+    Engine (packages/memory-engine)
+    - MemoryEngine over node:sqlite; every mutation inside BEGIN IMMEDIATE so
+      check-then-write cannot interleave with another writer
+    - create with provenance/scope/confidence/validation/tags/expiry
+    - dedupe by SHA-256 of type|scope|project|normalised content; identical claims
+      return the existing record (created: false)
+    - transactional correction: insert or reuse the replacement, record
+      supersession edges, flip old rows, append history; idempotent only when the
+      retried request asks for the same fact, otherwise 409 naming the replacement
+    - soft delete removes the FTS row and hides the record from every read path;
+      no restore endpoint, so deletion is final through the API
+    - append-only history with actor and user-supplied reason, ordered by
+      insertion so same-millisecond events stay stable
+    - retrieval: SQL hard filters, then six weighted components (bm25 relevance,
+      scope, confidence, validation, per-type recency half-life, type priority),
+      two reserved slots for pinned constraints/goals, budgeted selection
+      (8 memories / 4000 chars / 1000 chars each), deterministic tie-breaks
+    - every result carries component scores, an evidence sentence, pinned and
+      truncated flags; metadata reports candidate/selected/excluded counts,
+      exclusions by reason, characters used, ids, latency and effective weights
+    - formatMemoryContext renders a delimited data-not-instructions block with
+      exact character and estimated-token accounting
+    - migration 2: superseded_by plus scope/status, recency and edge indexes
+    - retention sweep marks expired memories at startup
+    
+    API (apps/server)
+    - memory CRUD, correction, deletion, history, stats, projects and retrieval
+      preview, all validated with the shared schemas
+    - domain errors map to 404/409/400 with stable codes
+    - retrieval budgets configurable via MEMORY_* environment variables
+    - /api/meta reports phase 2, memory_engine complete, and retrieval config
+    
+    Inspector (apps/web)
+    - search, project/status/type filters, lifecycle counters, memory cards
+    - detail panel with provenance, tags, supersession links and history timeline
+    - correction form with reason, in-place edit, and confirmed deletion
+    - retrieval explanation tab: ranked results, component score bars, evidence,
+      budget metadata and the exact prompt block with estimated token cost
+    - create form so the inspector works on a fresh database
+    - nav badges now appear only for sections that are not implemented
+    
+    Instrumentation
+    - scripts/benchmark-retrieval.ts: deterministic corpus, latency percentiles,
+      selectivity, retrieval accuracy, correction accuracy, stale-memory rate
+    - scripts/benchmark-muse-overhead.ts: repeated real Muse calls measuring the
+      baseline variance and the marginal cost of a memory-sized block
+    - tests/evaluation/harness.ts: baseline vs memory-enabled runner with strict
+      isolation and refusal to report deltas without provider usage
+    
+    Verification (reference machine)
+    - 162 unit/integration tests pass (3 live Muse tests opt-in); 164 pass with
+      MML_LIVE_MUSE=1
+    - retrieval benchmark: accuracy 100% (30/30), correction accuracy 100%
+      (12/12), stale rate 0.000%, latency p50 0.20 ms over 300 retrievals
+    - Muse overhead: 16,630 input tokens on 5 identical calls (CV 0%), +877 for
+      a ~4k-character memory block over 2 calls
+    - browser verification: 18 checks including create -> correct -> explain
+      retrieval -> delete, zero console and HTTP errors
+    
+    Memory is not claimed to reduce total model tokens: it adds ~877 tokens per
+    turn while removing history re-sending, and the baseline comparison has not
+    been run. docs/evaluation.md states this explicitly.
+
+commit 349d86c5943ea6d763fab89b5e721389d730db56
+Author:     Russell Stephens <sidonsoft@gmail.com>
+AuthorDate: 2026-10-27 07:45:13 +1000
+Commit:     Russell Stephens <sidonsoft@gmail.com>
+CommitDate: 2026-10-27 07:45:13 +1000
+
+    feat: Phase 1 foundation — monorepo, API, SQLite, Muse integration
+    
+    Deliver the working foundation for Muse Memory Lab: a local-first memory
+    companion for Meta Muse.
+    
+    Repository and tooling
+    - pnpm monorepo: apps/{server,web}, packages/{shared,memory-engine,muse-provider}
+    - TypeScript 7 strict, Biome 2.6 lint/format, Vitest 5, GitHub Actions CI
+    - Node >= 24 required for the built-in node:sqlite module
+    
+    Persistence (packages/memory-engine)
+    - node:sqlite connection layer (WAL, foreign keys, busy timeout)
+    - append-only migration runner with per-migration transactions
+    - migration 1: projects, memories, memory_supersessions, memory_history,
+      FTS5 index with sync triggers, scope/confidence/status constraints
+    - health probe performing a real write/read round-trip inside a transaction
+    
+    Provider (packages/muse-provider)
+    - ModelProvider contract with capabilities/generate/stream
+    - MuseCliProvider over `muse exec --json`: JSONL frame parsing, streaming
+      deltas, usage aggregation, hermetic flags, hard timeout, spawn and
+      protocol-failure detection
+    - EchoProvider: deterministic offline provider, explicitly labelled as not a
+      model so it can never be mistaken for Muse
+    
+    API (apps/server)
+    - Fastify app factory with validated config, uniform response envelope,
+      safe error mapping, and empty-JSON-body tolerance
+    - routes: /api/live, /api/health, /api/health?probe=live,
+      POST /api/health/muse, /api/meta, POST /api/provider/generate
+    - observational provider health tracking with 60s cache and single-flight
+    
+    Web (apps/web)
+    - React 19 + Vite 7 + Tailwind 4 shell: sidebar, workspace, context inspector
+    - typed client that re-validates responses with the shared Zod schemas
+    - System screen with API/database/provider cards, live Muse check, provider
+      bench, and module status read from /api/meta so the UI cannot overstate
+      what is built
+    - unbuilt sections report their delivery phase instead of showing fake data
+    
+    Verification (all run on the reference machine)
+    - 70 tests pass, 3 live Muse tests skipped by default
+    - 72 tests pass with MML_LIVE_MUSE=1: real inference, structured output,
+      and streaming against Muse Code 1.4.13
+    - browser verification drives the real UI in Chrome: live Muse check via the
+      button and a real model reply, with zero console and HTTP errors
+    - docs/muse-integration.md records verified capabilities, measured token
+      overhead, and the remaining unknowns
+    
+    Phases 2-6 (memory CRUD/retrieval, harness, generative UI, tools,
+    evaluation) are not implemented and are marked as such in the API and UI.
+
+=== GRAPH ===
+* 8579c26 (HEAD -> main) feat: Phase 2 persistent memory engine
+* 349d86c feat: Phase 1 foundation — monorepo, API, SQLite, Muse integration
+
+=== REFS ===
+8579c26a4d83a671c914fe3a35bb9d081b1ae2cd refs/heads/main
+
+=== TRACKED FILES AT HEAD ===
+.env.example
+.github/workflows/ci.yml
+.gitignore
+LICENSE
+README.md
+apps/server/package.json
+apps/server/src/app.ts
+apps/server/src/config.ts
+apps/server/src/index.ts
+apps/server/src/provider-health.ts
+apps/server/src/routes/memories.ts
+apps/server/src/scripts/migrate.ts
+apps/server/tsconfig.json
+apps/web/index.html
+apps/web/package.json
+apps/web/src/App.tsx
+apps/web/src/components/ContextInspector.tsx
+apps/web/src/components/Icon.tsx
+apps/web/src/components/Overview.tsx
+apps/web/src/components/ProviderBench.tsx
+apps/web/src/components/Sidebar.tsx
+apps/web/src/components/memory/MemoryDetailPanel.tsx
+apps/web/src/components/memory/MemoryInspector.tsx
+apps/web/src/components/memory/RetrievalExplainer.tsx
+apps/web/src/components/ui.tsx
+apps/web/src/index.css
+apps/web/src/lib/api.ts
+apps/web/src/lib/format.ts
+apps/web/src/main.tsx
+apps/web/src/views.ts
+apps/web/tsconfig.json
+apps/web/vite.config.ts
+biome.json
+docs/DECISIONS.md
+docs/KNOWN_ISSUES.md
+docs/NEXT_STEPS.md
+docs/PROJECT_STATUS.md
+docs/architecture.md
+docs/assets/phase1-ui-bench.png
+docs/assets/phase1-ui.png
+docs/assets/phase2-ui-bench.png
+docs/assets/phase2-ui-memory-detail.png
+docs/assets/phase2-ui-memory-retrieval.png
+docs/assets/phase2-ui.png
+docs/benchmarks/muse-overhead-latest.json
+docs/benchmarks/muse-overhead-latest.md
+docs/benchmarks/retrieval-latest.json
+docs/benchmarks/retrieval-latest.md
+docs/evaluation.md
+docs/memory-design.md
+docs/muse-integration.md
+docs/security.md
+package.json
+packages/memory-engine/package.json
+packages/memory-engine/src/content-hash.ts
+packages/memory-engine/src/context.ts
+packages/memory-engine/src/db.ts
+packages/memory-engine/src/engine.ts
+packages/memory-engine/src/errors.ts
+packages/memory-engine/src/fts.ts
+packages/memory-engine/src/health.ts
+packages/memory-engine/src/index.ts
+packages/memory-engine/src/migrations.ts
+packages/memory-engine/src/retrieval.ts
+packages/memory-engine/src/rows.ts
+packages/memory-engine/tsconfig.json
+packages/muse-provider/package.json
+packages/muse-provider/src/echo-provider.ts
+packages/muse-provider/src/errors.ts
+packages/muse-provider/src/index.ts
+packages/muse-provider/src/muse-cli-provider.ts
+packages/muse-provider/tsconfig.json
+packages/shared/package.json
+packages/shared/src/api.ts
+packages/shared/src/evaluation.ts
+packages/shared/src/health.ts
+packages/shared/src/index.ts
+packages/shared/src/memory.ts
+packages/shared/src/meta.ts
+packages/shared/src/provider.ts
+packages/shared/src/retrieval.ts
+packages/shared/tsconfig.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+scripts/benchmark-muse-overhead.ts
+scripts/benchmark-retrieval.ts
+scripts/probe-muse.ts
+scripts/verify-ui.ts
+tests/evaluation/harness.test.ts
+tests/evaluation/harness.ts
+tests/integration/api.test.ts
+tests/integration/memories-api.test.ts
+tests/integration/muse-live.test.ts
+tests/unit/config.test.ts
+tests/unit/memory-context.test.ts
+tests/unit/memory-engine-phase2.test.ts
+tests/unit/memory-engine.test.ts
+tests/unit/memory-schema.test.ts
+tests/unit/muse-provider.test.ts
+tsconfig.base.json
+vitest.config.ts
