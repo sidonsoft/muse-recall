@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Monty's Memory Meadow</title>
+  <style>
+    /* Page fills the window; Phaser's Scale.FIT letterboxes the game inside it. */
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #2a1838;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    #game-container { width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+  <!-- Phaser 3 — the only external dependency. No build step, no other assets. -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <script>
+    'use strict';
+
+    // ---------------------------------------------------------------------------
+    // Monty's Memory Meadow — a farmyard memory-matching game for ages 4–7.
+    // Level 1: 12 cards (6 pairs) in a 4 x 3 grid.
+    // Level 2: 20 cards (10 pairs) in a 5 x 4 grid, with a faster flip-back.
+    // No timers, no penalties: children can explore at their own pace.
+    // ---------------------------------------------------------------------------
+
+    const GAME_WIDTH = 800;
+    const GAME_HEIGHT = 640;
+
+    const CARD_BACK = '🌿';
+
+    // Progressive difficulty: each level adds pairs (a bigger grid that uses
+    // the full desktop width) and shortens the mismatch flip-back delay.
+    // Card sizes are derived per level so every grid fits the same play area
+    // while keeping large, touch-friendly tap targets.
+    const LEVELS = [
+      {
+        name: 'Level 1',
+        animals: ['🐮', '🐷', '🐔', '🐑', '🐴', '🦆'],
+        cols: 4,
+        mismatchDelay: 800,
+        gapX: 16,
+        gapY: 12,
+      },
+      {
+        name: 'Level 2',
+        animals: ['🐮', '🐷', '🐔', '🐑', '🐴', '🦆', '🐶', '🐐', '🐱', '🐰'],
+        cols: 5,
+        mismatchDelay: 600, // slightly faster flip-back than Level 1
+        gapX: 12,
+        gapY: 10,
+      },
+    ];
+
+    const GRID_TOP = 150; // leaves room for the title and HUD above
+    const GRID_BOTTOM = GAME_HEIGHT - 14;
+    const GRID_SIDE_MARGIN = 16;
+
+    // Colours (high contrast on a soft pastel sunset background).
+    const COLOURS = {
+      ink: '#263238',
+      cream: '#fff8e1',
+      cardBack: 0x43a047,
+      cardBackDark: 0x2e7d32,
+      cardFace: 0xfff8e1,
+      matched: 0xc8e6c9,
+      gold: 0xffb300,
+    };
+
+    class MeadowScene extends Phaser.Scene {
+      constructor() {
+        super('MeadowScene');
+      }
+
+      create() {
+        this.levelIndex = 0;
+        this.score = 0;        // pairs matched so far
+        this.moves = 0;        // completed two-card attempts
+        this.firstCard = null; // first card flipped in the current attempt
+        this.lockBoard = false;
+        this.transitionGeneration = 0;
+        this.cards = [];
+
+        this.drawBackground();
+        this.createHud();
+        this.buildBoard();
+        this.createVictoryOverlay();
+        this.createLevelTransition();
+      }
+
+      get level() {
+        return LEVELS[this.levelIndex];
+      }
+
+      get totalPairs() {
+        return this.level.animals.length;
+      }
+
+      // --- Background: a warm sunset farm scene drawn entirely with Graphics --
+      drawBackground() {
+        const g = this.add.graphics();
+
+        // Sky: a smooth warm sunset gradient down to the horizon (~y=520).
+        // Purple at the top, through pink and orange, to gold at the horizon.
+        const horizon = 520;
+        const stops = [
+          { at: 0, colour: Phaser.Display.Color.ValueToColor(0x4a2a6d) },
+          { at: 0.38, colour: Phaser.Display.Color.ValueToColor(0xb84a72) },
+          { at: 0.68, colour: Phaser.Display.Color.ValueToColor(0xff7e47) },
+          { at: 1, colour: Phaser.Display.Color.ValueToColor(0xffc94d) },
+        ];
+        const stripHeight = 4;
+        for (let y = 0; y < horizon; y += stripHeight) {
+          const t = y / horizon;
+          let from = stops[0];
+          let to = stops[stops.length - 1];
+          for (let i = 0; i < stops.length - 1; i++) {
+            if (t >= stops[i].at && t <= stops[i + 1].at) {
+              from = stops[i];
+              to = stops[i + 1];
+              break;
+            }
+          }
+          const localT = (t - from.at) / Math.max(0.0001, to.at - from.at);
+          const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+            from.colour, to.colour, 100, Phaser.Math.Clamp(localT, 0, 1) * 100
+          );
+          g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
+          g.fillRect(0, y, GAME_WIDTH, stripHeight + 1);
+        }
+
+        // Puff clouds, tinted pink by the sunset (drawn behind the sun's glow).
+        this.drawCloud(g, 120, 62);
+        this.drawCloud(g, 330, 42);
+        this.drawCloud(g, 520, 92);
+
+        // Low sun near the horizon, right of centre. The hills drawn next
+        // overlap its lower edge, so it reads as sitting on the horizon.
+        g.fillStyle(0xffd54f, 0.35);
+        g.fillCircle(648, 468, 78);
+        g.fillStyle(0xffe082, 0.5);
+        g.fillCircle(648, 468, 60);
+        g.fillStyle(0xffecb3, 1);
+        g.fillCircle(648, 468, 46);
+        g.lineStyle(4, 0xff8f00, 1);
+        g.strokeCircle(648, 468, 46);
+
+        // Rolling hills along the bottom, in duskier greens for sunset light.
+        g.fillStyle(0x558b5e, 1);
+        g.fillEllipse(160, 700, 560, 260);
+        g.fillEllipse(640, 720, 620, 280);
+        g.fillStyle(0x3e6b48, 1);
+        g.fillEllipse(400, 750, 900, 260);
+
+        // Simple warm-white fence across the meadow.
+        g.fillStyle(0xfff3e0, 0.9);
+        g.fillRect(0, 548, GAME_WIDTH, 8);
+        g.fillRect(0, 574, GAME_WIDTH, 8);
+        for (let x = 28; x < GAME_WIDTH; x += 76) {
+          g.fillRect(x, 532, 10, 62);
+        }
+
+        // Little flowers dotted on the grass.
+        const flowerColours = [0xef5350, 0xffee58, 0xab47bc, 0xffa726, 0xec407a];
+        for (let i = 0; i < 28; i++) {
+          const x = Phaser.Math.Between(14, GAME_WIDTH - 14);
+          const y = Phaser.Math.Between(590, GAME_HEIGHT - 12);
+          g.fillStyle(flowerColours[i % flowerColours.length], 1);
+          g.fillCircle(x, y, 4);
+          g.fillStyle(0xfff59d, 1);
+          g.fillCircle(x, y, 2);
+        }
+      }
+
+      drawCloud(g, x, y) {
+        g.fillStyle(0xffd7d5, 0.9);
+        g.fillCircle(x, y, 26);
+        g.fillCircle(x + 28, y + 6, 20);
+        g.fillCircle(x - 28, y + 6, 18);
+        g.fillRect(x - 28, y, 56, 18);
+      }
+
+      // --- HUD: title, score, moves, restart -----------------------------------
+      createHud() {
+        this.add.text(GAME_WIDTH / 2, 34, "🌻 Monty's Memory Meadow 🌻", {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '34px',
+          fontStyle: 'bold',
+          color: COLOURS.cream,
+        }).setOrigin(0.5);
+
+        this.add.text(GAME_WIDTH / 2, 68, 'Find all the farmyard friends!', {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '20px',
+          color: '#ffe3c2',
+        }).setOrigin(0.5);
+
+        // Score pill (left).
+        this.scoreText = this.add.text(28, 96, '⭐ Pairs: 0 / 6', {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: COLOURS.ink,
+          backgroundColor: '#ffffff',
+          padding: { x: 14, y: 8 },
+        });
+
+        // Level pill (centre) — visible indicator of the current level.
+        this.levelText = this.add.text(GAME_WIDTH / 2, 96, '', {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+          backgroundColor: '#6a1b9a',
+          padding: { x: 14, y: 8 },
+        }).setOrigin(0.5, 0);
+
+        // Moves pill (right of centre, clear of the restart button).
+        this.movesText = this.add.text(606, 96, '👣 Moves: 0', {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: COLOURS.ink,
+          backgroundColor: '#ffffff',
+          padding: { x: 14, y: 8 },
+        }).setOrigin(1, 0);
+
+        // Restart button (right).
+        this.restartButton = this.makeButton(772, 96, '↻ Restart', () => this.restartGame())
+          .setOrigin(1, 0);
+
+        this.updateHud();
+      }
+
+      // A big, touch-friendly text button with hover/press feedback.
+      makeButton(x, y, label, onClick) {
+        const button = this.add.text(x, y, label, {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+          backgroundColor: '#ef6c00',
+          padding: { x: 16, y: 10 },
+        });
+        button.setInteractive({ useHandCursor: true });
+        button.on('pointerover', () => button.setBackgroundColor('#f57c00'));
+        button.on('pointerout', () => button.setBackgroundColor('#ef6c00'));
+        button.on('pointerdown', () => button.setBackgroundColor('#e65100'));
+        button.on('pointerup', () => {
+          button.setBackgroundColor('#f57c00');
+          onClick();
+        });
+        return button;
+      }
+
+      // --- Board -----------------------------------------------------------------
+      // Card size is derived from the level's grid so it fills the available
+      // desktop width/height and stays responsive under Scale.FIT.
+      levelLayout() {
+        const { cols, animals, gapX, gapY } = this.level;
+        const rows = Math.ceil((animals.length * 2) / cols);
+        const cardW = Math.floor((GAME_WIDTH - GRID_SIDE_MARGIN * 2 - (cols - 1) * gapX) / cols);
+        const cardH = Math.floor((GRID_BOTTOM - GRID_TOP - (rows - 1) * gapY) / rows);
+        return { cols, rows, gapX, gapY, cardW, cardH, fontSize: Math.round(Math.min(cardW, cardH) * 0.52) };
+      }
+
+      buildBoard(animateIn = false) {
+        const layout = this.levelLayout();
+        // Duplicate each animal to make pairs, then shuffle.
+        const deck = Phaser.Utils.Array.Shuffle([...this.level.animals, ...this.level.animals]);
+
+        const gridWidth = layout.cols * layout.cardW + (layout.cols - 1) * layout.gapX;
+        const startX = (GAME_WIDTH - gridWidth) / 2 + layout.cardW / 2;
+
+        deck.forEach((emoji, index) => {
+          const col = index % layout.cols;
+          const row = Math.floor(index / layout.cols);
+          const x = startX + col * (layout.cardW + layout.gapX);
+          const y = GRID_TOP + layout.cardH / 2 + row * (layout.cardH + layout.gapY);
+          const card = this.createCard(x, y, emoji, layout);
+          this.cards.push(card);
+          if (animateIn) {
+            card.container.setAlpha(0);
+            card.container.setScale(0.85);
+            this.tweens.add({
+              targets: card.container, alpha: 1, scale: 1,
+              duration: 320, delay: index * 35, ease: 'Back.easeOut',
+            });
+          }
+        });
+      }
+
+      createCard(x, y, emoji, layout) {
+        // Card background, redrawn on flip so back/face/matched all look distinct.
+        const bg = this.add.graphics();
+
+        // Leaf-pattern dots shown on the card back.
+        const pattern = this.add.graphics();
+
+        // Big emoji label — the animal on the face, a leaf on the back.
+        const label = this.add.text(0, 0, CARD_BACK, {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: `${layout.fontSize}px`,
+        }).setOrigin(0.5);
+
+        const container = this.add.container(x, y, [bg, pattern, label]);
+        container.setSize(layout.cardW, layout.cardH);
+        // Explicit hit area so the whole large card is tappable.
+        // Container local (0, 0) is its centre, so the area starts at -W/2, -H/2.
+        container.setInteractive(
+          new Phaser.Geom.Rectangle(-layout.cardW / 2, -layout.cardH / 2, layout.cardW, layout.cardH),
+          Phaser.Geom.Rectangle.Contains
+        );
+        container.input.cursor = 'pointer';
+
+        const card = {
+          container, bg, pattern, label, emoji, homeY: y,
+          width: layout.cardW, height: layout.cardH, fontSize: layout.fontSize,
+          faceUp: false,
+          matched: false,
+          flipping: false,
+        };
+
+        this.paintCard(card);
+        container.on('pointerdown', () => this.handleCardPick(card));
+        return card;
+      }
+
+      // Draws the card for its current state (back / face / matched).
+      paintCard(card) {
+        const { bg, pattern, label } = card;
+        const halfW = card.width / 2;
+        const halfH = card.height / 2;
+
+        bg.clear();
+        pattern.clear();
+
+        if (card.faceUp || card.matched) {
+          bg.fillStyle(card.matched ? COLOURS.matched : COLOURS.cardFace, 1);
+          bg.lineStyle(6, card.matched ? 0x43a047 : COLOURS.gold, 1);
+          bg.fillRoundedRect(-halfW, -halfH, card.width, card.height, 18);
+          bg.strokeRoundedRect(-halfW, -halfH, card.width, card.height, 18);
+          label.setText(card.matched ? card.emoji + ' ✓' : card.emoji);
+          label.setFontSize(card.matched ? Math.round(card.fontSize * 0.8) : card.fontSize);
+        } else {
+          bg.fillStyle(COLOURS.cardBack, 1);
+          bg.lineStyle(6, COLOURS.cardBackDark, 1);
+          bg.fillRoundedRect(-halfW, -halfH, card.width, card.height, 18);
+          bg.strokeRoundedRect(-halfW, -halfH, card.width, card.height, 18);
+
+          // Leaf pattern: soft dots around the central leaf.
+          pattern.fillStyle(0xffffff, 0.28);
+          const dx = halfW - 24;
+          const dy = halfH - 24;
+          [[-dx, -dy], [dx, -dy], [-dx, dy], [dx, dy], [0, -dy], [0, dy]]
+            .forEach(([px, py]) => pattern.fillCircle(px, py, 8));
+
+          label.setText(CARD_BACK);
+          label.setFontSize(card.fontSize);
+        }
+      }
+
+      // --- Gameplay ---------------------------------------------------------------
+      handleCardPick(card) {
+        // Ignore taps while resolving a pair, on face-up/matched cards,
+        // on a card mid-flip, or while the victory overlay is showing.
+        if (this.lockBoard || card.faceUp || card.matched || card.flipping) return;
+        if (this.victoryOverlay && this.victoryOverlay.visible) return;
+        if (this.levelTransition && this.levelTransition.visible) return;
+
+        this.flipCard(card, true, () => {
+          if (!this.firstCard) {
+            this.firstCard = card; // wait for a second pick
+            return;
+          }
+
+          // Second pick: one completed move.
+          this.moves += 1;
+          this.updateHud();
+
+          const first = this.firstCard;
+          this.firstCard = null;
+
+          if (first.emoji === card.emoji) {
+            this.handleMatch(first, card);
+          } else {
+            this.handleMismatch(first, card);
+          }
+        });
+      }
+
+      handleMatch(first, second) {
+        first.matched = true;
+        second.matched = true;
+        this.paintCard(first);
+        this.paintCard(second);
+        this.popCard(first);
+        this.popCard(second);
+
+        this.score += 1;
+        this.updateHud();
+
+        if (this.score === this.totalPairs) {
+          // Small pause so the child sees the final pair before celebrating.
+          this.time.delayedCall(450, () => {
+            if (this.levelIndex < LEVELS.length - 1) this.showLevelTransition();
+            else this.showVictory();
+          });
+        }
+      }
+
+      handleMismatch(first, second) {
+        this.lockBoard = true;
+        // Per-level delay: Level 1 gives 800 ms; Level 2 is slightly faster.
+        this.time.delayedCall(this.level.mismatchDelay, () => {
+          this.flipCard(first, false);
+          this.flipCard(second, false, () => { this.lockBoard = false; });
+          // Unlock even if the second tween is interrupted.
+          this.time.delayedCall(350, () => { this.lockBoard = false; });
+        });
+      }
+
+      // Flip animation: squash to nothing, swap the face, stretch back out.
+      flipCard(card, faceUp, onComplete) {
+        card.flipping = true;
+        this.tweens.add({
+          targets: card.container,
+          scaleX: 0,
+          duration: 140,
+          ease: 'Quad.easeIn',
+          onComplete: () => {
+            card.faceUp = faceUp;
+            this.paintCard(card);
+            this.tweens.add({
+              targets: card.container,
+              scaleX: 1,
+              duration: 160,
+              ease: 'Quad.easeOut',
+              onComplete: () => {
+                card.flipping = false;
+                if (onComplete) onComplete();
+              },
+            });
+          },
+        });
+      }
+
+      // Happy little bounce when a pair is matched.
+      popCard(card) {
+        this.tweens.add({
+          targets: card.container,
+          scale: 1.08,
+          duration: 130,
+          yoyo: true,
+          ease: 'Sine.easeOut',
+        });
+      }
+
+      updateHud() {
+        this.scoreText.setText(`⭐ Pairs: ${this.score} / ${this.totalPairs}`);
+        this.levelText.setText(`🌻 ${this.level.name} / ${LEVELS.length}`);
+        this.movesText.setText(`👣 Moves: ${this.moves}`);
+      }
+
+      // --- Victory overlay ---------------------------------------------------------
+      // The overlay container is centred on screen (children use centre-relative
+      // coordinates) so showVictory() can scale it in from the middle.
+      createVictoryOverlay() {
+        // Dim is kept outside the scaled container so it always covers the
+        // full screen, even while the panel is scaling in.
+        this.victoryDim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x263238, 0.55)
+          .setOrigin(0)
+          .setVisible(false)
+          .setAlpha(0)
+          .setDepth(10);
+
+        const panel = this.add.graphics();
+        panel.fillStyle(0xfff8e1, 1);
+        panel.lineStyle(6, COLOURS.gold, 1);
+        panel.fillRoundedRect(-210, -165, 420, 330, 24);
+        panel.strokeRoundedRect(-210, -165, 420, 330, 24);
+
+        const title = this.add.text(0, -110, '🎉 You did it! 🎉', {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '36px',
+          fontStyle: 'bold',
+          color: COLOURS.ink,
+        }).setOrigin(0.5);
+
+        this.victoryAnimalsText = this.add.text(0, -50, '', {
+          fontSize: '32px',
+        }).setOrigin(0.5);
+        const animals = this.victoryAnimalsText;
+
+        this.victoryMovesText = this.add.text(0, 10, '', {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '26px',
+          fontStyle: 'bold',
+          color: '#37474f',
+          align: 'center',
+        }).setOrigin(0.5);
+
+        const playAgain = this.makeButton(0, 70, '▶ Play again', () => this.restartAll());
+        playAgain.setOrigin(0.5, 0);
+
+        this.victoryOverlay = this.add.container(
+          GAME_WIDTH / 2, GAME_HEIGHT / 2,
+          [panel, title, animals, this.victoryMovesText, playAgain]
+        );
+        this.victoryOverlay.setVisible(false);
+        this.victoryOverlay.setAlpha(0);
+        this.victoryOverlay.setScale(0.85);
+        this.victoryOverlay.setDepth(11);
+      }
+
+      showVictory() {
+        this.victoryAnimalsText.setText(this.level.animals.join(' '));
+        this.victoryMovesText.setText(
+          `You finished ${this.level.name}!\nYou found all ${this.totalPairs} pairs\nin ${this.moves} moves!`
+        );
+
+        // Celebratory bounce: every matched card hops in a staggered wave.
+        // Cards return to homeY/scale 1, so a later restart is unaffected.
+        this.cards.forEach((card, i) => {
+          if (!card.matched) return;
+          card.container.setY(card.homeY);
+          card.container.setScale(1);
+          this.tweens.add({
+            targets: card.container,
+            y: card.homeY - 18,
+            scale: 1.07,
+            duration: 180,
+            delay: i * 55,
+            yoyo: true,
+            repeat: 1,
+            ease: 'Sine.easeOut',
+            onComplete: () => {
+              card.container.setY(card.homeY);
+              card.container.setScale(1);
+            },
+          });
+        });
+
+        // Overlay animates in: fade + scale up from the centre.
+        this.tweens.killTweensOf(this.victoryOverlay);
+        this.tweens.killTweensOf(this.victoryDim);
+        this.victoryDim.setVisible(true);
+        this.tweens.add({ targets: this.victoryDim, alpha: 1, duration: 250 });
+        this.victoryOverlay.setVisible(true);
+        this.victoryOverlay.setAlpha(0);
+        this.victoryOverlay.setScale(0.85);
+        this.tweens.add({
+          targets: this.victoryOverlay,
+          alpha: 1,
+          scale: 1,
+          duration: 380,
+          ease: 'Back.easeOut',
+        });
+
+        // Gentle falling stars to celebrate — purely decorative, never blocking.
+        for (let i = 0; i < 18; i++) {
+          const star = this.add.text(
+            Phaser.Math.Between(40, GAME_WIDTH - 40), -30, '⭐',
+            { fontSize: `${Phaser.Math.Between(20, 34)}px` }
+          ).setDepth(12);
+          this.tweens.add({
+            targets: star,
+            y: GAME_HEIGHT + 40,
+            x: star.x + Phaser.Math.Between(-40, 40),
+            angle: Phaser.Math.Between(-90, 90),
+            duration: Phaser.Math.Between(1400, 2600),
+            delay: Phaser.Math.Between(0, 500),
+            onComplete: () => star.destroy(),
+          });
+        }
+      }
+
+      // --- Level transition ---------------------------------------------------------
+      createLevelTransition() {
+        this.transitionDim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x263238, 0.55)
+          .setOrigin(0).setVisible(false).setAlpha(0).setDepth(20);
+
+        const panel = this.add.graphics();
+        panel.fillStyle(0xfff8e1, 1);
+        panel.lineStyle(6, COLOURS.gold, 1);
+        panel.fillRoundedRect(-230, -130, 460, 260, 24);
+        panel.strokeRoundedRect(-230, -130, 460, 260, 24);
+
+        const title = this.add.text(0, -78, '🎉 Level 1 Complete! 🎉', {
+          fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '32px', fontStyle: 'bold', color: COLOURS.ink,
+        }).setOrigin(0.5);
+
+        this.transitionText = this.add.text(0, 0, '', {
+          fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '24px', fontStyle: 'bold',
+          color: '#37474f', align: 'center',
+        }).setOrigin(0.5);
+
+        const next = this.add.text(0, 72, 'More friends • Faster flips!', {
+          fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '20px', color: '#ef6c00',
+        }).setOrigin(0.5);
+
+        this.levelTransition = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [panel, title, this.transitionText, next]);
+        this.levelTransition.setVisible(false).setAlpha(0).setScale(0.85).setDepth(21);
+      }
+
+      showLevelTransition() {
+        this.lockBoard = true;
+        const generation = ++this.transitionGeneration;
+        const nextLevel = LEVELS[this.levelIndex + 1];
+        this.transitionText.setText(`Great job!\nGet ready for ${nextLevel.name}…`);
+
+        this.tweens.killTweensOf(this.levelTransition);
+        this.tweens.killTweensOf(this.transitionDim);
+        this.transitionDim.setVisible(true);
+        this.levelTransition.setVisible(true).setAlpha(0).setScale(0.85);
+        this.tweens.add({ targets: this.transitionDim, alpha: 1, duration: 250 });
+        this.tweens.add({
+          targets: this.levelTransition, alpha: 1, scale: 1, duration: 380, ease: 'Back.easeOut',
+          onComplete: () => {
+            // Hold the celebration, fade it out, then fade the new board in.
+            this.time.delayedCall(1200, () => {
+              if (generation !== this.transitionGeneration) return;
+              this.tweens.add({
+                targets: [this.levelTransition, this.transitionDim], alpha: 0, duration: 350,
+                onComplete: () => {
+                  if (generation !== this.transitionGeneration) return;
+                  this.levelTransition.setVisible(false);
+                  this.transitionDim.setVisible(false);
+                  this.startLevel(this.levelIndex + 1, true);
+                },
+              });
+            });
+          },
+        });
+      }
+
+      hideOverlays() {
+        this.transitionGeneration += 1;
+        [this.victoryOverlay, this.levelTransition].forEach((o) => {
+          if (!o) return;
+          this.tweens.killTweensOf(o);
+          o.setVisible(false).setAlpha(0).setScale(0.85);
+        });
+        [this.victoryDim, this.transitionDim].forEach((d) => {
+          if (!d) return;
+          this.tweens.killTweensOf(d);
+          d.setVisible(false).setAlpha(0);
+        });
+      }
+
+      startLevel(levelIndex, animateIn = false) {
+        this.levelIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
+        this.cards.forEach((card) => {
+          this.tweens.killTweensOf(card.container);
+          card.container.destroy();
+        });
+        this.cards = [];
+        this.score = 0;
+        this.moves = 0;
+        this.firstCard = null;
+        this.lockBoard = false;
+        this.updateHud();
+        this.buildBoard(animateIn);
+      }
+
+      // --- Restart -------------------------------------------------------------------
+      // HUD restart replays the current level; victory Play again restarts at Level 1.
+      restartGame() {
+        this.hideOverlays();
+        this.startLevel(this.levelIndex);
+      }
+
+      restartAll() {
+        this.hideOverlays();
+        this.startLevel(0);
+      }
+    }
+
+    // Phaser configuration: Scale.FIT + autoCenter keeps the game responsive
+    // and playable with mouse or touch on any screen size.
+    const config = {
+      type: Phaser.AUTO,
+      parent: 'game-container',
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      backgroundColor: '#4a2a6d',
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
+      scene: [MeadowScene],
+    };
+
+    new Phaser.Game(config);
+  </script>
+</body>
+</html>
