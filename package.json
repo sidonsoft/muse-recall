@@ -1,0 +1,42 @@
+{
+  "name": "muse-memory-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local-first memory companion for Meta Muse: persistent, correctable memory plus declarative generative UI.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:server": "pnpm --filter @mml/server run dev",
+    "dev:web": "pnpm --filter @mml/web run dev",
+    "build": "pnpm --filter @mml/web run build && pnpm --filter @mml/server run build",
+    "start": "pnpm --filter @mml/server run start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "db:migrate": "pnpm --filter @mml/server run db:migrate",
+    "muse:probe": "tsx scripts/probe-muse.ts",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.3",
+    "@types/node": "^26.6.5",
+    "playwright-core": "^1.64.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

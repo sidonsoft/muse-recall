@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# test output
+coverage/
+test-results/
+playwright-report/
+.vitest/
+
+# local data (never commit a user's memory database)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# environment / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# muse / agent scratch
+.muse/
+.agent-runs/
+runs/
+
+# editor & OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.log

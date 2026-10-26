@@ -1,0 +1,17 @@
+{
+  "name": "@mml/memory-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SQLite-backed persistent memory engine: storage, retrieval, supersession, and audit history.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mml/shared": "workspace:*"
+  }
+}
