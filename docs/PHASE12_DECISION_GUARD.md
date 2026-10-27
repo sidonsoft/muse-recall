@@ -136,5 +136,5 @@ enforced, with honest limits printed.
 
 ## 10. Commit SHA
 
-Branch `agent/strata-phase12-decision-guard` (pushed). See `git log -1 --format=%H` on this
-branch — the SHA is recorded in this doc's final commit (amended below).
+Engine + tests commit: **`3b4c74c`** (`feat(decision-guard): deterministic decision-compliance
+engine (@mml/decision-guard)`) on `agent/strata-phase12-decision-guard` (pushed to origin).
