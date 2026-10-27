@@ -35,9 +35,10 @@ possible secret format is removed.
 | Budgets not reset | PASS (runtime/call checks unchanged) |
 | Fallback cannot bypass validation/approval | PASS (invalid fallback → failed job → 409 approval) |
 
-Residual risk: redaction is pattern-based; a novel credential format could survive. A literal key
-was committed in a test fixture (`c097767`) before review; it is removed from the tree but remains
-in history, so **rotation is mandatory**, not optional. Local-only, single-user scope is unchanged.
+Residual risk: redaction is pattern-based; a novel credential format could survive. An old key was
+committed in a test fixture (`c097767`) before review; it was removed from the tree and **rotated on
+2026-10-27**. The revoked value remains in history but is no longer valid. The replacement key is
+not stored in the repository. Local-only, single-user scope is unchanged.
 
 ## 2. Real-model reliability — **5/5**
 
@@ -111,8 +112,7 @@ claim gameplay correctness beyond load/render verification.
 - Record and upload the three-minute video.
 - Decide repository visibility for judging.
 - Complete the submission form; do not submit automatically.
-- Rotate the exposed API key now: it appeared in chat and in an earlier commit's test fixture;
-  the current tree no longer contains it, but history does.
+- ~~Rotate the exposed API key~~ — done 2026-10-27; the replacement is not stored in the repo.
 
 ## 7. Recommendation — **CONDITIONAL GO**
 
