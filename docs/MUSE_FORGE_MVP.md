@@ -175,3 +175,28 @@ script in `<head>`; the real game then loaded Phaser 3.80.1 and produced a meani
 The real modification could not be re-run after the fix because the Muse subscription window was
 exhausted. Deterministic tests prove the source-aware path; the next real run should be done
 after the quota resets.
+
+## Muse Spark via Meta Model API (quota unblock)
+
+Forge jobs can use a Meta Model API key instead of the exhausted subscription window:
+
+| Variable | Purpose |
+| --- | --- |
+| `FORGE_MUSE_API_KEY` | passed to `muse exec --api-key-stdin`; never logged or persisted |
+| `FORGE_MUSE_MODEL` | e.g. `muse-spark-1.3-contributor` |
+
+Verified run (2026-10-27, `muse-spark-1.3-contributor`, fresh database):
+
+| Step | Result |
+| --- | --- |
+| Generate | 56.7 s, 5 calls, 167,875 input tokens; approved after runtime verification |
+| Capture | `renderer.snapshot`, 145,050-character PNG data URL |
+| Modify | 50.9 s, 5 calls, 172,867 input tokens; `base_version=1`; validation passed |
+| Source preservation | v1 13,249 chars → v2 13,271 chars (+22), 281 shared lines, title preserved |
+| Runtime gate | passed; v2 approved |
+| Rollback | restored v1 |
+
+This satisfies the Phase 10 success criterion with real inference: Muse edited the approved
+source from a valid screenshot, the diff was small and source-preserving, and the result passed
+server-side runtime verification before approval. The API key was supplied through the server
+environment only; `git log` contains no key material.

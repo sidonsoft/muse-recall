@@ -102,6 +102,8 @@ const EnvSchema = z.object({
   FORGE_MAX_CALLS: z.coerce.number().int().min(1).max(100).default(25),
   FORGE_MAX_INPUT_TOKENS: z.coerce.number().int().min(10_000).max(10_000_000).default(1_500_000),
   FORGE_MUSE_BIN: z.string().min(1).optional(),
+  FORGE_MUSE_API_KEY: z.string().min(10).optional(),
+  FORGE_MUSE_MODEL: z.string().min(2).optional(),
   FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
 });
 
@@ -120,6 +122,10 @@ export interface AppConfig {
     maxCalls: number;
     maxInputTokens: number;
     museBin: string | null;
+    /** Meta Model API key; passed to the CLI over stdin, never logged. */
+    apiKey: string | null;
+    /** Model id used when an API key is configured. */
+    model: string | null;
     reasoningEffort: 'low' | 'medium' | 'high';
   };
   provider: ProviderConfig;
@@ -175,6 +181,8 @@ export function loadConfig(
       maxCalls: value.FORGE_MAX_CALLS,
       maxInputTokens: value.FORGE_MAX_INPUT_TOKENS,
       museBin: value.FORGE_MUSE_BIN ?? null,
+      apiKey: value.FORGE_MUSE_API_KEY ?? null,
+      model: value.FORGE_MUSE_MODEL ?? null,
       reasoningEffort: value.FORGE_REASONING_EFFORT,
     },
     memoryBudget: {

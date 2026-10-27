@@ -107,6 +107,8 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       workspace: forgeWorkspace,
       engine,
       ...(config.forge?.museBin ? { museBin: config.forge.museBin } : {}),
+      ...(config.forge?.apiKey ? { apiKey: config.forge.apiKey } : {}),
+      ...(config.forge?.model ? { model: config.forge.model } : {}),
       ...(config.forge
         ? {
             maxRuntimeMs: config.forge.maxRuntimeMs,

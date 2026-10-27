@@ -33,6 +33,10 @@ export interface ForgeManagerOptions {
   reasoningEffort?: 'low' | 'medium' | 'high';
   /** Extra environment for the child process (tests use it to script the CLI). */
   env?: NodeJS.ProcessEnv;
+  /** Meta Model API key, passed to `muse exec` over stdin. */
+  apiKey?: string;
+  /** Model id for API-key runs (e.g. muse-spark-1.3-contributor). */
+  model?: string;
   /** Browser runtime check run before approval; injectable for tests. */
   runtimeCheck?: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
   now?: () => Date;
@@ -66,6 +70,8 @@ export class ForgeJobManager {
   private readonly maxInputTokens: number;
   private readonly effort: 'low' | 'medium' | 'high';
   private readonly env: NodeJS.ProcessEnv | undefined;
+  private readonly apiKey: string | undefined;
+  private readonly model: string | undefined;
   private readonly runtimeCheck: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
   private readonly now: () => Date;
   private readonly jobs = new Map<string, ForgeJob>();
@@ -82,6 +88,8 @@ export class ForgeJobManager {
     this.maxInputTokens = options.maxInputTokens ?? 1_500_000;
     this.effort = options.reasoningEffort ?? 'low';
     this.env = options.env;
+    this.apiKey = options.apiKey;
+    this.model = options.model;
     this.runtimeCheck = options.runtimeCheck ?? checkGameRuntime;
     this.now = options.now ?? (() => new Date());
   }
@@ -344,15 +352,21 @@ export class ForgeJobManager {
       '--reasoning-effort',
       this.effort,
     ];
+    if (this.apiKey) args.push('--provider', 'meta', '--api-key-stdin');
+    if (this.model) args.push('--model', this.model);
     for (const image of images) args.push('--image', image);
 
     this.update(job, { status: 'running', started_at: this.now().toISOString() });
     const startedAt = Date.now();
 
     const child = spawn(this.museBin, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [this.apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       ...(this.env ? { env: { ...process.env, ...this.env } } : {}),
     });
+    if (this.apiKey && child.stdin) {
+      child.stdin.write(this.apiKey);
+      child.stdin.end();
+    }
     execState.child = child;
     // Cancellation can arrive between `start()` and this spawn; honour it now.
     if (this.cancelled.has(job.id)) child.kill('SIGKILL');
