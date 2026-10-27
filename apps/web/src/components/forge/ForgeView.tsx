@@ -39,7 +39,8 @@ export function ForgeView() {
   const [previewReady, setPreviewReady] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [captureMemory, setCaptureMemory] = useState(true);
+  // Saving a decision is a separate, explicit action from approving files.
+  const [captureMemory, setCaptureMemory] = useState(false);
   const [decision, setDecision] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -238,6 +239,10 @@ export function ForgeView() {
 
   function capture(): void {
     iframeRef.current?.contentWindow?.postMessage({ type: 'forge:capture' }, '*');
+  }
+
+  function restartGame(): void {
+    iframeRef.current?.contentWindow?.postMessage({ type: 'forge:restart' }, '*');
   }
 
   const state = project?.state;
@@ -445,6 +450,14 @@ export function ForgeView() {
                 className="rounded px-2 py-1 text-[10px] text-muted hover:text-ink"
               >
                 Reload
+              </button>
+              <button
+                type="button"
+                onClick={restartGame}
+                disabled={!previewReady}
+                className="rounded px-2 py-1 text-[10px] text-muted hover:text-ink disabled:opacity-40"
+              >
+                Restart game
               </button>
               <button
                 type="button"

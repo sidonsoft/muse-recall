@@ -177,7 +177,7 @@ export function registerForgeRoutes(
  * request a PNG of the game canvas; the generated game never sees app state.
  */
 const CAPTURE_BRIDGE = `<script>(function(){
-window.addEventListener('message',function(event){var data=event.data;if(!data||data.type!=='forge:capture')return;var canvas=document.querySelector('canvas');try{var url=canvas?canvas.toDataURL('image/png'):null;if(event.source)event.source.postMessage({type:'forge:screenshot',dataUrl:url},'*');}catch(error){if(event.source)event.source.postMessage({type:'forge:screenshot',error:String(error)},'*');}});
+window.addEventListener('message',function(event){var data=event.data;if(!data)return;if(data.type==='forge:restart'){window.location.reload();return;}if(data.type!=='forge:capture')return;var canvas=document.querySelector('canvas');try{var url=canvas?canvas.toDataURL('image/png'):null;if(event.source)event.source.postMessage({type:'forge:screenshot',dataUrl:url},'*');}catch(error){if(event.source)event.source.postMessage({type:'forge:screenshot',error:String(error)},'*');}});
 window.addEventListener('error',function(event){var message=event&&event.message?String(event.message):'';if(message&&window.parent)window.parent.postMessage({type:'forge:preview-error',message:message},'*');});
 })();</script>`;
 
