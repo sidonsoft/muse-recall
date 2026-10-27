@@ -12,6 +12,7 @@ import {
   ModelRequestSchema,
   type ModelResponse,
   ModelResponseSchema,
+  redactSecrets,
   type StopReason,
   type TokenUsage,
 } from '@mml/shared';
@@ -368,9 +369,12 @@ export class MuseCliProvider implements ModelProvider {
         yield {
           type: 'error',
           code: 'provider_crashed',
-          message: `Muse exited (code ${exit.code ?? 'null'}, signal ${
-            exit.signal ?? 'none'
-          }) without a terminal event. Stderr: ${stderrTail.trim().slice(-800)}`,
+          message: redactSecrets(
+            `Muse exited (code ${exit.code ?? 'null'}, signal ${
+              exit.signal ?? 'none'
+            }) without a terminal event. Stderr: ${stderrTail.trim().slice(-800)}`,
+            { secrets: [this.fallbackApiKey] },
+          ),
         };
         return;
       }
@@ -380,9 +384,12 @@ export class MuseCliProvider implements ModelProvider {
         yield {
           type: 'error',
           code: authHint ? 'provider_auth_failed' : 'provider_crashed',
-          message: `Muse run ended as "${terminal.terminal}"${
-            terminal.reason ? `: ${terminal.reason}` : ''
-          }.${stderrTail.trim() ? ` Stderr: ${stderrTail.trim().slice(-800)}` : ''}`,
+          message: redactSecrets(
+            `Muse run ended as "${terminal.terminal}"${
+              terminal.reason ? `: ${terminal.reason}` : ''
+            }.${stderrTail.trim() ? ` Stderr: ${stderrTail.trim().slice(-800)}` : ''}`,
+            { secrets: [this.fallbackApiKey] },
+          ),
         };
         return;
       }

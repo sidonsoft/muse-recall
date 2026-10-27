@@ -11,7 +11,7 @@ const workspace = value('--workspace');
 const promptPath = value('--prompt-file');
 const prompt = promptPath ? readFileSync(promptPath, 'utf8') : '';
 const requested = process.env.FAKE_MUSE_MODE ?? 'auto';
-const mode =
+let mode =
   requested === 'auto'
     ? (prompt.includes('current approved game') && prompt.includes('index.html')
         ? 'modify'
@@ -58,6 +58,46 @@ if (mode === 'quota-once' && !usesApiKey) {
 if (!workspace) {
   process.stderr.write('missing --workspace\n');
   process.exit(2);
+}
+
+const quota = () => {
+  process.stderr.write(
+    'run ended with Failed: API error 429: Subscription quota exhausted. (rate_limit_error)\n',
+  );
+  process.exit(1);
+};
+
+if (mode === 'leak') {
+  process.stderr.write(
+    `Authorization: Bearer abcdefghijklmnop1234567890\napi_key=supersecretvalue\nsecret=${process.env.FAKE_SECRET ?? 'none'}\n`,
+  );
+  process.exit(1);
+}
+if (mode === 'auth-fail') {
+  process.stderr.write('run ended with Failed: API error 401 unauthorized (credential_rejected)\n');
+  process.exit(1);
+}
+if (mode === 'network-fail') {
+  process.stderr.write('connect ECONNRESET 127.0.0.1:443\n');
+  process.exit(1);
+}
+if (mode === 'always-quota') quota();
+if (mode === 'quota-corrupt' && !usesApiKey) {
+  writeFileSync(join(workspace, 'index.html'), '<html><body>corrupted by primary</body></html>');
+  quota();
+}
+if (mode === 'quota-corrupt') {
+  mode = prompt.includes('current approved game') ? 'modify' : 'generate';
+}
+if (mode === 'quota-then-invalid' && !usesApiKey) quota();
+if (mode === 'quota-then-invalid') {
+  writeFileSync(join(workspace, 'index.html'), '<html><body>not a game</body></html>');
+  usage(2);
+  done('invalid fallback');
+  process.exit(0);
+} else if (mode === 'quota-usage' && !usesApiKey) {
+  usage(3);
+  quota();
 }
 
 if (mode === 'sleep') {

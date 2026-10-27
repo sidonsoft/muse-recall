@@ -73,6 +73,7 @@ async function harness(
     errors: [],
   }),
   fallback = false,
+  extra: { env?: Record<string, string>; fallbackKey?: string; apiKey?: string } = {},
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-api-'));
   const database = openDatabase({ path: ':memory:', wal: false });
@@ -82,13 +83,16 @@ async function harness(
     workspace,
     engine,
     museBin: FIXTURE,
-    env: { FAKE_MUSE_MODE: mode },
+    env: { FAKE_MUSE_MODE: mode, ...(extra.env ?? {}) },
     maxRuntimeMs: limits.maxRuntimeMs ?? 10_000,
     maxCalls: limits.maxCalls ?? 10,
     maxInputTokens: 10_000_000,
     reasoningEffort: 'low',
     runtimeCheck,
-    ...(fallback ? { fallbackApiKey: 'test-key', fallbackModel: 'fake-spark' } : {}),
+    ...(fallback || extra.fallbackKey
+      ? { fallbackApiKey: extra.fallbackKey ?? 'test-key', fallbackModel: 'fake-spark' }
+      : {}),
+    ...(extra.apiKey ? { apiKey: extra.apiKey } : {}),
   });
   const app = await buildApp({
     config: config(root),
@@ -428,6 +432,101 @@ describe('forge workflow', () => {
     expect(after.status).toBe('failed');
     const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
     expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('redacts credentials from job logs, errors and API responses', async () => {
+    const secret = 'leak-secret-value';
+    const h = await harness('leak', {}, async () => ({ ok: true, errors: [] }), false, {
+      env: { FAKE_SECRET: secret },
+      fallbackKey: secret,
+    });
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    const response = await h.app.inject({ method: 'GET', url: `/api/forge/jobs/${generated}` });
+    const body = response.body;
+    expect(body).not.toContain(secret);
+    expect(body).not.toContain('supersecretvalue');
+    expect(body).toContain('REDACTED');
+  });
+
+  it('does not fall back on authentication or network failures', async () => {
+    for (const mode of ['auth-fail', 'network-fail']) {
+      const h = await harness(mode, {}, async () => ({ ok: true, errors: [] }), true);
+      await createProject(h.app);
+      const generated = await startGenerate(h.app);
+      const finished = await waitForFinish(h.app, generated);
+      expect(finished.status).toBe('failed');
+      const detail = (await job(h.app, generated)) as unknown as { logs: string[] };
+      expect(detail.logs.join(' ')).not.toMatch(/retrying/i);
+    }
+  });
+
+  it('retries at most once when every attempt is out of quota', async () => {
+    const h = await harness('always-quota', {}, async () => ({ ok: true, errors: [] }), true);
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+    expect(finished.status).toBe('failed');
+    const detail = (await job(h.app, generated)) as unknown as { logs: string[] };
+    const retries = detail.logs.filter((line) => /retrying/i.test(line));
+    const quotaLines = detail.logs.filter((line) => /429/i.test(line));
+    expect(retries).toHaveLength(1);
+    expect(quotaLines).toHaveLength(2);
+  });
+
+  it('restores the approved baseline before the fallback attempt', async () => {
+    const h = await harness('quota-corrupt', {}, async () => ({ ok: true, errors: [] }), true);
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const modified = await startModify(h.app);
+    const finished = await waitForFinish(h.app, modified);
+    expect(finished.status).toBe('succeeded');
+    const diff = await h.app.inject({ method: 'GET', url: `/api/forge/jobs/${modified}/diff` });
+    const after = diff.json().data.files[0].after as string;
+    expect(after).toContain("FARM_MARKER = 'keep-me'");
+    expect(after).toContain("CHANGE_MARKER = 'v2'");
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(200);
+    expect((await preview(h.app)).body).toContain("FARM_MARKER = 'keep-me'");
+  });
+
+  it('sums usage across primary and fallback attempts', async () => {
+    const h = await harness('quota-usage', {}, async () => ({ ok: true, errors: [] }), true);
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = (await waitForFinish(h.app, generated)) as unknown as {
+      usage: { calls: number };
+    };
+    expect(finished.status).toBe('succeeded');
+    expect(finished.usage.calls).toBe(5);
+  });
+
+  it('does not let the fallback bypass validation or approval', async () => {
+    const h = await harness('quota-then-invalid', {}, async () => ({ ok: true, errors: [] }), true);
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+    expect(finished.status).toBe('failed');
+    expect(finished.validation?.issues.join(' ')).toMatch(/canvas|Phaser/);
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
   });
 
   it('retries with the API key when the subscription is out of quota', async () => {

@@ -11,6 +11,7 @@ import {
   type ForgeState,
   type ForgeUsage,
   type ForgeValidation,
+  redactSecrets,
 } from '@mml/shared';
 import { checkGameRuntime } from './runtime-check.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
@@ -545,7 +546,7 @@ export class ForgeJobManager {
   private log(job: ForgeJob, entry: string): void {
     const trimmed = entry.trim();
     if (trimmed.length === 0) return;
-    const logs = [...job.logs, trimmed.slice(0, 2_000)].slice(-MAX_LOGS);
+    const logs = [...job.logs, this.sanitize(trimmed).slice(0, 2_000)].slice(-MAX_LOGS);
     this.update(job, { logs });
   }
 
@@ -566,6 +567,10 @@ export class ForgeJobManager {
     }
   }
 
+  private sanitize(text: string): string {
+    return redactSecrets(text, { secrets: [this.apiKey, this.fallbackApiKey] });
+  }
+
   private async finish(
     job: ForgeJob,
     patch: {
@@ -582,8 +587,8 @@ export class ForgeJobManager {
     this.carry.delete(job.id);
     this.update(job, {
       status: patch.status,
-      error: patch.error ?? null,
-      summary: patch.summary ?? job.summary,
+      error: patch.error ? this.sanitize(patch.error) : null,
+      summary: patch.summary ? this.sanitize(patch.summary) : job.summary,
       validation: patch.validation ?? job.validation,
       usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
       finished_at: patch.finished_at ?? this.now().toISOString(),

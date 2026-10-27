@@ -12,6 +12,7 @@ export * from './health.js';
 export * from './memory.js';
 export * from './meta.js';
 export * from './provider.js';
+export * from './redact.js';
 export * from './retrieval.js';
 export * from './session.js';
 export * from './tool.js';
