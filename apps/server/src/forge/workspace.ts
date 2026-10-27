@@ -18,6 +18,7 @@ import {
   type ForgeState,
   ForgeStateSchema,
   type ForgeValidation,
+  type ForgeVersion,
   ForgeVersionSchema,
 } from '@mml/shared';
 
@@ -42,7 +43,9 @@ export type ForgeErrorCode =
   | 'too_many_jobs'
   | 'runtime_failed'
   | 'nothing_to_rollback'
-  | 'no_current_version';
+  | 'no_current_version'
+  | 'staged_changed'
+  | 'decision_required';
 
 export class ForgeError extends Error {
   constructor(
@@ -56,6 +59,39 @@ export class ForgeError extends Error {
 
 const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_BYTES = 1_500_000;
+
+/**
+ * Resolve the version a rollback should restore.
+ *
+ * `base_version` is the only trustworthy ancestry edge. Versions are appended
+ * in creation order, so array adjacency is *not* ancestry: approving v3 from
+ * v1 leaves v2 between them in the array, and undoing v3 must restore v1, not
+ * v2. A recorded parent wins whenever it names a genuinely older version that
+ * still exists.
+ *
+ * Legacy state files may predate `base_version`, or carry a parent that no
+ * longer resolves. Those keep the historical behaviour (the immediately
+ * preceding entry) as a bounded fallback, guarded so the target is always
+ * older than the current version. Missing parents never invent a new version.
+ */
+export function rollbackTarget(state: ForgeState): ForgeVersion | null {
+  if (state.current_version === null) return null;
+  const index = state.versions.findIndex((entry) => entry.version === state.current_version);
+  if (index < 0) return null;
+  const current = state.versions[index];
+  if (!current) return null;
+
+  const byVersion = new Map(state.versions.map((entry) => [entry.version, entry]));
+  const base = current.base_version;
+  if (typeof base === 'number' && base < current.version) {
+    const recorded = byVersion.get(base);
+    if (recorded) return recorded;
+  }
+
+  const previous = index > 0 ? state.versions[index - 1] : undefined;
+  if (previous && previous.version < current.version) return previous;
+  return null;
+}
 
 export class ForgeWorkspace {
   private readonly root: string;
@@ -96,13 +132,10 @@ export class ForgeWorkspace {
         can_rollback: false,
         ...(parsed as object),
       });
-      const currentIndex = state.versions.findIndex(
-        (entry) => entry.version === state.current_version,
-      );
       return {
         ...state,
         project_id: projectId,
-        can_rollback: currentIndex > 0,
+        can_rollback: rollbackTarget(state) !== null,
       };
     } catch {
       return { project_id: projectId, current_version: null, versions: [], can_rollback: false };
@@ -143,6 +176,30 @@ export class ForgeWorkspace {
     }
     // Preview and diff never read a symlink, even before validation runs.
     return this.readContained(projectId, file);
+  }
+
+  /**
+   * Read the staged bytes once, together with their sha256.
+   *
+   * Runtime verification and promotion share this snapshot: the promoted file
+   * must be the exact byte sequence that passed the browser check, not whatever
+   * happens to be on disk when approval completes.
+   */
+  async stagedSnapshot(
+    projectId: string,
+    jobId: string,
+  ): Promise<{ html: string; sha256: string } | null> {
+    const file = this.stagingFile(projectId, jobId);
+    try {
+      await lstat(file);
+    } catch {
+      return null;
+    }
+    const bytes = await this.readContainedBuffer(projectId, file);
+    return {
+      html: bytes.toString('utf8'),
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    };
   }
 
   async reject(projectId: string, jobId: string): Promise<void> {
@@ -238,7 +295,12 @@ export class ForgeWorkspace {
     projectId: string,
     jobId: string,
     summary: string,
-    options: { baseVersion: number | null; jobId: string },
+    options: {
+      baseVersion: number | null;
+      jobId: string;
+      /** sha256 of the bytes that passed runtime verification, when known. */
+      expectedSha256?: string;
+    },
   ): Promise<{ version: number; previous: number | null; sha256: string }> {
     const validation = await this.validateStaged(projectId, jobId);
     if (!validation.ok) {
@@ -258,8 +320,17 @@ export class ForgeWorkspace {
       );
     }
 
-    const staged = await this.readContained(projectId, this.stagingFile(projectId, jobId));
+    const staged = await this.readContainedBuffer(projectId, this.stagingFile(projectId, jobId));
     const sha256 = createHash('sha256').update(staged).digest('hex');
+    // Bind promotion to the exact bytes runtime verification approved. Without
+    // this, a staging rewrite between the browser check and approval would be
+    // promoted under a verification result that never saw it.
+    if (options.expectedSha256 !== undefined && options.expectedSha256 !== sha256) {
+      throw new ForgeError(
+        'staged_changed',
+        'The staged source changed after runtime verification. Request the change again.',
+      );
+    }
     const next = state.versions.reduce((max, entry) => Math.max(max, entry.version), 0) + 1;
     const dir = this.within(join(this.projectDir(projectId), 'versions'), String(next));
     await mkdir(dir, { recursive: true });
@@ -299,18 +370,17 @@ export class ForgeWorkspace {
     if (state.current_version === null) {
       throw new ForgeError('no_current_version', 'There is no approved version to roll back from.');
     }
-    const index = state.versions.findIndex((entry) => entry.version === state.current_version);
-    if (index <= 0) {
-      throw new ForgeError('nothing_to_rollback', 'There is no earlier version to restore.');
-    }
-    const target = state.versions[index - 1];
+    const target = rollbackTarget(state);
     if (!target)
       throw new ForgeError('nothing_to_rollback', 'There is no earlier version to restore.');
 
     // Never restore bytes that no longer match the recorded hash.
     if (target.sha256) {
-      const html = await this.readContained(projectId, this.versionFile(projectId, target.version));
-      if (createHash('sha256').update(html).digest('hex') !== target.sha256) {
+      const bytes = await this.readContainedBuffer(
+        projectId,
+        this.versionFile(projectId, target.version),
+      );
+      if (createHash('sha256').update(bytes).digest('hex') !== target.sha256) {
         throw new ForgeError(
           'version_corrupt',
           `v${target.version} no longer matches its recorded hash.`,
@@ -324,6 +394,10 @@ export class ForgeWorkspace {
 
   /** Read a file only if it is a regular file contained by the project. */
   private async readContained(projectId: string, file: string): Promise<string> {
+    return (await this.readContainedBuffer(projectId, file)).toString('utf8');
+  }
+
+  private async readContainedBuffer(projectId: string, file: string): Promise<Buffer> {
     const stat = await lstat(file);
     if (stat.isSymbolicLink() || !stat.isFile()) {
       throw new ForgeError('unsafe_file', 'Refusing to read a symlink or non-regular file.');
@@ -333,7 +407,7 @@ export class ForgeWorkspace {
     if (!realFile.startsWith(realProject + sep)) {
       throw new ForgeError('unsafe_file', 'Resolved file escapes the project workspace.');
     }
-    return readFile(file, 'utf8');
+    return readFile(file);
   }
 
   private versionFile(projectId: string, version: number): string {

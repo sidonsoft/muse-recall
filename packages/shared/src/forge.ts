@@ -244,10 +244,22 @@ export const ForgeModifySchema = z.object({
   capture_memory: z.boolean().default(false),
 });
 
-export const ForgeApproveSchema = z.object({
-  capture_memory: z.boolean().default(false),
-  decision: z.string().max(500).optional(),
-});
+/**
+ * Approval body.
+ *
+ * `decision` is the user's own statement of the decision being saved. When
+ * `capture_memory` is set it is required and must not be blank: a model's
+ * terminal summary is never promoted into a verified creative decision.
+ */
+export const ForgeApproveSchema = z
+  .object({
+    capture_memory: z.boolean().default(false),
+    decision: z.string().trim().max(500).optional(),
+  })
+  .refine((value) => !value.capture_memory || (value.decision ?? '').length > 0, {
+    message: 'decision must be a non-empty user-provided statement when capture_memory is true',
+    path: ['decision'],
+  });
 
 export const ForgeRollbackSchema = z.object({});
 

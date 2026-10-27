@@ -65,6 +65,10 @@ export function ForgeView() {
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
+      // Only the preview iframe we rendered may report captures or errors.
+      // The sandbox gives it an opaque origin, so `event.origin` is "null" and
+      // cannot be used; the window identity can, and is checked here.
+      if (!event.source || event.source !== iframeRef.current?.contentWindow) return;
       const data = event.data as {
         type?: string;
         dataUrl?: string | null;
@@ -566,14 +570,21 @@ export function ForgeView() {
                 <input
                   value={decision}
                   onChange={(event) => setDecision(event.target.value)}
-                  placeholder="Decision note (optional)"
+                  placeholder={
+                    captureMemory ? 'Your decision (required)' : 'Decision note (optional)'
+                  }
                   className="min-w-48 flex-1 rounded border border-line bg-surface-2 px-2 py-1 text-[10px] text-ink"
                   aria-label="Decision note"
                 />
                 <button
                   type="button"
                   onClick={() => void approve()}
-                  disabled={busy || !diff.validation.ok || previewError !== null}
+                  disabled={
+                    busy ||
+                    !diff.validation.ok ||
+                    previewError !== null ||
+                    (captureMemory && decision.trim().length === 0)
+                  }
                   className="rounded-md border border-ok/40 bg-ok/10 px-3 py-1.5 text-[11px] text-ok disabled:opacity-40"
                 >
                   Approve

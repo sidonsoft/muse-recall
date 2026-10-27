@@ -1,0 +1,57 @@
+{
+  "phase": "14A",
+  "command": "node apps/server/dist/index.js (PORT=8902, MODEL_PROVIDER=echo, temp database)",
+  "generated_at": "2026-10-27T06:17:41.846Z",
+  "checks": {
+    "GET /api/health": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "status": "ok",
+          "service": "muse-memory-lab",
+          "version": "0.1.0",
+          "environment": "development",
+          "uptime_seconds": 2.757,
+          "timestamp": "2026-10-27T06:17:41.846Z",
+          "database": {
+            "status": "ok",
+            "detail": "read and write verified",
+            "latency_ms": 0,
+            "engine": "sqlite 3.53.4",
+            "path": "/tmp/p14v2/built.db",
+            "schema_version": 6,
+            "write_verified": true
+          },
+          "provider": {
+            "status": "skipped",
+            "detail": "no live check has been run in this process",
+            "latency_ms": null,
+            "provider_id": "echo",
+            "provider_name": "Deterministic offline provider (not a model)",
+            "model": "muse-wonder-1.0",
+            "verified_with_live_call": false,
+            "capabilities": {
+              "streaming": true,
+              "tool_calling": false,
+              "structured_output": false,
+              "max_context_tokens": 8192
+            }
+          }
+        }
+      }
+    },
+    "GET /api/live": {
+      "status": 200
+    },
+    "GET /api/health with Host: evil.example:8902": {
+      "status": 400,
+      "expected": 400
+    }
+  },
+  "notes": [
+    "Built from the Phase 14A worktree by pnpm build (server dist 302.5 kB).",
+    "The provider is the deterministic echo adapter; no live Muse call was made for this check.",
+    "Database path is a temporary file created for the check."
+  ]
+}

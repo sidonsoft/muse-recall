@@ -1,0 +1,38 @@
+{
+  "scenario": [
+    "approve v1",
+    "approve v2 from v1",
+    "undo v2 -> v1",
+    "approve v3 from v1",
+    "undo v3 -> must restore v1 (not the v2 array neighbour)",
+    "undo again -> nothing to roll back"
+  ],
+  "versions": [
+    {
+      "version": 1,
+      "base_version": null,
+      "sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41"
+    },
+    {
+      "version": 2,
+      "base_version": 1,
+      "sha256": "abeb29f9fe48257daa8fb9daff0f91a436bfde76f65ca35cf33db0365c9aced8"
+    },
+    {
+      "version": 3,
+      "base_version": 1,
+      "sha256": "6889c8e7477e2a667b5fa473de02f1348ea8cfe92258c4397e59de560cafe388"
+    }
+  ],
+  "undo_v2": {
+    "version": 1,
+    "previous": 2
+  },
+  "approved_v3_from": 1,
+  "restored_by_undo_v3": 1,
+  "expected_restore": 1,
+  "can_rollback_before_undo": true,
+  "can_rollback_after_undo": false,
+  "repeated_undo": "nothing_to_rollback",
+  "pass": true
+}

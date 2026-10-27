@@ -1,0 +1,59 @@
+{
+  "project_id": "forge-demo",
+  "database": "temporary file (removed after the run)",
+  "workspace_dir": "temporary workspace (removed after the run)",
+  "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+  "version": 1,
+  "memory_count": 3,
+  "memories": [
+    {
+      "id": "11327f54-014c-406e-bbb4-22a758bd4761",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "forge-demo",
+      "status": "superseded",
+      "validation_status": "verified",
+      "superseded_by": "981df37d-5989-473e-bb90-b00734c1bf1d",
+      "content": "Art direction: maintain a warm sunset palette. Use #FF7E5F as the primary accent and #2D1E2F for dark text. Avoid aggressive neon colours."
+    },
+    {
+      "id": "981df37d-5989-473e-bb90-b00734c1bf1d",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "forge-demo",
+      "status": "active",
+      "validation_status": "verified",
+      "superseded_by": null,
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    },
+    {
+      "id": "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "forge-demo",
+      "status": "active",
+      "validation_status": "verified",
+      "superseded_by": null,
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    }
+  ],
+  "retrieval_ids": [
+    "981df37d-5989-473e-bb90-b00734c1bf1d",
+    "8f3f36b7-0735-4f1d-9446-aee101c0fd98"
+  ],
+  "retrieval_excludes_superseded": true,
+  "idempotent": {
+    "second_run_created": {
+      "constraint": false,
+      "palette": false
+    },
+    "same_memory_ids": true,
+    "memory_count_after_second_seed": 3,
+    "state_json_identical": true
+  },
+  "expected": {
+    "child_safety": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "sunset_superseded": "Art direction: maintain a warm sunset palette. Use #FF7E5F as the primary accent and #2D1E2F for dark text. Avoid aggressive neon colours.",
+    "ocean_active": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  }
+}

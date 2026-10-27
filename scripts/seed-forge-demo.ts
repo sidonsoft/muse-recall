@@ -1,49 +1,44 @@
 /**
- * Seed a deterministic Forge demo project from the recorded real baseline.
+ * Seed the deterministic Muse Forge demo.
  *
- * The baseline is a real `muse-spark-1.3-contributor` generation captured during
- * Phase 11; seeding it removes model variance from the start of the demo while
- * every subsequent modification still uses real inference.
+ * Creates, from one command:
+ *   - project `forge-demo` at version 1, from the recorded real Spark baseline,
+ *   - its three remembered decisions (child-safety constraint, sunset palette,
+ *     and the corrected ocean palette that supersedes sunset) via the
+ *     production memory engine.
  *
  *   pnpm demo:seed
  *   pnpm dev:server            (with FORGE_FALLBACK_API_KEY if quota is low)
  *   open Forge → project "forge-demo"
+ *
+ * Relative `DATABASE_PATH` / `WORKSPACE_ROOT` values resolve against
+ * `apps/server`, exactly as the server resolves them, so the seed and the
+ * server always agree on where state lives.
  */
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
+import { DEMO_PROJECT_ID, seedForgeDemo } from './lib/demo-seed.js';
 
-const projectId = process.env.SEED_PROJECT ?? 'forge-demo';
-const workspaceRoot = resolve(process.env.WORKSPACE_ROOT ?? 'apps/server/workspaces');
-const projectDir = join(workspaceRoot, 'forge', projectId);
-const baseline = await readFile('demo/forge-baseline/index.html', 'utf8');
-const sha256 = createHash('sha256').update(baseline).digest('hex');
+const APPS_SERVER = resolve(import.meta.dirname, '../apps/server');
 
-await rm(join(projectDir, 'versions'), { recursive: true, force: true });
-await rm(join(projectDir, 'staging'), { recursive: true, force: true });
-await mkdir(join(projectDir, 'versions', '1'), { recursive: true });
-await writeFile(join(projectDir, 'versions', '1', 'index.html'), baseline, 'utf8');
-await writeFile(
-  join(projectDir, 'state.json'),
-  `${JSON.stringify(
-    {
-      current_version: 1,
-      versions: [
-        {
-          version: 1,
-          created_at: new Date().toISOString(),
-          summary: 'Demo baseline — recorded real Spark generation',
-          base_version: null,
-          job_id: null,
-          sha256,
-        },
-      ],
-    },
-    null,
-    2,
-  )}\n`,
-  'utf8',
+function serverPath(value: string | undefined, fallback: string): string {
+  const candidate = value ?? fallback;
+  return isAbsolute(candidate) ? candidate : resolve(APPS_SERVER, candidate);
+}
+
+const projectId = process.env.SEED_PROJECT ?? DEMO_PROJECT_ID;
+const workspaceRoot = serverPath(process.env.WORKSPACE_ROOT, './workspaces');
+const databasePath = serverPath(process.env.DATABASE_PATH, './data/muse-memory-lab.db');
+
+const result = await seedForgeDemo({ workspaceRoot, databasePath, projectId });
+
+console.log(`Seeded Forge project "${result.projectId}" at ${result.workspaceDir}`);
+console.log(`  version 1 · baseline sha256 ${result.baselineSha256}`);
+console.log(`  database ${databasePath}`);
+console.log(`  child-safety decision ${result.constraint.id} (${result.constraint.status})`);
+console.log(
+  `  palette ${result.supersededPalette.id} (${result.supersededPalette.status}) → ${result.activePalette.id} (${result.activePalette.status})`,
 );
-
-console.log(`Seeded ${projectId} at ${projectDir} (v1, ${baseline.length} chars).`);
+console.log(
+  `  created this run: constraint=${String(result.created.constraint)}, palette=${String(result.created.palette)}`,
+);
 console.log('Open Forge with project id:', projectId);

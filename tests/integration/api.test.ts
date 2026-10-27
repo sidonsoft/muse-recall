@@ -80,6 +80,53 @@ async function createTestApp(
   return app;
 }
 
+describe('Host header validation', () => {
+  it('accepts loopback hosts on the configured port', async () => {
+    const app = await createTestApp({ config: { port: 8787 } });
+    for (const host of ['127.0.0.1:8787', 'localhost:8787', '[::1]:8787']) {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/live',
+        headers: { host },
+      });
+      expect(response.statusCode, host).toBe(200);
+    }
+  });
+
+  it('accepts the configured local web origin forwarded by the dev proxy', async () => {
+    const app = await createTestApp({ config: { port: 8787 } });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/live',
+      headers: { host: '127.0.0.1:5173' },
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('rejects unexpected Host headers before any route runs', async () => {
+    const app = await createTestApp({ config: { port: 8787 } });
+    for (const host of ['evil.example:8787', '127.0.0.1.nip.io:8787', '127.0.0.1:9999']) {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/live',
+        headers: { host },
+      });
+      expect(response.statusCode, host).toBe(400);
+      expect(response.json().error.code).toBe('invalid_host');
+    }
+  });
+
+  it('still rejects a rebinding host on the health endpoint', async () => {
+    const app = await createTestApp({ config: { port: 8787 } });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/health',
+      headers: { host: 'rebind.attacker.example:8787' },
+    });
+    expect(response.statusCode).toBe(400);
+  });
+});
+
 describe('GET /api/live', () => {
   it('reports liveness without touching the database', async () => {
     const app = await createTestApp();

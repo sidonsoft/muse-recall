@@ -1,0 +1,88 @@
+{
+  "phase": "14A",
+  "title": "Release-blocker remediation, documentation integration and demo production",
+  "generated_at": "2026-10-27T06:26:00Z",
+  "branch": "agent/phase14a-demo-production",
+  "base": {
+    "repository": "sidonsoft/muse-recall",
+    "release_candidate_branch": "agent/phase12e-release-hardening",
+    "release_candidate_sha": "156c65c9a55833e00f6764f4fee20d93eec17e49",
+    "submission_docs_branch": "agent/strata-phase13-submission",
+    "submission_docs_sha": "84e6a8ce028b9d5e3e8bd5c04abbf7f3824ccc1a",
+    "docs_cherry_pick_result": "921b4f7 (docs/submission/* only; no production files touched)"
+  },
+  "live_muse_calls": 0,
+  "recorded_source_transport": "tests/fixtures/fake-muse.mjs (FAKE_MUSE_MODE=copy)",
+  "commands": [
+    {
+      "command": "pnpm verify",
+      "exit": 0,
+      "result": "lint + typecheck + 30 test files; 483 passed, 3 skipped (live-Muse gate)",
+      "notes": "Includes new rollback-ancestry, host-header, source-integrity, reject-lock, decision-capture and demo-seed tests."
+    },
+    {
+      "command": "pnpm verify:forge",
+      "exit": 0,
+      "result": "9/9 browser checks passed (generate, preview, approve, capture, modify, reject, approve v2, rollback, no console/page errors)",
+      "notes": "Run on ports 8899/5199 with MODEL_PROVIDER=echo and the fake-Muse fixture. Screenshots produced by the script were restored to their committed Phase 9 versions."
+    },
+    {
+      "command": "pnpm verify:runtime",
+      "exit": 0,
+      "result": "valid Phaser scene passes (no blocked requests); broken scene rejected; HTTPS exfiltration blocked; unapproved WebSocket blocked",
+      "notes": "Approved Phaser CDN (cdn.jsdelivr.net) remains functional."
+    },
+    {
+      "command": "pnpm eval:guard",
+      "exit": 0,
+      "result": "A-violation BLOCK, B-compliant PASS, C-ambiguous UNVERIFIED, supplementary palette BLOCK; every approval succeeded with findings present",
+      "notes": "Existing Phase 12E evidence was restored byte-for-byte after the run (no original evidence modified)."
+    },
+    {
+      "command": "pnpm build",
+      "exit": 0,
+      "result": "web dist 444.72 kB JS / 34.61 kB CSS; server dist 302.5 kB",
+      "notes": "Built server health check recorded in built-server-health.json."
+    },
+    {
+      "command": "node apps/server/dist/index.js (health probe)",
+      "exit": 0,
+      "result": "GET /api/health 200 status ok (database read/write verified, schema 6); GET /api/live 200; unexpected Host header 400",
+      "evidence": "docs/hackathon-evidence/phase14a/built-server-health.json"
+    },
+    {
+      "command": "pnpm evidence:phase14a",
+      "exit": 0,
+      "result": "seed idempotent; rollback ancestry v3->v1; mutation 2 findings citing the child-safety decision; authentic C 0 findings; approved v2; rolled back v1",
+      "evidence": "docs/hackathon-evidence/phase14a/rehearsal.json"
+    },
+    {
+      "command": "pnpm evidence:phase14a-ui",
+      "exit": 0,
+      "result": "12 screenshots captured through the real API + Vite + Chrome; mutation rejected; authentic C approved then rolled back",
+      "evidence": "docs/hackathon-evidence/phase14a/screenshots/"
+    }
+  ],
+  "functional_checks": {
+    "rollback_ancestry": "unit + integration + rehearsal evidence (v1,v2,undo,v3-from-v1,undo -> v1)",
+    "memory_seed_idempotence": "3 rows after repeated seeding; byte-identical state.json; same ids",
+    "runtime_rejection": "unit/API test + verify:runtime broken scene",
+    "approval_and_rollback": "verify:forge + rehearsal + UI evidence",
+    "advisory_only_behaviour": "eval:guard (all approvals succeeded with findings) + integration tests",
+    "cas": "existing integration tests retained and passing",
+    "project_isolation": "existing memory/guard isolation tests passing",
+    "secret_redaction": "existing redaction tests passing",
+    "host_header_restrictions": "unit + integration + built-server probe (evil host -> 400)",
+    "rejection_concurrency": "approval/rejection serialised under the project lock (integration test)",
+    "source_integrity": "staging mutated after runtime verification -> 409 staged_changed, no promotion (unit + integration)",
+    "preview_message_origin": "verify:forge capture check passes with the source identity guard",
+    "runtime_network_allowlist": "HTTPS + WebSocket blocked, CDN allowed (verify:runtime)"
+  },
+  "assertions": {
+    "no_live_muse_inference_run": true,
+    "decision_guard_enforcement_unchanged": true,
+    "submission_docs_cherry_picked_without_merge": true,
+    "no_unintended_production_deletions": true,
+    "no_demo_video_created": true
+  }
+}

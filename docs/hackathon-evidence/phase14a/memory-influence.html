@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Authentic memory influence — Phase 12A A/B/C</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 40px; background: #14101a; color: #ece7f2;
+         font-family: ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
+  header { max-width: 1500px; margin: 0 auto 28px; }
+  .badge { display: inline-block; padding: 4px 10px; border-radius: 999px;
+           background: #2f7d4f; color: #fff; font-size: 12px; letter-spacing: .08em;
+           text-transform: uppercase; }
+  .synthetic { background: #8a5a00; }
+  h1 { font-size: 34px; margin: 14px 0 6px; }
+  p { color: #b9b0c7; max-width: 1100px; line-height: 1.5; }
+  .decision { border: 1px solid #2d2638; border-radius: 12px; padding: 14px 18px;
+              margin: 10px 0; background: #1b1622; }
+  .decision b { color: #fff; }
+  .active { border-color: #2f7d4f; }
+  .superseded { border-color: #6b5a2a; opacity: .9; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+          max-width: 1500px; margin: 26px auto 0; }
+  figure { margin: 0; background: #1b1622; border: 1px solid #2d2638;
+           border-radius: 14px; overflow: hidden; }
+  figure img { width: 100%; display: block; }
+  figcaption { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px;
+               font-size: 13px; color: #b9b0c7; }
+  figcaption strong { color: #fff; font-size: 15px; }
+  code { color: #9fd6ff; }
+  footer { max-width: 1500px; margin: 26px auto 0; font-size: 12px; color: #8f859f; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+  <header>
+    <span class="badge">authentic model output — phase 12A</span>
+    <h1>The remembered decision changed the generated game</h1>
+    <p>muse-spark-1.3-contributor (forced API key) · one controlled A/B/C trial, run once per condition ·
+       byte-identical request “Add a Next Level button beneath the Restart button.” · identical baseline.</p>
+    <div class="decision superseded"><b>Sunset decision (superseded)</b> — <code>8de86811-dbe3-478d-92bd-9de56af53e60</code><br />Art direction: maintain a warm sunset palette. Use #FF7E5F as the primary accent and #2D1E2F for dark text. Avoid aggressive neon colours.</div>
+    <div class="decision active"><b>Ocean decision (active after correction)</b> — <code>aceff9cf-0f0a-4cdf-9465-39e98ba8d423</code><br />Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43.</div>
+  </header>
+  <div class="grid">
+      <figure>
+        <img src="../phase12/A-v2-visible.png" alt="Condition A rendered game" />
+        <figcaption>
+          <strong>A</strong>
+          <span>sunset memory active</span>
+          <span>accent: <code>0xFF7E5F</code> sunset</span>
+          <span>rendered coverage: 1.082%</span>
+          <span class="mono">job 926bd9d0…</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <img src="../phase12/B-v2-visible.png" alt="Condition B rendered game" />
+        <figcaption>
+          <strong>B</strong>
+          <span>no memory (control)</span>
+          <span>accent: neither palette</span>
+          <span>rendered coverage: 0.005%</span>
+          <span class="mono">job ccd567d5…</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <img src="../phase12/C-v2-visible.png" alt="Condition C rendered game" />
+        <figcaption>
+          <strong>C</strong>
+          <span>ocean memory active (sunset superseded)</span>
+          <span>accent: <code>0x4EA8DE</code> ocean</span>
+          <span>rendered coverage: 0.879%</span>
+          <span class="mono">job 6a246238…</span>
+        </figcaption>
+      </figure></div>
+  <footer>
+    Authentic recorded screenshots (overlay dismissed) from docs/hackathon-evidence/phase12.
+    A: 1.082% sunset accent coverage. B: 0.005% (no palette). C: 0.879% ocean accent, no sunset hex in source.
+    The remembered dark text colour was not applied; n = 1 per condition; exploratory only.
+  </footer>
+</body>
+</html>

@@ -1,0 +1,142 @@
+{
+  "mode": "advisory",
+  "approval_never_blocked": true,
+  "mutation": {
+    "label": "deterministic labelled mutation of authentic source (Phase 12C/12E), not model output",
+    "source": "docs/hackathon-evidence/phase12e/sources/A-violation-mutation.html",
+    "source_sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e",
+    "job_id": "39801056-86b2-499d-8c91-b1f32282b510",
+    "status": "succeeded",
+    "base_version": 1,
+    "prompt_sha256": "11be307df87f6fcddf085200d32d731a9286ce53cd3a53386441bc352d5b4984",
+    "memory_ids": [
+      "981df37d-5989-473e-bb90-b00734c1bf1d",
+      "8f3f36b7-0735-4f1d-9446-aee101c0fd98"
+    ],
+    "validation": {
+      "ok": true,
+      "issues": []
+    },
+    "decision_guard": {
+      "assessment": "violation_detected",
+      "assessment_reason": "At least one supported check reported a possible violation. Findings are advisory and do not block approval.",
+      "engine_version": "1.2.0",
+      "runtime_verified": false,
+      "finding_count": 2,
+      "unverified_count": 1,
+      "findings": [
+        {
+          "rule": "countdown-mechanics",
+          "severity": "high",
+          "decision_id": "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+          "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+          "evidence": "0, score = 100, timeLeft = 30; var hud",
+          "explanation": "decision prohibits countdown mechanics; source contains \"timeLeft\""
+        },
+        {
+          "rule": "mistake-penalty",
+          "severity": "high",
+          "decision_id": "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+          "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+          "evidence": "penalty. score -= 1; hudMsg",
+          "explanation": "decision prohibits punishing mistakes; source contains \"score -=\""
+        }
+      ],
+      "evaluated_memory_ids": [
+        "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+        "981df37d-5989-473e-bb90-b00734c1bf1d"
+      ],
+      "superseded_memory_ids": [
+        "11327f54-014c-406e-bbb4-22a758bd4761"
+      ],
+      "source_sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e"
+    },
+    "cites_child_safety_decision": true,
+    "rejected": true,
+    "approved": false,
+    "state_after_reject": {
+      "current_version": 1,
+      "can_rollback": false
+    }
+  },
+  "authentic": {
+    "label": "recorded authentic Muse/Spark output — Phase 12A condition C (corrected ocean memory), transported by the fake-Muse fixture",
+    "source": "docs/hackathon-evidence/phase12/C-v2.html",
+    "source_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f",
+    "job_id": "63835e4b-19cc-46dc-85df-21ac1c2e9113",
+    "status": "succeeded",
+    "base_version": 1,
+    "prompt_sha256": "11be307df87f6fcddf085200d32d731a9286ce53cd3a53386441bc352d5b4984",
+    "memory_ids": [
+      "981df37d-5989-473e-bb90-b00734c1bf1d",
+      "8f3f36b7-0735-4f1d-9446-aee101c0fd98"
+    ],
+    "validation": {
+      "ok": true,
+      "issues": []
+    },
+    "decision_guard": {
+      "assessment": "no_violation_detected",
+      "assessment_reason": "No violation was detected by the supported checks. This is not a certification that every remembered decision was verified.",
+      "engine_version": "1.2.0",
+      "runtime_verified": true,
+      "finding_count": 0,
+      "unverified_count": 0,
+      "findings": [],
+      "evaluated_memory_ids": [
+        "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+        "981df37d-5989-473e-bb90-b00734c1bf1d"
+      ],
+      "superseded_memory_ids": [
+        "11327f54-014c-406e-bbb4-22a758bd4761"
+      ],
+      "source_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f"
+    },
+    "diff_summary": "index.html changed (+9 lines).",
+    "diff_line_count": 18,
+    "approved_version": 2,
+    "approved_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f",
+    "approval_guard": {
+      "assessment": "no_violation_detected",
+      "assessment_reason": "No violation was detected by the supported checks. This is not a certification that every remembered decision was verified.",
+      "engine_version": "1.2.0",
+      "runtime_verified": true,
+      "finding_count": 0,
+      "unverified_count": 0,
+      "findings": [],
+      "evaluated_memory_ids": [
+        "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+        "981df37d-5989-473e-bb90-b00734c1bf1d"
+      ],
+      "superseded_memory_ids": [
+        "11327f54-014c-406e-bbb4-22a758bd4761"
+      ],
+      "source_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f"
+    },
+    "review_guard_finding_count": 0,
+    "rollback_state": {
+      "project_id": "forge-demo",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "created_at": "2026-10-27T00:00:00.000Z",
+          "summary": "Demo baseline — recorded real Spark generation",
+          "base_version": null,
+          "job_id": null,
+          "sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41"
+        },
+        {
+          "version": 2,
+          "created_at": "2026-10-27T06:16:33.464Z",
+          "summary": "copied",
+          "base_version": 1,
+          "job_id": "63835e4b-19cc-46dc-85df-21ac1c2e9113",
+          "sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f"
+        }
+      ],
+      "can_rollback": false
+    },
+    "rolled_back_to_v1": true
+  }
+}

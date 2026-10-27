@@ -26,6 +26,8 @@
     "eval:guard": "tsx scripts/phase12e-guard-evaluation.ts",
     "eval:retrieval": "tsx scripts/evaluate-retrieval.ts",
     "evidence:guard-ui": "tsx scripts/phase12e-guard-ui-evidence.ts",
+    "evidence:phase14a": "tsx scripts/phase14a-rehearsal.ts",
+    "evidence:phase14a-ui": "tsx scripts/phase14a-demo-ui-evidence.ts",
     "format": "biome format --write .",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

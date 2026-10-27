@@ -1,0 +1,215 @@
+{
+  "generated_at": "2026-10-27T06:16:37.595Z",
+  "environment": {
+    "node": "v26.8.1",
+    "platform": "darwin arm64",
+    "chrome_channel": "chrome"
+  },
+  "live_muse_calls": 0,
+  "recorded_source_transport": "tests/fixtures/fake-muse.mjs (FAKE_MUSE_MODE=copy)",
+  "baseline": {
+    "repository": "sidonsoft/muse-recall",
+    "phase12e_branch": "agent/phase12e-release-hardening",
+    "phase12e_sha": "156c65c9a55833e00f6764f4fee20d93eec17e49",
+    "phase14a_branch": "agent/phase14a-demo-production",
+    "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+    "baseline_path": "demo/forge-baseline/index.html"
+  },
+  "seed": {
+    "project_id": "forge-demo",
+    "memory_count": 3,
+    "idempotent": {
+      "second_run_created": {
+        "constraint": false,
+        "palette": false
+      },
+      "same_memory_ids": true,
+      "memory_count_after_second_seed": 3,
+      "state_json_identical": true
+    },
+    "retrieval_excludes_superseded": true
+  },
+  "rollback_ancestry": {
+    "scenario": [
+      "approve v1",
+      "approve v2 from v1",
+      "undo v2 -> v1",
+      "approve v3 from v1",
+      "undo v3 -> must restore v1 (not the v2 array neighbour)",
+      "undo again -> nothing to roll back"
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "base_version": null,
+        "sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41"
+      },
+      {
+        "version": 2,
+        "base_version": 1,
+        "sha256": "abeb29f9fe48257daa8fb9daff0f91a436bfde76f65ca35cf33db0365c9aced8"
+      },
+      {
+        "version": 3,
+        "base_version": 1,
+        "sha256": "6889c8e7477e2a667b5fa473de02f1348ea8cfe92258c4397e59de560cafe388"
+      }
+    ],
+    "undo_v2": {
+      "version": 1,
+      "previous": 2
+    },
+    "approved_v3_from": 1,
+    "restored_by_undo_v3": 1,
+    "expected_restore": 1,
+    "can_rollback_before_undo": true,
+    "can_rollback_after_undo": false,
+    "repeated_undo": "nothing_to_rollback",
+    "pass": true
+  },
+  "demonstration": {
+    "request": "Add a Next Level button beneath the Restart button.",
+    "mutation": {
+      "label": "deterministic labelled mutation of authentic source (Phase 12C/12E), not model output",
+      "source": "docs/hackathon-evidence/phase12e/sources/A-violation-mutation.html",
+      "source_sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e",
+      "job_id": "39801056-86b2-499d-8c91-b1f32282b510",
+      "status": "succeeded",
+      "base_version": 1,
+      "prompt_sha256": "11be307df87f6fcddf085200d32d731a9286ce53cd3a53386441bc352d5b4984",
+      "memory_ids": [
+        "981df37d-5989-473e-bb90-b00734c1bf1d",
+        "8f3f36b7-0735-4f1d-9446-aee101c0fd98"
+      ],
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "decision_guard": {
+        "assessment": "violation_detected",
+        "assessment_reason": "At least one supported check reported a possible violation. Findings are advisory and do not block approval.",
+        "engine_version": "1.2.0",
+        "runtime_verified": false,
+        "finding_count": 2,
+        "unverified_count": 1,
+        "findings": [
+          {
+            "rule": "countdown-mechanics",
+            "severity": "high",
+            "decision_id": "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+            "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+            "evidence": "0, score = 100, timeLeft = 30; var hud",
+            "explanation": "decision prohibits countdown mechanics; source contains \"timeLeft\""
+          },
+          {
+            "rule": "mistake-penalty",
+            "severity": "high",
+            "decision_id": "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+            "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+            "evidence": "penalty. score -= 1; hudMsg",
+            "explanation": "decision prohibits punishing mistakes; source contains \"score -=\""
+          }
+        ],
+        "evaluated_memory_ids": [
+          "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+          "981df37d-5989-473e-bb90-b00734c1bf1d"
+        ],
+        "superseded_memory_ids": [
+          "11327f54-014c-406e-bbb4-22a758bd4761"
+        ],
+        "source_sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e"
+      },
+      "cites_child_safety_decision": true,
+      "rejected": true,
+      "approved": false,
+      "state_after_reject": {
+        "current_version": 1,
+        "can_rollback": false
+      }
+    },
+    "authentic": {
+      "label": "recorded authentic Muse/Spark output — Phase 12A condition C (corrected ocean memory), transported by the fake-Muse fixture",
+      "source": "docs/hackathon-evidence/phase12/C-v2.html",
+      "source_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f",
+      "job_id": "63835e4b-19cc-46dc-85df-21ac1c2e9113",
+      "status": "succeeded",
+      "base_version": 1,
+      "prompt_sha256": "11be307df87f6fcddf085200d32d731a9286ce53cd3a53386441bc352d5b4984",
+      "memory_ids": [
+        "981df37d-5989-473e-bb90-b00734c1bf1d",
+        "8f3f36b7-0735-4f1d-9446-aee101c0fd98"
+      ],
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "decision_guard": {
+        "assessment": "no_violation_detected",
+        "assessment_reason": "No violation was detected by the supported checks. This is not a certification that every remembered decision was verified.",
+        "engine_version": "1.2.0",
+        "runtime_verified": true,
+        "finding_count": 0,
+        "unverified_count": 0,
+        "findings": [],
+        "evaluated_memory_ids": [
+          "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+          "981df37d-5989-473e-bb90-b00734c1bf1d"
+        ],
+        "superseded_memory_ids": [
+          "11327f54-014c-406e-bbb4-22a758bd4761"
+        ],
+        "source_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f"
+      },
+      "diff_summary": "index.html changed (+9 lines).",
+      "diff_line_count": 18,
+      "approved_version": 2,
+      "approved_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f",
+      "approval_guard": {
+        "assessment": "no_violation_detected",
+        "assessment_reason": "No violation was detected by the supported checks. This is not a certification that every remembered decision was verified.",
+        "engine_version": "1.2.0",
+        "runtime_verified": true,
+        "finding_count": 0,
+        "unverified_count": 0,
+        "findings": [],
+        "evaluated_memory_ids": [
+          "8f3f36b7-0735-4f1d-9446-aee101c0fd98",
+          "981df37d-5989-473e-bb90-b00734c1bf1d"
+        ],
+        "superseded_memory_ids": [
+          "11327f54-014c-406e-bbb4-22a758bd4761"
+        ],
+        "source_sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f"
+      },
+      "review_guard_finding_count": 0,
+      "rollback_state": {
+        "project_id": "forge-demo",
+        "current_version": 1,
+        "versions": [
+          {
+            "version": 1,
+            "created_at": "2026-10-27T00:00:00.000Z",
+            "summary": "Demo baseline — recorded real Spark generation",
+            "base_version": null,
+            "job_id": null,
+            "sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41"
+          },
+          {
+            "version": 2,
+            "created_at": "2026-10-27T06:16:33.464Z",
+            "summary": "copied",
+            "base_version": 1,
+            "job_id": "63835e4b-19cc-46dc-85df-21ac1c2e9113",
+            "sha256": "26c6a53451c0d4a3521a4d878a6d577c34a013f56411c3ec8c83de0ad8bd823f"
+          }
+        ],
+        "can_rollback": false
+      },
+      "rolled_back_to_v1": true
+    }
+  },
+  "recording_assets": [
+    "screenshots/render-v1-baseline.png",
+    "screenshots/render-v2-authentic-c.png"
+  ]
+}

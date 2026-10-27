@@ -283,7 +283,9 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
             ? 422
             : error.code === 'too_many_jobs'
               ? 429
-              : error.code === 'path_escape' || error.code === 'invalid_project_id'
+              : error.code === 'path_escape' ||
+                  error.code === 'invalid_project_id' ||
+                  error.code === 'decision_required'
                 ? 400
                 : 409;
       return reply.status(status).send({

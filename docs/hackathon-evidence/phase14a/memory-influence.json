@@ -1,0 +1,98 @@
+{
+  "provenance": {
+    "kind": "authentic model output",
+    "phase": "12A",
+    "model": "muse-spark-1.3-contributor (forced API key)",
+    "note": "One controlled A/B/C trial, run once per condition. Not repeated, not extrapolated.",
+    "request": "Add a Next Level button beneath the Restart button.",
+    "request_sha256": "8309c21b6223a7a1af679a90422dde21c2cbe59825b67056d1d44ab51424be0f",
+    "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+    "recorded_memory_row_source": "apps/server/data/phase12.db (read-only verification)"
+  },
+  "memories": {
+    "sunset": {
+      "id": "8de86811-dbe3-478d-92bd-9de56af53e60",
+      "status": "superseded",
+      "content": "Art direction: maintain a warm sunset palette. Use #FF7E5F as the primary accent and #2D1E2F for dark text. Avoid aggressive neon colours.",
+      "accent": "0xFF7E5F",
+      "dark_text": "#2D1E2F"
+    },
+    "ocean": {
+      "id": "aceff9cf-0f0a-4cdf-9465-39e98ba8d423",
+      "status": "active",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43.",
+      "accent": "0x4EA8DE",
+      "dark_text": "#102A43"
+    }
+  },
+  "conditions": [
+    {
+      "condition": "A",
+      "project": "phase12-a",
+      "job_id": "926bd9d0-9b35-4c3c-9973-61e16f1da48b",
+      "memory_ids": [
+        "de20b28e-d961-4e16-828a-c1375d930b02"
+      ],
+      "prompt_sha256": "63710663476b8a61200172cdb097f205d7cbce7b9a55020a5c884647b13205f1",
+      "prompt_reconstructed_sha256": "63710663476b8a61200172cdb097f205d7cbce7b9a55020a5c884647b13205f1",
+      "prompt_matches_job": true,
+      "source_palette": {
+        "accent_occurrences": 1,
+        "dark_occurrences": 0,
+        "sunset_occurrences": 1,
+        "neon_occurrences": 0
+      },
+      "rendered_accent_pct": 1.082,
+      "rendered_dark_pct": 0,
+      "screenshot": "../phase12/A-v2-visible.png"
+    },
+    {
+      "condition": "B",
+      "project": "phase12-b",
+      "job_id": "ccd567d5-9e25-484f-878c-1c29a58afbd9",
+      "memory_ids": [],
+      "prompt_sha256": "0d38ee75484f5e53ed986d6fc17e9b185d6b9edcd08abb200fd3987061038f75",
+      "prompt_reconstructed_sha256": "0d38ee75484f5e53ed986d6fc17e9b185d6b9edcd08abb200fd3987061038f75",
+      "prompt_matches_job": true,
+      "source_palette": {
+        "accent_occurrences": 0,
+        "dark_occurrences": 0,
+        "sunset_occurrences": 0,
+        "neon_occurrences": 0
+      },
+      "rendered_accent_pct": 0.005,
+      "rendered_dark_pct": 0,
+      "screenshot": "../phase12/B-v2-visible.png"
+    },
+    {
+      "condition": "C",
+      "project": "phase12-c",
+      "job_id": "6a246238-4066-4b68-b091-1ab1e0a8a7d8",
+      "memory_ids": [
+        "aceff9cf-0f0a-4cdf-9465-39e98ba8d423"
+      ],
+      "prompt_sha256": "cc3a3967cfacd9d83e7f007708d1609040c2762f0adc256d9db6bba930c4b8a2",
+      "prompt_reconstructed_sha256": "cc3a3967cfacd9d83e7f007708d1609040c2762f0adc256d9db6bba930c4b8a2",
+      "prompt_matches_job": true,
+      "source_palette": {
+        "accent_occurrences": 1,
+        "dark_occurrences": 0,
+        "sunset_occurrences": 0,
+        "neon_occurrences": 0
+      },
+      "rendered_accent_pct": 0.879,
+      "rendered_dark_pct": 0,
+      "screenshot": "../phase12/C-v2-visible.png"
+    }
+  ],
+  "interpretation": [
+    "A (sunset decision active): the rendered game contains the sunset accent 0xFF7E5F at 1.082% visible coverage.",
+    "B (no memory): neither palette accent appears; 0.005% is background noise.",
+    "C (sunset superseded by ocean): the ocean accent 0x4EA8DE appears at 0.879% visible coverage and the source contains no sunset hex.",
+    "The remembered text colour was not applied in A or C; this is a partial palette result, not full constraint adherence."
+  ],
+  "limits": [
+    "n = 1 per condition; exploratory, not statistically significant.",
+    "Single palette vocabulary; the only measured causal claim is palette accent selection."
+  ]
+}

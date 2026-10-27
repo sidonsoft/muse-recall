@@ -1,135 +1,152 @@
-# Muse Recall — three-minute demonstration script
+# Muse Recall — three-minute demonstration script (Phase 14A)
 
-**Total target: ~3:00.** Recorded authentic evidence is preferred for every time-sensitive step:
-a real Muse modification takes roughly 35–105 s per run (measured: mean 55.7 s, median 48.1 s,
-range 34.1–104.2 s across five real trials), so the generation step should be captured in advance
-at full speed and shown at real or lightly accelerated pace — never fabricated.
+**Total target: ~3:00.** Run from `agent/phase14a-demo-production`, seeded project `forge-demo`
+(`pnpm demo:seed`). The modification segment uses **recorded authentic inference** so the demo does
+not depend on live Muse availability. No paid Muse inference is performed without explicit director
+authorisation.
 
-**Recording base:** branch `agent/phase12c-guard-advisory`, seeded project `forge-demo`
-(`pnpm demo:seed`). All runs below are real production paths; see [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md)
-for setup and per-run commands.
+**Measured context (do not inflate):** five real Phase 11A modification trials took 34.1–104.2 s
+(mean 55.7 s, median 48.1 s). The A/B/C memory-influence trial was run **once per condition**.
 
-**Cast of screens:** Forge tab (game preview → modify → review → approve → versions), Memory
-inspector (decisions + history).
-
----
-
-## 0:00–0:20 — The problem
-
-- **Narration:** "AI creative tools are fast — until you close the session. Next time, the model
-  has forgotten the palette you chose, the rule you set, the change you already reviewed. You
-  re-explain everything, hunt for unexpected edits, and fix regressions the assistant introduced."
-- **On-screen:** Title card with the message: *"An AI creative studio that remembers your
-  decisions, checks its work, and keeps you in control."* Optional quick cut: a plain chat window
-  re-explaining constraints.
-- **Required evidence:** none (framing only).
-- **Expected duration:** 20 s.
-- **Fallback:** none needed — pre-recorded title.
-
-## 0:20–0:45 — Introduce Muse Recall and the existing game
-
-- **Narration:** "This is Muse Recall, in its game studio, Muse Forge. It already has an approved
-  game — a real Meta Muse generation, version 1. Everything from here is a *modification of this
-  approved source*, not a fresh generation."
-- **On-screen:** Open the app → Forge tab → project `forge-demo`. Show the running game preview
-  and the version badge (v1, seeded from the recorded baseline). Briefly show the sidebar: memory,
-  conversations, Forge.
-- **Required evidence:** live UI with the seeded baseline (`demo/forge-baseline/index.html`, a
-  recorded real `muse-spark-1.3-contributor` generation; sha pinned by the seed script).
-- **Expected duration:** 25 s.
-- **Fallback:** if the app is down, open the pre-recorded capture of this same screen.
-
-## 0:45–1:10 — A remembered creative decision
-
-- **Narration:** "In a previous session we set decisions: this is a game for young children — no
-  flashing effects, no countdown timers, no penalty for mistakes — *and why*. Notice I can also
-  correct a decision: the art direction changed from a warm sunset palette to a cool ocean
-  palette. The old decision stays in history, but it never comes back as guidance."
-- **On-screen:** Memory inspector: open the child-safety decision (content + rationale, provenance,
-  project scope). Open the palette decision's history: correction with reason, superseded original
-  marked superseded, append-only audit entries.
-- **Required evidence:** live deterministic UI — no model call. For an alternative take, the
-  Phase 12A evidence screenshots show the superseded-vs-corrected constraint pair.
-- **Expected duration:** 25 s.
-- **Fallback:** pre-recorded capture of the inspector; never rely on live data entry.
-
-## 1:10–1:45 — Ask Muse to modify the existing game
-
-- **Narration:** "Now I ask for a change — 'make it more exciting, while honoring our design
-  decisions.' The app pulls the current decisions into the prompt — and it records exactly which
-  decisions and which prompt bytes were sent, so we can prove the memory was actually used."
-- **On-screen:** Type the request in Forge → submit. Show the job start, the retrieved-memory list,
-  the recorded prompt hash. **Play the pre-recorded generation run** (captured at full speed
-  beforehand from the same seeded project; keep at least ~10 s of real-time generation visible so
-  the wait is authentic).
-- **Required evidence:** one real recorded run on the seeded baseline (or the live run if time and
-  quota allow). The memory block + `prompt_sha256` are production-recorded on the job.
-- **Expected duration:** 35 s.
-- **Fallback:** the pre-recorded run *is* the primary path. If even the recording fails, cut to the
-  Phase 12A recorded A/B/C outputs (`A-v2.html` vs `C-v2.html` screenshots) as proof that
-  modification + memory influence happened, and narrate over them.
-
-## 1:45–2:15 — Source changes and runtime verification
-
-- **Narration:** "The result is a small diff against the approved game — a few lines changed, not a
-  rewritten file. And before I can even approve, the app has *played the game itself*: it launches
-  the modified build headless in Chrome, fails on any page error, and confirms the game renders."
-- **On-screen:** Review panel: unified diff (call out the change size), structural validation
-  result, runtime verification result with the rendered game screenshot.
-- **Required evidence:** from the same recorded run: the diff panel and the runtime check output.
-  Comparable recorded numbers: real trials changed 1.2–10.1% of lines, all runtime-verified.
-- **Expected duration:** 30 s.
-- **Fallback:** static diff screenshot from the run recording; the runtime check is part of the
-  same job record and appears even in the fallback evidence.
-
-## 2:15–2:40 — Decision Guard advisory findings (honestly)
-
-- **Narration:** "An advisory Decision Guard also checks the new source against our remembered
-  decisions. On this deliberately-mutated build it flags a countdown timer and a score penalty,
-  citing the child-safety decision itself with the offending line as evidence. Two things we say
-  plainly: this check is advisory — it informs me, it does not block — and it is a source-pattern
-  check, not full compliance verification. We audited its accuracy and kept the human in charge on
-  purpose."
-- **On-screen:** Review panel, guard section: the two findings with decision citation + evidence
-  excerpts, and the "pre-runtime review snapshot / advisory" labels. Optionally one UNVERIFIED
-  note to show honesty.
-- **Required evidence:** the labelled-mutation case (real production path; the in-page banner
-  states it is a test mutation, not spontaneous model output). Recorded captures exist:
-  `ui-decision-guard-advisory.png`, `ui-review-page.png` in the Phase 12C evidence.
-- **Expected duration:** 25 s.
-- **Fallback:** show the recorded screenshots and state they come from the evaluation run; keep the
-  honesty sentence regardless.
-
-## 2:40–2:55 — Approve and roll back
-
-- **Narration:** "The decision is mine. With every finding visible, I approve — the change becomes
-  version 2, the diff and memory trail are recorded — and one click rolls back to version 1.
-  Nothing sticks without my approval, and nothing is lost when I undo."
-- **On-screen:** Click Approve (with advisory findings on screen) → version 2 appears → Roll back →
-  version 1 is current again. Show the version history list.
-- **Required evidence:** live deterministic UI (approval of an already-generated job needs no model
-  call). Verified behaviour: approval succeeds with findings present; rollback restores the base.
-- **Expected duration:** 15 s.
-- **Fallback:** pre-recorded approve + rollback capture, or the recorded
-  `ui-approved-with-findings.png` plus the rollback shots from the run.
-
-## 2:55–3:00 — Closing
-
-- **Narration:** "Muse Recall: your decisions survive, they shape what Muse builds, the app shows
-  evidence — and you stay in control."
-- **On-screen:** Title card: project name + one-line message + repo/URL placeholder.
-- **Required evidence:** none.
-- **Expected duration:** 5 s.
-- **Fallback:** none.
+**Cast:** Forge (preview → modify → review → approve → undo), Memories (decisions, correction
+history), the Phase 14A A/C evidence figure.
 
 ---
 
-## Recording checklist (do before demo day)
+## 0:00–0:15 — The problem
 
-1. Record one full modification run on seeded `forge-demo` (segment 4 + 5 + 7 footage from the
-   same job, end to end, real time).
-2. Record the memory-inspector segment (4 + 6 footage can be one session).
-3. Capture the guard-findings panel from the labelled-mutation job (or reuse
-   `pnpm evidence:guard-ui` output).
-4. Keep every source artifact: job id, prompt hash, diff, runtime screenshot. Do not re-stage or
-   edit model output; if a run fails, re-run and re-record — do not fabricate.
+- **Narration:** “AI creative tools forget. You set a palette, a safety rule, a direction — and next
+  session it is gone. You re-explain it, and then you find the model quietly changed something you
+  already approved.”
+- **On-screen:** Title card: *“An AI creative studio that remembers your decisions, checks its
+  work, and keeps you in control.”*
+- **Evidence:** none required (framing).
+- **Duration:** 15 s. **Fallback:** pre-recorded title card.
+
+## 0:15–0:35 — The existing game, immediately
+
+- **Narration:** “This is Muse Recall’s game studio, Muse Forge. It already has an approved game —
+  a real Meta Muse Spark generation, version 1. Everything from here edits this approved source; it
+  is not a fresh generation.”
+- **On-screen:** Forge → `forge-demo`. The Phaser game is already playable (press Start, flip a
+  card). Show `approved: v1`.
+- **Evidence:** seeded `demo/forge-baseline/index.html` (recorded real generation, sha pinned in
+  `docs/hackathon-evidence/phase14a/demo-seed.json`).
+- **Duration:** 20 s. **Fallback:** `screenshots/01-forge-v1-preview.png`.
+
+## 0:35–0:55 — Persistent memory and correction history
+
+- **Narration:** “The project remembers its decisions. A child-safety constraint — no flashing, no
+  countdown timers, no penalties for mistakes — with provenance and scope. And a palette decision
+  I changed my mind about: the sunset direction is still in the audit history, marked superseded,
+  with my correction reason. Only the corrected ocean decision is active — the old one never comes
+  back as guidance.”
+- **On-screen:** Memories → child-safety detail (content, verified, project scope). Then the sunset
+  entry: status **superseded**, **SUPERSEDED BY** the ocean decision, history shows the correction
+  reason.
+- **Evidence:** live deterministic UI; `screenshots/02-memories-list.png`,
+  `03-constraint-detail.png`, `04-palette-supersession.png`; seed record `demo-seed.json`.
+- **Duration:** 20 s. **Fallback:** the three screenshots, pre-loaded.
+
+## 0:55–1:15 — Proof that memory changed the output (authentic A/C)
+
+- **Narration:** “This is the part that matters. One model, one identical request, one identical
+  baseline, three conditions, run once each. With the sunset decision, the generated game drew the
+  sunset accent. With no memory, neither palette appeared. After I corrected the decision to ocean,
+  the same model drew the ocean accent — and the superseded sunset hex appears nowhere in that
+  source.”
+- **On-screen:** `screenshots/11-memory-influence.png`: A, B and C side by side, with the memory
+  texts and the accent values (`0xFF7E5F` vs `0x4EA8DE`) and rendered coverage.
+- **Evidence:** authentic Phase 12A output: `docs/hackathon-evidence/phase12/{A,B,C}-v2.html` and
+  screenshots; measurements in `phase12/pilot.json`; summary in `phase14a/memory-influence.json`.
+- **Duration:** 20 s. **Fallback:** the figure itself is the primary asset; it is static.
+
+## 1:15–1:45 — An authentic Muse modification
+
+- **Narration:** “Now a change. I capture the current preview and ask Muse to add a Next Level
+  button beneath Restart. Muse edits the approved source in place. The job records which remembered
+  decisions were retrieved and the SHA-256 of the exact prompt sent — so the memory being in the
+  prompt is provable, not asserted.”
+- **On-screen:** Capture preview → request → **play the pre-recorded authentic run** (keep ~10 s of
+  real generation visible). Then the job card: memory ids, prompt hash, validation passed.
+- **Evidence:** recorded authentic run captured in advance (job id, prompt hash, retrieved memory
+  ids). If unavailable, narrate over the authentic Phase 12A C source and state it is recorded.
+- **Duration:** 30 s. **Fallback:** the recording is the primary path; never substitute fake-mode
+  output.
+
+## 1:45–2:00 — The staged diff
+
+- **Narration:** “The result is a small diff against the approved game — a few lines, not a
+  rewritten file. Nothing touches the approved version until I approve it.”
+- **On-screen:** Review panel: unified diff, `validation passed`, action buttons.
+- **Evidence:** same recorded run; Phase 11A trials changed 1.2–10.1% of lines.
+- **Duration:** 15 s. **Fallback:** `screenshots/08-review-compliant.png`.
+
+## 2:00–2:15 — The actual approval gate
+
+- **Narration:** “Before promoting a change, Muse Forge launches it in headless Chrome and rejects
+  builds that throw on load or fail to create a canvas. That is a load-time gate. It does not play
+  the game for me, it does not inspect pixels, and it does not test every mechanic — those limits
+  are exactly why I still review the diff and make the call.”
+- **On-screen:** The review panel’s validation state; optionally scroll to the diff. Do **not**
+  show a fabricated “runtime screenshot” — the UI exposes no verification image.
+- **Evidence:** `apps/server/src/forge/runtime-check.ts`; `pnpm verify:runtime` (valid passes,
+  broken rejected, unapproved network origin blocked).
+- **Duration:** 15 s. **Fallback:** narration over `08-review-compliant.png`.
+
+## 2:15–2:30 — Advisory Decision Guard, honestly (~15 s)
+
+- **Narration:** “An advisory guard also checks the new source against my remembered decisions. On
+  this deliberately labelled test mutation it flags a countdown timer and a mistake penalty, citing
+  my child-safety decision and the offending line. Two things plainly: this is advisory — it does
+  not block approval — and it is a source-pattern check, not compliance verification.”
+- **On-screen:** The labelled mutation job’s panel: **VIOLATION DETECTED**, two findings with the
+  decision reference and evidence excerpt, “Findings do not block approval in this version.” State
+  that the mutation is a labelled test edit, not spontaneous model output.
+- **Evidence:** `screenshots/05-guard-advisory-mutation.png`, `06-review-mutation.png`,
+  `guard-advisory.json`; source label at
+  `docs/hackathon-evidence/phase12e/sources/A-violation-mutation.html`.
+- **Duration:** 15 s. **Fallback:** the panel screenshot.
+
+## 2:30–2:45 — Approve the authentic change, then undo it
+
+- **Narration:** “I reject the violating test build. Back on the authentic modification, the
+  decision is mine: approve — it becomes version 2 — and one click rolls back to version 1, its
+  recorded parent. The history stays intact.”
+- **On-screen:** Reject the mutation (brief). Approve the authentic change → `approved: v2` → click
+  **Undo last change** → `approved: v1`.
+- **Evidence:** live deterministic UI (approval of an already-generated job needs no model call);
+  `screenshots/07-rejected-mutation.png`, `09-approved-v2.png`, `10-rolled-back-v1.png`; rollback
+  regression in `rollback-ancestry.json`.
+- **Duration:** 15 s. **Fallback:** the three screenshots.
+
+## 2:45–3:00 — Closing
+
+- **Narration:** “Muse Recall: your decisions survive, they visibly shape what Muse builds, the app
+  shows its evidence — including what it cannot verify — and you stay in control.”
+- **On-screen:** Title card with project name and repository URL.
+- **Duration:** 15 s. **Fallback:** none needed.
+
+---
+
+## Provenance of the packaged Phase 14A screenshots
+
+The `docs/hackathon-evidence/phase14a/screenshots/` captures were produced in **deterministic
+rehearsal mode**: the API ran with `MODEL_PROVIDER=echo` and the fake-Muse fixture transported
+recorded bytes. The game content and memory rows are authentic artifacts; the provider panel
+honestly shows the offline adapter. Do not present these screenshots as a live Muse session. The
+authentic A/C figure (`11-memory-influence.png`) **is** real Phase 12A model output and is labelled
+as such.
+
+## Recording checklist (Phase 14A)
+
+1. Record one full **authentic** modification on seeded `forge-demo` (segments 5–7 and 10 from the
+   same job, real time). If quota is unavailable, use the pre-recorded authentic Phase 12A C run and
+   say so on screen.
+2. Record the memory-inspector segment (child-safety detail, supersession history).
+3. Use `docs/hackathon-evidence/phase14a/screenshots/05-guard-advisory-mutation.png` for the guard
+   segment, or capture the panel from the labelled-mutation job; keep the provenance label visible.
+4. Never edit model output, never re-stage bytes, never present the mutation as authentic model
+   output. If a run fails, re-run and re-record.
+5. State “recorded earlier” whenever footage is not live. No video file exists in this repository
+   unless one was actually created; the operator creates it on demo day using this script.

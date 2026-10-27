@@ -1,8 +1,8 @@
-# Muse Recall — submission copy
+# Muse Recall — submission copy (Phase 14A)
 
-Ready-to-paste text for the submission form. All quantitative claims come from the accepted
-Phase 11A reliability trials and the Phase 12A memory-influence trial (see
-[EVIDENCE_MAP.md](EVIDENCE_MAP.md) for links); nothing is extrapolated.
+Ready-to-paste text for the submission form. Quantitative claims come from the accepted Phase 11A
+reliability trials, the Phase 12A memory-influence trial, and the Phase 14A verification record (see
+[EVIDENCE_MAP.md](EVIDENCE_MAP.md)); nothing is extrapolated.
 
 ---
 
@@ -17,12 +17,13 @@ An AI creative studio that remembers your decisions, checks its work, and keeps 
 ## 100-word description
 
 Muse Recall is an AI creative studio that remembers your decisions, checks its work, and keeps you
-in control. In Muse Forge, a real Meta Muse model modifies an existing approved Phaser game rather
-than regenerating it. Before each change, decisions from earlier sessions — a child-friendly
-palette, no flashing effects — are retrieved into the prompt, and the exact prompt is recorded.
-After each change, the app plays the game headless in Chrome, an advisory Decision Guard
-cross-checks the source against those decisions, a diff is shown, and you approve with full
-evidence — correcting any decision and rolling back any version.
+in control. In Muse Forge, a real Meta Muse model edits an existing approved Phaser game instead of
+regenerating it. Decisions from earlier sessions — a child-safety rule, a palette — are retrieved
+into the prompt, and the exact prompt is recorded. When the direction changes, a correction
+supersedes the old decision while keeping its audit history. Before promoting a change, Muse Forge
+launches it in headless Chrome and rejects builds that throw on load or fail to create a canvas. An
+advisory Decision Guard cites remembered decisions. You review the diff and approve; every version
+can be rolled back.
 
 ## 300-word description
 
@@ -38,22 +39,23 @@ force-included even when your words barely match them — under a hard context b
 records the exact prompt bytes and the decision ids used, byte-for-byte reproducible.
 
 Muse then edits the existing approved source rather than regenerating: across five real-model
-trials, changes touched 1.2–10.1% of the file. Before approval is possible, the app runs the
-modified game headless in real Chrome and rejects page errors, so you review changes that actually
-execute. An advisory Decision Guard then compares the new source against the same remembered
+trials, changes touched 1.2–10.1% of the file. Before promoting a change, Muse Forge launches it in
+headless Chrome and rejects builds that throw on load or fail to create a canvas. That gate is
+load-time only: it does not play the game, inspect pixels, or test every mechanic, so the diff
+review still matters. An advisory Decision Guard compares the source against the same remembered
 decisions and cites them with evidence, while openly reporting what it could not verify — it is a
-source-pattern aid, not an enforcement gate, because we audited its accuracy and deliberately kept
-the human in charge.
+source-pattern aid, not an enforcement gate, because its accuracy was audited and the human was
+deliberately kept in charge.
 
-The entire pipeline runs locally around Meta Muse: the Muse Code CLI generates the game and
-performs every subsequent edit, falling back once to a contributor key only on quota errors, under
-per-run budgets for calls, tokens, and time.
+The pipeline runs locally around Meta Muse: the Muse Code CLI generates the game and performs every
+subsequent edit, falling back once to a contributor key only on quota errors, under per-run budgets
+for calls, tokens, and time.
 
 In a controlled A/B/C trial with one model and one identical request, the remembered palette drove
 the output: with a sunset decision the game rendered its accent; with no memory, neither palette
 appeared; after correcting the decision to an ocean palette, the ocean accent appeared and the
 superseded value appeared nowhere. Every change ends in explicit human approval, a diff, and
-versioned rollback.
+versioned rollback to the recorded parent.
 
 ## Technical innovation summary
 
@@ -62,14 +64,15 @@ versioned rollback.
   causally demonstrated (the corrected-memory condition produced the corrected palette and no
   trace of the superseded one).
 - **Provable memory influence:** one production prompt builder; every job records a prompt SHA-256
-  and the injected memory ids; reconstruction reproduces the exact prompt, separating "memory was
-  retrieved" from "memory changed the output".
-- **Modify-in-place workflow:** staged source, structural validation, mandatory headless-Chrome
-  runtime gate, compare-and-swap promotion, immutable versions, rollback.
+  and the injected memory ids; reconstruction reproduces the exact prompt.
+- **Modify-in-place workflow:** staged source, structural validation, a blocking load-time
+  headless-Chrome gate, SHA-256 binding between verified bytes and promotion, compare-and-swap
+  promotion, immutable versions, and rollback to the recorded parent.
 - **Advisory Decision Guard:** a deterministic, pure, dependency-free engine that checks staged
-  source against the job's own decisions and cites them; plus an independent accuracy audit
-  (72-case adversarial corpus, confusion matrices, security probes) that is the reason the guard
-  stays advisory and the human stays authoritative.
+  source against the job’s own decisions and cites them, including hexadecimal notation equivalence
+  between CSS `#FF7E5F` and Phaser `0xFF7E5F`; plus an independent accuracy audit (72-case
+  adversarial corpus, confusion matrices, security probes) that is the reason the guard stays
+  advisory.
 
 ## Problem / solution statement
 
@@ -79,44 +82,45 @@ current after a change of mind.
 
 **Solution:** persistent project-scoped creative memory with provenance and correction, retrieval
 with hard budgets and pinned constraints, a modification workflow over approved source (stage →
-validate → run in Chrome → advisory decision check → human approval → version/rollback), and a
-decision-aware advisory review that cites your own decisions and admits what it cannot verify.
+validate → load-time browser gate → advisory decision check → human approval → version/rollback),
+and a decision-aware advisory review that cites your own decisions and admits what it cannot verify.
 
 ## How Meta Muse is used
 
-Meta Muse is the reasoning engine for the entire creative loop: the Muse Code CLI (Meta
-subscription provider, with a bounded quota fallback) both generates the original game and performs
-every subsequent modification, and conversation/generation features run on Muse models throughout.
-The memory layer, prompt construction, validation, runtime check, and Decision Guard are
-deterministic infrastructure built around Muse — they make Muse's output trustworthy without
-replacing Muse's creativity with another model.
+Meta Muse is the reasoning engine for the creative loop: the Muse Code CLI (Meta subscription
+provider, with a bounded quota fallback) generates the original game and performs every subsequent
+modification, and conversation/generation features run on Muse models throughout. The memory layer,
+prompt construction, validation, runtime check, and Decision Guard are deterministic infrastructure
+built around Muse — they make Muse’s output more reviewable without replacing Muse’s creativity.
 
 ## Technology stack
 
 TypeScript monorepo (pnpm workspaces); Fastify API and React/Vite web client on loopback; SQLite
 memory store with bm25-style weighted retrieval and transactional supersession; Muse Code CLI as
-model provider; Playwright-driven headless Chrome runtime verification; a pure TypeScript
-Decision Guard engine (`@mml/decision-guard`); Biome, Vitest (391 tests passing at the demo
-branch), reproducible evaluation scripts.
+model provider; Playwright-driven headless Chrome for the load-time gate; a pure TypeScript
+Decision Guard engine (`@mml/decision-guard`); Biome, Vitest (483 passing / 3 opt-in live-Muse tests
+skipped at Phase 14A), reproducible evaluation and evidence scripts.
 
 ## Known limitations (stated plainly)
 
 - The Decision Guard is **advisory only** — it never blocks approval — and checks source patterns
   (five rule families), not rendered behaviour; it is not comprehensive compliance verification.
-  Its false-positive/false-negative behaviour is measured and published.
-- Memory influence is demonstrated in controlled single-trial conditions (n=1 per condition);
-  results are directional, not statistically significant. Palette accent tracking was observed;
-  one instruction (dark text colour) was not honoured.
+  Its false-positive/false-negative behaviour and abstention rates are measured and published.
+- The runtime gate is load-time only: page/console errors and canvas creation. It does not play the
+  game, inspect pixels, test every mechanic, or guarantee later interactions cannot crash.
+- Memory influence is demonstrated in controlled single-trial conditions (n = 1 per condition);
+  results are directional, not statistically significant. Palette accent tracking was observed; one
+  instruction (dark text colour) was not honoured.
 - The app is a single-user, loopback-only development build: no authentication, no multi-tenant
-  hosting.
-- Retrieval selects a subset of memories under a context budget; very many constraints compete for
-  the pinned slots.
+  hosting. Host-header validation raises the cost of DNS rebinding; it is not a substitute for auth.
+- No demo video was produced in Phase 14A; screenshots, a rehearsal record and a recording runbook
+  are provided.
 
 ## Future roadmap
 
-- Evidence-filtered enforcement: auto-act only on guard findings the audit shows are reliable
-  (e.g. superseded-palette), with explicit human override and an audit trail.
-- Engine fixes targeted by the audit: hex-notation normalisation, tween-based flash detection,
+- Evidence-filtered enforcement: auto-act only on guard findings the audit shows are reliable, with
+  explicit human override and an audit trail.
+- Engine fixes targeted by the audit: 8-digit RGBA normalisation, tween-based flash detection,
   comment/prose false-positive reduction.
 - A larger real-output evaluation corpus for both memory influence and guard accuracy.
 - Rendered-pixel compliance checks beyond source text.
@@ -125,9 +129,10 @@ branch), reproducible evaluation scripts.
 ## What is demonstrated vs future work
 
 **Demonstrated:** persistent project memory with corrections; retrieval into real generation
-prompts with recorded proof; real Muse modification of approved source; runtime verification;
-advisory decision-compliance findings citing remembered decisions; explicit approval with rollback;
-memory changing generated output in a controlled trial.
+prompts with recorded proof; real Muse modification of approved source; a blocking load-time browser
+gate; advisory decision-compliance findings citing remembered decisions; explicit approval with
+rollback to the recorded parent; memory changing generated output in a controlled trial; a
+reproducible seeded demo.
 
 **Future work (do not read as demonstrated):** automatic enforcement, comprehensive compliance,
-multi-user deployment, and broad statistical evaluation.
+gameplay/pixel verification, multi-user deployment, and broad statistical evaluation.

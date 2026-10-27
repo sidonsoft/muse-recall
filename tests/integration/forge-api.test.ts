@@ -1,4 +1,4 @@
-import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -681,5 +681,189 @@ describe('forge workflow', () => {
     const second = await startGenerate(h.app);
     const [a, b] = await Promise.all([waitForFinish(h.app, first), waitForFinish(h.app, second)]);
     expect([a.status, b.status]).toEqual(['succeeded', 'succeeded']);
+  });
+
+  it('undoes a change to its recorded parent after an intervening rollback', async () => {
+    // Director reproduction through the HTTP surface:
+    // approve v1, approve v2, undo to v1, approve v3 from v1, undo v3 → v1.
+    const h = await harness();
+    expect((await createProject(h.app)).statusCode).toBe(200);
+
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    const approveV1 = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approveV1.json().data.state.current_version).toBe(1);
+
+    const second = await startModify(h.app);
+    await waitForFinish(h.app, second);
+    const approveV2 = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${second}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approveV2.json().data.state.current_version).toBe(2);
+
+    const undo = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/rollback',
+      payload: {},
+    });
+    expect(undo.json().data.current_version).toBe(1);
+    expect(undo.json().data.can_rollback).toBe(false);
+
+    const third = await startModify(h.app);
+    const thirdJob = await waitForFinish(h.app, third);
+    expect(thirdJob.base_version).toBe(1);
+    const approveV3 = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${third}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approveV3.json().data.state.current_version).toBe(3);
+    expect(approveV3.json().data.state.can_rollback).toBe(true);
+
+    const undoAgain = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/rollback',
+      payload: {},
+    });
+    expect(undoAgain.statusCode).toBe(200);
+    // v3's recorded parent is v1, not the v2 that sits next to it in the array.
+    expect(undoAgain.json().data.current_version).toBe(1);
+    expect((await preview(h.app)).body).toContain("MARKER = 'v1'");
+  });
+
+  it('requires a non-empty user decision before saving one to memory', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+
+    const missing = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: true },
+    });
+    expect(missing.statusCode).toBe(400);
+    expect(missing.json().error.code).toBe('invalid_request');
+
+    const blank = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: true, decision: '   ' },
+    });
+    expect(blank.statusCode).toBe(400);
+    expect(blank.json().error.code).toBe('invalid_request');
+    expect(h.engine.list({ project_id: 'demo-game', status: ['active'] }).total).toBe(0);
+    expect(
+      (await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' })).json().data
+        .state.current_version,
+    ).toBeNull();
+
+    const decision = 'Stay with a calm ocean palette; no countdown mechanic.';
+    const approved = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: true, decision },
+    });
+    expect(approved.statusCode).toBe(200);
+    const saved = h.engine.list({ project_id: 'demo-game', status: ['active'] });
+    expect(saved.total).toBe(1);
+    expect(saved.items[0]?.content).toBe(decision);
+    expect(saved.items[0]?.validation_status).toBe('verified');
+    // The model's terminal summary is never used as the decision text.
+    expect(saved.items[0]?.content).not.toBe('Fake Farm Game generated.');
+  });
+
+  it('refuses to promote source that changed after runtime verification', async () => {
+    let tamper: (() => Promise<void>) | null = null;
+    const h = await harness('auto', {}, async () => {
+      if (tamper) await tamper();
+      return { ok: true, errors: [] };
+    });
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const modified = await startModify(h.app);
+    await waitForFinish(h.app, modified);
+    const staged = join(h.root, 'forge', 'demo-game', 'staging', modified, 'index.html');
+    tamper = async () => {
+      const current = await readFile(staged, 'utf8');
+      await writeFile(staged, `${current}\n<script>const TAMPERED = true;</script>\n`, 'utf8');
+    };
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('staged_changed');
+
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBe(1);
+    const jobAfter = await job(h.app, modified);
+    expect(jobAfter.version).toBeNull();
+  });
+
+  it('serialises rejection with approval for the same project', async () => {
+    let hold = false;
+    let release = () => {};
+    let entered = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const h = await harness('auto', {}, async () => {
+      if (hold) {
+        entered();
+        await gate;
+      }
+      return { ok: true, errors: [] };
+    });
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const modified = await startModify(h.app);
+    await waitForFinish(h.app, modified);
+
+    hold = true;
+    const approving = h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+    await started;
+    const rejecting = h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/reject`,
+      payload: {},
+    });
+    release();
+    const [approve, reject] = await Promise.all([approving, rejecting]);
+
+    expect(approve.statusCode).toBe(200);
+    expect(approve.json().data.state.current_version).toBe(2);
+    expect(reject.statusCode).toBe(409);
+    expect(reject.json().error.code).toBe('invalid_job_state');
+    expect((await preview(h.app)).statusCode).toBe(200);
   });
 });

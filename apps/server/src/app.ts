@@ -25,6 +25,7 @@ import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
 import { ForgeJobManager } from './forge/runner.js';
 import { ForgeWorkspace } from './forge/workspace.js';
+import { isAllowedHostHeader } from './host-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { registerForgeRoutes } from './routes/forge.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
@@ -132,6 +133,19 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           },
     trustProxy: false,
     bodyLimit: 1_048_576,
+  });
+
+  // Reject requests whose Host header does not name a loopback host on an
+  // expected local port. Binding to 127.0.0.1 does not stop DNS rebinding.
+  app.addHook('onRequest', async (request, reply) => {
+    const allowed = isAllowedHostHeader(request.headers.host, {
+      port: config.port,
+      corsOrigins: config.corsOrigins,
+    });
+    if (allowed) return;
+    return reply
+      .status(400)
+      .send(apiFailure(API_ERROR_CODES.invalidHost, 'Unexpected Host header.'));
   });
 
   await app.register(cors, {

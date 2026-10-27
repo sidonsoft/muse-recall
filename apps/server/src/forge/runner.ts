@@ -252,10 +252,12 @@ export class ForgeJobManager {
       }
 
       // Server-side runtime verification: a structurally valid game can still
-      // throw on load. Nothing is promoted until it renders cleanly.
-      const stagedHtml = await this.workspace.stagedHtml(current.project_id, current.id);
-      const runtime = stagedHtml
-        ? await this.runtimeCheck(stagedHtml)
+      // throw on load. Nothing is promoted until it renders cleanly. The
+      // snapshot hash is the exact byte sequence the browser checked, and
+      // promotion refuses anything else.
+      const staged = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      const runtime = staged
+        ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged game is missing.'] };
       if (!runtime.ok) {
         const failed = ForgeJobSchema.parse({
@@ -277,16 +279,27 @@ export class ForgeJobManager {
       // Decision Guard (Phase 12C) runs only after the blocking runtime check
       // passed. It records a fresh advisory snapshot for the reviewed source;
       // it can neither change `validation` nor stop the promotion below.
-      const decisionGuard = stagedHtml ? this.advisory(current, stagedHtml, true) : null;
+      const decisionGuard = staged ? this.advisory(current, staged.html, true) : null;
       if (decisionGuard) {
         current.decision_guard = decisionGuard;
         await this.persist(current);
+      }
+
+      // Capturing a decision is an explicit user act. The model's terminal
+      // summary is never promoted into a verified creative decision.
+      const decision = options.decision?.trim() ?? '';
+      if (options.captureMemory && decision.length === 0) {
+        throw new ForgeError(
+          'decision_required',
+          'Saving to project memory requires a decision written by the user.',
+        );
       }
 
       const summary = current.summary ?? current.request ?? current.prompt;
       const promoted = await this.workspace.promote(current.project_id, current.id, summary, {
         baseVersion: current.base_version,
         jobId: current.id,
+        ...(staged ? { expectedSha256: staged.sha256 } : {}),
       });
 
       const approved = ForgeJobSchema.parse({
@@ -303,7 +316,7 @@ export class ForgeJobManager {
           type: 'technical_decision',
           scope: 'project',
           project_id: current.project_id,
-          content: (options.decision ?? summary).slice(0, 1_000),
+          content: decision.slice(0, 1_000),
           source: { session_id: null, reference: `forge:${current.id}` },
           confidence: 0.9,
           validation_status: 'verified',
@@ -335,21 +348,27 @@ export class ForgeJobManager {
 
   async reject(jobId: string): Promise<ForgeJob> {
     const job = this.requireJob(jobId);
-    if (job.status !== 'succeeded' || job.version !== null) {
-      throw new ForgeError(
-        'invalid_job_state',
-        'Only a succeeded, unapplied change can be rejected.',
-      );
-    }
-    await this.workspace.reject(job.project_id, job.id);
-    const rejected = ForgeJobSchema.parse({
-      ...job,
-      status: 'rejected',
-      finished_at: this.now().toISOString(),
+    // Rejection deletes staging, so it must contend with approval for the same
+    // project: otherwise a rejection racing an approval could delete the bytes
+    // that promotion is about to copy.
+    return this.withProjectLock(job.project_id, async () => {
+      const current = this.requireJob(jobId);
+      if (current.status !== 'succeeded' || current.version !== null) {
+        throw new ForgeError(
+          'invalid_job_state',
+          'Only a succeeded, unapplied change can be rejected.',
+        );
+      }
+      await this.workspace.reject(current.project_id, current.id);
+      const rejected = ForgeJobSchema.parse({
+        ...current,
+        status: 'rejected',
+        finished_at: this.now().toISOString(),
+      });
+      this.jobs.set(current.id, rejected);
+      await this.persist(rejected);
+      return rejected;
     });
-    this.jobs.set(job.id, rejected);
-    await this.persist(rejected);
-    return rejected;
   }
 
   private requireJob(jobId: string): ForgeJob {

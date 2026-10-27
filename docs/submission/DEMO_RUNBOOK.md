@@ -1,59 +1,69 @@
-# Muse Recall — demo runbook
+# Muse Recall — demo runbook (Phase 14A)
 
-Commands below are taken from repository scripts (`package.json` on the named branch) and the
-Phase 12C verification appendix — nothing is invented. Environment facts (ports, defaults) were
-read from `apps/server/src/config.ts` and `apps/web/vite.config.ts` on the same branch.
+**Demo branch:** `agent/phase14a-demo-production`
+**Release candidate base:** `agent/phase12e-release-hardening` at
+`156c65c9a55833e00f6764f4fee20d93eec17e49`
+**Submission docs:** cherry-picked commit `84e6a8c` (docs only; no production files changed).
+
+Everything below is taken from scripts in `package.json` on this branch and from the Phase 14A
+rehearsal evidence (`docs/hackathon-evidence/phase14a/`). No live Muse inference was run while
+preparing Phase 14A; every recorded Forge case uses already-recorded bytes.
+
+> **Authenticity rule.** The seeded v1 game is a recorded real `muse-spark-1.3-contributor`
+> generation. The A/B/C memory-influence screenshots are authentic Phase 12A model output. The
+> guard demonstration uses a **labelled deterministic mutation** of authentic source and is never
+> presented as spontaneous model output. The rehearsal screenshots come from the deterministic
+> transport fixture; they are labelled as such wherever they appear.
 
 ## 0. Where to run the demo
-
-Run the demo from **`agent/phase12c-guard-advisory` (tip `260d9ce`)** — the accepted Phase 12C
-branch. It contains the seeded demo project script, the recorded baseline game, the Forge
-workflow, and the Decision Guard advisory UI. (This documentation branch has the docs and the
-evaluation/audit assets but not the demo seed or the advisory UI.)
 
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git
 cd muse-recall
-git checkout agent/phase12c-guard-advisory
+git checkout agent/phase14a-demo-production
 pnpm install
 ```
 
+This branch is the release candidate **plus** the submission documents, the Phase 14A fixes, the
+demo seed and the evidence. Do not run the demo from the Phase 13 documentation branch — it does
+not contain the Forge product code.
+
 ## 1. Required environment
 
-| Requirement | Value / check | Verified from |
+| Requirement | Value / check | Source |
 | --- | --- | --- |
 | Node.js | ≥ 24 | root `package.json` `engines` |
 | pnpm | 10.32.1 (`corepack enable`) | root `package.json` `packageManager` |
-| Google Chrome | installed (runtime check launches `channel: 'chrome'` headless) | `apps/server/src/forge/runtime-check.ts` |
-| Muse CLI | `muse` on PATH, logged in with the Meta subscription | config default `MODEL_PROVIDER=muse-cli`, `MUSE_BIN=muse` |
-| Quota plan | subscription first, optional contributor-key fallback on quota errors | Phase 11A trials (failover fired on all 5) |
+| Google Chrome | installed (runtime verification launches `channel: 'chrome'`, headless) | `apps/server/src/forge/runtime-check.ts` |
+| Muse CLI | only for a live run: `muse` on PATH, logged in with the Meta subscription | `MODEL_PROVIDER=muse-cli` default |
+| Network | the preview and runtime check load Phaser from `https://cdn.jsdelivr.net` | CSP + runtime allowlist |
 
 ## 2. Secret handling (read before demo day)
 
-- **No API keys are stored in the repository.** `.env` is git-ignored; only `.env.example`
+- No API keys are stored in the repository. `.env` is git-ignored; only `.env.example`
   (placeholders) is tracked.
 - Optional keys are passed via environment only: `FORGE_MUSE_API_KEY` (forced primary),
-  `FORGE_FALLBACK_API_KEY` (quota fallback), `MUSE_FALLBACK_API_KEY` (chat-side fallback).
-  Never type values into slides or terminal screenshots; export them in a private shell.
+  `FORGE_FALLBACK_API_KEY` (quota fallback), `MUSE_FALLBACK_API_KEY` (chat-side fallback). Export
+  them in a private shell; never type values into slides, terminal screenshots or the runbook.
 - The key never travels in command-line arguments (it is written to the CLI's stdin), and server
-  logs/errors pass through `redactSecrets` — see `docs/PHASE11_RELEASE_READINESS.md`.
-- One historical test-fixture key was found in old history, removed from the tree, and rotated
-  on 2026-10-27; the old value is invalid.
-- Pre-demo check: confirm `git grep -l "meta_[A-Za-z0-9]" -- ':!*.example'` returns nothing that
-  is a real value, and that your `.env` (if any) is not staged.
+  logs/errors pass through `redactSecrets`.
+- One historical test-fixture key was found in old history, removed from the tree, and rotated on
+  2026-10-27; the old value is invalid.
+- Pre-demo check: `git grep -l "meta_[A-Za-z0-9]" -- ':!*.example'` must not return a real value,
+  and `.env` must not be staged.
 
-## 3. Startup (verified script names)
+## 3. Startup
 
-Use one consistent `WORKSPACE_ROOT` and `DATABASE_PATH` for the seed and the server. Suggested
-demo values (scratch area, fresh each run):
+Use one consistent `DATABASE_PATH` and `WORKSPACE_ROOT` for the seed and the server. Both accept
+absolute paths; relative values resolve against `apps/server` for the seed **and** the server, so
+they always agree.
 
 ```bash
 export WORKSPACE_ROOT=/tmp/forge-demo-ws
 export DATABASE_PATH=/tmp/forge-demo.db
 
-pnpm demo:seed        # creates project "forge-demo" v1 from the recorded baseline
-pnpm db:migrate       # optional — the server also applies migrations at startup
-pnpm dev:server       # API on http://127.0.0.1:8787 (default PORT)
+pnpm demo:seed        # v1 game + the three remembered decisions
+pnpm dev:server       # API on http://127.0.0.1:8787
 pnpm dev:web          # web client on http://127.0.0.1:5173 (strictPort)
 ```
 
@@ -62,91 +72,147 @@ If ports are taken, the verified override pattern is:
 ```bash
 PORT=8899 DATABASE_PATH=… WORKSPACE_ROOT=… pnpm dev:server
 VITE_PROXY_TARGET=http://127.0.0.1:8899 pnpm --filter @mml/web exec vite --port 5199
+# Vite forwards the browser Host header (changeOrigin=false), so the API accepts
+# the local web origin in addition to its own port.
 ```
 
-Sanity check: `GET http://127.0.0.1:8787/api/health` → 200.
+Sanity checks: `GET http://127.0.0.1:8787/api/health` → 200, and the web client loads.
 
 ## 4. Seed data
 
-- `pnpm demo:seed` (12C branch) copies `demo/forge-baseline/index.html` into the project as
-  **version 1** with its sha recorded. The baseline is a **recorded real
-  `muse-spark-1.3-contributor` generation** (sha `79c9d67a…9ba9e41`) — authentic output, so the
-  demo's starting point has no model variance.
-- Seed project id: `forge-demo` (override with `SEED_PROJECT`).
-- Remembered decisions for the demo: create (or seed) the child-safety decision
-  ("children 5–8; avoid flashing effects, countdown timers, penalties for mistakes — Why: …")
-  and the palette correction pair (sunset → ocean, with the correction reason). These are plain
-  project-scoped constraint memories; enter them in the Memories view before recording.
+`pnpm demo:seed` performs two things in one command:
+
+1. **Workspace** — writes project `forge-demo` as **version 1** from
+   `demo/forge-baseline/index.html`, a recorded real `muse-spark-1.3-contributor` generation
+   (sha256 `79c9d67a…9ba9e41`), and records that hash in `state.json`.
+2. **Memory** — uses the production memory engine (`create` + transactional `correct`) to store:
+   - the child-friendly design **constraint**: *“This children’s game must avoid flashing effects,
+     countdown timers, and penalties for mistakes.”* (active, verified),
+   - the initial **sunset palette** decision (verified, then superseded),
+   - the corrected **ocean palette** decision (*primary accent `#4EA8DE`, dark text `#102A43`*),
+     which supersedes sunset with the audit reason “Creative direction changed from a warm sunset
+     mood to a cool ocean mood.”
+
+There is no manual database editing and no manual memory entry. The command prints the ids and
+statuses; the evidence record is `docs/hackathon-evidence/phase14a/demo-seed.json`.
+
+Re-running is safe and idempotent: memory rows are found by exact content across active and
+superseded status, a consistent seed adds nothing, and `state.json` is byte-identical. The
+workspace is reset to v1 (any demo v2+ is discarded), which is the documented recovery path.
 
 ## 5. Browser entry point
 
 Open **http://127.0.0.1:5173** → sidebar **Forge** → project **`forge-demo`**.
-Memory screens: sidebar **Memories** (decision list, history, provenance).
+Memory screens: sidebar **Memories** (active/superseded decisions, provenance, history).
 
-## 6. Demo sequence
+## 6. Demo sequence (recorded-inference-first)
 
-Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). Summary of UI checkpoints:
+Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). UI checkpoints:
 
-1. Forge → `forge-demo`: game preview runs, version badge **v1**.
-2. Memories: decision card (content, Why rationale, provenance, project scope); palette
-   correction history (original marked *superseded*, audit entries, correction reason).
-3. Forge → modify request → job starts; job record shows retrieved memories + prompt hash.
-4. Review panel: unified diff (expect single-digit % of lines), **validation** block
-   (structural + runtime), separate **Decision Guard — Advisory** block labelled
-   *pre-runtime review snapshot*.
-5. Guard findings (labelled-mutation job): two high-severity findings citing the child-safety
-   decision with source evidence; a third panel state may show *UNVERIFIED* notes.
-6. Approve (findings present) → **v2** current. Roll back → **v1** current.
+1. **Forge → `forge-demo`** — the playable Phaser game runs immediately; version badge **v1**.
+2. **The problem** — name the forgotten-decision failure mode (narration only).
+3. **Memories** — show the child-safety decision (content, rationale, project scope, provenance)
+   and the palette history: the sunset decision is marked **superseded**, the ocean correction is
+   **active**, and the correction reason is in the append-only history.
+4. **Memory influence** — show the authentic Phase 12A A/C evidence
+   (`docs/hackathon-evidence/phase14a/screenshots/11-memory-influence.png`): sunset memory drew
+   `0xFF7E5F`, the corrected ocean memory drew `0x4EA8DE`, the no-memory control drew neither.
+5. **Modify** — capture the preview, request “Add a Next Level button beneath the Restart button.”,
+   and play the pre-recorded authentic modification. The job record shows retrieved memory ids and
+   the prompt hash.
+6. **Staged diff** — a small unified diff against the approved source, not a regenerated file.
+7. **The actual approval gate** — the app **does not** play the game interactively at approval
+   time. *“Before promoting a change, Muse Forge launches it in headless Chrome and rejects builds
+   that throw on load or fail to create a canvas.”* It does not test gameplay, rendered pixels or
+   later interactions, and it produces no verification screenshot.
+8. **Advisory Decision Guard** — switch to the labelled mutation job and show the finding citing
+   the remembered child-safety decision and the offending source line. State plainly that this is
+   a labelled test mutation, that the check is advisory, that it never blocks approval, and that it
+   is a source-pattern check — not compliance verification.
+9. **Approve** — return to the authentic compliant modification and approve it; it becomes **v2**.
+   Nothing is promoted without the human decision; saving to memory requires a user-written
+   decision (the model's summary is never used).
+10. **Roll back** — one click restores **v1**, the recorded parent of the current version (not
+    simply the previous array entry). The version list and history remain inspectable.
 
-## 7. Expected UI states (what "healthy" looks like)
+Do **not** approve the intentionally violating build during the primary demonstration.
+
+## 7. Expected UI states (what “healthy” looks like)
 
 | Screen | Expected |
 | --- | --- |
-| Overview | API reachable, provider/model shown (never a key). |
-| Forge project | v1 preview playable; Modify input enabled. |
-| Running job | progress state; job must finish in ~0.5–2 min (observed 34–105 s; hard budget `FORGE_MAX_RUNTIME_MS` default 600 s, call budget `FORGE_MAX_CALLS` default 25). |
-| Review | diff + green validation + advisory panel; Approve enabled after runtime pass. |
-| Runtime failure | Approve disabled, 422 `runtime_failed` state; staged file never promoted. |
-| After approval | version list shows v2; Rollback restores v1 with the audit trail intact. |
-| Guard panel | findings are labelled *advisory*, non-blocking; nothing in the guard UI says "enforced". |
+| System | API reachable; provider/model shown (never a key). With `MODEL_PROVIDER=echo` the provider is honestly labelled “Deterministic offline provider (not a model)”. |
+| Forge project | v1 preview playable; Modify input enabled; `approved: v1`. |
+| Running job | progress; a rehearsal job finishes in about a second, a real Muse job in ~35–105 s; hard budget `FORGE_RUNTIME` default 600 s, call budget 25. |
+| Review | diff + `validation passed` + `Decision Guard — Advisory`; Approve enabled. |
+| Runtime failure | 422 `runtime_failed`; the staged file is never promoted. |
+| Approve | `Change approved`; badge `approved: v2`; job shows `succeeded v2`. |
+| Undo | notice `Restored the previous approved version.`; badge `approved: v1`; `can_rollback` false at a root version. |
+| Guard panel | labelled advisory; findings cite a decision id; “Findings do not block approval in this version.”; never a green PASS badge or a compliance claim. |
+| Memory detail | superseded palette shows `SUPERSEDED BY` the active ocean decision and the correction reason in history. |
 
 ## 8. Recovery steps
 
-- **Job fails (quota, network, timeout):** staging is untouched, v1 stays current; simply submit
-  the request again. With `FORGE_FALLBACK_API_KEY` set, one automatic fallback retry happens on
-  quota (429) errors only.
+- **Job fails (quota, network, timeout):** staging is untouched, v1 stays current; resubmit. With
+  `FORGE_FALLBACK_API_KEY`, one automatic fallback retry happens on quota (429) errors only.
 - **Runtime check fails:** that change cannot be approved; re-request instead of approving.
-- **Demo state corrupted:** re-run `pnpm demo:seed` (replaces v1 deterministically); for a fully
-  fresh app state, stop the server and delete `$DATABASE_PATH` + `$WORKSPACE_ROOT` (both are
-  local scratch files, safe to remove).
-- **Muse CLI login lost:** re-authenticate the CLI before the session; verify with a trivial
-  `muse` run outside the app first.
-- **Chrome missing/updated:** runtime check needs the `chrome` channel — confirm a desktop
-  Chrome install before the session.
+- **Demo state corrupted:** stop the servers, delete `$DATABASE_PATH` and `$WORKSPACE_ROOT`, re-run
+  `pnpm demo:seed`, restart. Both are local scratch files.
+- **Inconsistent memory seed:** the seed fails loudly if the child-safety decision is not active or
+  the palette pair is inconsistent; delete the demo database and re-seed rather than layering a
+  second history.
+- **Muse CLI login lost:** re-authenticate before the session; verify with a trivial `muse` run.
+- **Chrome missing/updated:** the runtime gate needs the `chrome` channel; confirm a desktop Chrome
+  install.
 
 ## 9. Offline / recorded fallback
 
-Order of preference: live run → run recorded earlier this week → packaged evidence.
+Preference order: live authenticated run → recorded authentic run → packaged evidence. Do not
+require live Muse availability during the presentation.
 
-- Recorded run: one complete modification captured on the seeded project (see recording
-  checklist in the demo script).
-- Packaged evidence on cloud branches (never modify):
-  - Phase 12A: `docs/hackathon-evidence/phase12/` (`pilot.json`, `{A,B,C}-v2.html`, screenshots).
-  - Phase 12C: `docs/hackathon-evidence/phase12c/` (`evaluation.json`, UI + game screenshots,
-    source files).
-  - Phase 11A: `docs/hackathon-evidence/phase11/trials.json`.
-- Rehearsal without model calls (deterministic fake Muse — for practice only; **never present
+- Recorded authentic inference is the primary path for the modification segment: capture one run
+  in advance at full speed on the seeded project and show it at real or lightly accelerated pace.
+- Packaged Phase 14A evidence: `docs/hackathon-evidence/phase14a/screenshots/` (UI states, guard
+  advisory, approval, rollback) and `memory-influence.png` (authentic A/C).
+- Authentic Phase 12A/12C/12E evidence remains at `docs/hackathon-evidence/phase12/`,
+  `phase12c/`, `phase12e/`; it is never modified by this submission.
+- The packaged Phase 14A screenshots were captured with `MODEL_PROVIDER=echo` and the fake-Muse
+  transport (deterministic rehearsal). Their game bytes and memory rows are authentic artifacts,
+  but the provider panel shows the offline adapter — do not present them as a live Muse session.
+  `screenshots/11-memory-influence.png` is authentic Phase 12A model output.
+- Deterministic rehearsal without any model call (practice and evidence only — **never present
   fake-mode output as model output**):
-  `FORGE_MUSE_BIN="$PWD/tests/fixtures/fake-muse.mjs" FAKE_MUSE_MODE=auto … pnpm dev:server`
-  then `pnpm verify:forge` (9 browser checks), and `pnpm eval:guard` + `pnpm evidence:guard-ui`
-  for the guard screenshots.
+
+  ```bash
+  FORGE_MUSE_BIN="$PWD/tests/fixtures/fake-muse.mjs" FAKE_MUSE_MODE=auto \
+    pnpm dev:server
+  pnpm evidence:phase14a        # production pipeline, no model call
+  pnpm evidence:phase14a-ui     # real API + Vite + Chrome screenshots
+  ```
 
 ## 10. Pre-demo checklist
 
-1. Fresh `pnpm install` on the demo branch; `pnpm verify` green (expect 391 passed / 3 skipped).
-2. `pnpm verify:runtime` green (valid passes, broken rejected).
-3. `pnpm demo:seed` → Forge shows v1; memories entered and visible in Memories view.
-4. One live dry-run modification completed end to end (approve + rollback once).
-5. Recorded fallback video/screens present on the demo machine.
-6. `GET /api/health` 200; Chrome launches headless; Muse CLI logged in; no keys on screen.
-7. Browser zoom/font size set for recording; hide bookmarks bar; private window (no extensions).
+1. Fresh `pnpm install` on `agent/phase14a-demo-production`; `pnpm verify` green.
+2. `pnpm verify:runtime` green (valid scene passes, broken scene rejected, unapproved origin blocked).
+3. `pnpm demo:seed` runs twice without duplicating memories; Forge shows v1; Memories shows three
+   decisions with sunset superseded.
+4. One end-to-end rehearsal completed: mutation finding → reject, authentic modification → approve
+   → undo; either live (with director authorisation) or recorded.
+5. Recorded fallback capture present on the demo machine; screenshots open offline.
+6. `GET /api/health` 200; Chrome launches headless; Muse CLI logged in if going live; no keys on
+   screen; `.env` not displayed.
+7. Browser zoom/font set for recording; bookmarks hidden; private window (no extensions).
+
+## 11. Known limits to state honestly
+
+- Decision Guard is **advisory only**, checks source patterns (five rule families), and is not
+  comprehensive compliance verification. Its accuracy is measured, including false positives and
+  false negatives.
+- The runtime gate checks load-time failure and canvas creation; it does **not** play the game,
+  inspect pixels, test every mechanic, or guarantee that later interaction cannot crash.
+- Memory influence is one controlled trial per condition (n = 1); results are directional, not
+  statistically significant. Accent selection was observed; the remembered dark text colour was
+  not applied.
+- The app is a single-user, loopback-only build: no authentication, no multi-tenant hosting.
+- No demo video exists in this repository. The screenshots and this runbook are the recording-ready
+  assets; do not claim footage unless a file was actually created.

@@ -120,6 +120,183 @@ describe('versioning', () => {
   });
 });
 
+describe('rollback ancestry', () => {
+  let sequence = 0;
+  function nextJob(): string {
+    sequence += 1;
+    return `00000000-0000-4000-8000-${String(sequence).padStart(12, '0')}`;
+  }
+
+  async function promoteVersion(html: string, baseVersion: number | null): Promise<number> {
+    const id = nextJob();
+    const staging = await workspace.createStaging('demo-game', id);
+    await writeFile(join(staging, 'index.html'), html);
+    const result = await workspace.promote('demo-game', id, `v${String(sequence)}`, {
+      baseVersion,
+      jobId: id,
+    });
+    return result.version;
+  }
+
+  function versionHtml(marker: string): string {
+    return HTML.replace('const score = 0;', `const score = 0; // ${marker}`);
+  }
+
+  async function writeRawState(state: unknown): Promise<void> {
+    await writeFile(
+      join(workspace.projectDir('demo-game'), 'state.json'),
+      `${JSON.stringify(state, null, 2)}\n`,
+      'utf8',
+    );
+  }
+
+  it('undoes along a linear history, one approved parent at a time', async () => {
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+    await promoteVersion(versionHtml('three'), 2);
+
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 2, previous: 3 });
+    expect(await workspace.currentHtml('demo-game')).toContain('// two');
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 1, previous: 2 });
+    expect(await workspace.currentHtml('demo-game')).toContain('// one');
+  });
+
+  it('restores the recorded parent, not the array neighbour', async () => {
+    // Director reproduction: approve v1, approve v2, undo to v1, then approve
+    // v3 from v1. Undoing v3 must restore v1 even though v2 sits between them.
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 1, previous: 2 });
+
+    await promoteVersion(versionHtml('three'), 1);
+    const state = await workspace.state('demo-game');
+    expect(state.current_version).toBe(3);
+    expect(state.versions.find((entry) => entry.version === 3)?.base_version).toBe(1);
+
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 1, previous: 3 });
+    expect(await workspace.currentHtml('demo-game')).toContain('// one');
+    expect((await workspace.state('demo-game')).current_version).toBe(1);
+  });
+
+  it('undoes an approval, then a fresh approval, then that approval', async () => {
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+    await workspace.rollback('demo-game'); // back to v1
+
+    await promoteVersion(versionHtml('three'), 1);
+    expect((await workspace.state('demo-game')).current_version).toBe(3);
+    expect((await workspace.state('demo-game')).can_rollback).toBe(true);
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 1, previous: 3 });
+    await expect(workspace.rollback('demo-game')).rejects.toMatchObject({
+      code: 'nothing_to_rollback',
+    });
+  });
+
+  it('reports can_rollback from ancestry, not array position', async () => {
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+    await workspace.rollback('demo-game'); // v2 -> v1
+    await promoteVersion(versionHtml('three'), 1);
+    await workspace.rollback('demo-game'); // v3 -> v1
+    // v1 is first in the array and has no recorded parent.
+    expect((await workspace.state('demo-game')).can_rollback).toBe(false);
+  });
+
+  it('falls back to the older neighbour for a legacy record without base_version', async () => {
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+    await promoteVersion(versionHtml('three'), 2);
+
+    const state = await workspace.state('demo-game');
+    const legacy = {
+      current_version: 2,
+      versions: state.versions.map((entry) => {
+        if (entry.version === 1) return { ...entry };
+        const copy = { ...entry } as Record<string, unknown>;
+        delete copy.base_version;
+        return copy;
+      }),
+    };
+    await writeRawState(legacy);
+
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 1, previous: 2 });
+  });
+
+  it('falls back safely when a recorded parent does not exist', async () => {
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+    await promoteVersion(versionHtml('three'), 2);
+
+    const state = await workspace.state('demo-game');
+    await writeRawState({
+      current_version: 3,
+      versions: state.versions.map((entry) =>
+        entry.version === 3 ? { ...entry, base_version: 99 } : entry,
+      ),
+    });
+
+    // The invalid pointer cannot be followed; the bounded legacy fallback
+    // restores the immediately preceding version instead of guessing forward.
+    expect(await workspace.rollback('demo-game')).toEqual({ version: 2, previous: 3 });
+  });
+
+  it('refuses rollback when the current version has no usable parent', async () => {
+    await promoteVersion(versionHtml('one'), null);
+    await promoteVersion(versionHtml('two'), 1);
+
+    const state = await workspace.state('demo-game');
+    await writeRawState({
+      current_version: 1,
+      versions: state.versions.map((entry) =>
+        entry.version === 1 ? { ...entry, base_version: 1 } : entry,
+      ),
+    });
+
+    await expect(workspace.rollback('demo-game')).rejects.toMatchObject({
+      code: 'nothing_to_rollback',
+    });
+  });
+});
+
+describe('checked-source integrity', () => {
+  it('refuses promotion when staging changed after verification', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(snapshot?.sha256).toMatch(/^[a-f0-9]{64}$/);
+
+    // Someone replaces the staged bytes between the browser check and approval.
+    await writeFile(
+      join(staging, 'index.html'),
+      HTML.replace('const score = 0;', 'const score = 7;'),
+    );
+
+    await expect(
+      workspace.promote('demo-game', JOB, 'changed', {
+        baseVersion: null,
+        jobId: JOB,
+        expectedSha256: snapshot?.sha256,
+      }),
+    ).rejects.toMatchObject({ code: 'staged_changed' });
+
+    const state = await workspace.state('demo-game');
+    expect(state.current_version).toBeNull();
+    expect(state.versions).toHaveLength(0);
+  });
+
+  it('promotes the exact bytes that were verified', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    const promoted = await workspace.promote('demo-game', JOB, 'verified', {
+      baseVersion: null,
+      jobId: JOB,
+      expectedSha256: snapshot?.sha256,
+    });
+    expect(promoted.sha256).toBe(snapshot?.sha256);
+  });
+});
+
 describe('diff helpers', () => {
   it('extracts only inline scripts', () => {
     const scripts = extractInlineScripts(
