@@ -1,0 +1,87 @@
+{
+  "phase": "12E",
+  "title": "Release-candidate verification record",
+  "generated_at": "2026-10-27T05:46:36Z",
+  "branch": "agent/phase12e-release-hardening",
+  "base_commit": "260d9ce",
+  "environment": {
+    "node": "v26.8.1",
+    "pnpm": "10.32.1",
+    "platform": "darwin arm64",
+    "workspace": "/Users/burnz/projects/muse-memory-lab"
+  },
+  "commands": [
+    {
+      "command": "pnpm verify",
+      "exit": 0,
+      "result": "lint + typecheck + 457 tests passed, 3 skipped (live-Muse gate)",
+      "notes": "Includes the 72-case Phase 12D corpus, targeted Phase 12E engine tests, and guard integration tests."
+    },
+    {
+      "command": "pnpm lint",
+      "exit": 0,
+      "result": "Biome: 175 files checked; 1 pre-existing informational suggestion (S13 template style)"
+    },
+    {
+      "command": "pnpm typecheck",
+      "exit": 0,
+      "result": "All 9 workspace packages typechecked"
+    },
+    {
+      "command": "pnpm verify:runtime",
+      "exit": 0,
+      "result": "valid Phaser scene: ok; broken scene (g.fillStar) rejected"
+    },
+    {
+      "command": "pnpm verify:forge",
+      "exit": 0,
+      "result": "9/9 browser checks passed; generate, preview, approve, capture, modify, reject, approve v2, rollback, no page errors"
+    },
+    {
+      "command": "pnpm eval:guard",
+      "exit": 0,
+      "result": "4/4 production-pipeline cases completed; A=BLOCK, B=PASS, C=UNVERIFIED, supplementary palette=BLOCK; every approval succeeded",
+      "evidence": "docs/hackathon-evidence/phase12e/evaluation.json"
+    },
+    {
+      "command": "pnpm evidence:guard-ui",
+      "exit": 0,
+      "result": "Real API + Vite review panel captured; VIOLATION DETECTED, advisory disclaimer and supported-checks scope present; approval v1 succeeded",
+      "evidence": "docs/hackathon-evidence/phase12e/screenshots/"
+    },
+    {
+      "command": "pnpm build",
+      "exit": 0,
+      "result": "Web dist built (444.43 kB JS / 34.61 kB CSS) and server dist built (297.4 kB)"
+    },
+    {
+      "command": "built server health check",
+      "exit": 0,
+      "result": "GET /api/health on a production build returned status ok, database read/write verified, schema_version 6",
+      "evidence": "docs/hackathon-evidence/phase12e/built-server-health.json"
+    }
+  ],
+  "functional_checks": {
+    "generate": "verify:forge + eval:guard case B",
+    "modify_existing_approved_game": "verify:forge",
+    "runtime_verification": "verify:runtime + eval:guard runtime checks + integration tests",
+    "decision_guard_advisory_review": "eval:guard + evidence:guard-ui + guard integration tests",
+    "approval": "verify:forge + eval:guard (all four approvals succeeded with advisory findings present)",
+    "rollback": "verify:forge",
+    "muse_quota_failover": "6/6 failover tests passed: retry at most once, baseline restore, usage sum, validation preserved, API-key retry, no-fallback failure",
+    "project_memory_isolation": "cross-project decision test passed; guard resolves only same-project active memories"
+  },
+  "assertions": {
+    "validation_ok_untouched_by_guard": true,
+    "guard_findings_do_not_block_approval": true,
+    "cas_stale_approval_rejected": true,
+    "rollback_functional": true,
+    "no_server_side_guard_enforcement": true,
+    "no_live_muse_inference_run": true
+  },
+  "notes": [
+    "verify:forge used the existing deterministic fake-Muse fixture; no paid or live Muse call was made.",
+    "The three skipped tests are the opt-in live-Muse suite; they were not run.",
+    "Evidence was regenerated after the final evidence-projection change."
+  ]
+}

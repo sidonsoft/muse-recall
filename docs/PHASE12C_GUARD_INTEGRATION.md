@@ -361,7 +361,7 @@ The UI capture (`pnpm evidence:guard-ui`) is a separate run with its own seeded 
 | Memory content is untrusted | Bounded excerpts; findings never embed a full memory. | `decision_ref` ≤160, reason ≤400. |
 | XSS / HTML injection | Server strips control characters and bounds strings; UI renders evidence, references and reasons as React text children. No `dangerouslySetInnerHTML` in the panel. | `decision-guard-ui.test.ts` renders `<img onerror>` and `<script>` payloads and asserts escaped output; Playwright UI run has no page errors. |
 | Size bounds | 32 findings, 32 unverified, 48 KiB serialised ceiling, engine's 400 k source bound. | `bounds findings, unverified entries and the serialised payload`; API response < 64 KiB. |
-| Credentials | No credentials enter the advisory; the existing `redactSecrets` path still covers logs/errors. | Existing redaction test passes; advisory contains only ids/excerpts. |
+| Credentials | **Superseded in Phase 12E.** Phase 12D showed that evidence excerpts can carry adjacent source text verbatim, including credential-shaped strings. Phase 12E projects its own match-centred excerpt and applies `redactSecrets` before persistence. | See `docs/PHASE12E_RELEASE_HARDENING.md` §P0-A and the phase12e evidence. |
 | Filesystem paths | The advisory carries no paths; `source_sha256` is a hash, not a location. | API test asserts the temp workspace root and `/Users/` are absent. |
 | Raw source in errors | Runtime/validation errors are unchanged and never include generated source; the guard has no error channel into HTTP errors. | Existing 422 test; advisory failure degrades inside the job, not the error response. |
 | Project isolation | Eligibility requires `scope: 'project'` and matching `project_id`; engine input contains only resolved rows. | Cross-project test (including a forged job record) and unit tests. |
@@ -477,3 +477,19 @@ FORGE_VERIFY_BASE=http://127.0.0.1:5199 pnpm verify:forge
 
 See [docs/hackathon-evidence/phase12c/README.md](hackathon-evidence/phase12c/README.md) for the
 file-by-file index, hashes, and what each artefact proves.
+
+---
+
+## Phase 12E addendum (release hardening)
+
+Phase 12E keeps this advisory architecture and the 12C no-enforcement decision. It changes the
+projection layer, not the authorization path:
+
+- Findings now carry engine `match_spans`; the server builds a redacted, ±16-character evidence
+  excerpt instead of persisting the engine's ±40-character raw slice.
+- `assessment` distinguishes `violation_detected`, `no_violation_detected`, `not_verified`, and
+  `evaluation_unavailable`; the UI never renders `PASS` and never calls a supported pass compliance.
+- Engine v1.2.0 adds `#RRGGBB`/`0xRRGGBB` palette equivalence and a rule-A executable view that
+  abstains on prose, documentation, and inert strings.
+
+Full release report: [PHASE12E_RELEASE_HARDENING.md](PHASE12E_RELEASE_HARDENING.md).

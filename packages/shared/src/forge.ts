@@ -57,6 +57,27 @@ export const DECISION_GUARD_VERDICTS = ['PASS', 'BLOCK', 'UNVERIFIED'] as const;
 export const DecisionGuardVerdictSchema = z.enum(DECISION_GUARD_VERDICTS);
 export type DecisionGuardVerdict = z.infer<typeof DecisionGuardVerdictSchema>;
 
+/**
+ * Reviewer-facing assessment. This is deliberately not a score and not a
+ * compliance certificate:
+ *
+ * - `violation_detected` — at least one supported check reported a finding.
+ * - `no_violation_detected` — every recorded decision matched a supported
+ *   check, all of those checks passed, and no limitation was recorded. This
+ *   says nothing about constraints outside the supported rule set, or about
+ *   aspects of a decision that no rule linked to.
+ * - `not_verified` — at least one constraint or decision could not be checked.
+ * - `evaluation_unavailable` — the engine did not complete, so no result exists.
+ */
+export const DECISION_GUARD_ASSESSMENTS = [
+  'violation_detected',
+  'no_violation_detected',
+  'not_verified',
+  'evaluation_unavailable',
+] as const;
+export const DecisionGuardAssessmentSchema = z.enum(DECISION_GUARD_ASSESSMENTS);
+export type DecisionGuardAssessment = z.infer<typeof DecisionGuardAssessmentSchema>;
+
 export const DECISION_GUARD_UNVERIFIED_CODES = [
   'memory_unresolved',
   'cross_project',
@@ -111,6 +132,13 @@ export const DecisionGuardAdvisorySchema = z.object({
   engine_version: z.string().min(1).max(32),
   /** Advisory aggregate from the pure engine. Never used for authorisation. */
   engine_verdict: DecisionGuardVerdictSchema,
+  /** Explicit reviewer-facing distinction; never an authorisation signal. */
+  assessment: DecisionGuardAssessmentSchema.default('not_verified'),
+  /** Bounded explanation of the assessment, including its limits. */
+  assessment_reason: z
+    .string()
+    .max(400)
+    .default('No verified assessment is available for this snapshot.'),
   findings: z.array(DecisionGuardFindingSchema).max(32),
   unverified: z.array(DecisionGuardUnverifiedSchema).max(32),
   /** Active decisions passed to the engine — the auditable decision set. */

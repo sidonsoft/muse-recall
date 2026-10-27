@@ -45,6 +45,11 @@ const SUNSET_SUPERSEDED: GuardDecision = {
 const PHASER =
   '<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>';
 
+const verdictFor = (
+  result: ReturnType<typeof evaluateDecisions>,
+  rule: string,
+): string | undefined => result.evaluations.find((entry) => entry.rule === rule)?.verdict;
+
 describe('guard engine — 18 acceptance cases', () => {
   it('1. explicit countdown violation blocks and cites evidence', () => {
     const result = evaluateDecisions(
@@ -342,9 +347,112 @@ describe('v1.1.0 comment-masking regressions (Phase 12D accuracy fix)', () => {
   });
 });
 
+describe('v1.2.0 palette notation equivalence', () => {
+  const sourceFor = (value: string) => `${PHASER}<script>g.fillStyle(${value}, 1);</script>`;
+
+  it('matches a 0x source against a #RRGGBB record and preserves provenance', () => {
+    const result = evaluateDecisions([OCEAN_DECISION], sourceFor('0xff7e5f'), {
+      supersededDecisions: [SUNSET_SUPERSEDED],
+    });
+    const evaluation = result.evaluations.find((entry) => entry.rule === 'superseded-palette');
+    expect(evaluation?.verdict).toBe('BLOCK');
+    expect(evaluation?.findings[0]?.decision_id).toBe('dec-ocean');
+    expect(evaluation?.findings[0]?.explanation).toContain('#FF7E5F');
+    expect(evaluation?.findings[0]?.match_spans[0]).toBeDefined();
+  });
+
+  it('matches a #RRGGBB source against a 0xRRGGBB record', () => {
+    const ocean = {
+      ...OCEAN_DECISION,
+      content: 'The game should use a cool ocean palette, accent 0x4EA8DE.',
+    };
+    const sunset = {
+      ...SUNSET_SUPERSEDED,
+      content: 'The game used a warm sunset palette, accent 0xFF7E5F.',
+    };
+    const result = evaluateDecisions([ocean], `${PHASER}<style>:root{--accent:#ff7e5f}</style>`, {
+      supersededDecisions: [sunset],
+    });
+    expect(result.evaluations.find((entry) => entry.rule === 'superseded-palette')?.verdict).toBe(
+      'BLOCK',
+    );
+  });
+
+  it('is case-insensitive but deliberately does not widen to 8-digit RGBA hex', () => {
+    const upper = evaluateDecisions([OCEAN_DECISION], sourceFor('0XFF7E5F'), {
+      supersededDecisions: [SUNSET_SUPERSEDED],
+    });
+    expect(verdictFor(upper, 'superseded-palette')).toBe('BLOCK');
+
+    const eightDigit = evaluateDecisions([OCEAN_DECISION], sourceFor('0xFF7E5FFF'), {
+      supersededDecisions: [SUNSET_SUPERSEDED],
+    });
+    expect(verdictFor(eightDigit, 'superseded-palette')).toBe('UNVERIFIED');
+  });
+
+  it('still requires superseded history: no history supplied means UNVERIFIED', () => {
+    const result = evaluateDecisions([OCEAN_DECISION], sourceFor('0xff7e5f'));
+    expect(verdictFor(result, 'superseded-palette')).toBe('UNVERIFIED');
+  });
+});
+
+describe('v1.2.0 countdown executable-vs-prose evidence', () => {
+  it('abstains on HTML documentation instead of blocking it', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<p>This game has no countdown and no timer.</p>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('abstains on an inert JavaScript string', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<script>const help = 'there is no countdown'; elapsed += 1;</script>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('blocks an executable timer even when prose also mentions countdowns', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<p>No countdown here.</p><script>let timeLeft = 5; timeLeft -= 1;</script>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+    expect(result.findings[0]?.evidence).toContain('timeLeft');
+  });
+
+  it('keeps comments inert and does not treat inert attributes as mechanics', () => {
+    const commented = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<script>// old countdown ring removed\nlet elapsed = 0;</script>`,
+    );
+    expect(verdictFor(commented, 'countdown-mechanics')).toBe('PASS');
+
+    const attribute = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<div id="countdown" data-tip="timer">10</div>`,
+    );
+    expect(verdictFor(attribute, 'countdown-mechanics')).toBe('UNVERIFIED');
+  });
+
+  it('still evaluates executable code in inline event handlers', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<button onclick="timeLeft -= 1">tick</button>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+  });
+});
+
 describe('integration adapter', () => {
   it('projects blocking findings into validation-issue strings and separates UNVERIFIED notes', () => {
-    const result = evaluateDecisions([CHILD_DECISION], `${PHASER}<div id="countdown">10</div>`);
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<script>let timeLeft = 10; timeLeft -= 1;</script>`,
+    );
     const adapted = toValidationIssues(result);
     expect(adapted.blocking).toBe(true);
     expect(adapted.issues).toHaveLength(1);

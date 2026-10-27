@@ -13,13 +13,19 @@
  * comment-masked copy of the input (see maskCommentBodies); findings cite
  * evidence sliced from the original source.
  *
+ * v1.2.0 (Phase 12E release hardening): findings carry exact `match_spans` so
+ * the integration boundary can redact and minimise its own evidence excerpt;
+ * `#RRGGBB` and `0xRRGGBB` are equivalent for palette corrections; and rule A
+ * distinguishes executable countdown code from documentation, comments, and
+ * inert strings (prose-only hits abstain instead of blocking).
+ *
  * A decision is NEVER marked compliant merely because no rule applies:
  * unsupported decisions produce UNVERIFIED, never PASS.
  */
 
 import type { Memory } from '@mml/shared';
 
-export const GUARD_VERSION = '1.1.0';
+export const GUARD_VERSION = '1.2.0';
 
 /** Structural subset of a memory record — no runtime coupling. */
 export type GuardDecision = Pick<Memory, 'id' | 'content' | 'status' | 'supersedes'>;
@@ -43,6 +49,13 @@ export const RULE_ORDER: readonly GuardRuleId[] = [
   'colour-only-cue',
 ];
 
+export interface GuardMatchSpan {
+  /** Absolute start offset in the original source (inclusive). */
+  start: number;
+  /** Absolute end offset in the original source (exclusive). */
+  end: number;
+}
+
 export interface GuardFinding {
   decision_id: string;
   decision_excerpt: string;
@@ -51,6 +64,13 @@ export interface GuardFinding {
   evidence: string;
   explanation: string;
   blocks_approval: boolean;
+  /**
+   * Exact matched construct(s) in the original source. The integration layer
+   * uses these to build its own redacted, narrow evidence excerpt instead of
+   * trusting a pre-rendered slice. Offsets survive comment masking because the
+   * masked copy is length-preserving.
+   */
+  match_spans: GuardMatchSpan[];
 }
 
 export interface DecisionEvaluation {
@@ -142,9 +162,18 @@ function familyForText(text: string): 'warm' | 'cool' | null {
   return null;
 }
 
+/**
+ * Normalise a supported 6-digit RGB token to bare uppercase hex digits.
+ * `#RRGGBB` and `0xRRGGBB` are the same colour; only the notation differs.
+ * 3-digit and 8-digit forms are deliberately outside this narrow equivalence.
+ */
+function canonicalHex(token: string): string {
+  return token.slice(-6).toUpperCase();
+}
+
 function hexesIn(text: string): string[] {
   const found = text.match(HEX_RE);
-  return found ? [...new Set(found.map((hex) => hex.toUpperCase()))].sort() : [];
+  return found ? [...new Set(found.map(canonicalHex))].sort() : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -257,6 +286,220 @@ function maskCommentBodies(source: string): string {
   return out.join('');
 }
 
+interface HtmlTag {
+  name: string;
+  closing: boolean;
+  /** First character after the tag name (attributes start here). */
+  attributeStart: number;
+  end: number;
+}
+
+/** Read an HTML tag starting at `start`; null when the character is not a tag. */
+function readHtmlTag(source: string, start: number): HtmlTag | null {
+  if (source[start] !== '<') return null;
+  let i = start + 1;
+  const closing = source[i] === '/';
+  if (closing) i += 1;
+  const nameStart = i;
+  while (i < source.length && /[A-Za-z0-9:-]/.test(source[i] ?? '')) i += 1;
+  if (i === nameStart) return null;
+  const name = source.slice(nameStart, i).toLowerCase();
+  const attributeStart = i;
+  let quote: string | null = null;
+  while (i < source.length) {
+    const char = source[i];
+    if (quote) {
+      if (char === quote) quote = null;
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === '>') {
+      i += 1;
+      break;
+    }
+    i += 1;
+  }
+  return { name, closing, attributeStart, end: i };
+}
+
+/**
+ * Blank inert attribute values (`id`, `class`, `data-*`, `aria-*`, `title`, …)
+ * in the countdown executable view. Event-handler attributes (`on*`) may carry
+ * executable code and stay visible. Without this, `<div id="countdown">` reads
+ * as a countdown mechanic even though nothing decrements.
+ */
+function maskInertAttributes(source: string, out: string[], tag: HtmlTag): void {
+  let i = tag.attributeStart;
+  while (i < tag.end) {
+    const char = source[i];
+    if (char === '>' || char === '/') {
+      i += 1;
+      continue;
+    }
+    if (/\s/.test(char ?? '')) {
+      i += 1;
+      continue;
+    }
+    const nameStart = i;
+    while (i < tag.end && !/[\s=/>]/.test(source[i] ?? '')) i += 1;
+    const name = source.slice(nameStart, i).toLowerCase();
+    while (i < tag.end && /\s/.test(source[i] ?? '')) i += 1;
+    if (source[i] !== '=') continue;
+    i += 1;
+    while (i < tag.end && /\s/.test(source[i] ?? '')) i += 1;
+    const quote = source[i] === '"' || source[i] === "'" ? source[i] : null;
+    const valueStart = quote ? i + 1 : i;
+    let valueEnd = valueStart;
+    if (quote) {
+      valueEnd = source.indexOf(quote, valueStart);
+      if (valueEnd < 0 || valueEnd > tag.end) valueEnd = tag.end;
+      i = valueEnd + 1;
+    } else {
+      while (valueEnd < tag.end && !/[\s>]/.test(source[valueEnd] ?? '')) valueEnd += 1;
+      i = valueEnd;
+    }
+    if (name.startsWith('on')) continue;
+    for (let j = valueStart; j < valueEnd; j += 1) {
+      if (out[j] !== '\n') out[j] = ' ';
+    }
+  }
+}
+
+function maskQuoted(source: string, out: string[], start: number, quote: string): number {
+  out[start] = ' ';
+  let i = start + 1;
+  while (i < source.length) {
+    const char = source[i];
+    if (char === '\\') {
+      if (out[i] !== '\n') out[i] = ' ';
+      if (i + 1 < source.length && out[i + 1] !== '\n') out[i + 1] = ' ';
+      i += 2;
+      continue;
+    }
+    if (char === quote) {
+      out[i] = ' ';
+      return i + 1;
+    }
+    if (char === '\n') return i;
+    if (out[i] !== '\n') out[i] = ' ';
+    i += 1;
+  }
+  return i;
+}
+
+function maskTemplate(source: string, out: string[], start: number): number {
+  out[start] = ' ';
+  let i = start + 1;
+  while (i < source.length) {
+    const char = source[i];
+    if (char === '\\') {
+      if (out[i] !== '\n') out[i] = ' ';
+      if (i + 1 < source.length && out[i + 1] !== '\n') out[i + 1] = ' ';
+      i += 2;
+      continue;
+    }
+    if (char === '`') {
+      out[i] = ' ';
+      return i + 1;
+    }
+    if (out[i] !== '\n') out[i] = ' ';
+    i += 1;
+  }
+  return i;
+}
+
+/**
+ * Phase 12E — rule-A executable view.
+ *
+ * Countdown words can appear as documentation (`<p>No countdown</p>`), inert
+ * UI copy (`'there is no countdown'`), or template text. Those are prose, not
+ * evidence of an executable timer. This produces a length-preserving copy in
+ * which HTML text nodes, `<style>` content, and JavaScript string/template
+ * literals are blanked; code and HTML attributes are left intact (attributes
+ * may drive behaviour, so they stay conservative).
+ *
+ * If a token appears only in the executable view, the engine BLOCKs. If it
+ * appears solely in prose, the honest result is UNVERIFIED — never PASS (the
+ * executable mechanic could be hidden) and never BLOCK (prose is not proof).
+ */
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+]);
+
+function maskCountdownNonExecutable(source: string): string {
+  const out = source.split('');
+  const n = source.length;
+  const stack: string[] = [];
+  let mode: 'html' | 'script' | 'style' = 'html';
+  let i = 0;
+  while (i < n) {
+    if (source[i] === '<') {
+      const tag = readHtmlTag(source, i);
+      if (tag) {
+        if (!tag.closing) maskInertAttributes(source, out, tag);
+        if (tag.closing) {
+          while (stack.length > 0 && stack[stack.length - 1] !== tag.name) stack.pop();
+          if (stack[stack.length - 1] === tag.name) stack.pop();
+          if (tag.name === 'script' || tag.name === 'style') mode = 'html';
+        } else if (!VOID_ELEMENTS.has(tag.name)) {
+          stack.push(tag.name);
+          if (tag.name === 'script') mode = 'script';
+          else if (tag.name === 'style') mode = 'style';
+        }
+        i = tag.end;
+        continue;
+      }
+    }
+    if (mode === 'script') {
+      const char = source[i];
+      if (char === "'" || char === '"') {
+        i = maskQuoted(source, out, i, char);
+        continue;
+      }
+      if (char === '`') {
+        i = maskTemplate(source, out, i);
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+    if (mode === 'style') {
+      if (out[i] !== '\n') out[i] = ' ';
+      i += 1;
+      continue;
+    }
+    // Bare JS fragments (as used by the evaluation corpus and unit tests) are
+    // code-like: their string literals are inert, like script-tag strings.
+    if (stack.length === 0) {
+      const char = source[i];
+      if (char === "'" || char === '"') {
+        i = maskQuoted(source, out, i, char);
+        continue;
+      }
+      if (char === '`') {
+        i = maskTemplate(source, out, i);
+        continue;
+      }
+    }
+    // Text nodes only exist inside an HTML element; outside one, code stays.
+    if (stack.length > 0 && source[i] !== '<' && out[i] !== '\n') out[i] = ' ';
+    i += 1;
+  }
+  return out.join('');
+}
+
 function excerpt(text: string, limit: number): string {
   const flat = text.replace(/\s+/g, ' ').trim();
   return flat.length <= limit ? flat : `${flat.slice(0, limit - 1)}…`;
@@ -305,30 +548,44 @@ interface RuleContext {
 }
 
 function evaluateCountdown({ source, original, decision }: RuleContext): DecisionEvaluation {
-  const match = source.match(COUNTDOWN_SOURCE);
-  if (!match || match.index === undefined) {
+  const executable = maskCountdownNonExecutable(source);
+  const match = executable.match(COUNTDOWN_SOURCE);
+  if (match && match.index !== undefined) {
+    const finding = makeFinding(
+      decision,
+      'countdown-mechanics',
+      evidenceAt(original, match.index, match[0].length),
+      `decision prohibits countdown mechanics; source contains "${match[0]}"`,
+      [{ start: match.index, end: match.index + match[0].length }],
+      true,
+      'high',
+    );
     return {
       decision_id: decision.id,
       rule: 'countdown-mechanics',
-      verdict: 'PASS',
-      reason: 'no unambiguous countdown implementation found',
-      findings: [],
+      verdict: 'BLOCK',
+      reason: 'countdown implementation detected',
+      findings: [finding],
     };
   }
-  const finding = makeFinding(
-    decision,
-    'countdown-mechanics',
-    evidenceAt(original, match.index, match[0].length),
-    `decision prohibits countdown mechanics; source contains "${match[0]}"`,
-    true,
-    'high',
-  );
+  // A token that exists only in a comment-masked but otherwise textual location
+  // is prose. Do not turn documentation into a finding, and do not turn it into
+  // PASS either: the executable mechanic may simply be hidden from this rule.
+  if (source.match(COUNTDOWN_SOURCE)) {
+    return {
+      decision_id: decision.id,
+      rule: 'countdown-mechanics',
+      ...unverified(
+        'countdown reference appears only in documentation, a string, or style content; no executable countdown mechanics were found',
+      ),
+    };
+  }
   return {
     decision_id: decision.id,
     rule: 'countdown-mechanics',
-    verdict: 'BLOCK',
-    reason: 'countdown implementation detected',
-    findings: [finding],
+    verdict: 'PASS',
+    reason: 'no unambiguous countdown implementation found',
+    findings: [],
   };
 }
 
@@ -348,6 +605,7 @@ function evaluateFlashing({ source, original, decision }: RuleContext): Decision
     'flashing-effects',
     evidenceAt(original, match.index, match[0].length),
     `decision prohibits flashing effects; source contains "${excerpt(match[0], 80)}"`,
+    [{ start: match.index, end: match.index + match[0].length }],
     true,
     'high',
   );
@@ -376,6 +634,7 @@ function evaluatePenalty({ source, original, decision }: RuleContext): DecisionE
     'mistake-penalty',
     evidenceAt(original, match.index, match[0].length),
     `decision prohibits punishing mistakes; source contains "${excerpt(match[0], 80)}"`,
+    [{ start: match.index, end: match.index + match[0].length }],
     true,
     'high',
   );
@@ -419,12 +678,17 @@ function evaluatePalette(context: RuleContext): DecisionEvaluation {
   const forbiddenHit = forbiddenHexes.filter((hex) => sourceHexes.has(hex));
   const firstForbidden = forbiddenHit[0];
   if (forbiddenHit.length > 0 && firstForbidden) {
-    const index = source.toUpperCase().indexOf(firstForbidden.toUpperCase());
+    const index = Math.max(0, source.toUpperCase().indexOf(firstForbidden.toUpperCase()));
     const finding = makeFinding(
       decision,
       'superseded-palette',
-      evidenceAt(original, Math.max(0, index), firstForbidden.length),
-      `superseded palette reintroduced as active styling: ${forbiddenHit.join(', ')} (replaced by ${requiredHexes.join(', ') || requiredFamily || 'unknown'})`,
+      evidenceAt(original, index, firstForbidden.length),
+      `superseded palette reintroduced as active styling: ${forbiddenHit
+        .map((hex) => `#${hex}`)
+        .join(', ')} (replaced by ${
+        requiredHexes.map((hex) => `#${hex}`).join(', ') || requiredFamily || 'unknown'
+      })`,
+      [{ start: index, end: index + firstForbidden.length }],
       true,
       'high',
     );
@@ -500,6 +764,10 @@ function evaluateColourCue({ source, original, decision }: RuleContext): Decisio
       EVIDENCE_CHARS,
     ),
     'red and green gameplay elements with no shape, icon, label, or pattern cue anywhere in source',
+    [
+      { start: redIndex, end: redIndex + red[0].length },
+      { start: greenIndex, end: greenIndex + green[0].length },
+    ],
     true,
     'high',
   );
@@ -516,6 +784,7 @@ function makeFinding(
   rule: GuardRuleId,
   evidence: string,
   explanation: string,
+  matchSpans: GuardMatchSpan[],
   blocks: boolean,
   severity: 'high' | 'medium',
 ): GuardFinding {
@@ -527,6 +796,7 @@ function makeFinding(
     evidence,
     explanation,
     blocks_approval: blocks,
+    match_spans: matchSpans,
   };
 }
 

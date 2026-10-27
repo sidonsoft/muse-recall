@@ -1,0 +1,360 @@
+{
+  "phase": "12E",
+  "title": "Phase 12D accuracy corpus — preserved baselines and v1.2.0 results",
+  "corpus": {
+    "synthetic_cases": 72,
+    "authentic_observations": 5,
+    "security_probes": 14,
+    "note": "The 72 synthetic fixtures, their ground-truth labels, and the authentic-artifact provenance are unchanged from Phase 12D. Only engine behaviour and pinned sets were updated."
+  },
+  "baselines": {
+    "v1.0.0": {
+      "source": "accuracy-v1.0.0-baseline.json",
+      "metrics": [
+        {
+          "rule": "countdown-mechanics",
+          "cases": 14,
+          "tp": 4,
+          "fp": 3,
+          "tn": 4,
+          "fn": 2,
+          "abstain": 1,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.571,
+          "recall": 0.667,
+          "false_positive_rate": 0.429,
+          "false_negative_rate": 0.333,
+          "unsafe_block_rate": 0.429,
+          "abstention_rate": 0.071
+        },
+        {
+          "rule": "flashing-effects",
+          "cases": 14,
+          "tp": 4,
+          "fp": 3,
+          "tn": 4,
+          "fn": 3,
+          "abstain": 0,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.571,
+          "recall": 0.571,
+          "false_positive_rate": 0.429,
+          "false_negative_rate": 0.429,
+          "unsafe_block_rate": 0.429,
+          "abstention_rate": 0
+        },
+        {
+          "rule": "mistake-penalty",
+          "cases": 14,
+          "tp": 5,
+          "fp": 3,
+          "tn": 3,
+          "fn": 2,
+          "abstain": 1,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.625,
+          "recall": 0.714,
+          "false_positive_rate": 0.5,
+          "false_negative_rate": 0.286,
+          "unsafe_block_rate": 0.375,
+          "abstention_rate": 0.071
+        },
+        {
+          "rule": "superseded-palette",
+          "cases": 16,
+          "tp": 4,
+          "fp": 2,
+          "tn": 2,
+          "fn": 2,
+          "abstain": 6,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.667,
+          "recall": 0.667,
+          "false_positive_rate": 0.5,
+          "false_negative_rate": 0.333,
+          "unsafe_block_rate": 0.333,
+          "abstention_rate": 0.375
+        },
+        {
+          "rule": "colour-only-cue",
+          "cases": 13,
+          "tp": 3,
+          "fp": 2,
+          "tn": 1,
+          "fn": 2,
+          "abstain": 5,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.6,
+          "recall": 0.6,
+          "false_positive_rate": 0.667,
+          "false_negative_rate": 0.4,
+          "unsafe_block_rate": 0.4,
+          "abstention_rate": 0.385
+        }
+      ]
+    },
+    "v1.1.0": {
+      "source": "accuracy-v1.1.0-accepted.json",
+      "metrics": [
+        {
+          "rule": "countdown-mechanics",
+          "cases": 15,
+          "tp": 4,
+          "fp": 1,
+          "tn": 7,
+          "fn": 2,
+          "abstain": 1,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.8,
+          "recall": 0.667,
+          "false_positive_rate": 0.125,
+          "false_negative_rate": 0.333,
+          "unsafe_block_rate": 0.2,
+          "abstention_rate": 0.067
+        },
+        {
+          "rule": "flashing-effects",
+          "cases": 14,
+          "tp": 4,
+          "fp": 2,
+          "tn": 5,
+          "fn": 3,
+          "abstain": 0,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.667,
+          "recall": 0.571,
+          "false_positive_rate": 0.286,
+          "false_negative_rate": 0.429,
+          "unsafe_block_rate": 0.333,
+          "abstention_rate": 0
+        },
+        {
+          "rule": "mistake-penalty",
+          "cases": 14,
+          "tp": 5,
+          "fp": 2,
+          "tn": 4,
+          "fn": 2,
+          "abstain": 1,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.714,
+          "recall": 0.714,
+          "false_positive_rate": 0.333,
+          "false_negative_rate": 0.286,
+          "unsafe_block_rate": 0.286,
+          "abstention_rate": 0.071
+        },
+        {
+          "rule": "superseded-palette",
+          "cases": 16,
+          "tp": 4,
+          "fp": 1,
+          "tn": 3,
+          "fn": 2,
+          "abstain": 6,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.8,
+          "recall": 0.667,
+          "false_positive_rate": 0.25,
+          "false_negative_rate": 0.333,
+          "unsafe_block_rate": 0.2,
+          "abstention_rate": 0.375
+        },
+        {
+          "rule": "colour-only-cue",
+          "cases": 13,
+          "tp": 3,
+          "fp": 1,
+          "tn": 1,
+          "fn": 2,
+          "abstain": 6,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.75,
+          "recall": 0.6,
+          "false_positive_rate": 0.5,
+          "false_negative_rate": 0.4,
+          "unsafe_block_rate": 0.25,
+          "abstention_rate": 0.462
+        }
+      ]
+    }
+  },
+  "after": {
+    "v1.2.0": {
+      "source": "accuracy-v1.2.0-phase12e.json",
+      "metrics": [
+        {
+          "rule": "countdown-mechanics",
+          "cases": 15,
+          "tp": 4,
+          "fp": 0,
+          "tn": 7,
+          "fn": 2,
+          "abstain": 2,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 1,
+          "recall": 0.667,
+          "false_positive_rate": 0,
+          "false_negative_rate": 0.333,
+          "unsafe_block_rate": 0,
+          "abstention_rate": 0.133
+        },
+        {
+          "rule": "flashing-effects",
+          "cases": 14,
+          "tp": 4,
+          "fp": 2,
+          "tn": 5,
+          "fn": 3,
+          "abstain": 0,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.667,
+          "recall": 0.571,
+          "false_positive_rate": 0.286,
+          "false_negative_rate": 0.429,
+          "unsafe_block_rate": 0.333,
+          "abstention_rate": 0
+        },
+        {
+          "rule": "mistake-penalty",
+          "cases": 14,
+          "tp": 5,
+          "fp": 2,
+          "tn": 4,
+          "fn": 2,
+          "abstain": 1,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.714,
+          "recall": 0.714,
+          "false_positive_rate": 0.333,
+          "false_negative_rate": 0.286,
+          "unsafe_block_rate": 0.286,
+          "abstention_rate": 0.071
+        },
+        {
+          "rule": "superseded-palette",
+          "cases": 16,
+          "tp": 5,
+          "fp": 1,
+          "tn": 3,
+          "fn": 2,
+          "abstain": 5,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.833,
+          "recall": 0.714,
+          "false_positive_rate": 0.25,
+          "false_negative_rate": 0.286,
+          "unsafe_block_rate": 0.167,
+          "abstention_rate": 0.313
+        },
+        {
+          "rule": "colour-only-cue",
+          "cases": 13,
+          "tp": 3,
+          "fp": 1,
+          "tn": 1,
+          "fn": 2,
+          "abstain": 6,
+          "unsound_pass": 0,
+          "overblock": 0,
+          "precision": 0.75,
+          "recall": 0.6,
+          "false_positive_rate": 0.5,
+          "false_negative_rate": 0.4,
+          "unsafe_block_rate": 0.25,
+          "abstention_rate": 0.462
+        }
+      ]
+    }
+  },
+  "per_case_changes": [
+    {
+      "id": "A08",
+      "rule": "countdown-mechanics",
+      "ground_truth": "compliant",
+      "ideal": "PASS",
+      "before": {
+        "observed": "BLOCK",
+        "overall": "BLOCK",
+        "classification": "FP"
+      },
+      "after": {
+        "observed": "UNVERIFIED",
+        "overall": "UNVERIFIED",
+        "classification": "ABSTAIN"
+      }
+    },
+    {
+      "id": "D12",
+      "rule": "superseded-palette",
+      "ground_truth": "violation",
+      "ideal": "BLOCK",
+      "before": {
+        "observed": "UNVERIFIED",
+        "overall": "UNVERIFIED",
+        "classification": "ABSTAIN"
+      },
+      "after": {
+        "observed": "BLOCK",
+        "overall": "BLOCK",
+        "classification": "TP"
+      }
+    }
+  ],
+  "authentic": [
+    {
+      "id": "M01",
+      "rule": "countdown-mechanics",
+      "observed": "PASS",
+      "classification": "TN",
+      "ground_truth": "compliant"
+    },
+    {
+      "id": "M02",
+      "rule": "flashing-effects",
+      "observed": "PASS",
+      "classification": "TN",
+      "ground_truth": "compliant"
+    },
+    {
+      "id": "M03",
+      "rule": "mistake-penalty",
+      "observed": "PASS",
+      "classification": "TN",
+      "ground_truth": "compliant"
+    },
+    {
+      "id": "M04",
+      "rule": "superseded-palette",
+      "observed": "BLOCK",
+      "classification": "TP",
+      "ground_truth": "violation"
+    },
+    {
+      "id": "M05",
+      "rule": "colour-only-cue",
+      "observed": "UNVERIFIED",
+      "classification": "ABSTAIN",
+      "ground_truth": "indeterminate"
+    }
+  ],
+  "notes": [
+    "A08 (inert countdown prose) moved FP -> ABSTAIN: fewer unjustified blocks, one more abstention. Ground truth remains compliant; ideal remains PASS.",
+    "D12 (0x source vs # record) moved ABSTAIN -> TP after palette notation equivalence. Ground truth remains violation; ideal remains BLOCK.",
+    "No fixture label was rewritten to improve a score."
+  ]
+}

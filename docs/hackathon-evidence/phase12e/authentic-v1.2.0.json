@@ -1,0 +1,67 @@
+[
+  {
+    "id": "M01",
+    "rule": "countdown-mechanics",
+    "category": "compliance-clear",
+    "ground_truth": "compliant",
+    "ideal": "PASS",
+    "observed": "PASS",
+    "overall": "PASS",
+    "classification": "TN",
+    "block_correct": false,
+    "block_unsafe": false,
+    "matches_ideal": true
+  },
+  {
+    "id": "M02",
+    "rule": "flashing-effects",
+    "category": "compliance-clear",
+    "ground_truth": "compliant",
+    "ideal": "PASS",
+    "observed": "PASS",
+    "overall": "PASS",
+    "classification": "TN",
+    "block_correct": false,
+    "block_unsafe": false,
+    "matches_ideal": true
+  },
+  {
+    "id": "M03",
+    "rule": "mistake-penalty",
+    "category": "compliance-clear",
+    "ground_truth": "compliant",
+    "ideal": "PASS",
+    "observed": "PASS",
+    "overall": "PASS",
+    "classification": "TN",
+    "block_correct": false,
+    "block_unsafe": false,
+    "matches_ideal": true
+  },
+  {
+    "id": "M04",
+    "rule": "superseded-palette",
+    "category": "violation-clear",
+    "ground_truth": "violation",
+    "ideal": "BLOCK",
+    "observed": "BLOCK",
+    "overall": "BLOCK",
+    "classification": "TP",
+    "block_correct": true,
+    "block_unsafe": false,
+    "matches_ideal": true
+  },
+  {
+    "id": "M05",
+    "rule": "colour-only-cue",
+    "category": "ambiguous",
+    "ground_truth": "indeterminate",
+    "ideal": "UNVERIFIED",
+    "observed": "UNVERIFIED",
+    "overall": "UNVERIFIED",
+    "classification": "ABSTAIN",
+    "block_correct": false,
+    "block_unsafe": false,
+    "matches_ideal": true
+  }
+]

@@ -88,13 +88,13 @@ describe('accuracy corpus — recorded behaviour (golden)', () => {
 // audit doc must be updated alongside.
 
 describe('accuracy corpus — pinned false-positive set (BLOCK on compliant fixtures)', () => {
-  it('rule A countdown false positives (v1.1.0: comment FPs fixed; inert string remains)', () => {
+  it('rule A countdown false positives (v1.2.0: comments and inert strings no longer block)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
         (row) => row.rule === 'countdown-mechanics' && row.classification === 'FP',
       ),
-    ).toEqual(['A08']);
+    ).toEqual([]);
   });
 
   it('rule B flashing false positives (v1.1.0: comment FP fixed; ticker-interval + negation-scope remain)', () => {
@@ -152,6 +152,24 @@ describe('accuracy corpus — v1.1.0 comment-masking fixes (before: FP/BLOCK; no
   });
 });
 
+describe('accuracy corpus — v1.2.0 targeted hardening', () => {
+  it('A08 string-only countdown prose abstains instead of blocking (was a false positive)', () => {
+    const row = rowById(SYNTHETIC_ROWS, 'A08');
+    expect(row.ground_truth).toBe('compliant'); // fixture label is unchanged
+    expect(row.observed).toBe('UNVERIFIED');
+    expect(row.classification).toBe('ABSTAIN');
+    expect(row.block_unsafe).toBe(false);
+  });
+
+  it('D12 0x source against a # record is now a true positive (was abstain)', () => {
+    const row = rowById(SYNTHETIC_ROWS, 'D12');
+    expect(row.ground_truth).toBe('violation'); // fixture label is unchanged
+    expect(row.observed).toBe('BLOCK');
+    expect(row.classification).toBe('TP');
+    expect(row.block_correct).toBe(true);
+  });
+});
+
 describe('accuracy corpus — pinned false-negative set (PASS claimed on violations)', () => {
   it('rule A countdown false negatives', () => {
     expect(
@@ -180,7 +198,7 @@ describe('accuracy corpus — pinned false-negative set (PASS claimed on violati
     ).toEqual(['C07', 'C08']);
   });
 
-  it('rule D palette false negatives', () => {
+  it('rule D palette false negatives (v1.2.0: 0x/# notation equivalence fixes D12)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
@@ -325,12 +343,14 @@ go.setFill('#00FF00'); stop.setFill('#FF0000');`,
     expect(zwsp.verdict).toBe('PASS'); // documented obfuscation vector
   });
 
-  it('S07 embedded HTML: attribute text and inline styles both count as source', () => {
+  it('S07 embedded HTML: inert attribute prose abstains; inline styles remain evaluable', () => {
     const attr = evaluateDecisions(
       [DEC_COUNTDOWN],
       '<div data-tip="countdown">3</div><script>let elapsed = 0;</script>',
     );
-    expect(attr.verdict).toBe('BLOCK'); // word inside attribute string; over-block risk documented
+    // v1.2.0: an inert attribute value is prose, not an executable mechanic.
+    // The honest outcome is UNVERIFIED, never BLOCK and never PASS.
+    expect(attr.verdict).toBe('UNVERIFIED');
 
     const spans = evaluateDecisions(
       [DEC_COLOUR],
@@ -361,13 +381,16 @@ go.setFill('#00FF00'); stop.setFill('#FF0000');`,
     expect(flashing?.verdict).toBe('BLOCK'); // negation scope leak
   });
 
-  it('S09 evidence snippets can carry adjacent source text verbatim (secret leakage vector)', () => {
+  it('S09 engine evidence can carry adjacent source text verbatim (integration must redact)', () => {
     const result = evaluateDecisions(
       [DEC_PENALTY],
       `const apiKey = 'sk-live-SECRETVALUE42'; score -= 5;`,
     );
     const finding = result.findings[0];
-    expect(finding?.evidence).toContain('sk-live-SECRETVALUE42');
+    // The pure engine still exposes a raw excerpt; the production adapter is
+    // responsible for redaction and minimisation (tested in the server suite).
+    expect(finding?.evidence).toContain('SECRETVALUE42');
+    expect(finding?.match_spans[0]?.start).toBeGreaterThan(0);
   });
 
   it('S10 output is deterministic and input-order independent', () => {

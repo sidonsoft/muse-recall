@@ -78,6 +78,7 @@ function evaluate(options: {
   rows: Memory[];
   memoryIds: string[];
   runtimeVerified?: boolean;
+  secrets?: (string | null | undefined)[];
 }) {
   return evaluateDecisionGuardAdvisory({
     projectId: PROJECT,
@@ -86,6 +87,7 @@ function evaluate(options: {
     getMemory: resolver(options.rows),
     evaluatedAt: NOW,
     runtimeVerified: options.runtimeVerified ?? false,
+    ...(options.secrets ? { secrets: options.secrets } : {}),
   });
 }
 
@@ -238,6 +240,8 @@ describe('advisory evaluation', () => {
     });
     expect(advisory.mode).toBe('advisory');
     expect(advisory.engine_verdict).toBe('BLOCK');
+    expect(advisory.assessment).toBe('violation_detected');
+    expect(advisory.assessment_reason).toMatch(/do not block approval/);
     expect(advisory.findings).toHaveLength(1);
     const finding = advisory.findings[0];
     expect(finding?.decision_id).toBe(CHILD.id);
@@ -258,6 +262,9 @@ describe('advisory evaluation', () => {
     });
     expect(advisory.findings).toEqual([]);
     expect(advisory.engine_verdict).toBe('PASS');
+    expect(advisory.assessment).toBe('no_violation_detected');
+    expect(advisory.assessment_reason).toMatch(/not a certification/);
+    expect(advisory.assessment_reason).not.toMatch(/compliant/i);
   });
 
   it('marks an unsupported decision UNVERIFIED instead of compliant', () => {
@@ -267,6 +274,7 @@ describe('advisory evaluation', () => {
       memoryIds: [ROUNDED.id],
     });
     expect(advisory.engine_verdict).toBe('UNVERIFIED');
+    expect(advisory.assessment).toBe('not_verified');
     expect(advisory.findings).toEqual([]);
     const entry = advisory.unverified.find((item) => item.decision_id === ROUNDED.id);
     expect(entry?.code).toBe('unsupported_decision');
@@ -286,16 +294,58 @@ describe('advisory evaluation', () => {
   });
 
   it('keeps evidence one bounded line and keeps markup inert as data', () => {
-    const hostile = `${PHASER}<script>/* <img src=x onerror="alert(1)"> */ let timeLeft = 99;
-      ${'\u0000\u0007'}
-      timeLeft -= 1;</script>`;
+    const hostile = `${PHASER}<script>let timeLeft = 99;<img src=x>timeLeft -= 1;</script>`;
     const advisory = evaluate({ source: hostile, rows: [CHILD], memoryIds: [CHILD.id] });
     const evidence = advisory.findings[0]?.evidence ?? '';
-    expect(evidence).toContain('<img src=x onerror="alert(1)">');
+    expect(evidence).toContain('timeLeft');
+    expect(evidence).toContain('<img');
     expect(evidence).not.toContain('\u0000');
     expect(evidence).not.toContain('\n');
     expect(evidence.length).toBeLessThanOrEqual(240);
     expect(plainText(' a\n\nb\tc ', 80)).toBe('a b c');
+  });
+
+  it('minimises evidence context around the matched construct', () => {
+    const source = `${PHASER}<p>${'padding '.repeat(80)}</p><script>let timeLeft = 5; timeLeft -= 1;</script><p>${'trailing '.repeat(80)}</p>`;
+    const advisory = evaluate({ source, rows: [CHILD], memoryIds: [CHILD.id] });
+    const evidence = advisory.findings[0]?.evidence ?? '';
+    expect(evidence).toContain('timeLeft');
+    expect(evidence).not.toContain('padding');
+    expect(evidence).not.toContain('trailing');
+    expect(evidence.length).toBeLessThan(160);
+  });
+
+  it('redacts credential-shaped strings and known secrets from findings and references', () => {
+    const secret = 'sk-live-EVIDENCESECRET42';
+    const memorySecret = 'sk-live-MEMORYSECRET42';
+    const rows = [
+      memory({
+        id: CHILD.id,
+        content: `Avoid countdown timers. Never persist ${memorySecret}.`,
+      }),
+    ];
+    const advisory = evaluate({
+      source: `${PHASER}<script>const key = '${secret}'; let timeLeft = 5; timeLeft -= 1;</script>`,
+      rows,
+      memoryIds: [CHILD.id],
+    });
+    const serialized = JSON.stringify(advisory);
+    expect(advisory.assessment).toBe('violation_detected');
+    expect(serialized).not.toContain(secret);
+    expect(serialized).not.toContain(memorySecret);
+    expect(advisory.findings[0]?.evidence).toContain('timeLeft');
+    expect(advisory.findings[0]?.decision_ref).toContain('countdown timers');
+  });
+
+  it('redacts exact configured secrets even when the pattern does not match', () => {
+    const secret = 'plain-value-that-is-a-credential';
+    const advisory = evaluate({
+      source: `${PHASER}<script>const key = '${secret}'; timeLeft -= 1;</script>`,
+      rows: [CHILD],
+      memoryIds: [CHILD.id],
+      secrets: [secret],
+    });
+    expect(JSON.stringify(advisory)).not.toContain(secret);
   });
 
   it('bounds findings, unverified entries and the serialised payload', () => {
@@ -326,6 +376,7 @@ describe('advisory evaluation', () => {
   it('records an explicit limitation when the job has no decisions', () => {
     const advisory = evaluate({ source: PHASER, rows: [], memoryIds: [] });
     expect(advisory.engine_verdict).toBe('UNVERIFIED');
+    expect(advisory.assessment).toBe('not_verified');
     expect(advisory.unverified.map((entry) => entry.code)).toContain('no_decisions');
   });
 
@@ -363,6 +414,7 @@ describe('advisory evaluation', () => {
       memoryIds: [rogue.id],
     });
     expect(advisory.engine_verdict).toBe('UNVERIFIED');
+    expect(advisory.assessment).toBe('evaluation_unavailable');
     expect(advisory.findings).toEqual([]);
     expect(advisory.unverified.map((entry) => entry.code)).toContain('internal_error');
   });

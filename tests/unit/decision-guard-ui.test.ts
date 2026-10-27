@@ -16,8 +16,11 @@ const DECISION_ID = '11111111-1111-4111-8111-111111111111';
 function advisory(overrides: Partial<DecisionGuardAdvisory> = {}): DecisionGuardAdvisory {
   return {
     mode: 'advisory',
-    engine_version: '1.0.0',
+    engine_version: '1.2.0',
     engine_verdict: 'BLOCK',
+    assessment: 'violation_detected',
+    assessment_reason:
+      'At least one supported check reported a possible violation. Findings are advisory and do not block approval.',
     findings: [
       {
         kind: 'violation',
@@ -78,24 +81,56 @@ describe('Decision Guard advisory panel', () => {
     expect(markup).toContain('detected violation');
     expect(markup).toContain('decision prohibits countdown mechanics');
     expect(markup).toContain('Evidence excerpt');
-    expect(markup).toContain('unverified constraint');
+    expect(markup).toContain('constraint not verified');
     expect(markup).toContain('superseded decision text not supplied');
+    expect(markup).toContain('VIOLATION DETECTED');
   });
 
-  it('never shows a green PASS while a relevant decision is unverified', () => {
+  it('never claims compliance when a supported check passes with an unverified constraint', () => {
     const markup = render(
-      advisory({ engine_verdict: 'PASS', findings: [], unverified: advisory().unverified }),
+      advisory({
+        engine_verdict: 'PASS',
+        assessment: 'not_verified',
+        findings: [],
+        unverified: advisory().unverified,
+      }),
     );
-    expect(markup).toContain('UNVERIFIED');
+    expect(markup).toContain('NOT VERIFIED');
+    expect(markup).not.toContain('PASS');
+    expect(markup).not.toContain('compliant');
+  });
+
+  it('describes a clean supported pass without claiming complete compliance', () => {
+    const markup = render(
+      advisory({
+        engine_verdict: 'PASS',
+        assessment: 'no_violation_detected',
+        assessment_reason:
+          'No violation was detected by the supported checks. This is not a certification that every remembered decision was verified.',
+        findings: [],
+        unverified: [],
+        superseded_memory_ids: [],
+      }),
+    );
+    expect(markup).toContain('NO VIOLATION DETECTED · SUPPORTED CHECKS');
+    expect(markup).toContain('not a certification');
+    expect(markup).toContain('Supported checks only');
     expect(markup).not.toContain('PASS (advisory)');
+    expect(markup).not.toContain('compliant');
   });
 
-  it('shows PASS only when the engine passes and nothing is unverified', () => {
+  it('distinguishes an unavailable evaluation from an unverified constraint', () => {
     const markup = render(
-      advisory({ engine_verdict: 'PASS', findings: [], unverified: [], superseded_memory_ids: [] }),
+      advisory({
+        engine_verdict: 'UNVERIFIED',
+        assessment: 'evaluation_unavailable',
+        assessment_reason: 'Decision Guard did not complete, so no compliance is claimed.',
+        findings: [],
+        unverified: [],
+      }),
     );
-    expect(markup).toContain('PASS (advisory)');
-    expect(markup).toContain('Findings do not block approval in this version.');
+    expect(markup).toContain('EVALUATION UNAVAILABLE');
+    expect(markup).toContain('no compliance is claimed');
   });
 
   it('does not claim compliance when no snapshot exists', () => {
@@ -103,6 +138,7 @@ describe('Decision Guard advisory panel', () => {
     expect(markup).toContain('Decision Guard — Advisory');
     expect(markup).toContain('NOT EVALUATED');
     expect(markup).toContain('compliance was not checked');
-    expect(markup).not.toContain('PASS (advisory)');
+    expect(markup).not.toContain('PASS');
+    expect(markup).not.toContain('compliant');
   });
 });

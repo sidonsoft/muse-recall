@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "data": {
+    "status": "ok",
+    "service": "muse-memory-lab",
+    "version": "0.1.0",
+    "environment": "production",
+    "uptime_seconds": 2.01,
+    "timestamp": "2026-10-27T05:46:31.218Z",
+    "database": {
+      "status": "ok",
+      "detail": "read and write verified",
+      "latency_ms": 1,
+      "engine": "sqlite 3.53.4",
+      "path": "/tmp/phase12e-built2/db.sqlite",
+      "schema_version": 6,
+      "write_verified": true
+    },
+    "provider": {
+      "status": "skipped",
+      "detail": "no live check has been run in this process",
+      "latency_ms": null,
+      "provider_id": "echo",
+      "provider_name": "Deterministic offline provider (not a model)",
+      "model": "muse-wonder-1.0",
+      "verified_with_live_call": false,
+      "capabilities": {
+        "streaming": true,
+        "tool_calling": false,
+        "structured_output": false,
+        "max_context_tokens": 8192
+      }
+    }
+  }
+}

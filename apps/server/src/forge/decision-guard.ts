@@ -8,10 +8,12 @@ import {
 import {
   type DecisionGuardAdvisory,
   DecisionGuardAdvisorySchema,
+  type DecisionGuardAssessment,
   type DecisionGuardFinding,
   type DecisionGuardUnverified,
   type DecisionGuardUnverifiedCode,
   type Memory,
+  redactSecrets,
 } from '@mml/shared';
 
 /**
@@ -39,8 +41,15 @@ const MAX_REFERENCE_CHARS = 160;
 const MAX_EVIDENCE_CHARS = 240;
 const MAX_EXPLANATION_CHARS = 400;
 const MAX_REASON_CHARS = 400;
+/** Context kept around the exact matched construct in projected evidence. */
+const EVIDENCE_CONTEXT_CHARS = 16;
+/** Wider window used only to include a full adjacent secret before redaction. */
+const EVIDENCE_REDACTION_WINDOW_CHARS = 160;
+const MAX_EVIDENCE_SPANS = 2;
 
 const NONE_APPLICABLE = 'none-applicable';
+
+type SecretList = (string | null | undefined)[];
 
 /** Replace C0 (except whitespace), DEL and C1 controls with spaces. */
 function stripControlCharacters(value: string): string {
@@ -61,6 +70,14 @@ export function plainText(value: string, limit: number): string {
   return `${flat.slice(0, Math.max(0, limit - 1))}…`;
 }
 
+/**
+ * Redact first, then flatten and bound. Redacting before truncation avoids
+ * cutting a credential in half and leaving a fragment that no pattern matches.
+ */
+export function projectedText(value: string, limit: number, secrets: SecretList = []): string {
+  return plainText(redactSecrets(value, { secrets }), limit);
+}
+
 function toGuardDecision(memory: Memory): GuardDecision {
   return {
     id: memory.id,
@@ -77,16 +94,22 @@ function limitation(
     decisionRef?: string;
     rule?: string;
     reason: string;
+    secrets?: SecretList;
   },
 ): DecisionGuardUnverified {
+  const secrets = input.secrets ?? [];
   return {
     kind: 'unverified',
     decision_id: input.decisionId ?? null,
-    decision_ref: plainText(input.decisionRef ?? 'decision guard', MAX_REFERENCE_CHARS),
+    decision_ref: projectedText(
+      input.decisionRef ?? 'decision guard',
+      MAX_REFERENCE_CHARS,
+      secrets,
+    ),
     rule: input.rule ?? NONE_APPLICABLE,
     severity: null,
     code,
-    reason: plainText(input.reason, MAX_REASON_CHARS) || code,
+    reason: projectedText(input.reason, MAX_REASON_CHARS, secrets) || code,
   };
 }
 
@@ -107,6 +130,8 @@ export interface ResolveDecisionInput {
   memoryIds: readonly string[];
   /** Memory lookup, injectable for tests. Must not return cross-project rows. */
   getMemory: (id: string) => Memory | null;
+  /** Known credential values; projected references never carry them verbatim. */
+  secrets?: SecretList;
 }
 
 function lookup(getMemory: (id: string) => Memory | null, id: string): { memory: Memory | null } {
@@ -136,6 +161,8 @@ export function resolveDecisionContext(input: ResolveDecisionInput): DecisionRes
 
   // Deterministic order: dedupe and sort the recorded ids.
   const ids = [...new Set(input.memoryIds)].sort();
+  const secrets = input.secrets ?? [];
+  const reference = (value: string): string => projectedText(value, MAX_REFERENCE_CHARS, secrets);
 
   for (const id of ids) {
     const { memory } = lookup(input.getMemory, id);
@@ -154,9 +181,10 @@ export function resolveDecisionContext(input: ResolveDecisionInput): DecisionRes
       unverified.push(
         limitation('global_scope', {
           decisionId: id,
-          decisionRef: plainText(memory.content, MAX_REFERENCE_CHARS),
+          decisionRef: reference(memory.content),
           reason:
             'global-scope memory is outside the project-scoped decision set; it was not evaluated',
+          secrets,
         }),
       );
       continue;
@@ -177,8 +205,9 @@ export function resolveDecisionContext(input: ResolveDecisionInput): DecisionRes
       unverified.push(
         limitation('decision_not_active', {
           decisionId: id,
-          decisionRef: plainText(memory.content, MAX_REFERENCE_CHARS),
+          decisionRef: reference(memory.content),
           reason: `referenced decision status is "${memory.status}"; it was not applied as an active constraint`,
+          secrets,
         }),
       );
       continue;
@@ -333,6 +362,8 @@ export interface EvaluateAdvisoryInput {
   evaluatedAt: Date;
   /** True only when the blocking runtime check passed for this exact source. */
   runtimeVerified: boolean;
+  /** Known credential values passed by the runner; never persisted verbatim. */
+  secrets?: SecretList;
 }
 
 function degradedAdvisory(
@@ -345,11 +376,15 @@ function degradedAdvisory(
     mode: 'advisory',
     engine_version: plainText(engineVersion, 32) || 'unknown',
     engine_verdict: 'UNVERIFIED',
+    assessment: 'evaluation_unavailable',
+    assessment_reason:
+      'Decision Guard did not complete for this change, so no compliance is claimed.',
     findings: [],
     unverified: [
       limitation('internal_error', {
         decisionRef: 'decision guard',
         reason,
+        secrets: input.secrets,
       }),
     ],
     evaluated_memory_ids: [],
@@ -357,6 +392,150 @@ function degradedAdvisory(
     source_sha256: sourceSha256,
     runtime_verified: input.runtimeVerified,
     evaluated_at: input.evaluatedAt.toISOString(),
+  };
+}
+
+/**
+ * Build the projected evidence excerpt from the engine's exact match spans.
+ *
+ * The wide window exists only so an adjacent credential is fully present when
+ * `redactSecrets` runs; after redaction the excerpt is narrowed back to the
+ * matched construct plus a small, fixed context. The engine's own pre-rendered
+ * evidence is never trusted or persisted.
+ */
+function matchEvidence(
+  source: string,
+  spans: readonly { start: number; end: number }[],
+  secrets: SecretList,
+): string {
+  const parts: string[] = [];
+  for (const span of spans.slice(0, MAX_EVIDENCE_SPANS)) {
+    if (
+      !Number.isInteger(span.start) ||
+      !Number.isInteger(span.end) ||
+      span.start < 0 ||
+      span.end <= span.start ||
+      span.start >= source.length
+    ) {
+      continue;
+    }
+    const start = span.start;
+    const end = Math.min(source.length, span.end);
+    const raw = source.slice(start, end);
+    if (raw.length === 0) continue;
+    const wideStart = Math.max(0, start - EVIDENCE_REDACTION_WINDOW_CHARS);
+    const wideEnd = Math.min(source.length, end + EVIDENCE_REDACTION_WINDOW_CHARS);
+    const redactedWide = redactSecrets(source.slice(wideStart, wideEnd), { secrets });
+    // Prefer the exact offset adjusted for redaction length changes in the
+    // prefix; fall back to text search when a redaction crossed the boundary.
+    const prefixLength = redactSecrets(source.slice(wideStart, start), { secrets }).length;
+    const at =
+      redactedWide.slice(prefixLength, prefixLength + raw.length) === raw
+        ? prefixLength
+        : redactedWide.indexOf(raw);
+    if (at < 0) {
+      // The match itself was redacted (or shifted); keep the redacted window and
+      // let the length bound trim it rather than reconstructing raw source.
+      parts.push(redactedWide);
+      continue;
+    }
+    let sliceStart = Math.max(0, at - EVIDENCE_CONTEXT_CHARS);
+    let sliceEnd = Math.min(redactedWide.length, at + raw.length + EVIDENCE_CONTEXT_CHARS);
+    // Never cut a redaction marker in half: a partial marker reads like noise
+    // and obscures that the secret was replaced rather than truncated.
+    const openMarker = redactedWide.lastIndexOf('[REDACTED', sliceStart);
+    if (openMarker >= 0 && redactedWide.indexOf(']', openMarker) >= sliceStart) {
+      sliceStart = openMarker;
+    }
+    const closingMarker = redactedWide.lastIndexOf('[REDACTED', sliceEnd);
+    if (closingMarker >= 0) {
+      const markerEnd = redactedWide.indexOf(']', closingMarker);
+      if (markerEnd >= sliceEnd) sliceEnd = markerEnd + 1;
+    }
+    parts.push(redactedWide.slice(sliceStart, sliceEnd));
+  }
+  return parts.join(' | ');
+}
+
+function assess(input: {
+  findings: number;
+  unverified: number;
+  recordedMemories: number;
+  evaluatedDecisions: number;
+  inputWarnings: readonly string[];
+  engineVerdict: string;
+}): { assessment: DecisionGuardAssessment; reason: string } {
+  if (input.findings > 0) {
+    return {
+      assessment: 'violation_detected',
+      reason:
+        'At least one supported check reported a possible violation. Findings are advisory and do not block approval.',
+    };
+  }
+  const unavailable = input.inputWarnings.some(
+    (warning) =>
+      warning === 'source_oversized' ||
+      warning === 'malformed_input:decisions_not_array' ||
+      warning === 'malformed_input:source_not_string',
+  );
+  if (unavailable) {
+    return {
+      assessment: 'evaluation_unavailable',
+      reason: 'Decision Guard could not evaluate this source, so no compliance is claimed.',
+    };
+  }
+  if (input.recordedMemories === 0) {
+    return {
+      assessment: 'not_verified',
+      reason:
+        'No project memories were recorded for this job, so no remembered decision was verified.',
+    };
+  }
+  if (input.evaluatedDecisions === 0) {
+    return {
+      assessment: 'not_verified',
+      reason: 'No active project decision was available to evaluate; no compliance is claimed.',
+    };
+  }
+  if (input.unverified > 0) {
+    return {
+      assessment: 'not_verified',
+      reason:
+        'At least one remembered decision or constraint could not be checked, so no compliance is claimed.',
+    };
+  }
+  if (input.engineVerdict === 'PASS') {
+    return {
+      assessment: 'no_violation_detected',
+      reason:
+        'No violation was detected by the supported checks. This is not a certification that every remembered decision was verified.',
+    };
+  }
+  return {
+    assessment: 'not_verified',
+    reason: 'The supported checks did not return a complete result; no compliance is claimed.',
+  };
+}
+
+/** Defence in depth: every projected string is redacted before persistence. */
+function redactAdvisoryText(
+  advisory: DecisionGuardAdvisory,
+  secrets: SecretList,
+): DecisionGuardAdvisory {
+  return {
+    ...advisory,
+    assessment_reason: projectedText(advisory.assessment_reason, MAX_REASON_CHARS, secrets),
+    findings: advisory.findings.map((finding) => ({
+      ...finding,
+      decision_ref: projectedText(finding.decision_ref, MAX_REFERENCE_CHARS, secrets),
+      evidence: projectedText(finding.evidence, MAX_EVIDENCE_CHARS, secrets),
+      explanation: projectedText(finding.explanation, MAX_EXPLANATION_CHARS, secrets),
+    })),
+    unverified: advisory.unverified.map((entry) => ({
+      ...entry,
+      decision_ref: projectedText(entry.decision_ref, MAX_REFERENCE_CHARS, secrets),
+      reason: projectedText(entry.reason, MAX_REASON_CHARS, secrets),
+    })),
   };
 }
 
@@ -401,10 +580,13 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
     );
   }
 
+  const secrets = input.secrets ?? [];
   const decisionById = new Map(resolution.active.map((decision) => [decision.id, decision]));
   const decisionRef = (decisionId: string): string => {
     const decision = decisionById.get(decisionId);
-    return decision ? plainText(decision.content, MAX_REFERENCE_CHARS) : `Memory ${decisionId}`;
+    return decision
+      ? projectedText(decision.content, MAX_REFERENCE_CHARS, secrets)
+      : `Memory ${decisionId}`;
   };
 
   const findings: DecisionGuardFinding[] = [];
@@ -420,14 +602,18 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
       truncated = true;
       break;
     }
+    const spans = Array.isArray(finding.match_spans) ? finding.match_spans : [];
+    const evidence =
+      matchEvidence(input.source, spans, secrets) ||
+      projectedText(finding.evidence, MAX_EVIDENCE_CHARS, secrets);
     findings.push({
       kind: 'violation',
       decision_id: finding.decision_id,
       decision_ref: decisionRef(finding.decision_id),
       rule: finding.rule,
       severity: finding.severity,
-      evidence: plainText(finding.evidence, MAX_EVIDENCE_CHARS),
-      explanation: plainText(finding.explanation, MAX_EXPLANATION_CHARS),
+      evidence: plainText(evidence, MAX_EVIDENCE_CHARS),
+      explanation: projectedText(finding.explanation, MAX_EXPLANATION_CHARS, secrets),
     });
   }
 
@@ -439,6 +625,7 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
         decisionId: excludedId,
         decisionRef: decisionRef(excludedId),
         reason: 'the engine excluded this decision because it is not active',
+        secrets,
       }),
     );
   }
@@ -451,6 +638,7 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
         decisionRef: decisionRef(evaluation.decision_id),
         rule: evaluation.rule,
         reason: evaluation.reason,
+        secrets,
       }),
     );
   }
@@ -461,6 +649,7 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
       limitation(mapped.code, {
         decisionRef: 'decision set',
         reason: mapped.reason,
+        secrets,
       }),
     );
   }
@@ -471,6 +660,7 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
         decisionRef: 'decision set',
         reason:
           'no project memories were recorded for this job; no decision was verified and no compliance is claimed',
+        secrets,
       }),
     );
   }
@@ -491,18 +681,32 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
     ];
   }
 
-  const candidate: DecisionGuardAdvisory = {
-    mode: 'advisory',
-    engine_version: result.engine_version,
-    engine_verdict: result.verdict,
-    findings,
-    unverified: boundedUnverified,
-    evaluated_memory_ids: resolution.evaluatedMemoryIds.slice(0, MAX_EVALUATED_DECISIONS),
-    superseded_memory_ids: resolution.supersededMemoryIds.slice(0, MAX_EVALUATED_DECISIONS),
-    source_sha256: sourceSha256,
-    runtime_verified: input.runtimeVerified,
-    evaluated_at: input.evaluatedAt.toISOString(),
-  };
+  const assessment = assess({
+    findings: findings.length,
+    unverified: boundedUnverified.length,
+    recordedMemories: input.memoryIds.length,
+    evaluatedDecisions: resolution.evaluatedMemoryIds.length,
+    inputWarnings: result.input_warnings,
+    engineVerdict: result.verdict,
+  });
+
+  const candidate: DecisionGuardAdvisory = redactAdvisoryText(
+    {
+      mode: 'advisory',
+      engine_version: result.engine_version,
+      engine_verdict: result.verdict,
+      assessment: assessment.assessment,
+      assessment_reason: assessment.reason,
+      findings,
+      unverified: boundedUnverified,
+      evaluated_memory_ids: resolution.evaluatedMemoryIds.slice(0, MAX_EVALUATED_DECISIONS),
+      superseded_memory_ids: resolution.supersededMemoryIds.slice(0, MAX_EVALUATED_DECISIONS),
+      source_sha256: sourceSha256,
+      runtime_verified: input.runtimeVerified,
+      evaluated_at: input.evaluatedAt.toISOString(),
+    },
+    secrets,
+  );
 
   const parsed = DecisionGuardAdvisorySchema.safeParse(candidate);
   if (!parsed.success) {

@@ -205,6 +205,8 @@ type JobView = {
     mode: string;
     engine_version: string;
     engine_verdict: string;
+    assessment: string;
+    assessment_reason: string;
     findings: Array<Record<string, unknown>>;
     unverified: Array<Record<string, unknown>>;
     evaluated_memory_ids: string[];
@@ -292,6 +294,7 @@ describe('Decision Guard advisory integration', () => {
     expect(reviewed.status).toBe('succeeded');
     expect(reviewed.validation?.ok).toBe(true);
     expect(reviewed.decision_guard?.engine_verdict).toBe('BLOCK');
+    expect(reviewed.decision_guard?.assessment).toBe('violation_detected');
     const rules = (reviewed.decision_guard?.findings ?? []).map((finding) => finding.rule);
     expect(rules).toContain('countdown-mechanics');
     expect(rules).toContain('mistake-penalty');
@@ -309,6 +312,99 @@ describe('Decision Guard advisory integration', () => {
     expect(applied.version).toBe(1);
     expect(applied.decision_guard?.engine_verdict).toBe('BLOCK');
     expect(applied.validation?.ok).toBe(true);
+  });
+
+  it('distinguishes a supported clean pass from an unverified or unavailable evaluation', async () => {
+    const clean = await harness();
+    const cleanDecision = constraint(
+      clean,
+      'demo-game',
+      'Children’s game: avoid countdown timers and penalties for mistakes.',
+    );
+    await createProject(clean.app);
+    const cleanJob = await startGenerate(clean.app);
+    const cleanReviewed = await waitForFinish(clean.app, cleanJob);
+    expect(cleanReviewed.validation?.ok).toBe(true);
+    expect(cleanReviewed.decision_guard?.engine_verdict).toBe('PASS');
+    expect(cleanReviewed.decision_guard?.assessment).toBe('no_violation_detected');
+    expect(cleanReviewed.decision_guard?.assessment_reason).toMatch(/not a certification/);
+    expect(cleanReviewed.decision_guard?.evaluated_memory_ids).toEqual([cleanDecision.id]);
+
+    const none = await harness();
+    await createProject(none.app);
+    const noDecisionJob = await startGenerate(none.app);
+    const noDecisionReviewed = await waitForFinish(none.app, noDecisionJob);
+    expect(noDecisionReviewed.decision_guard?.assessment).toBe('not_verified');
+    expect(
+      (noDecisionReviewed.decision_guard?.unverified ?? []).map((entry) => entry.code),
+    ).toContain('no_decisions');
+    expect(noDecisionReviewed.decision_guard?.assessment_reason).toMatch(/no remembered decision/);
+
+    const unsupported = await harness();
+    constraint(unsupported, 'demo-game', 'Prefer rounded corners on all game panels.');
+    await createProject(unsupported.app);
+    const unsupportedJob = await startGenerate(unsupported.app);
+    const unsupportedReviewed = await waitForFinish(unsupported.app, unsupportedJob);
+    expect(unsupportedReviewed.decision_guard?.assessment).toBe('not_verified');
+    expect(unsupportedReviewed.decision_guard?.engine_verdict).toBe('UNVERIFIED');
+  });
+
+  it('redacts credentials from findings, records, logs and the diff advisory', async () => {
+    const evidenceSecret = 'sk-live-EVIDENCESECRET42';
+    const memorySecret = 'sk-live-MEMORYSECRET42';
+    const h = await harness({
+      source: game(
+        `var timeLeft = 10; var key = '${evidenceSecret}'; setInterval(function(){ timeLeft -= 1; }, 1000);`,
+      ),
+    });
+    constraint(
+      h,
+      'demo-game',
+      `Avoid countdown timers. Never persist ${memorySecret} in project memory.`,
+    );
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+
+    expect(finished.decision_guard?.assessment).toBe('violation_detected');
+    expect(finished.decision_guard?.findings.length).toBeGreaterThan(0);
+    expect(JSON.stringify(finished.decision_guard)).not.toContain(evidenceSecret);
+    expect(JSON.stringify(finished.decision_guard)).not.toContain(memorySecret);
+
+    const response = await h.app.inject({
+      method: 'GET',
+      url: `/api/forge/jobs/${generated}`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).not.toContain(evidenceSecret);
+    expect(response.body).not.toContain(memorySecret);
+
+    const persisted = await readFile(
+      join(h.root, 'forge', 'demo-game', 'jobs', `${generated}.json`),
+      'utf8',
+    );
+    expect(persisted).not.toContain(evidenceSecret);
+    expect(persisted).not.toContain(memorySecret);
+
+    const logs = (h.manager.get(generated)?.logs ?? []).join('\n');
+    expect(logs).not.toContain(evidenceSecret);
+    expect(logs).not.toContain(memorySecret);
+
+    const diff = await h.app.inject({
+      method: 'GET',
+      url: `/api/forge/jobs/${generated}/diff`,
+    });
+    expect(diff.statusCode).toBe(200);
+    expect(JSON.stringify(diff.json().data.decision_guard)).not.toContain(evidenceSecret);
+    expect(JSON.stringify(diff.json().data.decision_guard)).not.toContain(memorySecret);
+
+    // The generated source itself is the reviewed artifact; it is deliberately
+    // not rewritten. Only projected findings/records are redacted.
+    const staged = await readFile(
+      join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html'),
+      'utf8',
+    );
+    expect(staged).toContain(evidenceSecret);
   });
 
   it('evaluates the active correction with superseded history resolved separately', async () => {
@@ -513,10 +609,12 @@ describe('Decision Guard advisory integration', () => {
     expect(parsed.validation?.ok).toBe(true);
     expect(parsed.decision_guard?.mode).toBe('advisory');
     expect(parsed.decision_guard?.engine_verdict).toBe('BLOCK');
+    expect(parsed.decision_guard?.assessment).toBe('violation_detected');
+    expect(parsed.decision_guard?.assessment_reason).toMatch(/advisory/);
     const finding = parsed.decision_guard?.findings[0];
     expect(finding?.decision_id).toBe(decision.id);
     expect(String(finding?.evidence).length).toBeLessThanOrEqual(240);
-    expect(String(finding?.evidence)).toContain('<img src=x onerror="alert(1)">');
+    expect(String(finding?.evidence)).toContain('timeLeft');
     expect(String(finding?.evidence)).not.toContain('\n');
     for (const value of Object.values(finding ?? {})) {
       if (typeof value === 'string') expect(value.length).toBeLessThanOrEqual(400);

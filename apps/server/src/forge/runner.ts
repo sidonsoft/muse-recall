@@ -619,6 +619,7 @@ export class ForgeJobManager {
       getMemory: (id): Memory | null => this.engine.get(id),
       evaluatedAt: this.now(),
       runtimeVerified,
+      secrets: [this.apiKey, this.fallbackApiKey],
     });
   }
 

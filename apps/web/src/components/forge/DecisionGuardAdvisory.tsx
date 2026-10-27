@@ -1,5 +1,6 @@
 import type {
   DecisionGuardAdvisory,
+  DecisionGuardAssessment,
   DecisionGuardFinding,
   DecisionGuardUnverified,
 } from '@mml/shared';
@@ -15,23 +16,43 @@ import { Icon } from '../Icon.tsx';
  * Every field from the advisory is untrusted (it may quote generated source),
  * so it is rendered as a text child. There is deliberately no
  * `dangerouslySetInnerHTML` in this file: React escapes the evidence excerpt.
+ *
+ * Phase 12E: the panel reports an explicit assessment. A passing supported
+ * check is shown as "no violation detected by supported checks", never as a
+ * compliance certificate, and never with a green PASS badge.
  */
 
-function verdictLabel(advisory: DecisionGuardAdvisory): string {
-  if (advisory.engine_verdict === 'PASS' && advisory.unverified.length === 0) {
-    return 'PASS (advisory)';
+const SUPPORTED_CHECKS =
+  'countdown mechanics, flashing effects, mistake penalties, superseded palette, colour-only cues';
+
+function assessmentLabel(assessment: DecisionGuardAssessment | undefined | null): string {
+  switch (assessment) {
+    case 'violation_detected':
+      return 'VIOLATION DETECTED';
+    case 'no_violation_detected':
+      return 'NO VIOLATION DETECTED · SUPPORTED CHECKS';
+    case 'not_verified':
+      return 'NOT VERIFIED';
+    case 'evaluation_unavailable':
+      return 'EVALUATION UNAVAILABLE';
+    default:
+      return 'NOT VERIFIED';
   }
-  if (advisory.engine_verdict === 'BLOCK') return 'ADVISORY FINDING';
-  return 'UNVERIFIED';
 }
 
-function verdictTone(advisory: DecisionGuardAdvisory | null): string {
+function assessmentTone(advisory: DecisionGuardAdvisory | null): string {
   if (!advisory) return 'bg-surface-2 text-muted';
-  if (advisory.engine_verdict === 'PASS' && advisory.unverified.length === 0) {
-    return 'bg-ok/10 text-ok';
+  switch (advisory.assessment) {
+    case 'violation_detected':
+      return 'bg-warn/10 text-warn';
+    case 'evaluation_unavailable':
+      return 'bg-warn/10 text-warn';
+    case 'no_violation_detected':
+      // Deliberately neutral: this is not a green compliance claim.
+      return 'bg-surface text-ink-dim';
+    default:
+      return 'bg-surface-2 text-ink-dim';
   }
-  if (advisory.engine_verdict === 'BLOCK') return 'bg-warn/10 text-warn';
-  return 'bg-warn/10 text-warn';
 }
 
 function shortId(id: string | null): string {
@@ -75,7 +96,7 @@ function UnverifiedRow({ entry }: { entry: DecisionGuardUnverified }) {
         </span>
         <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-muted">severity: —</span>
         <span className="rounded bg-surface px-1.5 py-0.5 uppercase tracking-wide text-muted">
-          unverified constraint
+          constraint not verified
         </span>
         <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-muted">{entry.code}</span>
       </div>
@@ -95,8 +116,6 @@ function UnverifiedRow({ entry }: { entry: DecisionGuardUnverified }) {
 export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdvisory | null }) {
   const findings = advisory?.findings ?? [];
   const unverified = advisory?.unverified ?? [];
-  const clean =
-    advisory !== null && advisory.engine_verdict === 'PASS' && advisory.unverified.length === 0;
 
   return (
     <section
@@ -109,18 +128,25 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
           <Icon name="alert" className="size-3.5 text-warn" /> Decision Guard — Advisory
         </h4>
         <span
-          className={`ml-auto rounded px-1.5 py-0.5 text-[9px] ${verdictTone(advisory)}`}
-          data-testid="decision-guard-verdict"
+          className={`ml-auto rounded px-1.5 py-0.5 text-[9px] ${assessmentTone(advisory)}`}
+          data-testid="decision-guard-assessment"
         >
-          {advisory ? verdictLabel(advisory) : 'NOT EVALUATED'}
+          {advisory ? assessmentLabel(advisory.assessment) : 'NOT EVALUATED'}
         </span>
       </div>
       <p className="mt-1 text-[10px] font-medium text-ink-dim">
         Findings do not block approval in this version.
       </p>
+      <p className="mt-1 text-[9px] leading-relaxed text-muted" data-testid="decision-guard-scope">
+        Supported checks only: {SUPPORTED_CHECKS}. A passing supported check is not a compliance
+        certification, and constraints outside these checks are not verified.
+      </p>
 
       {advisory ? (
         <>
+          <p className="mt-1 text-[10px] leading-relaxed text-ink-dim">
+            {advisory.assessment_reason}
+          </p>
           <p className="mt-1 font-mono text-[9px] leading-relaxed text-muted">
             engine {advisory.engine_version} · source{' '}
             {advisory.source_sha256 ? advisory.source_sha256.slice(0, 12) : 'unknown'} ·{' '}
@@ -152,12 +178,6 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
                 />
               ))}
             </ul>
-          ) : null}
-
-          {clean ? (
-            <p className="mt-1.5 text-[10px] text-ok">
-              No advisory findings and no unverified constraints for the recorded decision set.
-            </p>
           ) : null}
         </>
       ) : (
