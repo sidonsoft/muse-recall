@@ -816,6 +816,43 @@ describe('forge workflow', () => {
     expect(jobAfter.version).toBeNull();
   });
 
+  it('serialises concurrent approvals so only one base wins', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const first = await startModify(h.app);
+    const second = await startModify(h.app);
+    await Promise.all([waitForFinish(h.app, first), waitForFinish(h.app, second)]);
+
+    const [a, b] = await Promise.all([
+      h.app.inject({
+        method: 'POST',
+        url: `/api/forge/jobs/${first}/approve`,
+        payload: { capture_memory: false },
+      }),
+      h.app.inject({
+        method: 'POST',
+        url: `/api/forge/jobs/${second}/approve`,
+        payload: { capture_memory: false },
+      }),
+    ]);
+    const statuses = [a.statusCode, b.statusCode].sort((x, y) => x - y);
+    expect(statuses).toEqual([200, 409]);
+    const loser = a.statusCode === 409 ? a : b;
+    expect(loser.json().error.code).toBe('version_conflict');
+    expect(
+      (await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' })).json().data
+        .state.current_version,
+    ).toBe(2);
+  });
+
   it('serialises rejection with approval for the same project', async () => {
     let hold = false;
     let release = () => {};

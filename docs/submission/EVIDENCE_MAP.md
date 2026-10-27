@@ -154,7 +154,7 @@ git show <commit>:<path>                              # read it without checking
 
 ### C10 — Test suite health
 
-- **Evidence:** Phase 14A `pnpm verify` → **483 passed, 3 skipped**, exit 0, on
+- **Evidence:** Phase 14A `pnpm verify` → **484 passed, 3 skipped**, exit 0, on
   `agent/phase14a-demo-production` (lint + typecheck + 30 test files). Phase 12E recorded 457 passed
   / 3 skipped at `156c65c`; Phase 12C recorded 391 / 3 at `260d9ce`.
 - **Kind:** CI-runnable test counts, re-producible on the named commit.

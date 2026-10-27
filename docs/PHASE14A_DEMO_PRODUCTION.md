@@ -2,7 +2,8 @@
 
 **Status:** complete — submitted for director review (no merge, no submission, no guard enforcement)
 **Branch:** `agent/phase14a-demo-production`
-**Work commit:** `4a455f8264602a96fd228542c81773761052fbea` (implementation, submission docs, evidence)
+**Work commit:** `4a455f8264602a96fd228542c81773761052fbea` (implementation, submission docs, evidence).
+The concurrent-approval regression and the final 484-test count landed in the branch-tip commit.
 **Base:** `agent/phase12e-release-hardening` @ `156c65c9a55833e00f6764f4fee20d93eec17e49`
 **Submission docs:** cherry-picked `84e6a8ce028b9d5e3e8bd5c04abbf7f3824ccc1a` (docs only, never merged)
 **Live Muse inference in this phase:** none (0 calls)
@@ -64,7 +65,7 @@ repeat undo: nothing_to_rollback
 | Item | Disposition |
 | --- | --- |
 | Docs pointed at `agent/phase12c-guard-advisory` | **Fixed.** All five documents reference the Phase 14A branch and the release-candidate SHA. |
-| Stale Phase 12C demo references and test counts | **Fixed.** Counts are now Phase 14A: `pnpm verify` → 483 passed / 3 skipped. |
+| Stale Phase 12C demo references and test counts | **Fixed.** Counts are now Phase 14A: `pnpm verify` → 484 passed / 3 skipped. |
 | Runtime verification overstated | **Fixed.** Every description now uses the approved wording (see §4). |
 | Decision Guard described as enforcement / complete compliance | **Fixed.** Advisory-only and source-pattern limits are stated in the story, script, copy and evidence map. |
 | Stale Phase 12E verification figures | Refreshed from `docs/hackathon-evidence/phase14a/verification.json`. |
@@ -127,7 +128,7 @@ None of these was force-fixed inside a frozen feature set.
 | `scripts/phase14a-demo-ui-evidence.ts` | **New.** Real API + Vite + Chrome screenshot capture. |
 | `scripts/verify-runtime.ts` | Adds HTTPS-exfiltration and WebSocket-blocking cases. |
 | `tests/unit/forge-workspace.test.ts` | +9 ancestry/integrity tests. |
-| `tests/integration/forge-api.test.ts` | +4 tests: ancestry reproduction, decision validation, staged-change rejection, reject/approve race. |
+| `tests/integration/forge-api.test.ts` | +5 tests: ancestry reproduction, decision validation, staged-change rejection, concurrent approvals, reject/approve race. |
 | `tests/integration/api.test.ts` | +4 Host-header tests. |
 | `tests/unit/host-guard.test.ts` | **New.** 7 parser/validator tests. |
 | `tests/unit/demo-seed.test.ts` | **New.** 2 seed/idempotence tests. |
@@ -257,7 +258,7 @@ v1.
 
 | Command | Result |
 | --- | --- |
-| `pnpm verify` | exit 0 — lint + typecheck + **483 passed, 3 skipped** (live-Muse gate) |
+| `pnpm verify` | exit 0 — lint + typecheck + **484 passed, 3 skipped** (live-Muse gate) |
 | `pnpm verify:forge` | exit 0 — **9/9** browser checks |
 | `pnpm verify:runtime` | exit 0 — valid passes; broken rejected; HTTPS and WebSocket exfiltration blocked |
 | `pnpm eval:guard` | exit 0 — A BLOCK, B PASS, C UNVERIFIED, supplementary BLOCK; all approvals succeeded |

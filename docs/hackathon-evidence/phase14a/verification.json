@@ -17,7 +17,7 @@
     {
       "command": "pnpm verify",
       "exit": 0,
-      "result": "lint + typecheck + 30 test files; 483 passed, 3 skipped (live-Muse gate)",
+      "result": "lint + typecheck + 30 test files; 484 passed, 3 skipped (live-Muse gate)",
       "notes": "Includes new rollback-ancestry, host-header, source-integrity, reject-lock, decision-capture and demo-seed tests."
     },
     {
@@ -76,7 +76,8 @@
     "rejection_concurrency": "approval/rejection serialised under the project lock (integration test)",
     "source_integrity": "staging mutated after runtime verification -> 409 staged_changed, no promotion (unit + integration)",
     "preview_message_origin": "verify:forge capture check passes with the source identity guard",
-    "runtime_network_allowlist": "HTTPS + WebSocket blocked, CDN allowed (verify:runtime)"
+    "runtime_network_allowlist": "HTTPS + WebSocket blocked, CDN allowed (verify:runtime)",
+    "concurrent_approvals": "two simultaneous approvals from the same base: exactly one 200, one 409 version_conflict, current_version 2 (integration test)"
   },
   "assertions": {
     "no_live_muse_inference_run": true,

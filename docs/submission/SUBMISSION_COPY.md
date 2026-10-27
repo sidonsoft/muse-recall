@@ -98,7 +98,7 @@ built around Muse — they make Muse’s output more reviewable without replacin
 TypeScript monorepo (pnpm workspaces); Fastify API and React/Vite web client on loopback; SQLite
 memory store with bm25-style weighted retrieval and transactional supersession; Muse Code CLI as
 model provider; Playwright-driven headless Chrome for the load-time gate; a pure TypeScript
-Decision Guard engine (`@mml/decision-guard`); Biome, Vitest (483 passing / 3 opt-in live-Muse tests
+Decision Guard engine (`@mml/decision-guard`); Biome, Vitest (484 passing / 3 opt-in live-Muse tests
 skipped at Phase 14A), reproducible evaluation and evidence scripts.
 
 ## Known limitations (stated plainly)
