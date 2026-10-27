@@ -6,7 +6,7 @@
   "description": "Fastify API for Muse Memory Lab.",
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --packages=external --alias:@mml/shared=../../packages/shared/src/index.ts --alias:@mml/memory-engine=../../packages/memory-engine/src/index.ts --alias:@mml/muse-provider=../../packages/muse-provider/src/index.ts --outfile=dist/index.js --sourcemap",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --packages=external --alias:@mml/shared=../../packages/shared/src/index.ts --alias:@mml/memory-engine=../../packages/memory-engine/src/index.ts --alias:@mml/muse-provider=../../packages/muse-provider/src/index.ts --alias:@mml/agent-core=../../packages/agent-core/src/index.ts --alias:@mml/tool-runtime=../../packages/tool-runtime/src/index.ts --alias:@mml/ui-protocol=../../packages/ui-protocol/src/index.ts --alias:@mml/decision-guard=../../packages/decision-guard/src/index.ts --outfile=dist/index.js --sourcemap",
     "start": "node --enable-source-maps dist/index.js",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
@@ -14,6 +14,7 @@
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@mml/agent-core": "workspace:*",
+    "@mml/decision-guard": "workspace:*",
     "@mml/memory-engine": "workspace:*",
     "@mml/muse-provider": "workspace:*",
     "@mml/shared": "workspace:*",

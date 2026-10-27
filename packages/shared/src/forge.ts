@@ -43,6 +43,91 @@ export const ForgeValidationSchema = z.object({
 });
 export type ForgeValidation = z.infer<typeof ForgeValidationSchema>;
 
+/**
+ * Phase 12C — Decision Guard advisory contract.
+ *
+ * Decision Guard is ADVISORY ONLY in this version. `engine_verdict` is the
+ * pure engine's own aggregate and is never wired into `validation.ok`; the
+ * server keeps it separate so no client can mistake an advisory finding for a
+ * blocking validation error. Findings carry untrusted source excerpts, so every
+ * string is length-bounded and the review UI renders them as text only.
+ */
+
+export const DECISION_GUARD_VERDICTS = ['PASS', 'BLOCK', 'UNVERIFIED'] as const;
+export const DecisionGuardVerdictSchema = z.enum(DECISION_GUARD_VERDICTS);
+export type DecisionGuardVerdict = z.infer<typeof DecisionGuardVerdictSchema>;
+
+export const DECISION_GUARD_UNVERIFIED_CODES = [
+  'memory_unresolved',
+  'cross_project',
+  'global_scope',
+  'decision_not_active',
+  'superseded_unresolved',
+  'rule_unverified',
+  'unsupported_decision',
+  'input_warning',
+  'no_decisions',
+  'decision_limit_exceeded',
+  'truncated',
+  'internal_error',
+] as const;
+export const DecisionGuardUnverifiedCodeSchema = z.enum(DECISION_GUARD_UNVERIFIED_CODES);
+export type DecisionGuardUnverifiedCode = z.infer<typeof DecisionGuardUnverifiedCodeSchema>;
+
+/** Stable, bounded rule identifier from the engine (e.g. `mistake-penalty`). */
+export const DecisionGuardRuleSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9-]+$/, 'rule ids are lowercase kebab-case');
+
+export const DecisionGuardFindingSchema = z.object({
+  kind: z.literal('violation'),
+  decision_id: z.uuid(),
+  /** Readable, bounded decision reference (excerpt, never the full record). */
+  decision_ref: z.string().min(1).max(160),
+  rule: DecisionGuardRuleSchema,
+  severity: z.enum(['high', 'medium']),
+  /** Untrusted staged-source excerpt; rendered as text, never as markup. */
+  evidence: z.string().max(240),
+  explanation: z.string().max(400),
+});
+export type DecisionGuardFinding = z.infer<typeof DecisionGuardFindingSchema>;
+
+export const DecisionGuardUnverifiedSchema = z.object({
+  kind: z.literal('unverified'),
+  /** Null when the limitation is about the decision set, not one decision. */
+  decision_id: z.uuid().nullable(),
+  decision_ref: z.string().max(160),
+  rule: DecisionGuardRuleSchema,
+  severity: z.null(),
+  code: DecisionGuardUnverifiedCodeSchema,
+  reason: z.string().min(1).max(400),
+});
+export type DecisionGuardUnverified = z.infer<typeof DecisionGuardUnverifiedSchema>;
+
+export const DecisionGuardAdvisorySchema = z.object({
+  mode: z.literal('advisory'),
+  engine_version: z.string().min(1).max(32),
+  /** Advisory aggregate from the pure engine. Never used for authorisation. */
+  engine_verdict: DecisionGuardVerdictSchema,
+  findings: z.array(DecisionGuardFindingSchema).max(32),
+  unverified: z.array(DecisionGuardUnverifiedSchema).max(32),
+  /** Active decisions passed to the engine — the auditable decision set. */
+  evaluated_memory_ids: z.array(z.uuid()).max(32),
+  /** Superseded decisions resolved separately for correction rules. */
+  superseded_memory_ids: z.array(z.uuid()).max(32),
+  /** sha256 of the exact staged source that was evaluated. */
+  source_sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  /** True when the snapshot was (re)computed after the blocking runtime check. */
+  runtime_verified: z.boolean(),
+  evaluated_at: z.iso.datetime(),
+});
+export type DecisionGuardAdvisory = z.infer<typeof DecisionGuardAdvisorySchema>;
+
 export const ForgeJobSchema = z.object({
   id: z.uuid(),
   project_id: ForgeProjectIdSchema,
@@ -66,6 +151,11 @@ export const ForgeJobSchema = z.object({
     .nullable()
     .optional(),
   validation: ForgeValidationSchema.nullable(),
+  /**
+   * Phase 12C advisory snapshot. Deliberately separate from `validation`:
+   * it is recorded for review and never blocks approval.
+   */
+  decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
   version: z.number().int().min(1).nullable(),
 });
 export type ForgeJob = z.infer<typeof ForgeJobSchema>;
@@ -106,6 +196,7 @@ export const ForgeDiffSchema = z.object({
   summary: z.string(),
   files: z.array(ForgeFileDiffSchema),
   validation: ForgeValidationSchema,
+  decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
 });
 export type ForgeDiff = z.infer<typeof ForgeDiffSchema>;
 

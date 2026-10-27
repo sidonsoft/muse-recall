@@ -17,6 +17,12 @@ importers:
       playwright-core:
         specifier: ^1.64.1
         version: 1.64.1
+      react:
+        specifier: ^19.2.0
+        version: 19.3.1
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.3.1(react@19.3.1)
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -38,6 +44,9 @@ importers:
       '@mml/agent-core':
         specifier: workspace:*
         version: link:../../packages/agent-core
+      '@mml/decision-guard':
+        specifier: workspace:*
+        version: link:../../packages/decision-guard
       '@mml/memory-engine':
         specifier: workspace:*
         version: link:../../packages/memory-engine

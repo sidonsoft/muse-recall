@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
 import { isBlankCapture } from '../../lib/capture.ts';
 import { Icon } from '../Icon.tsx';
+import { DecisionGuardPanel } from './DecisionGuardAdvisory.tsx';
 
 /**
  * Muse Forge — generate a game, play it, change it from a screenshot, review the
@@ -549,6 +550,7 @@ export function ForgeView() {
                   ))}
                 </ul>
               ) : null}
+              <DecisionGuardPanel advisory={diff.decision_guard} />
               <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-surface-2 p-2 font-mono text-[9px] leading-relaxed text-ink-dim">
                 {diff.files.map((file) => file.diff).join('\n')}
               </pre>

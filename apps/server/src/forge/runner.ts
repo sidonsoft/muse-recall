@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
+  type DecisionGuardAdvisory,
   type ForgeJob,
   type ForgeJobKind,
   ForgeJobSchema,
@@ -11,8 +12,10 @@ import {
   type ForgeState,
   type ForgeUsage,
   type ForgeValidation,
+  type Memory,
   redactSecrets,
 } from '@mml/shared';
+import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
@@ -220,7 +223,10 @@ export class ForgeJobManager {
 
   async diff(jobId: string) {
     const job = this.requireJob(jobId);
-    return this.workspace.diffStaged(job.project_id, job.id);
+    const diff = await this.workspace.diffStaged(job.project_id, job.id);
+    // Advisory only: carried alongside the diff so the review UI can show it
+    // without ever feeding it into `diff.validation`.
+    return { ...diff, decision_guard: job.decision_guard };
   }
 
   async approve(
@@ -266,6 +272,15 @@ export class ForgeJobManager {
           'The staged game failed runtime verification.',
           runtime.errors,
         );
+      }
+
+      // Decision Guard (Phase 12C) runs only after the blocking runtime check
+      // passed. It records a fresh advisory snapshot for the reviewed source;
+      // it can neither change `validation` nor stop the promotion below.
+      const decisionGuard = stagedHtml ? this.advisory(current, stagedHtml, true) : null;
+      if (decisionGuard) {
+        current.decision_guard = decisionGuard;
+        await this.persist(current);
       }
 
       const summary = current.summary ?? current.request ?? current.prompt;
@@ -501,11 +516,18 @@ export class ForgeJobManager {
           return;
         }
 
+        // Advisory snapshot for human review. It is computed after structural
+        // validation and recorded beside — never inside — `validation`. The
+        // blocking browser check runs on approve, which re-snapshots after it.
+        const staged = await this.workspace.stagedHtml(job.project_id, job.id);
+        const decisionGuard = staged === null ? null : this.advisory(job, staged, false);
+
         await this.finish(job, {
           ...base,
           status: 'succeeded',
           summary: execState.terminalText?.slice(0, 2_000) ?? 'Game updated.',
           validation,
+          ...(decisionGuard ? { decision_guard: decisionGuard } : {}),
         });
       })();
     });
@@ -582,6 +604,24 @@ export class ForgeJobManager {
     return redactSecrets(text, { secrets: [this.apiKey, this.fallbackApiKey] });
   }
 
+  /**
+   * Advisory Decision Guard snapshot for the exact staged source.
+   *
+   * Resolves only the job's *recorded* memory ids, scoped to the job's project.
+   * The snapshot is metadata for a human reviewer; it is never read by
+   * `approve`, `promote`, or any validation path.
+   */
+  private advisory(job: ForgeJob, source: string, runtimeVerified: boolean): DecisionGuardAdvisory {
+    return evaluateDecisionGuardAdvisory({
+      projectId: job.project_id,
+      memoryIds: job.memory_ids,
+      source,
+      getMemory: (id): Memory | null => this.engine.get(id),
+      evaluatedAt: this.now(),
+      runtimeVerified,
+    });
+  }
+
   private async finish(
     job: ForgeJob,
     patch: {
@@ -589,6 +629,7 @@ export class ForgeJobManager {
       error?: string | null;
       summary?: string | null;
       validation?: ForgeValidation;
+      decision_guard?: DecisionGuardAdvisory;
       usage?: ForgeUsage;
       finished_at?: string;
     },
@@ -601,6 +642,7 @@ export class ForgeJobManager {
       error: patch.error ? this.sanitize(patch.error) : null,
       summary: patch.summary ? this.sanitize(patch.summary) : job.summary,
       validation: patch.validation ?? job.validation,
+      decision_guard: patch.decision_guard ?? job.decision_guard,
       usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
       finished_at: patch.finished_at ?? this.now().toISOString(),
     });

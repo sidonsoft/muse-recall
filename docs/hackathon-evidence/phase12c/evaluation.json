@@ -1,0 +1,519 @@
+{
+  "phase": "12C",
+  "title": "Decision Guard advisory — real-game evaluation",
+  "generated_at": "2026-10-27T04:50:18.654Z",
+  "guard_mode": "advisory",
+  "engine": {
+    "package": "@mml/decision-guard",
+    "version": "1.0.0"
+  },
+  "model_calls": 0,
+  "transport": "tests/fixtures/fake-muse.mjs copy mode moves recorded/controlled bytes into staging; every validation, runtime check and approval is production code",
+  "prompt": "A colourful farmyard memory game for children with twelve cards.",
+  "prompt_sha256": "bd679d161f8dd93a7b4b53a70021cf3bd4daad2e70c360e4b60ca9150fe9150e",
+  "cases": [
+    {
+      "id": "A-violation",
+      "category": "A",
+      "label": "Known violation — controlled test mutation (countdown + mistake penalty)",
+      "origin": "Deterministic mutation of the recorded real Spark baseline (demo/forge-baseline/index.html); NOT spontaneous Muse output.",
+      "source": {
+        "path": "docs/hackathon-evidence/phase12c/sources/A-violation-mutation.html",
+        "sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e",
+        "bytes": 12090
+      },
+      "mutation": {
+        "applied_to": "demo/forge-baseline/index.html",
+        "replacements": [
+          {
+            "find": "var moves = 0, matches = 0;",
+            "replace": "var moves = 0, matches = 0, score = 100, timeLeft = 30;"
+          },
+          {
+            "find": "  function create() {\n    var s = this;",
+            "replace": "  function create() {\n    var s = this;\n    // PHASE 12C TEST MUTATION: prohibited countdown mechanic.\n    setInterval(function () { timeLeft -= 1; if (timeLeft < 0) { timeLeft = 0; } hudMsg.setText(\"Time: \" + timeLeft); }, 1000);"
+          },
+          {
+            "find": "      hudMsg.setText(\"Try again! \\u{1F340}\");",
+            "replace": "      // PHASE 12C TEST MUTATION: prohibited mistake penalty.\n      score -= 1;\n      hudMsg.setText(\"Try again! \\u{1F340}  Score: \" + score);"
+          }
+        ]
+      },
+      "decisions": [
+        {
+          "memory_id": "e8819fe8-5717-49a4-ac73-076697f9a13d",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+          "role": "active"
+        }
+      ],
+      "memory_ids": [
+        "e8819fe8-5717-49a4-ac73-076697f9a13d"
+      ],
+      "prompt_sha256": "812418bebe97ed6baaff6a62494ea7d6180f00ccf325c86f26d7e3263646b0f4",
+      "structural_validation": {
+        "ok": true,
+        "issues": []
+      },
+      "runtime": {
+        "ok": true,
+        "canvas": true,
+        "errors": []
+      },
+      "review_guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "BLOCK",
+        "findings": [
+          {
+            "kind": "violation",
+            "decision_id": "e8819fe8-5717-49a4-ac73-076697f9a13d",
+            "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+            "rule": "countdown-mechanics",
+            "severity": "high",
+            "evidence": "ar moves = 0, matches = 0, score = 100, timeLeft = 30; var hudMoves, hudScore, hudMsg,",
+            "explanation": "decision prohibits countdown mechanics; source contains \"timeLeft\""
+          },
+          {
+            "kind": "violation",
+            "decision_id": "e8819fe8-5717-49a4-ac73-076697f9a13d",
+            "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+            "rule": "mistake-penalty",
+            "severity": "high",
+            "evidence": "TION: prohibited mistake penalty. score -= 1; hudMsg.setText(\"Try again! \\u{",
+            "explanation": "decision prohibits punishing mistakes; source contains \"score -=\""
+          }
+        ],
+        "unverified": [],
+        "evaluated_memory_ids": [
+          "e8819fe8-5717-49a4-ac73-076697f9a13d"
+        ],
+        "superseded_memory_ids": [],
+        "source_sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e",
+        "runtime_verified": false,
+        "evaluated_at": "2026-10-27T04:49:56.207Z"
+      },
+      "guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "BLOCK",
+        "findings": [
+          {
+            "kind": "violation",
+            "decision_id": "e8819fe8-5717-49a4-ac73-076697f9a13d",
+            "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+            "rule": "countdown-mechanics",
+            "severity": "high",
+            "evidence": "ar moves = 0, matches = 0, score = 100, timeLeft = 30; var hudMoves, hudScore, hudMsg,",
+            "explanation": "decision prohibits countdown mechanics; source contains \"timeLeft\""
+          },
+          {
+            "kind": "violation",
+            "decision_id": "e8819fe8-5717-49a4-ac73-076697f9a13d",
+            "decision_ref": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+            "rule": "mistake-penalty",
+            "severity": "high",
+            "evidence": "TION: prohibited mistake penalty. score -= 1; hudMsg.setText(\"Try again! \\u{",
+            "explanation": "decision prohibits punishing mistakes; source contains \"score -=\""
+          }
+        ],
+        "unverified": [],
+        "evaluated_memory_ids": [
+          "e8819fe8-5717-49a4-ac73-076697f9a13d"
+        ],
+        "superseded_memory_ids": [],
+        "source_sha256": "c5dfd00ac08201263f58955d8cc26c9ad4fb7fe39f78136ff89f80d76780650e",
+        "runtime_verified": true,
+        "evaluated_at": "2026-10-27T04:49:59.435Z"
+      },
+      "approval": {
+        "ok": true,
+        "version": 1
+      },
+      "project_state": {
+        "current_version": 1,
+        "can_rollback": false
+      },
+      "screenshot": "docs/hackathon-evidence/phase12c/screenshots/A-violation.png",
+      "observations": [
+        "guard engine_verdict=BLOCK",
+        "2 detection finding(s), 0 unverified entr(ies)",
+        "runtime_verified_in_final_snapshot=true",
+        "advisory findings did not block approval (expected in Phase 12C)"
+      ],
+      "notes": [
+        "Mutation is labelled in-file and reproduced in evaluation.json.",
+        "The added mechanic is valid JavaScript, so runtime verification is expected to pass."
+      ]
+    },
+    {
+      "id": "B-compliant",
+      "category": "B",
+      "label": "Known compliant — authentic recorded Spark baseline",
+      "origin": "Recorded real Spark generation (demo/forge-baseline/index.html, sha256 79c9d67a…9ba9e41).",
+      "source": {
+        "path": "docs/hackathon-evidence/phase12c/sources/B-compliant-baseline.html",
+        "sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+        "bytes": 11529
+      },
+      "mutation": null,
+      "decisions": [
+        {
+          "memory_id": "8da74463-8663-410d-82aa-2563e065af1b",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+          "role": "active"
+        }
+      ],
+      "memory_ids": [
+        "8da74463-8663-410d-82aa-2563e065af1b"
+      ],
+      "prompt_sha256": "812418bebe97ed6baaff6a62494ea7d6180f00ccf325c86f26d7e3263646b0f4",
+      "structural_validation": {
+        "ok": true,
+        "issues": []
+      },
+      "runtime": {
+        "ok": true,
+        "canvas": true,
+        "errors": []
+      },
+      "review_guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "PASS",
+        "findings": [],
+        "unverified": [],
+        "evaluated_memory_ids": [
+          "8da74463-8663-410d-82aa-2563e065af1b"
+        ],
+        "superseded_memory_ids": [],
+        "source_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+        "runtime_verified": false,
+        "evaluated_at": "2026-10-27T04:50:02.660Z"
+      },
+      "guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "PASS",
+        "findings": [],
+        "unverified": [],
+        "evaluated_memory_ids": [
+          "8da74463-8663-410d-82aa-2563e065af1b"
+        ],
+        "superseded_memory_ids": [],
+        "source_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+        "runtime_verified": true,
+        "evaluated_at": "2026-10-27T04:50:04.921Z"
+      },
+      "approval": {
+        "ok": true,
+        "version": 1
+      },
+      "project_state": {
+        "current_version": 1,
+        "can_rollback": false
+      },
+      "screenshot": "docs/hackathon-evidence/phase12c/screenshots/B-compliant.png",
+      "observations": [
+        "guard engine_verdict=PASS",
+        "0 detection finding(s), 0 unverified entr(ies)",
+        "runtime_verified_in_final_snapshot=true"
+      ],
+      "notes": [
+        "No countdown, flashing loop or mistake penalty is present."
+      ]
+    },
+    {
+      "id": "C-ambiguous",
+      "category": "C",
+      "label": "Ambiguous — authentic baseline against a colour-discrimination decision",
+      "origin": "Same authentic baseline; the decision is not deterministically checkable here.",
+      "source": {
+        "path": "docs/hackathon-evidence/phase12c/sources/B-compliant-baseline.html",
+        "sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+        "bytes": 11529
+      },
+      "mutation": null,
+      "decisions": [
+        {
+          "memory_id": "43f2d91e-339c-4093-9790-5e6c4688fe71",
+          "content": "All essential game actions must remain usable without colour discrimination.",
+          "role": "active"
+        }
+      ],
+      "memory_ids": [
+        "43f2d91e-339c-4093-9790-5e6c4688fe71"
+      ],
+      "prompt_sha256": "e90883a72b2be76a07e007001c9b5cad50fa3e07e7e13be533a559e9322d4bcc",
+      "structural_validation": {
+        "ok": true,
+        "issues": []
+      },
+      "runtime": {
+        "ok": true,
+        "canvas": true,
+        "errors": []
+      },
+      "review_guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "UNVERIFIED",
+        "findings": [],
+        "unverified": [
+          {
+            "kind": "unverified",
+            "decision_id": "43f2d91e-339c-4093-9790-5e6c4688fe71",
+            "decision_ref": "All essential game actions must remain usable without colour discrimination.",
+            "rule": "colour-only-cue",
+            "severity": null,
+            "code": "rule_unverified",
+            "reason": "no evaluable red/green pair found; broad accessibility cannot be claimed"
+          }
+        ],
+        "evaluated_memory_ids": [
+          "43f2d91e-339c-4093-9790-5e6c4688fe71"
+        ],
+        "superseded_memory_ids": [],
+        "source_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+        "runtime_verified": false,
+        "evaluated_at": "2026-10-27T04:50:08.000Z"
+      },
+      "guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "UNVERIFIED",
+        "findings": [],
+        "unverified": [
+          {
+            "kind": "unverified",
+            "decision_id": "43f2d91e-339c-4093-9790-5e6c4688fe71",
+            "decision_ref": "All essential game actions must remain usable without colour discrimination.",
+            "rule": "colour-only-cue",
+            "severity": null,
+            "code": "rule_unverified",
+            "reason": "no evaluable red/green pair found; broad accessibility cannot be claimed"
+          }
+        ],
+        "evaluated_memory_ids": [
+          "43f2d91e-339c-4093-9790-5e6c4688fe71"
+        ],
+        "superseded_memory_ids": [],
+        "source_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+        "runtime_verified": true,
+        "evaluated_at": "2026-10-27T04:50:10.313Z"
+      },
+      "approval": {
+        "ok": true,
+        "version": 1
+      },
+      "project_state": {
+        "current_version": 1,
+        "can_rollback": false
+      },
+      "screenshot": "docs/hackathon-evidence/phase12c/screenshots/C-ambiguous.png",
+      "observations": [
+        "guard engine_verdict=UNVERIFIED",
+        "0 detection finding(s), 1 unverified entr(ies)",
+        "runtime_verified_in_final_snapshot=true",
+        "no overall PASS is claimed: at least one constraint is unverified"
+      ],
+      "notes": [
+        "The engine looks for an evaluable red/green pair; the baseline has neither, so compliance cannot be established.",
+        "Expected and observed: UNVERIFIED, never PASS."
+      ]
+    },
+    {
+      "id": "supplementary-palette-correction",
+      "category": "supplementary",
+      "label": "Known false negative — authentic Phase 12A output vs an ocean correction",
+      "origin": "Authentic Phase 12A condition-A output (docs/hackathon-evidence/phase12/A-v2.html) — generated under the sunset decision, evaluated retrospectively against the later ocean correction.",
+      "source": {
+        "path": "docs/hackathon-evidence/phase12c/sources/supplementary-A-v2-authentic.html",
+        "sha256": "e22586b2ffe3e3afe8a665b9de66dd221fc734557846ff361ba52e701956b878",
+        "bytes": 12593
+      },
+      "mutation": null,
+      "decisions": [
+        {
+          "memory_id": "36772ef3-72b8-480c-87ed-92027e43d913",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43.",
+          "role": "active (corrected)"
+        },
+        {
+          "memory_id": "ada84b22-fd70-45d9-8009-b1d6ae901533",
+          "content": "Art direction: maintain a warm sunset palette. Use #FF7E5F as the primary accent and #2D1E2F for dark text. Avoid aggressive neon colours.",
+          "role": "superseded history"
+        }
+      ],
+      "memory_ids": [
+        "36772ef3-72b8-480c-87ed-92027e43d913"
+      ],
+      "prompt_sha256": "171567429498dccee96766f42ddfd0101519a599d659040177fa210c416b29d1",
+      "structural_validation": {
+        "ok": true,
+        "issues": []
+      },
+      "runtime": {
+        "ok": true,
+        "canvas": true,
+        "errors": []
+      },
+      "review_guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "UNVERIFIED",
+        "findings": [],
+        "unverified": [
+          {
+            "kind": "unverified",
+            "decision_id": "36772ef3-72b8-480c-87ed-92027e43d913",
+            "decision_ref": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43.",
+            "rule": "superseded-palette",
+            "severity": null,
+            "code": "rule_unverified",
+            "reason": "neither corrected nor superseded palette present in source"
+          }
+        ],
+        "evaluated_memory_ids": [
+          "36772ef3-72b8-480c-87ed-92027e43d913"
+        ],
+        "superseded_memory_ids": [
+          "ada84b22-fd70-45d9-8009-b1d6ae901533"
+        ],
+        "source_sha256": "e22586b2ffe3e3afe8a665b9de66dd221fc734557846ff361ba52e701956b878",
+        "runtime_verified": false,
+        "evaluated_at": "2026-10-27T04:50:13.419Z"
+      },
+      "guard": {
+        "mode": "advisory",
+        "engine_version": "1.0.0",
+        "engine_verdict": "UNVERIFIED",
+        "findings": [],
+        "unverified": [
+          {
+            "kind": "unverified",
+            "decision_id": "36772ef3-72b8-480c-87ed-92027e43d913",
+            "decision_ref": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43.",
+            "rule": "superseded-palette",
+            "severity": null,
+            "code": "rule_unverified",
+            "reason": "neither corrected nor superseded palette present in source"
+          }
+        ],
+        "evaluated_memory_ids": [
+          "36772ef3-72b8-480c-87ed-92027e43d913"
+        ],
+        "superseded_memory_ids": [
+          "ada84b22-fd70-45d9-8009-b1d6ae901533"
+        ],
+        "source_sha256": "e22586b2ffe3e3afe8a665b9de66dd221fc734557846ff361ba52e701956b878",
+        "runtime_verified": true,
+        "evaluated_at": "2026-10-27T04:50:15.636Z"
+      },
+      "approval": {
+        "ok": true,
+        "version": 1
+      },
+      "project_state": {
+        "current_version": 1,
+        "can_rollback": false
+      },
+      "screenshot": "docs/hackathon-evidence/phase12c/screenshots/supplementary-palette-correction.png",
+      "observations": [
+        "guard engine_verdict=UNVERIFIED",
+        "0 detection finding(s), 1 unverified entr(ies)",
+        "runtime_verified_in_final_snapshot=true",
+        "no overall PASS is claimed: at least one constraint is unverified"
+      ],
+      "notes": [
+        "A-v2 encodes the sunset accent as 0xFF7E5F; the decision uses #FF7E5F.",
+        "Rule superseded-palette compares hex literals without normalising 0x/# — a documented engine gap requested for Strata review, not patched here.",
+        "Expected: UNVERIFIED (cannot see the forbidden accent), not a false BLOCK."
+      ]
+    }
+  ],
+  "engine_probes": [
+    {
+      "id": "probe-comment-countdown",
+      "kind": "false_positive",
+      "description": "A prose comment containing the literal word \"countdown\" is reported as a violation.",
+      "source_sha256": "3307ac37ea53a8f121d6ed4b2d6a176d8c6224d249c154fabaa2d61d65a607a5",
+      "expected": "BLOCK (expected false positive)",
+      "observed": "BLOCK",
+      "rules": [
+        {
+          "rule": "countdown-mechanics",
+          "verdict": "BLOCK",
+          "reason": "countdown implementation detected"
+        },
+        {
+          "rule": "flashing-effects",
+          "verdict": "PASS",
+          "reason": "no repeated visibility/alpha toggling found (tween-based pulses are a known gap)"
+        },
+        {
+          "rule": "mistake-penalty",
+          "verdict": "PASS",
+          "reason": "no explicit score deduction or comparable penalty found"
+        }
+      ],
+      "evidence": "er.min.js\"></script><p>This game has no countdown and no timer.</p>"
+    },
+    {
+      "id": "probe-tween-pulse",
+      "kind": "false_negative",
+      "description": "A repeating alpha tween (yoyo + repeat: -1) pulses the banner but is not detected as flashing.",
+      "source_sha256": "4e7bbc81db8a0daf246c72bcd1d77d419ae8a5bf553b7d293a22d70a4eda38b5",
+      "expected": "PASS on flashing-effects (known false negative)",
+      "observed": "PASS",
+      "rules": [
+        {
+          "rule": "countdown-mechanics",
+          "verdict": "PASS",
+          "reason": "no unambiguous countdown implementation found"
+        },
+        {
+          "rule": "flashing-effects",
+          "verdict": "PASS",
+          "reason": "no repeated visibility/alpha toggling found (tween-based pulses are a known gap)"
+        },
+        {
+          "rule": "mistake-penalty",
+          "verdict": "PASS",
+          "reason": "no explicit score deduction or comparable penalty found"
+        }
+      ],
+      "evidence": null
+    },
+    {
+      "id": "probe-phaser-hex-encoding",
+      "kind": "false_negative",
+      "description": "Phaser writes colours as 0xRRGGBB; a decision using #RRGGBB is not recognised, so a reintroduced sunset accent is UNVERIFIED rather than a finding.",
+      "source_sha256": "68407ed69096269a8b871d85f2d2ce158e6a98bc103f0e98e43a07c5c281fe78",
+      "expected": "UNVERIFIED on superseded-palette (known false negative)",
+      "observed": "UNVERIFIED",
+      "rules": [
+        {
+          "rule": "superseded-palette",
+          "verdict": "UNVERIFIED",
+          "reason": "neither corrected nor superseded palette present in source"
+        }
+      ],
+      "evidence": null
+    }
+  ],
+  "known_false_positives": [
+    "A prose comment containing the literal word \"countdown\" is reported as a violation."
+  ],
+  "known_false_negatives": [
+    "A repeating alpha tween (yoyo + repeat: -1) pulses the banner but is not detected as flashing.",
+    "Phaser writes colours as 0xRRGGBB; a decision using #RRGGBB is not recognised, so a reintroduced sunset accent is UNVERIFIED rather than a finding."
+  ],
+  "summary": {
+    "a_violation_detected": true,
+    "a_runtime_passed": true,
+    "b_no_blocking_finding": true,
+    "b_approved": true,
+    "c_unverified": true,
+    "advisory_never_blocked": true
+  }
+}

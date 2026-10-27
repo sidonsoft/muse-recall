@@ -227,6 +227,9 @@ export class ForgeWorkspace {
           : `index.html changed (${added >= 0 ? '+' : ''}${added} lines).`,
       files: [{ path: 'index.html', before, after, diff }],
       validation,
+      // The manager attaches the job's advisory snapshot; the workspace never
+      // evaluates decisions and never lets one influence validation.
+      decision_guard: null,
     };
   }
 
