@@ -118,7 +118,13 @@ export const ForgeApproveSchema = z.object({
 export const ForgeRollbackSchema = z.object({});
 
 export const ForgeJobListSchema = z.object({ items: z.array(ForgeJobSchema) });
+export const ForgeApprovalResultSchema = z.object({
+  job: ForgeJobSchema,
+  state: ForgeStateSchema,
+});
+export type ForgeApprovalResult = z.infer<typeof ForgeApprovalResultSchema>;
 export const ForgeProjectViewSchema = z.object({
   state: ForgeStateSchema,
   jobs: z.array(ForgeJobSchema),
 });
+export type ForgeProjectView = z.infer<typeof ForgeProjectViewSchema>;

@@ -38,3 +38,7 @@ runs/
 .idea/
 .DS_Store
 *.log
+
+# Generated Forge game workspaces
+apps/server/workspaces/
+workspaces/

@@ -181,7 +181,11 @@ export class ForgeWorkspace {
     }
 
     const html = await readFile(file, 'utf8');
-    if (!/<canvas[\s>]/i.test(html)) issues.push('No <canvas> element found.');
+    // Phaser may create its canvas at runtime, so accept either a canvas element
+    // or an explicit Phaser.Game initialisation.
+    if (!/<canvas[\s>]/i.test(html) && !/new\s+Phaser\.Game|Phaser\.AUTO/i.test(html)) {
+      issues.push('No <canvas> or Phaser.Game initialisation found.');
+    }
     if (!/phaser/i.test(html)) issues.push('No Phaser reference found.');
 
     for (const script of extractInlineScripts(html)) {

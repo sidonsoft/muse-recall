@@ -2,6 +2,7 @@ import type { HealthResponse, ModelResponse, ServiceMeta } from '@mml/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ContextInspector } from './components/ContextInspector.tsx';
 import { ConversationsView } from './components/conversations/ConversationsView.tsx';
+import { ForgeView } from './components/forge/ForgeView.tsx';
 import { Icon } from './components/Icon.tsx';
 import { MemoryInspector } from './components/memory/MemoryInspector.tsx';
 import { Overview } from './components/Overview.tsx';
@@ -117,7 +118,13 @@ export function App() {
 
           {health && view === 'conversations' ? <ConversationsView meta={meta} /> : null}
 
-          {health && view !== 'overview' && view !== 'memories' && view !== 'conversations' ? (
+          {health && view === 'forge' ? <ForgeView /> : null}
+
+          {health &&
+          view !== 'overview' &&
+          view !== 'memories' &&
+          view !== 'conversations' &&
+          view !== 'forge' ? (
             <PlannedView viewId={view} />
           ) : null}
 

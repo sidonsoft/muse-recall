@@ -4,6 +4,7 @@ export type ViewId =
   | 'overview'
   | 'conversations'
   | 'projects'
+  | 'forge'
   | 'memories'
   | 'tools'
   | 'evaluations'
@@ -37,6 +38,14 @@ export const VIEWS: ViewDefinition[] = [
     phase: 3,
     implemented: false,
     description: 'Chat with the agent harness, with each turn retrieving the memories that matter.',
+  },
+  {
+    id: 'forge',
+    label: 'Forge',
+    icon: 'spark',
+    phase: 9,
+    implemented: true,
+    description: 'Generate a game, change it from a screenshot, and approve every change.',
   },
   {
     id: 'projects',

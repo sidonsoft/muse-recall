@@ -167,9 +167,21 @@ export function registerForgeRoutes(
         )
         .header('cache-control', 'no-store')
         .header('x-content-type-options', 'nosniff');
-      return reply.send(html);
+      return reply.send(withCaptureBridge(html));
     });
   });
+}
+
+/**
+ * Injected into every preview, in the sandboxed document only. It lets the host
+ * request a PNG of the game canvas; the generated game never sees app state.
+ */
+const CAPTURE_BRIDGE = `<script>(function(){window.addEventListener('message',function(event){var data=event.data;if(!data||data.type!=='forge:capture')return;var canvas=document.querySelector('canvas');try{var url=canvas?canvas.toDataURL('image/png'):null;if(event.source)event.source.postMessage({type:'forge:screenshot',dataUrl:url},'*');}catch(error){if(event.source)event.source.postMessage({type:'forge:screenshot',error:String(error)},'*');}});})();</script>`;
+
+function withCaptureBridge(html: string): string {
+  return html.includes('</body>')
+    ? html.replace('</body>', `${CAPTURE_BRIDGE}</body>`)
+    : `${html}${CAPTURE_BRIDGE}`;
 }
 
 function envelope<T>(data: T): { ok: true; data: T } {

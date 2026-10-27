@@ -1,5 +1,15 @@
 import {
   type ApiEnvelope,
+  type ForgeApprovalResult,
+  ForgeApprovalResultSchema,
+  type ForgeDiff,
+  ForgeDiffSchema,
+  type ForgeJob,
+  ForgeJobSchema,
+  type ForgeProjectView,
+  ForgeProjectViewSchema,
+  type ForgeState,
+  ForgeStateSchema,
   type HealthResponse,
   HealthResponseSchema,
   type Memory,
@@ -313,6 +323,81 @@ export const api = {
       { method: 'POST', body: JSON.stringify(input) },
       (data) => UiSubmissionResultSchema.parse(data),
     ),
+
+  // --- Forge --------------------------------------------------------------
+
+  forgeProject: (projectId: string, name?: string) =>
+    request<ForgeProjectView>(
+      '/api/forge/projects',
+      {
+        method: 'POST',
+        body: JSON.stringify({ project_id: projectId, ...(name ? { name } : {}) }),
+      },
+      (data) => ForgeProjectViewSchema.parse(data),
+    ),
+
+  forgeState: (projectId: string) =>
+    request<ForgeProjectView>(`/api/forge/projects/${projectId}`, { method: 'GET' }, (data) =>
+      ForgeProjectViewSchema.parse(data),
+    ),
+
+  forgeGenerate: (projectId: string, prompt: string) =>
+    request<ForgeJob>(
+      `/api/forge/projects/${projectId}/generate`,
+      { method: 'POST', body: JSON.stringify({ prompt }) },
+      (data) => ForgeJobSchema.parse(data),
+    ),
+
+  forgeModify: (projectId: string, changeRequest: string, screenshotDataUrl: string) =>
+    request<ForgeJob>(
+      `/api/forge/projects/${projectId}/modify`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ request: changeRequest, screenshot_data_url: screenshotDataUrl }),
+      },
+      (data) => ForgeJobSchema.parse(data),
+    ),
+
+  forgeJob: (jobId: string) =>
+    request<ForgeJob>(`/api/forge/jobs/${jobId}`, { method: 'GET' }, (data) =>
+      ForgeJobSchema.parse(data),
+    ),
+
+  forgeCancel: (jobId: string) =>
+    request<ForgeJob>(`/api/forge/jobs/${jobId}/cancel`, { method: 'POST' }, (data) =>
+      ForgeJobSchema.parse(data),
+    ),
+
+  forgeDiff: (jobId: string) =>
+    request<ForgeDiff>(`/api/forge/jobs/${jobId}/diff`, { method: 'GET' }, (data) =>
+      ForgeDiffSchema.parse(data),
+    ),
+
+  forgeApprove: (jobId: string, captureMemory: boolean, decision?: string) =>
+    request<ForgeApprovalResult>(
+      `/api/forge/jobs/${jobId}/approve`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          capture_memory: captureMemory,
+          ...(decision ? { decision } : {}),
+        }),
+      },
+      (data) => ForgeApprovalResultSchema.parse(data),
+    ),
+
+  forgeReject: (jobId: string) =>
+    request<ForgeJob>(`/api/forge/jobs/${jobId}/reject`, { method: 'POST' }, (data) =>
+      ForgeJobSchema.parse(data),
+    ),
+
+  forgeRollback: (projectId: string) =>
+    request<ForgeState>(`/api/forge/projects/${projectId}/rollback`, { method: 'POST' }, (data) =>
+      ForgeStateSchema.parse(data),
+    ),
+
+  forgePreviewUrl: (projectId: string, jobId?: string) =>
+    `${API_BASE_URL}/api/forge/projects/${projectId}/preview${jobId ? `?job=${jobId}` : ''}`,
 
   // --- Tools --------------------------------------------------------------
 
