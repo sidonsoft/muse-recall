@@ -20,6 +20,7 @@
     "@mml/tool-runtime": "workspace:*",
     "@mml/ui-protocol": "workspace:*",
     "fastify": "^5.6.1",
+    "playwright-core": "^1.55.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

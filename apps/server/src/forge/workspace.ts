@@ -40,6 +40,7 @@ export type ForgeErrorCode =
   | 'version_corrupt'
   | 'unsafe_file'
   | 'too_many_jobs'
+  | 'runtime_failed'
   | 'nothing_to_rollback'
   | 'no_current_version';
 
@@ -281,6 +282,11 @@ export class ForgeWorkspace {
     await this.writeState(projectId, {
       current: next,
       versions: [...state.versions, version],
+    });
+    // The staged copy has been promoted; do not keep a second writable copy.
+    await rm(this.within(join(this.projectDir(projectId), 'staging'), jobId), {
+      recursive: true,
+      force: true,
     });
     return { version: next, previous, sha256 };
   }

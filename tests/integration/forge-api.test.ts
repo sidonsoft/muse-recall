@@ -68,6 +68,10 @@ function config(workspaceRoot: string): AppConfig {
 async function harness(
   mode = 'auto',
   limits: { maxRuntimeMs?: number; maxCalls?: number } = {},
+  runtimeCheck: (html: string) => Promise<{ ok: boolean; errors: string[] }> = async () => ({
+    ok: true,
+    errors: [],
+  }),
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-api-'));
   const database = openDatabase({ path: ':memory:', wal: false });
@@ -82,6 +86,7 @@ async function harness(
     maxCalls: limits.maxCalls ?? 10,
     maxInputTokens: 10_000_000,
     reasoningEffort: 'low',
+    runtimeCheck,
   });
   const app = await buildApp({
     config: config(root),
@@ -181,7 +186,11 @@ describe('forge workflow', () => {
     expect(staged.statusCode).toBe(200);
     expect(staged.body).toContain("MARKER = 'v1'");
 
-    expect(staged.headers['content-security-policy']).toContain('sandbox allow-scripts');
+    const csp = String(staged.headers['content-security-policy']);
+    expect(csp).toContain('sandbox allow-scripts');
+    expect(csp).toContain("base-uri 'none'");
+    expect(csp).toContain("form-action 'none'");
+    expect(csp).toContain("object-src 'none'");
 
     const diffResponse = await h.app.inject({
       method: 'GET',
@@ -203,6 +212,9 @@ describe('forge workflow', () => {
     expect(approved.json().data.state.current_version).toBe(1);
     expect((await preview(h.app)).statusCode).toBe(200);
     expect(h.engine.list({ project_id: 'demo-game', status: ['active'] }).total).toBe(1);
+
+    const stagingFile = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
+    await expect(rm(stagingFile)).rejects.toThrow();
 
     const modified = await startModify(h.app);
     const modJob = await waitForFinish(h.app, modified);
@@ -390,6 +402,30 @@ describe('forge workflow', () => {
     await waitForFinish(h.app, generated);
     const response = await preview(h.app, 'project-b', generated);
     expect(response.statusCode).toBe(404);
+  });
+
+  it('blocks approval when the staged game fails runtime verification', async () => {
+    const h = await harness('auto', {}, async () => ({
+      ok: false,
+      errors: ['Graphics.fillStar is not a function'],
+    }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(422);
+    expect(approve.json().error.code).toBe('runtime_failed');
+    expect(approve.json().error.issues.join(' ')).toMatch(/fillStar/);
+
+    const after = await job(h.app, generated);
+    expect(after.status).toBe('failed');
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
   });
 
   it('refuses a stale approval after another change lands', async () => {

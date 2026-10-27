@@ -12,6 +12,7 @@ import {
   type ForgeUsage,
   type ForgeValidation,
 } from '@mml/shared';
+import { checkGameRuntime } from './runtime-check.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
 
 /**
@@ -32,6 +33,8 @@ export interface ForgeManagerOptions {
   reasoningEffort?: 'low' | 'medium' | 'high';
   /** Extra environment for the child process (tests use it to script the CLI). */
   env?: NodeJS.ProcessEnv;
+  /** Browser runtime check run before approval; injectable for tests. */
+  runtimeCheck?: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
   now?: () => Date;
 }
 
@@ -63,6 +66,7 @@ export class ForgeJobManager {
   private readonly maxInputTokens: number;
   private readonly effort: 'low' | 'medium' | 'high';
   private readonly env: NodeJS.ProcessEnv | undefined;
+  private readonly runtimeCheck: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
   private readonly now: () => Date;
   private readonly jobs = new Map<string, ForgeJob>();
   private readonly state = new Map<string, ExecuteState>();
@@ -78,6 +82,7 @@ export class ForgeJobManager {
     this.maxInputTokens = options.maxInputTokens ?? 1_500_000;
     this.effort = options.reasoningEffort ?? 'low';
     this.env = options.env;
+    this.runtimeCheck = options.runtimeCheck ?? checkGameRuntime;
     this.now = options.now ?? (() => new Date());
   }
 
@@ -215,6 +220,29 @@ export class ForgeJobManager {
         throw new ForgeError(
           'version_conflict',
           `The approved game is v${String(state.current_version)}, but this change was staged from v${String(current.base_version)}. Regenerate it.`,
+        );
+      }
+
+      // Server-side runtime verification: a structurally valid game can still
+      // throw on load. Nothing is promoted until it renders cleanly.
+      const stagedHtml = await this.workspace.stagedHtml(current.project_id, current.id);
+      const runtime = stagedHtml
+        ? await this.runtimeCheck(stagedHtml)
+        : { ok: false, errors: ['The staged game is missing.'] };
+      if (!runtime.ok) {
+        const failed = ForgeJobSchema.parse({
+          ...current,
+          status: 'failed',
+          error: 'Runtime verification failed.',
+          validation: { ok: false, issues: runtime.errors },
+          finished_at: this.now().toISOString(),
+        });
+        this.jobs.set(current.id, failed);
+        await this.persist(failed);
+        throw new ForgeError(
+          'runtime_failed',
+          'The staged game failed runtime verification.',
+          runtime.errors,
         );
       }
 

@@ -163,6 +163,9 @@ export function registerForgeRoutes(
             'img-src data: blob:',
             'connect-src https://cdn.jsdelivr.net',
             "frame-ancestors 'self'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "object-src 'none'",
           ].join('; '),
         )
         .header('cache-control', 'no-store')
@@ -271,11 +274,13 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
       const status =
         error.code === 'invalid_job_id'
           ? 404
-          : error.code === 'too_many_jobs'
-            ? 429
-            : error.code === 'path_escape' || error.code === 'invalid_project_id'
-              ? 400
-              : 409;
+          : error.code === 'runtime_failed'
+            ? 422
+            : error.code === 'too_many_jobs'
+              ? 429
+              : error.code === 'path_escape' || error.code === 'invalid_project_id'
+                ? 400
+                : 409;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message, issues: error.details },
