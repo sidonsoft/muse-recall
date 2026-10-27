@@ -1,0 +1,11 @@
+I did not addthe countdown timer or speedbonusesto [index.html](/Users/burnz/muse-demo-live/ws/forge/focusflow/staging/0ecc11a0-6eac-4e30-a1c4-cf2eaed49daf/index.html).
+
+Theyconflict with theauthoritative FocusFlow decisions forthis workspace:
+
+- Never add countdown mechanics.
+-Avoid countdown timers and time pressure.
+-Keep copy concise and calm.
+
+A time-remaining-today timerand bonus points for finishing quickly would bothaddtime pressure. I left the file unchanged, so existing controls, state, layout, and identityarepreserved.
+
+If you want to lift theno-countdown rule, sayso explicitly. Acalm alternative would be a statictodayprogresscountwith no timer orscoring.

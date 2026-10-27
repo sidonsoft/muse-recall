@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "job_id": "1621b9db-76ac-4c94-9a3a-48ee1290fd42",
+  "url": "http://127.0.0.1:8798/",
+  "tested_at": "2026-10-27T19:39:15.989Z",
+  "verdict": "FAIL",
+  "failure": "Add task did not create a task; native form submission is blocked by the preview CSP sandbox (allow-forms is absent).",
+  "task_rows_after_add": 0,
+  "empty_state_rows": 1,
+  "input_value_after_submit": "Draft launch checklist",
+  "console_errors": [
+    "Blocked form submission to '' because the form's frame is sandboxed and the 'allow-forms' permission is not set."
+  ]
+}

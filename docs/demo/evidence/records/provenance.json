@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "project_id": "focusflow",
+  "application": "FocusFlow — single-file task planner (non-game)",
+  "captured_at": "2026-10-27T19:47:57.195Z",
+  "repository": "sidonsoft/muse-recall",
+  "branch": "agent/muse-recall-live-demo",
+  "base_commit": "41b1684",
+  "server_config": {
+    "HOST": "127.0.0.1",
+    "PORT": "8799",
+    "NODE_ENV": "production",
+    "LOG_LEVEL": "info",
+    "CORS_ORIGINS": "http://127.0.0.1:5199,http://localhost:5199",
+    "DATABASE_PATH": "/Users/burnz/muse-demo-live/demo.db",
+    "WORKSPACE_ROOT": "/Users/burnz/muse-demo-live/ws",
+    "SQLITE_WAL": "true",
+    "MODEL_PROVIDER": "muse-cli",
+    "MUSE_MODEL": "muse-spark-1.3",
+    "MUSE_REASONING_EFFORT": "high",
+    "MUSE_TIMEOUT_MS": "900000",
+    "MUSE_FALLBACK_API_KEY": "<set:48 chars>",
+    "MUSE_FALLBACK_MODEL": "muse-spark-1.3-contributor",
+    "FORGE_MUSE_API_KEY": "<set:48 chars>",
+    "FORGE_MUSE_MODEL": "muse-spark-1.3-contributor",
+    "FORGE_FALLBACK_API_KEY": "<set:48 chars>",
+    "FORGE_FALLBACK_MODEL": "muse-spark-1.3-contributor",
+    "FORGE_REASONING_EFFORT": "high",
+    "FORGE_MAX_CALLS": "100",
+    "FORGE_MAX_INPUT_TOKENS": "10000000",
+    "FORGE_MAX_RUNTIME_MS": "1800000",
+    "TOOLS_ENABLED": "true",
+    "TOOL_APPROVAL_POLICY": "always"
+  },
+  "model": {
+    "provider": "muse-cli",
+    "chat": "muse-spark-1.3",
+    "forge": "muse-spark-1.3-contributor",
+    "effort": "high"
+  },
+  "limits": {
+    "forge_max_calls": 100,
+    "forge_max_input_tokens": 10000000,
+    "forge_max_runtime_ms": 1800000,
+    "muse_timeout_ms": 900000
+  },
+  "fallback": {
+    "configured": true,
+    "same_model": true,
+    "same_key": true,
+    "independent_quota": false,
+    "activated": false
+  },
+  "selected_attempts": {
+    "generation": "attempt-2-generate-retake",
+    "modification": "attempt-3-modify"
+  },
+  "retake_count": 1,
+  "rejected_attempts": [
+    "attempt-1-generate",
+    "attempt-4-guard-probe"
+  ],
+  "final_state": {
+    "project_id": "focusflow",
+    "current_version": 2,
+    "versions": [
+      {
+        "version": 1,
+        "created_at": "2026-10-27T19:41:46.570Z",
+        "summary": "Application updated.",
+        "base_version": null,
+        "job_id": "e358246a-6741-499c-8057-6b2447e31718",
+        "sha256": "53d1e47498c735746c0fd0b5f4b70d83872f26bbb1bb34f05d6d12030fc8e995"
+      },
+      {
+        "version": 2,
+        "created_at": "2026-10-27T19:45:07.115Z",
+        "summary": "Application updated.",
+        "base_version": 1,
+        "job_id": "aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+        "sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d"
+      }
+    ],
+    "can_rollback": true
+  },
+  "attempts": [
+    {
+      "label": "attempt-1-generate",
+      "selected": false,
+      "outcome": "rejected",
+      "reason": "native form submission blocked by preview CSP sandbox (allow-forms absent)",
+      "artifact_sha256": "95aa8d1dfa289d288010891fa6035410ead89d316c2a30fca1ce500891a566eb",
+      "artifact_file": "artifacts/v1-staged.html",
+      "screenshots": [
+        "screenshots/v1-failure-form-blocked.png"
+      ],
+      "browser_validation": "records/v1-browser-failure.json",
+      "job_id": "1621b9db-76ac-4c94-9a3a-48ee1290fd42",
+      "kind": "generate",
+      "model_provider": "muse-cli",
+      "forge_model": "muse-spark-1.3-contributor",
+      "reasoning_effort": "high",
+      "base_version": null,
+      "version": null,
+      "prompt_sha256": "0ed6bcb7690e61ba3d267a605a8bcea6e3b7cf83338e209764e333a4e17b9560",
+      "memory_ids": [
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ],
+      "usage": {
+        "calls": 9,
+        "input_tokens": 329279,
+        "output_tokens": 7117,
+        "runtime_ms": 65111
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "decision_guard": {
+        "assessment": "not_verified",
+        "engine_verdict": "UNVERIFIED",
+        "findings": 0,
+        "unverified": 3,
+        "runtime_verified": false
+      },
+      "status": "rejected",
+      "error": null
+    },
+    {
+      "label": "attempt-2-generate-retake",
+      "selected": true,
+      "outcome": "approved-v1",
+      "artifact_sha256": "53d1e47498c735746c0fd0b5f4b70d83872f26bbb1bb34f05d6d12030fc8e995",
+      "artifact_file": "artifacts/v2-staged.html",
+      "screenshots": [
+        "screenshots/ui-01-studio-review.png",
+        "screenshots/ui-05-approved.png",
+        "screenshots/v2-approved-desktop.png",
+        "screenshots/v2-approved-mobile.png"
+      ],
+      "browser_validation": "records/v2-browser-validation.json",
+      "job_id": "e358246a-6741-499c-8057-6b2447e31718",
+      "kind": "generate",
+      "model_provider": "muse-cli",
+      "forge_model": "muse-spark-1.3-contributor",
+      "reasoning_effort": "high",
+      "base_version": null,
+      "version": 1,
+      "prompt_sha256": "bbf6a0ef86b60a9b027653d92f920ec99989a05ad1778d2bea32feec5af1a7a8",
+      "memory_ids": [
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ],
+      "usage": {
+        "calls": 6,
+        "input_tokens": 208950,
+        "output_tokens": 6077,
+        "runtime_ms": 49151
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "decision_guard": {
+        "assessment": "not_verified",
+        "engine_verdict": "UNVERIFIED",
+        "findings": 0,
+        "unverified": 3,
+        "runtime_verified": true
+      },
+      "status": "succeeded",
+      "error": null
+    },
+    {
+      "label": "attempt-3-modify",
+      "selected": true,
+      "outcome": "approved-v2",
+      "artifact_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "artifact_file": "artifacts/v3-staged.html",
+      "screenshots": [
+        "screenshots/ui-06-modification-review.png",
+        "screenshots/ui-07-modification-diff.png",
+        "screenshots/ui-08-modification-source.png",
+        "screenshots/ui-10-approved-v2.png",
+        "screenshots/v3-desktop-priorities.png",
+        "screenshots/v3-mobile.png"
+      ],
+      "browser_validation": "records/v3-browser-validation.json",
+      "job_id": "aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+      "kind": "modify",
+      "model_provider": "muse-cli",
+      "forge_model": "muse-spark-1.3-contributor",
+      "reasoning_effort": "high",
+      "base_version": 1,
+      "version": 2,
+      "prompt_sha256": "aa444ee7cc8e926f7c9c6577c28938c95d00950df8fb80ae5ed3c07d5419673d",
+      "memory_ids": [
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "313d7bea-477d-4888-805c-364b72cc7160",
+        "1c31b594-cc3e-4df3-9d32-5475d50dc84f"
+      ],
+      "usage": {
+        "calls": 17,
+        "input_tokens": 681229,
+        "output_tokens": 5183,
+        "runtime_ms": 116334
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "decision_guard": {
+        "assessment": "not_verified",
+        "engine_verdict": "UNVERIFIED",
+        "findings": 0,
+        "unverified": 4,
+        "runtime_verified": true
+      },
+      "status": "succeeded",
+      "error": null
+    },
+    {
+      "label": "attempt-4-guard-probe",
+      "selected": false,
+      "outcome": "rejected-no-op",
+      "reason": "model honoured the remembered no-countdown constraint and left the file unchanged; nothing to promote",
+      "artifact_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "artifact_file": "artifacts/v4-staged.html",
+      "model_response": "records/v4-model-response.txt",
+      "job_id": "0ecc11a0-6eac-4e30-a1c4-cf2eaed49daf",
+      "kind": "modify",
+      "model_provider": "muse-cli",
+      "forge_model": "muse-spark-1.3-contributor",
+      "reasoning_effort": "high",
+      "base_version": 2,
+      "version": null,
+      "prompt_sha256": "1272a05faf9b8b803550bf3be1f5f13b41e3894dc94d3b97381ad359e112b72a",
+      "memory_ids": [
+        "70f5acb3-e721-48aa-8e53-6d171b5c4560",
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "e685eb97-ebc6-4a15-b164-e81195a5fc19",
+        "1c31b594-cc3e-4df3-9d32-5475d50dc84f",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ],
+      "usage": {
+        "calls": 3,
+        "input_tokens": 100193,
+        "output_tokens": 1718,
+        "runtime_ms": 41662
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "decision_guard": {
+        "assessment": "not_verified",
+        "engine_verdict": "UNVERIFIED",
+        "findings": 0,
+        "unverified": 5,
+        "runtime_verified": false
+      },
+      "status": "rejected",
+      "error": null
+    }
+  ],
+  "provenance_notes": [
+    "All attempts were executed against the real muse-cli provider with muse-spark-1.3-contributor at effort high; no fake-Muse transport was used.",
+    "Attempt 1 is preserved and is not presented as the first successful generation.",
+    "Retrieved memory ids prove injection, not causal influence; controlled causal evidence is Phase 12A/15B.",
+    "The v4 guard probe produced no source change; Decision Guard had no violation to report.",
+    "Secrets are not present in this pack; see records/effective-config.json for redacted values."
+  ]
+}

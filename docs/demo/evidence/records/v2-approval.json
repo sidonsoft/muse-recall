@@ -1,0 +1,43 @@
+{
+  "approved_at": "2026-10-27T19:41:47.085Z",
+  "state": {
+    "project_id": "focusflow",
+    "current_version": 1,
+    "versions": [
+      {
+        "version": 1,
+        "created_at": "2026-10-27T19:41:46.570Z",
+        "summary": "Application updated.",
+        "base_version": null,
+        "job_id": "e358246a-6741-499c-8057-6b2447e31718",
+        "sha256": "53d1e47498c735746c0fd0b5f4b70d83872f26bbb1bb34f05d6d12030fc8e995"
+      }
+    ],
+    "can_rollback": false
+  },
+  "jobs": [
+    {
+      "id": "e358246a-6741-499c-8057-6b2447e31718",
+      "kind": "generate",
+      "status": "succeeded",
+      "version": 1,
+      "memory_ids": [
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ]
+    },
+    {
+      "id": "1621b9db-76ac-4c94-9a3a-48ee1290fd42",
+      "kind": "generate",
+      "status": "rejected",
+      "version": null,
+      "memory_ids": [
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ]
+    }
+  ],
+  "errors": []
+}

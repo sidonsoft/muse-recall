@@ -1,0 +1,81 @@
+{
+  "approved_at": "2026-10-27T19:45:07.595Z",
+  "state": {
+    "project_id": "focusflow",
+    "current_version": 2,
+    "versions": [
+      {
+        "version": 1,
+        "created_at": "2026-10-27T19:41:46.570Z",
+        "summary": "Application updated.",
+        "base_version": null,
+        "job_id": "e358246a-6741-499c-8057-6b2447e31718",
+        "sha256": "53d1e47498c735746c0fd0b5f4b70d83872f26bbb1bb34f05d6d12030fc8e995"
+      },
+      {
+        "version": 2,
+        "created_at": "2026-10-27T19:45:07.115Z",
+        "summary": "Application updated.",
+        "base_version": 1,
+        "job_id": "aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+        "sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d"
+      }
+    ],
+    "can_rollback": true
+  },
+  "jobs": [
+    {
+      "id": "aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+      "kind": "modify",
+      "status": "succeeded",
+      "version": 2,
+      "memory_ids": [
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "313d7bea-477d-4888-805c-364b72cc7160",
+        "1c31b594-cc3e-4df3-9d32-5475d50dc84f"
+      ],
+      "usage": {
+        "calls": 17,
+        "input_tokens": 681229,
+        "output_tokens": 5183,
+        "runtime_ms": 116334
+      }
+    },
+    {
+      "id": "e358246a-6741-499c-8057-6b2447e31718",
+      "kind": "generate",
+      "status": "succeeded",
+      "version": 1,
+      "memory_ids": [
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ],
+      "usage": {
+        "calls": 6,
+        "input_tokens": 208950,
+        "output_tokens": 6077,
+        "runtime_ms": 49151
+      }
+    },
+    {
+      "id": "1621b9db-76ac-4c94-9a3a-48ee1290fd42",
+      "kind": "generate",
+      "status": "rejected",
+      "version": null,
+      "memory_ids": [
+        "94eb8a88-b4dd-42d7-a7ca-b22e0c8bbd5c",
+        "f94c57f9-ce23-4848-95bf-846550bcf3e6",
+        "313d7bea-477d-4888-805c-364b72cc7160"
+      ],
+      "usage": {
+        "calls": 9,
+        "input_tokens": 329279,
+        "output_tokens": 7117,
+        "runtime_ms": 65111
+      }
+    }
+  ],
+  "errors": []
+}

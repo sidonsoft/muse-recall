@@ -1,0 +1,9 @@
+Improve FocusFlow by adding task priorities and a compact summary showing the number of high-priority tasks remaining.
+
+Keep all existing functionality working.
+
+Preserve the current visual style.
+
+Do not introduce external dependencies or browser storage.
+
+Make the smallest practical changes.

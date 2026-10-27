@@ -1,0 +1,145 @@
+{
+  "version": "v3",
+  "job_id": "aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+  "url": "http://127.0.0.1:8799/api/forge/projects/focusflow/preview?job=aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+  "checked_at": "2026-10-27T19:44:51.376Z",
+  "results": [
+    {
+      "name": "initial sample state is rendered",
+      "ok": true,
+      "detail": "count=2 progress={\"label\":\"1 of 2 completed\",\"percent\":\"50%\",\"now\":\"50\"}"
+    },
+    {
+      "name": "initial high-priority summary counts the seeded high task",
+      "ok": true,
+      "detail": "1 high-priority task remaining"
+    },
+    {
+      "name": "high-priority task added",
+      "ok": true,
+      "detail": "3 rows"
+    },
+    {
+      "name": "priority selector resets to normal",
+      "ok": true,
+      "detail": "normal"
+    },
+    {
+      "name": "high-priority badge is visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "high-priority count rises to 2",
+      "ok": true,
+      "detail": "2 high-priority tasks remaining"
+    },
+    {
+      "name": "normal task added",
+      "ok": true,
+      "detail": "4 rows"
+    },
+    {
+      "name": "completing a high task drops remaining to 1",
+      "ok": true,
+      "detail": "1 high-priority task remaining"
+    },
+    {
+      "name": "progress updates after completion",
+      "ok": true,
+      "detail": "{\"label\":\"2 of 4 completed\",\"percent\":\"50%\",\"now\":\"50\"}"
+    },
+    {
+      "name": "reactivating a high task restores count 2",
+      "ok": true,
+      "detail": "2 high-priority tasks remaining"
+    },
+    {
+      "name": "toggling a normal task to high raises count to 3",
+      "ok": true,
+      "detail": "3 high-priority tasks remaining"
+    },
+    {
+      "name": "second high badge is visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Active filter still works",
+      "ok": true,
+      "detail": "[\"Take a short focus break\\nHigh\\nDelete\",\"Ship the demo\\nHigh\\nDelete\",\"Water the plants\\nHigh\\nDelete\"]"
+    },
+    {
+      "name": "Completed filter still works",
+      "ok": true,
+      "detail": "[\"✓\\nPlan today's top three tasks\\nMark high\\nDelete\"]"
+    },
+    {
+      "name": "All filter still works",
+      "ok": true,
+      "detail": "4"
+    },
+    {
+      "name": "delete still works",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "name": "deleting a high task updates count to 2",
+      "ok": true,
+      "detail": "2 high-priority tasks remaining"
+    },
+    {
+      "name": "clear completed still works",
+      "ok": true,
+      "detail": "2"
+    },
+    {
+      "name": "high count excludes completed tasks",
+      "ok": true,
+      "detail": "2 high-priority tasks remaining"
+    },
+    {
+      "name": "no browser storage calls",
+      "ok": true,
+      "detail": "calls=0"
+    },
+    {
+      "name": "state is not persisted across reload",
+      "ok": true,
+      "detail": "[\"✓\\nPlan today's top three tasks\\nMark high\\nDelete\",\"Take a short focus break\\nHigh\\nDelete\"]"
+    },
+    {
+      "name": "visual identity preserved (amber accent)",
+      "ok": true,
+      "detail": "{\"accent\":\"#e7c17c\",\"bg\":\"#141311\",\"width\":\"620px\"}"
+    },
+    {
+      "name": "mobile layout has no horizontal overflow",
+      "ok": true,
+      "detail": "{\"scroll\":390,\"client\":390}"
+    },
+    {
+      "name": "no external network requests",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no page exceptions or console errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "check_failures": [],
+  "runtime_problems": [],
+  "requests": [
+    "http://127.0.0.1:8799/api/forge/projects/focusflow/preview?job=aeb6b175-01a6-4c9b-93a1-757cddf475e1",
+    "http://127.0.0.1:8799/api/forge/projects/focusflow/preview?job=aeb6b175-01a6-4c9b-93a1-757cddf475e1"
+  ],
+  "style": {
+    "accent": "#e7c17c",
+    "bg": "#141311",
+    "width": "620px"
+  },
+  "passed": true
+}

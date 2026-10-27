@@ -1,0 +1,132 @@
+{
+  "version": "v2",
+  "job_id": "e358246a-6741-499c-8057-6b2447e31718",
+  "url": "http://127.0.0.1:8799/api/forge/projects/focusflow/preview?job=e358246a-6741-499c-8057-6b2447e31718",
+  "checked_at": "2026-10-27T19:41:18.758Z",
+  "initial_state": {
+    "count": 2,
+    "texts": [
+      "Plan today's top three tasks",
+      "Take a short focus break"
+    ],
+    "progress": {
+      "label": "1 of 2 completed",
+      "percent": "50%",
+      "now": "50"
+    }
+  },
+  "results": [
+    {
+      "name": "initial sample state is rendered",
+      "ok": true,
+      "detail": "count=2 progress={\"label\":\"1 of 2 completed\",\"percent\":\"50%\",\"now\":\"50\"} texts=[\"✓\\nPlan today's top three tasks\\nDelete\",\"Take a short focus break\\nDelete\"]"
+    },
+    {
+      "name": "initial progress aria value is 50",
+      "ok": true,
+      "detail": "50"
+    },
+    {
+      "name": "three tasks added (click + Enter)",
+      "ok": true,
+      "detail": "5 rows; [\"✓\\nPlan today's top three tasks\\nDelete\",\"Take a short focus break\\nDelete\",\"Draft launch checklist\\nDelete\",\"Review demo script\\nDelete\",\"Book studio time\\nDelete\"]"
+    },
+    {
+      "name": "progress shows 1 of 5 after add",
+      "ok": true,
+      "detail": "{\"label\":\"1 of 5 completed\",\"percent\":\"20%\",\"now\":\"20\"}"
+    },
+    {
+      "name": "completion updates progress text",
+      "ok": true,
+      "detail": "{\"label\":\"2 of 5 completed\",\"percent\":\"40%\",\"now\":\"40\"}"
+    },
+    {
+      "name": "completion updates percent",
+      "ok": true,
+      "detail": "40%"
+    },
+    {
+      "name": "completion updates aria-valuenow",
+      "ok": true,
+      "detail": "40"
+    },
+    {
+      "name": "completed row exposes Mark active affordance",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Active filter hides completed",
+      "ok": true,
+      "detail": "[\"Take a short focus break\\nDelete\",\"Draft launch checklist\\nDelete\",\"Book studio time\\nDelete\"]"
+    },
+    {
+      "name": "Active filter pressed state",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Completed filter shows two",
+      "ok": true,
+      "detail": "[\"✓\\nPlan today's top three tasks\\nDelete\",\"✓\\nReview demo script\\nDelete\"]"
+    },
+    {
+      "name": "All filter shows five",
+      "ok": true,
+      "detail": "5"
+    },
+    {
+      "name": "delete removes a task",
+      "ok": true,
+      "detail": "4"
+    },
+    {
+      "name": "progress after delete is 2 of 4",
+      "ok": true,
+      "detail": "{\"label\":\"2 of 4 completed\",\"percent\":\"50%\",\"now\":\"50\"}"
+    },
+    {
+      "name": "clear completed removes completed tasks",
+      "ok": true,
+      "detail": "2"
+    },
+    {
+      "name": "progress after clear is 0 of 2",
+      "ok": true,
+      "detail": "{\"label\":\"0 of 2 completed\",\"percent\":\"0%\",\"now\":\"0\"}"
+    },
+    {
+      "name": "no browser storage calls",
+      "ok": true,
+      "detail": "calls=0"
+    },
+    {
+      "name": "state is not persisted across reload",
+      "ok": true,
+      "detail": "[\"✓\\nPlan today's top three tasks\\nDelete\",\"Take a short focus break\\nDelete\"]"
+    },
+    {
+      "name": "mobile layout has no horizontal overflow",
+      "ok": true,
+      "detail": "{\"scroll\":390,\"client\":390}"
+    },
+    {
+      "name": "no external network requests",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no page exceptions or console errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "problems": [],
+  "requests": [
+    "http://127.0.0.1:8799/api/forge/projects/focusflow/preview?job=e358246a-6741-499c-8057-6b2447e31718",
+    "http://127.0.0.1:8799/api/forge/projects/focusflow/preview?job=e358246a-6741-499c-8057-6b2447e31718"
+  ],
+  "passed": true,
+  "record_note": "initial_state corrected after the run; the live assertions and results are unchanged and all 21 checks passed."
+}

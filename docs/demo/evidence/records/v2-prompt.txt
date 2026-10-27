@@ -1,0 +1,15 @@
+Build a polished, responsive single-file HTML task planner called FocusFlow.
+
+Users should be able to add tasks, mark tasks complete, delete tasks and filter between all, active and completed tasks.
+
+Include a clear progress indicator and an attractive modern interface.
+
+Use HTML, CSS and JavaScript in one file.
+
+Keep application state in memory during the session rather than using localStorage or external services.
+
+Do not require a build step.
+
+The application must work in the existing Muse Recall sandbox.
+
+Sandbox constraint (important): the Muse Recall preview iframe is sandboxed with allow-scripts but without allow-forms, so native form submission is blocked. Do not use form submission to add tasks. Wire the "Add task" button with a click handler and support Enter in the text input; both must update the in-memory task list.
