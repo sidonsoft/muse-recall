@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sky Pairs — a tide-pool arcade of starry matching</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #0B2F4A; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #game canvas { border-radius: 18px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55); }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  'use strict';
+
+  var W = 900, H = 700;
+  var CREAM = 0xF6EFDD;
+  var CREAM_CSS = '#F6EFDD';
+  var MUTED_CSS = '#AEB8D6';
+  var GOLD = 0xF7D774;
+  var GOLD_CSS = '#F7D774';
+  var ACCENT = 0x4EA8DE;
+  var ACCENT_CSS = '#4EA8DE';
+  var ACCENT_DARK = 0x2A7FB0;
+  var INK_CSS = '#102A43';
+  var SERIF = 'Georgia, "Times New Roman", serif';
+  var SANS = '"Trebuchet MS", Verdana, "Segoe UI", sans-serif';
+
+  var CARD_W = 158, CARD_H = 148, GAP_X = 30, GAP_Y = 26;
+
+  // Six constellations. Points are in a normalised box (x and y in [-1, 1]).
+  var CONSTELLATIONS = [
+    { name: 'Triangle',
+      pts: [[0, -0.80], [-0.70, 0.55], [0.70, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 0]] },
+    { name: 'Trail',
+      pts: [[-0.75, 0.45], [0, 0], [0.75, -0.45]],
+      lines: [[0, 1], [1, 2]] },
+    { name: 'Square',
+      pts: [[-0.55, -0.55], [0.55, -0.55], [0.55, 0.55], [-0.55, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 0]] },
+    { name: 'Cross',
+      pts: [[0, -0.75], [0, 0.75], [-0.65, 0], [0.65, 0], [0, 0]],
+      lines: [[0, 4], [4, 1], [2, 4], [4, 3]] },
+    { name: 'Dipper',
+      pts: [[-0.80, 0.50], [-0.35, 0.50], [0.05, 0.25], [0.35, -0.30], [0.80, -0.50]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+    { name: 'Crown',
+      pts: [[-0.80, 0.40], [-0.40, -0.40], [0, 0.10], [0.40, -0.40], [0.80, 0.40]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] }
+  ];
+
+  // ---- gentle sound, all synthesised, no files ----
+  var audioCtx = null;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) { audioCtx = new AC(); }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+    } catch (e) { audioCtx = null; }
+  }
+  function tone(freq, delay, dur, vol) {
+    try {
+      if (!audioCtx) { return; }
+      var t0 = audioCtx.currentTime + (delay || 0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.07, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.15));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + (dur || 0.15) + 0.05);
+    } catch (e) { /* silent */ }
+  }
+  function sFlip() { tone(440, 0, 0.12, 0.05); }
+  function sMatch() { tone(523.25, 0, 0.16, 0.07); tone(659.25, 0.11, 0.22, 0.07); }
+  function sNoMatch() { tone(329.63, 0, 0.14, 0.045); }
+  function sWin() {
+    var seq = [523.25, 587.33, 659.25, 783.99];
+    for (var i = 0; i < seq.length; i++) { tone(seq[i], i * 0.14, 0.24, 0.07); }
+  }
+
+  function drawSparkle(g, x, y, r, color, alpha) {
+    g.lineStyle(2, color, alpha);
+    g.beginPath();
+    g.moveTo(x - r, y); g.lineTo(x + r, y);
+    g.moveTo(x, y - r); g.lineTo(x, y + r);
+    g.strokePath();
+  }
+
+  // Draw one constellation into a Graphics object, centred on (cx, cy).
+  function drawConstellation(g, def, cx, cy, sx, sy) {
+    var i, a, b;
+    var px = [], py = [];
+    for (i = 0; i < def.pts.length; i++) {
+      px.push(cx + def.pts[i][0] * sx);
+      py.push(cy + def.pts[i][1] * sy);
+    }
+    g.lineStyle(3, CREAM, 0.95);
+    for (i = 0; i < def.lines.length; i++) {
+      a = def.lines[i][0]; b = def.lines[i][1];
+      g.beginPath();
+      g.moveTo(px[a], py[a]);
+      g.lineTo(px[b], py[b]);
+      g.strokePath();
+    }
+    for (i = 0; i < px.length; i++) {
+      g.fillStyle(CREAM, 0.22);
+      g.fillCircle(px[i], py[i], 11);
+      g.fillStyle(0xFFFDF4, 1);
+      g.fillCircle(px[i], py[i], 6);
+      drawSparkle(g, px[i], py[i], 11, CREAM, 0.55);
+    }
+  }
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: W,
+    height: H,
+    backgroundColor: '#0E3A55',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: { create: create, update: update }
+  };
+
+  var game = new Phaser.Game(config);
+
+  function create() {
+    var scene = this;
+    ensureAudio();
+    scene.input.once('pointerdown', ensureAudio);
+
+    var twinkles = [];
+    var bubbles = [];
+
+    // ---------- deep ocean background (solid, no purple gradient) ----------
+    (function buildBackground() {
+      var bg = scene.add.graphics().setDepth(0);
+      bg.fillStyle(0x0E3A55, 1);
+      bg.fillRect(0, 0, W, H);
+      bg.fillStyle(0x0B2F4A, 1);
+      bg.fillRect(0, 0, W, 240);
+
+      // soft cool currents, very faint
+      bg.fillStyle(0x4EA8DE, 0.10);
+      bg.fillCircle(220, 220, 150);
+      bg.fillStyle(0x4EA8DE, 0.08);
+      bg.fillCircle(680, 300, 180);
+      bg.fillStyle(0x2A7FB0, 0.10);
+      bg.fillCircle(450, 560, 200);
+
+      // sandy floor glow along the bottom
+      bg.fillStyle(0x4EA8DE, 0.10);
+      bg.fillRect(0, H - 60, W, 60);
+
+      // a quiet pearl low in the corner, drawn not pasted
+      bg.fillStyle(0xF6EFDD, 0.14);
+      bg.fillCircle(802, 588, 44);
+      bg.fillStyle(0xF6EFDD, 0.95);
+      bg.fillCircle(802, 588, 26);
+      bg.fillStyle(0xD9D2BC, 1);
+      bg.fillCircle(794, 581, 5);
+      bg.fillCircle(810, 595, 4);
+
+      // scattered stars
+      var i, x, y, r;
+      for (i = 0; i < 130; i++) {
+        x = 20 + Math.random() * (W - 40);
+        y = 110 + Math.random() * (H - 130);
+        r = Math.random() < 0.85 ? 1.5 : 2.5;
+        var base = 0.25 + Math.random() * 0.45;
+        var c = scene.add.circle(x, y, r, 0xF6EFDD, base).setDepth(1);
+        twinkles.push({
+          obj: c, base: base,
+          amp: 0.10 + Math.random() * 0.15,
+          speed: 0.4 + Math.random() * 1.2,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+      // a few hand-drawn sparkles among the stars
+      var sg = scene.add.graphics().setDepth(1);
+      var spots = [[140, 160], [740, 180], [330, 620], [590, 130], [90, 470]];
+      for (i = 0; i < spots.length; i++) {
+        drawSparkle(sg, spots[i][0], spots[i][1], 7, CREAM, 0.7);
+      }
+
+      // slow rising tide bubbles (calm, no flashing)
+      for (i = 0; i < 22; i++) {
+        var br = 2 + Math.random() * 5;
+        var bx = 20 + Math.random() * (W - 40);
+        var by = 120 + Math.random() * (H - 140);
+        var bc = scene.add.circle(bx, by, br).setDepth(1)
+          .setStrokeStyle(1.5, ACCENT, 0.35).setFillStyle(ACCENT, 0.06);
+        bubbles.push({
+          obj: bc,
+          speed: 8 + Math.random() * 18,
+          drift: Math.random() * Math.PI * 2,
+          x0: bx
+        });
+      }
+    })();
+
+    scene.twinkles = twinkles;
+    scene.bubbles = bubbles;
+
+    // ---------- HUD ----------
+    var hud = scene.add.container(0, 0).setDepth(10);
+    var title = scene.add.text(48, 26, 'Sky Pairs', {
+      fontFamily: SERIF, fontSize: '30px', color: CREAM_CSS, fontStyle: 'italic'
+    });
+    var subtitle = scene.add.text(48, 60, 'a tide-pool arcade of starry matching', {
+      fontFamily: SANS, fontSize: '14px', color: MUTED_CSS
+    });
+    var movesText = scene.add.text(W / 2, 30, 'Moves   0', {
+      fontFamily: SANS, fontSize: '22px', color: CREAM_CSS
+    }).setOrigin(0.5, 0);
+    var pairsText = scene.add.text(W - 48, 30, 'Pairs   0 / 6', {
+      fontFamily: SANS, fontSize: '22px', color: CREAM_CSS
+    }).setOrigin(1, 0);
+    var scoreText = scene.add.text(W / 2, 58, 'Score 0  •  Best 0', {
+      fontFamily: SANS, fontSize: '15px', color: ACCENT_CSS
+    }).setOrigin(0.5, 0);
+    var streakText = scene.add.text(48, 30, '', {
+      fontFamily: SANS, fontSize: '15px', color: ACCENT_CSS, fontStyle: 'bold'
+    }).setOrigin(0, 0);
+    var pipsG = scene.add.graphics();
+    var divider = scene.add.graphics();
+    divider.lineStyle(1.5, ACCENT, 0.45);
+    divider.beginPath();
+    divider.moveTo(48, 96); divider.lineTo(W - 48, 96);
+    divider.strokePath();
+    hud.add([title, subtitle, movesText, pairsText, scoreText, streakText, pipsG, divider]);
+
+    scene.add.text(W / 2, 662, 'Chain matches for a streak bonus — 3 stars at 12 moves', {
+      fontFamily: SANS, fontSize: '16px', color: MUTED_CSS
+    }).setOrigin(0.5, 0.5).setDepth(10);
+
+    // ---------- game state (arcade score rewards only, never a penalty) ----------
+    var savedBest = 0;
+    try { savedBest = parseInt(window.localStorage.getItem('skypairs_best') || '0', 10) || 0; } catch (e) { savedBest = 0; }
+    var state = {
+      moves: 0, pairs: 0, score: 0, best: savedBest, streak: 0,
+      first: null, second: null,
+      lock: false, over: false, started: false
+    };
+
+    function drawPips() {
+      pipsG.clear();
+      for (var p = 0; p < 6; p++) {
+        var px = 48 + p * 22;
+        if (p < state.pairs) {
+          pipsG.fillStyle(ACCENT, 1);
+          pipsG.fillCircle(px, 66, 6);
+        } else {
+          pipsG.lineStyle(1.5, ACCENT, 0.5);
+          pipsG.strokeCircle(px, 66, 6);
+        }
+      }
+    }
+
+    function starCount(moves) {
+      if (moves <= 12) { return 3; }
+      if (moves <= 16) { return 2; }
+      return 1;
+    }
+
+    function setHud() {
+      movesText.setText('Moves   ' + state.moves);
+      pairsText.setText('Pairs   ' + state.pairs + ' / 6');
+      scoreText.setText('Score ' + state.score + '  •  Best ' + state.best);
+      if (state.streak >= 2) {
+        streakText.setText('Streak x' + state.streak);
+      } else if (state.streak === 1) {
+        streakText.setText('Streak x1 — chain it!');
+      } else {
+        streakText.setText('');
+      }
+      drawPips();
+    }
+
+    // ---------- cards ----------
+    var cards = [];
+
+    function paintCard(card) {
+      var g = card.bg;
+      g.clear();
+      if (card.faceUp) {
+        if (card.matched) {
+          g.fillStyle(0x123E5C, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(3.5, ACCENT, 1);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        } else {
+          g.fillStyle(0x17506F, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(2, CREAM, 0.9);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        }
+      } else {
+        g.fillStyle(0x102A43, 1);
+        g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        g.lineStyle(2, ACCENT, 0.9);
+        g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+      }
+      card.backDeco.setVisible(!card.faceUp);
+      card.face.setVisible(card.faceUp);
+    }
+
+    // Gentle match ripple: one slow expanding ring that fades out (no flashing).
+    function ripple(x, y) {
+      var ring = scene.add.circle(x, y, 10).setDepth(7)
+        .setStrokeStyle(3, ACCENT, 0.8).setFillStyle(ACCENT, 0.05);
+      scene.tweens.add({
+        targets: ring, radius: 64, alpha: 0,
+        duration: 650, ease: 'Sine.easeOut',
+        onComplete: function () { ring.destroy(); }
+      });
+    }
+
+    function makeCard(x, y, key) {
+      var visual = scene.add.container(x, y).setDepth(5);
+      var bg = scene.add.graphics();
+      visual.add(bg);
+
+      // face-down decoration: frame, orbit ring and a small drawn star
+      var backDeco = scene.add.graphics();
+      backDeco.lineStyle(1.5, ACCENT, 0.5);
+      backDeco.strokeRoundedRect(-CARD_W / 2 + 9, -CARD_H / 2 + 9, CARD_W - 18, CARD_H - 18, 12);
+      backDeco.lineStyle(1.5, ACCENT, 0.7);
+      backDeco.strokeCircle(0, -6, 24);
+      backDeco.fillStyle(CREAM, 0.95);
+      backDeco.fillCircle(0, -6, 5);
+      drawSparkle(backDeco, 0, -6, 13, CREAM, 0.8);
+      backDeco.fillStyle(CREAM, 0.8);
+      backDeco.fillCircle(-52, -48, 2.5);
+      backDeco.fillCircle(52, -48, 2.5);
+      backDeco.fillCircle(-52, 48, 2.5);
+      backDeco.fillCircle(52, 48, 2.5);
+      visual.add(backDeco);
+
+      // face-up constellation
+      var face = scene.add.container(0, 0);
+      var cg = scene.add.graphics();
+      drawConstellation(cg, CONSTELLATIONS[key], 0, -14, 54, 42);
+      var label = scene.add.text(0, 50, CONSTELLATIONS[key].name, {
+        fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+      }).setOrigin(0.5, 0.5);
+      face.add([cg, label]);
+      visual.add(face);
+
+      var zone = scene.add.zone(x, y, CARD_W, CARD_H)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(6);
+
+      var card = {
+        visual: visual, bg: bg, backDeco: backDeco, face: face,
+        zone: zone, key: key, faceUp: false, matched: false
+      };
+      paintCard(card);
+      zone.on('pointerdown', function () { onCardClicked(card); });
+      return card;
+    }
+
+    function flipCard(card, show, done) {
+      scene.tweens.add({
+        targets: card.visual,
+        scaleX: 0,
+        duration: 140,
+        ease: 'Quad.easeIn',
+        onComplete: function () {
+          card.faceUp = show;
+          paintCard(card);
+          scene.tweens.add({
+            targets: card.visual,
+            scaleX: 1,
+            duration: 190,
+            ease: 'Quad.easeOut',
+            onComplete: function () { if (done) { done(); } }
+          });
+        }
+      });
+    }
+
+    function onCardClicked(card) {
+      ensureAudio();
+      if (!state.started || state.lock || state.over) { return; }
+      if (card.faceUp || card.matched) { return; }
+      if (state.first && card === state.first) { return; }
+      sFlip();
+      if (!state.first) {
+        state.first = card;
+        flipCard(card, true);
+      } else {
+        state.second = card;
+        state.lock = true;
+        state.moves += 1;
+        setHud();
+        flipCard(card, true, resolveTurn);
+      }
+    }
+
+    function resolveTurn() {
+      var a = state.first, b = state.second;
+      if (a.key === b.key) {
+        a.matched = true;
+        b.matched = true;
+        a.zone.input.enabled = false;
+        b.zone.input.enabled = false;
+        paintCard(a);
+        paintCard(b);
+        sMatch();
+        state.streak += 1;
+        state.score += 100 + (state.streak - 1) * 50;
+        if (state.score > state.best) { state.best = state.score; }
+        ripple((a.visual.x + b.visual.x) / 2, (a.visual.y + b.visual.y) / 2);
+        if (state.streak >= 2) { tone(783.99 + state.streak * 40, 0.2, 0.22, 0.06); }
+        scene.tweens.add({
+          targets: [a.visual, b.visual], scale: 1.06,
+          duration: 200, yoyo: true, ease: 'Sine.easeInOut',
+          onComplete: function () {
+            state.pairs += 1;
+            setHud();
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+            if (state.pairs >= 6) { winGame(); }
+          }
+        });
+      } else {
+        sNoMatch();
+        state.streak = 0;
+        setHud();
+        scene.time.delayedCall(650, function () {
+          flipCard(a, false);
+          flipCard(b, false, function () {
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+          });
+        });
+      }
+    }
+
+    // lay out the board: 4 columns by 3 rows
+    var totalW = 4 * CARD_W + 3 * GAP_X;
+    var left = W / 2 - totalW / 2;
+    var top = 132;
+    var deck = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+    Phaser.Utils.Array.Shuffle(deck);
+    var i, c, r, k = 0;
+    for (r = 0; r < 3; r++) {
+      for (c = 0; c < 4; c++) {
+        var cx = left + CARD_W / 2 + c * (CARD_W + GAP_X);
+        var cy = top + CARD_H / 2 + r * (CARD_H + GAP_Y);
+        cards.push(makeCard(cx, cy, deck[k]));
+        k += 1;
+      }
+    }
+
+    function resetBoard() {
+      var d = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+      Phaser.Utils.Array.Shuffle(d);
+      for (var n = 0; n < cards.length; n++) {
+        var card = cards[n];
+        card.key = d[n];
+        card.faceUp = false;
+        card.matched = false;
+        card.visual.scaleX = 1;
+        card.visual.setScale(1);
+        card.zone.input.enabled = true;
+        // redraw the face with the new constellation
+        card.face.removeAll(true);
+        var cg = scene.add.graphics();
+        drawConstellation(cg, CONSTELLATIONS[card.key], 0, -14, 54, 42);
+        var label = scene.add.text(0, 50, CONSTELLATIONS[card.key].name, {
+          fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+        }).setOrigin(0.5, 0.5);
+        card.face.add([cg, label]);
+        paintCard(card);
+      }
+      state.moves = 0;
+      state.pairs = 0;
+      state.score = 0;
+      state.streak = 0;
+      state.first = null;
+      state.second = null;
+      state.lock = false;
+      state.over = false;
+      setHud();
+    }
+
+    // ---------- buttons (drawn pill + text + zone) ----------
+    function makeButton(x, y, w, h, labelText, onTap) {
+      var cont = scene.add.container(x, y);
+      var g = scene.add.graphics();
+      function paint(hover) {
+        g.clear();
+        if (hover) {
+          g.fillStyle(0x7CC4EA, 1);
+        } else {
+          g.fillStyle(ACCENT, 1);
+        }
+        g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+        g.lineStyle(2, 0x102A43, 0.35);
+        g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+      }
+      paint(false);
+      var t = scene.add.text(0, -1, labelText, {
+        fontFamily: SANS, fontSize: '24px', color: INK_CSS, fontStyle: 'bold'
+      }).setOrigin(0.5, 0.5);
+      cont.add([g, t]);
+      var z = scene.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+      z.on('pointerover', function () { paint(true); });
+      z.on('pointerout', function () { paint(false); });
+      z.on('pointerdown', function () { ensureAudio(); onTap(); });
+      cont.setDepth(60);
+      z.setDepth(61);
+      return { cont: cont, zone: z, paint: paint };
+    }
+
+    // ---------- start overlay ----------
+    var startOverlay = scene.add.container(0, 0).setDepth(50);
+    var sDim = scene.add.rectangle(0, 0, W, H, 0x062033, 0.78).setOrigin(0);
+    var sBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var sPanelG = scene.add.graphics();
+    sPanelG.fillStyle(0x102A43, 1);
+    sPanelG.fillRoundedRect(W / 2 - 300, 145, 600, 480, 24);
+    sPanelG.lineStyle(3, ACCENT, 1);
+    sPanelG.strokeRoundedRect(W / 2 - 300, 145, 600, 480, 24);
+    var sTitle = scene.add.text(W / 2, 208, 'Sky Pairs', {
+      fontFamily: SERIF, fontSize: '58px', color: CREAM_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var sSub = scene.add.text(W / 2, 260, 'a tide-pool arcade of starry matching', {
+      fontFamily: SANS, fontSize: '19px', color: ACCENT_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var sFlourish = scene.add.graphics();
+    sFlourish.lineStyle(1.5, ACCENT, 0.7);
+    sFlourish.beginPath();
+    sFlourish.moveTo(W / 2 - 150, 296); sFlourish.lineTo(W / 2 + 150, 296);
+    sFlourish.strokePath();
+    sFlourish.fillStyle(ACCENT, 1);
+    sFlourish.fillCircle(W / 2, 296, 4);
+    var sPreview = scene.add.graphics();
+    drawConstellation(sPreview, CONSTELLATIONS[4], W / 2, 356, 60, 44);
+    var sInfo = scene.add.text(W / 2, 436,
+      'Find the six matching pairs of stars.\nChain matches for streak bonus points — 3 stars at 12 moves!', {
+      fontFamily: SANS, fontSize: '18px', color: CREAM_CSS,
+      align: 'center', lineSpacing: 8
+    }).setOrigin(0.5, 0.5);
+    startOverlay.add([sDim, sBlock, sPanelG, sTitle, sSub, sFlourish, sPreview, sInfo]);
+    var startBtn = makeButton(W / 2, 540, 230, 62, 'Begin', function () {
+      startOverlay.setVisible(false);
+      startBtn.cont.setVisible(false);
+      startBtn.zone.setVisible(false);
+      state.started = true;
+    });
+    startBtn.cont.setDepth(52);
+    startBtn.zone.setDepth(53);
+
+    // ---------- win overlay ----------
+    var winOverlay = scene.add.container(0, 0).setDepth(50).setVisible(false);
+    var wDim = scene.add.rectangle(0, 0, W, H, 0x062033, 0.78).setOrigin(0);
+    var wBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var wPanelG = scene.add.graphics();
+    wPanelG.fillStyle(0x102A43, 1);
+    wPanelG.fillRoundedRect(W / 2 - 280, 175, 560, 440, 24);
+    wPanelG.lineStyle(3, ACCENT, 1);
+    wPanelG.strokeRoundedRect(W / 2 - 280, 175, 560, 440, 24);
+    var wTitle = scene.add.text(W / 2, 252, 'Reef Cleared!', {
+      fontFamily: SERIF, fontSize: '44px', color: CREAM_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var wSub = scene.add.text(W / 2, 300, 'The tide-pool glows with every pair.', {
+      fontFamily: SANS, fontSize: '19px', color: ACCENT_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var wMoves = scene.add.text(W / 2, 348, 'Moves: 0', {
+      fontFamily: SANS, fontSize: '22px', color: CREAM_CSS
+    }).setOrigin(0.5, 0.5);
+    var wScore = scene.add.text(W / 2, 378, 'Score: 0', {
+      fontFamily: SANS, fontSize: '22px', color: ACCENT_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wStars = scene.add.graphics();
+    drawSparkle(wStars, W / 2 - 40, 424, 8, ACCENT, 0.9);
+    drawSparkle(wStars, W / 2, 424, 11, CREAM, 0.9);
+    drawSparkle(wStars, W / 2 + 40, 424, 8, ACCENT, 0.9);
+    wStars.fillStyle(CREAM, 1);
+    wStars.fillCircle(W / 2 - 40, 424, 3);
+    wStars.fillCircle(W / 2, 424, 4);
+    wStars.fillCircle(W / 2 + 40, 424, 3);
+    var wStarLabel = scene.add.text(W / 2, 452, '', {
+      fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+    }).setOrigin(0.5, 0.5);
+    winOverlay.add([wDim, wBlock, wPanelG, wTitle, wSub, wMoves, wScore, wStars, wStarLabel]);
+    var againBtn = makeButton(W / 2, 512, 250, 62, 'Play Again', function () {
+      winOverlay.setVisible(false);
+      againBtn.cont.setVisible(false);
+      againBtn.zone.setVisible(false);
+      resetBoard();
+    });
+    againBtn.cont.setVisible(false);
+    againBtn.zone.setVisible(false);
+
+    function winGame() {
+      state.over = true;
+      sWin();
+      if (state.score > state.best) { state.best = state.score; }
+      try { window.localStorage.setItem('skypairs_best', String(state.best)); } catch (e) { /* silent */ }
+      var stars = starCount(state.moves);
+      var starWord = stars === 1 ? '1 star' : stars + ' stars';
+      wMoves.setText('You found every pair in ' + state.moves + ' moves.');
+      wScore.setText('Score ' + state.score + '  •  Best ' + state.best);
+      wStarLabel.setText('Star rating: ' + starWord + '  •  Par 12 for 3 stars');
+      wStars.clear();
+      for (var si = 0; si < 3; si++) {
+        var sx = W / 2 - 40 + si * 40;
+        var lit = si < stars;
+        drawSparkle(wStars, sx, 424, lit ? 11 : 8, lit ? ACCENT : CREAM, lit ? 0.95 : 0.35);
+        wStars.fillStyle(lit ? CREAM : CREAM, lit ? 1 : 0.35);
+        wStars.fillCircle(sx, 424, lit ? 4 : 3);
+      }
+      winOverlay.setVisible(true);
+      winOverlay.setAlpha(0);
+      againBtn.cont.setVisible(true);
+      againBtn.zone.setVisible(true);
+      againBtn.cont.setDepth(52);
+      againBtn.zone.setDepth(53);
+      setHud();
+      scene.tweens.add({
+        targets: winOverlay, alpha: 1, duration: 600, ease: 'Sine.easeOut'
+      });
+    }
+
+    scene.twinkles = twinkles;
+    scene.bubbles = bubbles;
+    setHud();
+  }
+
+  function update(time) {
+    if (this.twinkles) {
+      for (var i = 0; i < this.twinkles.length; i++) {
+        var s = this.twinkles[i];
+        s.obj.setAlpha(s.base + Math.sin(time * 0.001 * s.speed + s.phase) * s.amp);
+      }
+    }
+    if (this.bubbles) {
+      var dt = Math.min(0.05, (time - (this._lastT || time)) / 1000 || 0.016);
+      this._lastT = time;
+      for (var b = 0; b < this.bubbles.length; b++) {
+        var bb = this.bubbles[b];
+        bb.obj.y -= bb.speed * dt;
+        bb.drift += dt * 0.8;
+        bb.obj.x = bb.x0 + Math.sin(bb.drift) * 8;
+        if (bb.obj.y < 108) {
+          bb.obj.y = H - 20;
+          bb.x0 = 20 + Math.random() * (W - 40);
+        }
+      }
+    }
+  }
+
+})();
+</script>
+</body>
+</html>

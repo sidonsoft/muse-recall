@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sky Pairs — an ocean arcade matching game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #081E33; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #game canvas { border-radius: 18px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 44px rgba(78, 168, 222, 0.28); }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  'use strict';
+
+  var W = 900, H = 700;
+  var CREAM = 0xF6EFDD;
+  var CREAM_CSS = '#F6EFDD';
+  var MUTED_CSS = '#B9D6E8';
+  var GOLD = 0xF7D774;
+  var GOLD_CSS = '#F7D774';
+  var INK_CSS = '#102A43';
+  var ACCENT = 0x4EA8DE;
+  var ACCENT_CSS = '#4EA8DE';
+  var ACCENT_DARK = 0x2B7CAD;
+  var FOAM_CSS = '#EAF6FF';
+  var SERIF = 'Georgia, "Times New Roman", serif';
+  var SANS = '"Trebuchet MS", Verdana, "Segoe UI", sans-serif';
+
+  var CARD_W = 158, CARD_H = 148, GAP_X = 30, GAP_Y = 26;
+
+  // Six constellations. Points are in a normalised box (x and y in [-1, 1]).
+  var CONSTELLATIONS = [
+    { name: 'Triangle',
+      pts: [[0, -0.80], [-0.70, 0.55], [0.70, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 0]] },
+    { name: 'Trail',
+      pts: [[-0.75, 0.45], [0, 0], [0.75, -0.45]],
+      lines: [[0, 1], [1, 2]] },
+    { name: 'Square',
+      pts: [[-0.55, -0.55], [0.55, -0.55], [0.55, 0.55], [-0.55, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 0]] },
+    { name: 'Cross',
+      pts: [[0, -0.75], [0, 0.75], [-0.65, 0], [0.65, 0], [0, 0]],
+      lines: [[0, 4], [4, 1], [2, 4], [4, 3]] },
+    { name: 'Dipper',
+      pts: [[-0.80, 0.50], [-0.35, 0.50], [0.05, 0.25], [0.35, -0.30], [0.80, -0.50]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+    { name: 'Crown',
+      pts: [[-0.80, 0.40], [-0.40, -0.40], [0, 0.10], [0.40, -0.40], [0.80, 0.40]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] }
+  ];
+
+  // ---- gentle sound, all synthesised, no files ----
+  var audioCtx = null;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) { audioCtx = new AC(); }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+    } catch (e) { audioCtx = null; }
+  }
+  function tone(freq, delay, dur, vol) {
+    try {
+      if (!audioCtx) { return; }
+      var t0 = audioCtx.currentTime + (delay || 0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.07, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.15));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + (dur || 0.15) + 0.05);
+    } catch (e) { /* silent */ }
+  }
+  function sFlip() { tone(440, 0, 0.12, 0.05); }
+  function sMatch() { tone(523.25, 0, 0.16, 0.07); tone(659.25, 0.11, 0.22, 0.07); }
+  function sNoMatch() { tone(329.63, 0, 0.14, 0.045); }
+  function sWin() {
+    var seq = [523.25, 587.33, 659.25, 783.99];
+    for (var i = 0; i < seq.length; i++) { tone(seq[i], i * 0.14, 0.24, 0.07); }
+  }
+
+  function drawSparkle(g, x, y, r, color, alpha) {
+    g.lineStyle(2, color, alpha);
+    g.beginPath();
+    g.moveTo(x - r, y); g.lineTo(x + r, y);
+    g.moveTo(x, y - r); g.lineTo(x, y + r);
+    g.strokePath();
+  }
+
+  // Draw one constellation into a Graphics object, centred on (cx, cy).
+  function drawConstellation(g, def, cx, cy, sx, sy) {
+    var i, a, b;
+    var px = [], py = [];
+    for (i = 0; i < def.pts.length; i++) {
+      px.push(cx + def.pts[i][0] * sx);
+      py.push(cy + def.pts[i][1] * sy);
+    }
+    g.lineStyle(3, CREAM, 0.95);
+    for (i = 0; i < def.lines.length; i++) {
+      a = def.lines[i][0]; b = def.lines[i][1];
+      g.beginPath();
+      g.moveTo(px[a], py[a]);
+      g.lineTo(px[b], py[b]);
+      g.strokePath();
+    }
+    for (i = 0; i < px.length; i++) {
+      g.fillStyle(CREAM, 0.22);
+      g.fillCircle(px[i], py[i], 11);
+      g.fillStyle(0xFFFDF4, 1);
+      g.fillCircle(px[i], py[i], 6);
+      drawSparkle(g, px[i], py[i], 11, CREAM, 0.55);
+    }
+  }
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: W,
+    height: H,
+    backgroundColor: '#08263F',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: { create: create, update: update }
+  };
+
+  var game = new Phaser.Game(config);
+
+  function create() {
+    var scene = this;
+    ensureAudio();
+    scene.input.once('pointerdown', ensureAudio);
+
+    var twinkles = [];
+
+    // ---------- ocean arcade background (cool palette, slow drift only) ----------
+    var bubbles = [];
+    (function buildBackground() {
+      var bg = scene.add.graphics().setDepth(0);
+      bg.fillGradientStyle(0x08263F, 0x08263F, 0x0E4A6E, 0x0E4A6E, 1, 1, 1, 1);
+      bg.fillRect(0, 0, W, H);
+
+      // soft ocean glows, very faint
+      bg.fillStyle(0x4EA8DE, 0.10);
+      bg.fillCircle(220, 220, 150);
+      bg.fillStyle(0x2B7CAD, 0.10);
+      bg.fillCircle(680, 300, 180);
+      bg.fillStyle(0x1B6B93, 0.10);
+      bg.fillCircle(450, 560, 200);
+
+      // slow light rays from above (static, low alpha: no flashing)
+      bg.lineStyle(26, 0x4EA8DE, 0.05);
+      bg.beginPath();
+      bg.moveTo(250, 0); bg.lineTo(180, H);
+      bg.moveTo(480, 0); bg.lineTo(430, H);
+      bg.moveTo(700, 0); bg.lineTo(670, H);
+      bg.strokePath();
+
+      // a calm pearl moon low in the corner, drawn not pasted
+      bg.fillStyle(0xF6EFDD, 0.14);
+      bg.fillCircle(802, 588, 44);
+      bg.fillStyle(0xF6EFDD, 0.95);
+      bg.fillCircle(802, 588, 26);
+      bg.fillStyle(0xD9D2BC, 1);
+      bg.fillCircle(794, 581, 5);
+      bg.fillCircle(810, 595, 4);
+
+      // scattered stars / plankton dots
+      var i, x, y, r;
+      for (i = 0; i < 130; i++) {
+        x = 20 + Math.random() * (W - 40);
+        y = 110 + Math.random() * (H - 130);
+        r = Math.random() < 0.85 ? 1.5 : 2.5;
+        var base = 0.25 + Math.random() * 0.45;
+        var c = scene.add.circle(x, y, r, 0xEAF6FF, base).setDepth(1);
+        twinkles.push({
+          obj: c, base: base,
+          amp: 0.10 + Math.random() * 0.12,
+          speed: 0.3 + Math.random() * 0.8,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+      // a few hand-drawn sparkles among the stars
+      var sg = scene.add.graphics().setDepth(1);
+      var spots = [[140, 160], [740, 180], [330, 620], [590, 130], [90, 470]];
+      for (i = 0; i < spots.length; i++) {
+        drawSparkle(sg, spots[i][0], spots[i][1], 7, CREAM, 0.7);
+      }
+      // slow rising bubbles: gentle arcade motion, no flashing
+      for (i = 0; i < 16; i++) {
+        var bx = 30 + Math.random() * (W - 60);
+        var by = 120 + Math.random() * (H - 160);
+        var br = 2 + Math.random() * 5;
+        var bo = scene.add.circle(bx, by, br, 0x000000, 0).setDepth(1);
+        bo.setStrokeStyle(1.5, 0x4EA8DE, 0.35 + Math.random() * 0.25);
+        bubbles.push({ obj: bo, speed: 8 + Math.random() * 18, wobble: Math.random() * Math.PI * 2, x0: bx });
+      }
+    })();
+
+    scene.twinkles = twinkles;
+    scene.bubbles = bubbles;
+
+    // ---------- HUD: ocean arcade bar, no timers, no penalties ----------
+    var hud = scene.add.container(0, 0).setDepth(10);
+    var title = scene.add.text(48, 22, 'SKY PAIRS', {
+      fontFamily: SANS, fontSize: '28px', color: FOAM_CSS, fontStyle: 'bold'
+    });
+    var subtitle = scene.add.text(48, 56, 'an ocean arcade voyage of starry matching', {
+      fontFamily: SANS, fontSize: '14px', color: MUTED_CSS
+    });
+    var movesText = scene.add.text(W / 2, 36, 'MOVES  0', {
+      fontFamily: SANS, fontSize: '22px', color: FOAM_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+    var pairsText = scene.add.text(W - 48, 36, 'PAIRS  0 / 6', {
+      fontFamily: SANS, fontSize: '22px', color: ACCENT_CSS, fontStyle: 'bold'
+    }).setOrigin(1, 0);
+    var streakText = scene.add.text(W / 2, 62, '', {
+      fontFamily: SANS, fontSize: '15px', color: GOLD_CSS
+    }).setOrigin(0.5, 0);
+    var bestText = scene.add.text(W - 48, 62, '', {
+      fontFamily: SANS, fontSize: '13px', color: MUTED_CSS
+    }).setOrigin(1, 0);
+    var divider = scene.add.graphics();
+    divider.lineStyle(2, ACCENT, 0.55);
+    divider.beginPath();
+    divider.moveTo(48, 96); divider.lineTo(W - 48, 96);
+    divider.strokePath();
+    // arcade progress pearls: one fills per pair, gentle and positive
+    var pearlG = scene.add.graphics();
+    hud.add([title, subtitle, movesText, pairsText, streakText, bestText, divider, pearlG]);
+
+    function drawPearls() {
+      pearlG.clear();
+      for (var pi = 0; pi < 6; pi++) {
+        var px2 = 48 + pi * 26;
+        var py2 = 84;
+        if (pi < state.pairs) {
+          pearlG.fillStyle(ACCENT, 1);
+          pearlG.fillCircle(px2, py2, 7);
+          pearlG.fillStyle(0xEAF6FF, 0.9);
+          pearlG.fillCircle(px2 - 2, py2 - 2, 2);
+        } else {
+          pearlG.lineStyle(1.5, ACCENT, 0.6);
+          pearlG.strokeCircle(px2, py2, 7);
+        }
+      }
+    }
+
+    scene.add.text(W / 2, 662, 'Turn over two cards to find the matching stars  •  gentle arcade fun, no rush', {
+      fontFamily: SANS, fontSize: '15px', color: MUTED_CSS
+    }).setOrigin(0.5, 0.5).setDepth(10);
+
+    // ---------- game state (same rules: match 6, count moves, no penalties) ----------
+    var state = {
+      moves: 0, pairs: 0,
+      first: null, second: null,
+      lock: false, over: false, started: false,
+      streak: 0, best: 0
+    };
+
+    var CHEERS = ['', 'Nice match!', 'Two in a row — Super!', 'Three in a row — Tide Star!', 'Unstoppable Explorer!', 'Legend of the Reef!'];
+
+    function setHud() {
+      movesText.setText('MOVES  ' + state.moves);
+      pairsText.setText('PAIRS  ' + state.pairs + ' / 6');
+      if (state.streak >= 1 && state.pairs < 6) {
+        streakText.setText(CHEERS[Math.min(state.streak, CHEERS.length - 1)]);
+      } else {
+        streakText.setText('');
+      }
+      bestText.setText(state.best > 0 ? 'BEST  ' + state.best + ' moves' : '');
+      drawPearls();
+    }
+
+    // ---------- cards ----------
+    var cards = [];
+
+    function paintCard(card) {
+      var g = card.bg;
+      g.clear();
+      if (card.faceUp) {
+        if (card.matched) {
+          g.fillStyle(0x0E3A5C, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(3.5, ACCENT, 1);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(1.5, GOLD, 0.9);
+          g.strokeRoundedRect(-CARD_W / 2 + 6, -CARD_H / 2 + 6, CARD_W - 12, CARD_H - 12, 13);
+        } else {
+          g.fillStyle(0x16456E, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(2.5, ACCENT, 0.95);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        }
+      } else {
+        g.fillStyle(0x12395B, 1);
+        g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        g.lineStyle(2, ACCENT, 0.85);
+        g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+      }
+      card.backDeco.setVisible(!card.faceUp);
+      card.face.setVisible(card.faceUp);
+    }
+
+    function makeCard(x, y, key) {
+      var visual = scene.add.container(x, y).setDepth(5);
+      var bg = scene.add.graphics();
+      visual.add(bg);
+
+      // face-down decoration: ocean arcade frame, orbit ring and pearl star
+      var backDeco = scene.add.graphics();
+      backDeco.lineStyle(1.5, ACCENT, 0.55);
+      backDeco.strokeRoundedRect(-CARD_W / 2 + 9, -CARD_H / 2 + 9, CARD_W - 18, CARD_H - 18, 12);
+      backDeco.lineStyle(2, ACCENT, 0.8);
+      backDeco.strokeCircle(0, -6, 24);
+      backDeco.fillStyle(0xEAF6FF, 0.95);
+      backDeco.fillCircle(0, -6, 5);
+      drawSparkle(backDeco, 0, -6, 13, ACCENT, 0.9);
+      backDeco.fillStyle(ACCENT, 0.8);
+      backDeco.fillCircle(-52, -48, 2.5);
+      backDeco.fillCircle(52, -48, 2.5);
+      backDeco.fillCircle(-52, 48, 2.5);
+      backDeco.fillCircle(52, 48, 2.5);
+      visual.add(backDeco);
+
+      // face-up constellation
+      var face = scene.add.container(0, 0);
+      var cg = scene.add.graphics();
+      drawConstellation(cg, CONSTELLATIONS[key], 0, -14, 54, 42);
+      var label = scene.add.text(0, 50, CONSTELLATIONS[key].name, {
+        fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+      }).setOrigin(0.5, 0.5);
+      face.add([cg, label]);
+      visual.add(face);
+
+      var zone = scene.add.zone(x, y, CARD_W, CARD_H)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(6);
+
+      var card = {
+        visual: visual, bg: bg, backDeco: backDeco, face: face,
+        zone: zone, key: key, faceUp: false, matched: false
+      };
+      paintCard(card);
+      zone.on('pointerdown', function () { onCardClicked(card); });
+      return card;
+    }
+
+    function flipCard(card, show, done) {
+      scene.tweens.add({
+        targets: card.visual,
+        scaleX: 0,
+        duration: 140,
+        ease: 'Quad.easeIn',
+        onComplete: function () {
+          card.faceUp = show;
+          paintCard(card);
+          scene.tweens.add({
+            targets: card.visual,
+            scaleX: 1,
+            duration: 190,
+            ease: 'Quad.easeOut',
+            onComplete: function () { if (done) { done(); } }
+          });
+        }
+      });
+    }
+
+    function onCardClicked(card) {
+      ensureAudio();
+      if (!state.started || state.lock || state.over) { return; }
+      if (card.faceUp || card.matched) { return; }
+      if (state.first && card === state.first) { return; }
+      sFlip();
+      if (!state.first) {
+        state.first = card;
+        flipCard(card, true);
+      } else {
+        state.second = card;
+        state.lock = true;
+        state.moves += 1;
+        setHud();
+        flipCard(card, true, resolveTurn);
+      }
+    }
+
+    function matchRipple(x, y) {
+      // one slow expanding ring that fades once: celebration without flashing
+      var ring = scene.add.circle(x, y, 10, 0x000000, 0).setDepth(7);
+      ring.setStrokeStyle(3, ACCENT, 0.85);
+      scene.tweens.add({
+        targets: ring, scale: 5,
+        alpha: 0,
+        duration: 600, ease: 'Sine.easeOut',
+        onComplete: function () { ring.destroy(); }
+      });
+    }
+
+    function popHud(target) {
+      // gentle arcade pop: single slow scale, no blinking
+      scene.tweens.add({
+        targets: target, scale: 1.18,
+        duration: 180, yoyo: true, ease: 'Sine.easeInOut'
+      });
+    }
+
+    function resolveTurn() {
+      var a = state.first, b = state.second;
+      if (a.key === b.key) {
+        a.matched = true;
+        b.matched = true;
+        a.zone.input.enabled = false;
+        b.zone.input.enabled = false;
+        paintCard(a);
+        paintCard(b);
+        state.streak += 1;
+        sMatch();
+        if (state.streak >= 2) { tone(783.99 + state.streak * 40, 0.22, 0.22, 0.06); }
+        matchRipple((a.visual.x + b.visual.x) / 2, (a.visual.y + b.visual.y) / 2);
+        scene.tweens.add({
+          targets: [a.visual, b.visual], scale: 1.07,
+          duration: 200, yoyo: true, ease: 'Sine.easeInOut',
+          onComplete: function () {
+            state.pairs += 1;
+            setHud();
+            popHud(pairsText);
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+            if (state.pairs >= 6) { winGame(); }
+          }
+        });
+      } else {
+        // kind mismatch: streak message rests, nothing is taken away
+        state.streak = 0;
+        sNoMatch();
+        scene.time.delayedCall(650, function () {
+          flipCard(a, false);
+          flipCard(b, false, function () {
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+            setHud();
+          });
+        });
+      }
+    }
+
+    // lay out the board: 4 columns by 3 rows
+    var totalW = 4 * CARD_W + 3 * GAP_X;
+    var left = W / 2 - totalW / 2;
+    var top = 132;
+    var deck = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+    Phaser.Utils.Array.Shuffle(deck);
+    var i, c, r, k = 0;
+    for (r = 0; r < 3; r++) {
+      for (c = 0; c < 4; c++) {
+        var cx = left + CARD_W / 2 + c * (CARD_W + GAP_X);
+        var cy = top + CARD_H / 2 + r * (CARD_H + GAP_Y);
+        cards.push(makeCard(cx, cy, deck[k]));
+        k += 1;
+      }
+    }
+
+    function resetBoard() {
+      var d = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+      Phaser.Utils.Array.Shuffle(d);
+      for (var n = 0; n < cards.length; n++) {
+        var card = cards[n];
+        card.key = d[n];
+        card.faceUp = false;
+        card.matched = false;
+        card.visual.scaleX = 1;
+        card.visual.setScale(1);
+        card.zone.input.enabled = true;
+        // redraw the face with the new constellation
+        card.face.removeAll(true);
+        var cg = scene.add.graphics();
+        drawConstellation(cg, CONSTELLATIONS[card.key], 0, -14, 54, 42);
+        var label = scene.add.text(0, 50, CONSTELLATIONS[card.key].name, {
+          fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+        }).setOrigin(0.5, 0.5);
+        card.face.add([cg, label]);
+        paintCard(card);
+      }
+      state.moves = 0;
+      state.pairs = 0;
+      state.streak = 0;
+      state.first = null;
+      state.second = null;
+      state.lock = false;
+      state.over = false;
+      setHud();
+    }
+
+    // ---------- arcade buttons: ocean accent pill, dark text, soft shadow ----------
+    function makeButton(x, y, w, h, labelText, onTap) {
+      var cont = scene.add.container(x, y);
+      var g = scene.add.graphics();
+      function paint(hover) {
+        g.clear();
+        g.fillStyle(0x062033, 0.55);
+        g.fillRoundedRect(-w / 2, -h / 2 + 4, w, h, h / 2);
+        if (hover) {
+          g.fillStyle(0x7CC4EA, 1);
+        } else {
+          g.fillStyle(ACCENT, 1);
+        }
+        g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+        g.lineStyle(2, 0xEAF6FF, 0.7);
+        g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+      }
+      paint(false);
+      var t = scene.add.text(0, -1, labelText, {
+        fontFamily: SANS, fontSize: '24px', color: INK_CSS, fontStyle: 'bold'
+      }).setOrigin(0.5, 0.5);
+      cont.add([g, t]);
+      var z = scene.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+      z.on('pointerover', function () { paint(true); });
+      z.on('pointerout', function () { paint(false); });
+      z.on('pointerdown', function () { ensureAudio(); onTap(); });
+      cont.setDepth(60);
+      z.setDepth(61);
+      return { cont: cont, zone: z, paint: paint };
+    }
+
+    // ---------- start overlay: ocean arcade marquee ----------
+    var startOverlay = scene.add.container(0, 0).setDepth(50);
+    var sDim = scene.add.rectangle(0, 0, W, H, 0x04182B, 0.80).setOrigin(0);
+    var sBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var sPanelG = scene.add.graphics();
+    sPanelG.fillStyle(0x0B2E4F, 1);
+    sPanelG.fillRoundedRect(W / 2 - 300, 135, 600, 500, 24);
+    sPanelG.lineStyle(3, ACCENT, 0.95);
+    sPanelG.strokeRoundedRect(W / 2 - 300, 135, 600, 500, 24);
+    sPanelG.lineStyle(1.5, GOLD, 0.7);
+    sPanelG.strokeRoundedRect(W / 2 - 288, 147, 576, 476, 18);
+    var sTitle = scene.add.text(W / 2, 200, 'SKY PAIRS', {
+      fontFamily: SANS, fontSize: '56px', color: FOAM_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var sSub = scene.add.text(W / 2, 244, 'an ocean arcade voyage of starry matching', {
+      fontFamily: SANS, fontSize: '18px', color: ACCENT_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var sFlourish = scene.add.graphics();
+    sFlourish.lineStyle(1.5, ACCENT, 0.7);
+    sFlourish.beginPath();
+    sFlourish.moveTo(W / 2 - 150, 278); sFlourish.lineTo(W / 2 + 150, 278);
+    sFlourish.strokePath();
+    sFlourish.fillStyle(GOLD, 1);
+    sFlourish.fillCircle(W / 2, 278, 4);
+    var sPreview = scene.add.graphics();
+    drawConstellation(sPreview, CONSTELLATIONS[4], W / 2, 340, 60, 44);
+    var sInfo = scene.add.text(W / 2, 428,
+      'Find the six matching pairs of stars.\nTurn over two cards at a time — streaks earn cheers, mistakes cost nothing.\nTake your time: there is no clock.', {
+      fontFamily: SANS, fontSize: '17px', color: CREAM_CSS,
+      align: 'center', lineSpacing: 8
+    }).setOrigin(0.5, 0.5);
+    startOverlay.add([sDim, sBlock, sPanelG, sTitle, sSub, sFlourish, sPreview, sInfo]);
+    var startBtn = makeButton(W / 2, 548, 260, 62, 'DIVE IN', function () {
+      startOverlay.setVisible(false);
+      startBtn.cont.setVisible(false);
+      startBtn.zone.setVisible(false);
+      state.started = true;
+    });
+    startBtn.cont.setDepth(52);
+    startBtn.zone.setDepth(53);
+
+    // ---------- win overlay: arcade results, always kind ----------
+    var winOverlay = scene.add.container(0, 0).setDepth(50).setVisible(false);
+    var wDim = scene.add.rectangle(0, 0, W, H, 0x04182B, 0.80).setOrigin(0);
+    var wBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var wPanelG = scene.add.graphics();
+    wPanelG.fillStyle(0x0B2E4F, 1);
+    wPanelG.fillRoundedRect(W / 2 - 280, 165, 560, 440, 24);
+    wPanelG.lineStyle(3, ACCENT, 0.95);
+    wPanelG.strokeRoundedRect(W / 2 - 280, 165, 560, 440, 24);
+    var wTitle = scene.add.text(W / 2, 238, 'REEF CLEARED!', {
+      fontFamily: SANS, fontSize: '42px', color: FOAM_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wSub = scene.add.text(W / 2, 284, 'The night reef glows with every pair.', {
+      fontFamily: SANS, fontSize: '18px', color: MUTED_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var wMoves = scene.add.text(W / 2, 330, 'Moves: 0', {
+      fontFamily: SANS, fontSize: '23px', color: GOLD_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wBest = scene.add.text(W / 2, 360, '', {
+      fontFamily: SANS, fontSize: '16px', color: MUTED_CSS
+    }).setOrigin(0.5, 0.5);
+    var wStars = scene.add.graphics();
+    winOverlay.add([wDim, wBlock, wPanelG, wTitle, wSub, wMoves, wBest, wStars]);
+    var againBtn = makeButton(W / 2, 508, 270, 62, 'PLAY AGAIN', function () {
+      winOverlay.setVisible(false);
+      againBtn.cont.setVisible(false);
+      againBtn.zone.setVisible(false);
+      resetBoard();
+    });
+    againBtn.cont.setVisible(false);
+    againBtn.zone.setVisible(false);
+
+    function drawWinPearls() {
+      // gentle skill stars: 3 for tidy play, always at least 1 — never a penalty
+      wStars.clear();
+      var earned = state.moves <= 12 ? 3 : (state.moves <= 18 ? 2 : 1);
+      for (var si = 0; si < 3; si++) {
+        var sx = W / 2 - 56 + si * 56;
+        var sy = 412;
+        if (si < earned) {
+          drawSparkle(wStars, sx, sy, 11, GOLD, 0.95);
+          wStars.fillStyle(0xFFFDF4, 1);
+          wStars.fillCircle(sx, sy, 5);
+        } else {
+          drawSparkle(wStars, sx, sy, 9, ACCENT, 0.45);
+          wStars.fillStyle(ACCENT, 0.35);
+          wStars.fillCircle(sx, sy, 4);
+        }
+      }
+    }
+
+    function winGame() {
+      state.over = true;
+      sWin();
+      if (state.best === 0 || state.moves < state.best) { state.best = state.moves; }
+      wMoves.setText('You found every pair in ' + state.moves + ' moves.');
+      wBest.setText(state.best > 0 ? 'Your best voyage: ' + state.best + ' moves. Every try is welcome.' : '');
+      drawWinPearls();
+      setHud();
+      winOverlay.setVisible(true);
+      winOverlay.setAlpha(0);
+      againBtn.cont.setVisible(true);
+      againBtn.zone.setVisible(true);
+      againBtn.cont.setDepth(52);
+      againBtn.zone.setDepth(53);
+      scene.tweens.add({
+        targets: winOverlay, alpha: 1, duration: 500, ease: 'Sine.easeOut'
+      });
+    }
+
+    scene.twinkles = twinkles;
+    setHud();
+  }
+
+  function update(time) {
+    if (this.twinkles) {
+      for (var i = 0; i < this.twinkles.length; i++) {
+        var s = this.twinkles[i];
+        s.obj.setAlpha(s.base + Math.sin(time * 0.001 * s.speed + s.phase) * s.amp);
+      }
+    }
+    if (this.bubbles) {
+      for (var bi = 0; bi < this.bubbles.length; bi++) {
+        var b = this.bubbles[bi];
+        var ny = b.obj.y - b.speed * 0.016;
+        if (ny < 110) { ny = 640; b.x0 = 30 + Math.random() * (W - 60); }
+        b.wobble += 0.01;
+        b.obj.setPosition(b.x0 + Math.sin(b.wobble) * 8, ny);
+      }
+    }
+  }
+
+})();
+</script>
+</body>
+</html>
