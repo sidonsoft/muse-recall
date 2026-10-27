@@ -95,6 +95,25 @@ export class ForgeJobManager {
     const id = randomUUID();
     const staging = await this.workspace.createStaging(input.projectId, id);
 
+    // A modification must start from the approved source. An empty workspace
+    // makes the model regenerate the game instead of editing it.
+    let baseVersion: number | null = null;
+    if (input.kind === 'modify') {
+      const state = await this.workspace.state(input.projectId);
+      if (state.current_version === null) {
+        throw new ForgeError(
+          'no_current_version',
+          'Generate and approve a game before requesting a modification.',
+        );
+      }
+      const current = await this.workspace.currentHtml(input.projectId);
+      if (current === null) {
+        throw new ForgeError('no_current_version', 'The approved game could not be read.');
+      }
+      baseVersion = state.current_version;
+      await writeFile(join(staging, 'index.html'), current, 'utf8');
+    }
+
     const query =
       input.kind === 'modify' ? `${input.prompt}\n${input.request ?? ''}` : input.prompt;
     const retrieval = this.engine.retrieve(
@@ -126,6 +145,7 @@ export class ForgeJobManager {
       logs: [],
       usage: null,
       memory_ids: memoryIds,
+      base_version: baseVersion,
       validation: null,
       version: null,
     });
@@ -470,7 +490,9 @@ function buildPrompt(job: ForgeJob, memoryBlock: string): string {
     ].join('\n');
   }
   return [
-    'Modify the existing game in this workspace (index.html only).',
+    'The current approved game is already in this workspace at index.html.',
+    'Edit that file in place: keep every part of the existing implementation that the request does not ask you to change.',
+    'Modify index.html only; do not regenerate the game from scratch.',
     'The attached screenshot is the current rendered preview. Use it to understand the visual result.',
     'Apply the requested visual change while preserving gameplay: cards, matching, score, restart, win condition, mouse/touch, and responsive layout.',
     'Keep the existing Phaser 3 CDN and Phaser.Game initialisation. Do not replace the engine with vanilla JavaScript and do not add libraries.',

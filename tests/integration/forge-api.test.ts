@@ -207,6 +207,7 @@ describe('forge workflow', () => {
     const modified = await startModify(h.app);
     const modJob = await waitForFinish(h.app, modified);
     expect(modJob.status).toBe('succeeded');
+    expect(modJob.base_version).toBe(1);
 
     const approveMod = await h.app.inject({
       method: 'POST',
@@ -215,7 +216,9 @@ describe('forge workflow', () => {
     });
     expect(approveMod.statusCode).toBe(200);
     expect(approveMod.json().data.state.current_version).toBe(2);
-    expect((await preview(h.app)).body).toContain("MARKER = 'v2'");
+    const v2 = await preview(h.app);
+    expect(v2.body).toContain("CHANGE_MARKER = 'v2'");
+    expect(v2.body).toContain("FARM_MARKER = 'keep-me'");
 
     const rollback = await h.app.inject({
       method: 'POST',
@@ -225,6 +228,44 @@ describe('forge workflow', () => {
     expect(rollback.statusCode).toBe(200);
     expect(rollback.json().data.current_version).toBe(1);
     expect((await preview(h.app)).body).toContain("MARKER = 'v1'");
+  });
+
+  it('starts a modification from the approved source, preserving unrelated code', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const modified = await startModify(h.app);
+    const finished = await waitForFinish(h.app, modified);
+    expect(finished.status).toBe('succeeded');
+    expect(finished.base_version).toBe(1);
+
+    const diffResponse = await h.app.inject({
+      method: 'GET',
+      url: `/api/forge/jobs/${modified}/diff`,
+    });
+    const file = diffResponse.json().data.files[0] as { before: string; after: string };
+    expect(file.before).toContain("FARM_MARKER = 'keep-me'");
+    expect(file.after).toContain("FARM_MARKER = 'keep-me'");
+    expect(file.after).toContain("CHANGE_MARKER = 'v2'");
+  });
+
+  it('refuses to modify a project without an approved version', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const response = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/modify',
+      payload: { request: 'Make the cards larger.', screenshot_data_url: PNG },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('no_current_version');
   });
 
   it('rejects a staged change without touching the approved game', async () => {

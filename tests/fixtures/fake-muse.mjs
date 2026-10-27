@@ -12,7 +12,11 @@ const promptPath = value('--prompt-file');
 const prompt = promptPath ? readFileSync(promptPath, 'utf8') : '';
 const requested = process.env.FAKE_MUSE_MODE ?? 'auto';
 const mode =
-  requested === 'auto' ? (prompt.includes('Modify the existing game') ? 'modify' : 'generate') : requested;
+  requested === 'auto'
+    ? (prompt.includes('current approved game') && prompt.includes('index.html')
+        ? 'modify'
+        : 'generate')
+    : requested;
 const emit = (event) => process.stdout.write(`${JSON.stringify(event)}\n`);
 const usage = (calls, input = 100, output = 10) =>
   emit({
@@ -26,7 +30,7 @@ function html(marker) {
   return `<!doctype html><html><head><title>Fake Game</title></head><body>
 <canvas id="game"></canvas>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<script>const MARKER = '${marker}';</script>
+<script>const MARKER = '${marker}'; const FARM_MARKER = 'keep-me';</script>
 </body></html>`;
 }
 
@@ -56,7 +60,16 @@ if (mode === 'sleep') {
   usage(99, 5_000_000);
   done('budget');
 } else if (mode === 'modify') {
-  writeFileSync(join(workspace, 'index.html'), html('v2'));
+  const file = join(workspace, 'index.html');
+  const existing = readFileSync(file, 'utf8');
+  if (!existing.includes('FARM_MARKER')) {
+    process.stderr.write('expected the approved game to be seeded into staging\n');
+    process.exit(3);
+  }
+  const updated = existing
+    .replace('<title>Fake Game</title>', '<title>Fake Game v2</title>')
+    .replace('</body>', '<script>const CHANGE_MARKER = \'v2\';</script></body>');
+  writeFileSync(file, updated);
   usage(2);
   done('modified');
 } else {

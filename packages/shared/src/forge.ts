@@ -58,6 +58,7 @@ export const ForgeJobSchema = z.object({
   logs: z.array(z.string()),
   usage: ForgeUsageSchema.nullable(),
   memory_ids: z.array(z.uuid()),
+  base_version: z.number().int().min(1).nullable(),
   validation: ForgeValidationSchema.nullable(),
   version: z.number().int().min(1).nullable(),
 });
