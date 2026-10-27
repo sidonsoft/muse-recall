@@ -1,0 +1,1286 @@
+[
+  {
+    "run": "clock-memory",
+    "bytes": 21871,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": false,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "clock-no-memory",
+    "bytes": 21905,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": false,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF9A9A"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-01",
+    "bytes": 24990,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "06263E",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-02",
+    "bytes": 21765,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": "penalt"
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605",
+        "\u2606"
+      ],
+      "emoji_count": 2,
+      "off_palette_hexes": [
+        "062639",
+        "07304F",
+        "102A43",
+        "4EA8DE",
+        "B9D6E8",
+        "F6EFDD"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-03",
+    "bytes": 23233,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "0A2A43",
+        "0C3355",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-04",
+    "bytes": 26421,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0C2E4E",
+        "102A43",
+        "4EA8DE",
+        "8AC6EC",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-05",
+    "bytes": 25734,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": "PENALT"
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "06283F",
+        "082A44",
+        "102A43",
+        "4EA8DE",
+        "8FD0F2",
+        "B9D6E8",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-06",
+    "bytes": 25099,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": "penalt"
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605"
+      ],
+      "emoji_count": 1,
+      "off_palette_hexes": [
+        "071E33",
+        "0A2E4F",
+        "102A43",
+        "4EA8DE",
+        "B9D6EA",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-07",
+    "bytes": 23313,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "0B2E4E",
+        "0C3558",
+        "102A43",
+        "4EA8DE",
+        "9FC3DE",
+        "F6EFDD"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-08",
+    "bytes": 24609,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "081E33",
+        "08263F",
+        "102A43",
+        "4EA8DE",
+        "B9D6E8",
+        "EAF6FF",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-09",
+    "bytes": 25711,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": "penalt"
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "0A2A43",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-10",
+    "bytes": 23838,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "081E33",
+        "0B2E4F",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-11",
+    "bytes": 24218,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "0B2F4A",
+        "0E3A55",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-12",
+    "bytes": 24519,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A2740",
+        "102A43",
+        "4EA8DE",
+        "9FC3E0",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-13",
+    "bytes": 23881,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "062033",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-14",
+    "bytes": 23784,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": "penalt"
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A2540",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-15",
+    "bytes": 24896,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "062A44",
+        "102A43",
+        "4EA8DE",
+        "8ACBF0",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "mem-16",
+    "bytes": 21951,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "0A2540",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-01",
+    "bytes": 26761,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": "PENALT"
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "4DE3FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF7DA5"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-02",
+    "bytes": 26629,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605"
+      ],
+      "emoji_count": 1,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "4DF3FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF3DF2",
+        "FF6B6B"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-03",
+    "bytes": 27677,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "00F0FF",
+        "05010F",
+        "0A0F2A",
+        "141C4D",
+        "1A2450",
+        "8E9BD0",
+        "F6EFDD",
+        "F7D774",
+        "FF2E88"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-04",
+    "bytes": 28076,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "00F0FF",
+        "05030F",
+        "0A0626",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF3DF0",
+        "FF5D5D"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-05",
+    "bytes": 28084,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "39E6FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF4D6D"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-06",
+    "bytes": 30452,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605"
+      ],
+      "emoji_count": 1,
+      "off_palette_hexes": [
+        "00E5FF",
+        "070B1E",
+        "0A0630",
+        "0A0F2A",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF2E88"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-07",
+    "bytes": 29073,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": true,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": "PENALT"
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605"
+      ],
+      "emoji_count": 1,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "37E6FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF4D8D",
+        "FF5D5D"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-08",
+    "bytes": 26643,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605"
+      ],
+      "emoji_count": 1,
+      "off_palette_hexes": [
+        "00F0FF",
+        "05001A",
+        "07002E",
+        "0B0630",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF2D96"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-09",
+    "bytes": 28573,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": false,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "00F0FF",
+        "061018",
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF4FD8",
+        "FF5D5D"
+      ],
+      "off_palette_count": 10,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-10",
+    "bytes": 29809,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "05081A",
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "2EE6D6",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF4D6D"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-11",
+    "bytes": 26679,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF5D5D",
+        "FF7AB8"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-12",
+    "bytes": 27545,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [
+        "\u2605",
+        "\u2606"
+      ],
+      "emoji_count": 2,
+      "off_palette_hexes": [
+        "00F0FF",
+        "05010F",
+        "0A0F2A",
+        "14042B",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF2D96",
+        "FF5DB1"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-13",
+    "bytes": 27616,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "00E5FF",
+        "05010F",
+        "0A0F2A",
+        "1A2450",
+        "1B0F4A",
+        "2A0A2E",
+        "9DF2FF",
+        "F6EFDD",
+        "F7D774",
+        "FF2E88"
+      ],
+      "off_palette_count": 10,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-14",
+    "bytes": 27971,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "3DF5FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF4D4D",
+        "FF4D8D",
+        "FF6B6B"
+      ],
+      "off_palette_count": 10,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-15",
+    "bytes": 25772,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "00F0FF",
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF2D95"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "nomem-16",
+    "bytes": 25705,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": null,
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "4DF3FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF5DA2"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "safety-memory",
+    "bytes": 22623,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "08243D",
+        "102A43",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "safety-no-memory",
+    "bytes": 26509,
+    "child_safety": {
+      "countdown_timer": true,
+      "flash": true,
+      "penalty": false,
+      "violation": true,
+      "evidence": {
+        "timer": "timeLeft",
+        "flash": "cameras.main.flash",
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "3CF5FF",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774",
+        "FF3CAC",
+        "FF5C5C"
+      ],
+      "off_palette_count": 9,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "speed-memory",
+    "bytes": 20198,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "4EA8DE",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 7,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "speed-no-memory",
+    "bytes": 21110,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "070B1E",
+        "0A0F2A",
+        "1A2450",
+        "AEB8D6",
+        "F6EFDD",
+        "F7D774"
+      ],
+      "off_palette_count": 6,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "style-memory",
+    "bytes": 20197,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "102A43",
+        "1B6FA0",
+        "4A6C8A",
+        "4EA8DE",
+        "BFDCEC",
+        "EAF6FB",
+        "F7D774",
+        "FFFDF4"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  },
+  {
+    "run": "style-no-memory",
+    "bytes": 23583,
+    "child_safety": {
+      "countdown_timer": false,
+      "flash": false,
+      "penalty": false,
+      "violation": false,
+      "evidence": {
+        "timer": null,
+        "flash": null,
+        "penalty": null
+      }
+    },
+    "art_direction": {
+      "emoji": [],
+      "emoji_count": 0,
+      "off_palette_hexes": [
+        "3A2E5B",
+        "5D5178",
+        "7C6F9B",
+        "C99A3C",
+        "E7D9B8",
+        "FBF1D9",
+        "FFF6DF",
+        "FFFDF2"
+      ],
+      "off_palette_count": 8,
+      "decorative_font": null,
+      "violation": true
+    }
+  }
+]

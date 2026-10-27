@@ -1,0 +1,367 @@
+{
+  "n_runs": 32,
+  "unusable": {
+    "memory": 0,
+    "no-memory": 0
+  },
+  "table": {
+    "rows": [
+      "rule remembered",
+      "no memory"
+    ],
+    "columns": [
+      "violated",
+      "compliant"
+    ],
+    "rule_remembered": [
+      0,
+      16
+    ],
+    "no_memory": [
+      15,
+      1
+    ]
+  },
+  "rate": {
+    "rule_remembered": 0.0,
+    "no_memory": 0.9375
+  },
+  "fisher_two_tailed_p": 5.656481323571378e-08,
+  "alpha": 0.05,
+  "cells": {
+    "memory": {
+      "viol": 0,
+      "ok": 16,
+      "unusable": 0,
+      "runs": [
+        {
+          "id": "mem-03",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-10",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-13",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-05",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-06",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-11",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-14",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-09",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-01",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-16",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-02",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-04",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-08",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-15",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-07",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "mem-12",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        }
+      ]
+    },
+    "no-memory": {
+      "viol": 15,
+      "ok": 1,
+      "unusable": 0,
+      "runs": [
+        {
+          "id": "nomem-02",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-04",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": "timeLeft",
+            "flash": "cameras.main.flash",
+            "penalty": null
+          }
+        },
+        {
+          "id": "nomem-09",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": "timeLeft",
+            "flash": null,
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-06",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": null
+          }
+        },
+        {
+          "id": "nomem-07",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": "timeLeft",
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-12",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": null
+          }
+        },
+        {
+          "id": "nomem-10",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-16",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-05",
+          "status": "succeeded",
+          "violation": false,
+          "evidence": {
+            "timer": null,
+            "flash": null,
+            "penalty": null
+          }
+        },
+        {
+          "id": "nomem-15",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-01",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": "timeLeft",
+            "flash": null,
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-13",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": "timeLeft",
+            "flash": "cameras.main.flash",
+            "penalty": null
+          }
+        },
+        {
+          "id": "nomem-14",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-03",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": "state.score = Math.max(0, state.score -"
+          }
+        },
+        {
+          "id": "nomem-11",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": "timeLeft",
+            "flash": "cameras.main.flash",
+            "penalty": null
+          }
+        },
+        {
+          "id": "nomem-08",
+          "status": "succeeded",
+          "violation": true,
+          "evidence": {
+            "timer": null,
+            "flash": "cameras.main.flash",
+            "penalty": null
+          }
+        }
+      ]
+    }
+  }
+}

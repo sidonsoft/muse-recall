@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sky Pairs — arcade star matching</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #05010F; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #game canvas {
+    border-radius: 18px;
+    box-shadow: 0 0 0 2px #00F0FF, 0 0 28px rgba(0, 240, 255, 0.45), 0 0 90px rgba(255, 46, 136, 0.25), 0 20px 60px rgba(0, 0, 0, 0.6);
+  }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  'use strict';
+
+  var W = 900, H = 700;
+  var CREAM = 0xF6EFDD;
+  var CREAM_CSS = '#F6EFDD';
+  var MUTED_CSS = '#8E9BD0';
+  var GOLD = 0xF7D774;
+  var GOLD_CSS = '#F7D774';
+  var INK_CSS = '#1A2450';
+  var NEON_CYAN = 0x00F0FF;
+  var NEON_CYAN_CSS = '#00F0FF';
+  var NEON_PINK = 0xFF2E88;
+  var NEON_PINK_CSS = '#FF2E88';
+  var NEON_PURPLE = 0x9D4DFF;
+  var DEEP_PANEL = 0x0D1030;
+  var SERIF = 'Georgia, "Times New Roman", serif';
+  var SANS = '"Trebuchet MS", Verdana, "Segoe UI", sans-serif';
+
+  var CARD_W = 158, CARD_H = 148, GAP_X = 30, GAP_Y = 26;
+
+  // Six constellations. Points are in a normalised box (x and y in [-1, 1]).
+  var CONSTELLATIONS = [
+    { name: 'Triangle',
+      pts: [[0, -0.80], [-0.70, 0.55], [0.70, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 0]] },
+    { name: 'Trail',
+      pts: [[-0.75, 0.45], [0, 0], [0.75, -0.45]],
+      lines: [[0, 1], [1, 2]] },
+    { name: 'Square',
+      pts: [[-0.55, -0.55], [0.55, -0.55], [0.55, 0.55], [-0.55, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 0]] },
+    { name: 'Cross',
+      pts: [[0, -0.75], [0, 0.75], [-0.65, 0], [0.65, 0], [0, 0]],
+      lines: [[0, 4], [4, 1], [2, 4], [4, 3]] },
+    { name: 'Dipper',
+      pts: [[-0.80, 0.50], [-0.35, 0.50], [0.05, 0.25], [0.35, -0.30], [0.80, -0.50]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+    { name: 'Crown',
+      pts: [[-0.80, 0.40], [-0.40, -0.40], [0, 0.10], [0.40, -0.40], [0.80, 0.40]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] }
+  ];
+
+  // ---- gentle sound, all synthesised, no files ----
+  var audioCtx = null;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) { audioCtx = new AC(); }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+    } catch (e) { audioCtx = null; }
+  }
+  function tone(freq, delay, dur, vol, wave) {
+    try {
+      if (!audioCtx) { return; }
+      var t0 = audioCtx.currentTime + (delay || 0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = wave || 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.07, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.15));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + (dur || 0.15) + 0.05);
+    } catch (e) { /* silent */ }
+  }
+  function sFlip() { tone(660, 0, 0.07, 0.05, 'square'); tone(880, 0.05, 0.07, 0.04, 'square'); }
+  function sMatch() {
+    tone(523.25, 0, 0.10, 0.07, 'square');
+    tone(659.25, 0.07, 0.10, 0.07, 'square');
+    tone(783.99, 0.14, 0.18, 0.08, 'square');
+  }
+  function sCombo(streak) {
+    var base = 700 + Math.min(streak, 6) * 90;
+    tone(base, 0, 0.09, 0.07, 'square');
+    tone(base * 1.335, 0.07, 0.14, 0.07, 'square');
+  }
+  function sNoMatch() { tone(220, 0, 0.16, 0.06, 'sawtooth'); tone(155, 0.08, 0.20, 0.05, 'sawtooth'); }
+  function sWin() {
+    var seq = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5];
+    for (var i = 0; i < seq.length; i++) { tone(seq[i], i * 0.11, 0.20, 0.07, 'square'); }
+  }
+
+  function drawSparkle(g, x, y, r, color, alpha) {
+    g.lineStyle(2, color, alpha);
+    g.beginPath();
+    g.moveTo(x - r, y); g.lineTo(x + r, y);
+    g.moveTo(x, y - r); g.lineTo(x, y + r);
+    g.strokePath();
+  }
+
+  // Draw one constellation into a Graphics object, centred on (cx, cy).
+  function drawConstellation(g, def, cx, cy, sx, sy) {
+    var i, a, b;
+    var px = [], py = [];
+    for (i = 0; i < def.pts.length; i++) {
+      px.push(cx + def.pts[i][0] * sx);
+      py.push(cy + def.pts[i][1] * sy);
+    }
+    g.lineStyle(3, CREAM, 0.95);
+    for (i = 0; i < def.lines.length; i++) {
+      a = def.lines[i][0]; b = def.lines[i][1];
+      g.beginPath();
+      g.moveTo(px[a], py[a]);
+      g.lineTo(px[b], py[b]);
+      g.strokePath();
+    }
+    for (i = 0; i < px.length; i++) {
+      g.fillStyle(CREAM, 0.22);
+      g.fillCircle(px[i], py[i], 11);
+      g.fillStyle(0xFFFDF4, 1);
+      g.fillCircle(px[i], py[i], 6);
+      drawSparkle(g, px[i], py[i], 11, CREAM, 0.55);
+    }
+  }
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: W,
+    height: H,
+    backgroundColor: '#0A0F2A',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: { create: create, update: update }
+  };
+
+  var game = new Phaser.Game(config);
+
+  function create() {
+    var scene = this;
+    ensureAudio();
+    scene.input.once('pointerdown', ensureAudio);
+
+    var twinkles = [];
+
+    // ---------- arcade night-sky background: neon nebulas + warping starfield ----------
+    var starSpeed = { value: 55 };
+    scene.starSpeed = starSpeed;
+    (function buildBackground() {
+      var bg = scene.add.graphics().setDepth(0);
+      bg.fillGradientStyle(0x05010F, 0x05010F, 0x1B0F45, 0x1B0F45, 1, 1, 1, 1);
+      bg.fillRect(0, 0, W, H);
+
+      // bold neon nebula glows
+      bg.fillStyle(0xFF2E88, 0.16);
+      bg.fillCircle(180, 240, 150);
+      bg.fillStyle(0x00F0FF, 0.13);
+      bg.fillCircle(720, 300, 170);
+      bg.fillStyle(0x9D4DFF, 0.16);
+      bg.fillCircle(450, 580, 210);
+
+      // neon horizon grid at the bottom
+      var grid = scene.add.graphics().setDepth(1);
+      grid.lineStyle(1.5, NEON_CYAN, 0.35);
+      var gy;
+      for (gy = 560; gy <= H; gy += 20) {
+        grid.beginPath();
+        grid.moveTo(0, gy);
+        grid.lineTo(W, gy);
+        grid.strokePath();
+      }
+      grid.lineStyle(1.5, NEON_PINK, 0.30);
+      var gx;
+      for (gx = -W; gx <= W * 2; gx += 60) {
+        grid.beginPath();
+        grid.moveTo(gx, 560);
+        grid.lineTo(gx + (W / 2 - gx) * 0.25, H);
+        grid.strokePath();
+      }
+      grid.lineStyle(3, NEON_CYAN, 0.8);
+      grid.beginPath();
+      grid.moveTo(0, 560); grid.lineTo(W, 560);
+      grid.strokePath();
+
+      // scattered stars, in two speed layers for a warp feel
+      var i, x, y, r;
+      for (i = 0; i < 150; i++) {
+        x = 10 + Math.random() * (W - 20);
+        y = 105 + Math.random() * (H - 115);
+        var fast = Math.random() < 0.35;
+        r = fast ? 2.6 : (Math.random() < 0.8 ? 1.5 : 2.2);
+        var col = Math.random() < 0.18 ? NEON_CYAN : (Math.random() < 0.18 ? NEON_PINK : 0xF6EFDD);
+        var base = 0.35 + Math.random() * 0.5;
+        var c = scene.add.circle(x, y, r, col, base).setDepth(1);
+        if (fast) { c.setScale(1); }
+        twinkles.push({
+          obj: c, base: base,
+          amp: 0.12 + Math.random() * 0.18,
+          speed: 0.6 + Math.random() * 1.6,
+          phase: Math.random() * Math.PI * 2,
+          fall: fast ? 60 + Math.random() * 70 : 12 + Math.random() * 22,
+          streak: fast
+        });
+      }
+      // a few hand-drawn sparkles among the stars
+      var sg = scene.add.graphics().setDepth(1);
+      var spots = [[140, 160], [740, 180], [330, 620], [590, 130], [90, 470]];
+      for (i = 0; i < spots.length; i++) {
+        drawSparkle(sg, spots[i][0], spots[i][1], 8, NEON_CYAN, 0.8);
+      }
+    })();
+
+    scene.twinkles = twinkles;
+
+    // ---------- HUD: arcade scoreboard ----------
+    var hud = scene.add.container(0, 0).setDepth(10);
+    var title = scene.add.text(48, 18, 'SKY PAIRS', {
+      fontFamily: SANS, fontSize: '30px', color: NEON_CYAN_CSS, fontStyle: 'bold'
+    });
+    var subtitle = scene.add.text(48, 52, 'ARCADE STAR MATCHING', {
+      fontFamily: SANS, fontSize: '13px', color: NEON_PINK_CSS, fontStyle: 'bold'
+    });
+    var scoreText = scene.add.text(W / 2, 22, 'SCORE 0', {
+      fontFamily: SANS, fontSize: '30px', color: GOLD_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+    var comboText = scene.add.text(W / 2, 56, '', {
+      fontFamily: SANS, fontSize: '16px', color: NEON_CYAN_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+    var movesText = scene.add.text(W - 48, 18, 'Moves 0', {
+      fontFamily: SANS, fontSize: '18px', color: CREAM_CSS
+    }).setOrigin(1, 0);
+    var pairsText = scene.add.text(W - 48, 42, 'Pairs 0 / 6', {
+      fontFamily: SANS, fontSize: '18px', color: CREAM_CSS
+    }).setOrigin(1, 0);
+    var timeText = scene.add.text(W - 48, 66, 'Time 0:00', {
+      fontFamily: SANS, fontSize: '18px', color: GOLD_CSS, fontStyle: 'bold'
+    }).setOrigin(1, 0);
+    var divider = scene.add.graphics();
+    divider.lineStyle(2, NEON_CYAN, 0.55);
+    divider.beginPath();
+    divider.moveTo(48, 96); divider.lineTo(W - 48, 96);
+    divider.strokePath();
+    divider.lineStyle(1.5, NEON_PINK, 0.5);
+    divider.beginPath();
+    divider.moveTo(48, 100); divider.lineTo(W - 48, 100);
+    divider.strokePath();
+    hud.add([title, subtitle, scoreText, comboText, movesText, pairsText, timeText, divider]);
+
+    var hintBar = scene.add.text(W / 2, 662, 'Match fast for COMBO bonus points!', {
+      fontFamily: SANS, fontSize: '16px', color: MUTED_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5).setDepth(10);
+
+    // ---------- game state ----------
+    var state = {
+      moves: 0, pairs: 0,
+      score: 0, streak: 0, bestStreak: 0,
+      elapsed: 0, ticking: false,
+      first: null, second: null,
+      lock: false, over: false, started: false
+    };
+
+    function fmtTime(sec) {
+      var m = Math.floor(sec / 60);
+      var s = Math.floor(sec % 60);
+      return 'Time ' + m + ':' + (s < 10 ? '0' + s : '' + s);
+    }
+
+    function setHud() {
+      movesText.setText('Moves ' + state.moves);
+      pairsText.setText('Pairs ' + state.pairs + ' / 6');
+      scoreText.setText('SCORE ' + state.score);
+      timeText.setText(fmtTime(state.elapsed));
+      if (state.streak >= 2) {
+        comboText.setText('COMBO x' + state.streak + ' STREAK!');
+      } else if (state.streak === 1) {
+        comboText.setText('STREAK x1');
+      } else {
+        comboText.setText('');
+      }
+    }
+
+    function popup(x, y, msg, color, size) {
+      var t = scene.add.text(x, y, msg, {
+        fontFamily: SANS, fontSize: (size || 26) + 'px', color: color || GOLD_CSS, fontStyle: 'bold'
+      }).setOrigin(0.5, 0.5).setDepth(40);
+      scene.tweens.add({
+        targets: t, y: y - 60, alpha: 0, scale: 1.25,
+        duration: 900, ease: 'Cubic.easeOut',
+        onComplete: function () { t.destroy(); }
+      });
+    }
+
+    function burst(x, y, tint) {
+      try {
+        var p = scene.add.particles(x, y, '__WHITE', {
+          speed: { min: 90, max: 320 },
+          angle: { min: 0, max: 360 },
+          lifespan: 550,
+          quantity: 22,
+          scale: { start: 1, end: 0 },
+          tint: tint || [0x00F0FF, 0xFF2E88, 0xF7D774, 0xFFFFFF],
+          emitting: true
+        });
+        p.setDepth(35);
+        p.explode(26, x, y);
+        scene.time.delayedCall(650, function () { p.destroy(); });
+      } catch (e) { /* particles optional */ }
+    }
+
+    // ---------- cards ----------
+    var cards = [];
+
+    function paintCard(card) {
+      var g = card.bg;
+      g.clear();
+      if (card.faceUp) {
+        if (card.matched) {
+          g.fillStyle(0x1B0F45, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(4, GOLD, 1);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(1.5, NEON_CYAN, 0.9);
+          g.strokeRoundedRect(-CARD_W / 2 + 6, -CARD_H / 2 + 6, CARD_W - 12, CARD_H - 12, 13);
+        } else {
+          g.fillStyle(0x141C4D, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+          g.lineStyle(2.5, NEON_CYAN, 1);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        }
+      } else {
+        g.fillStyle(0x0D1030, 1);
+        g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        g.lineStyle(2, NEON_PINK, 0.95);
+        g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 18);
+        g.lineStyle(1, NEON_CYAN, 0.5);
+        g.strokeRoundedRect(-CARD_W / 2 + 6, -CARD_H / 2 + 6, CARD_W - 12, CARD_H - 12, 13);
+      }
+      card.backDeco.setVisible(!card.faceUp);
+      if (card.visual._qmark) { card.visual._qmark.setVisible(!card.faceUp); }
+      card.face.setVisible(card.faceUp);
+    }
+
+    function makeCard(x, y, key) {
+      var visual = scene.add.container(x, y).setDepth(5);
+      var bg = scene.add.graphics();
+      visual.add(bg);
+
+      // face-down decoration: neon frame, orbit ring and a hot-pink core star
+      var backDeco = scene.add.graphics();
+      backDeco.lineStyle(1.5, NEON_CYAN, 0.55);
+      backDeco.strokeRoundedRect(-CARD_W / 2 + 9, -CARD_H / 2 + 9, CARD_W - 18, CARD_H - 18, 12);
+      backDeco.lineStyle(2, NEON_PINK, 0.9);
+      backDeco.strokeCircle(0, -6, 24);
+      backDeco.fillStyle(NEON_PINK, 1);
+      backDeco.fillCircle(0, -6, 6);
+      backDeco.fillStyle(0xFFFFFF, 1);
+      backDeco.fillCircle(0, -6, 2.5);
+      drawSparkle(backDeco, 0, -6, 14, NEON_CYAN, 0.9);
+      backDeco.fillStyle(NEON_CYAN, 0.9);
+      backDeco.fillCircle(-52, -48, 2.5);
+      backDeco.fillCircle(52, -48, 2.5);
+      backDeco.fillCircle(-52, 48, 2.5);
+      backDeco.fillCircle(52, 48, 2.5);
+      var qmark = scene.add.text(0, 38, '?', {
+        fontFamily: SANS, fontSize: '34px', color: NEON_CYAN_CSS, fontStyle: 'bold'
+      }).setOrigin(0.5, 0.5);
+      visual.add([backDeco, qmark]);
+      visual._qmark = qmark;
+
+      // face-up constellation
+      var face = scene.add.container(0, 0);
+      var cg = scene.add.graphics();
+      drawConstellation(cg, CONSTELLATIONS[key], 0, -14, 54, 42);
+      var label = scene.add.text(0, 50, CONSTELLATIONS[key].name, {
+        fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+      }).setOrigin(0.5, 0.5);
+      face.add([cg, label]);
+      visual.add(face);
+
+      var zone = scene.add.zone(x, y, CARD_W, CARD_H)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(6);
+
+      var card = {
+        visual: visual, bg: bg, backDeco: backDeco, face: face,
+        zone: zone, key: key, faceUp: false, matched: false
+      };
+      paintCard(card);
+      zone.on('pointerdown', function () { onCardClicked(card); });
+      return card;
+    }
+
+    function flipCard(card, show, done) {
+      scene.tweens.add({
+        targets: card.visual,
+        scaleX: 0,
+        duration: 110,
+        ease: 'Quad.easeIn',
+        onComplete: function () {
+          card.faceUp = show;
+          paintCard(card);
+          scene.tweens.add({
+            targets: card.visual,
+            scaleX: 1,
+            duration: 150,
+            ease: 'Back.easeOut',
+            onComplete: function () { if (done) { done(); } }
+          });
+        }
+      });
+    }
+
+    function onCardClicked(card) {
+      ensureAudio();
+      if (!state.started || state.lock || state.over) { return; }
+      if (card.faceUp || card.matched) { return; }
+      if (state.first && card === state.first) { return; }
+      sFlip();
+      if (!state.first) {
+        state.first = card;
+        flipCard(card, true);
+      } else {
+        state.second = card;
+        state.lock = true;
+        state.moves += 1;
+        setHud();
+        flipCard(card, true, resolveTurn);
+      }
+    }
+
+    function resolveTurn() {
+      var a = state.first, b = state.second;
+      if (a.key === b.key) {
+        a.matched = true;
+        b.matched = true;
+        a.zone.input.enabled = false;
+        b.zone.input.enabled = false;
+        paintCard(a);
+        paintCard(b);
+        state.streak += 1;
+        if (state.streak > state.bestStreak) { state.bestStreak = state.streak; }
+        var gained = 100 + (state.streak - 1) * 50;
+        state.score += gained;
+        setHud();
+        if (state.streak >= 2) { sCombo(state.streak); } else { sMatch(); }
+        try {
+          scene.starSpeed.value = 190;
+          scene.time.delayedCall(600, function () { scene.starSpeed.value = 55; });
+        } catch (e) { /* speed burst optional */ }
+        var mx = (a.visual.x + b.visual.x) / 2;
+        var my = (a.visual.y + b.visual.y) / 2;
+        burst(a.visual.x, a.visual.y);
+        burst(b.visual.x, b.visual.y);
+        popup(mx, my - 40, '+' + gained, GOLD_CSS, state.streak >= 3 ? 32 : 26);
+        if (state.streak >= 2) {
+          popup(mx, my - 76, 'COMBO x' + state.streak + '!', NEON_CYAN_CSS, 22);
+        }
+        scene.tweens.add({
+          targets: [a.visual, b.visual], scale: 1.12,
+          duration: 150, yoyo: true, ease: 'Sine.easeInOut',
+          onComplete: function () {
+            state.pairs += 1;
+            setHud();
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+            if (state.pairs >= 6) { winGame(); }
+          }
+        });
+      } else {
+        state.streak = 0;
+        state.score = Math.max(0, state.score - 15);
+        setHud();
+        sNoMatch();
+        try { scene.cameras.main.shake(160, 0.006); } catch (e) { /* no camera */ }
+        popup((a.visual.x + b.visual.x) / 2, (a.visual.y + b.visual.y) / 2 - 50, 'MISS -15', NEON_PINK_CSS, 22);
+        scene.time.delayedCall(550, function () {
+          flipCard(a, false);
+          flipCard(b, false, function () {
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+          });
+        });
+      }
+    }
+
+    // lay out the board: 4 columns by 3 rows
+    var totalW = 4 * CARD_W + 3 * GAP_X;
+    var left = W / 2 - totalW / 2;
+    var top = 132;
+    var deck = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+    Phaser.Utils.Array.Shuffle(deck);
+    var i, c, r, k = 0;
+    for (r = 0; r < 3; r++) {
+      for (c = 0; c < 4; c++) {
+        var cx = left + CARD_W / 2 + c * (CARD_W + GAP_X);
+        var cy = top + CARD_H / 2 + r * (CARD_H + GAP_Y);
+        cards.push(makeCard(cx, cy, deck[k]));
+        k += 1;
+      }
+    }
+
+    function resetBoard() {
+      var d = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+      Phaser.Utils.Array.Shuffle(d);
+      for (var n = 0; n < cards.length; n++) {
+        var card = cards[n];
+        card.key = d[n];
+        card.faceUp = false;
+        card.matched = false;
+        card.visual.scaleX = 1;
+        card.visual.setScale(1);
+        card.zone.input.enabled = true;
+        // redraw the face with the new constellation
+        card.face.removeAll(true);
+        var cg = scene.add.graphics();
+        drawConstellation(cg, CONSTELLATIONS[card.key], 0, -14, 54, 42);
+        var label = scene.add.text(0, 50, CONSTELLATIONS[card.key].name, {
+          fontFamily: SANS, fontSize: '16px', color: CREAM_CSS
+        }).setOrigin(0.5, 0.5);
+        card.face.add([cg, label]);
+        paintCard(card);
+      }
+      state.moves = 0;
+      state.pairs = 0;
+      state.score = 0;
+      state.streak = 0;
+      state.bestStreak = 0;
+      state.elapsed = 0;
+      state.ticking = true;
+      state.first = null;
+      state.second = null;
+      state.lock = false;
+      state.over = false;
+      setHud();
+    }
+
+    // ---------- arcade buttons (neon pill + text + zone) ----------
+    function makeButton(x, y, w, h, labelText, onTap) {
+      var cont = scene.add.container(x, y);
+      var g = scene.add.graphics();
+      function paint(hover) {
+        g.clear();
+        g.fillStyle(hover ? 0x00F0FF : 0xF6EFDD, 1);
+        g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+        g.lineStyle(3, hover ? 0xFFFFFF : NEON_PINK, 1);
+        g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+      }
+      paint(false);
+      var t = scene.add.text(0, -1, labelText, {
+        fontFamily: SANS, fontSize: '24px', color: '#141C4D', fontStyle: 'bold'
+      }).setOrigin(0.5, 0.5);
+      cont.add([g, t]);
+      var z = scene.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+      z.on('pointerover', function () { paint(true); });
+      z.on('pointerout', function () { paint(false); });
+      z.on('pointerdown', function () { ensureAudio(); onTap(); });
+      cont.setDepth(60);
+      z.setDepth(61);
+      return { cont: cont, zone: z, paint: paint };
+    }
+
+    // ---------- start overlay: arcade attract screen ----------
+    var startOverlay = scene.add.container(0, 0).setDepth(50);
+    var sDim = scene.add.rectangle(0, 0, W, H, 0x05010F, 0.82).setOrigin(0);
+    var sBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var sPanelG = scene.add.graphics();
+    sPanelG.fillStyle(DEEP_PANEL, 1);
+    sPanelG.fillRoundedRect(W / 2 - 300, 135, 600, 500, 24);
+    sPanelG.lineStyle(3, NEON_CYAN, 1);
+    sPanelG.strokeRoundedRect(W / 2 - 300, 135, 600, 500, 24);
+    sPanelG.lineStyle(1.5, NEON_PINK, 0.9);
+    sPanelG.strokeRoundedRect(W / 2 - 292, 143, 584, 484, 19);
+    var sTitle = scene.add.text(W / 2, 198, 'SKY PAIRS', {
+      fontFamily: SANS, fontSize: '62px', color: NEON_CYAN_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var sSub = scene.add.text(W / 2, 244, '// ARCADE STAR MATCHING //', {
+      fontFamily: SANS, fontSize: '18px', color: NEON_PINK_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var sFlourish = scene.add.graphics();
+    sFlourish.lineStyle(2, NEON_CYAN, 0.8);
+    sFlourish.beginPath();
+    sFlourish.moveTo(W / 2 - 150, 276); sFlourish.lineTo(W / 2 + 150, 276);
+    sFlourish.strokePath();
+    sFlourish.fillStyle(GOLD, 1);
+    sFlourish.fillCircle(W / 2, 276, 5);
+    var sPreview = scene.add.graphics();
+    drawConstellation(sPreview, CONSTELLATIONS[4], W / 2, 336, 60, 44);
+    var sInfo = scene.add.text(W / 2, 426,
+      'Find the 6 matching pairs!\n+100 per pair - chain COMBOS for +150, +200...\nMiss costs 15 pts. Clear it fast for a TIME BONUS!', {
+      fontFamily: SANS, fontSize: '17px', color: CREAM_CSS,
+      align: 'center', lineSpacing: 8, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var sHi = scene.add.text(W / 2, 500, 'BEST COMBO WINS - NO PRESSURE, JUST POINTS', {
+      fontFamily: SANS, fontSize: '13px', color: MUTED_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    startOverlay.add([sDim, sBlock, sPanelG, sTitle, sSub, sFlourish, sPreview, sInfo, sHi]);
+    var startBtn = makeButton(W / 2, 566, 250, 60, '>> START <<', function () {
+      startOverlay.setVisible(false);
+      startBtn.cont.setVisible(false);
+      startBtn.zone.setVisible(false);
+      state.started = true;
+      state.ticking = true;
+    });
+    startBtn.cont.setDepth(52);
+    startBtn.zone.setDepth(53);
+
+    // ---------- win overlay: arcade results ----------
+    var winOverlay = scene.add.container(0, 0).setDepth(50).setVisible(false);
+    var wDim = scene.add.rectangle(0, 0, W, H, 0x05010F, 0.82).setOrigin(0);
+    var wBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var wPanelG = scene.add.graphics();
+    wPanelG.fillStyle(DEEP_PANEL, 1);
+    wPanelG.fillRoundedRect(W / 2 - 290, 150, 580, 450, 24);
+    wPanelG.lineStyle(3, GOLD, 1);
+    wPanelG.strokeRoundedRect(W / 2 - 290, 150, 580, 450, 24);
+    wPanelG.lineStyle(1.5, NEON_CYAN, 0.9);
+    wPanelG.strokeRoundedRect(W / 2 - 282, 158, 564, 434, 19);
+    var wTitle = scene.add.text(W / 2, 212, 'YOU WIN!', {
+      fontFamily: SANS, fontSize: '52px', color: GOLD_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wSub = scene.add.text(W / 2, 254, '// GALAXY CLEARED //', {
+      fontFamily: SANS, fontSize: '18px', color: NEON_CYAN_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wScore = scene.add.text(W / 2, 310, 'SCORE 0', {
+      fontFamily: SANS, fontSize: '34px', color: GOLD_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wMoves = scene.add.text(W / 2, 352, 'Moves: 0', {
+      fontFamily: SANS, fontSize: '20px', color: CREAM_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wRank = scene.add.text(W / 2, 388, '', {
+      fontFamily: SANS, fontSize: '22px', color: NEON_PINK_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wStars = scene.add.graphics();
+    drawSparkle(wStars, W / 2 - 40, 428, 9, GOLD, 1);
+    drawSparkle(wStars, W / 2, 428, 12, NEON_CYAN, 1);
+    drawSparkle(wStars, W / 2 + 40, 428, 9, GOLD, 1);
+    wStars.fillStyle(CREAM, 1);
+    wStars.fillCircle(W / 2 - 40, 428, 3);
+    wStars.fillCircle(W / 2, 428, 4);
+    wStars.fillCircle(W / 2 + 40, 428, 3);
+    winOverlay.add([wDim, wBlock, wPanelG, wTitle, wSub, wScore, wMoves, wRank, wStars]);
+    var againBtn = makeButton(W / 2, 516, 280, 60, 'PLAY AGAIN', function () {
+      winOverlay.setVisible(false);
+      againBtn.cont.setVisible(false);
+      againBtn.zone.setVisible(false);
+      resetBoard();
+    });
+    againBtn.cont.setVisible(false);
+    againBtn.zone.setVisible(false);
+
+    function rankFor(score, moves, best) {
+      if (score >= 950 && moves <= 10) { return 'RANK: STAR ACE!'; }
+      if (score >= 800 || best >= 4) { return 'RANK: NOVA PILOT!'; }
+      if (score >= 600 || best >= 3) { return 'RANK: COMET RACER!'; }
+      return 'RANK: STARDUST ROOKIE!';
+    }
+
+    function winGame() {
+      state.over = true;
+      state.ticking = false;
+      var timeBonus = Math.max(0, 300 - Math.floor(state.elapsed) * 3);
+      state.score += timeBonus;
+      setHud();
+      sWin();
+      try { scene.cameras.main.flash(350, 255, 255, 255); } catch (e) { /* no camera */ }
+      burst(W / 2 - 120, 300);
+      burst(W / 2 + 120, 300);
+      burst(W / 2, 240, [0xF7D774, 0xFFFFFF]);
+      wScore.setText('SCORE ' + state.score + '  (+' + timeBonus + ' fast!)');
+      wMoves.setText(state.pairs + ' / 6 pairs in ' + state.moves + ' moves - ' + fmtTime(state.elapsed) + ' - best combo x' + state.bestStreak);
+      wRank.setText(rankFor(state.score, state.moves, state.bestStreak));
+      winOverlay.setVisible(true);
+      winOverlay.setAlpha(0);
+      againBtn.cont.setVisible(true);
+      againBtn.zone.setVisible(true);
+      againBtn.cont.setDepth(52);
+      againBtn.zone.setDepth(53);
+      scene.tweens.add({
+        targets: winOverlay, alpha: 1, duration: 500, ease: 'Sine.easeOut'
+      });
+      scene.tweens.add({
+        targets: wScore, scale: 1.15, duration: 320, yoyo: true, repeat: 3, ease: 'Sine.easeInOut'
+      });
+    }
+
+    scene.twinkles = twinkles;
+    setHud();
+
+    // arcade clock: counts up while a round is live
+    scene.time.addEvent({
+      delay: 500, loop: true,
+      callback: function () {
+        if (state.started && state.ticking && !state.over) {
+          state.elapsed += 0.5;
+          timeText.setText(fmtTime(state.elapsed));
+        }
+      }
+    });
+  }
+
+  function update(time, delta) {
+    if (!this.twinkles) { return; }
+    var boost = 1;
+    try {
+      if (this.starSpeed && this.starSpeed.value) { boost = this.starSpeed.value / 55; }
+    } catch (e) { boost = 1; }
+    var dt = Math.min((delta || 16) / 1000, 0.05);
+    for (var i = 0; i < this.twinkles.length; i++) {
+      var s = this.twinkles[i];
+      s.obj.setAlpha(s.base + Math.sin(time * 0.001 * s.speed + s.phase) * s.amp);
+      if (s.fall) {
+        s.obj.y += s.fall * boost * dt;
+        if (s.obj.y > H - 8) {
+          s.obj.y = 108;
+          s.obj.x = 10 + Math.random() * (W - 20);
+        }
+      }
+    }
+  }
+
+})();
+</script>
+</body>
+</html>
