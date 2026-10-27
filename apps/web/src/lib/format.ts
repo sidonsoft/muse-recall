@@ -18,7 +18,10 @@ export function formatTokens(value: number): string {
 /** Shorten a filesystem path for display without hiding its tail. */
 export function shortenPath(path: string, keep = 34): string {
   if (path.length <= keep) return path;
-  return `…${path.slice(path.length - keep)}`;
+  const tail = path.slice(path.length - keep);
+  // Start at a path separator so the result never begins mid-directory.
+  const boundary = tail.indexOf('/');
+  return `…${boundary > 0 ? tail.slice(boundary) : tail}`;
 }
 
 export function formatTimestamp(iso: string | null): string {

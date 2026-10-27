@@ -35,7 +35,7 @@ export function Overview({
       {offline ? (
         <div className="rounded-xl border border-warn/30 bg-warn/5 px-4 py-3">
           <p className="text-xs font-medium text-warn">
-            The deterministic offline provider is active — this is not Meta Muse.
+            The deterministic offline provider is active — this is not Muse Spark.
           </p>
           <p className="mt-1 text-[11px] text-ink-dim">
             Set <code className="font-mono text-warn">MODEL_PROVIDER=muse-cli</code> in{' '}

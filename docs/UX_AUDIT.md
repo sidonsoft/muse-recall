@@ -178,7 +178,7 @@ Changes shows an add/remove diff with wrap and jump-to-additions controls.
 **Evidence:** baseline "Change from a screenshot" required **Capture preview** before the change
 button enabled; non-canvas applications have nothing to capture.
 
-**Correction implemented:** screenshot is optional ("Reference the current preview — optional");
+**Correction implemented:** screenshot is optional ("Optional visual reference");
 the change button is enabled by the request text alone. The server accepts both paths and only
 mentions an attached screenshot when one exists. This is verified by an integration test that
 modifies and approves without a screenshot.
