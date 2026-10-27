@@ -1,6 +1,7 @@
 import type { ForgeDiff, ForgeJob, ForgeProjectView } from '@mml/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
+import { isBlankCapture } from '../../lib/capture.ts';
 import { Icon } from '../Icon.tsx';
 
 /**
@@ -38,6 +39,7 @@ export function ForgeView() {
   const [reload, setReload] = useState(0);
   const [previewReady, setPreviewReady] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [captureMethod, setCaptureMethod] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   // Saving a decision is a separate, explicit action from approving files.
   const [captureMemory, setCaptureMemory] = useState(false);
@@ -67,16 +69,28 @@ export function ForgeView() {
         dataUrl?: string | null;
         error?: string;
         message?: string;
+        method?: string;
       } | null;
       if (data?.type === 'forge:preview-error') {
         setPreviewError(data.message ?? 'The game threw an error at runtime.');
         return;
       }
       if (data?.type !== 'forge:screenshot') return;
-      if (data.dataUrl) {
-        setScreenshot(data.dataUrl);
-        setNotice('Preview captured. Describe the visual change you want.');
-        setError(null);
+      const captured = data.dataUrl;
+      if (captured) {
+        void isBlankCapture(captured).then((blank) => {
+          if (blank) {
+            setScreenshot(null);
+            setError(
+              'The captured image is blank or a single colour. Reload the preview, wait for the game to render, and capture again.',
+            );
+            return;
+          }
+          setScreenshot(captured);
+          setCaptureMethod(data.method ?? null);
+          setNotice('Preview captured. Describe the visual change you want.');
+          setError(null);
+        });
       } else {
         setError(data.error ?? 'The preview has no canvas to capture.');
       }
@@ -390,6 +404,7 @@ export function ForgeView() {
                 <img
                   src={screenshot}
                   alt="Captured preview"
+                  data-capture-method={captureMethod ?? 'unknown'}
                   className="h-14 w-24 rounded border border-line object-cover"
                 />
               ) : (

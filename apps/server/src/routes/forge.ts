@@ -177,14 +177,65 @@ export function registerForgeRoutes(
  * request a PNG of the game canvas; the generated game never sees app state.
  */
 const CAPTURE_BRIDGE = `<script>(function(){
-window.addEventListener('message',function(event){var data=event.data;if(!data)return;if(data.type==='forge:restart'){window.location.reload();return;}if(data.type!=='forge:capture')return;var canvas=document.querySelector('canvas');try{var url=canvas?canvas.toDataURL('image/png'):null;if(event.source)event.source.postMessage({type:'forge:screenshot',dataUrl:url},'*');}catch(error){if(event.source)event.source.postMessage({type:'forge:screenshot',error:String(error)},'*');}});
-window.addEventListener('error',function(event){var message=event&&event.message?String(event.message):'';if(message&&window.parent)window.parent.postMessage({type:'forge:preview-error',message:message},'*');});
+function post(source,message){try{if(source)source.postMessage(message,'*');}catch(error){}}
+function fallback(source,error){
+  var canvas=document.querySelector('canvas');
+  try{
+    if(canvas){post(source,{type:'forge:screenshot',dataUrl:canvas.toDataURL('image/png'),method:'canvas'});}
+    else{post(source,{type:'forge:screenshot',error:error?String(error):'No canvas found.'});}
+  }catch(cause){post(source,{type:'forge:screenshot',error:String(cause)});}
+}
+// Wrap Phaser.Game as soon as the CDN assigns window.Phaser, before the game
+// script runs, so capture can use renderer.snapshot() instead of toDataURL on a
+// WebGL canvas whose drawing buffer is already cleared.
+try{
+  Object.defineProperty(window,'Phaser',{
+    configurable:true,
+    get:function(){return undefined;},
+    set:function(value){
+      try{
+        var Original=value&&value.Game;
+        if(typeof Original==='function'&&!Original.__forgeWrapped){
+          var Wrapped=function(config){
+            var game=new Original(config);
+            window.__forgeGame=game;
+            return game;
+          };
+          Wrapped.prototype=Original.prototype;
+          Wrapped.__forgeWrapped=true;
+          value.Game=Wrapped;
+        }
+      }catch(error){}
+      Object.defineProperty(window,'Phaser',{value:value,writable:true,configurable:true,enumerable:true});
+    }
+  });
+}catch(error){}
+window.addEventListener('message',function(event){
+  var data=event.data;if(!data)return;
+  var source=event.source||window.parent;
+  if(data.type==='forge:restart'){window.location.reload();return;}
+  if(data.type!=='forge:capture')return;
+  var game=window.__forgeGame;
+  if(game&&game.renderer&&typeof game.renderer.snapshot==='function'){
+    try{
+      game.renderer.snapshot(function(image){
+        if(image&&image.src){post(source,{type:'forge:screenshot',dataUrl:image.src,method:'snapshot'});}
+        else{fallback(source,'Snapshot returned no image.');}
+      });
+      return;
+    }catch(error){fallback(source,error);return;}
+  }
+  fallback(source,'No Phaser game instance; using canvas capture.');
+});
+window.addEventListener('error',function(event){
+  var message=event&&event.message?String(event.message):'';
+  if(message&&window.parent)window.parent.postMessage({type:'forge:preview-error',message:message},'*');
+});
 })();</script>`;
-
 function withCaptureBridge(html: string): string {
-  return html.includes('</body>')
-    ? html.replace('</body>', `${CAPTURE_BRIDGE}</body>`)
-    : `${html}${CAPTURE_BRIDGE}`;
+  // Before the game script: the bridge must be able to wrap Phaser.Game.
+  if (html.includes('</head>')) return html.replace('</head>', `${CAPTURE_BRIDGE}</head>`);
+  return `${CAPTURE_BRIDGE}${html}`;
 }
 
 function envelope<T>(data: T): { ok: true; data: T } {
@@ -204,6 +255,11 @@ function decodePng(dataUrl: string): Buffer {
     throw new ForgeError('invalid_staged', 'Screenshot is not a valid PNG.');
   }
   if (buffer.length > 6_000_000) throw new ForgeError('invalid_staged', 'Screenshot is too large.');
+  const width = buffer.readUInt32BE(16);
+  const height = buffer.readUInt32BE(20);
+  if (width < 32 || height < 32) {
+    throw new ForgeError('invalid_staged', 'Screenshot is too small to be a game preview.');
+  }
   return buffer;
 }
 

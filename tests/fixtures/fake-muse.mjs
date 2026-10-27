@@ -28,9 +28,22 @@ const done = (text) =>
 
 function html(marker) {
   return `<!doctype html><html><head><title>Fake Game</title></head><body>
-<canvas id="game"></canvas>
+<div id="game"></div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<script>const MARKER = '${marker}'; const FARM_MARKER = 'keep-me';</script>
+<script>
+const FARM_MARKER = 'keep-me';
+const MARKER = '${marker}';
+new Phaser.Game({
+  type: Phaser.AUTO, width: 640, height: 480, parent: 'game', backgroundColor: '#ffe08a',
+  scene: { create() {
+    const g = this.add.graphics();
+    g.fillStyle(0xff5d5d, 1); g.fillRect(40, 40, 220, 140);
+    g.fillStyle(0x4da3ff, 1); g.fillCircle(480, 140, 70);
+    g.fillStyle(0x4caf50, 1); g.fillRect(40, 300, 560, 80);
+    this.add.text(60, 230, 'Fake Farm Game', { fontSize: '36px', color: '#333333' });
+  } }
+});
+</script>
 </body></html>`;
 }
 

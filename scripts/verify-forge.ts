@@ -55,7 +55,43 @@ async function main() {
 
   await page.getByRole('button', { name: 'Capture preview' }).click();
   await page.locator('img[alt="Captured preview"]').waitFor({ timeout: 30_000 });
-  check('captured the preview screenshot');
+  const capture = await page.evaluate(async () => {
+    const image = document.querySelector('img[alt="Captured preview"]') as HTMLImageElement | null;
+    if (!image) return { min: 0, max: 0, colourful: 0 };
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (!context) return { min: 0, max: 0, colourful: 0 };
+    context.drawImage(image, 0, 0, 64, 64);
+    const pixels = context.getImageData(0, 0, 64, 64).data;
+    let min = 255;
+    let max = 0;
+    let colourful = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const r = pixels[index] ?? 0;
+      const g = pixels[index + 1] ?? 0;
+      const b = pixels[index + 2] ?? 0;
+      const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (luminance < min) min = luminance;
+      if (luminance > max) max = luminance;
+      if (Math.max(r, g, b) - Math.min(r, g, b) > 12) colourful += 1;
+    }
+    return { min, max, colourful };
+  });
+  if (capture.max - capture.min < 8) {
+    throw new Error(`captured image is blank (range ${capture.max - capture.min})`);
+  }
+  const method = await page
+    .locator('img[alt="Captured preview"]')
+    .getAttribute('data-capture-method');
+  if (method !== 'snapshot') {
+    throw new Error(`expected a renderer snapshot capture, got ${String(method)}`);
+  }
+  check(
+    `captured a non-blank screenshot via renderer.snapshot (range ${Math.round(capture.max - capture.min)})`,
+  );
 
   await page.getByRole('button', { name: 'Generate change' }).click();
   await page.getByText('Review change').waitFor({ timeout: LONG });
