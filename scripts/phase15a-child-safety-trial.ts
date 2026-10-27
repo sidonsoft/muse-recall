@@ -46,6 +46,21 @@ const ORDER = ['N1', 'M1', 'N2', 'M2', 'N3', 'M3'] as const;
 const MAX_RETRIES_PER_SLOT = 2;
 const MAX_ATTEMPTS = 12;
 const MAX_INPUT_TOKENS = 3_000_000;
+
+function flag(name: string): string | null {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? (process.argv[index + 1] ?? null) : null;
+}
+
+/**
+ * Amendment 1 (see the protocol's amendment section): run only the named
+ * slots, with their own token cap, writing `trial-amendment-<n>.json` so the
+ * original `trial.json` is never overwritten.
+ */
+const AMENDMENT = flag('--amendment');
+const SLOTS = flag('--slots')?.split(',') ?? null;
+const RUN_MAX_INPUT_TOKENS = Number(flag('--max-input-tokens') ?? MAX_INPUT_TOKENS);
+const TRIAL_FILE = AMENDMENT ? `trial-amendment-${AMENDMENT}.json` : 'trial.json';
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled', 'budget_exceeded', 'rejected']);
 const INFRA_FAILURE =
   /credential|unauthori[sz]ed|401|403|quota|429|rate.?limit|ENOTFOUND|ECONNRE|network|Could not start Muse/i;
@@ -271,6 +286,12 @@ async function runSlot(slot: Slot, attempt: number, preview: Buffer): Promise<At
       };
 
       if (job.status !== 'succeeded') {
+        // Kept for diagnosis only; an unsucceeded run is never scored (§8).
+        const unscored = await workspace.stagedHtml(projectId, job.id).catch(() => null);
+        if (unscored !== null && !DRY_RUN) {
+          await writeFile(join(OUT, 'sources', `${slot}-staged-unscored.html`), unscored, 'utf8');
+          record.unscored_source_sha256 = sha256(unscored);
+        }
         return { slot, attempt, started_at: startedAt, infra_failure: infra, record };
       }
 
@@ -333,18 +354,19 @@ async function main(): Promise<void> {
 
   const baseline = await readFile(BASELINE, 'utf8');
   if (sha256(baseline) !== BASELINE_SHA256) throw new Error('baseline hash mismatch');
+  // An amendment reuses the original preview so every run gets the same bytes.
   const previewPath = join(OUT, 'preview.png');
-  await renderPreview(baseline, previewPath, false);
+  if (!AMENDMENT) await renderPreview(baseline, previewPath, false);
   const preview = await readFile(previewPath);
 
   const attempts: Attempt[] = [];
   let inputTokens = 0;
   let stopped: string | null = null;
 
-  for (const slot of ORDER) {
+  for (const slot of ORDER.filter((s) => SLOTS === null || SLOTS.includes(s))) {
     for (let attempt = 1; attempt <= MAX_RETRIES_PER_SLOT + 1; attempt += 1) {
       if (attempts.length >= MAX_ATTEMPTS) stopped = 'attempt cap reached';
-      if (inputTokens >= MAX_INPUT_TOKENS) stopped = 'input-token cap reached';
+      if (inputTokens >= RUN_MAX_INPUT_TOKENS) stopped = 'input-token cap reached';
       if (stopped) break;
       console.log(`[${new Date().toISOString()}] ${slot} attempt ${attempt}…`);
       const result = await runSlot(slot, attempt, preview);
@@ -380,12 +402,15 @@ async function writeTrial(
     preview_sha256: sha256(preview),
     model: DRY_RUN ? 'fake-muse fixture' : `${MODEL} (forced)`,
     order: ORDER,
+    amendment: AMENDMENT,
+    slots: SLOTS ?? ORDER,
+    max_input_tokens: RUN_MAX_INPUT_TOKENS,
     total_attempts: attempts.length,
     total_input_tokens: inputTokens,
     stopped,
     attempts,
   };
-  await writeFile(join(OUT, 'trial.json'), `${JSON.stringify(trial, null, 2)}\n`, 'utf8');
+  await writeFile(join(OUT, TRIAL_FILE), `${JSON.stringify(trial, null, 2)}\n`, 'utf8');
 }
 
 main().catch((error: unknown) => {
