@@ -1,0 +1,10 @@
+The current approved game is already in this workspace at index.html.
+Edit that file in place: keep every part of the existing implementation that the request does not ask you to change.
+Modify index.html only; do not regenerate the game from scratch.
+The attached screenshot is the current rendered preview. Use it to understand the visual result.
+Apply the requested visual change while preserving gameplay: cards, matching, score, restart, win condition, mouse/touch, and responsive layout.
+Keep the existing Phaser 3 CDN and Phaser.Game initialisation. Do not replace the engine with vanilla JavaScript and do not add libraries.
+Do not add other files or dependencies. After editing, run node --check on the inline script.
+
+Requested change:
+Add a Next Level button beneath the Restart button.

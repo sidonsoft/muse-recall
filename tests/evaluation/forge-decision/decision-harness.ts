@@ -19,8 +19,9 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildRetrievalQuery } from '../../../apps/server/src/forge/prompt.js';
 import { MemoryEngine, openDatabase } from '../../../packages/memory-engine/src/index.js';
-import { buildForgePrompt, memoryBlockFor } from '../forge-memory/harness.js';
+import { buildForgePromptForEval, memoryBlockFor } from '../forge-memory/harness.js';
 
 export const DECISION_PROJECT = 'forge-decision-eval';
 
@@ -108,13 +109,18 @@ export function setupDecision(key: 's1' | 's2' | 's3'): DecisionSetup {
 export function retrieveDecision(engine: MemoryEngine, request: string) {
   return engine.retrieve({
     project_id: DECISION_PROJECT,
-    query: `${DECISION_PROJECT}\n${request}`,
+    query: buildRetrievalQuery({
+      projectId: DECISION_PROJECT,
+      kind: 'modify',
+      prompt: request,
+      request,
+    }),
     budget: { max_memories: 6, max_characters: 3_000 },
   });
 }
 
 export function decisionPromptFor(engine: MemoryEngine, request: string): string {
-  return buildForgePrompt(memoryBlockFor(retrieveDecision(engine, request)), request);
+  return buildForgePromptForEval(memoryBlockFor(retrieveDecision(engine, request)), request);
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +300,7 @@ export function captureScenario(key: 's1' | 's2' | 's3'): ScenarioEvidence {
   const setup = setupDecision(key);
   try {
     const retrieval = retrieveDecision(setup.engine, request);
-    const prompt = buildForgePrompt(memoryBlockFor(retrieval), request);
+    const prompt = buildForgePromptForEval(memoryBlockFor(retrieval), request);
     const active = retrieval.results.map((r) => r.memory);
     const decisionSource = active.find((m) => m.id === (setup.correctedId ?? setup.decisionId));
     const guard = key === 's2' ? accessibilityGuard : key === 's3' ? paletteGuard : decisionGuard;

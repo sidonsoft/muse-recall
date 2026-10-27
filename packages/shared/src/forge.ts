@@ -59,6 +59,12 @@ export const ForgeJobSchema = z.object({
   usage: ForgeUsageSchema.nullable(),
   memory_ids: z.array(z.uuid()),
   base_version: z.number().int().min(1).nullable(),
+  /** sha256 of the exact prompt sent to the model, when known. */
+  prompt_sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable()
+    .optional(),
   validation: ForgeValidationSchema.nullable(),
   version: z.number().int().min(1).nullable(),
 });

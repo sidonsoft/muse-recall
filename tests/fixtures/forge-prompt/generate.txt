@@ -1,0 +1,8 @@
+Create a playable browser game in this workspace.
+Write exactly one file: index.html. Use Phaser 3 from https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js.
+It must be a complete single-file game: canvas, start/restart, mouse and touch input, score or progress, a win condition, responsive scaling, and readable text.
+Do not add other files, do not use a build step, and do not load assets from the network other than Phaser.
+After writing, run node --check on the inline script and fix any syntax error.
+
+Game description:
+A small farmyard memory game.

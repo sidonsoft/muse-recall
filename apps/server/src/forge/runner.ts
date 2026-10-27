@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MemoryEngine } from '@mml/memory-engine';
@@ -13,6 +13,7 @@ import {
   type ForgeValidation,
   redactSecrets,
 } from '@mml/shared';
+import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
 
@@ -143,8 +144,12 @@ export class ForgeJobManager {
       await writeFile(join(staging, 'index.html'), current, 'utf8');
     }
 
-    const query =
-      input.kind === 'modify' ? `${input.prompt}\n${input.request ?? ''}` : input.prompt;
+    const query = buildRetrievalQuery({
+      projectId: input.projectId,
+      kind: input.kind,
+      prompt: input.prompt,
+      request: input.request,
+    });
     const retrieval = this.engine.retrieve(
       {
         project_id: input.projectId,
@@ -348,7 +353,13 @@ export class ForgeJobManager {
     const execState = this.state.get(job.id);
     if (!execState) return;
 
-    const prompt = buildPrompt(job, memoryBlock);
+    const prompt = buildForgePrompt({
+      kind: job.kind,
+      prompt: job.prompt,
+      request: job.request,
+      memoryBlock,
+    });
+    this.update(job, { prompt_sha256: createHash('sha256').update(prompt).digest('hex') });
     const promptPath = join(staging, 'prompt.txt');
     await writeFile(promptPath, prompt, 'utf8');
 
@@ -605,36 +616,6 @@ export class ForgeJobManager {
       // Persistence is best-effort; in-memory state remains authoritative.
     }
   }
-}
-
-function buildPrompt(job: ForgeJob, memoryBlock: string): string {
-  const memory = memoryBlock
-    ? `\nProject design decisions from previous sessions (authoritative unless contradicted):\n${memoryBlock}\n`
-    : '';
-  if (job.kind === 'generate') {
-    return [
-      'Create a playable browser game in this workspace.',
-      'Write exactly one file: index.html. Use Phaser 3 from https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js.',
-      'It must be a complete single-file game: canvas, start/restart, mouse and touch input, score or progress, a win condition, responsive scaling, and readable text.',
-      'Do not add other files, do not use a build step, and do not load assets from the network other than Phaser.',
-      'After writing, run node --check on the inline script and fix any syntax error.',
-      memory,
-      'Game description:',
-      job.prompt,
-    ].join('\n');
-  }
-  return [
-    'The current approved game is already in this workspace at index.html.',
-    'Edit that file in place: keep every part of the existing implementation that the request does not ask you to change.',
-    'Modify index.html only; do not regenerate the game from scratch.',
-    'The attached screenshot is the current rendered preview. Use it to understand the visual result.',
-    'Apply the requested visual change while preserving gameplay: cards, matching, score, restart, win condition, mouse/touch, and responsive layout.',
-    'Keep the existing Phaser 3 CDN and Phaser.Game initialisation. Do not replace the engine with vanilla JavaScript and do not add libraries.',
-    'Do not add other files or dependencies. After editing, run node --check on the inline script.',
-    memory,
-    'Requested change:',
-    job.request ?? job.prompt,
-  ].join('\n');
 }
 
 function quotaFailure(job: ForgeJob): boolean {

@@ -17,6 +17,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { buildForgePrompt, buildRetrievalQuery } from '../../../apps/server/src/forge/prompt.js';
 import { MemoryEngine, openDatabase } from '../../../packages/memory-engine/src/index.js';
 import type { MemoryCreateInput } from '../../../packages/shared/src/index.js';
 
@@ -89,7 +90,12 @@ export function setupCondition(condition: Condition): ConditionSetup {
 export function retrieveForModification(engine: MemoryEngine, request = MODIFICATION_REQUEST) {
   return engine.retrieve({
     project_id: PROJECT_ID,
-    query: `${PROJECT_ID}\n${request}`,
+    query: buildRetrievalQuery({
+      projectId: PROJECT_ID,
+      kind: 'modify',
+      prompt: request,
+      request,
+    }),
     budget: { max_memories: 6, max_characters: 3_000 },
   });
 }
@@ -100,23 +106,12 @@ export function memoryBlockFor(retrieval: ReturnType<typeof retrieveForModificat
     : '';
 }
 
-/** Mirror of the modify branch of buildPrompt in runner.ts:621-632. */
-export function buildForgePrompt(memoryBlock: string, request = MODIFICATION_REQUEST): string {
-  const memory = memoryBlock
-    ? `\nProject design decisions from previous sessions (authoritative unless contradicted):\n${memoryBlock}\n`
-    : '';
-  return [
-    'The current approved game is already in this workspace at index.html.',
-    'Edit that file in place: keep every part of the existing implementation that the request does not ask you to change.',
-    'Modify index.html only; do not regenerate the game from scratch.',
-    'The attached screenshot is the current rendered preview. Use it to understand the visual result.',
-    'Apply the requested visual change while preserving gameplay: cards, matching, score, restart, win condition, mouse/touch, and responsive layout.',
-    'Keep the existing Phaser 3 CDN and Phaser.Game initialisation. Do not replace the engine with vanilla JavaScript and do not add libraries.',
-    'Do not add other files or dependencies. After editing, run node --check on the inline script.',
-    memory,
-    'Requested change:',
-    request,
-  ].join('\n');
+/** Production prompt builder (no mirror). */
+export function buildForgePromptForEval(
+  memoryBlock: string,
+  request = MODIFICATION_REQUEST,
+): string {
+  return buildForgePrompt({ kind: 'modify', prompt: request, request, memoryBlock });
 }
 
 export interface CaptureResult {
@@ -150,7 +145,7 @@ export function captureCondition(condition: Condition): CaptureResult {
 export function captureWithEngine(engine: MemoryEngine, condition: Condition): CaptureResult {
   const retrieval = retrieveForModification(engine);
   const block = memoryBlockFor(retrieval);
-  const prompt = buildForgePrompt(block);
+  const prompt = buildForgePromptForEval(block);
   return {
     condition,
     condition_label: CONDITIONS[condition],
