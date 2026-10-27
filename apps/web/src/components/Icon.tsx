@@ -27,7 +27,16 @@ export type IconName =
   | 'close'
   | 'layers'
   | 'tag'
-  | 'chevronDown';
+  | 'chevronDown'
+  | 'chevronRight'
+  | 'code'
+  | 'download'
+  | 'diff'
+  | 'play'
+  | 'external'
+  | 'arrowRight'
+  | 'clock'
+  | 'branch';
 
 const PATHS: Record<IconName, string> = {
   chat: 'M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 13 4a8 8 0 0 1 8 8Z',
@@ -54,6 +63,16 @@ const PATHS: Record<IconName, string> = {
   layers: 'm12 3 9 5-9 5-9-5 9-5Zm9 9-9 5-9-5m18 4-9 5-9-5',
   tag: 'M20 12 12 4H4v8l8 8 8-8ZM8 8h.01',
   chevronDown: 'm6 9 6 6 6-6',
+  chevronRight: 'm9 6 6 6-6 6',
+  code: 'm9 18-6-6 6-6m6 12 6-6-6-6',
+  download: 'M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2',
+  diff: 'M6 3v12m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM18 21V9m0 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 6h9a3 3 0 0 1 3 3M18 18H9a3 3 0 0 1-3-3',
+  play: 'm8 5 11 7-11 7V5Z',
+  external: 'M14 3h7v7M21 3l-9 9M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5',
+  arrowRight: 'M4 12h16m-6-6 6 6-6 6',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v5l3 2',
+  branch:
+    'M6 3v12m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM18 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v3a4 4 0 0 1-4 4H6',
 };
 
 export function Icon({ name, className = 'size-4' }: { name: IconName; className?: string }) {

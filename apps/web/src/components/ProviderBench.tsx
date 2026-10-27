@@ -12,7 +12,7 @@ import { StatusPill } from './ui.tsx';
  * inference on their machine in seconds. No memory, no tools, no agent loop —
  * and the panel says so.
  */
-export function ProviderBench({ onResult }: { onResult: (response: ModelResponse) => void }) {
+export function ProviderBench({ onResult }: { onResult?: (response: ModelResponse) => void } = {}) {
   const [prompt, setPrompt] = useState(
     'In one sentence, explain why a persistent memory layer matters for an AI companion.',
   );
@@ -34,7 +34,7 @@ export function ProviderBench({ onResult }: { onResult: (response: ModelResponse
         max_output_tokens: 384,
       });
       setResult(response);
-      onResult(response);
+      onResult?.(response);
     } catch (cause) {
       setError(
         cause instanceof ApiError

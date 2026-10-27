@@ -1,27 +1,31 @@
 @import "tailwindcss";
 
 /*
- * Design tokens.
+ * Design tokens — Muse Recall.
  *
- * A restrained, low-chroma dark palette: the UI is a workspace for reasoning,
- * so colour is reserved for state (ok / warn / error) rather than decoration.
+ * A calm, technical dark workspace: deep navy-black surfaces, warm white type,
+ * and a single restrained gold accent reserved for identity, focus, and the
+ * primary action. Colour status stays semantic (ok / warn / error) so the
+ * interface never looks like a generic AI chat product.
  */
 @theme {
-  --color-base: #0a0b0e;
-  --color-surface: #101216;
-  --color-surface-2: #161a21;
-  --color-line: #232833;
-  --color-line-bright: #313847;
-  --color-ink: #e7e9f0;
-  --color-ink-dim: #b3bacb;
-  --color-muted: #858da1;
-  --color-accent: #8f7dff;
-  --color-accent-dim: #6f5fe0;
-  --color-ok: #3ddc97;
-  --color-warn: #f5b544;
-  --color-err: #ff6b81;
+  --color-base: #0a0c11;
+  --color-surface: #10141c;
+  --color-surface-2: #161c26;
+  --color-surface-3: #1d2531;
+  --color-line: #252d3a;
+  --color-line-bright: #3a4658;
+  --color-ink: #f1eee6;
+  --color-ink-dim: #c6cbd6;
+  --color-muted: #949cad;
+  --color-accent: #e7c17c;
+  --color-accent-dim: #cda75f;
+  --color-accent-ink: #1a1409;
+  --color-ok: #5fcf9f;
+  --color-warn: #e8b25e;
+  --color-err: #ec8291;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 }
 
@@ -37,33 +41,56 @@
     background-color: var(--color-base);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    color-scheme: dark;
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    background: color-mix(in oklab, var(--color-accent) 32%, transparent);
+    color: var(--color-ink);
   }
 
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+    border-radius: 2px;
   }
 
-  /* Slim scrollbars so the inspector rail never fights for attention. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /* Slim scrollbars so dense panels never fight for attention. */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--color-line-bright) transparent;
   }
 
   *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
   }
 
   *::-webkit-scrollbar-thumb {
     background: var(--color-line-bright);
     border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 }
 
@@ -71,20 +98,258 @@
   /* Fine dot grid behind the workspace, evoking an engineering canvas. */
   .canvas-grid {
     background-image: radial-gradient(
-      color-mix(in oklab, var(--color-line) 70%, transparent) 1px,
+      color-mix(in oklab, var(--color-line) 55%, transparent) 1px,
       transparent 1px
     );
-    background-size: 22px 22px;
+    background-size: 24px 24px;
     background-position: -1px -1px;
   }
 
   .panel {
     background-color: var(--color-surface);
     border: 1px solid var(--color-line);
-    border-radius: 0.875rem;
+    border-radius: 0.75rem;
+  }
+
+  .panel-pad {
+    padding: 0.875rem;
+  }
+
+  .eyebrow {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--color-muted);
+  }
+
+  .divider {
+    border-color: var(--color-line);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface-2);
+    padding: 0.375rem 0.75rem;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--color-ink-dim);
+    transition:
+      border-color 140ms ease,
+      background-color 140ms ease,
+      color 140ms ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    border-color: var(--color-line-bright);
+    color: var(--color-ink);
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .btn-primary {
+    border-color: color-mix(in oklab, var(--color-accent) 70%, transparent);
+    background-color: var(--color-accent);
+    color: var(--color-accent-ink);
+    font-weight: 600;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    border-color: var(--color-accent-dim);
+    background-color: var(--color-accent-dim);
+    color: var(--color-accent-ink);
+  }
+
+  .btn-ok {
+    border-color: color-mix(in oklab, var(--color-ok) 45%, transparent);
+    background-color: color-mix(in oklab, var(--color-ok) 14%, transparent);
+    color: var(--color-ok);
+    font-weight: 600;
+  }
+
+  .btn-ok:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-ok) 70%, transparent);
+    background-color: color-mix(in oklab, var(--color-ok) 20%, transparent);
+  }
+
+  .btn-quiet {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-muted);
+  }
+
+  .btn-quiet:hover:not(:disabled) {
+    border-color: var(--color-line);
+    background-color: var(--color-surface-2);
+    color: var(--color-ink);
+  }
+
+  .btn-sm {
+    padding: 0.1875rem 0.5rem;
+    font-size: 11px;
+    line-height: 1.125rem;
+  }
+
+  .field {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background-color: color-mix(in oklab, var(--color-base) 70%, var(--color-surface));
+    padding: 0.5rem 0.625rem;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    transition: border-color 140ms ease;
+  }
+
+  .field::placeholder {
+    color: var(--color-muted);
+  }
+
+  .field:focus {
+    border-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+    outline: none;
+  }
+
+  .field-mono {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface-2);
+    padding: 0.0625rem 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.1rem;
+    color: var(--color-ink-dim);
+    white-space: nowrap;
+  }
+
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.375rem;
+    padding: 0.3125rem 0.625rem;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-muted);
+    transition:
+      background-color 140ms ease,
+      color 140ms ease;
+  }
+
+  .tab:hover {
+    background-color: color-mix(in oklab, var(--color-surface-2) 70%, transparent);
+    color: var(--color-ink-dim);
+  }
+
+  .tab[aria-selected="true"] {
+    background-color: var(--color-surface-2);
+    color: var(--color-ink);
+    box-shadow: inset 0 0 0 1px var(--color-line);
+  }
+
+  .notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    padding: 0.5rem 0.75rem;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .notice-ok {
+    border-color: color-mix(in oklab, var(--color-ok) 32%, transparent);
+    background-color: color-mix(in oklab, var(--color-ok) 8%, transparent);
+    color: var(--color-ok);
+  }
+
+  .notice-err {
+    border-color: color-mix(in oklab, var(--color-err) 32%, transparent);
+    background-color: color-mix(in oklab, var(--color-err) 8%, transparent);
+    color: var(--color-err);
+  }
+
+  .notice-warn {
+    border-color: color-mix(in oklab, var(--color-warn) 32%, transparent);
+    background-color: color-mix(in oklab, var(--color-warn) 8%, transparent);
+    color: var(--color-warn);
   }
 
   .hairline {
     border-color: var(--color-line);
+  }
+
+  .skeleton {
+    border-radius: 0.375rem;
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2) 0%,
+      var(--color-surface-3) 50%,
+      var(--color-surface-2) 100%
+    );
+    background-size: 200% 100%;
+    animation: recall-sheen 1.4s ease-in-out infinite;
+  }
+
+  .spinner {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    border: 1.5px solid color-mix(in oklab, var(--color-accent) 25%, transparent);
+    border-top-color: var(--color-accent);
+    animation: recall-spin 720ms linear infinite;
+  }
+}
+
+@keyframes recall-sheen {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes recall-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respect reduced-motion: no spinners, sheens, or panel transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

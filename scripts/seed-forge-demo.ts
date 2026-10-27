@@ -1,5 +1,5 @@
 /**
- * Seed the deterministic Muse Forge demo.
+ * Seed the deterministic Muse Recall / HTML Studio demo.
  *
  * Creates, from one command:
  *   - project `forge-demo` at version 1, from the recorded real Spark baseline,

@@ -68,7 +68,7 @@ async function main(): Promise<void> {
       database: config.databasePath,
       environment: config.environment,
     },
-    'Muse Memory Lab API ready',
+    'Muse Recall API ready',
   );
 }
 

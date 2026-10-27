@@ -1,4 +1,4 @@
-import type { HealthResponse, ModelResponse, ServiceMeta } from '@mml/shared';
+import type { HealthResponse, ServiceMeta } from '@mml/shared';
 import { formatLatency, formatTokens, formatUptime, shortenPath } from '../lib/format.ts';
 import { Icon } from './Icon.tsx';
 import { ProviderBench } from './ProviderBench.tsx';
@@ -21,13 +21,11 @@ export function Overview({
   meta,
   probing,
   onProbe,
-  onBenchResult,
 }: {
   health: HealthResponse;
   meta: ServiceMeta | null;
   probing: boolean;
   onProbe: () => void;
-  onBenchResult: (response: ModelResponse) => void;
 }) {
   const { database, provider } = health;
   const offline = meta?.provider.id !== 'muse-cli';
@@ -139,7 +137,7 @@ export function Overview({
           hint="A real, bounded model call — the fastest way to confirm inference works here"
         />
         <div className="mt-3">
-          <ProviderBench onResult={onBenchResult} />
+          <ProviderBench />
         </div>
       </Panel>
 
@@ -158,39 +156,44 @@ function RealityCheck({ meta }: { meta: ServiceMeta | null }) {
   const modules = meta?.modules;
   const rows: { label: string; status: string; note: string }[] = [
     {
-      label: 'Repository, API, and database',
+      label: 'Local API and SQLite',
       status: 'complete',
-      note: 'Health endpoint verifies a real SQLite write round-trip.',
+      note: 'Health verifies a real read/write round-trip; memories persist on this machine.',
     },
     {
-      label: 'Muse provider adapter',
+      label: 'Muse Spark integration',
       status: modules?.muse_integration ?? 'partial',
-      note: 'Real headless calls, streaming, and token usage, verified on this machine.',
+      note: 'Headless calls stream to the UI and report token usage. The provider row above shows what is configured.',
     },
     {
-      label: 'Persistent memory engine',
-      status: modules?.memory_engine ?? 'schema_only',
-      note: 'CRUD, retrieval with budgets and evidence, corrections, deletion, and history.',
+      label: 'Persistent project memory',
+      status: modules?.memory_engine ?? 'partial',
+      note: 'Retrieval with budgets, corrections that supersede, deletion, and full history.',
     },
     {
-      label: 'Agent runtime and sessions',
-      status: modules?.agent_runtime ?? 'not_implemented',
-      note: 'Streaming turns, bounded context, per-turn memory evidence, and cancellations.',
+      label: 'HTML Studio',
+      status: 'available',
+      note: 'Muse Spark writes index.html into staging; approval promotes an immutable version.',
     },
     {
-      label: 'Generative UI protocol',
-      status: modules?.ui_protocol ?? 'not_implemented',
-      note: 'Declarative spec, component registry, and event channel arrive in Phase 4.',
+      label: 'Decision Guard',
+      status: 'advisory',
+      note: 'Independent, advisory checks against remembered decisions. Findings never block approval.',
     },
     {
-      label: 'Agent tools and permissions',
-      status: modules?.agent_tools ?? 'not_implemented',
-      note: 'Tool registry, approval policy, and audit log arrive in Phase 5.',
+      label: 'Agent conversations',
+      status: modules?.agent_runtime ?? 'partial',
+      note: 'Streaming turns, bounded context, and per-turn retrieval evidence.',
+    },
+    {
+      label: 'Agent tools',
+      status: modules?.agent_tools ?? 'partial',
+      note: 'Reads run automatically; writes wait for explicit approval.',
     },
     {
       label: 'Evaluation harness',
-      status: modules?.evaluation ?? 'not_implemented',
-      note: 'Baseline comparison arrives in Phase 6.',
+      status: modules?.evaluation ?? 'partial',
+      note: 'Baseline comparisons and recorded trial results live outside the app.',
     },
   ];
 
@@ -199,7 +202,7 @@ function RealityCheck({ meta }: { meta: ServiceMeta | null }) {
       <SectionTitle
         icon="check"
         title="What is actually working"
-        hint="Reported by the server, not by this interface"
+        hint="Server-reported module states, plus the surfaces shipped in this build"
       />
       <ul className="mt-3 divide-y divide-line/70">
         {rows.map((row) => (
@@ -208,10 +211,10 @@ function RealityCheck({ meta }: { meta: ServiceMeta | null }) {
               <ModuleBadge status={row.status} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-ink-dim">{row.label}</p>
+              <p className="text-[12px] font-medium text-ink-dim">{row.label}</p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-muted">{row.note}</p>
             </div>
-            <span className="mt-0.5 shrink-0 font-mono text-[10px] text-muted">{row.status}</span>
+            <span className="mt-0.5 shrink-0 font-mono text-[10.5px] text-muted">{row.status}</span>
           </li>
         ))}
       </ul>
@@ -220,14 +223,14 @@ function RealityCheck({ meta }: { meta: ServiceMeta | null }) {
 }
 
 function ModuleBadge({ status }: { status: string }) {
-  if (status === 'complete') {
+  if (status === 'complete' || status === 'available') {
     return (
       <span className="flex size-4 items-center justify-center rounded-full bg-ok/15 text-ok">
         <Icon name="check" className="size-2.5" />
       </span>
     );
   }
-  if (status === 'partial' || status === 'schema_only') {
+  if (status === 'partial' || status === 'schema_only' || status === 'advisory') {
     return (
       <span className="flex size-4 items-center justify-center rounded-full bg-warn/15 text-warn">
         <Icon name="alert" className="size-2.5" />

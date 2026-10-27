@@ -3,7 +3,8 @@ import { z } from 'zod';
 /**
  * Muse Forge contracts.
  *
- * A Forge project owns one generated game (`index.html`). Every change is a job
+ * A Forge project owns one generated browser application (`index.html`). Every
+ * change is a job
  * that writes into a staging copy; only an explicit approval promotes it to an
  * immutable version.
  */
@@ -239,8 +240,12 @@ export const ForgeGenerateSchema = z.object({
 
 export const ForgeModifySchema = z.object({
   request: z.string().min(3).max(2_000),
-  /** PNG data URL captured from the preview; decoded and size-capped server-side. */
-  screenshot_data_url: z.string().min(100).max(8_000_000),
+  /**
+   * Optional PNG data URL captured from the preview. When present it grounds a
+   * visual change; when absent the request is applied from the approved source.
+   * Decoded and size-capped server-side when supplied.
+   */
+  screenshot_data_url: z.string().min(100).max(8_000_000).optional(),
   capture_memory: z.boolean().default(false),
 });
 
@@ -274,3 +279,22 @@ export const ForgeProjectViewSchema = z.object({
   jobs: z.array(ForgeJobSchema),
 });
 export type ForgeProjectView = z.infer<typeof ForgeProjectViewSchema>;
+
+/**
+ * One inspectable HTML artifact: the approved version, or the staged file for
+ * a review job. The exact bytes are returned for source inspection, export,
+ * and integrity display; nothing here is executed by the application.
+ */
+export const ForgeArtifactSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  job_id: z.uuid().nullable(),
+  version: z.number().int().min(1).nullable(),
+  staged: z.boolean(),
+  artifact_type: z.literal('html'),
+  title: z.string().min(1).max(160),
+  bytes: z.number().int().nonnegative(),
+  lines: z.number().int().nonnegative(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  html: z.string(),
+});
+export type ForgeArtifact = z.infer<typeof ForgeArtifactSchema>;

@@ -111,12 +111,36 @@ describe('versioning', () => {
     expect((await workspace.state('demo-game')).current_version).toBe(1);
   });
 
-  it('fails validation for HTML that is not a Phaser game', async () => {
+  it('accepts a general HTML application that is not a Phaser game', async () => {
     const staging = await workspace.createStaging('demo-game', JOB);
-    await writeFile(join(staging, 'index.html'), '<html><body>hello</body></html>');
+    await writeFile(
+      join(staging, 'index.html'),
+      `<!doctype html><html><body><main><h1>Focus timer</h1><button id="start">Start</button></main>
+<script>document.getElementById('start').addEventListener('click', () => {});</script></body></html>`,
+    );
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(true);
+    expect(validation.issues).toEqual([]);
+  });
+
+  it('still rejects a Phaser document without a canvas or game initialisation', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(staging, 'index.html'),
+      `<!doctype html><html><body><p>Loading Phaser</p>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script></body></html>`,
+    );
     const validation = await workspace.validateStaged('demo-game', JOB);
     expect(validation.ok).toBe(false);
-    expect(validation.issues.join(' ')).toMatch(/canvas|Phaser/);
+    expect(validation.issues.join(' ')).toMatch(/Phaser.*canvas|canvas.*Phaser/i);
+  });
+
+  it('rejects an empty HTML shell', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), '<!doctype html><html><body></body></html>');
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toMatch(/renderable|body/i);
   });
 });
 

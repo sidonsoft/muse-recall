@@ -40,7 +40,8 @@
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "verify:browser": "tsx scripts/verify-ui.ts",
     "verify:forge": "tsx scripts/verify-forge.ts",
-    "verify:runtime": "tsx scripts/verify-runtime.ts"
+    "verify:runtime": "tsx scripts/verify-runtime.ts",
+    "evidence:ux": "tsx scripts/ux-evidence.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

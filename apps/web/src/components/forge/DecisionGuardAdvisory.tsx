@@ -62,8 +62,8 @@ function shortId(id: string | null): string {
 
 function FindingRow({ finding }: { finding: DecisionGuardFinding }) {
   return (
-    <li className="rounded-md border border-warn/30 bg-warn/5 px-2 py-1.5">
-      <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
+    <li className="rounded-md border border-warn/30 bg-warn/5 px-2.5 py-2">
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
         <span className="rounded bg-warn/15 px-1.5 py-0.5 font-mono text-warn">{finding.rule}</span>
         <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-ink-dim">
           severity: {finding.severity}
@@ -72,15 +72,15 @@ function FindingRow({ finding }: { finding: DecisionGuardFinding }) {
           detected violation
         </span>
       </div>
-      <p className="mt-1 text-[10px] leading-relaxed text-ink-dim">
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-dim">
         <span className="text-muted">Decision </span>
-        <code className="break-all font-mono text-[9px] text-ink-dim">{finding.decision_id}</code>
+        <code className="break-all font-mono text-[10px] text-ink-dim">{finding.decision_id}</code>
         <span className="text-muted"> — </span>
         {finding.decision_ref}
       </p>
-      <p className="mt-0.5 text-[10px] leading-relaxed text-ink">{finding.explanation}</p>
-      <p className="mt-1 text-[9px] uppercase tracking-wide text-muted">Evidence excerpt</p>
-      <pre className="mt-0.5 max-h-24 overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-1.5 font-mono text-[9px] leading-relaxed text-ink-dim">
+      <p className="mt-1 text-[11.5px] leading-relaxed text-ink">{finding.explanation}</p>
+      <p className="mt-1.5 text-[9.5px] uppercase tracking-wide text-muted">Evidence excerpt</p>
+      <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 font-mono text-[10px] leading-relaxed text-ink-dim">
         {finding.evidence}
       </pre>
     </li>
@@ -89,8 +89,8 @@ function FindingRow({ finding }: { finding: DecisionGuardFinding }) {
 
 function UnverifiedRow({ entry }: { entry: DecisionGuardUnverified }) {
   return (
-    <li className="rounded-md border border-line bg-surface-2 px-2 py-1.5">
-      <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
+    <li className="rounded-md border border-line bg-surface-2 px-2.5 py-2">
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
         <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-ink-dim">
           {entry.rule}
         </span>
@@ -100,15 +100,15 @@ function UnverifiedRow({ entry }: { entry: DecisionGuardUnverified }) {
         </span>
         <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-muted">{entry.code}</span>
       </div>
-      <p className="mt-1 text-[10px] leading-relaxed text-ink-dim">
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-dim">
         <span className="text-muted">Decision </span>
-        <code className="break-all font-mono text-[9px] text-ink-dim">
+        <code className="break-all font-mono text-[10px] text-ink-dim">
           {shortId(entry.decision_id)}
         </code>
         <span className="text-muted"> — </span>
         {entry.decision_ref || 'decision guard'}
       </p>
-      <p className="mt-0.5 text-[10px] leading-relaxed text-muted">{entry.reason}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted">{entry.reason}</p>
     </li>
   );
 }
@@ -121,45 +121,30 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
     <section
       aria-label="Decision Guard advisory"
       data-testid="decision-guard"
-      className="mt-2 rounded-lg border border-line bg-surface-2/60 p-2.5"
+      className="rounded-lg border border-line bg-surface-2/60 p-3"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h4 className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
-          <Icon name="alert" className="size-3.5 text-warn" /> Decision Guard — Advisory
+        <h4 className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
+          <Icon name="alert" className="size-4 text-warn" /> Decision Guard — Advisory
         </h4>
         <span
-          className={`ml-auto rounded px-1.5 py-0.5 text-[9px] ${assessmentTone(advisory)}`}
+          className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium ${assessmentTone(advisory)}`}
           data-testid="decision-guard-assessment"
         >
           {advisory ? assessmentLabel(advisory.assessment) : 'NOT EVALUATED'}
         </span>
       </div>
-      <p className="mt-1 text-[10px] font-medium text-ink-dim">
+      <p className="mt-1 text-[11.5px] font-medium text-ink-dim">
         Findings do not block approval in this version.
       </p>
-      <p className="mt-1 text-[9px] leading-relaxed text-muted" data-testid="decision-guard-scope">
-        Supported checks only: {SUPPORTED_CHECKS}. A passing supported check is not a compliance
-        certification, and constraints outside these checks are not verified.
-      </p>
-
       {advisory ? (
         <>
-          <p className="mt-1 text-[10px] leading-relaxed text-ink-dim">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-ink-dim">
             {advisory.assessment_reason}
-          </p>
-          <p className="mt-1 font-mono text-[9px] leading-relaxed text-muted">
-            engine {advisory.engine_version} · source{' '}
-            {advisory.source_sha256 ? advisory.source_sha256.slice(0, 12) : 'unknown'} ·{' '}
-            {advisory.runtime_verified
-              ? 'after runtime verification'
-              : 'pre-runtime review snapshot'}{' '}
-            · {advisory.evaluated_memory_ids.length} active decision
-            {advisory.evaluated_memory_ids.length === 1 ? '' : 's'} · {findings.length} finding
-            {findings.length === 1 ? '' : 's'} · {unverified.length} unverified
           </p>
 
           {findings.length > 0 ? (
-            <ul className="mt-1.5 space-y-1.5" data-testid="decision-guard-findings">
+            <ul className="mt-2 space-y-2" data-testid="decision-guard-findings">
               {findings.map((finding, index) => (
                 <FindingRow
                   key={`${finding.decision_id}:${finding.rule}:${String(index)}`}
@@ -170,7 +155,7 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
           ) : null}
 
           {unverified.length > 0 ? (
-            <ul className="mt-1.5 space-y-1.5" data-testid="decision-guard-unverified">
+            <ul className="mt-2 space-y-2" data-testid="decision-guard-unverified">
               {unverified.map((entry, index) => (
                 <UnverifiedRow
                   key={`${entry.code}:${entry.decision_id ?? 'set'}:${String(index)}`}
@@ -179,11 +164,43 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
               ))}
             </ul>
           ) : null}
+
+          <details className="mt-2">
+            <summary className="cursor-pointer select-none text-[10.5px] text-muted hover:text-ink-dim">
+              Scope and evidence limits
+            </summary>
+            <p
+              className="mt-1 text-[10.5px] leading-relaxed text-muted"
+              data-testid="decision-guard-scope"
+            >
+              Supported checks only: {SUPPORTED_CHECKS}. A passing supported check is not a
+              compliance certification, and constraints outside these checks are not verified.
+            </p>
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted">
+              engine {advisory.engine_version} · source{' '}
+              {advisory.source_sha256 ? advisory.source_sha256.slice(0, 12) : 'unknown'} ·{' '}
+              {advisory.runtime_verified
+                ? 'after runtime verification'
+                : 'pre-runtime review snapshot'}{' '}
+              · {advisory.evaluated_memory_ids.length} active decision
+              {advisory.evaluated_memory_ids.length === 1 ? '' : 's'} · {findings.length} finding
+              {findings.length === 1 ? '' : 's'} · {unverified.length} unverified
+            </p>
+          </details>
         </>
       ) : (
-        <p className="mt-1 text-[10px] text-muted">
-          No advisory snapshot was recorded for this change, so compliance was not checked.
-        </p>
+        <>
+          <p className="mt-1.5 text-[11px] text-muted">
+            No advisory snapshot was recorded for this change, so compliance was not checked.
+          </p>
+          <p
+            className="mt-1 text-[10.5px] leading-relaxed text-muted"
+            data-testid="decision-guard-scope"
+          >
+            Supported checks only: {SUPPORTED_CHECKS}. A passing supported check is not a compliance
+            certification, and constraints outside these checks are not verified.
+          </p>
+        </>
       )}
     </section>
   );

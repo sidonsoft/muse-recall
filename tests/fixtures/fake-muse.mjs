@@ -13,7 +13,7 @@ const prompt = promptPath ? readFileSync(promptPath, 'utf8') : '';
 const requested = process.env.FAKE_MUSE_MODE ?? 'auto';
 let mode =
   requested === 'auto'
-    ? (prompt.includes('current approved game') && prompt.includes('index.html')
+    ? (prompt.includes('current approved application') && prompt.includes('index.html')
         ? 'modify'
         : 'generate')
     : requested;
@@ -87,11 +87,11 @@ if (mode === 'quota-corrupt' && !usesApiKey) {
   quota();
 }
 if (mode === 'quota-corrupt') {
-  mode = prompt.includes('current approved game') ? 'modify' : 'generate';
+  mode = prompt.includes('current approved application') ? 'modify' : 'generate';
 }
 if (mode === 'quota-then-invalid' && !usesApiKey) quota();
 if (mode === 'quota-then-invalid') {
-  writeFileSync(join(workspace, 'index.html'), '<html><body>not a game</body></html>');
+  writeFileSync(join(workspace, 'index.html'), '<!doctype html><html><body></body></html>');
   usage(2);
   done('invalid fallback');
   process.exit(0);
@@ -126,7 +126,7 @@ if (mode === 'sleep') {
   usage(1);
   done('symlinked');
 } else if (mode === 'invalid') {
-  writeFileSync(join(workspace, 'index.html'), '<html><body>not a game</body></html>');
+  writeFileSync(join(workspace, 'index.html'), '<!doctype html><html><body></body></html>');
   usage(1);
   done('invalid');
 } else if (mode === 'budget') {

@@ -129,19 +129,19 @@ export class ForgeJobManager {
     const staging = await this.workspace.createStaging(input.projectId, id);
 
     // A modification must start from the approved source. An empty workspace
-    // makes the model regenerate the game instead of editing it.
+    // makes the model regenerate the application instead of editing it.
     let baseVersion: number | null = null;
     if (input.kind === 'modify') {
       const state = await this.workspace.state(input.projectId);
       if (state.current_version === null) {
         throw new ForgeError(
           'no_current_version',
-          'Generate and approve a game before requesting a modification.',
+          'Generate and approve an application before requesting a modification.',
         );
       }
       const current = await this.workspace.currentHtml(input.projectId);
       if (current === null) {
-        throw new ForgeError('no_current_version', 'The approved game could not be read.');
+        throw new ForgeError('no_current_version', 'The approved application could not be read.');
       }
       baseVersion = state.current_version;
       await writeFile(join(staging, 'index.html'), current, 'utf8');
@@ -247,18 +247,18 @@ export class ForgeJobManager {
       if (state.current_version !== current.base_version) {
         throw new ForgeError(
           'version_conflict',
-          `The approved game is v${String(state.current_version)}, but this change was staged from v${String(current.base_version)}. Regenerate it.`,
+          `The approved application is v${String(state.current_version)}, but this change was staged from v${String(current.base_version)}. Regenerate it.`,
         );
       }
 
-      // Server-side runtime verification: a structurally valid game can still
+      // Server-side runtime verification: a structurally valid application can still
       // throw on load. Nothing is promoted until it renders cleanly. The
       // snapshot hash is the exact byte sequence the browser checked, and
       // promotion refuses anything else.
       const staged = await this.workspace.stagedSnapshot(current.project_id, current.id);
       const runtime = staged
         ? await this.runtimeCheck(staged.html)
-        : { ok: false, errors: ['The staged game is missing.'] };
+        : { ok: false, errors: ['The staged application is missing.'] };
       if (!runtime.ok) {
         const failed = ForgeJobSchema.parse({
           ...current,
@@ -271,7 +271,7 @@ export class ForgeJobManager {
         await this.persist(failed);
         throw new ForgeError(
           'runtime_failed',
-          'The staged game failed runtime verification.',
+          'The staged application failed runtime verification.',
           runtime.errors,
         );
       }
@@ -392,6 +392,7 @@ export class ForgeJobManager {
       prompt: job.prompt,
       request: job.request,
       memoryBlock,
+      hasScreenshot: images.length > 0,
     });
     this.update(job, { prompt_sha256: createHash('sha256').update(prompt).digest('hex') });
     const promptPath = join(staging, 'prompt.txt');
@@ -517,7 +518,7 @@ export class ForgeJobManager {
           await this.finish(job, {
             ...base,
             status: 'failed',
-            error: 'Generated game failed validation.',
+            error: 'Generated application failed validation.',
             validation,
           });
           return;
@@ -544,7 +545,7 @@ export class ForgeJobManager {
         await this.finish(job, {
           ...base,
           status: 'succeeded',
-          summary: execState.terminalText?.slice(0, 2_000) ?? 'Game updated.',
+          summary: execState.terminalText?.slice(0, 2_000) ?? 'Application updated.',
           validation,
           ...(decisionGuard ? { decision_guard: decisionGuard } : {}),
         });

@@ -2,6 +2,8 @@ import {
   type ApiEnvelope,
   type ForgeApprovalResult,
   ForgeApprovalResultSchema,
+  type ForgeArtifact,
+  ForgeArtifactSchema,
   type ForgeDiff,
   ForgeDiffSchema,
   type ForgeJob,
@@ -99,7 +101,7 @@ async function request<T>(
   } catch (cause) {
     throw new ApiError(
       'network_unreachable',
-      'Cannot reach the Muse Memory Lab server. Is it running on port 8787?',
+      'Cannot reach the Muse Recall server. Is it running on port 8787?',
       0,
       { cause },
     );
@@ -159,6 +161,7 @@ const ProjectListSchema = z.object({ items: z.array(z.unknown()) });
 export interface MemoryListParams {
   project_id?: string;
   all_projects?: boolean;
+  include_global?: boolean;
   q?: string;
   type?: string;
   status?: string;
@@ -348,12 +351,15 @@ export const api = {
       (data) => ForgeJobSchema.parse(data),
     ),
 
-  forgeModify: (projectId: string, changeRequest: string, screenshotDataUrl: string) =>
+  forgeModify: (projectId: string, changeRequest: string, screenshotDataUrl?: string | null) =>
     request<ForgeJob>(
       `/api/forge/projects/${projectId}/modify`,
       {
         method: 'POST',
-        body: JSON.stringify({ request: changeRequest, screenshot_data_url: screenshotDataUrl }),
+        body: JSON.stringify({
+          request: changeRequest,
+          ...(screenshotDataUrl ? { screenshot_data_url: screenshotDataUrl } : {}),
+        }),
       },
       (data) => ForgeJobSchema.parse(data),
     ),
@@ -366,6 +372,13 @@ export const api = {
   forgeCancel: (jobId: string) =>
     request<ForgeJob>(`/api/forge/jobs/${jobId}/cancel`, { method: 'POST' }, (data) =>
       ForgeJobSchema.parse(data),
+    ),
+
+  forgeArtifact: (projectId: string, jobId?: string) =>
+    request<ForgeArtifact>(
+      `/api/forge/projects/${projectId}/artifact${jobId ? `?job=${jobId}` : ''}`,
+      { method: 'GET' },
+      (data) => ForgeArtifactSchema.parse(data),
     ),
 
   forgeDiff: (jobId: string) =>

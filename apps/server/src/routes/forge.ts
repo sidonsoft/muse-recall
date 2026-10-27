@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
   ForgeApproveSchema,
+  ForgeArtifactSchema,
   ForgeCreateProjectSchema,
   ForgeDiffSchema,
   ForgeGenerateSchema,
@@ -18,6 +20,21 @@ const ProjectParams = z.object({ id: z.string().min(2).max(64) });
 const JobParams = z.object({ jobId: z.uuid() });
 const _DiffParams = z.object({ id: z.string().min(2).max(64), jobId: z.uuid() });
 const PreviewQuery = z.object({ job: z.uuid().optional() });
+const ArtifactQuery = z.object({ job: z.uuid().optional() });
+
+/**
+ * The document title is untrusted generated text. It is returned as JSON and
+ * rendered as a text child by the client; tags are stripped so a title can
+ * never leak markup into a panel heading.
+ */
+function documentTitle(html: string, fallback: string): string {
+  const match = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
+  const text = (match?.[1] ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return (text.length > 0 ? text : fallback).slice(0, 160);
+}
 
 /**
  * Forge HTTP surface.
@@ -71,14 +88,14 @@ export function registerForgeRoutes(
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
       const body = ForgeModifySchema.parse(request.body ?? {});
-      const screenshot = decodePng(body.screenshot_data_url);
+      const screenshot = body.screenshot_data_url ? decodePng(body.screenshot_data_url) : undefined;
       await workspace.ensureProject(id);
       const job = await manager.start({
         projectId: id,
         kind: 'modify',
         prompt: body.request,
         request: body.request,
-        screenshot,
+        ...(screenshot ? { screenshot } : {}),
       });
       reply.status(202);
       return envelope(ForgeJobSchema.parse(job));
@@ -139,6 +156,56 @@ export function registerForgeRoutes(
   });
 
   /**
+   * Inspectable source for the approved or staged artifact.
+   *
+   * This is read-only JSON: returning the bytes as text lets the studio show
+   * line numbers, integrity, and export without executing generated code in
+   * the application origin. The sandboxed preview remains the only renderer.
+   */
+  app.get('/api/forge/projects/:id/artifact', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      const query = ArtifactQuery.parse(request.query ?? {});
+      const state = await workspace.state(id);
+
+      let html: string | null;
+      let sha256: string;
+      let jobId: string | null = null;
+      let version: number | null = state.current_version;
+
+      if (query.job) {
+        const job = manager.get(query.job);
+        if (!job || job.project_id !== id) return notFound(reply, 'Unknown review job.');
+        const snapshot = await workspace.stagedSnapshot(id, query.job);
+        if (!snapshot) return notFound(reply, 'This review has no staged HTML.');
+        html = snapshot.html;
+        sha256 = snapshot.sha256;
+        jobId = query.job;
+        version = null;
+      } else {
+        html = await workspace.currentHtml(id);
+        if (html === null) return notFound(reply, 'No approved HTML yet.');
+        sha256 = createHash('sha256').update(html, 'utf8').digest('hex');
+      }
+
+      return envelope(
+        ForgeArtifactSchema.parse({
+          project_id: id,
+          job_id: jobId,
+          version,
+          staged: jobId !== null,
+          artifact_type: 'html',
+          title: documentTitle(html, id),
+          bytes: Buffer.byteLength(html, 'utf8'),
+          lines: html.length === 0 ? 0 : html.split('\n').length,
+          sha256,
+          html,
+        }),
+      );
+    });
+  });
+
+  /**
    * Preview. Served same-origin but always inside a sandboxed iframe: the CSP
    * `sandbox allow-scripts` directive gives the document an opaque origin, so it
    * cannot read application storage, cookies, or privileged APIs.
@@ -150,7 +217,7 @@ export function registerForgeRoutes(
       const html = query.job
         ? await workspace.stagedHtml(id, query.job)
         : await workspace.currentHtml(id);
-      if (html === null) return notFound(reply, 'No game to preview yet.');
+      if (html === null) return notFound(reply, 'No application to preview yet.');
       reply
         .header('content-type', 'text/html; charset=utf-8')
         .header(
@@ -266,7 +333,7 @@ function decodePng(dataUrl: string): Buffer {
   const width = buffer.readUInt32BE(16);
   const height = buffer.readUInt32BE(20);
   if (width < 32 || height < 32) {
-    throw new ForgeError('invalid_staged', 'Screenshot is too small to be a game preview.');
+    throw new ForgeError('invalid_staged', 'Screenshot is too small to be a preview capture.');
   }
   return buffer;
 }

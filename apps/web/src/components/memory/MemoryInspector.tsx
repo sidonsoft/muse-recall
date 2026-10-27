@@ -8,7 +8,7 @@ import {
   type ServiceMeta,
   type ValidationStatus,
 } from '@mml/shared';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
 import { formatDateTime } from '../../lib/format.ts';
 import { Icon } from '../Icon.tsx';
@@ -56,7 +56,15 @@ function describeError(cause: unknown): string {
  * itself. Everything here reads and writes through the real API — there is no
  * client-side shadow copy of the memory state.
  */
-export function MemoryInspector({ meta }: { meta: ServiceMeta | null }) {
+export function MemoryInspector({
+  meta,
+  focus = null,
+  onFocusHandled,
+}: {
+  meta: ServiceMeta | null;
+  focus?: { id: string; projectId: string } | null;
+  onFocusHandled?: () => void;
+}) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [items, setItems] = useState<Memory[]>([]);
@@ -135,6 +143,15 @@ export function MemoryInspector({ meta }: { meta: ServiceMeta | null }) {
   useEffect(() => {
     void loadSideData();
   }, [loadSideData]);
+
+  // Deep link from HTML Studio: select the decision that was just inspected.
+  useEffect(() => {
+    if (!focus) return;
+    setProject(focus.projectId);
+    setPanel('detail');
+    setSelectedId(focus.id);
+    onFocusHandled?.();
+  }, [focus, onFocusHandled]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -235,6 +252,27 @@ export function MemoryInspector({ meta }: { meta: ServiceMeta | null }) {
     () => projects.map((entry) => entry.id).sort((a, b) => a.localeCompare(b)),
     [projects],
   );
+
+  // Active decisions are what Recall can supply; superseded history follows.
+  const orderedItems = useMemo(() => {
+    const rank: Record<Memory['status'], number> = {
+      active: 0,
+      superseded: 1,
+      expired: 2,
+      deleted: 3,
+    };
+    return [...items].sort(
+      (a, b) => rank[a.status] - rank[b.status] || b.updated_at.localeCompare(a.updated_at),
+    );
+  }, [items]);
+
+  const autoSelected = useRef(false);
+  useEffect(() => {
+    if (autoSelected.current || selectedId || orderedItems.length === 0) return;
+    autoSelected.current = true;
+    const first = orderedItems.find((memory) => memory.status === 'active') ?? orderedItems[0];
+    if (first) setSelectedId(first.id);
+  }, [orderedItems, selectedId]);
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -367,7 +405,7 @@ export function MemoryInspector({ meta }: { meta: ServiceMeta | null }) {
             <p className="text-xs text-muted">Loading memories…</p>
           ) : null}
 
-          {!loading && items.length === 0 ? (
+          {!loading && orderedItems.length === 0 ? (
             <div className="panel p-6 text-center">
               <p className="text-xs font-medium text-ink">No memories match this view</p>
               <p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-muted">
@@ -377,7 +415,7 @@ export function MemoryInspector({ meta }: { meta: ServiceMeta | null }) {
             </div>
           ) : null}
 
-          {items.map((memory) => {
+          {orderedItems.map((memory) => {
             const selected = memory.id === selectedId;
             return (
               <button
@@ -427,6 +465,40 @@ export function MemoryInspector({ meta }: { meta: ServiceMeta | null }) {
             );
           })}
         </div>
+
+        {orderedItems.length > 0 ? (
+          <p className="px-1 text-[10.5px] leading-relaxed text-muted">
+            Recall supplies active decisions to Muse Spark during HTML Studio generations. Retrieval
+            is context, not proof that a specific decision changed model output.
+          </p>
+        ) : null}
+
+        <section className="panel p-4" aria-label="How Recall uses memory">
+          <p className="eyebrow">How Recall uses memory</p>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[11.5px] font-medium text-ink-dim">Project-scoped</p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted">
+                Decisions belong to a project, not to a chat transcript. A new conversation keeps
+                the same memory.
+              </p>
+            </div>
+            <div>
+              <p className="text-[11.5px] font-medium text-ink-dim">Correctable</p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted">
+                A correction supersedes the old decision and keeps its history, so the reason stays
+                auditable.
+              </p>
+            </div>
+            <div>
+              <p className="text-[11.5px] font-medium text-ink-dim">Bounded</p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted">
+                Recall supplies a configured budget, not the whole archive. The job row shows how
+                many decisions were used.
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* ---------------- Right panel ---------------- */}

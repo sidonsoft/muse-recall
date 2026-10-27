@@ -1,27 +1,32 @@
 import { chromium } from 'playwright-core';
 
 /**
- * Runs a staged game in a real browser before it can be approved.
+ * Runs a staged browser application in a real browser before it can be approved.
  *
- * Structural validation cannot catch a game that throws during scene creation
- * (for example an API that does not exist). This check loads the HTML, waits
- * for the first frames, and fails on page errors or a missing canvas.
+ * Structural validation cannot catch an application that throws while it
+ * initialises (for example an API that does not exist). This check loads the
+ * HTML, waits for first paint, and fails on page errors or a blank document.
+ * A Phaser game must additionally create its canvas; any other application must
+ * render visible content.
  *
  * It also bounds network access. Generated HTML is untrusted: without a
  * request policy it could POST the page contents (or probe the local network)
- * the moment verification loads it. Only the approved Phaser CDN is reachable;
- * every other request is aborted and reported. This is a load-time check, not
+ * the moment verification loads it. Only the approved CDN is reachable; every
+ * other request is aborted and reported. This is a load-time check, not
  * a sandbox: it does not follow later interaction.
  */
 export interface RuntimeCheckResult {
   ok: boolean;
+  /** True when the page created a canvas (expected for Phaser games). */
   canvas: boolean;
+  /** True when the document rendered visible text or layout. */
+  rendered: boolean;
   errors: string[];
   /** Requests aborted by the verification allowlist (credentials stripped). */
   blocked: string[];
 }
 
-/** The only remote origin a staged game may load during verification. */
+/** The only remote origin a staged application may load during verification. */
 const ALLOWED_REMOTE_HOSTS = new Set(['cdn.jsdelivr.net']);
 
 /** Network destinations that never leave the machine / are not remote. */
@@ -67,7 +72,7 @@ export async function checkGameRuntime(
         await route.continue();
         return;
       }
-      // A favicon probe is browser noise, not a game request; drop it quietly.
+      // A favicon probe is browser noise, not an application request; drop it quietly.
       if (!/favicon/i.test(url)) blocked.push(url);
       await route.abort();
     });
@@ -83,6 +88,24 @@ export async function checkGameRuntime(
     await page.setContent(html, { waitUntil: 'load', timeout: timeoutMs });
     await page.waitForTimeout(1_200);
     const canvas = (await page.locator('canvas').count()) > 0;
+    // A general application has no canvas, so require visible content instead.
+    const rendered =
+      (await page.evaluate(`(() => {
+      const body = document.body;
+      if (!body) return false;
+      if ((body.innerText || '').trim().length > 0) return true;
+      const elements = Array.from(body.querySelectorAll('*'));
+      return elements.some((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden'
+        );
+      });
+    })()`)) === true;
     // The full URL is deliberately not echoed: it may embed a query string the
     // generated page built from page data. The origin is enough to act on.
     const blockedErrors = blocked.map((url) => {
@@ -93,10 +116,18 @@ export async function checkGameRuntime(
       }
     });
     const failure = [...blockedErrors, ...errors];
+    const reason =
+      canvas || rendered
+        ? []
+        : [
+            'The application did not render visible content.',
+            ...(/phaser/i.test(html) ? ['No canvas element was created.'] : []),
+          ];
     return {
-      ok: canvas && failure.length === 0,
+      ok: (canvas || rendered) && failure.length === 0,
       canvas,
-      errors: canvas ? failure : ['No canvas element was created.', ...failure],
+      rendered,
+      errors: [...reason, ...failure],
       blocked,
     };
   } finally {

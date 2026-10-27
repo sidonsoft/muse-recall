@@ -59,11 +59,18 @@ page.on('response', async (response) => {
   }
 });
 
+let liveProvider = false;
+
 try {
   log(`loading ${url}`);
   await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
+  const metaResponse = await page.request.get(new URL('/api/meta', url).toString());
+  const metaBody = (await metaResponse.json()) as { data?: { provider?: { id?: string } } };
+  liveProvider = metaBody.data?.provider?.id === 'muse-cli';
 
   // ---- System overview ---------------------------------------------------
+  // HTML Studio is the landing surface; System is the diagnostics tab.
+  await page.getByRole('button', { name: 'System', exact: true }).click();
   await page.getByRole('heading', { name: 'API service' }).waitFor({ timeout: 10_000 });
   notes.push('overview rendered');
 
@@ -78,7 +85,9 @@ try {
   // ---- Live Muse probe ---------------------------------------------------
   const probeButton = page.getByRole('button', { name: /live check/i });
   if ((await probeButton.count()) === 0) {
-    problems.push('the Muse live-check button is missing (provider is not muse-cli)');
+    // The echo provider is deterministic and offline; it deliberately has no
+    // live-check control. Record the skip instead of failing the smoke test.
+    notes.push('live Muse check skipped: the configured provider is not muse-cli');
   } else {
     log('running live Muse check via the UI');
     await probeButton.click();
@@ -109,10 +118,7 @@ try {
 
   // ---- Memory inspector --------------------------------------------------
   log('opening the memory inspector');
-  await page
-    .getByRole('button', { name: /Memories/ })
-    .first()
-    .click();
+  await page.getByRole('button', { name: 'Memory', exact: true }).click();
 
   const searchInput = page.getByLabel('Search memories');
   await searchInput.waitFor({ timeout: 10_000 });
@@ -243,7 +249,11 @@ try {
     .getByRole('button', { name: /Memory used/ })
     .first()
     .waitFor({ timeout: 120_000 });
-  notes.push('streamed a real Muse answer through the conversations view');
+  notes.push(
+    liveProvider
+      ? 'streamed a real Muse answer through the conversations view'
+      : 'streamed a deterministic echo answer through the conversations view',
+  );
 
   await page
     .getByRole('button', { name: /Memory used/ })
@@ -285,66 +295,65 @@ try {
   }
 
   // ---- Generative interface ---------------------------------------------
-  log('generating an interface');
-  await page.getByRole('button', { name: /New conversation/ }).click();
-  await page.getByLabel(/Project scope/).fill(`verify-ui-${runId}-ui`);
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await page.getByLabel('Message').fill('Help me plan the first milestone for the game');
-  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  // The offline echo provider returns plain text, not a UI spec. Skip the
+  // generative-interface journey when it is configured instead of failing.
+  if (!liveProvider) {
+    notes.push('generative interface skipped: the configured provider is not muse-cli');
+  } else {
+    log('generating an interface');
+    await page.getByRole('button', { name: /New conversation/ }).click();
+    await page.getByLabel(/Project scope/).fill(`verify-ui-${runId}-ui`);
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    await page.getByLabel('Message').fill('Help me plan the first milestone for the game');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
 
-  const surface = page.getByRole('region', { name: /^Interface:/ });
-  await surface.waitFor({ timeout: 180_000 });
-  notes.push('Muse generated a validated interface inside the conversation');
+    const surface = page.getByRole('region', { name: /^Interface:/ });
+    await surface.waitFor({ timeout: 180_000 });
+    notes.push('Muse generated a validated interface inside the conversation');
 
-  // Fill every free-text field and choose the first option of each select, so
-  // the test does not depend on the model's chosen field ids.
-  const textInputs = surface.locator('input[type="text"]');
-  for (let index = 0; index < (await textInputs.count()); index += 1) {
-    await textInputs.nth(index).fill('Verification milestone');
-  }
-  const textareas = surface.locator('textarea');
-  for (let index = 0; index < (await textareas.count()); index += 1) {
-    await textareas.nth(index).fill('Verification details for the first milestone');
-  }
-  const selects = surface.locator('select');
-  for (let index = 0; index < (await selects.count()); index += 1) {
-    await selects.nth(index).selectOption({ index: 1 });
-  }
-  const numbers = surface.locator('input[type="number"]');
-  for (let index = 0; index < (await numbers.count()); index += 1) {
-    await numbers.nth(index).fill('5');
-  }
-  // Required multiselect fields need at least one option chosen.
-  const multiGroups = surface.locator('[data-field-type="multiselect"]');
-  for (let index = 0; index < (await multiGroups.count()); index += 1) {
-    await multiGroups.nth(index).locator('label:has(input.sr-only)').first().click();
-  }
-  // Checkbox fields (not the sr-only inputs used by multiselect chips).
-  const checkboxes = surface.locator('input[type="checkbox"]:not(.sr-only)');
-  for (let index = 0; index < (await checkboxes.count()); index += 1) {
-    if (!(await checkboxes.nth(index).isChecked())) await checkboxes.nth(index).check();
-  }
+    // Fill every free-text field and choose the first option of each select, so
+    // the test does not depend on the model's chosen field ids.
+    const textInputs = surface.locator('input[type="text"]');
+    for (let index = 0; index < (await textInputs.count()); index += 1) {
+      await textInputs.nth(index).fill('Verification milestone');
+    }
+    const textareas = surface.locator('textarea');
+    for (let index = 0; index < (await textareas.count()); index += 1) {
+      await textareas.nth(index).fill('Verification details for the first milestone');
+    }
+    const selects = surface.locator('select');
+    for (let index = 0; index < (await selects.count()); index += 1) {
+      await selects.nth(index).selectOption({ index: 1 });
+    }
+    const numbers = surface.locator('input[type="number"]');
+    for (let index = 0; index < (await numbers.count()); index += 1) {
+      await numbers.nth(index).fill('5');
+    }
+    // Required multiselect fields need at least one option chosen.
+    const multiGroups = surface.locator('[data-field-type="multiselect"]');
+    for (let index = 0; index < (await multiGroups.count()); index += 1) {
+      await multiGroups.nth(index).locator('label:has(input.sr-only)').first().click();
+    }
+    // Checkbox fields (not the sr-only inputs used by multiselect chips).
+    const checkboxes = surface.locator('input[type="checkbox"]:not(.sr-only)');
+    for (let index = 0; index < (await checkboxes.count()); index += 1) {
+      if (!(await checkboxes.nth(index).isChecked())) await checkboxes.nth(index).check();
+    }
 
-  await surface.locator('button[type="submit"]').click();
-  await page.getByText(/Interface submitted/).waitFor({ timeout: 180_000 });
-  notes.push('submitted the interface and the agent continued the work');
+    await surface.locator('button[type="submit"]').click();
+    await page.getByText(/Interface submitted/).waitFor({ timeout: 180_000 });
+    notes.push('submitted the interface and the agent continued the work');
+  }
 
   if (screenshotPath) {
     await page.screenshot({ path: screenshotName('generative-ui') });
     notes.push(`generative UI screenshot written to ${screenshotName('generative-ui')}`);
   }
 
-  // ---- Unbuilt section reports its phase --------------------------------
-  await page
-    .getByRole('button', { name: /Projects/ })
-    .first()
-    .click();
-  await page.getByText(/scheduled for Phase 6/i).waitFor({ timeout: 5_000 });
-  notes.push('unbuilt section reports its phase instead of pretending');
-  await page
-    .getByRole('button', { name: /System/ })
-    .first()
-    .click();
+  // ---- HTML Studio is the landing surface --------------------------------
+  await page.getByRole('button', { name: 'HTML Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Preview' }).waitFor({ timeout: 10_000 });
+  notes.push('HTML Studio rendered with its Preview/Source/Changes tabs');
 
   if (screenshotPath) {
     await mkdir(dirname(screenshotPath), { recursive: true });

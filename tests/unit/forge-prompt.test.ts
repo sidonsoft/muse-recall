@@ -35,6 +35,29 @@ describe('production prompt parity', () => {
     );
   });
 
+  it('modify with a screenshot is byte-identical and names the attachment', () => {
+    const prompt = buildForgePrompt({
+      kind: 'modify',
+      prompt: REQUEST,
+      request: REQUEST,
+      memoryBlock: MEMORY,
+      hasScreenshot: true,
+    });
+    expect(prompt).toBe(fixture('modify-with-screenshot.txt'));
+    expect(prompt).toContain('The attached screenshot is the current rendered preview.');
+  });
+
+  it('modify without a screenshot does not claim one is attached', () => {
+    const prompt = buildForgePrompt({
+      kind: 'modify',
+      prompt: REQUEST,
+      request: REQUEST,
+      memoryBlock: '',
+    });
+    expect(prompt).not.toContain('attached screenshot');
+    expect(prompt).toContain('No screenshot is attached');
+  });
+
   it('memory block appears once and before the request', () => {
     const prompt = buildForgePrompt({
       kind: 'modify',

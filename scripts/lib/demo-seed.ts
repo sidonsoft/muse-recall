@@ -27,7 +27,7 @@ import type { Memory, MemoryCreateInput } from '../../packages/shared/src/index.
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 export const DEMO_PROJECT_ID = 'forge-demo';
-export const DEMO_PROJECT_NAME = 'Muse Forge demo';
+export const DEMO_PROJECT_NAME = 'Muse Recall demo';
 
 /** Child-friendly design constraint (authentic Phase 11/12 decision text). */
 export const CHILD_SAFETY_DECISION =

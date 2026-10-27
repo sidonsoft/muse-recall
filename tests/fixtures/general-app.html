@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Focus Timer</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #10141c; color: #f1eee6; display: grid; place-items: center; min-height: 100vh; }
+      main { text-align: center; }
+      button { padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 0; background: #e7c17c; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Focus timer</h1>
+      <p id="clock" aria-live="polite">25:00</p>
+      <button id="start" type="button">Start</button>
+    </main>
+    <script>
+      const clock = document.getElementById('clock');
+      document.getElementById('start').addEventListener('click', () => {
+        clock.textContent = '24:59';
+      });
+    </script>
+  </body>
+</html>

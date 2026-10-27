@@ -44,3 +44,24 @@ export function formatDateTime(iso: string | null): string {
     minute: '2-digit',
   });
 }
+
+/** Compact byte count for artifact metadata. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Human label for a project identifier such as `forge-demo`. */
+export function humanizeId(id: string): string {
+  return id
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .trim();
+}
+
+/** A short, monospace-safe rendering of an integrity hash. */
+export function shortSha(sha: string | null | undefined, length = 8): string {
+  if (!sha) return '—';
+  return sha.slice(0, length);
+}

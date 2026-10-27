@@ -23,7 +23,7 @@ import {
 } from '@mml/shared';
 
 /**
- * The only code allowed to touch generated game files.
+ * The only code allowed to touch generated application files.
  *
  * Every path is resolved against the project root and re-checked after
  * `realpath`, so a symlink planted inside a staging directory cannot escape.
@@ -249,12 +249,32 @@ export class ForgeWorkspace {
     }
 
     const html = await readFile(file, 'utf8');
-    // Phaser may create its canvas at runtime, so accept either a canvas element
-    // or an explicit Phaser.Game initialisation.
-    if (!/<canvas[\s>]/i.test(html) && !/new\s+Phaser\.Game|Phaser\.AUTO/i.test(html)) {
-      issues.push('No <canvas> or Phaser.Game initialisation found.');
+    // Games keep the Phaser contract they were built with. Phaser may create its
+    // canvas at runtime, so accept either a canvas element or an explicit
+    // Phaser.Game initialisation. Every other request is a general browser
+    // application: require a real document body with renderable content, so an
+    // empty shell cannot pass validation.
+    const body = /<body[^>]*>([\s\S]*?)<\/body>/i.exec(html)?.[1] ?? '';
+    if (/phaser/i.test(html)) {
+      if (!/<canvas[\s>]/i.test(html) && !/new\s+Phaser\.Game|Phaser\.AUTO/i.test(html)) {
+        issues.push(
+          'Phaser is referenced but no <canvas> or Phaser.Game initialisation was found.',
+        );
+      }
+    } else if (!/<body[\s>]/i.test(html)) {
+      issues.push('No <body> element found.');
+    } else {
+      const visibleText = body
+        .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .trim();
+      const hasElement =
+        /<(main|section|div|canvas|svg|form|table|ul|ol|button|input|h1|h2|p)\b/i.test(body);
+      if (visibleText.length === 0 && !hasElement) {
+        issues.push('No renderable application content found in <body>.');
+      }
     }
-    if (!/phaser/i.test(html)) issues.push('No Phaser reference found.');
 
     for (const script of extractInlineScripts(html)) {
       const check = spawnSync(process.execPath, ['--check', '-'], {
@@ -306,7 +326,7 @@ export class ForgeWorkspace {
     if (!validation.ok) {
       throw new ForgeError(
         'invalid_staged',
-        'The staged game failed validation.',
+        'The staged application failed validation.',
         validation.issues,
       );
     }
@@ -316,7 +336,7 @@ export class ForgeWorkspace {
     if (previous !== options.baseVersion) {
       throw new ForgeError(
         'version_conflict',
-        `The approved game moved to v${String(previous)} while this change was staged.`,
+        `The approved application moved to v${String(previous)} while this change was staged.`,
       );
     }
 

@@ -1,18 +1,31 @@
 # Muse Recall
 
-**Muse Recall** (monorepo `muse-memory-lab`) is a local-first **memory companion** for
-Meta Muse. It remembers what matters across sessions, keeps that memory correctable,
-explains why a memory was retrieved, and generates the interface a task needs instead of
-making you read a wall of chat. Its game-studio workspace, **Muse Forge**, applies the
-same memory to an approved Phaser game: Muse edits the existing source, retrieves the
-decisions that still apply, and stages every change for human review.
+### Build with Muse Spark. Remember what matters.
 
-> **Status: Phase 14C (final recording clearance) complete — submission package ready,
-> submission not performed.** Implemented and verified: the memory engine, chat sessions,
-> declarative generative UI, authorized agent tools with write approval, the advisory
-> Decision Guard, and the Muse Forge modify-in-place loop with load-time runtime
-> verification. The default branch contains the approved Phase 14C recording candidate.
-> See [Project status](#project-status) and the
+**Muse Recall** (monorepo `muse-memory-lab`) is a local-first **AI development workspace**
+powered by Meta's Muse Spark. In **HTML Studio**, describe a browser application in
+natural language; Muse Spark writes a complete `index.html`, you preview and inspect it,
+refine it through further requests, and review every staged change before it becomes
+current.
+
+The differentiator is **persistent project decision memory**: a constraint, palette, or
+technical choice survives across sessions, is retrieved into later prompts with
+provenance, and can be corrected without erasing its history. An independent advisory
+**Decision Guard** cites those decisions against a staged change, and **human approval,
+rejection and rollback** leave the developer in control.
+
+Games remain an excellent demonstration — the seeded project is a Muse-built memory game —
+but the artifact contract is a general browser application, not a game. HTML Studio reuses
+the existing Muse Spark pipeline; it is not a second generator.
+
+> **Status: product-repositioning candidate on
+> `agent/muse-recall-product-positioning`; `main` remains the approved Phase 14C release
+> candidate. Submission not performed.** Implemented and verified on the candidate branch:
+> the memory engine, chat sessions, declarative generative UI, authorized agent tools with
+> write approval, the advisory Decision Guard, HTML Studio with sandboxed preview, source
+> inspection, staged diffs and disclosed export, general HTML application validation, and
+> the modify-in-place loop with load-time runtime verification. See
+> [Project status](#project-status) and the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 ---
@@ -23,24 +36,26 @@ A conventional assistant forgets everything between sessions, or compensates by
 replaying an ever-growing transcript into the context window. Muse Recall takes the
 other path:
 
+- **HTML Studio** — the generated browser application is the hero. A sandboxed,
+  interactive preview fills the workspace; **Preview**, **Source** and **Changes** expose
+  the current version, the staged source, and a line diff. Generated HTML is served as
+  data for inspection and download, never injected into the application origin.
+- **Muse Spark development loop** — generation and modification are jobs over an approved
+  `index.html`. Each job records the prompt it sent, that prompt's SHA-256, the decisions
+  it retrieved, and its usage; a change is staged, reviewed, and only then promoted.
 - **Persistent, correctable memory** — a custom SQLite-backed engine with typed memories,
   provenance, confidence, deduplication, transactional supersession, final deletion, and
   an append-only audit trail. Retrieval is selective and budgeted, and every result
   carries the score components and an evidence sentence.
-- **Generative interface** — Muse returns a validated declarative UI spec rendered by a
-  fixed component registry. No model-authored JavaScript ever runs.
-- **An agent harness that owns the loop** — model provider, memory, tools, and
-  permissions stay separate boundaries, so retrieved text can never widen its own
-  authority.
-- **Muse Forge** — an AI game-studio workspace. Meta Muse edits an approved Phaser game
-  in place instead of regenerating it; each job records the prompt it sent, that prompt's
-  SHA-256, and the decisions it retrieved; changes are staged as a reviewable diff, and
-  approval runs a load-time browser check before promotion.
 - **Advisory Decision Guard** — compares source patterns against the same project
   decisions and cites them with evidence. It is advisory only: it never blocks approval
   and is not compliance verification.
 - **Versioned rollback** — every approval promotes an immutable version, and rollback
   follows the recorded parent, so a non-linear history restores the right ancestor.
+- **A controlled agent harness** — model provider, memory, tools, and permissions stay
+  separate boundaries, so retrieved text can never widen its own authority.
+- **Generative interface** — Muse returns a validated declarative UI spec rendered by a
+  fixed component registry. No model-authored JavaScript ever runs.
 
 ---
 
@@ -66,18 +81,22 @@ cp .env.example .env          # defaults are already local-first
 pnpm dev                      # API on :8787 and web on :5173
 ```
 
-Open <http://127.0.0.1:5173>. Press **live check** on the Muse card to confirm real
-inference, then open **Memories** to inspect, correct, delete, and explain retrieval.
+Open <http://127.0.0.1:5173>. HTML Studio is the landing surface. To load the
+deterministic recorded demo (project `forge-demo`, three project decisions, v1 approved),
+run `pnpm demo:seed` once before `pnpm dev`. Press **live check** on the System screen to
+confirm real inference, then use **Memory** to inspect, correct, delete, and explain
+retrieval.
 
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (484 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (491 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
-pnpm verify:runtime         # load-time browser check used by Muse Forge approval
-pnpm verify:forge           # end-to-end Forge loop against the deterministic fixture
+pnpm verify:runtime         # load-time browser check used by HTML Studio approval
+pnpm verify:forge           # end-to-end HTML Studio loop against the deterministic fixture
+pnpm demo:seed              # seed the recorded demo project and its decisions
 pnpm bench:retrieval        # retrieval latency, selectivity, accuracy, stale rate
 pnpm bench:muse-overhead    # repeated real Muse calls; token variance and memory cost
 pnpm exec tsx scripts/verify-ui.ts   # drives the real UI in Chrome, fails on any error
@@ -115,7 +134,7 @@ default.
 | SQLite schema, migration runner, FTS5 index | 1 | **Complete** |
 | Shared Zod contracts | 1 | **Complete** |
 | Meta Muse provider adapter (real calls, streaming, usage) | 1 | **Complete**, verified live |
-| React/Vite/Tailwind shell + context inspector | 1 | **Complete** |
+| React/Vite/Tailwind shell + HTML Studio workspace | 1 | **Complete** |
 | Memory CRUD, provenance, dedupe, supersession, deletion | 2 | **Complete** |
 | Retrieval: ranking, budgets, evidence, context rendering | 2 | **Complete** |
 | Memory Inspector UI: search, filters, correction, history | 2 | **Complete** |
@@ -139,6 +158,9 @@ default.
 | Demo production + rollback-ancestry fix | 14A | **Complete**, verified |
 | Independent submission/evidence audit | 14B | **Complete** on a separate branch; not merged |
 | Final recording clearance | 14C | **Complete** |
+| Product repositioning + UX audit/design system | polish | **Complete** on candidate branch |
+| HTML Studio: preview, source, diff, artifact integrity, disclosed export | polish | **Complete** on candidate branch |
+| General HTML application validation + runtime gate | polish | **Complete** on candidate branch, tested |
 | Record/upload video and submit the form | — | **Owner action pending** |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
@@ -217,6 +239,18 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 | `GET` | `/api/memories/:id/history` | Audit trail |
 | `GET` | `/api/memories/stats` | Lifecycle counts |
 | `GET` | `/api/projects` | Scope anchors |
+| `POST` | `/api/forge/projects` | Create/open an HTML Studio project |
+| `GET` | `/api/forge/projects/:id` | Project state, version history, jobs |
+| `POST` | `/api/forge/projects/:id/generate` | Stage a new application (202 job) |
+| `POST` | `/api/forge/projects/:id/modify` | Stage a change; screenshot optional (202 job) |
+| `GET` | `/api/forge/jobs/:jobId` | Job status, usage, recorded decision ids |
+| `POST` | `/api/forge/jobs/:jobId/cancel` | Request cancellation |
+| `GET` | `/api/forge/jobs/:jobId/diff` | Staged source diff, validation, advisory guard |
+| `POST` | `/api/forge/jobs/:jobId/approve` | Promote the verified bytes (human approval) |
+| `POST` | `/api/forge/jobs/:jobId/reject` | Delete the staging copy; current version untouched |
+| `POST` | `/api/forge/projects/:id/rollback` | Restore the recorded parent version |
+| `GET` | `/api/forge/projects/:id/artifact` | Approved or staged HTML as data (source/export) |
+| `GET` | `/api/forge/projects/:id/preview` | Sandboxed preview document (opaque origin) |
 | `POST` | `/api/retrieval/preview` | Ranking + evidence + the exact prompt block |
 | `POST` | `/api/sessions` | Create a conversation (optional project scope) |
 | `GET` | `/api/sessions` | List conversations |
@@ -295,7 +329,8 @@ apps/
   server/          Fastify API, config, routes (health, provider, memories, retrieval)
   web/             React shell, typed client, memory inspector
 packages/
-  shared/          Zod schemas: memory, retrieval, evaluation, health, provider, meta
+  shared/          Zod schemas: memory, retrieval, evaluation, health, provider, meta, forge
+  decision-guard/  pure advisory source-pattern engine
   memory-engine/   engine (writes), retrieval (scores), context (prompt rendering)
   muse-provider/   ModelProvider impls: Muse CLI adapter + offline echo
 tests/
@@ -332,7 +367,11 @@ class and limitations.
 ## Submission materials
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
-- [Submission copy](docs/submission/SUBMISSION_COPY.md) — current 100/300-word descriptions
+- [Submission copy](docs/submission/SUBMISSION_COPY.md) — current 93/289-word descriptions
+- [Product positioning](docs/PRODUCT_POSITIONING.md) — identity, claims register, honesty boundaries
+- [HTML Studio assessment](docs/HTML_STUDIO_ASSESSMENT.md) — capability, security, export, scope
+- [UX audit](docs/UX_AUDIT.md) and [design system](docs/DESIGN_SYSTEM.md)
+- [Revised demo storyboard](docs/submission/REVISED_DEMO_STORYBOARD.md)
 - [Phase 14C recording clearance](docs/PHASE14C_RECORDING_CLEARANCE.md)
 - [Three-minute demo script](docs/submission/DEMO_SCRIPT_3MIN.md) and [runbook](docs/submission/DEMO_RUNBOOK.md)
 - [Evidence map](docs/submission/EVIDENCE_MAP.md) and [project story](docs/submission/PROJECT_STORY.md)
@@ -353,9 +392,14 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 - **Deletion is irreversible through the API.** That is the guarantee, not a bug.
 - **Single-user, loopback-only.** No authentication or rate limiting; not production-ready for
   public multi-user hosting.
-- **Runtime verification is load-time only.** Forge approval loads the staged build in
-  headless Chrome and rejects page errors or a missing canvas; it does **not** play the
-  game, inspect pixels, or prove gameplay correctness.
+- **Runtime verification is load-time only.** HTML Studio approval loads the staged
+  document in headless Chrome and rejects page/console errors, blocked network requests,
+  or a blank render (Phaser documents must create a canvas). It does **not** exercise
+  interactions, inspect pixels, or prove gameplay/application correctness.
+- **General HTML support is deliberately narrow.** One self-contained `index.html`, no
+  build step, inline CSS/JavaScript, and no network assets outside the approved CDN.
+- **Export is not a self-contained bundle.** The download is the artifact as-is; a CDN
+  reference still needs network access, and the interface says so.
 - **The Decision Guard is advisory.** It checks source patterns against remembered
   decisions and cites evidence; it never blocks approval and is not compliance
   verification.
@@ -369,8 +413,9 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 1. **Hackathon submission.** Record and upload the three-minute video, confirm the
    repository is public for judging, and complete the submission form (owner actions;
    nothing is submitted automatically).
-2. **Post-event hardening.** Broader game support, additional Decision Guard rule
-   families, and multi-user authentication are out of scope for this release.
+2. **Post-event hardening.** Additional Decision Guard rule families, interaction and
+   pixel verification, verified self-contained export, and multi-user authentication
+   remain out of scope for this release.
 
 ---
 
