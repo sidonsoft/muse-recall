@@ -51,6 +51,10 @@ export interface MuseCliProviderOptions {
   cwd?: string;
   /** Extra environment for the child process. */
   env?: Record<string, string>;
+  /** Meta Model API key used only when the subscription reports quota exhaustion. */
+  fallbackApiKey?: string;
+  /** Model id for the fallback attempt. */
+  fallbackModel?: string;
   /** Extra CLI arguments appended verbatim (escape hatch, used by tests). */
   extraArgs?: string[];
 }
@@ -86,6 +90,8 @@ export class MuseCliProvider implements ModelProvider {
   private readonly cwd: string;
   private readonly env: Record<string, string>;
   private readonly extraArgs: string[];
+  private readonly fallbackApiKey: string | undefined;
+  private readonly fallbackModel: string | undefined;
 
   constructor(options: MuseCliProviderOptions = {}) {
     this.bin = options.bin ?? 'muse';
@@ -96,6 +102,8 @@ export class MuseCliProvider implements ModelProvider {
     this.cwd = options.cwd ?? process.cwd();
     this.env = options.env ?? {};
     this.extraArgs = options.extraArgs ?? [];
+    this.fallbackApiKey = options.fallbackApiKey;
+    this.fallbackModel = options.fallbackModel ?? 'muse-spark-1.3-contributor';
   }
 
   capabilities(): ModelCapabilities {
@@ -171,6 +179,29 @@ export class MuseCliProvider implements ModelProvider {
   }
 
   async *stream(request: ModelRequest): AsyncIterable<ModelEvent> {
+    // Quota failover: stream the primary attempt; if it fails before producing
+    // any text because the subscription window is exhausted, retry once with
+    // the API key. Events are not buffered, so streaming is unchanged.
+    let emittedText = false;
+    for await (const event of this.streamAttempt(request, false)) {
+      if (event.type === 'text_delta' && event.text.trim().length > 0) emittedText = true;
+      if (
+        event.type === 'error' &&
+        !emittedText &&
+        this.fallbackApiKey &&
+        /quota|429|rate.?limit|usage window/i.test(`${event.code} ${event.message}`)
+      ) {
+        yield* this.streamAttempt(request, true);
+        return;
+      }
+      yield event;
+    }
+  }
+
+  private async *streamAttempt(
+    request: ModelRequest,
+    fallback: boolean,
+  ): AsyncIterable<ModelEvent> {
     const parsed = ModelRequestSchema.safeParse(request);
     if (!parsed.success) {
       yield {
@@ -192,6 +223,7 @@ export class MuseCliProvider implements ModelProvider {
       const promptPath = join(tmpDir, 'prompt.md');
       await writeFile(promptPath, formatPrompt(parsed.data.messages), 'utf8');
 
+      const apiKey = fallback ? this.fallbackApiKey : undefined;
       const args = [
         'exec',
         '--json',
@@ -203,7 +235,9 @@ export class MuseCliProvider implements ModelProvider {
         '--preset',
         this.preset,
         '--model',
-        parsed.data.model ?? this.model,
+        fallback
+          ? (this.fallbackModel ?? parsed.data.model ?? this.model)
+          : (parsed.data.model ?? this.model),
         '--reasoning-effort',
         this.reasoningEffort,
         '--prompt-file',
@@ -216,13 +250,18 @@ export class MuseCliProvider implements ModelProvider {
         args.push('--output-schema', schemaPath);
       }
 
+      if (apiKey) args.push('--provider', 'meta', '--api-key-stdin');
       args.push(...this.extraArgs);
 
       child = spawn(this.bin, args, {
         cwd: this.cwd,
         env: { ...process.env, ...this.env },
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       });
+      if (apiKey && child.stdin) {
+        child.stdin.write(apiKey);
+        child.stdin.end();
+      }
 
       const proc = child;
       let spawnError: Error | null = null;

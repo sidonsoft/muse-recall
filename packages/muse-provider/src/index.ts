@@ -16,6 +16,8 @@ export interface ProviderConfig {
   museTimeoutMs?: number;
   cwd?: string;
   env?: Record<string, string>;
+  museFallbackApiKey?: string;
+  museFallbackModel?: string;
 }
 
 /**
@@ -35,6 +37,8 @@ export function createModelProvider(config: ProviderConfig): ModelProvider {
         timeoutMs: config.museTimeoutMs,
         cwd: config.cwd,
         env: config.env,
+        ...(config.museFallbackApiKey ? { fallbackApiKey: config.museFallbackApiKey } : {}),
+        ...(config.museFallbackModel ? { fallbackModel: config.museFallbackModel } : {}),
       });
     case 'echo':
       return new EchoProvider();

@@ -200,3 +200,26 @@ This satisfies the Phase 10 success criterion with real inference: Muse edited t
 source from a valid screenshot, the diff was small and source-preserving, and the result passed
 server-side runtime verification before approval. The API key was supplied through the server
 environment only; `git log` contains no key material.
+
+
+## Quota failover (subscription first)
+
+Muse Code subscriptions have a usage window; when it is exhausted the CLI returns HTTP 429.
+Both model paths now retry once with a Meta Model API key instead of failing the demo:
+
+| Path | Variables | Behaviour |
+| --- | --- | --- |
+| Forge jobs | `FORGE_FALLBACK_API_KEY`, `FORGE_FALLBACK_MODEL` | on a quota failure, reset staging to the approved base, log the decision, retry with `muse-spark-1.3-contributor` |
+| Chat / memory turns | `MUSE_FALLBACK_API_KEY`, `MUSE_FALLBACK_MODEL` | retry only if the primary attempt produced no text, so streamed output is never duplicated |
+
+The key is written to the CLI's stdin (`--api-key-stdin`), never to argv, logs, job JSON or the
+repository. A forced key (`FORGE_MUSE_API_KEY`) still bypasses the subscription entirely.
+
+Verified live while the subscription window was exhausted:
+
+- Forge: primary returned 429, the job logged "retrying with muse-spark-1.3-contributor",
+  succeeded, validation passed; 10 calls and 287,565 input tokens across both attempts.
+- Chat: a turn that would have failed returned "CHAT FAILOVER OK" in 4.35 s.
+
+Deterministic tests cover both the retry and the no-fallback failure (job error now includes
+the CLI stderr, so a quota failure is legible).

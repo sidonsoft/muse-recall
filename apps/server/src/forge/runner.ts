@@ -37,6 +37,9 @@ export interface ForgeManagerOptions {
   apiKey?: string;
   /** Model id for API-key runs (e.g. muse-spark-1.3-contributor). */
   model?: string;
+  /** Key used only when the subscription reports quota exhaustion. */
+  fallbackApiKey?: string;
+  fallbackModel?: string;
   /** Browser runtime check run before approval; injectable for tests. */
   runtimeCheck?: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
   now?: () => Date;
@@ -72,6 +75,9 @@ export class ForgeJobManager {
   private readonly env: NodeJS.ProcessEnv | undefined;
   private readonly apiKey: string | undefined;
   private readonly model: string | undefined;
+  private readonly fallbackApiKey: string | undefined;
+  private readonly fallbackModel: string | undefined;
+  private readonly carry = new Map<string, ForgeUsage>();
   private readonly runtimeCheck: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
   private readonly now: () => Date;
   private readonly jobs = new Map<string, ForgeJob>();
@@ -90,6 +96,8 @@ export class ForgeJobManager {
     this.env = options.env;
     this.apiKey = options.apiKey;
     this.model = options.model;
+    this.fallbackApiKey = options.fallbackApiKey;
+    this.fallbackModel = options.fallbackModel ?? 'muse-spark-1.3-contributor';
     this.runtimeCheck = options.runtimeCheck ?? checkGameRuntime;
     this.now = options.now ?? (() => new Date());
   }
@@ -334,6 +342,7 @@ export class ForgeJobManager {
     staging: string,
     memoryBlock: string,
     images: string[],
+    attempt: 'primary' | 'fallback' = 'primary',
   ): Promise<void> {
     const execState = this.state.get(job.id);
     if (!execState) return;
@@ -352,19 +361,21 @@ export class ForgeJobManager {
       '--reasoning-effort',
       this.effort,
     ];
-    if (this.apiKey) args.push('--provider', 'meta', '--api-key-stdin');
-    if (this.model) args.push('--model', this.model);
+    const apiKey = attempt === 'fallback' ? this.fallbackApiKey : this.apiKey;
+    const model = attempt === 'fallback' ? this.fallbackModel : this.model;
+    if (apiKey) args.push('--provider', 'meta', '--api-key-stdin');
+    if (model) args.push('--model', model);
     for (const image of images) args.push('--image', image);
 
     this.update(job, { status: 'running', started_at: this.now().toISOString() });
     const startedAt = Date.now();
 
     const child = spawn(this.museBin, args, {
-      stdio: [this.apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       ...(this.env ? { env: { ...process.env, ...this.env } } : {}),
     });
-    if (this.apiKey && child.stdin) {
-      child.stdin.write(this.apiKey);
+    if (apiKey && child.stdin) {
+      child.stdin.write(apiKey);
       child.stdin.end();
     }
     execState.child = child;
@@ -421,11 +432,36 @@ export class ForgeJobManager {
           });
           return;
         }
+        if (
+          (code !== 0 || execState.terminal === 'failed') &&
+          attempt === 'primary' &&
+          this.fallbackApiKey &&
+          quotaFailure(job)
+        ) {
+          this.carry.set(
+            job.id,
+            addUsage(execState.usage, this.carry.get(job.id)) ?? execState.usage,
+          );
+          this.log(
+            job,
+            `Subscription quota exhausted; retrying with ${this.fallbackModel ?? 'the API key'}.`,
+          );
+          await this.resetStaging(job, staging);
+          await this.execute(job, staging, memoryBlock, images, 'fallback');
+          return;
+        }
         if (code !== 0 || execState.terminal === 'failed') {
+          const stderr = job.logs
+            .filter((line) => line.startsWith('stderr:'))
+            .slice(-2)
+            .join(' ')
+            .slice(0, 400);
           await this.finish(job, {
             ...base,
             status: 'failed',
-            error: execState.terminalText ?? `Muse exited with code ${String(code)}.`,
+            error:
+              execState.terminalText ??
+              `Muse exited with code ${String(code)}.${stderr ? ` ${stderr}` : ''}`,
           });
           return;
         }
@@ -520,6 +556,16 @@ export class ForgeJobManager {
     void this.persist(next);
   }
 
+  private async resetStaging(job: ForgeJob, staging: string): Promise<void> {
+    if (job.kind === 'modify') {
+      const current = await this.workspace.currentHtml(job.project_id);
+      if (current !== null) await writeFile(join(staging, 'index.html'), current, 'utf8');
+    } else {
+      const file = join(staging, 'index.html');
+      await writeFile(file, '', 'utf8');
+    }
+  }
+
   private async finish(
     job: ForgeJob,
     patch: {
@@ -532,12 +578,14 @@ export class ForgeJobManager {
     },
   ): Promise<void> {
     this.cancelled.delete(job.id);
+    const carried = this.carry.get(job.id);
+    this.carry.delete(job.id);
     this.update(job, {
       status: patch.status,
       error: patch.error ?? null,
       summary: patch.summary ?? job.summary,
       validation: patch.validation ?? job.validation,
-      usage: patch.usage ?? job.usage,
+      usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
       finished_at: patch.finished_at ?? this.now().toISOString(),
     });
     this.state.delete(job.id);
@@ -582,6 +630,21 @@ function buildPrompt(job: ForgeJob, memoryBlock: string): string {
     'Requested change:',
     job.request ?? job.prompt,
   ].join('\n');
+}
+
+function quotaFailure(job: ForgeJob): boolean {
+  const text = job.logs.slice(-30).join(' ');
+  return /quota|429|rate.?limit|usage window/i.test(text);
+}
+
+function addUsage(a: ForgeUsage | null, b: ForgeUsage | undefined): ForgeUsage | null {
+  if (!a && !b) return null;
+  return {
+    calls: (a?.calls ?? 0) + (b?.calls ?? 0),
+    input_tokens: (a?.input_tokens ?? 0) + (b?.input_tokens ?? 0),
+    output_tokens: (a?.output_tokens ?? 0) + (b?.output_tokens ?? 0),
+    runtime_ms: (a?.runtime_ms ?? 0) + (b?.runtime_ms ?? 0),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

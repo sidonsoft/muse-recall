@@ -35,6 +35,8 @@ const EnvSchema = z.object({
   MUSE_BIN: z.string().min(1).default('muse'),
   MUSE_MODEL: z.string().min(1).default(MUSE_DEFAULT_MODEL),
   MUSE_REASONING_EFFORT: z.enum(MUSE_REASONING_EFFORTS).default(MUSE_DEFAULT_REASONING_EFFORT),
+  MUSE_FALLBACK_API_KEY: z.string().min(10).optional(),
+  MUSE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
   MUSE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(900_000).default(120_000),
   TOOL_APPROVAL_POLICY: z.enum(['always', 'never']).default('always'),
   WORKSPACE_ROOT: z.string().min(1).default('./workspaces'),
@@ -104,6 +106,8 @@ const EnvSchema = z.object({
   FORGE_MUSE_BIN: z.string().min(1).optional(),
   FORGE_MUSE_API_KEY: z.string().min(10).optional(),
   FORGE_MUSE_MODEL: z.string().min(2).optional(),
+  FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
+  FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
   FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
 });
 
@@ -126,6 +130,9 @@ export interface AppConfig {
     apiKey: string | null;
     /** Model id used when an API key is configured. */
     model: string | null;
+    /** Key used only when the subscription window is exhausted. */
+    fallbackApiKey: string | null;
+    fallbackModel: string | null;
     reasoningEffort: 'low' | 'medium' | 'high';
   };
   provider: ProviderConfig;
@@ -183,6 +190,8 @@ export function loadConfig(
       museBin: value.FORGE_MUSE_BIN ?? null,
       apiKey: value.FORGE_MUSE_API_KEY ?? null,
       model: value.FORGE_MUSE_MODEL ?? null,
+      fallbackApiKey: value.FORGE_FALLBACK_API_KEY ?? null,
+      fallbackModel: value.FORGE_FALLBACK_API_KEY ? value.FORGE_FALLBACK_MODEL : null,
       reasoningEffort: value.FORGE_REASONING_EFFORT,
     },
     memoryBudget: {

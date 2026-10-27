@@ -47,6 +47,14 @@ new Phaser.Game({
 </body></html>`;
 }
 
+const usesApiKey = args.includes('--api-key-stdin');
+if (mode === 'quota-once' && !usesApiKey) {
+  process.stderr.write(
+    'run ended with Failed: API error 429: Subscription quota exhausted. (rate_limit_error)\n',
+  );
+  process.exit(1);
+}
+
 if (!workspace) {
   process.stderr.write('missing --workspace\n');
   process.exit(2);

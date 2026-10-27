@@ -72,6 +72,7 @@ async function harness(
     ok: true,
     errors: [],
   }),
+  fallback = false,
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-api-'));
   const database = openDatabase({ path: ':memory:', wal: false });
@@ -87,6 +88,7 @@ async function harness(
     maxInputTokens: 10_000_000,
     reasoningEffort: 'low',
     runtimeCheck,
+    ...(fallback ? { fallbackApiKey: 'test-key', fallbackModel: 'fake-spark' } : {}),
   });
   const app = await buildApp({
     config: config(root),
@@ -426,6 +428,25 @@ describe('forge workflow', () => {
     expect(after.status).toBe('failed');
     const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
     expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('retries with the API key when the subscription is out of quota', async () => {
+    const h = await harness('quota-once', {}, async () => ({ ok: true, errors: [] }), true);
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+    expect(finished.status).toBe('succeeded');
+    const detail = await job(h.app, generated);
+    expect((detail as { logs: string[] }).logs.join(' ')).toMatch(/retrying with fake-spark/);
+  });
+
+  it('fails without a fallback key when the subscription is out of quota', async () => {
+    const h = await harness('quota-once');
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+    expect(finished.status).toBe('failed');
+    expect((finished as { error: string }).error).toMatch(/quota|429/i);
   });
 
   it('refuses a stale approval after another change lands', async () => {
