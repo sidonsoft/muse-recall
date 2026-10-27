@@ -53,3 +53,23 @@ Reasoning:
 This is not an automatic preference for the visually impressive option: Forge scores higher
 only because its demo and Muse alignment are stronger, and it passes the technical gates. The
 feasibility score of 4 is the reason for the explicit fallback.
+
+
+## Phase 9 evidence update
+
+The MVP changed the feasibility picture, so the delivery score is re-scored against working code:
+
+| Capability | Result |
+| --- | --- |
+| Real-Muse in-app generation | **PASS** — 122.4 s, 8 calls, 320k input tokens, approved as v1 |
+| Sandboxed preview + canvas | **PASS** — desktop/mobile, reload, screenshot capture |
+| Screenshot-driven modification | **PASS with caveats** — 53.2 s narrow change validated; broad first attempt replaced Phaser (rejected); one retry exceeded 600 s |
+| Diff review + approval | **PASS** — validation, approval gate, decision capture |
+| Rollback | **PASS** — verified in the browser and by tests |
+| Memory injection | **PASS** — retrieval before jobs, provenance recorded; tests cover superseded exclusion |
+| Runtime safety | **PARTIAL** — runtime errors are surfaced and block approval; no automated gameplay test |
+
+Revised delivery feasibility: **6/10**. The workflow works end to end, but real modification
+latency is variable and the validator is structural. Forge now scores **8.95** (up from 8.75);
+Handover remains 8.55. The condition for submission is that the demo uses narrow, rehearsed
+changes and shows the runtime-error gate rather than hiding it.

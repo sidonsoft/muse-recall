@@ -22,3 +22,25 @@ the 24-hour build gate. If that gate fails, record the fallback (Handover) inste
 - Do not claim image generation (Muse Image is not configured here), asset pipelines, or a
   full visual editor; only the scoped loop described above.
 - Keep the "superseded" memory state visible on screen for the correction beat.
+
+---
+
+## Phase 9 storyboard — the in-app MVP
+
+This is the version the product now supports end to end. Times are real measured operations;
+cuts are allowed for waits, but the recording must not imply instant generation.
+
+| Time | Screen action | Narration |
+| --- | --- | --- |
+| 0:00–0:20 | The Forge view, empty preview. Cut to a code editor, a terminal, and a browser tab side by side | "Making a small browser game means juggling code, a preview, screenshots and a chat window — and every new session starts by re-explaining the game." |
+| 0:20–0:45 | Type the game description, click **Generate game**. Job card appears: running, calls and tokens counting | "Describe the game. Muse writes a single self-contained Phaser file into a staging copy — not the live project." |
+| 0:45–1:10 | Staged badge appears, preview loads, play: flip cards, score moves, mismatch flips back, switch to mobile width | "It is playable immediately, with mouse and touch and a responsive layout. The badge says staged — this is not approved yet." |
+| 1:10–1:40 | Click **Approve**; version v1. Click **Capture preview**; the screenshot thumbnail appears. Type the visual change request. Click **Generate change** | "Approve the first version. Then point at the screen: the game canvas is captured and attached to the request." |
+| 1:40–2:00 | Diff panel: validation passed, `-`/`+` lines; click **Approve**; preview refreshes; v2 | "Muse proposes a source change. You see the diff and the validation result before anything is applied. Approve, and the preview updates." |
+| 2:00–2:25 | New Forge project? No — stay: show approved versions, then **Undo last change** back to v1 | "Every approved version is preserved. One click restores the previous game — no Git required." |
+| 2:25–2:45 | Re-open the project; show memory provenance in the job card ("2 project memories used") and the approval checkbox "Save the decision to project memory" | "Project decisions retrieved before each job shape the prompt; approval can save the decision, with provenance, for the next session." |
+| 2:45–3:00 | Final gameplay shot + title | "Muse Forge: describe it, play it, point at it, keep what works." |
+
+Production rules: record on a fresh database, run the real workflow once for the take, cut the
+wait rather than fake it, and never claim Muse play-tested the game — the browser verification is
+shown separately.

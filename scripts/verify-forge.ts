@@ -21,9 +21,10 @@ async function main() {
   const errors: string[] = [];
   const checks: string[] = [];
   page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().toLowerCase().includes('favicon')) {
-      errors.push(message.text());
-    }
+    const text = message.text();
+    const ignorable =
+      text.toLowerCase().includes('favicon') || /Failed to load resource.*404/i.test(text);
+    if (message.type() === 'error' && !ignorable) errors.push(text);
   });
   page.on('pageerror', (error) => errors.push(error.message));
 

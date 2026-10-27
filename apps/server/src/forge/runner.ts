@@ -473,6 +473,7 @@ function buildPrompt(job: ForgeJob, memoryBlock: string): string {
     'Modify the existing game in this workspace (index.html only).',
     'The attached screenshot is the current rendered preview. Use it to understand the visual result.',
     'Apply the requested visual change while preserving gameplay: cards, matching, score, restart, win condition, mouse/touch, and responsive layout.',
+    'Keep the existing Phaser 3 CDN and Phaser.Game initialisation. Do not replace the engine with vanilla JavaScript and do not add libraries.',
     'Do not add other files or dependencies. After editing, run node --check on the inline script.',
     memory,
     'Requested change:',

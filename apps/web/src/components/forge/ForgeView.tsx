@@ -37,6 +37,7 @@ export function ForgeView() {
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [reload, setReload] = useState(0);
   const [previewReady, setPreviewReady] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [captureMemory, setCaptureMemory] = useState(true);
   const [decision, setDecision] = useState('');
@@ -60,7 +61,16 @@ export function ForgeView() {
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      const data = event.data as { type?: string; dataUrl?: string | null; error?: string } | null;
+      const data = event.data as {
+        type?: string;
+        dataUrl?: string | null;
+        error?: string;
+        message?: string;
+      } | null;
+      if (data?.type === 'forge:preview-error') {
+        setPreviewError(data.message ?? 'The game threw an error at runtime.');
+        return;
+      }
       if (data?.type !== 'forge:screenshot') return;
       if (data.dataUrl) {
         setScreenshot(data.dataUrl);
@@ -239,6 +249,7 @@ export function ForgeView() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: deliberately reset per preview key
   useEffect(() => {
     setPreviewReady(false);
+    setPreviewError(null);
   }, [previewKey]);
 
   return (
@@ -448,6 +459,11 @@ export function ForgeView() {
                   staged — not approved
                 </span>
               ) : null}
+              {previewError ? (
+                <span className="rounded bg-err/10 px-1.5 py-0.5 text-[9px] text-err">
+                  runtime error
+                </span>
+              ) : null}
               <span className="ml-auto font-mono text-[9px] text-muted">
                 {previewJobId
                   ? 'staging'
@@ -479,6 +495,12 @@ export function ForgeView() {
                 </div>
               )}
             </div>
+            {previewError ? (
+              <p className="border-t border-err/30 bg-err/5 px-3 py-1.5 font-mono text-[10px] text-err">
+                Preview error: {previewError}. Fix the request and regenerate, or reject this
+                change.
+              </p>
+            ) : null}
           </section>
 
           {diff ? (
@@ -521,7 +543,7 @@ export function ForgeView() {
                 <button
                   type="button"
                   onClick={() => void approve()}
-                  disabled={busy || !diff.validation.ok}
+                  disabled={busy || !diff.validation.ok || previewError !== null}
                   className="rounded-md border border-ok/40 bg-ok/10 px-3 py-1.5 text-[11px] text-ok disabled:opacity-40"
                 >
                   Approve

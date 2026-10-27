@@ -306,6 +306,51 @@ describe('forge workflow', () => {
     expect(finished.status).toBe('failed');
   });
 
+  it('fails cleanly when the CLI exits non-zero', async () => {
+    const h = await harness('fail');
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+    expect(finished.status).toBe('failed');
+    expect((finished as { error: string }).error).toMatch(/fake failure|exited/);
+  });
+
+  it('rejects malformed generated HTML', async () => {
+    const h = await harness('invalid');
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    const finished = await waitForFinish(h.app, generated);
+    expect(finished.status).toBe('failed');
+    expect(finished.validation?.issues.join(' ')).toMatch(/canvas|Phaser/);
+  });
+
+  it('records the project memories that influenced a job', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const memory = h.engine.create({
+      type: 'technical_decision',
+      scope: 'project',
+      project_id: 'demo-game',
+      content: 'The game is a colourful farmyard memory game for children with twelve cards.',
+      confidence: 0.9,
+      validation_status: 'verified',
+    });
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    const detail = await job(h.app, generated);
+    expect((detail as { memory_ids: string[] }).memory_ids).toContain(memory.memory.id);
+  });
+
+  it("does not serve another project's staged file", async () => {
+    const h = await harness();
+    await createProject(h.app, 'project-a');
+    await createProject(h.app, 'project-b');
+    const generated = await startGenerate(h.app, 'project-a');
+    await waitForFinish(h.app, generated);
+    const response = await preview(h.app, 'project-b', generated);
+    expect(response.statusCode).toBe(404);
+  });
+
   it('rejects an invalid project id before touching the filesystem', async () => {
     const h = await harness();
     const response = await h.app.inject({

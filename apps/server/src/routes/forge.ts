@@ -176,7 +176,10 @@ export function registerForgeRoutes(
  * Injected into every preview, in the sandboxed document only. It lets the host
  * request a PNG of the game canvas; the generated game never sees app state.
  */
-const CAPTURE_BRIDGE = `<script>(function(){window.addEventListener('message',function(event){var data=event.data;if(!data||data.type!=='forge:capture')return;var canvas=document.querySelector('canvas');try{var url=canvas?canvas.toDataURL('image/png'):null;if(event.source)event.source.postMessage({type:'forge:screenshot',dataUrl:url},'*');}catch(error){if(event.source)event.source.postMessage({type:'forge:screenshot',error:String(error)},'*');}});})();</script>`;
+const CAPTURE_BRIDGE = `<script>(function(){
+window.addEventListener('message',function(event){var data=event.data;if(!data||data.type!=='forge:capture')return;var canvas=document.querySelector('canvas');try{var url=canvas?canvas.toDataURL('image/png'):null;if(event.source)event.source.postMessage({type:'forge:screenshot',dataUrl:url},'*');}catch(error){if(event.source)event.source.postMessage({type:'forge:screenshot',error:String(error)},'*');}});
+window.addEventListener('error',function(event){var message=event&&event.message?String(event.message):'';if(message&&window.parent)window.parent.postMessage({type:'forge:preview-error',message:message},'*');});
+})();</script>`;
 
 function withCaptureBridge(html: string): string {
   return html.includes('</body>')
