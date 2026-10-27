@@ -97,12 +97,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": false,
-      "penalty": true,
-      "violation": true,
+      "penalty": false,
+      "violation": false,
       "evidence": {
         "timer": null,
         "flash": null,
-        "penalty": "penalt"
+        "penalty": null
       }
     },
     "art_direction": {
@@ -193,12 +193,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": false,
-      "penalty": true,
-      "violation": true,
+      "penalty": false,
+      "violation": false,
       "evidence": {
         "timer": null,
         "flash": null,
-        "penalty": "PENALT"
+        "penalty": null
       }
     },
     "art_direction": {
@@ -225,12 +225,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": false,
-      "penalty": true,
-      "violation": true,
+      "penalty": false,
+      "violation": false,
       "evidence": {
         "timer": null,
         "flash": null,
-        "penalty": "penalt"
+        "penalty": null
       }
     },
     "art_direction": {
@@ -320,12 +320,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": false,
-      "penalty": true,
-      "violation": true,
+      "penalty": false,
+      "violation": false,
       "evidence": {
         "timer": null,
         "flash": null,
-        "penalty": "penalt"
+        "penalty": null
       }
     },
     "art_direction": {
@@ -473,12 +473,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": false,
-      "penalty": true,
-      "violation": true,
+      "penalty": false,
+      "violation": false,
       "evidence": {
         "timer": null,
         "flash": null,
-        "penalty": "penalt"
+        "penalty": null
       }
     },
     "art_direction": {
@@ -563,14 +563,14 @@
     "run": "nomem-01",
     "bytes": 26761,
     "child_safety": {
-      "countdown_timer": false,
+      "countdown_timer": true,
       "flash": false,
       "penalty": true,
       "violation": true,
       "evidence": {
-        "timer": null,
+        "timer": "timeLeft",
         "flash": null,
-        "penalty": "PENALT"
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -597,12 +597,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": true,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
         "timer": null,
         "flash": "cameras.main.flash",
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -632,12 +632,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": true,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
         "timer": null,
         "flash": "cameras.main.flash",
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -728,12 +728,12 @@
     "run": "nomem-06",
     "bytes": 30452,
     "child_safety": {
-      "countdown_timer": true,
+      "countdown_timer": false,
       "flash": true,
       "penalty": false,
       "violation": true,
       "evidence": {
-        "timer": "timeLeft",
+        "timer": null,
         "flash": "cameras.main.flash",
         "penalty": null
       }
@@ -770,7 +770,7 @@
       "evidence": {
         "timer": "timeLeft",
         "flash": "cameras.main.flash",
-        "penalty": "PENALT"
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -834,12 +834,12 @@
     "child_safety": {
       "countdown_timer": true,
       "flash": false,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
         "timer": "timeLeft",
         "flash": null,
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -866,14 +866,14 @@
     "run": "nomem-10",
     "bytes": 29809,
     "child_safety": {
-      "countdown_timer": true,
+      "countdown_timer": false,
       "flash": true,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
-        "timer": "timeLeft",
+        "timer": null,
         "flash": "cameras.main.flash",
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -1001,14 +1001,14 @@
     "run": "nomem-14",
     "bytes": 27971,
     "child_safety": {
-      "countdown_timer": true,
+      "countdown_timer": false,
       "flash": true,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
-        "timer": "timeLeft",
+        "timer": null,
         "flash": "cameras.main.flash",
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -1037,12 +1037,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": true,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
         "timer": null,
         "flash": "cameras.main.flash",
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {
@@ -1069,12 +1069,12 @@
     "child_safety": {
       "countdown_timer": false,
       "flash": true,
-      "penalty": false,
+      "penalty": true,
       "violation": true,
       "evidence": {
         "timer": null,
         "flash": "cameras.main.flash",
-        "penalty": null
+        "penalty": "state.score = Math.max(0, state.score -"
       }
     },
     "art_direction": {

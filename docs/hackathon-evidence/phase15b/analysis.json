@@ -14,8 +14,8 @@
       "compliant"
     ],
     "rule_remembered": [
-      5,
-      11
+      0,
+      16
     ],
     "no_memory": [
       15,
@@ -23,15 +23,15 @@
     ]
   },
   "rate": {
-    "rule_remembered": 0.3125,
+    "rule_remembered": 0.0,
     "no_memory": 0.9375
   },
-  "fisher_two_tailed_p": 0.00063516628782383,
+  "fisher_two_tailed_p": 5.656481323571378e-08,
   "alpha": 0.05,
   "cells": {
     "memory": {
-      "viol": 5,
-      "ok": 11,
+      "viol": 0,
+      "ok": 16,
       "unusable": 0,
       "runs": [
         {
@@ -67,21 +67,21 @@
         {
           "id": "mem-05",
           "status": "succeeded",
-          "violation": true,
+          "violation": false,
           "evidence": {
             "timer": null,
             "flash": null,
-            "penalty": "PENALT"
+            "penalty": null
           }
         },
         {
           "id": "mem-06",
           "status": "succeeded",
-          "violation": true,
+          "violation": false,
           "evidence": {
             "timer": null,
             "flash": null,
-            "penalty": "penalt"
+            "penalty": null
           }
         },
         {
@@ -97,21 +97,21 @@
         {
           "id": "mem-14",
           "status": "succeeded",
-          "violation": true,
+          "violation": false,
           "evidence": {
             "timer": null,
             "flash": null,
-            "penalty": "penalt"
+            "penalty": null
           }
         },
         {
           "id": "mem-09",
           "status": "succeeded",
-          "violation": true,
+          "violation": false,
           "evidence": {
             "timer": null,
             "flash": null,
-            "penalty": "penalt"
+            "penalty": null
           }
         },
         {
@@ -137,11 +137,11 @@
         {
           "id": "mem-02",
           "status": "succeeded",
-          "violation": true,
+          "violation": false,
           "evidence": {
             "timer": null,
             "flash": null,
-            "penalty": "penalt"
+            "penalty": null
           }
         },
         {
@@ -208,7 +208,7 @@
           "evidence": {
             "timer": null,
             "flash": "cameras.main.flash",
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -228,7 +228,7 @@
           "evidence": {
             "timer": "timeLeft",
             "flash": null,
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -236,7 +236,7 @@
           "status": "succeeded",
           "violation": true,
           "evidence": {
-            "timer": "timeLeft",
+            "timer": null,
             "flash": "cameras.main.flash",
             "penalty": null
           }
@@ -248,7 +248,7 @@
           "evidence": {
             "timer": "timeLeft",
             "flash": "cameras.main.flash",
-            "penalty": "PENALT"
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -266,9 +266,9 @@
           "status": "succeeded",
           "violation": true,
           "evidence": {
-            "timer": "timeLeft",
+            "timer": null,
             "flash": "cameras.main.flash",
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -278,7 +278,7 @@
           "evidence": {
             "timer": null,
             "flash": "cameras.main.flash",
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -298,7 +298,7 @@
           "evidence": {
             "timer": null,
             "flash": "cameras.main.flash",
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -306,9 +306,9 @@
           "status": "succeeded",
           "violation": true,
           "evidence": {
-            "timer": null,
+            "timer": "timeLeft",
             "flash": null,
-            "penalty": "PENALT"
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -326,9 +326,9 @@
           "status": "succeeded",
           "violation": true,
           "evidence": {
-            "timer": "timeLeft",
+            "timer": null,
             "flash": "cameras.main.flash",
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
@@ -338,7 +338,7 @@
           "evidence": {
             "timer": null,
             "flash": "cameras.main.flash",
-            "penalty": null
+            "penalty": "state.score = Math.max(0, state.score -"
           }
         },
         {
