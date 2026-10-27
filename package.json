@@ -15,6 +15,7 @@
     "bench:retrieval": "tsx scripts/benchmark-retrieval.ts",
     "build": "pnpm --filter @mml/web run build && pnpm --filter @mml/server run build",
     "db:migrate": "pnpm --filter @mml/server run db:migrate",
+    "demo:seed": "tsx scripts/seed-forge-demo.ts",
     "demo:sessions": "tsx scripts/demo-sessions.ts",
     "demo:showcase": "tsx scripts/showcase.ts",
     "demo:tools": "tsx scripts/demo-tools.ts",
