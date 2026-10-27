@@ -20,7 +20,7 @@
     {
       "command": "pnpm lint",
       "exit": 0,
-      "result": "Biome: 175 files checked; 1 pre-existing informational suggestion (S13 template style)"
+      "result": "Biome: repository-wide check; 1 pre-existing informational suggestion (S13 template style)"
     },
     {
       "command": "pnpm typecheck",
