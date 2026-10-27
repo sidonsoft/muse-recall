@@ -68,6 +68,14 @@ export const ForgeVersionSchema = z.object({
   version: z.number().int().min(1),
   created_at: z.iso.datetime(),
   summary: z.string(),
+  /** Version this change was based on; null for an initial generation. */
+  base_version: z.number().int().min(1).nullable().optional(),
+  job_id: z.uuid().nullable().optional(),
+  /** Integrity hash of the approved file. */
+  sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
 });
 export type ForgeVersion = z.infer<typeof ForgeVersionSchema>;
 

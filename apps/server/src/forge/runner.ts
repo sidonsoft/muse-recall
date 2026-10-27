@@ -67,6 +67,7 @@ export class ForgeJobManager {
   private readonly jobs = new Map<string, ForgeJob>();
   private readonly state = new Map<string, ExecuteState>();
   private readonly cancelled = new Set<string>();
+  private readonly locks = new Map<string, Promise<unknown>>();
 
   constructor(options: ForgeManagerOptions) {
     this.workspace = options.workspace;
@@ -92,6 +93,12 @@ export class ForgeJobManager {
 
   async start(input: StartJobInput): Promise<ForgeJob> {
     await this.workspace.ensureProject(input.projectId);
+    const active = this.list(input.projectId).filter(
+      (job) => job.status === 'queued' || job.status === 'running',
+    ).length;
+    if (active >= 2) {
+      throw new ForgeError('too_many_jobs', 'Two jobs are already running for this project.');
+    }
     const id = randomUUID();
     const staging = await this.workspace.createStaging(input.projectId, id);
 
@@ -194,39 +201,71 @@ export class ForgeJobManager {
     options: { captureMemory: boolean; decision?: string },
   ): Promise<{ job: ForgeJob; state: ForgeState }> {
     const job = this.requireJob(jobId);
-    if (job.status !== 'succeeded' || job.version !== null) {
-      throw new ForgeError(
-        'invalid_job_state',
-        'Only a succeeded, unapplied change can be approved.',
-      );
-    }
-    const summary = job.summary ?? job.request ?? job.prompt;
-    const promoted = await this.workspace.promote(job.project_id, job.id, summary);
+    return this.withProjectLock(job.project_id, async () => {
+      const current = this.requireJob(jobId);
+      if (current.status !== 'succeeded' || current.version !== null) {
+        throw new ForgeError(
+          'invalid_job_state',
+          'Only a succeeded, unapplied change can be approved.',
+        );
+      }
 
-    const approved = ForgeJobSchema.parse({
-      ...job,
-      status: 'succeeded',
-      version: promoted.version,
-      finished_at: this.now().toISOString(),
-    });
-    this.jobs.set(job.id, approved);
-    await this.persist(approved);
+      const state = await this.workspace.state(current.project_id);
+      if (state.current_version !== current.base_version) {
+        throw new ForgeError(
+          'version_conflict',
+          `The approved game is v${String(state.current_version)}, but this change was staged from v${String(current.base_version)}. Regenerate it.`,
+        );
+      }
 
-    if (options.captureMemory) {
-      this.engine.create({
-        type: 'technical_decision',
-        scope: 'project',
-        project_id: job.project_id,
-        content: (options.decision ?? summary).slice(0, 1_000),
-        source: { session_id: null, reference: `forge:${job.id}` },
-        confidence: 0.9,
-        validation_status: 'verified',
-        tags: ['forge'],
-        expires_at: null,
+      const summary = current.summary ?? current.request ?? current.prompt;
+      const promoted = await this.workspace.promote(current.project_id, current.id, summary, {
+        baseVersion: current.base_version,
+        jobId: current.id,
       });
-    }
 
-    return { job: approved, state: await this.workspace.state(job.project_id) };
+      const approved = ForgeJobSchema.parse({
+        ...current,
+        status: 'succeeded',
+        version: promoted.version,
+        finished_at: this.now().toISOString(),
+      });
+      this.jobs.set(current.id, approved);
+      await this.persist(approved);
+
+      if (options.captureMemory) {
+        this.engine.create({
+          type: 'technical_decision',
+          scope: 'project',
+          project_id: current.project_id,
+          content: (options.decision ?? summary).slice(0, 1_000),
+          source: { session_id: null, reference: `forge:${current.id}` },
+          confidence: 0.9,
+          validation_status: 'verified',
+          tags: ['forge'],
+          expires_at: null,
+        });
+      }
+
+      return { job: approved, state: await this.workspace.state(current.project_id) };
+    });
+  }
+
+  async rollback(projectId: string): Promise<ForgeState> {
+    return this.withProjectLock(projectId, async () => {
+      await this.workspace.rollback(projectId);
+      return this.workspace.state(projectId);
+    });
+  }
+
+  private async withProjectLock<T>(projectId: string, run: () => Promise<T>): Promise<T> {
+    const previous = this.locks.get(projectId) ?? Promise.resolve();
+    const next = previous.then(run, run);
+    this.locks.set(
+      projectId,
+      next.catch(() => undefined),
+    );
+    return next;
   }
 
   async reject(jobId: string): Promise<ForgeJob> {

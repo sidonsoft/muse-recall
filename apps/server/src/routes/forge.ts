@@ -133,7 +133,7 @@ export function registerForgeRoutes(
   app.post('/api/forge/projects/:id/rollback', async (request, reply) => {
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
-      await workspace.rollback(id);
+      await manager.rollback(id);
       return envelope(ForgeStateSchema.parse(await workspace.state(id)));
     });
   });
@@ -271,9 +271,11 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
       const status =
         error.code === 'invalid_job_id'
           ? 404
-          : error.code === 'path_escape' || error.code === 'invalid_project_id'
-            ? 400
-            : 409;
+          : error.code === 'too_many_jobs'
+            ? 429
+            : error.code === 'path_escape' || error.code === 'invalid_project_id'
+              ? 400
+              : 409;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message, issues: error.details },

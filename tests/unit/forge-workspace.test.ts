@@ -62,8 +62,12 @@ describe('versioning', () => {
     const validation = await workspace.validateStaged('demo-game', JOB);
     expect(validation).toEqual({ ok: true, issues: [] });
 
-    const first = await workspace.promote('demo-game', JOB, 'initial game');
-    expect(first).toEqual({ version: 1, previous: null });
+    const first = await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+    });
+    expect(first).toMatchObject({ version: 1, previous: null });
+    expect(first.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(await workspace.currentHtml('demo-game')).toContain('const score = 0;');
 
     const second = '22222222-2222-4222-8222-222222222222';
@@ -72,7 +76,7 @@ describe('versioning', () => {
       join(staging2, 'index.html'),
       HTML.replace('const score = 0;', 'const score = 1;'),
     );
-    await workspace.promote('demo-game', second, 'score change');
+    await workspace.promote('demo-game', second, 'score change', { baseVersion: 1, jobId: second });
 
     const state = await workspace.state('demo-game');
     expect(state.current_version).toBe(2);
@@ -87,7 +91,7 @@ describe('versioning', () => {
   it('refuses rollback before a second version exists', async () => {
     const staging = await workspace.createStaging('demo-game', JOB);
     await writeFile(join(staging, 'index.html'), HTML);
-    await workspace.promote('demo-game', JOB, 'only version');
+    await workspace.promote('demo-game', JOB, 'only version', { baseVersion: null, jobId: JOB });
     await expect(workspace.rollback('demo-game')).rejects.toMatchObject({
       code: 'nothing_to_rollback',
     });
@@ -96,7 +100,7 @@ describe('versioning', () => {
   it('rejects a change without touching the approved version', async () => {
     const staging = await workspace.createStaging('demo-game', JOB);
     await writeFile(join(staging, 'index.html'), HTML);
-    await workspace.promote('demo-game', JOB, 'v1');
+    await workspace.promote('demo-game', JOB, 'v1', { baseVersion: null, jobId: JOB });
     const before = await workspace.currentHtml('demo-game');
 
     const bad = '33333333-3333-4333-8333-333333333333';

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
 import {
   copyFile,
@@ -35,6 +36,10 @@ export type ForgeErrorCode =
   | 'path_escape'
   | 'invalid_staged'
   | 'invalid_job_state'
+  | 'version_conflict'
+  | 'version_corrupt'
+  | 'unsafe_file'
+  | 'too_many_jobs'
   | 'nothing_to_rollback'
   | 'no_current_version';
 
@@ -106,11 +111,13 @@ export class ForgeWorkspace {
   async currentHtml(projectId: string): Promise<string | null> {
     const state = await this.state(projectId);
     if (state.current_version === null) return null;
+    const file = this.versionFile(projectId, state.current_version);
     try {
-      return await readFile(this.versionFile(projectId, state.current_version), 'utf8');
+      await lstat(file);
     } catch {
       return null;
     }
+    return this.readContained(projectId, file);
   }
 
   async createStaging(projectId: string, jobId: string): Promise<string> {
@@ -127,11 +134,14 @@ export class ForgeWorkspace {
   }
 
   async stagedHtml(projectId: string, jobId: string): Promise<string | null> {
+    const file = this.stagingFile(projectId, jobId);
     try {
-      return await readFile(this.stagingFile(projectId, jobId), 'utf8');
+      await lstat(file);
     } catch {
       return null;
     }
+    // Preview and diff never read a symlink, even before validation runs.
+    return this.readContained(projectId, file);
   }
 
   async reject(projectId: string, jobId: string): Promise<void> {
@@ -224,7 +234,8 @@ export class ForgeWorkspace {
     projectId: string,
     jobId: string,
     summary: string,
-  ): Promise<{ version: number; previous: number | null }> {
+    options: { baseVersion: number | null; jobId: string },
+  ): Promise<{ version: number; previous: number | null; sha256: string }> {
     const validation = await this.validateStaged(projectId, jobId);
     if (!validation.ok) {
       throw new ForgeError(
@@ -236,6 +247,15 @@ export class ForgeWorkspace {
 
     const state = await this.state(projectId);
     const previous = state.current_version;
+    if (previous !== options.baseVersion) {
+      throw new ForgeError(
+        'version_conflict',
+        `The approved game moved to v${String(previous)} while this change was staged.`,
+      );
+    }
+
+    const staged = await this.readContained(projectId, this.stagingFile(projectId, jobId));
+    const sha256 = createHash('sha256').update(staged).digest('hex');
     const next = state.versions.reduce((max, entry) => Math.max(max, entry.version), 0) + 1;
     const dir = this.within(join(this.projectDir(projectId), 'versions'), String(next));
     await mkdir(dir, { recursive: true });
@@ -245,16 +265,24 @@ export class ForgeWorkspace {
       fsConstants.COPYFILE_EXCL,
     );
 
+    const written = await readFile(join(dir, 'index.html'));
+    if (createHash('sha256').update(written).digest('hex') !== sha256) {
+      throw new ForgeError('version_corrupt', 'The promoted file did not match the staged bytes.');
+    }
+
     const version = ForgeVersionSchema.parse({
       version: next,
       created_at: new Date().toISOString(),
       summary: summary.slice(0, 500),
+      base_version: options.baseVersion,
+      job_id: options.jobId,
+      sha256,
     });
     await this.writeState(projectId, {
       current: next,
       versions: [...state.versions, version],
     });
-    return { version: next, previous };
+    return { version: next, previous, sha256 };
   }
 
   async rollback(projectId: string): Promise<{ version: number; previous: number }> {
@@ -269,8 +297,34 @@ export class ForgeWorkspace {
     const target = state.versions[index - 1];
     if (!target)
       throw new ForgeError('nothing_to_rollback', 'There is no earlier version to restore.');
+
+    // Never restore bytes that no longer match the recorded hash.
+    if (target.sha256) {
+      const html = await this.readContained(projectId, this.versionFile(projectId, target.version));
+      if (createHash('sha256').update(html).digest('hex') !== target.sha256) {
+        throw new ForgeError(
+          'version_corrupt',
+          `v${target.version} no longer matches its recorded hash.`,
+        );
+      }
+    }
+
     await this.writeState(projectId, { current: target.version, versions: state.versions });
     return { version: target.version, previous: state.current_version };
+  }
+
+  /** Read a file only if it is a regular file contained by the project. */
+  private async readContained(projectId: string, file: string): Promise<string> {
+    const stat = await lstat(file);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new ForgeError('unsafe_file', 'Refusing to read a symlink or non-regular file.');
+    }
+    const projectDir = this.projectDir(projectId);
+    const [realFile, realProject] = await Promise.all([realpath(file), realpath(projectDir)]);
+    if (!realFile.startsWith(realProject + sep)) {
+      throw new ForgeError('unsafe_file', 'Resolved file escapes the project workspace.');
+    }
+    return readFile(file, 'utf8');
   }
 
   private versionFile(projectId: string, version: number): string {

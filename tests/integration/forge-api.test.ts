@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -390,6 +390,122 @@ describe('forge workflow', () => {
     await waitForFinish(h.app, generated);
     const response = await preview(h.app, 'project-b', generated);
     expect(response.statusCode).toBe(404);
+  });
+
+  it('refuses a stale approval after another change lands', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const first = await startModify(h.app);
+    const second = await startModify(h.app);
+    await Promise.all([waitForFinish(h.app, first), waitForFinish(h.app, second)]);
+
+    const approveFirst = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${first}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approveFirst.statusCode).toBe(200);
+
+    const approveStale = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${second}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approveStale.statusCode).toBe(409);
+    expect(approveStale.json().error.code).toBe('version_conflict');
+  });
+
+  it('refuses to promote a generation over an approved game', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const first = await startGenerate(h.app);
+    await waitForFinish(h.app, first);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${first}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const second = await startGenerate(h.app);
+    await waitForFinish(h.app, second);
+    const response = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${second}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('version_conflict');
+  });
+
+  it('refuses to roll back to a version whose bytes were tampered with', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    const modified = await startModify(h.app);
+    await waitForFinish(h.app, modified);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const v1 = join(h.root, 'forge', 'demo-game', 'versions', '1', 'index.html');
+    await writeFile(v1, '<html><body>tampered</body></html>');
+    const rollback = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/rollback',
+      payload: {},
+    });
+    expect(rollback.statusCode).toBe(409);
+    expect(rollback.json().error.code).toBe('version_corrupt');
+  });
+
+  it('refuses to preview or diff a symlinked staged file', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    const staged = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
+    await rm(staged, { force: true });
+    await symlink('/etc/passwd', staged);
+
+    const previewResponse = await preview(h.app, 'demo-game', generated);
+    expect(previewResponse.statusCode).toBe(409);
+    const diffResponse = await h.app.inject({
+      method: 'GET',
+      url: `/api/forge/jobs/${generated}/diff`,
+    });
+    expect(diffResponse.statusCode).toBe(409);
+  });
+
+  it('caps concurrent jobs per project', async () => {
+    const h = await harness('sleep', { maxRuntimeMs: 60_000 });
+    await createProject(h.app);
+    const first = await startGenerate(h.app);
+    const second = await startGenerate(h.app);
+    const third = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/generate',
+      payload: { prompt: 'A third game that should not start while two jobs are running.' },
+    });
+    expect(third.statusCode).toBe(429);
+    expect(third.json().error.code).toBe('too_many_jobs');
+    await h.app.inject({ method: 'POST', url: `/api/forge/jobs/${first}/cancel`, payload: {} });
+    await h.app.inject({ method: 'POST', url: `/api/forge/jobs/${second}/cancel`, payload: {} });
   });
 
   it('rejects an invalid project id before touching the filesystem', async () => {
