@@ -14,7 +14,9 @@ reviewable release candidate.
 | Working branch | `agent/muse-recall-final-p1-fixes` |
 | Base commit | `2ba4ba2` (`agent/muse-recall-live-demo`) |
 | Implementation/test commit | `f39d7d5c7d6ce855b76b633346f7f73af9103220` |
-| Documentation commit | the head commit adding `docs/release/` and `docs/reviews/` |
+| Documentation commit | `3863148143d0e688be6a854781318bf71f12b3ba` |
+| Verification cleanup | `b240108` |
+| Branch tip | the commit containing this report; check `git rev-parse HEAD` |
 | Merge into `main` | **not performed** |
 | Branch deletion / force-push / rebase | **none** |
 

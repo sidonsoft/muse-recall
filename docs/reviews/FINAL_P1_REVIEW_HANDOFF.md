@@ -14,7 +14,9 @@ prepares the review; it does not impersonate or replace it.
 | Working branch | `agent/muse-recall-final-p1-fixes` |
 | Base commit | `2ba4ba2` — `docs(demo): label usage.calls as model calls, not tool calls` on `agent/muse-recall-live-demo` |
 | Implementation/test commit | `f39d7d5c7d6ce855b76b633346f7f73af9103220` |
-| Documentation commit | the head commit that adds this file (see `git log -1`) |
+| Documentation commit | `3863148143d0e688be6a854781318bf71f12b3ba` |
+| Verification cleanup | `b240108` (textContent in Studio assertions) |
+| Branch tip | the commit containing this handoff; check `git rev-parse HEAD` |
 | Remote | `origin` → `https://github.com/sidonsoft/muse-recall.git` |
 | Merge status | **not merged**; `main` is still `e6e2f86` |
 | Push status | branch pushed; no force-push |
@@ -77,7 +79,7 @@ demonstration video.
 | `main` | `e6e2f86` | approved public baseline |
 | `agent/muse-recall-product-positioning` | `41b1684` | approved UX/product implementation |
 | `agent/muse-recall-live-demo` | `2ba4ba2` | live FocusFlow evidence; **base of this branch** |
-| `agent/muse-recall-final-p1-fixes` | implementation `f39d7d5`, docs head after it | this review |
+| `agent/muse-recall-final-p1-fixes` | `b240108` plus this metadata commit | this review |
 | `agent/phase15b` | `9f5eaa1` | Phase 15B experiment; **local only, not pushed** |
 | `agent/phase15b-evidence-integration` | **not found** locally or on `origin` at inspection | research evidence integration is owned by the separate evidence agent |
 
