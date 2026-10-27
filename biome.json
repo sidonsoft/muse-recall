@@ -16,7 +16,8 @@
       "!**/coverage",
       "!**/routeTree.gen.ts",
       "!docs/hackathon-evidence/phase12c/evaluation.json",
-      "!docs/hackathon-evidence/phase14a"
+      "!docs/hackathon-evidence/phase14a",
+      "!docs/demo/evidence"
     ]
   },
   "formatter": {

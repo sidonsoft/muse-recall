@@ -8,14 +8,18 @@
  *
  *   pnpm verify:forge
  */
+import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
 const BASE = process.env.FORGE_VERIFY_BASE ?? 'http://127.0.0.1:5173';
+/** Test output, never historical evidence. `docs/assets` is read-only here. */
+const SHOTS = 'test-results/verify-forge';
 const PROJECT =
   process.env.FORGE_VERIFY_PROJECT ?? `forge-verify-${Date.now().toString(36).slice(-5)}`;
 const LONG = Number(process.env.FORGE_VERIFY_TIMEOUT_MS ?? 900_000);
 
 async function main() {
+  mkdirSync(SHOTS, { recursive: true });
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
   const errors: string[] = [];
@@ -42,7 +46,7 @@ async function main() {
 
   await page.getByRole('button', { name: 'Generate game' }).click();
   await page.getByText('staged — not approved').waitFor({ timeout: LONG });
-  await page.screenshot({ path: 'docs/assets/phase9-forge-generated.png' });
+  await page.screenshot({ path: `${SHOTS}/phase9-forge-generated.png` });
   check('generated a staged game');
 
   const frame = page.frameLocator('iframe[title="Game preview"]');
@@ -95,7 +99,7 @@ async function main() {
 
   await page.getByRole('button', { name: 'Generate change' }).click();
   await page.getByText('Review change').waitFor({ timeout: LONG });
-  await page.screenshot({ path: 'docs/assets/phase9-forge-diff.png' });
+  await page.screenshot({ path: `${SHOTS}/phase9-forge-diff.png` });
   check('staged a screenshot-driven change with a diff');
 
   await page.getByRole('button', { name: 'Reject' }).click();
@@ -109,7 +113,7 @@ async function main() {
   await page.getByRole('button', { name: 'Approve' }).click();
   await page.getByText('Change approved').waitFor({ timeout: 60_000 });
   await page.getByText(/^v2$/).first().waitFor({ timeout: 15_000 });
-  await page.screenshot({ path: 'docs/assets/phase9-forge-approved.png' });
+  await page.screenshot({ path: `${SHOTS}/phase9-forge-approved.png` });
   check('approved the second version');
 
   await page.getByRole('button', { name: 'Undo last change' }).click();
