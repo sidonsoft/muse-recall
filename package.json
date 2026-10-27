@@ -41,6 +41,8 @@
     "verify:browser": "tsx scripts/verify-ui.ts",
     "verify:forge": "tsx scripts/verify-forge.ts",
     "verify:runtime": "tsx scripts/verify-runtime.ts",
+    "verify:security": "tsx scripts/verify-origin-guard.ts",
+    "verify:research": "tsx scripts/verify-phase15b.ts",
     "evidence:ux": "tsx scripts/ux-evidence.ts",
     "verify:formsandbox": "tsx scripts/verify-form-sandbox.ts",
     "verify:forge-workflow": "vitest run tests/integration/forge-api.test.ts"
