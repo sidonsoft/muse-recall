@@ -1,0 +1,262 @@
+--- /var/folders/l3/hd35tl8d01b7h5stlh3wg52h0000gn/T/phase15a-M3-2PkkO7/before.html	2026-10-27 18:19:23
++++ /var/folders/l3/hd35tl8d01b7h5stlh3wg52h0000gn/T/phase15a-M3-2PkkO7/after.html	2026-10-27 18:19:23
+@@ -6,7 +6,7 @@
+ <title>Farmyard Memory Match</title>
+ <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+ <style>
+-  html,body{margin:0;padding:0;height:100%;background:#fdf6ec;overflow:hidden}
++  html,body{margin:0;padding:0;height:100%;background:#0b2a4a;overflow:hidden}
+   body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+   #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+   canvas{border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+@@ -31,15 +31,16 @@
+     parent: "game",
+     width: W,
+     height: H,
+-    backgroundColor: "#fdeec9",
++    backgroundColor: "#0e3a5d",
+     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+     scene: { create: create, update: update }
+   };
+   new Phaser.Game(config);
+ 
+   var cards = [], firstPick = null, lockBoard = true, started = false;
+-  var moves = 0, matches = 0;
+-  var hudMoves, hudScore, hudMsg, endOverlay, endTitle, endDetail, startOverlay;
++  var moves = 0, matches = 0, score = 0, streak = 0, best = 0;
++  var hudMoves, hudScore, hudMsg, hudScoreLine, hudStreak, endOverlay, endTitle, endDetail, startOverlay;
++  var bubbles = [], wavePhase = 0;
+ 
+   function create() {
+     var s = this;
+@@ -50,55 +51,73 @@
+     makeEndOverlay(s);
+   }
+ 
++  var waveBands = [];
+   function drawFarm(scene) {
+     var g = scene.add.graphics();
+-    g.fillStyle(0xfdeec9, 1); g.fillRect(0, 0, W, H);
+-    g.fillStyle(0xcdeeb0, 1); g.fillRect(0, 470, W, 230);
+-    g.fillStyle(0xfff6dd, 1); g.fillCircle(770, 110, 55);
+-    g.fillStyle(0xffe08a, 1); g.fillCircle(770, 110, 42);
+-    g.fillStyle(0xffffff, 1);
+-    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+-    g.fillEllipse(560, 80, 140, 44);
+-    // barn
+-    g.fillStyle(0xe26d5a, 1); g.fillRect(80, 330, 150, 140);
+-    g.fillStyle(0xb34a3e, 1); g.fillTriangle(60, 330, 155, 250, 250, 330);
+-    g.fillStyle(0xfff3e0, 1); g.fillRect(135, 390, 40, 80);
+-    g.lineStyle(4, 0xfff3e0, 1);
+-    g.lineBetween(80, 330, 230, 330);
+-    // fence
+-    g.lineStyle(8, 0xb98850, 1);
+-    for (var x = 320; x <= 860; x += 60) { g.lineBetween(x, 500, x, 570); }
+-    g.lineBetween(300, 515, 880, 515); g.lineBetween(300, 545, 880, 545);
+-    // flowers
+-    var cols = [0xf49ac1, 0xff9d76, 0x9ad0f5, 0xc5a3ff];
+-    for (var i = 0; i < 10; i++) {
+-      var fx = 30 + i * 88, fy = 620 + (i % 2) * 30;
+-      g.fillStyle(0x5da85f, 1); g.fillRect(fx - 2, fy, 5, 26);
++    g.fillStyle(0x0e3a5d, 1); g.fillRect(0, 0, W, H);
++    g.fillStyle(0x14537e, 1); g.fillRect(0, 150, W, 330);
++    g.fillStyle(0x1b6a9b, 1); g.fillRect(0, 330, W, 200);
++    g.fillStyle(0xc9e8f5, 1); g.fillRect(0, 530, W, 170);
++    g.fillStyle(0xa8d8f0, 1);
++    for (var sx = 20; sx < W; sx += 90) { g.fillEllipse(sx, 548, 90, 22); }
++    // soft light rays from the surface (steady, non-flashing)
++    g.fillStyle(0xffffff, 0.06);
++    g.fillTriangle(180, 0, 320, 0, 200, 530);
++    g.fillTriangle(520, 0, 620, 0, 560, 530);
++    // arcade marquee band
++    waveBands = [];
++    for (var b = 0; b < 3; b++) {
++      var band = scene.add.graphics();
++      band.fillStyle([0x4ea8de, 0x48a0d4, 0x3b8fc2][b], 1);
++      band.fillEllipse(W / 2, 150 + b * 26, W * 1.15, 44);
++      waveBands.push(band);
++    }
++    // shells and pebbles on the sea floor
++    var cols = [0xffffff, 0xcaf0f8, 0x90e0ef, 0xffe3a3];
++    for (var i = 0; i < 12; i++) {
++      var fx = 30 + i * 74, fy = 622 + (i % 2) * 34;
+       g.fillStyle(cols[i % 4], 1);
+-      g.fillCircle(fx, fy - 8, 9);
+-      g.fillStyle(0xfff200, 1); g.fillCircle(fx, fy - 8, 4);
++      g.fillEllipse(fx, fy, 26, 18);
++      g.fillStyle(0x102a43, 0.12);
++      g.fillEllipse(fx, fy + 8, 26, 8);
+     }
++    // slow drifting bubbles (ambient, gentle)
++    bubbles.forEach(function (bb) { bb.destroy(); });
++    bubbles = [];
++    for (var k = 0; k < 14; k++) {
++      var r = 4 + (k % 4) * 3;
++      var c = scene.add.circle(Phaser.Math.Between(20, W - 20), Phaser.Math.Between(180, 640), r, 0xffffff, 0.22);
++      c.setData("speed", 8 + (k % 5) * 4);
++      bubbles.push(c);
++    }
+   }
+ 
+   function textStyle(size, color) {
+-    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#5b3a29", fontStyle: "bold" };
++    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+   }
+ 
+   function makeHud(scene) {
+-    scene.add.text(24, 14, "\u{1F33B} Farmyard Match", textStyle(34)).setOrigin(0, 0);
+-    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(24));
+-    hudScore = scene.add.text(24, 90, "Pairs: 0 / 6", textStyle(24));
+-    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(24, "#7a4a2b")).setOrigin(1, 0.5);
+-    var btn = scene.add.container(W - 110, 116);
++    var plate = scene.add.graphics();
++    plate.fillStyle(0xffffff, 0.92); plate.fillRoundedRect(12, 8, 560, 148, 20);
++    plate.lineStyle(4, 0x4ea8de, 1); plate.strokeRoundedRect(12, 8, 560, 148, 20);
++    scene.add.text(28, 14, "\u{1F33B} Farmyard Match", textStyle(32)).setOrigin(0, 0);
++    var arcade = scene.add.text(566, 22, "ARCADE", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "22px", color: "#ffffff", fontStyle: "bold", backgroundColor: "#e07b39", padding: { x: 12, y: 4 } }).setOrigin(0, 0);
++    hudMoves = scene.add.text(28, 58, "Moves: 0", textStyle(23));
++    hudScore = scene.add.text(28, 88, "Pairs: 0 / 6", textStyle(23));
++    hudScoreLine = scene.add.text(28, 118, "Score: 0   Best: 0", textStyle(23));
++    hudStreak = scene.add.text(W - 24, 60, "", textStyle(23, "#ffffff")).setOrigin(1, 0.5);
++    hudMsg = scene.add.text(W - 24, 92, "Tap a card!", textStyle(23, "#ffffff")).setOrigin(1, 0.5);
++    var btn = scene.add.container(W - 110, 136);
+     var bg = scene.add.graphics();
+-    bg.fillStyle(0x5da85f, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
++    bg.fillStyle(0x4ea8de, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
++    bg.lineStyle(4, 0xffffff, 1); bg.strokeRoundedRect(-86, -26, 172, 52, 26);
+     var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(24, "#ffffff")).setOrigin(0.5);
+     btn.add([bg, label]);
+     bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+     bg.on("pointerdown", function () { restart(scene); });
+     bg.on("pointerover", function () { btn.setScale(1.06); });
+     bg.on("pointerout", function () { btn.setScale(1); });
+-    scene.add.text(W / 2, 168, "Find the 6 animal pairs!", textStyle(22, "#8a6a4a")).setOrigin(0.5);
++    scene.add.text(W / 2, 176, "Match pairs to raise your streak — misses never cost points!", textStyle(20, "#eaf6fd")).setOrigin(0.5);
+   }
+ 
+   function shuffledDeck() {
+@@ -132,7 +151,8 @@
+     var cont = scene.add.container(x, y);
+     var back = scene.add.graphics();
+     back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+-    back.fillStyle(0x8ecae6, 1); back.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
++    back.fillStyle(0x4ea8de, 1); back.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
++    back.lineStyle(4, 0x0e3a5d, 0.9); back.strokeRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+     back.fillStyle(0xffffff, 0.85);
+     back.fillCircle(-w / 4, -h / 4, 12); back.fillCircle(w / 4, 0, 9); back.fillCircle(0, h / 4, 14);
+     var paw = scene.add.text(0, -6, "\u{1F43E}", { fontSize: "56px" }).setOrigin(0.5);
+@@ -175,33 +195,58 @@
+     if (a.data.key === card.data.key) {
+       setTimeout(function () {
+         a.matched = card.matched = true;
+-        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
++        streak++;
++        var gained = 100 + (streak - 1) * 25;
++        score += gained;
++        if (score > best) { best = score; }
++        scene.tweens.add({ targets: [a.view, card.view], scale: 1.12, yoyo: true, duration: 180, ease: "Back.easeOut" });
+         matches++;
+         hudScore.setText("Pairs: " + matches + " / 6");
+-        hudMsg.setText(matches === 6 ? "You did it!" : "Yay! A pair! \u{1F389}");
++        hudScoreLine.setText("Score: " + score + "   Best: " + best);
++        hudStreak.setText(streak >= 2 ? "Streak x" + streak + "!" : "");
++        hudMsg.setText(matches === 6 ? "You did it!" : (streak >= 2 ? "Streak x" + streak + "! +" + gained : "Yay! +" + gained + "! \u{1F389}"));
++        popPoints(scene, card.view.x, card.view.y - 70, "+" + gained);
++        burst(scene, card.view.x, card.view.y);
+         lockBoard = false;
+         if (matches === 6) { showWin(scene); }
+       }, 350);
+     } else {
+-      hudMsg.setText("Try again! \u{1F340}");
++      // No penalty: streak display rests, score never drops.
++      hudMsg.setText("Good try — keep going! \u{1F340}");
++      hudStreak.setText(streak >= 2 ? "Streak x" + streak : "");
+       setTimeout(function () {
+         flip(a, false); flip(card, false, function () { lockBoard = false; });
+       }, 700);
+     }
+   }
+ 
++  function popPoints(scene, x, y, msg) {
++    var t = scene.add.text(x, y, msg, { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "30px", color: "#ffffff", fontStyle: "bold", backgroundColor: "#e07b39", padding: { x: 10, y: 4 } }).setOrigin(0.5).setDepth(15);
++    scene.tweens.add({ targets: t, y: y - 46, alpha: 0, duration: 900, ease: "Cubic.easeOut", onComplete: function () { t.destroy(); } });
++  }
++
++  function burst(scene, x, y) {
++    for (var i = 0; i < 8; i++) {
++      var b = scene.add.circle(x, y, 5 + (i % 3) * 2, [0xcaf0f8, 0x90e0ef, 0xffe3a3][i % 3], 0.9).setDepth(14);
++      var dx = Phaser.Math.Between(-70, 70), dy = Phaser.Math.Between(-60, 30);
++      (function (c, tx, ty) {
++        scene.tweens.add({ targets: c, x: x + tx, y: y + ty, alpha: 0, duration: 650, ease: "Cubic.easeOut", onComplete: function () { c.destroy(); } });
++      })(b, dx, dy);
++    }
++  }
++
+   function makeStartOverlay(scene) {
+     startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+     var bg = scene.add.graphics();
+     bg.fillStyle(0x000000, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+     var panel = scene.add.graphics();
+     panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-300, -190, 600, 380, 30);
+-    panel.lineStyle(6, 0x5da85f, 1); panel.strokeRoundedRect(-300, -190, 600, 380, 30);
++    panel.lineStyle(6, 0x4ea8de, 1); panel.strokeRoundedRect(-300, -190, 600, 380, 30);
+     var title = scene.add.text(0, -120, "\u{1F33B} Farmyard Match \u{1F404}", textStyle(40)).setOrigin(0.5);
+     var sub = scene.add.text(0, -50, "Flip the cards and find\nall 6 animal pairs!", Object.assign(textStyle(25), { align: "center" })).setOrigin(0.5);
+     var row = scene.add.text(0, 30, "\u{1F404} \u{1F437} \u{1F414} \u{1F40E} \u{1F411} \u{1F988}", { fontSize: "44px" }).setOrigin(0.5);
+     var btnBg = scene.add.graphics();
+-    btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 80, 260, 70, 35);
++    btnBg.fillStyle(0x4ea8de, 1); btnBg.fillRoundedRect(-130, 80, 260, 70, 35);
+     var btnTx = scene.add.text(0, 115, "\u25B6  Start", textStyle(30, "#ffffff")).setOrigin(0.5);
+     startOverlay.add([bg, panel, title, sub, row, btnBg, btnTx]);
+     btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 80, 260, 70), Phaser.Geom.Rectangle.Contains);
+@@ -222,7 +267,7 @@
+     endTitle = scene.add.text(0, -100, "\u{1F389} You Win! \u{1F389}", textStyle(42)).setOrigin(0.5);
+     endDetail = scene.add.text(0, -30, "", Object.assign(textStyle(25), { align: "center" })).setOrigin(0.5);
+     var btnBg = scene.add.graphics();
+-    btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 50, 260, 70, 35);
++    btnBg.fillStyle(0x4ea8de, 1); btnBg.fillRoundedRect(-130, 50, 260, 70, 35);
+     var btnTx = scene.add.text(0, 85, "\u21BB Play Again", textStyle(28, "#ffffff")).setOrigin(0.5);
+     endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx]);
+     btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 50, 260, 70), Phaser.Geom.Rectangle.Contains);
+@@ -231,7 +276,9 @@
+ 
+   function showWin(scene) {
+     var stars = moves <= 10 ? 3 : (moves <= 16 ? 2 : 1);
+-    endDetail.setText("You found all 6 pairs!\nMoves: " + moves + "  " + "\u2B50".repeat(stars));
++    if (score > best) { best = score; }
++    hudScoreLine.setText("Score: " + score + "   Best: " + best);
++    endDetail.setText("You found all 6 pairs!\nScore: " + score + "   Moves: " + moves + "\n" + "\u2B50".repeat(stars) + (streak >= 3 ? "\nStreak x" + streak + " — arcade star!" : ""));
+     endOverlay.setVisible(true);
+     scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+     hudMsg.setText("You win! \u{1F389}");
+@@ -242,15 +289,27 @@
+   }
+ 
+   function restart(scene) {
+-    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+-    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / 6"); hudMsg.setText("Tap a card!");
++    moves = 0; matches = 0; score = 0; streak = 0; firstPick = null; lockBoard = false; started = true;
++    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / 6"); hudScoreLine.setText("Score: 0   Best: " + best);
++    hudStreak.setText(""); hudMsg.setText("Tap a card!");
+     endOverlay.setVisible(false);
+     if (startOverlay) { startOverlay.setVisible(false); }
+     cards.forEach(function (c) { c.view.destroy(); });
+     buildBoard(scene);
+   }
+ 
+-  function update() {}
++  function update(time, delta) {
++    var dt = Math.min((delta || 16) / 1000, 0.05);
++    wavePhase += dt;
++    for (var i = 0; i < waveBands.length; i++) {
++      waveBands[i].x = Math.sin(wavePhase * 0.7 + i * 1.3) * 10;
++    }
++    bubbles.forEach(function (b) {
++      b.y -= b.getData("speed") * dt;
++      b.x += Math.sin((time || 0) / 900 + b.y / 60) * 0.2;
++      if (b.y < 170) { b.y = 660; b.x = Phaser.Math.Between(20, W - 20); }
++    });
++  }
+ })();
+ </script>
+ </body>

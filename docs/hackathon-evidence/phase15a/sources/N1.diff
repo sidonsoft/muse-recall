@@ -1,0 +1,181 @@
+--- /var/folders/l3/hd35tl8d01b7h5stlh3wg52h0000gn/T/phase15a-N1-nc47w9/before.html	2026-10-27 18:05:03
++++ /var/folders/l3/hd35tl8d01b7h5stlh3wg52h0000gn/T/phase15a-N1-nc47w9/after.html	2026-10-27 18:05:03
+@@ -38,8 +38,8 @@
+   new Phaser.Game(config);
+ 
+   var cards = [], firstPick = null, lockBoard = true, started = false;
+-  var moves = 0, matches = 0;
+-  var hudMoves, hudScore, hudMsg, endOverlay, endTitle, endDetail, startOverlay;
++  var moves = 0, matches = 0, score = 0, streak = 0, bestStreak = 0, timeLeft = 60, gameOver = false;
++  var hudMoves, hudScore, hudMsg, hudTime, hudScore2, hudStreak, timeBar, endOverlay, endTitle, endDetail, startOverlay;
+ 
+   function create() {
+     var s = this;
+@@ -85,9 +85,13 @@
+   }
+ 
+   function makeHud(scene) {
+-    scene.add.text(24, 14, "\u{1F33B} Farmyard Match", textStyle(34)).setOrigin(0, 0);
++    scene.add.text(24, 14, "\u26A1 Farmyard Match ARCADE", textStyle(34, "#fff7d6")).setStroke("#7a2d00", 6).setOrigin(0, 0);
+     hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(24));
+     hudScore = scene.add.text(24, 90, "Pairs: 0 / 6", textStyle(24));
++    hudScore2 = scene.add.text(24, 122, "Score: 0", textStyle(24, "#b34700"));
++    hudTime = scene.add.text(W / 2, 60, "⏱ 60", textStyle(38, "#ff2e63")).setOrigin(0.5).setStroke("#ffffff", 6);
++    hudStreak = scene.add.text(W / 2, 100, "", textStyle(22, "#ff2e63")).setOrigin(0.5);
++    timeBar = scene.add.graphics();
+     hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(24, "#7a4a2b")).setOrigin(1, 0.5);
+     var btn = scene.add.container(W - 110, 116);
+     var bg = scene.add.graphics();
+@@ -164,8 +168,44 @@
+     }});
+   }
+ 
++  function drawTimeBar() {
++    if (!timeBar) { return; }
++    timeBar.clear();
++    timeBar.fillStyle(0x000000, 0.15); timeBar.fillRoundedRect(W / 2 - 130, 122, 260, 14, 7);
++    var frac = Math.max(0, timeLeft / 60);
++    var col = frac > 0.5 ? 0x06d6a0 : (frac > 0.25 ? 0xffb703 : 0xff2e63);
++    timeBar.fillStyle(col, 1); timeBar.fillRoundedRect(W / 2 - 130, 122, 260 * frac, 14, 7);
++  }
++
++  function addScorePopup(scene, x, y, txt, color) {
++    var p = scene.add.text(x, y, txt, textStyle(30, color || "#ff2e63")).setOrigin(0.5).setStroke("#ffffff", 5).setDepth(15);
++    scene.tweens.add({ targets: p, y: y - 60, alpha: 0, scale: 1.4, duration: 800, onComplete: function () { p.destroy(); } });
++  }
++
++  function startTimer(scene) {
++    stopTimer();
++    drawTimeBar();
++    hudTime.setText("⏱ " + timeLeft);
++    var ev = scene.time.addEvent({ delay: 1000, repeat: timeLeft - 1, callback: function () {
++      if (gameOver || !started) { return; }
++      timeLeft--;
++      hudTime.setText("⏱ " + timeLeft);
++      drawTimeBar();
++      if (timeLeft <= 10) {
++        hudTime.setScale(1 + 0.12 * Math.abs(10 - timeLeft) / 10 + 0.12);
++        scene.cameras.main.shake(80, 0.002);
++      }
++      if (timeLeft <= 0) { showGameOver(scene); }
++    }});
++    stopTimer._ev = ev;
++  }
++
++  function stopTimer() {
++    if (stopTimer._ev) { stopTimer._ev.remove(false); stopTimer._ev = null; }
++  }
++
+   function onCard(scene, card) {
+-    if (!started || lockBoard || card.faceUp || card.matched) { return; }
++    if (!started || lockBoard || gameOver || card.faceUp || card.matched) { return; }
+     flip(card, true);
+     scene.sound.noop = true;
+     if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); return; }
+@@ -175,18 +215,36 @@
+     if (a.data.key === card.data.key) {
+       setTimeout(function () {
+         a.matched = card.matched = true;
+-        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
++        scene.tweens.add({ targets: [a.view, card.view], scale: 1.25, yoyo: true, duration: 150 });
++        scene.cameras.main.flash(120, 255, 235, 59);
++        scene.cameras.main.shake(120, 0.004);
+         matches++;
++        streak++;
++        bestStreak = Math.max(bestStreak, streak);
++        var gained = 100 + (streak - 1) * 50 + Math.max(0, timeLeft) * 2;
++        score += gained;
++        timeLeft = Math.min(60, timeLeft + 3);
+         hudScore.setText("Pairs: " + matches + " / 6");
+-        hudMsg.setText(matches === 6 ? "You did it!" : "Yay! A pair! \u{1F389}");
++        hudScore2.setText("Score: " + score);
++        hudStreak.setText(streak > 1 ? "🔥 COMBO x" + streak + "  +" + gained : "+" + gained);
++        hudMsg.setText(matches === 6 ? "AMAZING!" : "Yay! A pair! \u{1F389}");
++        addScorePopup(scene, (a.view.x + card.view.x) / 2, (a.view.y + card.view.y) / 2 - 60, "+" + gained);
++        if (streak > 1) {
++          scene.tweens.add({ targets: hudStreak, scale: { from: 1.5, to: 1 }, duration: 250, ease: "Back.easeOut" });
++        }
++        drawTimeBar();
++        hudTime.setText("⏱ " + timeLeft);
+         lockBoard = false;
+         if (matches === 6) { showWin(scene); }
+       }, 350);
+     } else {
++      streak = 0;
++      hudStreak.setText("");
+       hudMsg.setText("Try again! \u{1F340}");
++      scene.cameras.main.shake(90, 0.002);
+       setTimeout(function () {
+         flip(a, false); flip(card, false, function () { lockBoard = false; });
+-      }, 700);
++      }, 550);
+     }
+   }
+ 
+@@ -198,7 +256,7 @@
+     panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-300, -190, 600, 380, 30);
+     panel.lineStyle(6, 0x5da85f, 1); panel.strokeRoundedRect(-300, -190, 600, 380, 30);
+     var title = scene.add.text(0, -120, "\u{1F33B} Farmyard Match \u{1F404}", textStyle(40)).setOrigin(0.5);
+-    var sub = scene.add.text(0, -50, "Flip the cards and find\nall 6 animal pairs!", Object.assign(textStyle(25), { align: "center" })).setOrigin(0.5);
++    var sub = scene.add.text(0, -50, "⚡ ARCADE MODE ⚡\nFind all 6 pairs in 60 seconds!\nPairs give +3s — chain combos for BIG points!", Object.assign(textStyle(22), { align: "center" })).setOrigin(0.5);
+     var row = scene.add.text(0, 30, "\u{1F404} \u{1F437} \u{1F414} \u{1F40E} \u{1F411} \u{1F988}", { fontSize: "44px" }).setOrigin(0.5);
+     var btnBg = scene.add.graphics();
+     btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 80, 260, 70, 35);
+@@ -206,9 +264,10 @@
+     startOverlay.add([bg, panel, title, sub, row, btnBg, btnTx]);
+     btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 80, 260, 70), Phaser.Geom.Rectangle.Contains);
+     btnBg.on("pointerdown", function () {
+-      started = true; lockBoard = false;
++      started = true; lockBoard = false; gameOver = false;
+       startOverlay.setVisible(false);
+-      hudMsg.setText("Tap a card!");
++      hudMsg.setText("GO! GO! GO!");
++      startTimer(scene);
+     });
+   }
+ 
+@@ -229,9 +288,24 @@
+     btnBg.on("pointerdown", function () { restart(scene); });
+   }
+ 
++  function showGameOver(scene) {
++    if (gameOver) { return; }
++    gameOver = true; lockBoard = true; stopTimer();
++    endTitle.setText("\u23F0 TIME UP!");
++    endDetail.setText("You found " + matches + " / 6 pairs!\nScore: " + score + "  Moves: " + moves + "\nBeat the clock — try again!");
++    endOverlay.setVisible(true);
++    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
++    hudMsg.setText("Time up! \u23F0");
++    scene.cameras.main.shake(300, 0.008);
++  }
++
+   function showWin(scene) {
++    stopTimer(); gameOver = true;
++    endTitle.setText("\u{1F389} You Win! \u{1F389}");
+     var stars = moves <= 10 ? 3 : (moves <= 16 ? 2 : 1);
+-    endDetail.setText("You found all 6 pairs!\nMoves: " + moves + "  " + "\u2B50".repeat(stars));
++    score += timeLeft * 5;
++    hudScore2.setText("Score: " + score);
++    endDetail.setText("You found all 6 pairs!\nMoves: " + moves + "  " + "\u2B50".repeat(stars) + "\nScore: " + score + "  Best combo x" + Math.max(1, bestStreak) + "  Time left: " + timeLeft + "s");
+     endOverlay.setVisible(true);
+     scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+     hudMsg.setText("You win! \u{1F389}");
+@@ -242,12 +316,16 @@
+   }
+ 
+   function restart(scene) {
+-    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+-    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / 6"); hudMsg.setText("Tap a card!");
++    moves = 0; matches = 0; score = 0; streak = 0; bestStreak = 0; timeLeft = 60;
++    firstPick = null; lockBoard = false; started = true; gameOver = false;
++    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / 6"); hudScore2.setText("Score: 0");
++    hudStreak.setText(""); hudTime.setText("⏱ 60").setScale(1); hudMsg.setText("GO! GO! GO!");
++    drawTimeBar();
+     endOverlay.setVisible(false);
+     if (startOverlay) { startOverlay.setVisible(false); }
+     cards.forEach(function (c) { c.view.destroy(); });
+     buildBoard(scene);
++    startTimer(scene);
+   }
+ 
+   function update() {}
