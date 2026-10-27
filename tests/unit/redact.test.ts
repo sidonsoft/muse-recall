@@ -9,13 +9,13 @@ describe('credential redaction', () => {
 
   it('removes common key and header formats', () => {
     const text = [
-      'key LLM_2388096561722205_O1sjnRc7wJW6tscM_vrb_cZeRGc',
+      'key LLM_0000000000000000_TESTKEYTESTKEY_TEST',
       'Authorization: Bearer abcdefghijklmnop1234567890',
       'api_key=supersecretvalue',
       'sk-abcdefghijklmnop1234',
     ].join('\n');
     const redacted = redactSecrets(text);
-    expect(redacted).not.toContain('LLM_238809');
+    expect(redacted).not.toContain('LLM_0000000000000000');
     expect(redacted).not.toContain('abcdefghijklmnop1234567890');
     expect(redacted).not.toContain('supersecretvalue');
     expect(redacted).not.toContain('sk-abcdefghijklmnop1234');

@@ -11,7 +11,7 @@ Branch `agent/phase11-release` from `6fe663b`. Feature freeze. No merge, no subm
 | Key never in persisted jobs | PASS | `ForgeJob` schema has no key field; JSON job files sanitised |
 | Key never in API responses | PASS | Integration test serialises the whole job response and asserts absence |
 | Key never in browser-visible errors | PASS | Errors are sanitised server-side before storage/return |
-| Key not in git history | PASS | `git log -p --all` contains no key material |
+| Key not in current git tree | PASS (finding fixed) | A redaction test fixture contained the literal key; it was replaced with a synthetic value in this branch. The value remains in earlier history and **must be rotated** |
 | Env not exposed | PASS | Configuration is read server-side; meta/health expose provider kind/model only |
 | Credential transport | PASS | Only the intended stdin mechanism; `--provider meta` |
 
@@ -35,8 +35,9 @@ possible secret format is removed.
 | Budgets not reset | PASS (runtime/call checks unchanged) |
 | Fallback cannot bypass validation/approval | PASS (invalid fallback → failed job → 409 approval) |
 
-Residual risk: redaction is pattern-based; a novel credential format could survive. Local-only,
-single-user scope is unchanged.
+Residual risk: redaction is pattern-based; a novel credential format could survive. A literal key
+was committed in a test fixture (`c097767`) before review; it is removed from the tree but remains
+in history, so **rotation is mandatory**, not optional. Local-only, single-user scope is unchanged.
 
 ## 2. Real-model reliability — **5/5**
 
@@ -110,7 +111,8 @@ claim gameplay correctness beyond load/render verification.
 - Record and upload the three-minute video.
 - Decide repository visibility for judging.
 - Complete the submission form; do not submit automatically.
-- Rotate the exposed API key after the event.
+- Rotate the exposed API key now: it appeared in chat and in an earlier commit's test fixture;
+  the current tree no longer contains it, but history does.
 
 ## 7. Recommendation — **CONDITIONAL GO**
 
