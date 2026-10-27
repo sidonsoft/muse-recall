@@ -36,6 +36,7 @@ export function apiFailure(
 export const API_ERROR_CODES = {
   badRequest: 'bad_request',
   invalidHost: 'invalid_host',
+  forbiddenOrigin: 'forbidden_origin',
   notFound: 'not_found',
   validationFailed: 'validation_failed',
   providerUnavailable: 'provider_unavailable',

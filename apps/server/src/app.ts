@@ -26,6 +26,7 @@ import { SERVICE_NAME } from './config.js';
 import { ForgeJobManager } from './forge/runner.js';
 import { ForgeWorkspace } from './forge/workspace.js';
 import { isAllowedHostHeader } from './host-guard.js';
+import { evaluateRequestOrigin } from './origin-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { registerForgeRoutes } from './routes/forge.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
@@ -146,6 +147,30 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     return reply
       .status(400)
       .send(apiFailure(API_ERROR_CODES.invalidHost, 'Unexpected Host header.'));
+  });
+
+  // Reject state-changing requests that a foreign page can send without a
+  // preflight. CORS hides the response but does not stop the mutation; the
+  // host guard only proves the request reached a loopback host. `Origin: null`
+  // and malformed origins are refused, and a browser that declares itself
+  // cross-site is refused even if the Origin header is missing.
+  app.addHook('onRequest', async (request, reply) => {
+    const verdict = evaluateRequestOrigin({
+      method: request.method,
+      origin: request.headers.origin,
+      host: request.headers.host,
+      corsOrigins: config.corsOrigins,
+      secFetchSite: request.headers['sec-fetch-site'],
+    });
+    if (verdict.allowed) return;
+    return reply
+      .status(403)
+      .send(
+        apiFailure(
+          API_ERROR_CODES.forbiddenOrigin,
+          'Cross-origin state-changing request rejected.',
+        ),
+      );
   });
 
   await app.register(cors, {
