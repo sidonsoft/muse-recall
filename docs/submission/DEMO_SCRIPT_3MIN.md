@@ -67,8 +67,11 @@ history), the Phase 14A A/C evidence figure.
   button beneath Restart. Muse edits the approved source in place. The job records which remembered
   decisions were retrieved and the SHA-256 of the exact prompt sent — so the memory being in the
   prompt is provable, not asserted.”
-- **On-screen:** Capture preview → request → **play the pre-recorded authentic run** (keep ~10 s of
-  real generation visible). Then the job card: memory ids, prompt hash, validation passed.
+- **On-screen:** **Play the pre-recorded authentic run** (keep ~10 s of real generation visible),
+  then cut to **window A**, where the review was staged before recording (see
+  [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) §6a). The UI cannot reopen an earlier job, so keep window A on
+  Forge. In deterministic replay mode, say the review is a replay of recorded bytes.
+  Job card: memory ids, prompt hash, validation passed.
 - **Evidence:** recorded authentic run captured in advance (job id, prompt hash, retrieved memory
   ids). If unavailable, narrate over the authentic Phase 12A C source and state it is recorded.
 - **Duration:** 30 s. **Fallback:** the recording is the primary path; never substitute fake-mode
@@ -100,9 +103,11 @@ history), the Phase 14A A/C evidence figure.
   this deliberately labelled test mutation it flags a countdown timer and a mistake penalty, citing
   my child-safety decision and the offending line. Two things plainly: this is advisory — it does
   not block approval — and it is a source-pattern check, not compliance verification.”
-- **On-screen:** The labelled mutation job’s panel: **VIOLATION DETECTED**, two findings with the
-  decision reference and evidence excerpt, “Findings do not block approval in this version.” State
-  that the mutation is a labelled test edit, not spontaneous model output.
+- **On-screen:** The packaged labelled-mutation panel: **VIOLATION DETECTED**, two findings with
+  the decision reference and evidence excerpt, “Findings do not block approval in this version.”
+  State that the panel is packaged evidence from the labelled mutation, which is a labelled
+  test edit, not spontaneous model output. Do not approve it; return to the staged authentic
+  review.
 - **Evidence:** `screenshots/05-guard-advisory-mutation.png`, `06-review-mutation.png`,
   `guard-advisory.json`; source label at
   `docs/hackathon-evidence/phase12e/sources/A-violation-mutation.html`.
@@ -110,11 +115,11 @@ history), the Phase 14A A/C evidence figure.
 
 ## 2:30–2:45 — Approve the authentic change, then undo it
 
-- **Narration:** “I reject the violating test build. Back on the authentic modification, the
-  decision is mine: approve — it becomes version 2 — and one click rolls back to version 1, its
-  recorded parent. The history stays intact.”
-- **On-screen:** Reject the mutation (brief). Approve the authentic change → `approved: v2` → click
-  **Undo last change** → `approved: v1`.
+- **Narration:** “The violating test build was rejected, never approved. Back on the authentic
+  modification, the decision is mine: approve — it becomes version 2 — and one click rolls back to
+  version 1, its recorded parent. The history stays intact.”
+- **On-screen:** Optionally flash the packaged `07-rejected-mutation.png` to show the rejection,
+  then return to window A: approve → `approved: v2` → click **Undo last change** → `approved: v1`.
 - **Evidence:** live deterministic UI (approval of an already-generated job needs no model call);
   `screenshots/07-rejected-mutation.png`, `09-approved-v2.png`, `10-rolled-back-v1.png`; rollback
   regression in `rollback-ancestry.json`.

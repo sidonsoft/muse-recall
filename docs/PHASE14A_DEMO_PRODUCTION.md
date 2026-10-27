@@ -233,6 +233,14 @@ history → authentic A/C influence → authentic modification (recorded) → st
 runtime gate → advisory guard on the labelled mutation → approve the authentic change → roll back to
 v1.
 
+### UI constraint discovered during rehearsal
+
+The Forge view holds one job review at a time and offers no historical review picker. The demo
+therefore pre-stages the authentic review in **window A** and uses **window B** for the opening and
+memory segments, switching to A at the modification segment. The guard segment uses the packaged
+labelled-mutation panel, which is a real production-pipeline capture. Adding a historical review browser would be a product feature, which Phase 14A is not
+permitted to add; the runbook documents the operator path and the label to state on screen.
+
 ### What was produced
 
 - 12 screenshots (UI states plus the authentic A/C figure) and 2 rendered game previews in

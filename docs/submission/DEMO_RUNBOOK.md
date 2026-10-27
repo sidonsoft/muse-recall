@@ -107,6 +107,42 @@ Memory screens: sidebar **Memories** (active/superseded decisions, provenance, h
 
 ## 6. Demo sequence (recorded-inference-first)
 
+### 6a. Pre-stage the authentic review (do this before recording)
+
+The Forge UI shows the **current** job review only; it cannot reopen an earlier job's diff. Do not
+navigate away from Forge after staging the authentic modification, or the review state is lost.
+Navigating away from Forge unmounts the review, so use two windows:
+
+- **Window A (review):** open Forge → `forge-demo`, run the authentic modification — live with
+  director authorisation, or by replaying the recorded authentic C bytes with the fake-Muse fixture
+  in `copy` mode — and **leave the review open**. Do not touch window A until the modification
+  segment.
+- **Window B (stage):** the same app, used for the opening game shot, the memory/decision segment
+  and (optionally) the A/C figure. At 1:15, switch to window A.
+
+For a deterministic replay of the authentic C modification, start the API with the recorded bytes
+instead of the live CLI (this is a replay, not a model call):
+
+```bash
+FORGE_MUSE_BIN="$PWD/tests/fixtures/fake-muse.mjs" FAKE_MUSE_MODE=copy \
+FAKE_MUSE_HTML="$PWD/docs/hackathon-evidence/phase12/C-v2.html" pnpm dev:server
+```
+
+Then:
+
+1. Show the staged authentic review in window A (job card, diff, validation).
+2. For the guard segment, show the **packaged** labelled-mutation panel
+   (`screenshots/05-guard-advisory-mutation.png`). It is a real production-pipeline capture of the
+   labelled mutation; state that it is packaged evidence, and do not imply it was generated live in
+   this session.
+3. Return to window A and approve the authentic modification, then undo.
+
+Trying to stage the mutation as well in the same deterministic session does not work: the fixture's
+recorded source is fixed at server start, and a restart discards the in-memory job registry. The
+packaged panel is the reliable path. In
+deterministic replay mode the authentic review is a replay of recorded bytes, not a new model run;
+say so if anyone asks. The recorded footage is authentic; the transport is deterministic.
+
 Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). UI checkpoints:
 
 1. **Forge → `forge-demo`** — the playable Phaser game runs immediately; version badge **v1**.
@@ -117,23 +153,23 @@ Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). UI checkpoints:
 4. **Memory influence** — show the authentic Phase 12A A/C evidence
    (`docs/hackathon-evidence/phase14a/screenshots/11-memory-influence.png`): sunset memory drew
    `0xFF7E5F`, the corrected ocean memory drew `0x4EA8DE`, the no-memory control drew neither.
-5. **Modify** — capture the preview, request “Add a Next Level button beneath the Restart button.”,
-   and play the pre-recorded authentic modification. The job record shows retrieved memory ids and
-   the prompt hash.
+5. **Modify** — play the pre-recorded authentic modification (window A already holds its staged
+   review from §6a). The job record shows retrieved memory ids and the prompt hash.
 6. **Staged diff** — a small unified diff against the approved source, not a regenerated file.
 7. **The actual approval gate** — the app **does not** play the game interactively at approval
    time. *“Before promoting a change, Muse Forge launches it in headless Chrome and rejects builds
    that throw on load or fail to create a canvas.”* It does not test gameplay, rendered pixels or
    later interactions, and it produces no verification screenshot.
-8. **Advisory Decision Guard** — switch to the labelled mutation job and show the finding citing
-   the remembered child-safety decision and the offending source line. State plainly that this is
-   a labelled test mutation, that the check is advisory, that it never blocks approval, and that it
-   is a source-pattern check — not compliance verification.
-9. **Approve** — return to the authentic compliant modification and approve it; it becomes **v2**.
+8. **Advisory Decision Guard** — show the packaged labelled-mutation panel and the finding citing
+   the remembered child-safety decision and the offending source line. State plainly that this is a
+   labelled test mutation, that the check is advisory, that it never blocks approval, and that it is
+   a source-pattern check — not compliance verification.
+9. **Approve** — return to window A's authentic compliant modification and approve it; it becomes
+   **v2**.
    Nothing is promoted without the human decision; saving to memory requires a user-written
    decision (the model's summary is never used).
 10. **Roll back** — one click restores **v1**, the recorded parent of the current version (not
-    simply the previous array entry). The version list and history remain inspectable.
+    simply the previous array entry). The version badge and job history remain consistent.
 
 Do **not** approve the intentionally violating build during the primary demonstration.
 
@@ -143,7 +179,7 @@ Do **not** approve the intentionally violating build during the primary demonstr
 | --- | --- |
 | System | API reachable; provider/model shown (never a key). With `MODEL_PROVIDER=echo` the provider is honestly labelled “Deterministic offline provider (not a model)”. |
 | Forge project | v1 preview playable; Modify input enabled; `approved: v1`. |
-| Running job | progress; a rehearsal job finishes in about a second, a real Muse job in ~35–105 s; hard budget `FORGE_RUNTIME` default 600 s, call budget 25. |
+| Running job | progress; a rehearsal job finishes in about a second, a real Muse job in ~35–105 s; hard budget `FORGE_MAX_RUNTIME_MS` default 600 s, call budget 25. |
 | Review | diff + `validation passed` + `Decision Guard — Advisory`; Approve enabled. |
 | Runtime failure | 422 `runtime_failed`; the staged file is never promoted. |
 | Approve | `Change approved`; badge `approved: v2`; job shows `succeeded v2`. |
