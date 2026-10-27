@@ -88,49 +88,67 @@ describe('accuracy corpus — recorded behaviour (golden)', () => {
 // audit doc must be updated alongside.
 
 describe('accuracy corpus — pinned false-positive set (BLOCK on compliant fixtures)', () => {
-  it('rule A countdown false positives', () => {
+  it('rule A countdown false positives (v1.1.0: comment FPs fixed; inert string remains)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
         (row) => row.rule === 'countdown-mechanics' && row.classification === 'FP',
       ),
-    ).toEqual(['A06', 'A07', 'A08']);
+    ).toEqual(['A08']);
   });
 
-  it('rule B flashing false positives', () => {
+  it('rule B flashing false positives (v1.1.0: comment FP fixed; ticker-interval + negation-scope remain)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
         (row) => row.rule === 'flashing-effects' && row.classification === 'FP',
       ),
-    ).toEqual(['B06', 'B13', 'B14']);
+    ).toEqual(['B13', 'B14']);
   });
 
-  it('rule C penalty false positives', () => {
+  it('rule C penalty false positives (v1.1.0: comment FP fixed; string + identifier-substring remain)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
         (row) => row.rule === 'mistake-penalty' && row.classification === 'FP',
       ),
-    ).toEqual(['C05', 'C06', 'C09']);
+    ).toEqual(['C06', 'C09']);
   });
 
-  it('rule D palette false positives', () => {
+  it('rule D palette false positives (v1.1.0: comment-hex FP fixed; changelog string remains)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
         (row) => row.rule === 'superseded-palette' && row.classification === 'FP',
       ),
-    ).toEqual(['D03', 'D04']);
+    ).toEqual(['D04']);
   });
 
-  it('rule E colour false positives', () => {
+  it('rule E colour false positives (v1.1.0: comment red/green now abstains; narrative string still blocks)', () => {
     expect(
       idsWhere(
         SYNTHETIC_ROWS,
         (row) => row.rule === 'colour-only-cue' && row.classification === 'FP',
       ),
-    ).toEqual(['E04', 'E05']);
+    ).toEqual(['E05']);
+  });
+});
+
+describe('accuracy corpus — v1.1.0 comment-masking fixes (before: FP/BLOCK; now: no claim or PASS)', () => {
+  const fixedCases: Array<[string, 'TN' | 'ABSTAIN']> = [
+    ['A06', 'TN'], // line comment
+    ['A07', 'TN'], // block comment
+    ['A16', 'TN'], // HTML comment
+    ['B06', 'TN'], // block comment with animation + flash tokens
+    ['C05', 'TN'], // line comment with score--
+    ['D03', 'TN'], // superseded hex inside line comment
+    ['E04', 'ABSTAIN'], // comment-only red/green pair -> UNVERIFIED, never BLOCK
+  ];
+
+  it.each(fixedCases)('%s is no longer a false positive after masking (now %s)', (id, expected) => {
+    const row = rowById(SYNTHETIC_ROWS, id);
+    expect(row.classification).toBe(expected);
+    expect(row.block_correct).toBe(false);
   });
 });
 

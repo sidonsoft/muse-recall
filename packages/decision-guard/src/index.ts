@@ -9,13 +9,17 @@
  * and never mutated. Results are deterministic: no time, randomness, or
  * input-order sensitivity in the output.
  *
+ * v1.1.0 (Phase 12D accuracy audit): source-side rule matching runs on a
+ * comment-masked copy of the input (see maskCommentBodies); findings cite
+ * evidence sliced from the original source.
+ *
  * A decision is NEVER marked compliant merely because no rule applies:
  * unsupported decisions produce UNVERIFIED, never PASS.
  */
 
 import type { Memory } from '@mml/shared';
 
-export const GUARD_VERSION = '1.0.0';
+export const GUARD_VERSION = '1.1.0';
 
 /** Structural subset of a memory record — no runtime coupling. */
 export type GuardDecision = Pick<Memory, 'id' | 'content' | 'status' | 'supersedes'>;
@@ -158,6 +162,101 @@ const CUE_PROXIMITY_CHARS = 160;
 // ---------------------------------------------------------------------------
 // Helpers (pure).
 
+/**
+ * Phase 12D fix (accuracy audit): mask the BODIES of code comments before
+ * source-side pattern matching. Inert documentation — a line comment naming
+ * "the old countdown ring", a block comment citing an old accent hex, or an
+ * HTML comment about a removed red/green pairing — must not read as an
+ * active implementation.
+ *
+ * Properties:
+ *  - String-aware: `//` / `/*` inside '...' , "...", or `...` is NOT a
+ *    comment (CDN URLs like `https://cdn...` are left alone).
+ *  - Offset-preserving: comment characters become spaces (newlines stay),
+ *    so every index in the masked text maps to the same index in the
+ *    original; evidence is always sliced from the ORIGINAL source.
+ *  - Linear, allocation-bounded, no regex backtracking.
+ *
+ * Known limitation (documented, not solved): an unterminated quote in an
+ * HTML text node (apostrophes like "Don't") extends a string state to end
+ * of line; the failure mode is UNDER-masking (a real comment on that same
+ * line stays visible), never code removal. Regex literals containing `//`
+ * may over-mask to end of line — rare in generated game sources.
+ */
+function maskCommentBodies(source: string): string {
+  const out = source.split('');
+  let i = 0;
+  while (i < source.length) {
+    const char = source[i];
+    if (char === "'" || char === '"') {
+      // Scan a single-line string: it is code data, never masked.
+      i += 1;
+      while (i < source.length && source[i] !== char && source[i] !== '\n') {
+        if (source[i] === '\\') i += 1;
+        i += 1;
+      }
+      i += 1;
+      continue;
+    }
+    if (char === '`') {
+      // Template literal: inert except for ${ ... } expression segments.
+      i += 1;
+      while (i < source.length && source[i] !== '`') {
+        if (source[i] === '\\') {
+          i += 2;
+          continue;
+        }
+        if (source[i] === '$' && source[i + 1] === '{') {
+          i += 2;
+          let depth = 1;
+          while (i < source.length && depth > 0) {
+            if (source[i] === '{') depth += 1;
+            else if (source[i] === '}') depth -= 1;
+            i += 1;
+          }
+          continue;
+        }
+        i += 1;
+      }
+      i += 1;
+      continue;
+    }
+    if (char === '/' && source[i + 1] === '/') {
+      let j = i;
+      while (j < source.length && source[j] !== '\n') {
+        out[j] = ' ';
+        j += 1;
+      }
+      i = j;
+      continue;
+    }
+    if (char === '/' && source[i + 1] === '*') {
+      let j = i;
+      while (j < source.length && !(source[j] === '*' && source[j + 1] === '/')) {
+        if (out[j] !== '\n') out[j] = ' ';
+        j += 1;
+      }
+      const end = Math.min(source.length, j + 2);
+      for (; i < end; i += 1) out[i] = ' ';
+      i = end;
+      continue;
+    }
+    if (char === '<' && source.startsWith('<!--', i)) {
+      let j = i;
+      const close = source.indexOf('-->', j);
+      const stop = close === -1 ? source.length : close + 3;
+      while (j < stop) {
+        if (out[j] !== '\n') out[j] = ' ';
+        j += 1;
+      }
+      i = stop;
+      continue;
+    }
+    i += 1;
+  }
+  return out.join('');
+}
+
 function excerpt(text: string, limit: number): string {
   const flat = text.replace(/\s+/g, ' ').trim();
   return flat.length <= limit ? flat : `${flat.slice(0, limit - 1)}…`;
@@ -197,12 +296,15 @@ function unverified(reason: string): { verdict: 'UNVERIFIED'; reason: string; fi
 // Rule evaluators. Each returns a verdict + reason + findings (BLOCK cases).
 
 interface RuleContext {
+  /** Comment-masked copy used for all source-side matching. */
   source: string;
+  /** Original (unmasked) source; evidence is always sliced from this. */
+  original: string;
   decision: GuardDecision;
   superseded?: GuardDecision;
 }
 
-function evaluateCountdown({ source, decision }: RuleContext): DecisionEvaluation {
+function evaluateCountdown({ source, original, decision }: RuleContext): DecisionEvaluation {
   const match = source.match(COUNTDOWN_SOURCE);
   if (!match || match.index === undefined) {
     return {
@@ -216,7 +318,7 @@ function evaluateCountdown({ source, decision }: RuleContext): DecisionEvaluatio
   const finding = makeFinding(
     decision,
     'countdown-mechanics',
-    evidenceAt(source, match.index, match[0].length),
+    evidenceAt(original, match.index, match[0].length),
     `decision prohibits countdown mechanics; source contains "${match[0]}"`,
     true,
     'high',
@@ -230,7 +332,7 @@ function evaluateCountdown({ source, decision }: RuleContext): DecisionEvaluatio
   };
 }
 
-function evaluateFlashing({ source, decision }: RuleContext): DecisionEvaluation {
+function evaluateFlashing({ source, original, decision }: RuleContext): DecisionEvaluation {
   const match = source.match(FLASHING_SOURCE);
   if (!match || match.index === undefined) {
     return {
@@ -244,7 +346,7 @@ function evaluateFlashing({ source, decision }: RuleContext): DecisionEvaluation
   const finding = makeFinding(
     decision,
     'flashing-effects',
-    evidenceAt(source, match.index, match[0].length),
+    evidenceAt(original, match.index, match[0].length),
     `decision prohibits flashing effects; source contains "${excerpt(match[0], 80)}"`,
     true,
     'high',
@@ -258,7 +360,7 @@ function evaluateFlashing({ source, decision }: RuleContext): DecisionEvaluation
   };
 }
 
-function evaluatePenalty({ source, decision }: RuleContext): DecisionEvaluation {
+function evaluatePenalty({ source, original, decision }: RuleContext): DecisionEvaluation {
   const match = source.match(PENALTY_SOURCE);
   if (!match || match.index === undefined) {
     return {
@@ -272,7 +374,7 @@ function evaluatePenalty({ source, decision }: RuleContext): DecisionEvaluation 
   const finding = makeFinding(
     decision,
     'mistake-penalty',
-    evidenceAt(source, match.index, match[0].length),
+    evidenceAt(original, match.index, match[0].length),
     `decision prohibits punishing mistakes; source contains "${excerpt(match[0], 80)}"`,
     true,
     'high',
@@ -287,7 +389,7 @@ function evaluatePenalty({ source, decision }: RuleContext): DecisionEvaluation 
 }
 
 function evaluatePalette(context: RuleContext): DecisionEvaluation {
-  const { source, decision, superseded } = context;
+  const { source, original, decision, superseded } = context;
   const base = { decision_id: decision.id, rule: 'superseded-palette' as const };
   if (decision.supersedes.length === 0) {
     return {
@@ -321,7 +423,7 @@ function evaluatePalette(context: RuleContext): DecisionEvaluation {
     const finding = makeFinding(
       decision,
       'superseded-palette',
-      evidenceAt(source, Math.max(0, index), firstForbidden.length),
+      evidenceAt(original, Math.max(0, index), firstForbidden.length),
       `superseded palette reintroduced as active styling: ${forbiddenHit.join(', ')} (replaced by ${requiredHexes.join(', ') || requiredFamily || 'unknown'})`,
       true,
       'high',
@@ -357,7 +459,7 @@ function evaluatePalette(context: RuleContext): DecisionEvaluation {
   return { ...base, ...unverified('neither corrected nor superseded palette present in source') };
 }
 
-function evaluateColourCue({ source, decision }: RuleContext): DecisionEvaluation {
+function evaluateColourCue({ source, original, decision }: RuleContext): DecisionEvaluation {
   const base = { decision_id: decision.id, rule: 'colour-only-cue' as const };
   const red = source.match(RED_SOURCE);
   const green = source.match(GREEN_SOURCE);
@@ -393,7 +495,7 @@ function evaluateColourCue({ source, decision }: RuleContext): DecisionEvaluatio
   const finding = makeFinding(
     decision,
     'colour-only-cue',
-    `${evidenceAt(source, redIndex, red[0].length)} | ${evidenceAt(source, greenIndex, green[0].length)}`.slice(
+    `${evidenceAt(original, redIndex, red[0].length)} | ${evidenceAt(original, greenIndex, green[0].length)}`.slice(
       0,
       EVIDENCE_CHARS,
     ),
@@ -498,6 +600,9 @@ export function evaluateDecisions(
     }
   }
 
+  // Matching runs on the comment-masked copy; evidence stays on the original.
+  const matchSource = maskCommentBodies(generatedSource);
+
   const sorted = [...parsed].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const evaluations: DecisionEvaluation[] = [];
   const findings: GuardFinding[] = [];
@@ -527,7 +632,12 @@ export function evaluateDecisions(
               .map((id) => supersededIndex.get(id))
               .find((entry) => entry !== undefined)
           : undefined;
-      const evaluation = RULE_EVALUATORS[rule]({ source: generatedSource, decision, superseded });
+      const evaluation = RULE_EVALUATORS[rule]({
+        source: matchSource,
+        original: generatedSource,
+        decision,
+        superseded,
+      });
       evaluations.push(evaluation);
       for (const finding of evaluation.findings) {
         if (findings.length < MAX_FINDINGS) findings.push(finding);

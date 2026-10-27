@@ -235,6 +235,17 @@ function onFrame(dt) { elapsed += dt; }`,
       'Expired memory requiring countdowns must not enforce; active no-countdown decision applies.',
   },
   {
+    id: 'A16',
+    rule: 'countdown-mechanics',
+    category: 'comment-inert',
+    decisions: [DEC_COUNTDOWN],
+    source: `<!-- the old countdown ring lived above the board -->
+<script>let elapsed = 0;</script>`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes: 'Countdown word inside an HTML comment.',
+  },
+  {
     id: 'A14',
     rule: 'countdown-mechanics',
     category: 'decision-linking',
