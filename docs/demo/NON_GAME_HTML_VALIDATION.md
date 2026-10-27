@@ -51,7 +51,7 @@ Two further decisions were captured by the human at approval time:
 | # | Type | Memory id | Captured at | Content (abridged) |
 |---|---|---|---|---|
 | M4 | `technical_decision` | `1c31b594-cc3e-4df3-9d32-5475d50dc84f` | approval of v1 | FocusFlow v1 shipping decision: single-file, in-memory, amber/charcoal, plain-verb controls, no native form submission |
-| M5 | `technical_decision` | *(captured at v2 approval)* | approval of v2 | Priorities: Normal/High, visible per-task control, persistent high-priority remaining count excluding completed tasks |
+| M5 | `technical_decision` | `e685eb97-ebc6-4a15-b164-e81195a5fc19` | approval of v2 | Priorities: Normal/High, visible per-task control, persistent high-priority remaining count excluding completed tasks |
 
 The modification job recorded **four** active decisions (M1, M2, M3, M4) in `memory_ids`; the
 retrieval preview (`runs/v3-retrieval.json`) shows all four, including M4. That is the concrete
