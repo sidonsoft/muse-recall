@@ -1,6 +1,7 @@
-# Muse Recall — demo runbook (Phase 14A)
+# Muse Recall — demo runbook (Phase 14C recording clearance)
 
 **Demo branch:** `agent/phase14a-demo-production`
+**Clearance baseline:** `4d668bb047eceada02bd124d7f69cde44b3adbed`
 **Release candidate base:** `agent/phase12e-release-hardening` at
 `156c65c9a55833e00f6764f4fee20d93eec17e49`
 **Submission docs:** cherry-picked commit `84e6a8c` (docs only; no production files changed).
@@ -14,6 +15,83 @@ preparing Phase 14A; every recorded Forge case uses already-recorded bytes.
 > guard demonstration uses a **labelled deterministic mutation** of authentic source and is never
 > presented as spontaneous model output. The rehearsal screenshots come from the deterministic
 > transport fixture; they are labelled as such wherever they appear.
+
+## R. Mandatory replay disclosure (P1-B)
+
+This section is a recording gate, not advice. It applies to **every** run of the modification,
+staged-diff, runtime and approve/rollback footage produced with the frozen fake-Muse replay.
+
+### R1. What is replayed
+
+The modification segment replays `docs/hackathon-evidence/phase12/C-v2.html`, the authentic Phase
+12A condition C output. The replay transport is `tests/fixtures/fake-muse.mjs` in `copy` mode. It
+performs **no model call**. The replayed source is authentic model output; the review pipeline
+around it is real production code.
+
+### R2. Why the provenance must be split
+
+| | Original Phase 12A C generation | Seeded replay job |
+| --- | --- | --- |
+| Job id | `6a246238-4066-4b68-b091-1ab1e0a8a7d8` | `63835e4b-19cc-46dc-85df-21ac1c2e9113` |
+| Active memories retrieved | **one** — ocean `aceff9cf-0f0a-4cdf-9465-39e98ba8d423` | **two** — ocean `981df37d-…` + child-safety `8f3f36b7-…` |
+| Prompt SHA-256 | `cc3a3967cfacd9d83e7f007708d1609040c2762f0adc256d9db6bba930c4b8a2` | `11be307df87f6fcddf085200d32d731a9286ce53cd3a53386441bc352d5b4984` |
+| Source | `phase12/C-v2.html` (sha256 `26c6a534…bd823f`) | same bytes, copied by the fixture |
+| What it proves | authentic memory influence in the A/C experiment | staging, review, approval and rollback workflow |
+
+The replay job's memory ids and prompt hash **do not correspond** to the original generation. They
+describe the replay only. The replay retrieves the child-safety constraint; the original C run did
+not. Never imply that the child-safety constraint shaped the original Phase 12A C output. (The
+replay hash also appears on the labelled-mutation job because both run in the same seeded project
+with the same two active memories; that is expected and is another reason it cannot serve as
+original-generation proof.)
+
+### R3. Mandatory visible label and exact timing
+
+The Forge UI cannot display a replay provenance label. The label must therefore be added as an
+explicit video-editing overlay:
+
+- **Exact text:** `Replay of recorded Phase 12A Muse output.`
+- **Style:** lower-third, white 24 pt-or-larger text on a 90%-opaque black bar, readable at 1080p.
+- **Window 1:** **1:16.0 → 2:08.0** — replay modification (segment 5), replay-staged diff
+  (segment 6), actual runtime check on the replay-staged bytes (segment 7).
+- **Window 2:** **2:23.0 → 2:40.0** — approval and rollback of the replay-staged authentic source
+  (segment 9).
+- **Guard insert (2:08.0 → 2:23.0):** replace it with
+  `Labelled mutation — packaged evidence, not model output.` The guard panel is not replay footage.
+- **No gap:** the label stays on every replay frame. If the edit differs, align the windows to the
+  first and last replay frame; never drop the caption because no one asked.
+
+This disclosure is **mandatory and unconditional**. It is not a verbal aside and not conditional on
+a viewer question. If the label cannot be added, the replay footage cannot be used in the submission
+video.
+
+### R4. Two separate claims, never combined
+
+1. **The replay demonstrates** the staging, review, approval and rollback workflow.
+2. **The A/C experiment demonstrates** authentic memory influence: condition A (sunset memory) drew
+   the sunset accent, B (no memory) drew neither, C (corrected ocean memory) drew the ocean accent
+   with no superseded sunset hex in the source. C retrieved **one** active memory, the ocean
+   decision. Prompt inclusion is proven by the original C job's byte-exact reconstruction, not by
+   the replay hash.
+
+Do not narrate these as a single causal sequence. Do not put the replay prompt hash on screen while
+claiming original generation proof. The original A/C evidence and provenance live in
+`docs/hackathon-evidence/phase12/pilot.json` and `phase14a/memory-influence.json`.
+
+### R5. Evidence classes — do not conflate
+
+| Class | What it is | Where it lives | How to label it on screen |
+| --- | --- | --- | --- |
+| **A. Authentic Phase 12A generation evidence** | Real model output from the one-run-per-condition A/B/C trial; original C job `6a246238…`, one memory `aceff9cf…`, prompt sha `cc3a396…` | `docs/hackathon-evidence/phase12/{A,B,C}-v2.html`, `{A,B,C}-v2-visible.png`, `pilot.json`; `phase14a/memory-influence.*` | `Authentic Phase 12A model output — one run per condition` |
+| **B. Deterministic replay of previously generated source** | Authentic C bytes transported by `fake-muse.mjs`; replay job `63835e4b…` with two active memories and prompt sha `11be307…` | `tests/fixtures/fake-muse.mjs`; `phase14a/rehearsal.json` | `Replay of recorded Phase 12A Muse output.` |
+| **C. Labelled Decision Guard mutation** | Deterministic test edit of authentic source, not spontaneous model output; cites the child-safety decision | `docs/hackathon-evidence/phase12e/sources/A-violation-mutation.html`; `phase14a/screenshots/05-guard-advisory-mutation.png`, `guard-advisory.json` | `Labelled mutation — packaged evidence, not model output.` |
+| **D. Actual runtime approval checks** | Real headless-Chrome load check executed at approval time on the staged bytes; rejects load/console errors or missing canvas; load-time only | `apps/server/src/forge/runtime-check.ts`; `scripts/verify-runtime.ts`; `phase14a/rehearsal.json` | `Actual load-time gate on staged bytes` |
+| **E. Authentic approved-source rollback** | Approval of the authentic Phase 12A C source and undo to v1, its recorded parent; state change is real, transport is replay | `phase14a/rehearsal.json` (`rollback_ancestry`), `screenshots/09-approved-v2.png`, `10-rolled-back-v1.png` | `Authentic source approval + rollback to recorded parent` |
+
+Keep classes A and B visually and verbally separate. C is never presented as model output. D is
+never described as gameplay or pixel verification. E is rollback of authentic source, not a new
+generation.
+
 
 ## 0. Where to run the demo
 
@@ -118,7 +196,7 @@ Navigating away from Forge unmounts the review, so use two windows:
   in `copy` mode — and **leave the review open**. Do not touch window A until the modification
   segment.
 - **Window B (stage):** the same app, used for the opening game shot, the memory/decision segment
-  and (optionally) the A/C figure. At 1:15, switch to window A.
+  and (optionally) the A/C figure. At **1:16**, switch to window A.
 
 For a deterministic replay of the authentic C modification, start the API with the recorded bytes
 instead of the live CLI (this is a replay, not a model call):
@@ -128,20 +206,31 @@ FORGE_MUSE_BIN="$PWD/tests/fixtures/fake-muse.mjs" FAKE_MUSE_MODE=copy \
 FAKE_MUSE_HTML="$PWD/docs/hackathon-evidence/phase12/C-v2.html" pnpm dev:server
 ```
 
+This replay job retrieves **two** active memories (`981df37d-…` ocean and `8f3f36b7-…`
+child-safety) and records prompt sha `11be307…`. The original Phase 12A C generation retrieved
+**one** active memory (`aceff9cf-…`, ocean) with prompt sha `cc3a396…`. The replay values describe
+the replay only. Keep the mandatory `Replay of recorded Phase 12A Muse output.` overlay on every
+replay frame (see §R3): 1:16.0–2:08.0 and 2:23.0–2:40.0.
+
 Then:
 
-1. Show the staged authentic review in window A (job card, diff, validation).
+1. Show the staged authentic review in window A (job card, diff, validation) under the replay
+   overlay. Do not present the replay job's prompt hash as proof of the original generation.
 2. For the guard segment, show the **packaged** labelled-mutation panel
    (`screenshots/05-guard-advisory-mutation.png`). It is a real production-pipeline capture of the
    labelled mutation; state that it is packaged evidence, and do not imply it was generated live in
-   this session.
-3. Return to window A and approve the authentic modification, then undo.
+   this session. Replace the replay overlay with
+   `Labelled mutation — packaged evidence, not model output.`
+3. Return to window A and approve the authentic modification, then undo. The overlay returns for
+   this footage.
 
 Trying to stage the mutation as well in the same deterministic session does not work: the fixture's
 recorded source is fixed at server start, and a restart discards the in-memory job registry. The
-packaged panel is the reliable path. In
-deterministic replay mode the authentic review is a replay of recorded bytes, not a new model run;
-say so if anyone asks. The recorded footage is authentic; the transport is deterministic.
+packaged panel is the reliable path. In deterministic replay mode the authentic review is a replay
+of recorded bytes, not a new model run. The recorded source is authentic; the transport is
+deterministic. The replay demonstrates the staging, review, approval and rollback workflow; it does
+not demonstrate the original generation. The original A/C evidence demonstrates authentic memory
+influence. Never merge those claims.
 
 Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). UI checkpoints:
 
@@ -152,10 +241,17 @@ Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). UI checkpoints:
    **active**, and the correction reason is in the append-only history.
 4. **Memory influence** — show the authentic Phase 12A A/C evidence
    (`docs/hackathon-evidence/phase14a/screenshots/11-memory-influence.png`): sunset memory drew
-   `0xFF7E5F`, the corrected ocean memory drew `0x4EA8DE`, the no-memory control drew neither.
+   `0xFF7E5F`, the corrected ocean memory drew `0x4EA8DE`, the no-memory control drew neither. Label
+   the original provenance: C job `6a246238…`, one active memory `aceff9cf-…`, prompt sha
+   `cc3a396…`, one run per condition, dark text colour not applied. Do **not** show replay ids or
+   the replay hash in this segment.
 5. **Modify** — play the pre-recorded authentic modification (window A already holds its staged
-   review from §6a). The job record shows retrieved memory ids and the prompt hash.
-6. **Staged diff** — a small unified diff against the approved source, not a regenerated file.
+   review from §6a) under the mandatory replay overlay. The job record shows the replay's retrieved
+   memory ids (`981df37d-…`, `8f3f36b7-…`) and replay prompt sha (`11be307…`). Say that these
+   describe the replay, not the original Phase 12A C generation. Do not imply the child-safety
+   constraint shaped the original C output.
+6. **Staged diff** — a small unified diff against the approved source, not a regenerated file. Keep
+   the replay overlay visible.
 7. **The actual approval gate** — the app **does not** play the game interactively at approval
    time. *“Before promoting a change, Muse Forge launches it in headless Chrome and rejects builds
    that throw on load or fail to create a canvas.”* It does not test gameplay, rendered pixels or
@@ -165,11 +261,12 @@ Follow [DEMO_SCRIPT_3MIN.md](DEMO_SCRIPT_3MIN.md). UI checkpoints:
    labelled test mutation, that the check is advisory, that it never blocks approval, and that it is
    a source-pattern check — not compliance verification.
 9. **Approve** — return to window A's authentic compliant modification and approve it; it becomes
-   **v2**.
-   Nothing is promoted without the human decision; saving to memory requires a user-written
-   decision (the model's summary is never used).
+   **v2**. This is authentic Phase 12A C source, approved through the real UI; the overlay stays on
+   because the transport is a replay. Nothing is promoted without the human decision; saving to
+   memory requires a user-written decision (the model's summary is never used).
 10. **Roll back** — one click restores **v1**, the recorded parent of the current version (not
-    simply the previous array entry). The version badge and job history remain consistent.
+    simply the previous array entry). The version badge and job history remain consistent. Keep the
+    replay overlay visible until the rollback confirmation is on screen.
 
 Do **not** approve the intentionally violating build during the primary demonstration.
 
@@ -203,11 +300,15 @@ Do **not** approve the intentionally violating build during the primary demonstr
 
 ## 9. Offline / recorded fallback
 
-Preference order: live authenticated run → recorded authentic run → packaged evidence. Do not
-require live Muse availability during the presentation.
+Preference order: live authenticated run → recorded authentic run (or its labelled replay) →
+packaged evidence. Do not require live Muse availability during the presentation.
 
-- Recorded authentic inference is the primary path for the modification segment: capture one run
-  in advance at full speed on the seeded project and show it at real or lightly accelerated pace.
+- Recorded authentic source is the primary path for the modification segment: capture one run in
+  advance at full speed on the seeded project, or replay the recorded C bytes under the §R3 label,
+  and show it at real or lightly accelerated pace.
+- If the recorded C bytes are replayed through the fake-Muse fixture, the replay label in §R3 is
+  mandatory. The replay is not a new model run and its job ids/hash are not original-generation
+  evidence.
 - Packaged Phase 14A evidence: `docs/hackathon-evidence/phase14a/screenshots/` (UI states, guard
   advisory, approval, rollback) and `memory-influence.png` (authentic A/C).
 - Authentic Phase 12A/12C/12E evidence remains at `docs/hackathon-evidence/phase12/`,
@@ -226,6 +327,22 @@ require live Muse availability during the presentation.
   pnpm evidence:phase14a-ui     # real API + Vite + Chrome screenshots
   ```
 
+## 9a. Recording checklist (Phase 14C)
+
+1. **Replay caption.** `Replay of recorded Phase 12A Muse output.` is on screen at
+   1:16.0–2:08.0 and 2:23.0–2:40.0, with no replay frame unlabelled.
+2. **Original A/C provenance.** Segment 4 shows the original C job `6a246238…`, the single memory
+   `aceff9cf-…`, prompt sha `cc3a396…`, n = 1, and the unapplied dark text colour.
+3. **No misleading prompt-hash shot.** The replay hash (`11be307…`) never appears beside “proof”,
+   “original”, or the A/C figure.
+4. **Guard mutation disclosure.** The labelled-mutation banner and
+   `Labelled mutation — packaged evidence, not model output.` are visible; narration says advisory
+   and “does not block approval”.
+5. **Correct approval and rollback footage.** Approve the authentic recorded C source (not the
+   violating mutation) to v2, then undo to v1, the recorded parent; replay overlay stays on.
+6. **No visible API keys.** No `.env`, key values, terminal history, or provider headers in frame.
+7. **Final video duration.** 170–175 s; the 14C edit target is 172 s (2:52), with 358 spoken words.
+
 ## 10. Pre-demo checklist
 
 1. Fresh `pnpm install` on `agent/phase14a-demo-production`; `pnpm verify` green.
@@ -234,10 +351,14 @@ require live Muse availability during the presentation.
    decisions with sunset superseded.
 4. One end-to-end rehearsal completed: mutation finding → reject, authentic modification → approve
    → undo; either live (with director authorisation) or recorded.
-5. Recorded fallback capture present on the demo machine; screenshots open offline.
+5. Recorded fallback capture present on the demo machine; screenshots open offline; the replay
+   lower-third and guard lower-third are pre-built in the editing project.
 6. `GET /api/health` 200; Chrome launches headless; Muse CLI logged in if going live; no keys on
    screen; `.env` not displayed.
 7. Browser zoom/font set for recording; bookmarks hidden; private window (no extensions).
+8. Replay label checked at 1:16.0–2:08.0 and 2:23.0–2:40.0; original A/C provenance card checked;
+   replay hash absent from every “proof”/“original” shot; guard label checked.
+9. Final cut is 170–175 s (target 172 s) and the spoken narration is 358 words.
 
 ## 11. Known limits to state honestly
 
@@ -249,6 +370,11 @@ require live Muse availability during the presentation.
 - Memory influence is one controlled trial per condition (n = 1); results are directional, not
   statistically significant. Accent selection was observed; the remembered dark text colour was
   not applied.
+- Replay integrity: the seeded replay job retrieves **two** active memories (ocean and
+  child-safety) and has different job ids/prompt hash from the original Phase 12A C generation,
+  which retrieved **one** active memory (ocean). The replay demonstrates the workflow; it does not
+  prove the original generation and does not show that child-safety shaped C. The §R3 overlay is
+  mandatory whenever replay footage is used.
 - The app is a single-user, loopback-only build: no authentication, no multi-tenant hosting.
 - No demo video exists in this repository. The screenshots and this runbook are the recording-ready
   assets; do not claim footage unless a file was actually created.

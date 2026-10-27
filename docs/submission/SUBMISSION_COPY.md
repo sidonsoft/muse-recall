@@ -1,8 +1,12 @@
-# Muse Recall — submission copy (Phase 14A)
+# Muse Recall — submission copy (Phase 14C)
 
 Ready-to-paste text for the submission form. Quantitative claims come from the accepted Phase 11A
 reliability trials, the Phase 12A memory-influence trial, and the Phase 14A verification record (see
 [EVIDENCE_MAP.md](EVIDENCE_MAP.md)); nothing is extrapolated.
+
+**Word limits (verified programmatically, whitespace-delimited):** 100-word description = **99
+words** (limit 100); 300-word description = **290 words** (limit 300). Both are inside the preferred
+safety margins (95–99 and 285–295).
 
 ---
 
@@ -16,52 +20,50 @@ An AI creative studio that remembers your decisions, checks its work, and keeps 
 
 ## 100-word description
 
-Muse Recall is an AI creative studio that remembers your decisions, checks its work, and keeps you
-in control. In Muse Forge, a real Meta Muse model edits an existing approved Phaser game instead of
-regenerating it. Decisions from earlier sessions — a child-safety rule, a palette — are retrieved
-into the prompt, and the exact prompt is recorded. When the direction changes, a correction
-supersedes the old decision while keeping its audit history. Before promoting a change, Muse Forge
-launches it in headless Chrome and rejects builds that throw on load or fail to create a canvas. An
-advisory Decision Guard cites remembered decisions. You review the diff and approve; every version
-can be rolled back.
+Muse Recall is an AI creative studio that remembers your decisions and keeps you in control. In Muse
+Forge, a real Meta Muse model edits an approved Phaser game rather than regenerating. Earlier
+decisions — a child-safety rule, a palette — are retrieved into the prompt, which is recorded. A
+correction supersedes the old decision while keeping its audit history. Before promotion, Muse Forge
+loads the staged build in headless Chrome and rejects load failures or a missing canvas. An advisory
+Decision Guard cites those decisions. You review and approve the diff; approved changes roll back to
+their parent.
 
 ## 300-word description
 
-AI creative tools generate code quickly but lose your decisions between sessions: you re-explain
+AI creative tools generate quickly but lose your decisions between sessions: you re-explain
 constraints, discover unexpected changes, and repair regressions. Muse Recall adds persistent,
 project-scoped creative memory and a controlled modification workflow, demonstrated in Muse Forge,
 its game-studio workspace.
 
-Design decisions are stored with provenance and an append-only history. When you change your mind,
-a correction supersedes the old decision: the original stays auditable but is never again returned
-as current guidance. Every modification retrieves the still-current decisions — constraints are
-force-included even when your words barely match them — under a hard context budget, and each run
-records the exact prompt bytes and the decision ids used, byte-for-byte reproducible.
+Decisions are stored with provenance and an append-only history. When you change your mind, a
+correction supersedes the old decision: the original stays auditable but is never returned as
+current guidance. Each modification retrieves the still-current decisions — pinned constraints
+included within a hard context budget, even when your words barely match — and records exact prompt
+bytes and decision ids used.
 
-Muse then edits the existing approved source rather than regenerating: across five real-model
-trials, changes touched 1.2–10.1% of the file. Before promoting a change, Muse Forge launches it in
+Muse edits the existing approved source rather than regenerating. Across five real-model trials,
+changes touched 1.2–10.1% of the file. Before promotion, Muse Forge loads the staged build in
 headless Chrome and rejects builds that throw on load or fail to create a canvas. That gate is
-load-time only: it does not play the game, inspect pixels, or test every mechanic, so the diff
-review still matters. An advisory Decision Guard compares the source against the same remembered
-decisions and cites them with evidence, while openly reporting what it could not verify — it is a
-source-pattern aid, not an enforcement gate, because its accuracy was audited and the human was
-deliberately kept in charge.
+load-time only: it does not play the game, inspect pixels, or test every mechanic, so diff review
+matters. An advisory Decision Guard compares source patterns against the same decisions and cites
+them with evidence — a source-pattern aid, not an enforcement gate; its accuracy was audited and the
+human stays in charge.
 
 The pipeline runs locally around Meta Muse: the Muse Code CLI generates the game and performs every
-subsequent edit, falling back once to a contributor key only on quota errors, under per-run budgets
-for calls, tokens, and time.
+subsequent edit, with a bounded quota fallback and per-run budgets.
 
-In a controlled A/B/C trial with one model and one identical request, the remembered palette drove
-the output: with a sunset decision the game rendered its accent; with no memory, neither palette
-appeared; after correcting the decision to an ocean palette, the ocean accent appeared and the
-superseded value appeared nowhere. Every change ends in explicit human approval, a diff, and
-versioned rollback to the recorded parent.
+In a controlled A/B/C trial with one model and one request, the remembered palette drove output:
+sunset memory produced the sunset accent, with no memory neither appeared, and the corrected ocean
+decision produced the ocean accent with the superseded value absent. Results are one run per
+condition — directional, not statistical. Each change is human-approved, diffed, and can roll back
+to its recorded parent.
 
 ## Technical innovation summary
 
 - **Correctable, supersedeable memory:** atomic transactional corrections with audit history;
   superseded decisions are excluded from retrieval, so stale constraints stop constraining —
-  causally demonstrated (the corrected-memory condition produced the corrected palette and no
+  demonstrated in the controlled A/C trial (the corrected-memory condition produced the corrected
+  palette and no
   trace of the superseded one).
 - **Provable memory influence:** one production prompt builder; every job records a prompt SHA-256
   and the injected memory ids; reconstruction reproduces the exact prompt.
@@ -113,6 +115,11 @@ skipped at Phase 14A), reproducible evaluation and evidence scripts.
   instruction (dark text colour) was not honoured.
 - The app is a single-user, loopback-only development build: no authentication, no multi-tenant
   hosting. Host-header validation raises the cost of DNS rebinding; it is not a substitute for auth.
+- The demo modification footage is a **replay of recorded Phase 12A C source**, labelled on screen
+  “Replay of recorded Phase 12A Muse output.” The replay job retrieves two active memories and its
+  ids/prompt hash describe the replay, not the original generation; the original C run retrieved one
+  active memory (ocean). The replay demonstrates staging, review, approval and rollback; the A/C
+  trial demonstrates memory influence. These are separate claims.
 - No demo video was produced in Phase 14A; screenshots, a rehearsal record and a recording runbook
   are provided.
 
