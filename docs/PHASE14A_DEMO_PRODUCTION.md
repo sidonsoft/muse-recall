@@ -3,7 +3,8 @@
 **Status:** complete — submitted for director review (no merge, no submission, no guard enforcement)
 **Branch:** `agent/phase14a-demo-production`
 **Work commit:** `4a455f8264602a96fd228542c81773761052fbea` (implementation, submission docs, evidence).
-The concurrent-approval regression and the final 484-test count landed in the branch-tip commit.
+The concurrent-approval regression and the final 484-test count, plus the operator staging notes,
+landed in follow-up commits on this branch.
 **Base:** `agent/phase12e-release-hardening` @ `156c65c9a55833e00f6764f4fee20d93eec17e49`
 **Submission docs:** cherry-picked `84e6a8ce028b9d5e3e8bd5c04abbf7f3824ccc1a` (docs only, never merged)
 **Live Muse inference in this phase:** none (0 calls)
