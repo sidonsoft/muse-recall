@@ -55,6 +55,7 @@ export function PromptPanel({
   job,
   diff,
   onCancel,
+  engineLabel,
 }: {
   mode: PromptMode;
   onMode: (mode: PromptMode) => void;
@@ -74,6 +75,7 @@ export function PromptPanel({
   job: ForgeJob | null;
   diff: ForgeDiff | null;
   onCancel: () => void;
+  engineLabel: string;
 }) {
   const effectiveMode: PromptMode = hasGame ? mode : 'new';
 
@@ -90,8 +92,8 @@ export function PromptPanel({
           <Icon name="spark" className="size-3.5 text-accent" />
           Development
         </h2>
-        <span className="chip" title="Generation engine">
-          Muse Spark
+        <span className="chip" title="Configured generation provider">
+          {engineLabel}
         </span>
       </div>
 
@@ -100,6 +102,8 @@ export function PromptPanel({
           <button
             type="button"
             role="tab"
+            id="prompt-tab-change"
+            aria-controls="prompt-mode-panel"
             aria-selected={effectiveMode === 'change'}
             onClick={() => onMode('change')}
             className="tab flex-1 justify-center"
@@ -109,6 +113,8 @@ export function PromptPanel({
           <button
             type="button"
             role="tab"
+            id="prompt-tab-new"
+            aria-controls="prompt-mode-panel"
             aria-selected={effectiveMode === 'new'}
             onClick={() => onMode('new')}
             className="tab flex-1 justify-center"
@@ -119,7 +125,12 @@ export function PromptPanel({
       ) : null}
 
       {effectiveMode === 'change' ? (
-        <div className="space-y-2.5 p-3">
+        <div
+          role="tabpanel"
+          id="prompt-mode-panel"
+          aria-labelledby="prompt-tab-change"
+          className="space-y-2.5 p-3"
+        >
           <div className="flex items-center gap-2">
             {screenshot ? (
               <img
@@ -196,7 +207,12 @@ export function PromptPanel({
           </p>
         </div>
       ) : (
-        <div className="space-y-3 p-3">
+        <div
+          role="tabpanel"
+          id="prompt-mode-panel"
+          aria-labelledby="prompt-tab-new"
+          className="space-y-3 p-3"
+        >
           <div>
             <label htmlFor="studio-prompt" className="text-[11px] font-medium text-ink-dim">
               Describe the application
@@ -257,7 +273,7 @@ export function PromptPanel({
             </button>
           ) : null}
           <p className="text-[10.5px] leading-relaxed text-muted">
-            Muse Spark writes <span className="font-mono text-ink-dim">index.html</span> into a
+            The generator writes <span className="font-mono text-ink-dim">index.html</span> into a
             staging copy.
             {hasGame
               ? ' It is published as a new version only after you approve it.'

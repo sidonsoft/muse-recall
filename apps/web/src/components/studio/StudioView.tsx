@@ -669,6 +669,7 @@ export function StudioView({
             job={job}
             diff={diff}
             onCancel={() => void cancel()}
+            engineLabel={offline ? 'echo (offline)' : 'Muse Spark'}
           />
           <StudioMemory
             memories={memories}
@@ -832,13 +833,11 @@ export function StudioView({
             </div>
           ) : null}
 
-          <div
-            role="tabpanel"
-            id={`studio-panel-${tab}`}
-            aria-labelledby={`studio-tab-${tab}`}
-            className="min-h-0 flex-1"
-          >
+          <div className="min-h-0 flex-1">
             <div
+              role="tabpanel"
+              id="studio-panel-preview"
+              aria-labelledby="studio-tab-preview"
               className={
                 tab === 'preview'
                   ? 'relative flex h-full min-h-0 items-stretch justify-center overflow-hidden bg-[#0b0e14] p-2.5'
@@ -910,13 +909,23 @@ export function StudioView({
               )}
             </div>
 
-            {tab === 'source' ? (
+            <div
+              role="tabpanel"
+              id="studio-panel-source"
+              aria-labelledby="studio-tab-source"
+              className={tab === 'source' ? 'h-full' : 'hidden'}
+            >
               <SourcePanel artifact={artifact} loading={artifactLoading} error={artifactError} />
-            ) : null}
+            </div>
 
-            {tab === 'diff' ? (
+            <div
+              role="tabpanel"
+              id="studio-panel-diff"
+              aria-labelledby="studio-tab-diff"
+              className={tab === 'diff' ? 'h-full' : 'hidden'}
+            >
               <DiffPanel diff={diff} onOpenSource={() => setTab('source')} />
-            ) : null}
+            </div>
           </div>
 
           <ArtifactFooter artifact={artifact} model={model} offline={offline} />

@@ -2,7 +2,7 @@
 
 **Working branch:** `agent/muse-recall-product-positioning`
 **Implementation commit:** `1413c398068e5e359f5b42733f822802a42ba8b5`
-**Report/evidence commit:** the commit containing this document (branch HEAD; see `git log -1`).
+**Report/evidence commit:** the final docs commit on this branch (see `git log -1 -- docs/UX_PRODUCT_POLISH_REPORT.md`).
 **Baseline:** `main` at `e6e2f86928f35565ccfb54ea8d33e1af1177bd6e` (last approved public release).
 **Merge status:** **not merged into `main`**. Director approval requested.
 
@@ -23,7 +23,8 @@ second generation pipeline, no model-configuration change, no history rewrite.
 
 ## 2. Initial UX problems
 
-Full evidence, severity ranking and screenshots: [UX_AUDIT.md](UX_AUDIT.md).
+Full evidence, severity ranking and screenshots: [UX_AUDIT.md](UX_AUDIT.md) and the
+evidence-first [UX_BASELINE_AUDIT.md](UX_BASELINE_AUDIT.md).
 
 ### P0 — broken or misleading
 
@@ -64,7 +65,9 @@ rail when idle; mobile secondary; no large-rewrite warning. See the audit.
 - Four working surfaces only: **HTML Studio**, **Memory**, **Conversations**, **System**.
 - HTML Studio is the default view; System is secondary diagnostics.
 - Top bar carries the product identity, nav, health and the configured provider; the provider is
-  labelled "echo (offline)" when the deterministic provider is active, never as live Muse.
+  labelled "echo (offline)" when the deterministic provider is active, never as live Muse. The
+  Development header repeats the configured engine label, so the workflow never claims a live
+  Muse Spark run while the echo provider is active.
 - Phase badges and unbuilt sections removed from navigation; the roadmap remains in docs.
 
 ### 3.2 HTML Studio workspace
@@ -111,8 +114,8 @@ rail when idle; mobile secondary; no large-rewrite warning. See the audit.
 ### 3.5 Decision Guard UX
 
 - Lives in the Review rail, beside approval, never as a gate.
-- Keeps the advisory banner, supported-check scope, assessment, engine/source metadata, rule,
-  severity, decision reference, explanation and bounded evidence excerpt.
+- Keeps the advisory banner, assessment reason, findings (rule, severity, decision reference,
+  explanation, bounded evidence excerpt) and a collapsible scope/engine-metadata block.
 - "Findings do not block approval in this version" is always present; no green PASS badge.
 - The scroll container was removed so findings are readable in the rail rather than trapped in a
   nested 248 px pane (visible in the final evidence).
@@ -127,6 +130,25 @@ rail when idle; mobile secondary; no large-rewrite warning. See the audit.
 - The next proposed version is `max(existing versions) + 1`, correct after rollbacks and
   non-linear history.
 - Version history shows current and prior versions with timestamp and short SHA.
+
+### 3.7 Files changed (summary)
+
+| Area | Files |
+| --- | --- |
+| Shell and navigation | `apps/web/src/App.tsx`, `components/TopBar.tsx`, `views.ts`, `index.html` |
+| Design tokens and primitives | `apps/web/src/index.css`, `components/Icon.tsx` |
+| HTML Studio | `components/studio/StudioView.tsx`, `PromptPanel.tsx`, `ReviewPanel.tsx`, `SourceAndDiff.tsx`, `StudioMemory.tsx`, `StudioActivity.tsx`, `ProjectSwitcher.tsx` |
+| Memory and Guard presentation | `components/memory/MemoryInspector.tsx`, `components/forge/DecisionGuardAdvisory.tsx` |
+| Diagnostics | `components/Overview.tsx`, `components/ProviderBench.tsx` |
+| Client API and formatting | `lib/api.ts`, `lib/format.ts` |
+| Server contract | `packages/shared/src/forge.ts`, `apps/server/src/routes/forge.ts`, `forge/prompt.ts`, `forge/runner.ts`, `forge/runtime-check.ts`, `forge/workspace.ts`, `apps/server/src/index.ts` |
+| Tests and fixtures | `tests/integration/forge-api.test.ts`, `tests/unit/forge-{prompt,workspace}.test.ts`, `tests/fixtures/general-app.html`, `tests/fixtures/forge-prompt/*` |
+| Evidence tooling | `scripts/ux-evidence.ts`, `package.json` (`evidence:ux`), `scripts/verify-ui.ts` |
+| Documentation | this report, `UX_AUDIT.md`, `UX_BASELINE_AUDIT.md`, `DESIGN_SYSTEM.md`, `HTML_STUDIO_ASSESSMENT.md`, `PRODUCT_POSITIONING.md`, `ux-evidence/README.md`, README and submission copy |
+
+Removed: the old `ForgeView`, `Sidebar` and `ContextInspector` (replaced by HTML Studio, the top
+bar, and the purpose-built review rail). No experimental evidence, video, model configuration or
+inference-provider file was changed.
 
 ---
 
@@ -168,8 +190,9 @@ in `docs/ux-evidence/final/`. Baseline frames are in `docs/ux-evidence/baseline/
 | Reduced motion | With `prefers-reduced-motion: reduce`, skeleton and spinner animation durations measured at `1e-06s`; transitions disabled. |
 | Refocus | Project switching clears prior state before fetch, removing a transient preview 404 and stale title. |
 
-Known gaps: the "Change this app / New app" segmented switch uses tab roles without separate
-tabpanels; the iframe focus ring is browser-native. Both are recorded as P2 follow-ups.
+Known gaps: the iframe focus ring is browser-native (styled focus applies to the application
+chrome, not the generated document). The mode switch now exposes a proper tablist with an
+associated tabpanel.
 
 ---
 
@@ -180,10 +203,11 @@ Commands run from the candidate worktree:
 | Check | Result |
 | --- | --- |
 | `pnpm verify` (lint + typecheck + 491 tests) | **PASS** — 491 passed, 3 skipped (494 total), 30 files. |
-| `pnpm build` | **PASS** — web 477 kB JS / 43 kB CSS; server 306.6 kB bundle. |
+| `pnpm build` | **PASS** — web 478.4 kB JS / 43.1 kB CSS; server 306.6 kB bundle. |
 | `pnpm verify:runtime` | **PASS** — valid scene; broken scene fails; HTTP and WebSocket exfiltration blocked. |
 | `pnpm verify:forge` | **PASS** — 9 checks: generate, preview canvas, approve, screenshot, staged diff, reject, approve v2, rollback v1, no console/page errors. |
 | `pnpm verify:browser` (`scripts/verify-ui.ts`, echo mode) | **PASS** — System, provider bench, memory create/correct/explain/delete, two conversation turns, Studio tabs; live-Muse and generative-UI segments are explicitly skipped when the echo provider is configured. |
+| `pnpm evidence:ux` (`scripts/ux-evidence.ts`) | **PASS** — 24 frames across three viewports; staging, Guard finding, reject, text-only modify, approve with a decision, download, rollback confirmation, rollback and offline error; assertions on `current_version` 1 → 2 → 1. |
 | Text-only modify (UI + API) | **PASS** — change staged without a screenshot; approved v2; rolled back v1. |
 | Reject (UI) | **PASS** — "Change rejected. The approved application is untouched."; current remains v1. |
 | Export | **PASS** — downloaded `farmyard-memory-match-v1.html` (11,529 bytes); opened independently from `file://`, rendered a canvas with no page errors. CDN dependency is disclosed. |
@@ -214,6 +238,38 @@ Captured at **1920×1080**, **1440×900** and **1280×720** against the seeded d
 | Staged state | Preview shows "staged — not approved"; approval visible; guard finding readable in rail. |
 | Loading | Skeletons for project/artifact; spinner with text for generation; no layout shift. |
 | Errors | Inline error bars; runtime-error banner with Reload; validation issues listed. |
+
+### 7.1 Iteration passes
+
+**Pass 1 (first implementation, 1440 and 1280).** Defects found in the captured frames, not in
+tests:
+
+- the review rail grew with content, so **Approve/Reject were clipped at 720 px**;
+- the Guard's scope paragraph pushed findings below the fold, showing a block of caveats before
+  any finding;
+- the memory rail overflowed the left column and hid its own footer;
+- the optional screenshot block consumed ~110 px after screenshots became optional;
+- the diff opened on ~185 removals before showing additions;
+- the offline card exposed a raw HTTP/proxy string and a hard-coded port hint;
+- the project picker's menu overlapped the review rail without a visible close affordance;
+- long system paths were truncated mid-directory.
+
+**Corrections.** Fixed review footer + scrolling evidence pane; findings before the collapsible
+scope block; capped, scrollable memory list with the caveat always visible; compact optional
+capture row; additions-first diff with wrap and counts; friendly offline recovery card; Escape and
+focus return for the project dialog; separator-aware path shortening.
+
+**Pass 2 (final implementation).** All 24 final frames were re-captured by `pnpm evidence:ux`.
+Approve/Reject are visible at 1280×720; the Guard rule and severity are visible in the same
+viewport; the approved/staged toggle, source and changes tabs align; the memory caveat and "Open
+memory" link are visible at 1440×900; no page-level horizontal overflow occurs at any target
+viewport. Remaining known gaps are listed in §8.
+
+
+All five commands above were re-run during the final QA pass on this branch. The browser smoke
+script overwrites its historical screenshots by design; the tracked Phase 1 and Phase 9 frames were
+restored from `HEAD` afterwards and are **not** part of this change. `docs/ux-evidence/` was
+produced only by `pnpm evidence:ux`.
 
 ---
 
@@ -297,3 +353,35 @@ Conditions before public release:
 4. Have the director approve the new positioning and the test-count/API documentation updates.
 
 **No merge, tag, release or submission has been performed.**
+
+---
+
+## 10. Merge recommendation
+
+**Recommendation: merge `agent/muse-recall-product-positioning` into `main` after director review
+of the demo implication; do not merge automatically.** The branch is self-contained, `pnpm verify`
+and `pnpm build` pass, the application still uses the existing Muse provider configuration and
+approval/rollback server paths, and no experimental evidence or video was modified.
+
+**Do not merge** if the approved submission cut must remain byte-for-byte identical to the
+repository it was recorded from: this branch changes the product name, landing surface, layout and
+every visible frame. The existing cut remains the safe fallback; the revised storyboard is the
+path for a V2 recording.
+
+The branch is not merged, not force-pushed, and the submission has not been made.
+
+---
+
+## 11. Evidence index
+
+| Artefact | Location |
+| --- | --- |
+| Baseline audit (severity-ranked, screenshots) | [UX_BASELINE_AUDIT.md](UX_BASELINE_AUDIT.md) |
+| Full before/after audit | [UX_AUDIT.md](UX_AUDIT.md) |
+| Implemented design system | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) |
+| HTML Studio capability assessment | [HTML_STUDIO_ASSESSMENT.md](HTML_STUDIO_ASSESSMENT.md) |
+| Product positioning | [PRODUCT_POSITIONING.md](PRODUCT_POSITIONING.md) |
+| Before/after frames, three viewports | [ux-evidence/README.md](ux-evidence/README.md) |
+| Capture script | `pnpm evidence:ux` (`scripts/ux-evidence.ts`) |
+| Audit comparison set | [assets/ux-audit/](assets/ux-audit/) |
+| Revised storyboard (not recorded) | [submission/REVISED_DEMO_STORYBOARD.md](submission/REVISED_DEMO_STORYBOARD.md) |

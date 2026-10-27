@@ -181,7 +181,10 @@ never HTML-injected.
   transitions; scroll behaviour becomes auto.
 - **Confirmation:** destructive actions use inline confirmation (rollback) or an explicit mode
   (Reject is a separate button; approval is not implied by generation).
-- **No auto-advance:** generating never switches to "approved"; it switches to the staged diff.
+- **No auto-advance:** generating never switches to "approved"; it switches to the staged
+  **preview**, with the Changes tab marked `staged` for code review.
+- **Provider honesty:** the Development header names the configured engine, including
+  "echo (offline)"; the product narrative never turns a test double into live Muse Spark.
 
 ---
 

@@ -45,7 +45,7 @@ export function StudioMemory({
         </button>
       </div>
 
-      <div className="max-h-[300px] min-h-0 flex-1 overflow-y-auto p-2.5">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
         {loading && memories === null ? (
           <div className="space-y-1.5" aria-busy="true">
             <div className="skeleton h-12 w-full" />
