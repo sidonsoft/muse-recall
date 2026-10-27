@@ -28,6 +28,9 @@ git show <commit>:<path>                              # read it without checking
 | 12E release-candidate hardening | `agent/phase12e-release-hardening` | RC `156c65c9a55833e00f6764f4fee20d93eec17e49` |
 | 13 submission documents | `agent/strata-phase13-submission` | docs-only `84e6a8c` (cherry-picked, never merged) |
 | 14A demo production + release blockers | `agent/phase14a-demo-production` | branched from `156c65c`; evidence in `docs/hackathon-evidence/phase14a/` |
+| 15A child-safety pilot (6 runs) | `agent/phase15a-pilot` | `e62b5bc` → `9d91865`; pilot only, not pooled |
+| 15B child-safety trial (32 runs) | `agent/phase15b` | protocol `d84d8a1`, results `2857159`, correction `9f5eaa1`; integrated on the release candidate |
+| V2 live FocusFlow demo | `agent/muse-recall-live-demo` | `2ba4ba2`; evidence in `docs/demo/` |
 
 ## Claim-by-claim map
 
@@ -202,6 +205,49 @@ git show <commit>:<path>                              # read it without checking
 - **Confidence:** high.
 - **Limitations:** these are narrow hardening measures, not a security architecture review.
 
+## V2 release addendum — FocusFlow and Phase 15B
+
+This map was written for Phase 14A. The final release candidate adds the live FocusFlow
+demonstration and the integrated Phase 15B research; those claims are mapped here.
+
+### C14 — Muse Spark generated a working non-game HTML application
+
+- **Evidence:** [`docs/demo/NON_GAME_HTML_VALIDATION.md`](../demo/NON_GAME_HTML_VALIDATION.md) §3–4;
+  job `e358246a…`, artifact `v2-staged.html` (approved v1), 21/21 browser checks; rejected attempt 1
+  (`1621b9db…`) preserved with its failure record.
+- **Kind:** authentic model output, driven in the shipped preview; **retake** after a sandbox form
+  failure, with an added sandbox instruction in attempt 2's prompt.
+- **Confidence:** high for this application and run.
+- **Limitations:** one application, one model, one prompt; not a general capability measurement.
+
+### C15 — Muse Spark modified the approved application in place
+
+- **Evidence:** `NON_GAME_HTML_VALIDATION.md` §5–6; job `aeb6b175…`, `base_version: 1`, approved v2,
+  25/25 browser checks; four decisions supplied to the job.
+- **Kind:** authentic model output.
+- **Confidence:** high for this modification.
+- **Limitations:** one modification; retrieved memory does not establish causation.
+
+### C16 — A remembered rule can produce a live refusal
+
+- **Evidence:** `NON_GAME_HTML_VALIDATION.md` §7; job `0ecc11a0…`, artifact byte-identical to approved
+  v2, rejected as a no-op; model transcript preserved.
+- **Kind:** authentic model output, one run, staged conflict.
+- **Confidence:** medium: a single observation, not a general claim.
+- **Limitations:** the opposite result occurred in the Phase 15B boundary probe; Decision Guard
+  returned `not_verified` with 0 findings and played no part.
+
+### C17 — Phase 15B: project memory reduced rule violations in generated game code
+
+- **Evidence:** [`docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md`](../hackathon-evidence/phase15b/EVIDENCE_CARD.md),
+  [`PROVENANCE_MANIFEST.md`](../hackathon-evidence/phase15b/PROVENANCE_MANIFEST.md),
+  [`DEVIATIONS.md`](../hackathon-evidence/phase15b/DEVIATIONS.md); 32 outputs with matching hashes.
+- **Kind:** authentic model output, 32 runs, one model/game/request; automated coding only.
+- **Confidence:** high that the no-memory arm added countdowns/flashes/score deductions in 15/16
+  runs; the memory-arm count is 5/16 (v1) or 0/16 (post-hoc v2).
+- **Limitations:** the v1 coder source is lost; v2 is post-hoc with narrow definitions; the memory
+  arm carried the full decision set; no per-run model or memory ids.
+
 ## Claims we explicitly do NOT make (unsupported)
 
 | Tempting claim | Verdict | Why |
@@ -213,7 +259,7 @@ git show <commit>:<path>                              # read it without checking
 | “There is a runtime-verification screenshot” | **Unsupported** | The UI exposes no such image; the browser preview capture is a different feature. |
 | “All remembered constraints are applied to output” | **Unsupported** | Phase 12A: accent tracked in all conditions, text colour ignored; retrieval uses a budget. |
 | “Guard catches every violation of remembered decisions” | **Unsupported** | 8-digit RGBA hexes and tween flashes are demonstrated gaps. |
-| “Statistically significant improvement” | **Unsupported** | n = 1 per condition (12A), n = 5 trials (11A); all exploratory. |
+| “Statistically significant improvement across development tasks” | **Unsupported** | Phase 15B supports one narrow contrast only (one model, game, rule, request); 12A is n = 1 per condition and 11A is n = 5. |
 | “A demo video exists” | **Unsupported** | No video file was created in Phase 14A; screenshots and a runbook are the assets. |
 | Performance/memory-cost savings beyond those cited | **Unsupported** | No controlled benchmark of end-to-end savings. |
 

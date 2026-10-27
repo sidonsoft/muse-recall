@@ -3,6 +3,17 @@
 This directory records how the Phase 1 and Phase 2 milestones were verified against the
 committed history. It exists so a reviewer can check claims instead of trusting a summary.
 
+## Research evidence added for the V2 release
+
+| Phase | Where | What it is |
+| --- | --- | --- |
+| 15A child-safety pilot | [`phase15a/`](phase15a/) and [`../PHASE15A_CHILD_SAFETY_TRIAL_RESULTS.md`](../PHASE15A_CHILD_SAFETY_TRIAL_RESULTS.md) | Six-run **pilot**; not pooled with 15B |
+| 15B child-safety trial | [`phase15b/EVIDENCE_CARD.md`](phase15b/EVIDENCE_CARD.md) | 32-run trial: evidence card, [provenance](phase15b/PROVENANCE_MANIFEST.md), [deviations](phase15b/DEVIATIONS.md), [human-coding disclosure](phase15b/HUMAN_CODING.md) and [recovered tooling](phase15b/recovered/) |
+
+Phase 15B is published unchanged from `agent/phase15b` (`d84d8a1 → 2857159 → 9f5eaa1`) and integrated
+with a merge commit. The original v1 scoring source was not preserved; only its per-run output is
+available. Read the evidence card before quoting any number.
+
 ## Commits under review
 
 | Phase | Commit | Permalink |

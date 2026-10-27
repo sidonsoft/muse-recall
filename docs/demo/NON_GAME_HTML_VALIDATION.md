@@ -345,7 +345,12 @@ the first successful generation.
 
 ---
 
-## 7. Decision Guard probe (live)
+## 7. Memory-conflict probe (live refusal)
+
+> **Naming note (added at release integration).** This section was historically titled "Decision
+> Guard probe". Decision Guard returned `not_verified` with **0 findings**; it did not detect, block
+> or certify anything here. The observation is a **memory-conflict refusal**, and the accurate
+> public label is "live memory-conflict refusal". The evidence below is unchanged.
 
 This was an **exploratory demonstration**, not a new hypothesis test. It adds a project
 constraint — *"Never add countdown mechanics to FocusFlow; avoid countdown timers and time

@@ -18,15 +18,15 @@ Games remain an excellent demonstration — the seeded project is a Muse-built m
 but the artifact contract is a general browser application, not a game. HTML Studio reuses
 the existing Muse Spark pipeline; it is not a second generator.
 
-> **Status: product-repositioning candidate on
-> `agent/muse-recall-product-positioning`; `main` remains the approved Phase 14C release
-> candidate. Submission not performed.** Implemented and verified on the candidate branch:
-> the memory engine, chat sessions, declarative generative UI, authorized agent tools with
-> write approval, the advisory Decision Guard, HTML Studio with sandboxed preview, source
-> inspection, staged diffs and disclosed export, general HTML application validation, and
-> the modify-in-place loop with load-time runtime verification. See
-> [Project status](#project-status) and the
-> [submission evidence map](docs/submission/EVIDENCE_MAP.md).
+> **Status: final release candidate on `agent/muse-recall-release-candidate`,
+> based on `agent/muse-recall-final-p1-fixes` @ `62ff522`. `main` remains the approved
+> Phase 14C release candidate. Submission not performed; the V2 video has not been
+> rendered.** The candidate integrates the original Phase 15B research branch, publishes
+> its recovered tooling and provenance disclosures, adds the live FocusFlow non-game
+> demonstration, and closes the cross-origin state-mutation gap with a server-side guard.
+> See [Project status](#project-status), the
+> [submission evidence map](docs/submission/EVIDENCE_MAP.md), and the
+> [final integration report](docs/release/FINAL_INTEGRATION_REPORT.md).
 
 ---
 
@@ -56,6 +56,44 @@ other path:
   separate boundaries, so retrieved text can never widen its own authority.
 - **Generative interface** — Muse returns a validated declarative UI spec rendered by a
   fixed component registry. No model-authored JavaScript ever runs.
+
+---
+
+## FocusFlow — the live non-game demonstration
+
+The recorded demonstration is **FocusFlow**, a single-file personal task planner generated and
+then modified by Muse Spark in HTML Studio. It is a genuine application, not a game: no canvas,
+no game loop, no Phaser. The full provenance is in
+[docs/demo/NON_GAME_HTML_VALIDATION.md](docs/demo/NON_GAME_HTML_VALIDATION.md).
+
+**Generation.** Attempt 1 (`1621b9db…`) was a real Muse Spark generation that rendered but used a
+native form submit; the preview sandbox blocks native submission, so it was **rejected**. The
+artifact and failure record are preserved. Attempt 2 (`e358246a…`) added a human-written sandbox
+instruction to the prompt, succeeded, passed **21/21** browser checks, and was approved as **v1**.
+This was a **retake with an added sandbox instruction**, not an identical retry.
+
+**Modification.** Muse Spark modified the approved v1 in place (`aeb6b175…`, base version 1). It
+added task priorities and a high-priority remaining count, passed **25/25** browser checks, and was
+approved as **v2**. Version history keeps v1 recoverable.
+
+**Live memory-conflict refusal.** A later request asked for a countdown timer (`0ecc11a0…`). The
+model returned the approved file unchanged and explained that the project's remembered no-countdown
+rule forbade it. The job was **rejected** because there was nothing to promote. Decision Guard
+returned `not_verified` with **0 findings**: it did not detect, block or certify anything here.
+
+FocusFlow limitations, stated plainly:
+
+- Model identity is the **configured** `muse-spark-1.3-contributor`; the job records do not persist
+  an independently observed per-job model id.
+- Retrieved memory is proven (four decisions were supplied to the modification); it does **not**
+  independently establish causation for any visual choice.
+- The v2 approval records `can_rollback: true`, but **rollback was not executed on FocusFlow**. The
+  rollback capability is proven by the fixture workflow suite.
+- The approval-time runtime checker is primarily **load-time** verification. Interaction checks are
+  a separate Playwright validation.
+- Exported HTML does **not** retain the Studio's sandbox protections; opening it from disk runs it
+  unsandboxed.
+- Some applications rely on approved CDN dependencies (for example a pinned Phaser build).
 
 ---
 
@@ -90,11 +128,13 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (518 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (549 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
 pnpm verify:runtime         # load-time browser check used by HTML Studio approval
+pnpm verify:security        # browser reproduction: foreign-origin rollback rejected, same-origin allowed
+pnpm verify:research        # Phase 15B: 32 hashes, order, counts, Fisher p, recovered bundle
 pnpm verify:formsandbox     # native submission blocked; JS/Enter interactions work
 pnpm verify:forge-workflow  # backend generate/stage/diff/approve/reject/rollback
 pnpm verify:forge           # HTML Studio browser loop (FORGE_VERIFY_BASE, default :5173)
@@ -160,9 +200,13 @@ default.
 | Demo production + rollback-ancestry fix | 14A | **Complete**, verified |
 | Independent submission/evidence audit | 14B | **Complete** on a separate branch; not merged |
 | Final recording clearance | 14C | **Complete** |
-| Product repositioning + UX audit/design system | polish | **Complete** on candidate branch |
-| HTML Studio: preview, source, diff, artifact integrity, disclosed export | polish | **Complete** on candidate branch |
-| General HTML application validation + runtime gate | polish | **Complete** on candidate branch, tested |
+| Product repositioning + UX audit/design system | polish | **Complete**, merged into the release candidate |
+| HTML Studio: preview, source, diff, artifact integrity, disclosed export | polish | **Complete**, merged into the release candidate |
+| General HTML application validation + runtime gate | polish | **Complete**, tested |
+| Live FocusFlow generation, modification and memory-conflict refusal | live demo | **Complete**, evidence preserved |
+| Phase 15B child-safety research trial | 15B | **Complete**, integrated with provenance and deviations |
+| Cross-origin state-mutation guard + regression tests | security | **Complete** |
+| Final release integration and verification | release | **Complete**, awaiting director approval |
 | Record/upload video and submit the form | — | **Owner action pending** |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
@@ -269,6 +313,12 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 
 Every route returns `{ ok: true, data }` or `{ ok: false, error: { code, message } }`.
 
+State-changing routes (`POST`, `PATCH`, `DELETE`) additionally require a trusted `Origin` when one
+is present: the request's own origin on the API port, or an origin listed in `CORS_ORIGINS`.
+`Origin: null`, malformed origins and foreign origins receive `403 forbidden_origin` before any
+handler runs. Non-browser clients that send no `Origin` continue to work; the guard is described in
+[docs/release/CROSS_ORIGIN_SECURITY_FIX.md](docs/release/CROSS_ORIGIN_SECURITY_FIX.md).
+
 ---
 
 ## Architecture
@@ -362,20 +412,50 @@ tokens → 1 turn / 16,900). Sample size is small; no significance is claimed. F
 
 Later phases add real-model evidence: five Phase 11A modification trials (5/5 approved,
 all rolled back), the Phase 12A/12C memory-influence A/B/C trial (one run per condition),
-and the Phase 14A rehearsal and rollback-ancestry records. Those artefacts are indexed in
+the Phase 14A rehearsal and rollback-ancestry records, and the Phase 15B 32-run trial below.
+Those artefacts are indexed in
 [docs/submission/EVIDENCE_MAP.md](docs/submission/EVIDENCE_MAP.md) with their evidence
 class and limitations.
+
+### Phase 15B child-safety memory trial
+
+> In a preregistered 32-run trial using one Muse Spark model, one game and one modification
+> request, 15 of 16 edits without project memory added a countdown, full-screen flash or score
+> deduction. With project memory, the original automated coding flagged 5 of 16. A post-hoc review
+> identified those five flags as references to "no penalties"; corrected coding found 0 of 16 under
+> its narrower operational definitions. The original scoring script was not preserved, but its
+> per-run output is available.
+
+- **Pre-registered comparison (original automated coder, v1):** 15/16 without memory vs 5/16 with,
+  two-tailed Fisher exact **p = 0.000635**.
+- **Post-hoc corrected coder (v2):** 15/16 vs 0/16, **p = 5.66 × 10⁻⁸**. The correction was made
+  after unblinding and is **not** confirmatory.
+- The protocol pre-registered the **rubric text**, not scoring code. The v1 implementation was never
+  committed and was overwritten; only its per-run output survives.
+- Scope: one model, one game, one remembered rule, one request, edit path only. The memory arm
+  carried the full project decision set, so the contrast is project memory present vs absent.
+- The corrected coder counts countdowns, full-screen flashes and score deductions. It does not count
+  streak resets or shortened reveal times; some memory-arm outputs contain those under a broader
+  reading of "penalty".
+
+Evidence card: [docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md](docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md).
+Provenance: [PROVENANCE_MANIFEST.md](docs/hackathon-evidence/phase15b/PROVENANCE_MANIFEST.md).
+Deviations: [DEVIATIONS.md](docs/hackathon-evidence/phase15b/DEVIATIONS.md).
+Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 15B.
 
 ## Submission materials
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
-- [Submission copy](docs/submission/SUBMISSION_COPY.md) — current 93/289-word descriptions
+- [Submission copy](docs/submission/SUBMISSION_COPY.md) — current short and long descriptions
+- [Canonical V2 storyboard](docs/submission/V2_DEMO_RECORDING_PLAN.md) — the only current storyboard
+- [Live FocusFlow validation](docs/demo/NON_GAME_HTML_VALIDATION.md) and [live configuration](docs/demo/LIVE_MUSE_CONFIGURATION.md)
+- [Phase 15B evidence card](docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md), [provenance](docs/hackathon-evidence/phase15b/PROVENANCE_MANIFEST.md) and [deviations](docs/hackathon-evidence/phase15b/DEVIATIONS.md)
+- [Cross-origin security fix](docs/release/CROSS_ORIGIN_SECURITY_FIX.md) and [final integration report](docs/release/FINAL_INTEGRATION_REPORT.md)
 - [Product positioning](docs/PRODUCT_POSITIONING.md) — identity, claims register, honesty boundaries
 - [HTML Studio assessment](docs/HTML_STUDIO_ASSESSMENT.md) — capability, security, export, scope
 - [UX audit](docs/UX_AUDIT.md) and [design system](docs/DESIGN_SYSTEM.md)
-- [Revised demo storyboard](docs/submission/REVISED_DEMO_STORYBOARD.md)
-- [Phase 14C recording clearance](docs/PHASE14C_RECORDING_CLEARANCE.md)
-- [Three-minute demo script](docs/submission/DEMO_SCRIPT_3MIN.md) and [runbook](docs/submission/DEMO_RUNBOOK.md)
+- Superseded storyboards (historical, do not use for the V2 recording): [REVISED_DEMO_STORYBOARD.md](docs/submission/REVISED_DEMO_STORYBOARD.md), [DEMO_SCRIPT_3MIN.md](docs/submission/DEMO_SCRIPT_3MIN.md), [VIDEO_STORYBOARD.md](docs/VIDEO_STORYBOARD.md), [RECUT_BRIEF_PHASE15A.md](docs/submission/RECUT_BRIEF_PHASE15A.md)
+- [Phase 14C recording clearance](docs/PHASE14C_RECORDING_CLEARANCE.md) and [demo runbook](docs/submission/DEMO_RUNBOOK.md)
 - [Evidence map](docs/submission/EVIDENCE_MAP.md) and [project story](docs/submission/PROJECT_STORY.md)
 - [Evaluation report](docs/EVALUATION_REPORT.md) and [architecture overview](docs/ARCHITECTURE_OVERVIEW.md)
 
@@ -407,6 +487,21 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
   verification.
 - **The A/B/C memory-influence trial is directional.** One run per condition, not a
   statistical result.
+- **Phase 15B is bounded and partly post-hoc.** One model, one game, one remembered rule and one
+  request; the corrected 0/16 coding was produced after unblinding and is not confirmatory. The
+  original scoring code was not preserved and its loss is disclosed.
+- **FocusFlow is a demonstration, not a causal experiment.** Retrieved memory is proven to have
+  been supplied; it does not prove that memory caused a visual choice. Generation used a **retake**
+  with an added sandbox instruction after attempt 1 was rejected. Rollback was recorded but not
+  executed on FocusFlow.
+- **Exported HTML runs unsandboxed.** The Studio preview is sandboxed; a downloaded file opened
+  from disk is not, and it still needs network access for approved CDN dependencies.
+- **Out-of-box model defaults are not Muse Spark.** `.env.example` ships `muse-wonder-1.0`; the live
+  demonstration explicitly configured `muse-spark-1.3` / `muse-spark-1.3-contributor` at
+  `effort: high`. Check the model shown in the top bar before recording.
+- **Cross-origin mutations are blocked, not authenticated.** A server-side Origin guard now rejects
+  foreign and `null` origins on state-changing routes. It is proportionate for a single-user
+  loopback tool; a multi-user deployment would still require authentication and CSRF tokens.
 
 ---
 

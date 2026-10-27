@@ -1,5 +1,9 @@
 # Muse Recall demo — re-cut brief (V3, built on the Phase 15A trial)
 
+> **SUPERSEDED — historical document; not adopted.** Phase 15A is a six-run **pilot**, not
+> confirmatory evidence, and this brief is not the storyboard. The canonical storyboard is
+> [V2_DEMO_RECORDING_PLAN.md](V2_DEMO_RECORDING_PLAN.md). This file is retained for history only.
+
 **For:** the video producer (Sol 6.1), revising the V2 cut at
 `~/Documents/Codex/2026-10-27/referenced-chatgpt-conversation-this-is-an-3/outputs/Muse_Recall_Revision_v2/`.
 **Evidence source:** branch `claude/muse-recall-demo-review-ec4fbf` (local, not on `main`), commits

@@ -1,5 +1,9 @@
 # Revised demonstration storyboard — Muse Recall / HTML Studio
 
+> **SUPERSEDED — historical document.** The canonical storyboard is
+> [V2_DEMO_RECORDING_PLAN.md](V2_DEMO_RECORDING_PLAN.md). This file is retained for history and must
+> not be used for the V2 recording.
+
 **Status:** proposal for director approval. **No video has been rendered, replaced, or
 uploaded.** The existing MP4 is a protected artifact.
 

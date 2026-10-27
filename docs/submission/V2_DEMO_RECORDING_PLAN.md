@@ -1,7 +1,10 @@
 # V2 demonstration — recording plan (live FocusFlow)
 
-**Status:** proposal for director approval. **No video has been rendered, replaced, or uploaded.**
-The existing MP4 is a protected artifact and is not touched by this plan.
+**Status: canonical storyboard for the final release candidate.** It supersedes
+`REVISED_DEMO_STORYBOARD.md`, `DEMO_SCRIPT_3MIN.md`, `VIDEO_STORYBOARD.md` and
+`RECUT_BRIEF_PHASE15A.md` for the V2 recording. Those documents are retained as history and must not
+be used as the current storyboard. **No video has been rendered, replaced, or uploaded.** The
+existing MP4 is a protected artifact and is not touched by this plan.
 
 **Protected artifact:** `video/cut/Muse_Recall_CutA_1080p.mp4` in the primary workspace
 (untracked on this branch; 1920×1080, 172 s, 11.3 MB). It remains the approved fallback.
@@ -51,7 +54,7 @@ The revision keeps the 172 s target from the approved storyboard. It is **not** 
 | **C. Live memory-respecting refusal** | Real modification job `0ecc11a0…`; model refused a countdown because of remembered rule; file unchanged; rejected | `v4-staged.html`, `v4-model-response.txt` | `Live run — model honoured the remembered rule; no change promoted` |
 | **D. Authentic Phase 12A influence** | Original one-run-per-condition A/B/C evidence | `docs/hackathon-evidence/phase12/*`, `phase12/pilot.json` | `Authentic Phase 12A output — one run per condition` |
 | **E. Labelled Guard mutation** | Deterministic test edit, not model output | `docs/hackathon-evidence/phase12e/sources/…`, `05-guard-advisory-mutation.png` | `Labelled mutation — packaged evidence, not model output.` |
-| **F. Phase 15B trial** | Original preregistered trial, 32 runs | `docs/hackathon-evidence/phase15b/*` on `agent/phase15b` | `Phase 15B original preregistered coder: 15/16 vs 5/16` |
+| **F. Phase 15B trial** | Original 32-run trial; the protocol pre-registered the **rubric text**, not scoring code | [`../hackathon-evidence/phase15b/`](../hackathon-evidence/phase15b/) on this branch | `Phase 15B original automated coding: 15/16 no memory vs 5/16 memory` |
 
 Rules:
 
@@ -110,7 +113,7 @@ presented as continuous live footage.
 | 6 | 1:36–1:54 | **Inspect and review** | Changes tab: diff. Source tab: line numbers, artifact SHA and size. Review rail: validation passed. | “Before anything is published, I can read the diff and the exact staged source. The server parsed it and loaded it in headless Chrome; a blank render or a page error would stop approval. That check is load-time only — it does not play the app.” | Staged bytes; `validation.ok`, `runtime_verified: true`. Say “load-time only”. |
 | 7 | 1:54–2:12 | **Decision Guard warns** | Packaged guard finding: rule, severity, decision reference, explanation, evidence excerpt. Then cut to the live FocusFlow advisory panel showing `NOT VERIFIED` with its limitations. | “Decision Guard is independent and advisory. It checks only the supported source patterns and cites the evidence. This packaged finding is from the accuracy audit. On the live FocusFlow run it had nothing to flag: when I asked for a countdown, Muse Spark refused because the project remembered the no-countdown rule. Guard still would not claim compliance for rules it cannot check.” | **Mandatory overlay: `Labelled mutation — packaged evidence, not model output.`** Live panel: `advisory`, `not_verified`. |
 | 8 | 2:12–2:28 | **The developer decides** | Approve v2; version history shows v1 recoverable. Cut to the rejected attempt 1 (sandbox form failure) and the rejected no-op probe. Optional: two-step rollback, then restore v2 before recording ends. | “I approve, and the verified bytes become version two. Version one stays recoverable. When the first generation failed in the sandbox, I rejected it; when a later request conflicted with a remembered rule and produced no change, I rejected that too. Memory guides, Guard warns, I decide.” | Real approval `2026-10-27T19:45:07Z`; rejected jobs `1621b9db…`, `0ecc11a0…`. |
-| 9 | 2:28–2:40 | **Experimental evidence** | Phase 15B results card. | “In the Phase 15B child-safety trial, the original preregistered coder found 15 of 16 violations without memory and 5 of 16 with memory. The corrected post-hoc coder found 15 of 16 versus 0 of 16. The original is the conservative headline; the correction is published and labelled post-hoc.” | **Overlay:** `Original preregistered coder: 15/16 no memory vs 5/16 memory (p=0.0006). Corrected post-hoc: 15/16 vs 0/16.` |
+| 9 | 2:28–2:40 | **Experimental evidence** | Phase 15B results card. | “In the Phase 15B child-safety trial — one model, one game, one request — the original automated coding flagged 15 of 16 without project memory and 5 of 16 with it. A post-hoc review found those five flags were text promising no penalties; corrected coding found 0 of 16 under narrower definitions. The original scorer was not preserved, but its per-run output is published.” | **Overlay:** `Original automated coding: 15/16 no memory vs 5/16 memory (p=0.0006). Post-hoc corrected: 15/16 vs 0/16. One model, game, rule, request.` |
 | 10 | 2:40–2:52 | **Close** | Title card: “Muse Spark builds it. Recall remembers why. You decide.” Repository URL. | “Muse Spark builds it. Recall remembers why. You decide.” | End-card disclaimer. |
 
 **Timeline arithmetic:** 14 + 22 + 20 + 18 + 22 + 18 + 18 + 16 + 12 + 12 = **172 s**, contiguous,
@@ -130,7 +133,7 @@ runtime. Style: lower-third, white ≥24 pt on a 90%-opaque black bar, inside th
 | 1:54–2:12 | `Labelled mutation — packaged evidence, not model output.` | The guard finding insert |
 | 0:56–1:14 | `Authentic Phase 12A output — one run per condition.` | A/C figure |
 | 0:56–1:14 | `Directional, not statistical.` | A/C figure |
-| 2:28–2:40 | `Phase 15B original preregistered coder: 15/16 vs 5/16 (p=0.0006). Corrected post-hoc: 15/16 vs 0/16.` | Results card |
+| 2:28–2:40 | `Phase 15B original automated coding: 15/16 no memory vs 5/16 memory (p=0.0006). Post-hoc corrected: 15/16 vs 0/16. One model, game, rule, request.` | Results card |
 | End card | `Decision Guard is advisory. Runtime verification is load-time only. Retrieval is not proof of causal influence outside the controlled trials.` | Close |
 | Any replay frame | `Replay of recorded Phase 12A Muse output.` | Only if replay footage is retained |
 
@@ -154,9 +157,13 @@ retake, not the first attempt.
 - The guard probe (`0ecc11a0…`) was a genuine no-op refusal and was rejected.
 
 If the video shows attempt 2, the narration or a lower-third must not imply it was the first
-attempt. Recommended disclosure:
+attempt. Required disclosure:
 
-> `Generation retake — attempt 1 was rejected after a sandbox form failure; attempt 2 selected.`
+> `Retake with an added sandbox instruction — attempt 1 was rejected after a sandbox form failure; attempt 2 selected.`
+
+The retake kept the original request and added a human-written sandbox constraint paragraph. The
+prompt hashes differ (`0ed6bcb7…` for attempt 1 vs `bbf6a0ef…` for attempt 2); the prompt is
+preserved in `$HOME/muse-demo-live/runs/v2-prompt.txt`.
 
 If the video shows the rejected attempt 1, label it:
 
@@ -194,16 +201,21 @@ Do not manufacture one by editing the staged source.
 
 ## 8. Phase 15B numbers — exact wording and source
 
-The public headline is the **original preregistered coder**, the conservative result:
+The public headline is the **original automated coding (v1)**, the conservative result. The
+protocol pre-registered the **rubric text**, not scoring code; the v1 implementation was never
+committed and was overwritten, so only its per-run output survives. The corrected v2 coder was
+created **after unblinding**.
 
 | Scoring | Memory | No memory |
 |---|---:|---:|
-| Original preregistered coder | **5/16** | **15/16** |
-| Corrected post-hoc coder | 0/16 | 15/16 |
+| Original automated coding (v1) | **5/16** | **15/16** |
+| Corrected post-hoc coder (v2) | 0/16 | 15/16 |
 
-- Original: Fisher exact two-tailed **p = 0.000635**.
-- Corrected: **p = 5.66e-08**, but produced **after unblinding**; it is not a preregistered number.
-- Source: `docs/hackathon-evidence/phase15b/RESULTS.md` on `agent/phase15b`.
+- Original v1: Fisher exact two-tailed **p = 0.000635** (pre-registered test, original instrument).
+- Corrected v2: **p = 5.66e-08**, but produced **after unblinding**; it is not a pre-registered
+  number and is not confirmatory.
+- Source: [`docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md`](../hackathon-evidence/phase15b/EVIDENCE_CARD.md)
+  and [`RESULTS.md`](../hackathon-evidence/phase15b/RESULTS.md) on this branch.
 - Do not merge these numbers into FocusFlow evidence or present them as a FocusFlow result.
 - Do not say “memory eliminated violations” on screen without the corrected/post-hoc label.
 - The exploratory boundary probe is the reason Guard exists as a backstop: in that game probe,
@@ -230,7 +242,7 @@ The public headline is the **original preregistered coder**, the conservative re
 | Rejected v1 | `v1-failure-form-blocked.png` | Honest failure |
 | Phase 12A figure | `docs/hackathon-evidence/phase12/…`, `phase14a/memory-influence.png` | Causal evidence |
 | Guard finding | `docs/hackathon-evidence/phase12e/screenshots/05-guard-advisory-mutation.png` | Guard insert |
-| Phase 15B card | generated from `docs/hackathon-evidence/phase15b/RESULTS.md` | Results |
+| Phase 15B card | [`docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md`](../hackathon-evidence/phase15b/EVIDENCE_CARD.md) | Results |
 
 V2 output files (distinct from CutA):
 
@@ -257,7 +269,7 @@ Never write to `video/cut/Muse_Recall_CutA_1080p.mp4`.
 - [ ] Recording run (if any) has a fresh job id and provenance file.
 - [ ] 1920×1080, 100% zoom, no bookmarks bar, no personal notifications.
 - [ ] Smallest text ≥10.5 px CSS; check after 1080p compression.
-- [ ] Phase 15B card uses the conservative 5/16 vs 15/16 headline; corrected 0/16 labelled post-hoc.
+- [ ] Phase 15B card uses the original automated coding (15/16 vs 5/16, p=0.0006) as the headline; corrected 0/16 is labelled post-hoc.
 - [ ] Guard insert uses the labelled mutation overlay.
 - [ ] Existing MP4 hash recorded before and after; must be unchanged.
 
@@ -280,7 +292,7 @@ Never write to `video/cut/Muse_Recall_CutA_1080p.mp4`.
 
 ---
 
-## 12. Director decisions requested
+## 12. Production decisions for director sign-off
 
 1. **Approve live FocusFlow footage** for segments 2, 3, 5, 6, 7 (with the packaged Guard insert),
    and 8, keeping the authentic Phase 12A figure for segment 4.

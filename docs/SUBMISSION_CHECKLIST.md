@@ -1,7 +1,7 @@
 # Submission checklist
 
-Status: **not yet submitted**. This file records requirements, evidence, and the actions that
-still require the repository owner.
+Status: **final release candidate prepared; not yet submitted.** This file records requirements,
+evidence, and the actions that still require the repository owner.
 
 ## Official requirements — what could and could not be verified
 
@@ -28,13 +28,16 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] Phases 1–5 implemented and committed (`349d86c`, `8579c26`, `a3ca8c7`, `0d9df42`, `cec4320`, `7ee9c96`)
 - [x] Lint, typecheck, unit/integration tests, production build green
 - [x] Live Muse tests green (`MML_LIVE_MUSE=1 pnpm test`)
-- [x] Browser verification (28 checks) including generated form completion and submission; tool approval verified separately
+- [x] Browser verification including generated form completion and submission; tool approval verified separately
 - [x] Evaluation comparison with measured results and stated sample size
 - [x] Integrated showcase 8/8 checks with real Muse (`docs/benchmarks/showcase.json`)
 - [x] Security review: no active secrets (one historical test-fixture key rotated/revoked
       2026-10-27; see `docs/PHASE11_RELEASE_READINESS.md`), no tracked `.env`/databases, six
       bounded tools, no outbound HTTP from the app, generated UI is declarative data only
-- [x] Documentation set (submission, evaluation, architecture, demo, storyboard)
+- [x] Documentation set (submission, evaluation, architecture, demo, canonical storyboard)
+- [x] Phase 15B research published and integrated with provenance and deviation disclosures
+- [x] Live FocusFlow generation, modification and refusal evidence preserved
+- [x] Cross-origin state-mutation guard with regression tests and browser reproduction
 - [x] No feature work beyond Phase 5 scope
 - [ ] Repository visibility confirmed against the rules **(owner)**
 - [ ] Video recorded and uploaded **(owner; storyboard ready)**
@@ -47,14 +50,17 @@ Because the Official Rules were unavailable, this checklist marks visibility and
    required disclosures.
 2. If judges must open the repository, make `sidonsoft/muse-recall` public or grant access.
    Nothing else in the project depends on visibility.
-3. Record the 3-minute video from `docs/VIDEO_STORYBOARD.md` on a fresh database, following
-   `docs/DEMO_SCRIPT.md`.
+3. Record the V2 video from the canonical `docs/submission/V2_DEMO_RECORDING_PLAN.md` on a
+   fresh database. Do not use `docs/VIDEO_STORYBOARD.md`, `docs/submission/DEMO_SCRIPT_3MIN.md` or
+   `docs/submission/REVISED_DEMO_STORYBOARD.md`; they are superseded.
 4. Submit the repository URL, video URL, and the description in
-   `docs/HACKATHON_SUBMISSION.md`.
+   `docs/submission/SUBMISSION_COPY.md`.
 5. Do not claim benchmark significance: the evaluation uses n=4 per configuration.
 
 ## Deployment limitations (must be disclosed)
 
 This is a **loopback-only development application**. It has no authentication, no per-user
-isolation, and no rate limiting. It must not be exposed to a public network or presented as a
-multi-user hosted product. See `docs/security.md`.
+isolation, and no rate limiting. A server-side Origin guard rejects foreign and `null` origins on
+state-changing routes, but that is not authentication. It must not be exposed to a public network
+or presented as a multi-user hosted product. See `docs/security.md` and
+`docs/release/CROSS_ORIGIN_SECURITY_FIX.md`.

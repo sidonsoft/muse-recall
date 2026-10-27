@@ -1,5 +1,9 @@
 # Video storyboard — 3 minutes
 
+> **SUPERSEDED — historical document.** The canonical storyboard is
+> [submission/V2_DEMO_RECORDING_PLAN.md](submission/V2_DEMO_RECORDING_PLAN.md). This file is
+> retained for history and must not be used for the V2 recording.
+
 Not recorded yet. This is the shot list and narration. Record on a fresh database with
 `pnpm dev`, browser at 1440×900, zoom 100%, no personal data on screen.
 

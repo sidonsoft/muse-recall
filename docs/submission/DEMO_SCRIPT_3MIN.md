@@ -1,5 +1,9 @@
 # Muse Recall — three-minute demonstration script (Phase 14C recording clearance)
 
+> **SUPERSEDED — historical document.** The canonical storyboard is
+> [V2_DEMO_RECORDING_PLAN.md](V2_DEMO_RECORDING_PLAN.md). If any replay footage from this cut is
+> retained, its exact replay and labelled-mutation overlays still apply.
+
 **Baseline:** `agent/phase14a-demo-production` at
 `4d668bb047eceada02bd124d7f69cde44b3adbed`; seeded project `forge-demo` (`pnpm demo:seed`).
 The modification segment uses **recorded authentic Phase 12A source via a labelled replay** so the
