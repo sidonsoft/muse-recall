@@ -266,10 +266,9 @@ memory" link are visible at 1440×900; no page-level horizontal overflow occurs 
 viewport. Remaining known gaps are listed in §8.
 
 
-All five commands above were re-run during the final QA pass on this branch. The browser smoke
-script overwrites its historical screenshots by design; the tracked Phase 1 and Phase 9 frames were
-restored from `HEAD` afterwards and are **not** part of this change. `docs/ux-evidence/` was
-produced only by `pnpm evidence:ux`.
+All five commands above were re-run during the final QA pass on this branch. The browser smoke script writes its screenshots under `test-results/verify-ui/` (gitignored)
+by default, so a routine verification run cannot overwrite the historical Phase 1/9 frames.
+`docs/ux-evidence/` is produced only by `pnpm evidence:ux`.
 
 ---
 

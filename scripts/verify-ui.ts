@@ -10,6 +10,11 @@
  *   pnpm dev:server   # terminal 1
  *   pnpm dev:web      # terminal 2
  *   pnpm exec tsx scripts/verify-ui.ts
+ *
+ * Screenshots default to `test-results/verify-ui/` (gitignored). Pass
+ * `--screenshot <path>` only when you deliberately want to write elsewhere;
+ * the historical evidence under `docs/assets/` must not be overwritten by a
+ * routine test run.
  */
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -18,7 +23,9 @@ import { chromium } from 'playwright-core';
 const url = process.env.VERIFY_URL ?? 'http://127.0.0.1:5173';
 const screenshotFlag = process.argv.indexOf('--screenshot');
 const screenshotPath =
-  screenshotFlag !== -1 ? process.argv[screenshotFlag + 1] : 'docs/assets/phase1-ui.png';
+  screenshotFlag !== -1
+    ? (process.argv[screenshotFlag + 1] ?? 'test-results/verify-ui/phase1-ui.png')
+    : 'test-results/verify-ui/phase1-ui.png';
 
 const problems: string[] = [];
 const notes: string[] = [];
