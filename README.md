@@ -18,12 +18,17 @@ Games remain an excellent demonstration — the seeded project is a Muse-built m
 but the artifact contract is a general browser application, not a game. HTML Studio reuses
 the existing Muse Spark pipeline; it is not a second generator.
 
-> **Status: final release candidate on `agent/muse-recall-release-candidate`,
-> based on `agent/muse-recall-final-p1-fixes` @ `62ff522`. `main` remains the approved
-> Phase 14C release candidate. Submission not performed; the V2 video has not been
-> rendered.** The candidate integrates the original Phase 15B research branch, publishes
-> its recovered tooling and provenance disclosures, adds the live FocusFlow non-game
-> demonstration, and closes the cross-origin state-mutation gap with a server-side guard.
+> **Status: final release. `main` is the approved release candidate
+> (`328092c`, fast-forwarded from `agent/muse-recall-release-candidate`), plus the
+> documentation record for the delivered V2 demonstration. The V2 video has been
+> rendered and QA'd: `Muse_Recall_Demo_V2_1080p.mp4`, 172 s, SHA-256 `57ce9e…`.
+> Submission not performed; director acceptance of the video and final submission
+> approval remain pending.** The release integrates the original Phase 15B research
+> branch, publishes its recovered tooling and provenance disclosures, adds the live
+> FocusFlow non-game demonstration, and closes the cross-origin state-mutation gap
+> with a server-side guard. Production and QA records:
+> [V2 video manifest](docs/submission/V2_VIDEO_PRODUCTION_MANIFEST.md) and
+> [V2 QA report](docs/submission/V2_VIDEO_QA_REPORT.md).
 > See [Project status](#project-status), the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md), and the
 > [final integration report](docs/release/FINAL_INTEGRATION_REPORT.md).
@@ -206,8 +211,9 @@ default.
 | Live FocusFlow generation, modification and memory-conflict refusal | live demo | **Complete**, evidence preserved |
 | Phase 15B child-safety research trial | 15B | **Complete**, integrated with provenance and deviations |
 | Cross-origin state-mutation guard + regression tests | security | **Complete** |
-| Final release integration and verification | release | **Complete**, awaiting director approval |
-| Record/upload video and submit the form | — | **Owner action pending** |
+| Final release integration and verification | release | **Complete**; released to `main` by fast-forward (`328092c`) |
+| V2 demonstration production | release | **Complete**; 172 s, 1080p, QA'd; director acceptance pending |
+| Upload video and submit the form | — | **Owner action pending**; not performed |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.

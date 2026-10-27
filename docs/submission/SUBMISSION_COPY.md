@@ -121,9 +121,12 @@ Guard engine (`@mml/decision-guard`); Biome, Vitest, and reproducible evidence s
 - The app is a single-user, loopback-only development build: no authentication, no multi-tenant
   hosting. Host-header validation raises the cost of DNS rebinding, and the origin guard blocks
   cross-site mutations; neither is a substitute for authentication in a multi-user deployment.
-- The existing demonstration MP4 is a protected artifact outside this branch. It was not re-rendered
-  or overwritten; [V2_DEMO_RECORDING_PLAN.md](V2_DEMO_RECORDING_PLAN.md) is the canonical storyboard
-  for the V2 re-record.
+- The V2 demonstration is delivered separately as `Muse_Recall_Demo_V2_1080p.mp4` (172 s, 1920×1080,
+  SHA-256 `57ce9eadae3c2256802cbfd3aea480f34403ca3b9768f03689f37cdaa73cebf8`), built from recorded
+  FocusFlow stills and published evidence. The protected fallback MP4 was not re-rendered,
+  overwritten or re-tagged. Production and QA:
+  [V2_VIDEO_PRODUCTION_MANIFEST.md](V2_VIDEO_PRODUCTION_MANIFEST.md) and
+  [V2_VIDEO_QA_REPORT.md](V2_VIDEO_QA_REPORT.md).
 
 ## Future roadmap
 
