@@ -273,6 +273,7 @@
     "Attempt 1 is preserved and is not presented as the first successful generation.",
     "Retrieved memory ids prove injection, not causal influence; controlled causal evidence is Phase 12A/15B.",
     "The v4 guard probe produced no source change; Decision Guard had no violation to report.",
-    "Secrets are not present in this pack; see records/effective-config.json for redacted values."
+    "Secrets are not present in this pack; see records/effective-config.json for redacted values.",
+    "usage.calls is the observed model-call count from the CLI run.usage event; the Muse CLI does not expose a separate tool-call count to the Forge runner. Do not label usage.calls as tool calls."
   ]
 }
