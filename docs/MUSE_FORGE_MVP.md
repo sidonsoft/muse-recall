@@ -111,3 +111,67 @@ valid and Phaser-based, but the game threw at runtime (`Graphics.fillStar` does 
 preview now reports runtime errors to the host, shows a red badge, and **disables approval**
 until the change is regenerated or rejected. The measured run predates that gate: it approved
 v2, observed the error, and rolled back to v1.
+
+## Phase 10 hardening (audit fixes)
+
+**D1 — modifications start from the approved source.** A modify job now copies the
+current approved `index.html` into staging, records `base_version` on the job, and tells Muse to
+edit that file in place rather than regenerate it. Modifying a project with no approved version
+is refused (409). Tests assert that unrelated source (`FARM_MARKER`) survives a modification.
+
+**D2 — valid captures.** The capture bridge is injected into `<head>` and wraps `Phaser.Game`
+when the CDN assigns `window.Phaser`, so capture can use `renderer.snapshot()` instead of
+`canvas.toDataURL()` on a cleared WebGL buffer. Captures with no luminance range or colour
+variety are rejected before they reach a model request; screenshots smaller than 32×32 are
+rejected by the server. The browser test asserts a non-blank image captured via
+`renderer.snapshot`.
+
+**D3 — server-side runtime verification.** Approval loads the staged game in headless Chrome
+(`playwright-core`, already installed) and fails on page errors, console errors or a missing
+canvas. A failing check marks the job failed, stores the errors and returns 422; nothing is
+promoted. `pnpm verify:runtime` proves a valid Phaser scene passes and a `Graphics.fillStar`
+scene is rejected.
+
+**D4–D6 — ancestry, concurrency, integrity.** Versions record `base_version`, `job_id` and a
+`sha256`. Promotion is compare-and-swap under a per-project lock; a stale base returns 409
+`version_conflict`. The promoted bytes are re-hashed, rollback refuses a corrupted version,
+and at most two jobs may run per project. Preview, diff and current-version reads refuse
+symlinks and paths outside the project (the confirmed read vulnerability is fixed and tested
+with a staged symlink to `/etc/passwd`).
+
+**S2–S6.** Preview CSP adds `base-uri`, `form-action` and `object-src` restrictions; staging is
+deleted after promotion; screenshot dimensions and PNG magic bytes are validated; job logs and
+jobs are bounded; no shell, filesystem or network tools were added to the agent runtime.
+
+### Remaining limitations after Phase 10
+
+- Runtime verification proves the game loads without errors; it does not prove every rule or
+  win condition. Gameplay is still verified by the browser script, not automatically.
+- Approval launches a headless browser (~2–3 s); machines without Chrome cannot verify.
+- Single project/file, loopback-only, no authentication; the preview is sandboxed but served
+  from the app origin.
+- A broad visual request can still exceed the runtime budget; narrow requests are required for
+  a predictable demo.
+
+
+## Phase 10 verification results
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| D1 source-aware modify | **PASS in deterministic tests** | staging seeded from v1; `base_version=1`; `FARM_MARKER` survives; empty project returns 409 |
+| D2 valid capture | **PASS on the real generated game** | `renderer.snapshot`; 142 KB PNG; luminance range 197; 4,093 colourful pixels |
+| D2 blank rejection | **PASS** | unit tests for black/single-colour/rendered frames; client refuses blank |
+| D3 runtime verification | **PASS** | `pnpm verify:runtime`: valid scene ok, `Graphics.fillStar` rejected |
+| Symlink read blocker | **PASS** | staged symlink to `/etc/passwd` cannot be previewed or diffed (409) |
+| D4–D6 ancestry/CAS/lock | **PASS** | stale approval 409, tampered rollback 409, job cap 429 |
+| Browser regression | **PASS** | `pnpm verify:forge` 9/9, snapshot capture asserted |
+| Real Muse modification | **BLOCKED (quota)** | CLI returned 429 "Subscription quota exhausted … resets 2026-10-27T02:31:28Z" |
+
+A real generation (89.6 s, 7 calls, 249,501 input tokens) was approved and its capture was
+verified after fixing a bridge-ordering bug: defining `window.Phaser` after the CDN had assigned
+it replaced the library, so the preview had no canvas. The bridge now injects before the first
+script in `<head>`; the real game then loaded Phaser 3.80.1 and produced a meaningful snapshot.
+
+The real modification could not be re-run after the fix because the Muse subscription window was
+exhausted. Deterministic tests prove the source-aware path; the next real run should be done
+after the quota resets.

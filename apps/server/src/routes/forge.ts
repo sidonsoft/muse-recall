@@ -236,8 +236,13 @@ window.addEventListener('error',function(event){
 });
 })();</script>`;
 function withCaptureBridge(html: string): string {
-  // Before the game script: the bridge must be able to wrap Phaser.Game.
-  if (html.includes('</head>')) return html.replace('</head>', `${CAPTURE_BRIDGE}</head>`);
+  // Must run before the Phaser CDN script: defining window.Phaser after the CDN
+  // has assigned it would replace the library with our accessor.
+  const head = /<head[^>]*>/i.exec(html);
+  if (head) {
+    const at = head.index + head[0].length;
+    return `${html.slice(0, at)}${CAPTURE_BRIDGE}${html.slice(at)}`;
+  }
   return `${CAPTURE_BRIDGE}${html}`;
 }
 
