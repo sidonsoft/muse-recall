@@ -1,0 +1,17 @@
+{
+  "name": "@mml/decision-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic decision-compliance engine: checks generated source against explicitly supported project decisions (PASS / BLOCK / UNVERIFIED). Pure: no IO, no eval, no network.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mml/shared": "workspace:*"
+  }
+}

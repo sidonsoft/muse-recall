@@ -125,6 +125,12 @@ importers:
         specifier: ^4.1.12
         version: 4.6.7
 
+  packages/decision-guard:
+    dependencies:
+      '@mml/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/memory-engine:
     dependencies:
       '@mml/shared':
