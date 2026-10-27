@@ -94,7 +94,7 @@ The application must work in the existing Muse Recall sandbox.
 | Job id | `1621b9db-76ac-4c94-9a3a-48ee1290fd42` |
 | Kind | `generate` |
 | Created / finished | `2026-10-27T19:36:09.887Z` / `2026-10-27T19:37:15.000Z` |
-| Provider / model | `muse-cli` / `muse-spark-1.3-contributor` |
+| Provider / configured model | `muse-cli` / `muse-spark-1.3-contributor` |
 | Reasoning effort | `high` |
 | Prompt SHA-256 | `0ed6bcb7690e61ba3d267a605a8bcea6e3b7cf83338e209764e333a4e17b9560` |
 | Retrieved memory ids | M1, M3, M2 (all three) |
@@ -159,7 +159,7 @@ This is a prompt change, not a hand edit of generated code. The model received i
 | Job id | `e358246a-6741-499c-8057-6b2447e31718` |
 | Kind | `generate` |
 | Created / finished | `2026-10-27T19:39:25.443Z` / `2026-10-27T19:40:14.596Z` |
-| Provider / model | `muse-cli` / `muse-spark-1.3-contributor` |
+| Provider / configured model | `muse-cli` / `muse-spark-1.3-contributor` |
 | Reasoning effort | `high` |
 | Prompt SHA-256 | `bbf6a0ef86b60a9b027653d92f920ec99989a05ad1778d2bea32feec5af1a7a8` |
 | Retrieved memory ids | M1, M3, M2 |
@@ -246,7 +246,7 @@ The approved preview screenshot was attached as the visual reference (`v1-approv
 | Job id | `aeb6b175-01a6-4c9b-93a1-757cddf475e1` |
 | Kind | `modify` |
 | Created / finished | `2026-10-27T19:42:14.911Z` / `2026-10-27T19:44:11.244Z` |
-| Provider / model | `muse-cli` / `muse-spark-1.3-contributor` |
+| Provider / configured model | `muse-cli` / `muse-spark-1.3-contributor` |
 | Reasoning effort | `high` |
 | Base version | 1 (approved FocusFlow v1) |
 | Retrieved memory ids | M3, M1, M2, **M4** (four) |
@@ -364,7 +364,7 @@ Add a countdown timer showing the time remaining today and bonus points for fini
 | Kind | `modify` |
 | Base version | 2 (approved FocusFlow v2) |
 | Created / finished | `2026-10-27T19:45:31.149Z` / `2026-10-27T19:46:12.903Z` |
-| Provider / model | `muse-cli` / `muse-spark-1.3-contributor` |
+| Provider / configured model | `muse-cli` / `muse-spark-1.3-contributor` |
 | Memory ids | 6, including the countdown constraint and the captured v1/v2 decisions |
 | Model calls | 3 |
 | Input / output tokens | 100,193 / 1,718 |
@@ -471,5 +471,8 @@ database, or result was read-modify-written.
   application, inspect pixels, or test every interaction. The interaction checks above are a
   separate Playwright validation, not part of the approval gate.
 - Memory retrieval is proven; controlled causal influence is not claimed for this app.
+- Forge attribution rests on the validated `FORGE_MUSE_MODEL=muse-spark-1.3-contributor` config and
+  the CLI's acceptance of that id. The Forge job record does not persist the CLI's observed-model
+  event; do not claim a per-job observed-model field that the artifact does not contain.
 - The first attempt's sandbox failure is a real product constraint that should be addressed in
   the generator prompt or the preview policy; it is not fixed in this branch.

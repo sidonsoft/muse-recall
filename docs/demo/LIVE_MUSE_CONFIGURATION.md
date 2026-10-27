@@ -133,8 +133,12 @@ The chat catalog exposed by the provider is
 `['muse-wonder-1.0', 'muse-spark-1.3', 'muse-spark-1.2']`
 ([`muse-cli-provider.ts:23`](../../packages/muse-provider/src/muse-cli-provider.ts#L23)).
 `muse-spark-1.3-contributor` is deliberately **not** advertised as a chat model; it is the
-API-key/Forge model used by the contributor path. The Forge job records the observed model from the
-CLI's `run.model.configured` event, so the artifact is attributable to the model that actually ran.
+API-key/Forge model used by the contributor path. The Forge job is attributable to that configured
+model because the launch config is validated (`FORGE_MUSE_MODEL`) and the CLI accepts the id, but
+the Forge job record does **not** persist the CLI's `run.model.configured` event or the per-model
+names in `run.usage`: [`runner.ts:568`](../../apps/server/src/forge/runner.ts#L568) sums tokens
+only. There is no per-job observed-model field in the artifact. Do not claim more than the
+validated configuration supports.
 
 ### 3.4 Forge limits active
 

@@ -289,6 +289,7 @@ merged into the FocusFlow evidence.
 | **P2** | No V2 video rendered; plan awaits director approval | §8; protected MP4 hash unchanged | Approve the plan and record under `video/v2-live/`; keep CutA fallback. |
 | **P2** | Fallback shares the same key/model; not independent quota resilience | `muse-cli-provider.ts`, `runner.ts`; no activation observed | Do not claim quota resilience. Provide a separate credential if resilience is required. |
 | **P3** | `FORGE_MAX_INPUT_TOKENS` is observational, not a hard in-process cap | `runner.ts` comment; config schema | Keep the label; do not describe it as a hard stop. |
+| **P3** | Forge does not persist the CLI's observed model id; attribution rests on the validated config | `runner.ts:568`; `LIVE_MUSE_CONFIGURATION.md` §3.3 | Do not claim a per-job observed-model field; add one if stronger attribution is required. |
 | **P3** | Demo servers still running for review (`8799`, `5199`) | server/web PIDs in `$HOME/muse-demo-live/` | Stop them after director review; they are loopback-only. |
 | **P3** | Evidence screenshots add ~2.7 MB to the repo | `docs/demo/evidence` | Acceptable for the review pack; move to release assets if size matters. |
 
