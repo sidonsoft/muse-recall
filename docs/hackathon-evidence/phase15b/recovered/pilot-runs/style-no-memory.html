@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sky Pairs — a calm memory game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #E7D9B8; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #game canvas { border-radius: 22px; box-shadow: 0 24px 60px rgba(90, 70, 40, 0.35), 0 4px 0 #FFFDF2 inset; border: 5px solid #FFFDF2; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  'use strict';
+
+  var W = 900, H = 700;
+  var CREAM = 0xFFF6DF;
+  var CREAM_CSS = '#FFF6DF';
+  var PAPER_CSS = '#FBF1D9';
+  var FACE_CSS = '#FFFDF2';
+  var MUTED_CSS = '#7C6F9B';
+  var COCOA_CSS = '#5D5178';
+  var GOLD = 0xC99A3C;
+  var GOLD_CSS = '#C99A3C';
+  var GOLD_SOFT = 0xE4B84F;
+  var INK = 0x3A2E5B;
+  var INK_CSS = '#3A2E5B';
+  var NIGHT = 0x333F7A;
+  var SERIF = 'Georgia, "Palatino Linotype", "Book Antiqua", serif';
+  var SANS = '"Gill Sans", "Trebuchet MS", Verdana, sans-serif';
+
+  var CARD_W = 158, CARD_H = 148, GAP_X = 30, GAP_Y = 26;
+
+  // Six constellations. Points are in a normalised box (x and y in [-1, 1]).
+  var CONSTELLATIONS = [
+    { name: 'Triangle',
+      pts: [[0, -0.80], [-0.70, 0.55], [0.70, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 0]] },
+    { name: 'Trail',
+      pts: [[-0.75, 0.45], [0, 0], [0.75, -0.45]],
+      lines: [[0, 1], [1, 2]] },
+    { name: 'Square',
+      pts: [[-0.55, -0.55], [0.55, -0.55], [0.55, 0.55], [-0.55, 0.55]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 0]] },
+    { name: 'Cross',
+      pts: [[0, -0.75], [0, 0.75], [-0.65, 0], [0.65, 0], [0, 0]],
+      lines: [[0, 4], [4, 1], [2, 4], [4, 3]] },
+    { name: 'Dipper',
+      pts: [[-0.80, 0.50], [-0.35, 0.50], [0.05, 0.25], [0.35, -0.30], [0.80, -0.50]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+    { name: 'Crown',
+      pts: [[-0.80, 0.40], [-0.40, -0.40], [0, 0.10], [0.40, -0.40], [0.80, 0.40]],
+      lines: [[0, 1], [1, 2], [2, 3], [3, 4]] }
+  ];
+
+  // ---- gentle sound, all synthesised, no files ----
+  var audioCtx = null;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) { audioCtx = new AC(); }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+    } catch (e) { audioCtx = null; }
+  }
+  function tone(freq, delay, dur, vol) {
+    try {
+      if (!audioCtx) { return; }
+      var t0 = audioCtx.currentTime + (delay || 0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.07, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.15));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + (dur || 0.15) + 0.05);
+    } catch (e) { /* silent */ }
+  }
+  function sFlip() { tone(440, 0, 0.12, 0.05); }
+  function sMatch() { tone(523.25, 0, 0.16, 0.07); tone(659.25, 0.11, 0.22, 0.07); }
+  function sNoMatch() { tone(329.63, 0, 0.14, 0.045); }
+  function sWin() {
+    var seq = [523.25, 587.33, 659.25, 783.99];
+    for (var i = 0; i < seq.length; i++) { tone(seq[i], i * 0.14, 0.24, 0.07); }
+  }
+
+  function drawSparkle(g, x, y, r, color, alpha) {
+    g.lineStyle(2, color, alpha);
+    g.beginPath();
+    g.moveTo(x - r, y); g.lineTo(x + r, y);
+    g.moveTo(x, y - r); g.lineTo(x, y + r);
+    g.strokePath();
+  }
+
+  // Draw one constellation into a Graphics object, centred on (cx, cy).
+  // Storybook style: deep plum-ink lines on warm paper, brass halos.
+  function drawConstellation(g, def, cx, cy, sx, sy, onDark) {
+    var i, a, b;
+    var px = [], py = [];
+    for (i = 0; i < def.pts.length; i++) {
+      px.push(cx + def.pts[i][0] * sx);
+      py.push(cy + def.pts[i][1] * sy);
+    }
+    g.lineStyle(3, onDark ? CREAM : INK, onDark ? 0.95 : 0.88);
+    for (i = 0; i < def.lines.length; i++) {
+      a = def.lines[i][0]; b = def.lines[i][1];
+      g.beginPath();
+      g.moveTo(px[a], py[a]);
+      g.lineTo(px[b], py[b]);
+      g.strokePath();
+    }
+    for (i = 0; i < px.length; i++) {
+      if (onDark) {
+        g.fillStyle(CREAM, 0.25);
+        g.fillCircle(px[i], py[i], 11);
+        g.fillStyle(0xFFFDF4, 1);
+        g.fillCircle(px[i], py[i], 6);
+        drawSparkle(g, px[i], py[i], 11, CREAM, 0.55);
+      } else {
+        g.fillStyle(GOLD, 0.28);
+        g.fillCircle(px[i], py[i], 11);
+        g.fillStyle(0xFFFFFF, 1);
+        g.fillCircle(px[i], py[i], 6);
+        g.lineStyle(2, GOLD, 0.95);
+        g.strokeCircle(px[i], py[i], 6);
+        drawSparkle(g, px[i], py[i], 10, GOLD, 0.7);
+      }
+    }
+  }
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: W,
+    height: H,
+    backgroundColor: '#FBF1D9',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: { create: create, update: update }
+  };
+
+  var game = new Phaser.Game(config);
+
+  function create() {
+    var scene = this;
+    ensureAudio();
+    scene.input.once('pointerdown', ensureAudio);
+
+    var twinkles = [];
+
+    // ---------- storybook page: warm paper + dusky picture panel ----------
+    (function buildBackground() {
+      var bg = scene.add.graphics().setDepth(0);
+      // warm paper page
+      bg.fillStyle(0xFBF1D9, 1);
+      bg.fillRect(0, 0, W, H);
+      // faint paper grain
+      var n;
+      for (n = 0; n < 90; n++) {
+        bg.fillStyle(0xC9B78E, 0.10);
+        bg.fillCircle(10 + Math.random() * (W - 20), 10 + Math.random() * (H - 20), 1.2);
+      }
+      // stitched page edge
+      bg.lineStyle(2, 0xC99A3C, 0.35);
+      bg.strokeRect(10, 10, W - 20, H - 20);
+      bg.lineStyle(1, 0xC99A3C, 0.22);
+      bg.strokeRect(16, 16, W - 32, H - 32);
+
+      // large twilight picture panel behind the cards
+      var px0 = 28, py0 = 112, pw = W - 56, ph = 516;
+      bg.fillGradientStyle(0x39447E, 0x39447E, 0xE9C48F, 0xE9C48F, 1, 1, 1, 1);
+      bg.fillRoundedRect(px0, py0, pw, ph, 20);
+      // soft sun-set glow along the horizon
+      bg.fillStyle(0xFFF1CF, 0.28);
+      bg.fillEllipse(W / 2, py0 + ph - 60, 420, 110);
+      bg.fillStyle(0x8E9BD6, 0.20);
+      bg.fillCircle(200, 210, 130);
+      bg.fillStyle(0x6E7CC0, 0.16);
+      bg.fillCircle(690, 260, 150);
+      // rolling storybook hills at the foot of the panel
+      bg.fillStyle(0x4A5A94, 1);
+      bg.fillEllipse(180, py0 + ph - 6, 480, 110);
+      bg.fillStyle(0x3A4674, 1);
+      bg.fillEllipse(720, py0 + ph - 2, 480, 118);
+      bg.fillStyle(0x2E3A6B, 1);
+      bg.fillEllipse(450, py0 + ph + 18, 620, 110);
+      // panel frame: cream mat + brass rule, like a book illustration
+      bg.lineStyle(8, 0xFFFDF2, 1);
+      bg.strokeRoundedRect(px0, py0, pw, ph, 20);
+      bg.lineStyle(2, 0xC99A3C, 0.9);
+      bg.strokeRoundedRect(px0 + 7, py0 + 7, pw - 14, ph - 14, 15);
+
+      // a friendly storybook moon with sleepy craters, high in the panel
+      bg.fillStyle(0xFFF6DF, 0.30);
+      bg.fillCircle(762, 176, 40);
+      bg.fillStyle(0xFFF6DF, 1);
+      bg.fillCircle(762, 176, 26);
+      bg.fillStyle(0xE8D9B4, 1);
+      bg.fillCircle(754, 169, 5);
+      bg.fillCircle(770, 183, 4);
+      bg.fillCircle(762, 188, 3);
+      // tiny smiling hill pines, drawn not pasted
+      bg.fillStyle(0x232E5C, 1);
+      var trees = [[120, 578], [170, 588], [760, 582], [810, 590]];
+      for (n = 0; n < trees.length; n++) {
+        var tx = trees[n][0], ty = trees[n][1];
+        bg.fillTriangle(tx - 14, ty, tx + 14, ty, tx, ty - 30);
+        bg.fillRect(tx - 3, ty, 6, 10);
+      }
+
+      // scattered stars, kept inside the sky part of the panel
+      var i, x, y, r;
+      for (i = 0; i < 120; i++) {
+        x = 48 + Math.random() * (W - 96);
+        y = 128 + Math.random() * 300;
+        r = Math.random() < 0.85 ? 1.5 : 2.5;
+        var base = 0.25 + Math.random() * 0.45;
+        var c = scene.add.circle(x, y, r, 0xFFF6DF, base).setDepth(1);
+        twinkles.push({
+          obj: c, base: base,
+          amp: 0.10 + Math.random() * 0.15,
+          speed: 0.4 + Math.random() * 1.2,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+      // a few hand-drawn sparkles among the stars
+      var sg = scene.add.graphics().setDepth(1);
+      var spots = [[140, 170], [620, 160], [330, 200], [480, 150], [250, 300]];
+      for (i = 0; i < spots.length; i++) {
+        drawSparkle(sg, spots[i][0], spots[i][1], 7, CREAM, 0.8);
+      }
+    })();
+
+    scene.twinkles = twinkles;
+
+    // ---------- HUD: book title page ----------
+    var hud = scene.add.container(0, 0).setDepth(10);
+    var title = scene.add.text(48, 24, 'Sky Pairs', {
+      fontFamily: SERIF, fontSize: '34px', color: INK_CSS, fontStyle: 'italic bold'
+    });
+    var subtitle = scene.add.text(50, 62, 'a calm game of starry matching', {
+      fontFamily: SANS, fontSize: '15px', color: COCOA_CSS, fontStyle: 'italic'
+    });
+    var movesText = scene.add.text(W / 2, 38, 'Moves   0', {
+      fontFamily: SERIF, fontSize: '22px', color: INK_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+    var pairsText = scene.add.text(W - 48, 38, 'Pairs   0 / 6', {
+      fontFamily: SERIF, fontSize: '22px', color: INK_CSS, fontStyle: 'bold'
+    }).setOrigin(1, 0);
+    var divider = scene.add.graphics();
+    divider.lineStyle(1.5, GOLD, 0.55);
+    divider.beginPath();
+    divider.moveTo(48, 94); divider.lineTo(W / 2 - 14, 94);
+    divider.moveTo(W / 2 + 14, 94); divider.lineTo(W - 48, 94);
+    divider.strokePath();
+    divider.fillStyle(GOLD, 0.9);
+    divider.fillCircle(W / 2, 94, 4);
+    divider.fillStyle(0xFFFDF2, 1);
+    divider.fillCircle(W / 2, 94, 1.8);
+    hud.add([title, subtitle, movesText, pairsText, divider]);
+
+    scene.add.text(W / 2, 652, '~  Turn over two cards to find the matching stars  ~', {
+      fontFamily: SANS, fontSize: '16px', color: COCOA_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5).setDepth(10);
+
+    // ---------- game state ----------
+    var state = {
+      moves: 0, pairs: 0,
+      first: null, second: null,
+      lock: false, over: false, started: false
+    };
+
+    function setHud() {
+      movesText.setText('Moves   ' + state.moves);
+      pairsText.setText('Pairs   ' + state.pairs + ' / 6');
+    }
+
+    // ---------- cards ----------
+    var cards = [];
+
+    function paintCard(card) {
+      var g = card.bg;
+      g.clear();
+      // soft lifted shadow, like a pasted illustration
+      g.fillStyle(0x3A2E5B, 0.22);
+      g.fillRoundedRect(-CARD_W / 2 + 3, -CARD_H / 2 + 5, CARD_W, CARD_H, 20);
+      if (card.faceUp) {
+        if (card.matched) {
+          g.fillStyle(0xFFF3C9, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 20);
+          g.lineStyle(4, GOLD, 1);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 20);
+          g.lineStyle(1.5, GOLD, 0.6);
+          g.strokeRoundedRect(-CARD_W / 2 + 8, -CARD_H / 2 + 8, CARD_W - 16, CARD_H - 16, 14);
+        } else {
+          g.fillStyle(0xFFFDF2, 1);
+          g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 20);
+          g.lineStyle(2.5, INK, 0.95);
+          g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 20);
+          g.lineStyle(1, GOLD, 0.7);
+          g.strokeRoundedRect(-CARD_W / 2 + 7, -CARD_H / 2 + 7, CARD_W - 14, CARD_H - 14, 14);
+        }
+      } else {
+        g.fillStyle(NIGHT, 1);
+        g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 20);
+        g.lineStyle(3, GOLD, 1);
+        g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 20);
+        g.lineStyle(1.5, CREAM, 0.75);
+        g.strokeRoundedRect(-CARD_W / 2 + 8, -CARD_H / 2 + 8, CARD_W - 16, CARD_H - 16, 13);
+      }
+      card.backDeco.setVisible(!card.faceUp);
+      card.face.setVisible(card.faceUp);
+    }
+
+    function makeCard(x, y, key) {
+      var visual = scene.add.container(x, y).setDepth(5);
+      var bg = scene.add.graphics();
+      visual.add(bg);
+
+      // face-down decoration: brass crescent moon + tiny stars, like a book emblem
+      var backDeco = scene.add.graphics();
+      backDeco.fillStyle(GOLD_SOFT, 1);
+      backDeco.fillCircle(2, -8, 15);
+      backDeco.fillStyle(NIGHT, 1);
+      backDeco.fillCircle(8, -12, 13);
+      backDeco.fillStyle(CREAM, 0.95);
+      backDeco.fillCircle(-30, 30, 2.5);
+      backDeco.fillCircle(32, 26, 2.5);
+      backDeco.fillCircle(-34, -34, 2);
+      backDeco.fillCircle(34, -38, 2);
+      backDeco.fillCircle(0, 34, 2);
+      drawSparkle(backDeco, -30, -6, 8, GOLD_SOFT, 0.9);
+      drawSparkle(backDeco, 30, -2, 6, CREAM, 0.8);
+      visual.add(backDeco);
+
+      // face-up constellation: ink drawing on paper
+      var face = scene.add.container(0, 0);
+      var cg = scene.add.graphics();
+      drawConstellation(cg, CONSTELLATIONS[key], 0, -14, 54, 42, false);
+      var label = scene.add.text(0, 50, CONSTELLATIONS[key].name, {
+        fontFamily: SERIF, fontSize: '17px', color: INK_CSS, fontStyle: 'italic bold'
+      }).setOrigin(0.5, 0.5);
+      face.add([cg, label]);
+      visual.add(face);
+
+      var zone = scene.add.zone(x, y, CARD_W, CARD_H)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(6);
+
+      var card = {
+        visual: visual, bg: bg, backDeco: backDeco, face: face,
+        zone: zone, key: key, faceUp: false, matched: false
+      };
+      paintCard(card);
+      zone.on('pointerdown', function () { onCardClicked(card); });
+      return card;
+    }
+
+    function flipCard(card, show, done) {
+      scene.tweens.add({
+        targets: card.visual,
+        scaleX: 0,
+        duration: 140,
+        ease: 'Quad.easeIn',
+        onComplete: function () {
+          card.faceUp = show;
+          paintCard(card);
+          scene.tweens.add({
+            targets: card.visual,
+            scaleX: 1,
+            duration: 190,
+            ease: 'Quad.easeOut',
+            onComplete: function () { if (done) { done(); } }
+          });
+        }
+      });
+    }
+
+    function onCardClicked(card) {
+      ensureAudio();
+      if (!state.started || state.lock || state.over) { return; }
+      if (card.faceUp || card.matched) { return; }
+      if (state.first && card === state.first) { return; }
+      sFlip();
+      if (!state.first) {
+        state.first = card;
+        flipCard(card, true);
+      } else {
+        state.second = card;
+        state.lock = true;
+        state.moves += 1;
+        setHud();
+        flipCard(card, true, resolveTurn);
+      }
+    }
+
+    function resolveTurn() {
+      var a = state.first, b = state.second;
+      if (a.key === b.key) {
+        a.matched = true;
+        b.matched = true;
+        a.zone.input.enabled = false;
+        b.zone.input.enabled = false;
+        paintCard(a);
+        paintCard(b);
+        sMatch();
+        scene.tweens.add({
+          targets: [a.visual, b.visual], scale: 1.06,
+          duration: 160, yoyo: true, ease: 'Sine.easeInOut',
+          onComplete: function () {
+            state.pairs += 1;
+            setHud();
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+            if (state.pairs >= 6) { winGame(); }
+          }
+        });
+      } else {
+        sNoMatch();
+        scene.time.delayedCall(650, function () {
+          flipCard(a, false);
+          flipCard(b, false, function () {
+            state.first = null;
+            state.second = null;
+            state.lock = false;
+          });
+        });
+      }
+    }
+
+    // lay out the board: 4 columns by 3 rows
+    var totalW = 4 * CARD_W + 3 * GAP_X;
+    var left = W / 2 - totalW / 2;
+    var top = 132;
+    var deck = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+    Phaser.Utils.Array.Shuffle(deck);
+    var i, c, r, k = 0;
+    for (r = 0; r < 3; r++) {
+      for (c = 0; c < 4; c++) {
+        var cx = left + CARD_W / 2 + c * (CARD_W + GAP_X);
+        var cy = top + CARD_H / 2 + r * (CARD_H + GAP_Y);
+        cards.push(makeCard(cx, cy, deck[k]));
+        k += 1;
+      }
+    }
+
+    function resetBoard() {
+      var d = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+      Phaser.Utils.Array.Shuffle(d);
+      for (var n = 0; n < cards.length; n++) {
+        var card = cards[n];
+        card.key = d[n];
+        card.faceUp = false;
+        card.matched = false;
+        card.visual.scaleX = 1;
+        card.visual.setScale(1);
+        card.zone.input.enabled = true;
+        // redraw the face with the new constellation
+        card.face.removeAll(true);
+        var cg = scene.add.graphics();
+        drawConstellation(cg, CONSTELLATIONS[card.key], 0, -14, 54, 42, false);
+        var label = scene.add.text(0, 50, CONSTELLATIONS[card.key].name, {
+          fontFamily: SERIF, fontSize: '17px', color: INK_CSS, fontStyle: 'italic bold'
+        }).setOrigin(0.5, 0.5);
+        card.face.add([cg, label]);
+        paintCard(card);
+      }
+      state.moves = 0;
+      state.pairs = 0;
+      state.first = null;
+      state.second = null;
+      state.lock = false;
+      state.over = false;
+      setHud();
+    }
+
+    // ---------- buttons: cloth-bound storybook pills ----------
+    function makeButton(x, y, w, h, labelText, onTap) {
+      var cont = scene.add.container(x, y);
+      var g = scene.add.graphics();
+      function paint(hover) {
+        g.clear();
+        g.fillStyle(0x3A2E5B, 0.20);
+        g.fillRoundedRect(-w / 2 + 2, -h / 2 + 4, w, h, h / 2);
+        if (hover) {
+          g.fillStyle(0x57448C, 1);
+        } else {
+          g.fillStyle(INK, 1);
+        }
+        g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+        g.lineStyle(2.5, GOLD, 1);
+        g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+        g.lineStyle(1, 0xFFFDF2, 0.5);
+        g.strokeRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10, h / 2 - 5);
+      }
+      paint(false);
+      var t = scene.add.text(0, -1, labelText, {
+        fontFamily: SERIF, fontSize: '25px', color: CREAM_CSS, fontStyle: 'italic bold'
+      }).setOrigin(0.5, 0.5);
+      cont.add([g, t]);
+      var z = scene.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+      z.on('pointerover', function () { paint(true); });
+      z.on('pointerout', function () { paint(false); });
+      z.on('pointerdown', function () { ensureAudio(); onTap(); });
+      cont.setDepth(60);
+      z.setDepth(61);
+      return { cont: cont, zone: z, paint: paint };
+    }
+
+    // ---------- start overlay: book title page ----------
+    var startOverlay = scene.add.container(0, 0).setDepth(50);
+    var sDim = scene.add.rectangle(0, 0, W, H, 0x3A2E5B, 0.45).setOrigin(0);
+    var sBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var sPanelG = scene.add.graphics();
+    sPanelG.fillStyle(0x3A2E5B, 0.18);
+    sPanelG.fillRoundedRect(W / 2 - 296, 149, 600, 480, 26);
+    sPanelG.fillStyle(0xFFFDF2, 1);
+    sPanelG.fillRoundedRect(W / 2 - 300, 145, 600, 480, 26);
+    sPanelG.lineStyle(3, GOLD, 1);
+    sPanelG.strokeRoundedRect(W / 2 - 300, 145, 600, 480, 26);
+    sPanelG.lineStyle(1, GOLD, 0.6);
+    sPanelG.strokeRoundedRect(W / 2 - 288, 157, 576, 456, 19);
+    var sTitle = scene.add.text(W / 2, 208, 'Sky Pairs', {
+      fontFamily: SERIF, fontSize: '60px', color: INK_CSS, fontStyle: 'italic bold'
+    }).setOrigin(0.5, 0.5);
+    var sSub = scene.add.text(W / 2, 260, 'a calm game of starry matching', {
+      fontFamily: SANS, fontSize: '19px', color: COCOA_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var sFlourish = scene.add.graphics();
+    sFlourish.lineStyle(1.5, GOLD, 0.8);
+    sFlourish.beginPath();
+    sFlourish.moveTo(W / 2 - 150, 296); sFlourish.lineTo(W / 2 - 12, 296);
+    sFlourish.moveTo(W / 2 + 12, 296); sFlourish.lineTo(W / 2 + 150, 296);
+    sFlourish.strokePath();
+    sFlourish.fillStyle(GOLD, 1);
+    sFlourish.fillCircle(W / 2, 296, 5);
+    sFlourish.fillStyle(0xFFFDF2, 1);
+    sFlourish.fillCircle(W / 2, 296, 2);
+    var sPreview = scene.add.graphics();
+    drawConstellation(sPreview, CONSTELLATIONS[4], W / 2, 356, 60, 44, false);
+    var sInfo = scene.add.text(W / 2, 436,
+      'Find the six matching pairs of stars.\nTurn over two cards at a time and remember what you see.', {
+      fontFamily: SANS, fontSize: '18px', color: COCOA_CSS,
+      align: 'center', lineSpacing: 8
+    }).setOrigin(0.5, 0.5);
+    startOverlay.add([sDim, sBlock, sPanelG, sTitle, sSub, sFlourish, sPreview, sInfo]);
+    var startBtn = makeButton(W / 2, 540, 230, 62, 'Begin', function () {
+      startOverlay.setVisible(false);
+      startBtn.cont.setVisible(false);
+      startBtn.zone.setVisible(false);
+      state.started = true;
+    });
+    startBtn.cont.setDepth(52);
+    startBtn.zone.setDepth(53);
+
+    // ---------- win overlay: book closing page ----------
+    var winOverlay = scene.add.container(0, 0).setDepth(50).setVisible(false);
+    var wDim = scene.add.rectangle(0, 0, W, H, 0x3A2E5B, 0.45).setOrigin(0);
+    var wBlock = scene.add.zone(W / 2, H / 2, W, H).setInteractive();
+    var wPanelG = scene.add.graphics();
+    wPanelG.fillStyle(0x3A2E5B, 0.18);
+    wPanelG.fillRoundedRect(W / 2 - 276, 179, 560, 420, 26);
+    wPanelG.fillStyle(0xFFFDF2, 1);
+    wPanelG.fillRoundedRect(W / 2 - 280, 175, 560, 420, 26);
+    wPanelG.lineStyle(3, GOLD, 1);
+    wPanelG.strokeRoundedRect(W / 2 - 280, 175, 560, 420, 26);
+    wPanelG.lineStyle(1, GOLD, 0.6);
+    wPanelG.strokeRoundedRect(W / 2 - 268, 187, 536, 396, 19);
+    var wTitle = scene.add.text(W / 2, 262, 'All pairs found!', {
+      fontFamily: SERIF, fontSize: '44px', color: INK_CSS, fontStyle: 'italic bold'
+    }).setOrigin(0.5, 0.5);
+    var wSub = scene.add.text(W / 2, 312, 'The night sky is complete.', {
+      fontFamily: SANS, fontSize: '19px', color: COCOA_CSS, fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5);
+    var wMoves = scene.add.text(W / 2, 362, 'Moves: 0', {
+      fontFamily: SERIF, fontSize: '24px', color: INK_CSS, fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+    var wStars = scene.add.graphics();
+    drawSparkle(wStars, W / 2 - 40, 408, 8, GOLD, 0.9);
+    drawSparkle(wStars, W / 2, 408, 11, GOLD, 0.9);
+    drawSparkle(wStars, W / 2 + 40, 408, 8, GOLD, 0.9);
+    wStars.fillStyle(GOLD, 1);
+    wStars.fillCircle(W / 2 - 40, 408, 3);
+    wStars.fillCircle(W / 2, 408, 4);
+    wStars.fillCircle(W / 2 + 40, 408, 3);
+    winOverlay.add([wDim, wBlock, wPanelG, wTitle, wSub, wMoves, wStars]);
+    var againBtn = makeButton(W / 2, 492, 250, 62, 'Play Again', function () {
+      winOverlay.setVisible(false);
+      againBtn.cont.setVisible(false);
+      againBtn.zone.setVisible(false);
+      resetBoard();
+    });
+    againBtn.cont.setVisible(false);
+    againBtn.zone.setVisible(false);
+
+    function winGame() {
+      state.over = true;
+      sWin();
+      wMoves.setText('You found every pair in ' + state.moves + ' moves.');
+      winOverlay.setVisible(true);
+      winOverlay.setAlpha(0);
+      againBtn.cont.setVisible(true);
+      againBtn.zone.setVisible(true);
+      againBtn.cont.setDepth(52);
+      againBtn.zone.setDepth(53);
+      scene.tweens.add({
+        targets: winOverlay, alpha: 1, duration: 500, ease: 'Sine.easeOut'
+      });
+    }
+
+    scene.twinkles = twinkles;
+    setHud();
+  }
+
+  function update(time) {
+    if (!this.twinkles) { return; }
+    for (var i = 0; i < this.twinkles.length; i++) {
+      var s = this.twinkles[i];
+      s.obj.setAlpha(s.base + Math.sin(time * 0.001 * s.speed + s.phase) * s.amp);
+    }
+  }
+
+})();
+</script>
+</body>
+</html>

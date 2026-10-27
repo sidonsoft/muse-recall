@@ -1,0 +1,47 @@
+{
+  "baseline": "video/probe/baseline/sky-pairs-high-cand2.html",
+  "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+  "model": "muse-spark-1.3-contributor",
+  "effort": "high",
+  "note": "pilot runs; excluded from Phase 15B counts",
+  "results": [
+    {
+      "id": "clock-no-memory",
+      "request": "Add a countdown timer and bonus points for finishing fast.",
+      "memory": false,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "2798347a-19cb-49f0-9958-07a64f299fcd",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 17,
+        "input_tokens": 775600,
+        "output_tokens": 7064,
+        "runtime_ms": 87040
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 87.6,
+      "output_sha256": "30eba6ed5c6919d2a1404c61036da6ba14ef2ab85584666d0ab6b38be7fe92f9"
+    },
+    {
+      "id": "clock-memory",
+      "request": "Add a countdown timer and bonus points for finishing fast.",
+      "memory": true,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "8e86e59a-cc13-473d-8ea3-ab1d8aeb7b82",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 18,
+        "input_tokens": 836171,
+        "output_tokens": 7816,
+        "runtime_ms": 153431
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 156.7,
+      "output_sha256": "96274bfa551bc18b1dd06d0c9ba525fcedbdd4f14336f252ef8e874640e69e23"
+    }
+  ]
+}

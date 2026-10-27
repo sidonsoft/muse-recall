@@ -1,0 +1,85 @@
+{
+  "baseline": "video/probe/baseline/sky-pairs-high-cand2.html",
+  "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+  "model": "muse-spark-1.3-contributor",
+  "effort": "high",
+  "note": "pilot runs; excluded from Phase 15B counts",
+  "results": [
+    {
+      "id": "safety-no-memory",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "memory": false,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "1382029b-88bb-4417-ade0-cc75ac460595",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 26,
+        "input_tokens": 1332834,
+        "output_tokens": 11040,
+        "runtime_ms": 181951
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 183.8,
+      "output_sha256": "0be97c64e55417dfed7af84be4c81f16d871fe04e89ee82a9500bd2de0452656"
+    },
+    {
+      "id": "safety-memory",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "memory": true,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "d0e0fbcf-4e30-4c0a-839e-b8272917b99e",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 28,
+        "input_tokens": 1382465,
+        "output_tokens": 10776,
+        "runtime_ms": 191988
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 192.8,
+      "output_sha256": "a5f00ffcd57c8207104afca05286e62939c64ac025a53b610ad236c8ebde480a"
+    },
+    {
+      "id": "style-no-memory",
+      "request": "Restyle the game to feel like a premium children's book.",
+      "memory": false,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "5d406522-1898-424b-a0d2-2889954c68e2",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 21,
+        "input_tokens": 1049968,
+        "output_tokens": 13795,
+        "runtime_ms": 177136
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 177.8,
+      "output_sha256": "4fd9ebd2137d13984f218eeccb1e52c1f37a34807bc59ec8335cf0448eb76980"
+    },
+    {
+      "id": "style-memory",
+      "request": "Restyle the game to feel like a premium children's book.",
+      "memory": true,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "21d4e478-a464-43dc-9f3b-25bfbdb39b68",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 30,
+        "input_tokens": 1578287,
+        "output_tokens": 12319,
+        "runtime_ms": 179970
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 180.8,
+      "output_sha256": "d96684d531663e10a56185440a11731d065cfba524d7a3affa56145d0717d974"
+    }
+  ]
+}

@@ -17,6 +17,8 @@
       "!**/routeTree.gen.ts",
       "!docs/hackathon-evidence/phase12c/evaluation.json",
       "!docs/hackathon-evidence/phase14a",
+      "!docs/hackathon-evidence/phase15a",
+      "!docs/hackathon-evidence/phase15b",
       "!docs/demo/evidence"
     ]
   },

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sky Pairs — a calm matching game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #060913;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas {
+    border-radius: 18px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+  }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  var W = 900, H = 700;
+
+  var CONSTELLATIONS = [
+    {
+      name: 'Triangle',
+      pts: [[-30, 20], [30, 20], [0, -30]],
+      edges: [[0, 1], [1, 2], [2, 0]]
+    },
+    {
+      name: 'Diamond',
+      pts: [[0, -36], [30, 0], [0, 36], [-30, 0]],
+      edges: [[0, 1], [1, 2], [2, 3], [3, 0]]
+    },
+    {
+      name: 'Star Cross',
+      pts: [[0, -36], [0, 0], [0, 36], [-33, 0], [33, 0]],
+      edges: [[0, 1], [1, 2], [3, 1], [1, 4]]
+    },
+    {
+      name: 'Little Boat',
+      pts: [[-36, -16], [-14, -19], [6, -12], [18, 8], [37, 8]],
+      edges: [[0, 1], [1, 2], [2, 3], [3, 4]]
+    },
+    {
+      name: 'Crown',
+      pts: [[-36, 16], [-18, -6], [0, -16], [18, -6], [36, 16]],
+      edges: [[0, 1], [1, 2], [2, 3], [3, 4]]
+    },
+    {
+      name: 'Wiggly W',
+      pts: [[-36, 20], [-18, -20], [0, 10], [18, -20], [36, 20]],
+      edges: [[0, 1], [1, 2], [2, 3], [3, 4]]
+    }
+  ];
+
+  var CREAM = 0xf5edd8;
+  var INK = '#f5edd8';
+  var SOFT = '#b9c1d6';
+
+  var SERIF = 'Georgia, "Times New Roman", serif';
+  var SANS = '"Avenir Next", "Segoe UI", Verdana, sans-serif';
+
+  function drawSparkle(g, cx, cy, r, color, alpha) {
+    g.fillStyle(color, alpha);
+    g.fillTriangle(cx - r, cy, cx, cy - r * 0.28, cx, cy + r * 0.28);
+    g.fillTriangle(cx + r, cy, cx, cy - r * 0.28, cx, cy + r * 0.28);
+    g.fillTriangle(cx, cy - r, cx - r * 0.28, cy, cx + r * 0.28, cy);
+    g.fillTriangle(cx, cy + r, cx - r * 0.28, cy, cx + r * 0.28, cy);
+    g.fillCircle(cx, cy, r * 0.28);
+  }
+
+  function drawCardBack(g, cw, ch, focused) {
+    g.clear();
+    g.fillStyle(0x1a2342, 1);
+    g.fillRoundedRect(-cw / 2, -ch / 2, cw, ch, 22);
+    g.lineStyle(focused ? 2.5 : 1.5, CREAM, focused ? 0.9 : 0.35);
+    g.strokeRoundedRect(-cw / 2, -ch / 2, cw, ch, 22);
+    g.lineStyle(1, CREAM, 0.16);
+    g.strokeRoundedRect(-cw / 2 + 9, -ch / 2 + 9, cw - 18, ch - 18, 14);
+    drawSparkle(g, 0, -12, 20, CREAM, 0.85);
+    g.fillStyle(CREAM, 0.55);
+    g.fillCircle(-22, 26, 2.4);
+    g.fillCircle(20, 30, 2);
+    g.fillCircle(0, 44, 1.8);
+  }
+
+  function drawCardFront(g, cw, ch, matched) {
+    g.clear();
+    g.fillStyle(matched ? 0x2e3a66 : 0x252e57, 1);
+    g.fillRoundedRect(-cw / 2, -ch / 2, cw, ch, 22);
+    g.lineStyle(matched ? 3 : 2, CREAM, matched ? 1.0 : 0.9);
+    g.strokeRoundedRect(-cw / 2, -ch / 2, cw, ch, 22);
+    if (matched) {
+      g.lineStyle(1.5, 0xf2c979, 0.9);
+      g.strokeRoundedRect(-cw / 2 + 8, -ch / 2 + 8, cw - 16, ch - 16, 14);
+    }
+  }
+
+  function drawConstellationInto(scene, parent, def, labelY) {
+    var lineG = scene.add.graphics();
+    lineG.lineStyle(2, CREAM, 0.9);
+    def.edges.forEach(function (e) {
+      var a = def.pts[e[0]], b = def.pts[e[1]];
+      lineG.lineBetween(a[0], a[1], b[0], b[1]);
+    });
+    parent.add(lineG);
+    def.pts.forEach(function (p, i) {
+      var glow = scene.add.graphics();
+      glow.fillStyle(CREAM, 0.18);
+      glow.fillCircle(p[0], p[1], 11);
+      parent.add(glow);
+      var star = scene.add.graphics();
+      star.fillStyle(0xfdf6e3, 1);
+      star.fillCircle(p[0], p[1], i === 0 ? 6 : 5);
+      star.fillStyle(0x1a2342, 1);
+      star.fillCircle(p[0], p[1], 1.6);
+      parent.add(star);
+    });
+    var label = scene.add.text(0, labelY, def.name, {
+      fontFamily: SANS,
+      fontSize: '15px',
+      color: INK,
+      letterSpacing: 1
+    }).setOrigin(0.5);
+    label.setAlpha(0.9);
+    parent.add(label);
+  }
+
+  function drawBackIconInto(scene, parent) {
+    var g = scene.add.graphics();
+    g.fillStyle(CREAM, 0.16);
+    g.fillCircle(0, -12, 30);
+    parent.add(g);
+    var label = scene.add.text(0, 52, 'tap to peek', {
+      fontFamily: SANS,
+      fontSize: '13px',
+      color: SOFT,
+      fontStyle: 'italic'
+    }).setOrigin(0.5);
+    parent.add(label);
+  }
+
+  var config = {
+    type: Phaser.AUTO,
+    width: W,
+    height: H,
+    backgroundColor: '#0b1026',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: W,
+      height: H
+    },
+    scene: { create: create, update: update }
+  };
+
+  var game = new Phaser.Game(config);
+
+  function create() {
+    var scene = this;
+    scene.state = 'start';
+    scene.moves = 0;
+    scene.pairsFound = 0;
+    scene.firstCard = null;
+    scene.secondCard = null;
+    scene.lockBoard = true;
+    scene.cards = [];
+
+    // Deep night sky gradient
+    var bg = scene.add.graphics();
+    bg.fillGradientStyle(0x070b1d, 0x070b1d, 0x1c2447, 0x1c2447, 1, 1, 1, 1);
+    bg.fillRect(0, 0, W, H);
+    var glow = scene.add.graphics();
+    glow.fillGradientStyle(0x2c3a6e, 0x2c3a6e, 0x2c3a6e, 0x2c3a6e, 0.0, 0.0, 0.28, 0.28);
+    glow.fillCircle(450, 330, 420);
+
+    // Distant twinkling stars
+    scene.twinkles = [];
+    var rng = new Phaser.Math.RandomDataGenerator(['sky']);
+    for (var i = 0; i < 90; i++) {
+      var sx = rng.between(0, W), sy = rng.between(0, H);
+      var sr = rng.realInRange(0.7, 2.1);
+      var sa = rng.realInRange(0.15, 0.7);
+      var st = scene.add.graphics();
+      st.fillStyle(CREAM, sa);
+      st.fillCircle(sx, sy, sr);
+      scene.twinkles.push({ g: st, base: sa, speed: rng.realInRange(0.4, 1.4), t: rng.realInRange(0, 6) });
+    }
+
+    // Soft moon, drawn
+    var moon = scene.add.graphics();
+    moon.fillStyle(CREAM, 0.92);
+    moon.fillCircle(802, 84, 30);
+    moon.fillStyle(0x0e1430, 1);
+    moon.fillCircle(792, 76, 26);
+    var moonRing = scene.add.graphics();
+    moonRing.lineStyle(1.5, CREAM, 0.25);
+    moonRing.strokeCircle(802, 84, 42);
+
+    // HUD
+    var title = scene.add.text(450, 34, 'S K Y   P A I R S', {
+      fontFamily: SERIF, fontSize: '30px', color: INK
+    }).setOrigin(0.5);
+    var sub = scene.add.text(450, 62, 'a calm matching game in the night sky', {
+      fontFamily: SANS, fontSize: '15px', color: SOFT, fontStyle: 'italic'
+    }).setOrigin(0.5);
+    var line = scene.add.graphics();
+    line.lineStyle(1, CREAM, 0.22);
+    line.lineBetween(200, 92, 700, 92);
+
+    scene.movesText = scene.add.text(212, 104, 'Moves  ·  0', {
+      fontFamily: SANS, fontSize: '19px', color: INK
+    });
+    scene.pairsText = scene.add.text(688, 104, 'Pairs  ·  0 / 6', {
+      fontFamily: SANS, fontSize: '19px', color: INK
+    }).setOrigin(1, 0);
+    scene.hintText = scene.add.text(450, 106, 'find the two that match', {
+      fontFamily: SANS, fontSize: '14px', color: SOFT, fontStyle: 'italic'
+    }).setOrigin(0.5);
+
+    // Board
+    var CW = 150, CH = 148, GAPX = 30, GAPY = 24;
+    var topY = 150;
+    var keys = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+    Phaser.Utils.Array.Shuffle(keys);
+
+    var boardW = 4 * CW + 3 * GAPX;
+    var startX = (W - boardW) / 2 + CW / 2;
+    var startRowY = topY + CH / 2;
+
+    keys.forEach(function (key, idx) {
+      var col = idx % 4, row = Math.floor(idx / 4);
+      var cx = startX + col * (CW + GAPX);
+      var cy = startRowY + row * (CH + GAPY);
+      var card = buildCard(scene, cx, cy, CW, CH, key, CONSTELLATIONS[key]);
+      scene.cards.push(card);
+    });
+
+    // Start overlay
+    scene.startOverlay = buildStartOverlay(scene);
+    scene.winOverlay = buildWinOverlay(scene);
+    scene.winOverlay.setVisible(false);
+  }
+
+  function buildCard(scene, x, y, cw, ch, key, def) {
+    var holder = scene.add.container(x, y);
+    var bgG = scene.add.graphics();
+    drawCardBack(bgG, cw, ch, false);
+    holder.add(bgG);
+
+    var face = scene.add.container(0, -8);
+    drawConstellationInto(scene, face, def, 58);
+    face.setVisible(false);
+    holder.add(face);
+
+    var backDeco = scene.add.container(0, 0);
+    drawBackIconInto(scene, backDeco);
+    holder.add(backDeco);
+
+    holder.setSize(cw, ch);
+    holder.setInteractive({ useHandCursor: true });
+
+    var card = {
+      holder: holder, bg: bgG, face: face, backDeco: backDeco,
+      key: key, isUp: false, isMatched: false, cw: cw, ch: ch, busy: false
+    };
+
+    bgG.setData('card', card);
+    holder.on('pointerover', function () {
+      if (!card.isUp && !card.isMatched && !card.busy) drawCardBack(bgG, cw, ch, true);
+    });
+    holder.on('pointerout', function () {
+      if (!card.isUp && !card.isMatched) drawCardBack(bgG, cw, ch, false);
+    });
+    holder.on('pointerup', function () { onCardClicked(scene, card); });
+
+    return card;
+  }
+
+  function onCardClicked(scene, card) {
+    if (scene.state !== 'playing') return;
+    if (scene.lockBoard || card.busy || card.isUp || card.isMatched) return;
+    if (scene.secondCard) return;
+
+    flipUp(scene, card, function () {
+      if (!scene.firstCard) {
+        scene.firstCard = card;
+      } else {
+        scene.secondCard = card;
+        scene.moves += 1;
+        scene.movesText.setText('Moves  ·  ' + scene.moves);
+        scene.lockBoard = true;
+        scene.time.delayedCall(850, function () { resolvePair(scene); });
+      }
+    });
+  }
+
+  function flipUp(scene, card, done) {
+    card.busy = true;
+    scene.tweens.add({
+      targets: card.holder, scaleX: 0, duration: 150, ease: 'Sine.easeInOut',
+      onComplete: function () {
+        card.isUp = true;
+        drawCardFront(card.bg, card.cw, card.ch, false);
+        card.face.setVisible(true);
+        card.backDeco.setVisible(false);
+        scene.tweens.add({
+          targets: card.holder, scaleX: 1, duration: 170, ease: 'Sine.easeInOut',
+          onComplete: function () { card.busy = false; if (done) done(); }
+        });
+      }
+    });
+  }
+
+  function flipDown(scene, card, done) {
+    card.busy = true;
+    scene.tweens.add({
+      targets: card.holder, scaleX: 0, duration: 150, ease: 'Sine.easeInOut',
+      onComplete: function () {
+        card.isUp = false;
+        drawCardBack(card.bg, card.cw, card.ch, false);
+        card.face.setVisible(false);
+        card.backDeco.setVisible(true);
+        scene.tweens.add({
+          targets: card.holder, scaleX: 1, duration: 170, ease: 'Sine.easeInOut',
+          onComplete: function () { card.busy = false; if (done) done(); }
+        });
+      }
+    });
+  }
+
+  function resolvePair(scene) {
+    var a = scene.firstCard, b = scene.secondCard;
+    if (!a || !b) { scene.lockBoard = false; return; }
+    if (a.key === b.key) {
+      a.isMatched = true; b.isMatched = true;
+      drawCardFront(a.bg, a.cw, a.ch, true);
+      drawCardFront(b.bg, b.cw, b.ch, true);
+      a.holder.disableInteractive();
+      b.holder.disableInteractive();
+      scene.tweens.add({ targets: [a.holder, b.holder], y: '-=6', duration: 180, yoyo: true, ease: 'Sine.easeInOut' });
+      scene.pairsFound += 1;
+      scene.pairsText.setText('Pairs  ·  ' + scene.pairsFound + ' / 6');
+      scene.firstCard = null; scene.secondCard = null;
+      scene.lockBoard = false;
+      if (scene.pairsFound >= 6) winGame(scene);
+    } else {
+      var c1 = a, c2 = b;
+      scene.firstCard = null; scene.secondCard = null;
+      flipDown(scene, c1, function () { scene.lockBoard = false; });
+      flipDown(scene, c2, null);
+    }
+  }
+
+  function makeButton(scene, parent, cx, cy, label, cb) {
+    var bw = 240, bh = 58;
+    var c = scene.add.container(cx, cy);
+    var g = scene.add.graphics();
+    g.fillStyle(0xf5edd8, 1);
+    g.fillRoundedRect(-bw / 2, -bh / 2, bw, bh, 29);
+    g.lineStyle(2, 0xffffff, 0.5);
+    g.strokeRoundedRect(-bw / 2, -bh / 2, bw, bh, 29);
+    var t = scene.add.text(0, 0, label, {
+      fontFamily: SANS, fontSize: '22px', color: '#20264a', fontStyle: 'bold'
+    }).setOrigin(0.5);
+    c.add([g, t]);
+    c.setSize(bw, bh);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerover', function () { c.setScale(1.04); });
+    c.on('pointerout', function () { c.setScale(1.0); });
+    c.on('pointerup', cb);
+    parent.add(c);
+    return c;
+  }
+
+  function dimPanel(scene, parent, pw, ph) {
+    var shade = scene.add.graphics();
+    shade.fillStyle(0x05081a, 0.72);
+    shade.fillRect(0, 0, W, H);
+    parent.add(shade);
+    var panel = scene.add.graphics();
+    var px = (W - pw) / 2, py = (H - ph) / 2;
+    panel.fillStyle(0x141c3c, 1);
+    panel.fillRoundedRect(px, py, pw, ph, 26);
+    panel.lineStyle(1.5, CREAM, 0.55);
+    panel.strokeRoundedRect(px, py, pw, ph, 26);
+    parent.add(panel);
+    // three tiny drawn stars above panel title area
+    var deco = scene.add.graphics();
+    deco.fillStyle(CREAM, 0.8);
+    deco.fillCircle(450 - 60, py + 52, 2.5);
+    deco.fillCircle(450, py + 44, 3.2);
+    deco.fillCircle(450 + 60, py + 52, 2.5);
+    parent.add(deco);
+    return { top: py };
+  }
+
+  function buildStartOverlay(scene) {
+    var ov = scene.add.container(0, 0).setDepth(10);
+    var pos = dimPanel(scene, ov, 560, 430);
+
+    var title = scene.add.text(450, pos.top + 100, 'Sky Pairs', {
+      fontFamily: SERIF, fontSize: '64px', color: INK
+    }).setOrigin(0.5);
+    ov.add(title);
+    var rule = scene.add.graphics();
+    rule.lineStyle(1, CREAM, 0.4);
+    rule.lineBetween(370, pos.top + 148, 530, pos.top + 148);
+    ov.add(rule);
+    var s1 = scene.add.text(450, pos.top + 178, 'Six little constellations are hiding.', {
+      fontFamily: SANS, fontSize: '19px', color: INK
+    }).setOrigin(0.5);
+    var s2 = scene.add.text(450, pos.top + 208, 'Turn two cards. Keep the pairs that match.', {
+      fontFamily: SANS, fontSize: '17px', color: SOFT
+    }).setOrigin(0.5);
+    var s3 = scene.add.text(450, pos.top + 236, 'Take your time — the stars are patient.', {
+      fontFamily: SANS, fontSize: '15px', color: SOFT, fontStyle: 'italic'
+    }).setOrigin(0.5);
+    ov.add([s1, s2, s3]);
+
+    makeButton(scene, ov, 450, pos.top + 330, 'Begin Stargazing', function () {
+      ov.setVisible(false);
+      scene.state = 'playing';
+      scene.lockBoard = false;
+    });
+    return ov;
+  }
+
+  function buildWinOverlay(scene) {
+    var ov = scene.add.container(0, 0).setDepth(20);
+    var pos = dimPanel(scene, ov, 560, 440);
+
+    // drawn laurel: two arcs of small circles
+    var deco = scene.add.graphics();
+    deco.lineStyle(2, CREAM, 0.6);
+    deco.strokeCircle(450, pos.top + 118, 40);
+    drawSparkle(deco, 450, pos.top + 118, 16, CREAM, 0.95);
+    ov.add(deco);
+
+    var title = scene.add.text(450, pos.top + 190, 'The sky is complete', {
+      fontFamily: SERIF, fontSize: '42px', color: INK
+    }).setOrigin(0.5);
+    ov.add(title);
+    scene.winStats = scene.add.text(450, pos.top + 238, '', {
+      fontFamily: SANS, fontSize: '18px', color: SOFT, align: 'center', lineSpacing: 6
+    }).setOrigin(0.5);
+    ov.add(scene.winStats);
+    scene.winStarsLine = scene.add.text(450, pos.top + 282, '', {
+      fontFamily: SANS, fontSize: '15px', color: INK, fontStyle: 'italic'
+    }).setOrigin(0.5);
+    ov.add(scene.winStarsLine);
+
+    makeButton(scene, ov, 450, pos.top + 355, 'Play Again', function () {
+      resetGame(scene);
+    });
+    return ov;
+  }
+
+  function winGame(scene) {
+    scene.state = 'won';
+    scene.lockBoard = true;
+    var moves = scene.moves;
+    var praise = moves <= 9 ? 'Wonderful memory, little stargazer.'
+      : moves <= 14 ? 'Lovely and steady stargazing.'
+      : 'Patient stargazing — you did it.';
+    scene.winStats.setText('You found all 6 pairs in ' + moves + ' moves.\n' + praise);
+    scene.winStarsLine.setText('the constellations are glowing for you');
+    scene.time.delayedCall(650, function () { scene.winOverlay.setVisible(true); });
+  }
+
+  function resetGame(scene) {
+    scene.winOverlay.setVisible(false);
+    scene.moves = 0;
+    scene.pairsFound = 0;
+    scene.firstCard = null;
+    scene.secondCard = null;
+    scene.movesText.setText('Moves  ·  0');
+    scene.pairsText.setText('Pairs  ·  0 / 6');
+
+    var keys = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+    Phaser.Utils.Array.Shuffle(keys);
+    scene.cards.forEach(function (card, i) {
+      card.key = keys[i];
+      card.isUp = false;
+      card.isMatched = false;
+      card.busy = false;
+      card.holder.setScale(1, 1);
+      card.holder.setInteractive({ useHandCursor: true });
+      drawCardBack(card.bg, card.cw, card.ch, false);
+      card.face.removeAll(true);
+      drawConstellationInto(scene, card.face, CONSTELLATIONS[keys[i]], 58);
+      card.face.setVisible(false);
+      card.backDeco.setVisible(true);
+    });
+    scene.state = 'playing';
+    scene.lockBoard = false;
+  }
+
+  function update(time, delta) {
+    var s = this.twinkles;
+    if (!s) return;
+    var dt = delta / 1000;
+    for (var i = 0; i < s.length; i++) {
+      var tw = s[i];
+      tw.t += dt * tw.speed;
+      var a = tw.base * (0.55 + 0.45 * Math.sin(tw.t * 2.0));
+      tw.g.clear();
+      tw.g.fillStyle(CREAM, Math.max(0.05, a));
+      // recover position from first circle? store instead
+      if (tw.x === undefined) {
+        // read back from children is not available; keep constant by redrawing same dots:
+        // store on first pass via geometric position cache below
+      }
+      tw.g.fillCircle(tw.px !== undefined ? tw.px : 0, tw.py !== undefined ? tw.py : -2000, tw.r !== undefined ? tw.r : 1);
+    }
+    // Positions were not cached on old runtime path; cache them once from geometry:
+    // (first frames draw offscreen; fix by capturing from display list origins)
+    // Simpler robust approach: rebuild twinkle cache lazily from stored geometry.
+    for (var j = 0; j < s.length; j++) {
+      var t2 = s[j];
+      if (t2.px === undefined) {
+        // Each graphics object drew exactly one circle; recover via its bounds
+        try {
+          var b = t2.g.getBounds ? null : null;
+        } catch (e) { /* ignore */ }
+      }
+    }
+  }
+
+  // Patch: store star positions properly (runs once, before first twinkle redraw loses them)
+  // We re-create position cache by re-scattering deterministically.
+  // To avoid the bounds hack above, override update once positions are known:
+  // Actually simplest: capture positions at creation via a parallel array.
+  // Since Phaser Graphics does not retain circle coords, we patch update to use
+  // a clean sine-alpha redraw keyed off stored coords below.
+  (function patchTwinkle() {
+    var origUpdate = update;
+    update = function (time, delta) {
+      var scene = this;
+      if (scene.twinkles && scene.twinkles.length && scene.twinkles[0].px === undefined) {
+        // Recover circle centers by re-reading command buffer is unreliable,
+        // so re-seed identical layout deterministically.
+        var r2 = new Phaser.Math.RandomDataGenerator(['sky']);
+        for (var k = 0; k < scene.twinkles.length; k++) {
+          var tw = scene.twinkles[k];
+          tw.px = r2.between(0, W);
+          tw.py = r2.between(0, H);
+          tw.r = r2.realInRange(0.7, 2.1);
+          tw.base = r2.realInRange(0.15, 0.7);
+          tw.speed = r2.realInRange(0.4, 1.4);
+          tw.t = r2.realInRange(0, 6);
+        }
+      }
+      if (scene.twinkles) {
+        var dt = delta / 1000;
+        for (var i = 0; i < scene.twinkles.length; i++) {
+          var t = scene.twinkles[i];
+          if (t.px === undefined) continue;
+          t.t += dt * t.speed;
+          var a = t.base * (0.55 + 0.45 * Math.sin(t.t * 2.0));
+          t.g.clear();
+          t.g.fillStyle(CREAM, Math.max(0.06, a));
+          t.g.fillCircle(t.px, t.py, t.r);
+        }
+      }
+    };
+  })();
+})();
+</script>
+</body>
+</html>

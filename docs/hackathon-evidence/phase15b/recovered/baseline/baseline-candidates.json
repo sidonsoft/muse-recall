@@ -1,0 +1,62 @@
+{
+  "model": "muse-spark-1.3-contributor",
+  "effort": "medium",
+  "results": [
+    {
+      "candidate": 1,
+      "ok": false,
+      "blank": false,
+      "errors": [
+        "hills.quadraticCurveTo is not a function"
+      ],
+      "file": "video/probe/baseline/sky-pairs-cand1.html",
+      "bytes": 16454,
+      "sha256": "8a9a6692885e25d38e5d1af9793515f7e027cabae9a97fb0a91aecee28cd3d2f",
+      "reported_model": "muse-spark-1.3-contributor",
+      "profile": "tbh",
+      "calls": 1,
+      "failed": 0,
+      "input_tokens": 16793,
+      "output_tokens": 8399,
+      "reasoning": 2627,
+      "seconds": 72.8,
+      "cost_usd_estimate": 0.0567
+    },
+    {
+      "candidate": 2,
+      "ok": true,
+      "blank": false,
+      "errors": [],
+      "file": "video/probe/baseline/sky-pairs-cand2.html",
+      "bytes": 19628,
+      "sha256": "eed2fedefc14ed7e08bf2e9f3091271ec67752f2cf4620303ac5ce445e8caa2d",
+      "reported_model": "muse-spark-1.3-contributor",
+      "profile": "tbh",
+      "calls": 1,
+      "failed": 0,
+      "input_tokens": 16793,
+      "output_tokens": 10069,
+      "reasoning": 3492,
+      "seconds": 64.4,
+      "cost_usd_estimate": 0.0638
+    }
+  ],
+  "chosen": {
+    "candidate": 2,
+    "ok": true,
+    "blank": false,
+    "errors": [],
+    "file": "video/probe/baseline/sky-pairs-cand2.html",
+    "bytes": 19628,
+    "sha256": "eed2fedefc14ed7e08bf2e9f3091271ec67752f2cf4620303ac5ce445e8caa2d",
+    "reported_model": "muse-spark-1.3-contributor",
+    "profile": "tbh",
+    "calls": 1,
+    "failed": 0,
+    "input_tokens": 16793,
+    "output_tokens": 10069,
+    "reasoning": 3492,
+    "seconds": 64.4,
+    "cost_usd_estimate": 0.0638
+  }
+}

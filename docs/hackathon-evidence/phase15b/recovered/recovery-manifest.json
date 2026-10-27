@@ -1,0 +1,666 @@
+{
+  "phase": "15B",
+  "description": "Byte-for-byte recovery of untracked Phase 15B research tooling and baseline artifacts",
+  "recovered_on": "2026-10-28",
+  "recovered_from_worktree": "/Users/burnz/projects/muse-memory-lab",
+  "source_branch": "agent/phase15b",
+  "source_commit": "9f5eaa19698f6b969b53671cc7fca5fb0fafd415",
+  "recovery_agent": "release integration (DeepSeek Harness)",
+  "note": "Files were untracked and gitignored under video/ during the experiment. They are copied unchanged; no script was edited to make historical results reproducible.",
+  "groups": {
+    "tools": 4,
+    "baseline": 17,
+    "recorded-diffs": 40,
+    "pilot-runs": 11
+  },
+  "files": [
+    {
+      "path": "baseline/baseline-candidates-high.json",
+      "source_path": "video/probe/baseline/baseline-candidates-high.json",
+      "sha256": "f8220575c8863264cb7f046ab28bfac6ef09dfc0e6450e26dd63ff3c0cb6ef1c",
+      "bytes": 1679,
+      "source_mtime": "2026-10-27T19:39:46+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/baseline-candidates.json",
+      "source_path": "video/probe/baseline/baseline-candidates.json",
+      "sha256": "809cadad614a515d0616612714ca670324c228ca90ba8db7f396e2328a736493",
+      "bytes": 1664,
+      "source_mtime": "2026-10-27T19:31:10+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/cand1-play.png",
+      "source_path": "video/probe/baseline/cand1-play.png",
+      "sha256": "84ced20fe33c342a8233f3c84c3edb10822b687210b90063fb3046b07d293a4f",
+      "bytes": 3336,
+      "source_mtime": "2026-10-27T19:30:02+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/cand1-start.png",
+      "source_path": "video/probe/baseline/cand1-start.png",
+      "sha256": "84ced20fe33c342a8233f3c84c3edb10822b687210b90063fb3046b07d293a4f",
+      "bytes": 3336,
+      "source_mtime": "2026-10-27T19:30:00+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/cand2-play.png",
+      "source_path": "video/probe/baseline/cand2-play.png",
+      "sha256": "e4a41454355175a2fe5d76a2df0bd02b6379217b37b1b9921a7f8f47f075fd67",
+      "bytes": 83547,
+      "source_mtime": "2026-10-27T19:31:10+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/cand2-start.png",
+      "source_path": "video/probe/baseline/cand2-start.png",
+      "sha256": "1ceaed0f6b004d541b079102ee461af12d8584a5e0a16fe84921df0ca6936f47",
+      "bytes": 82429,
+      "source_mtime": "2026-10-27T19:31:09+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/high-cand1-play.png",
+      "source_path": "video/probe/baseline/high-cand1-play.png",
+      "sha256": "151bc402bec2269625f300c05d5bd58b5430f042df18859e8f1aaa8ca0c6bd9b",
+      "bytes": 3821,
+      "source_mtime": "2026-10-27T19:36:58+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/high-cand1-start.png",
+      "source_path": "video/probe/baseline/high-cand1-start.png",
+      "sha256": "151bc402bec2269625f300c05d5bd58b5430f042df18859e8f1aaa8ca0c6bd9b",
+      "bytes": 3821,
+      "source_mtime": "2026-10-27T19:36:56+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/high-cand2-play.png",
+      "source_path": "video/probe/baseline/high-cand2-play.png",
+      "sha256": "afbbe99c55a27a67c9c8c0866135c4a23091a534dfdc6626b24a5834993e5d82",
+      "bytes": 61274,
+      "source_mtime": "2026-10-27T19:39:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/high-cand2-start.png",
+      "source_path": "video/probe/baseline/high-cand2-start.png",
+      "sha256": "a20bcf64db24b5811255a637aa471bd37708ee311ccc03236423c512aa114194",
+      "bytes": 61233,
+      "source_mtime": "2026-10-27T19:39:44+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-baseline.html",
+      "source_path": "video/probe/baseline/sky-pairs-baseline.html",
+      "sha256": "46b10b29975dcebf3b5e8fa3e84d809ef7c720a04a3c084828c5283da726d7f6",
+      "bytes": 17903,
+      "source_mtime": "2026-10-27T19:28:24+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-cand1.html",
+      "source_path": "video/probe/baseline/sky-pairs-cand1.html",
+      "sha256": "8a9a6692885e25d38e5d1af9793515f7e027cabae9a97fb0a91aecee28cd3d2f",
+      "bytes": 16460,
+      "source_mtime": "2026-10-27T19:29:58+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-cand2.html",
+      "source_path": "video/probe/baseline/sky-pairs-cand2.html",
+      "sha256": "eed2fedefc14ed7e08bf2e9f3091271ec67752f2cf4620303ac5ce445e8caa2d",
+      "bytes": 19640,
+      "source_mtime": "2026-10-27T19:31:06+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-high-cand1.html",
+      "source_path": "video/probe/baseline/sky-pairs-high-cand1.html",
+      "sha256": "30eaa8e2053efd004b5fe010b4342aff11efd7e2e66caa0a7c53aae6ead442e9",
+      "bytes": 16365,
+      "source_mtime": "2026-10-27T19:36:53+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-high-cand2.html",
+      "source_path": "video/probe/baseline/sky-pairs-high-cand2.html",
+      "sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "bytes": 19385,
+      "source_mtime": "2026-10-27T19:39:41+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-play.png",
+      "source_path": "video/probe/baseline/sky-pairs-play.png",
+      "sha256": "f458a639c4d96e6732334731b4d7f7d014511cf8ce3e24f844f693afcb82e915",
+      "bytes": 3856,
+      "source_mtime": "2026-10-27T19:28:28+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "baseline/sky-pairs-start.png",
+      "source_path": "video/probe/baseline/sky-pairs-start.png",
+      "sha256": "f458a639c4d96e6732334731b4d7f7d014511cf8ce3e24f844f693afcb82e915",
+      "bytes": 3856,
+      "source_mtime": "2026-10-27T19:28:27+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/clock-memory.html",
+      "source_path": "video/pilot15b/clock-memory.html",
+      "sha256": "96274bfa551bc18b1dd06d0c9ba525fcedbdd4f14336f252ef8e874640e69e23",
+      "bytes": 21875,
+      "source_mtime": "2026-10-27T20:06:40+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/clock-no-memory.html",
+      "source_path": "video/pilot15b/clock-no-memory.html",
+      "sha256": "30eba6ed5c6919d2a1404c61036da6ba14ef2ab85584666d0ab6b38be7fe92f9",
+      "bytes": 21911,
+      "source_mtime": "2026-10-27T20:04:03+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/pilot-results-arm2.json",
+      "source_path": "video/pilot15b/pilot-results-arm2.json",
+      "sha256": "2354f7d1a736790129026bbd5d3130907cf04667c13d8fb92973a51c871dca8b",
+      "bytes": 1511,
+      "source_mtime": "2026-10-27T20:02:19+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/pilot-results-arm2c.json",
+      "source_path": "video/pilot15b/pilot-results-arm2c.json",
+      "sha256": "e74c7fe8c1e3a5d6ba817a602cda4f0e18735f2f1b6801d52699f161249d2585",
+      "bytes": 1565,
+      "source_mtime": "2026-10-27T20:06:41+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/pilot-results.json",
+      "source_path": "video/pilot15b/pilot-results.json",
+      "sha256": "0aeedca2eace80662505555bcf2cf00844958ffa06cacef9fd0dcecec0599b4a",
+      "bytes": 2863,
+      "source_mtime": "2026-10-27T19:55:47+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/safety-memory.html",
+      "source_path": "video/pilot15b/safety-memory.html",
+      "sha256": "a5f00ffcd57c8207104afca05286e62939c64ac025a53b610ad236c8ebde480a",
+      "bytes": 22625,
+      "source_mtime": "2026-10-27T19:49:47+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/safety-no-memory.html",
+      "source_path": "video/pilot15b/safety-no-memory.html",
+      "sha256": "0be97c64e55417dfed7af84be4c81f16d871fe04e89ee82a9500bd2de0452656",
+      "bytes": 26515,
+      "source_mtime": "2026-10-27T19:46:33+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/speed-memory.html",
+      "source_path": "video/pilot15b/speed-memory.html",
+      "sha256": "9ff7fb6b3e9ab15c84c38ad8bc56a421e9e693015a15d4192d8b2d73c7e40169",
+      "bytes": 20202,
+      "source_mtime": "2026-10-27T20:02:18+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/speed-no-memory.html",
+      "source_path": "video/pilot15b/speed-no-memory.html",
+      "sha256": "a16b34e8ba4e043cfabdc3d42509904d04689a0bb2efde6747a0c58c208c8e4b",
+      "bytes": 21117,
+      "source_mtime": "2026-10-27T20:01:05+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/style-memory.html",
+      "source_path": "video/pilot15b/style-memory.html",
+      "sha256": "d96684d531663e10a56185440a11731d065cfba524d7a3affa56145d0717d974",
+      "bytes": 20199,
+      "source_mtime": "2026-10-27T19:55:47+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "pilot-runs/style-no-memory.html",
+      "source_path": "video/pilot15b/style-no-memory.html",
+      "sha256": "4fd9ebd2137d13984f218eeccb1e52c1f37a34807bc59ec8335cf0448eb76980",
+      "bytes": 23585,
+      "source_mtime": "2026-10-27T19:52:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/clock-memory.diff",
+      "source_path": "video/pilot15b/clock-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:06:40+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/clock-no-memory.diff",
+      "source_path": "video/pilot15b/clock-no-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:04:03+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-01.diff",
+      "source_path": "video/pilot15b/mem-01.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:06:52+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-02.diff",
+      "source_path": "video/pilot15b/mem-02.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:14:14+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-03.diff",
+      "source_path": "video/pilot15b/mem-03.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:10:30+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-04.diff",
+      "source_path": "video/pilot15b/mem-04.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:17:46+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-05.diff",
+      "source_path": "video/pilot15b/mem-05.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:28:02+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-06.diff",
+      "source_path": "video/pilot15b/mem-06.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:31:13+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-07.diff",
+      "source_path": "video/pilot15b/mem-07.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:42:56+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-08.diff",
+      "source_path": "video/pilot15b/mem-08.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:19:56+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-09.diff",
+      "source_path": "video/pilot15b/mem-09.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:03:33+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-10.diff",
+      "source_path": "video/pilot15b/mem-10.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:13:59+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-11.diff",
+      "source_path": "video/pilot15b/mem-11.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:49:56+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-12.diff",
+      "source_path": "video/pilot15b/mem-12.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:52:40+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-13.diff",
+      "source_path": "video/pilot15b/mem-13.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:21:17+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-14.diff",
+      "source_path": "video/pilot15b/mem-14.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:52:28+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-15.diff",
+      "source_path": "video/pilot15b/mem-15.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:38:33+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/mem-16.diff",
+      "source_path": "video/pilot15b/mem-16.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:10:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-01.diff",
+      "source_path": "video/pilot15b/nomem-01.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:25:29+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-02.diff",
+      "source_path": "video/pilot15b/nomem-02.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:18:03+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-03.diff",
+      "source_path": "video/pilot15b/nomem-03.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:35:34+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-04.diff",
+      "source_path": "video/pilot15b/nomem-04.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:24:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-05.diff",
+      "source_path": "video/pilot15b/nomem-05.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:59:31+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-06.diff",
+      "source_path": "video/pilot15b/nomem-06.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:38:13+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-07.diff",
+      "source_path": "video/pilot15b/nomem-07.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:40:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-08.diff",
+      "source_path": "video/pilot15b/nomem-08.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:50:53+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-09.diff",
+      "source_path": "video/pilot15b/nomem-09.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:33:53+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-10.diff",
+      "source_path": "video/pilot15b/nomem-10.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:47:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-11.diff",
+      "source_path": "video/pilot15b/nomem-11.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:47:34+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-12.diff",
+      "source_path": "video/pilot15b/nomem-12.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:43:08+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-13.diff",
+      "source_path": "video/pilot15b/nomem-13.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:28:46+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-14.diff",
+      "source_path": "video/pilot15b/nomem-14.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:31:44+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-15.diff",
+      "source_path": "video/pilot15b/nomem-15.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T21:22:10+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/nomem-16.diff",
+      "source_path": "video/pilot15b/nomem-16.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:55:59+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/safety-memory.diff",
+      "source_path": "video/pilot15b/safety-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T19:49:47+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/safety-no-memory.diff",
+      "source_path": "video/pilot15b/safety-no-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T19:46:33+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/speed-memory.diff",
+      "source_path": "video/pilot15b/speed-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:02:18+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/speed-no-memory.diff",
+      "source_path": "video/pilot15b/speed-no-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T20:01:05+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/style-memory.diff",
+      "source_path": "video/pilot15b/style-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T19:55:47+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "recorded-diffs/style-no-memory.diff",
+      "source_path": "video/pilot15b/style-no-memory.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source_mtime": "2026-10-27T19:52:45+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "tools/analyze-15b.py",
+      "source_path": "video/tools/analyze-15b.py",
+      "sha256": "c68cc34cd90700e9ae94f4b305f560918de59a3573334a78d0ba695fcf5d8312",
+      "bytes": 3559,
+      "source_mtime": "2026-10-27T20:08:54+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "tools/gen-baseline.mjs",
+      "source_path": "video/tools/gen-baseline.mjs",
+      "sha256": "5f75a43d9d44b1e0022a32519c6affd45907780ed473926e8ab7e35f75a1559a",
+      "bytes": 6788,
+      "source_mtime": "2026-10-27T19:35:10+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "tools/model-check.mjs",
+      "source_path": "video/tools/model-check.mjs",
+      "sha256": "bd8100a8fae38c414f8832445fd6dd8dfea39b2ca23f6c71001d5329da3d7296",
+      "bytes": 690,
+      "source_mtime": "2026-10-27T19:15:39+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    },
+    {
+      "path": "tools/pilot-15b.mjs",
+      "source_path": "video/tools/pilot-15b.mjs",
+      "sha256": "08a65de40e3423e03c963f040a2dc70208261dab76aa9f7109193c97b13d4e5d",
+      "bytes": 8939,
+      "source_mtime": "2026-10-27T20:06:56+10:00",
+      "tracked_during_experiment": false,
+      "copied": "2026-10-28T07:07:05+10:00"
+    }
+  ]
+}

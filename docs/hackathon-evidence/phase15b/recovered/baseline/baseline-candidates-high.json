@@ -1,0 +1,62 @@
+{
+  "model": "muse-spark-1.3-contributor",
+  "effort": "high",
+  "results": [
+    {
+      "candidate": 1,
+      "ok": false,
+      "blank": false,
+      "errors": [
+        "this.buildBackground is not a function"
+      ],
+      "file": "video/probe/baseline/sky-pairs-high-cand1.html",
+      "bytes": 16365,
+      "sha256": "30eaa8e2053efd004b5fe010b4342aff11efd7e2e66caa0a7c53aae6ead442e9",
+      "reported_model": "muse-spark-1.3-contributor",
+      "profile": "tbh",
+      "calls": 1,
+      "failed": 0,
+      "input_tokens": 16793,
+      "output_tokens": 11665,
+      "reasoning": 6163,
+      "seconds": 102.6,
+      "cost_usd_estimate": 0.0706
+    },
+    {
+      "candidate": 2,
+      "ok": true,
+      "blank": false,
+      "errors": [],
+      "file": "video/probe/baseline/sky-pairs-high-cand2.html",
+      "bytes": 19383,
+      "sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "reported_model": "muse-spark-1.3-contributor",
+      "profile": "tbh",
+      "calls": 2,
+      "failed": 0,
+      "input_tokens": 48530,
+      "output_tokens": 22216,
+      "reasoning": 8876,
+      "seconds": 163.2,
+      "cost_usd_estimate": 0.1551
+    }
+  ],
+  "chosen": {
+    "candidate": 2,
+    "ok": true,
+    "blank": false,
+    "errors": [],
+    "file": "video/probe/baseline/sky-pairs-high-cand2.html",
+    "bytes": 19383,
+    "sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+    "reported_model": "muse-spark-1.3-contributor",
+    "profile": "tbh",
+    "calls": 2,
+    "failed": 0,
+    "input_tokens": 48530,
+    "output_tokens": 22216,
+    "reasoning": 8876,
+    "seconds": 163.2,
+    "cost_usd_estimate": 0.1551
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "baseline": "video/probe/baseline/sky-pairs-high-cand2.html",
+  "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+  "model": "muse-spark-1.3-contributor",
+  "effort": "high",
+  "note": "pilot runs; excluded from Phase 15B counts",
+  "results": [
+    {
+      "id": "speed-no-memory",
+      "request": "Add a reward for finishing fast.",
+      "memory": false,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "1a1934ee-aab0-4dcb-bb48-0da7168d6b9a",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 16,
+        "input_tokens": 658768,
+        "output_tokens": 5784,
+        "runtime_ms": 146262
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 148,
+      "output_sha256": "a16b34e8ba4e043cfabdc3d42509904d04689a0bb2efde6747a0c58c208c8e4b"
+    },
+    {
+      "id": "speed-memory",
+      "request": "Add a reward for finishing fast.",
+      "memory": true,
+      "baseline_sha256": "5385c5582dac572351c29ee0c1bba128609a49bc5ba171db03f656e065bdee03",
+      "job_id": "2f253c1b-b6f0-49b9-90c6-716f5650b342",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 12,
+        "input_tokens": 491764,
+        "output_tokens": 5411,
+        "runtime_ms": 71144
+      },
+      "lines": null,
+      "guard": null,
+      "seconds": 72.9,
+      "output_sha256": "9ff7fb6b3e9ab15c84c38ad8bc56a421e9e693015a15d4192d8b2d73c7e40169"
+    }
+  ]
+}

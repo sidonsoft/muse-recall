@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sky Pairs — A Calm Memory Game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #060b1e;
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  var CREAM = 0xfff6e8;
+  var GOLD = 0xffd98a;
+  var INK = 0x1b2648;
+  var CARD_DARK = 0x1e2d5c;
+  var CARD_FRONT = 0x27396a;
+  var SERIF = 'Georgia, "Times New Roman", serif';
+  var SANS = '"Trebuchet MS", Verdana, "Segoe UI", sans-serif';
+
+  var CONSTELLATIONS = [
+    { name: 'Triangle', pts: [[0.5,0.15],[0.15,0.8],[0.85,0.8]], lines: [[0,1],[1,2],[2,0]] },
+    { name: 'Diamond', pts: [[0.5,0.08],[0.88,0.5],[0.5,0.92],[0.12,0.5]], lines: [[0,1],[1,2],[2,3],[3,0]] },
+    { name: 'Three Line', pts: [[0.12,0.5],[0.5,0.5],[0.88,0.5]], lines: [[0,1],[1,2]] },
+    { name: 'Cross', pts: [[0.5,0.08],[0.5,0.92],[0.12,0.42],[0.88,0.42]], lines: [[0,1],[2,3]] },
+    { name: 'Crown', pts: [[0.08,0.7],[0.3,0.25],[0.5,0.6],[0.7,0.25],[0.92,0.7]], lines: [[0,1],[1,2],[2,3],[3,4]] },
+    { name: 'Corner', pts: [[0.2,0.15],[0.2,0.85],[0.85,0.85]], lines: [[0,1],[1,2]] }
+  ];
+
+  var CARD_W = 150, CARD_H = 152, GAP = 22;
+
+  var config = {
+    type: Phaser.AUTO,
+    width: 900,
+    height: 700,
+    backgroundColor: '#060b1e',
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create }
+  };
+
+  new Phaser.Game(config);
+
+  function create() {
+    var scene = this;
+    scene.moves = 0;
+    scene.pairs = 0;
+    scene.locked = false;
+    scene.firstCard = null;
+    scene.started = false;
+    scene.cards = [];
+
+    drawSky(scene);
+    createHud(scene);
+    createBoard(scene);
+    createWinOverlay(scene);
+    createStartOverlay(scene);
+    updateHud(scene);
+  }
+
+  function drawSky(scene) {
+    var g = scene.add.graphics().setDepth(0);
+    g.fillGradientStyle(0x060b1e, 0x060b1e, 0x18264f, 0x18264f, 1, 1, 1, 1);
+    g.fillRect(0, 0, 900, 700);
+
+    // soft moon glow, large and faint
+    g.fillStyle(0xfff6e8, 0.05);
+    g.fillCircle(450, 360, 250);
+    g.fillStyle(0x8fa0ff, 0.05);
+    g.fillCircle(200, 160, 150);
+    g.fillStyle(0xffc9a0, 0.04);
+    g.fillCircle(720, 520, 170);
+
+    // small crescent moon, drawn
+    var mx = 808, my = 62;
+    g.fillStyle(0xfff6e8, 0.16);
+    g.fillCircle(mx, my, 30);
+    g.fillStyle(CREAM, 1);
+    g.fillCircle(mx, my, 20);
+    g.fillStyle(0x0b1330, 1);
+    g.fillCircle(mx + 8, my - 5, 17);
+
+    // static distant stars
+    var rnd = new Phaser.Math.RandomDataGenerator(['skypairs']);
+    for (var i = 0; i < 150; i++) {
+      var x = rnd.between(0, 900), y = rnd.between(0, 700);
+      var r = rnd.realInRange(0.6, 1.8);
+      var a = rnd.realInRange(0.15, 0.7);
+      g.fillStyle(0xfff6e8, a);
+      g.fillCircle(x, y, r);
+    }
+    // a few plus-shaped sparkles
+    g.lineStyle(1.5, 0xfff6e8, 0.5);
+    var sparks = [[120,120],[300,80],[620,110],[120,560],[800,420],[540,640]];
+    sparks.forEach(function (p) {
+      var s = 7;
+      g.lineBetween(p[0]-s, p[1], p[0]+s, p[1]);
+      g.lineBetween(p[0], p[1]-s, p[0], p[1]+s);
+    });
+
+    // twinkling stars
+    for (var t = 0; t < 18; t++) {
+      var sx = rnd.between(30, 870), sy = rnd.between(20, 660);
+      var st = scene.add.circle(sx, sy, rnd.realInRange(1.4, 2.6), 0xfff6e8, 0.8).setDepth(0);
+      scene.tweens.add({ targets: st, alpha: 0.12, duration: rnd.between(900, 2200), yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd.between(0, 1500) });
+    }
+
+    // calm hill silhouette at the very bottom
+    var hills = scene.add.graphics().setDepth(0);
+    hills.fillStyle(0x040814, 1);
+    hills.beginPath();
+    hills.moveTo(0, 700);
+    hills.lineTo(0, 662);
+    hills.quadraticCurveTo(150, 630, 330, 660);
+    hills.quadraticCurveTo(520, 690, 700, 655);
+    hills.quadraticCurveTo(810, 640, 900, 662);
+    hills.lineTo(900, 700);
+    hills.closePath();
+    hills.fillPath();
+  }
+
+  function textStyle(size, color, font, bold, spacing) {
+    return {
+      fontFamily: font, fontSize: size + 'px',
+      color: color, fontStyle: bold ? 'bold' : 'normal',
+      align: 'center'
+    };
+  }
+
+  function createHud(scene) {
+    scene.hudMoves = scene.add.text(64, 30, 'MOVES  0', {
+      fontFamily: SANS, fontSize: '19px', color: '#fff6e8'
+    }).setOrigin(0, 0.5).setDepth(5).setAlpha(0.95);
+
+    scene.hudTitle = scene.add.text(450, 30, 'S K Y   P A I R S', {
+      fontFamily: SERIF, fontSize: '24px', color: '#fff6e8'
+    }).setOrigin(0.5, 0.5).setDepth(5);
+
+    scene.add.text(450, 58, 'a quiet matching game', {
+      fontFamily: SERIF, fontSize: '15px', color: '#9aa8c7', fontStyle: 'italic'
+    }).setOrigin(0.5, 0.5).setDepth(5);
+
+    scene.hudPairs = scene.add.text(836, 30, 'PAIRS  0 / 6', {
+      fontFamily: SANS, fontSize: '19px', color: '#fff6e8'
+    }).setOrigin(1, 0.5).setDepth(5);
+
+    var line = scene.add.graphics().setDepth(5);
+    line.lineStyle(1, 0xfff6e8, 0.22);
+    line.lineBetween(64, 86, 836, 86);
+  }
+
+  function updateHud(scene) {
+    scene.hudMoves.setText('MOVES  ' + scene.moves);
+    scene.hudPairs.setText('PAIRS  ' + scene.pairs + ' / 6');
+  }
+
+  function boardOrigin() {
+    var totalW = 4 * CARD_W + 3 * GAP;
+    var totalH = 3 * CARD_H + 2 * GAP;
+    return { x0: (900 - totalW) / 2, y0: 118 + (548 - totalH) / 2 };
+  }
+
+  function createBoard(scene) {
+    var origin = boardOrigin();
+    var ids = [];
+    for (var k = 0; k < 6; k++) { ids.push(k); ids.push(k); }
+    Phaser.Utils.Array.Shuffle(ids);
+
+    for (var i = 0; i < 12; i++) {
+      var col = i % 4, row = Math.floor(i / 4);
+      var cx = origin.x0 + col * (CARD_W + GAP) + CARD_W / 2;
+      var cy = origin.y0 + row * (CARD_H + GAP) + CARD_H / 2;
+      var card = makeCard(scene, cx, cy, ids[i]);
+      scene.cards.push(card);
+    }
+  }
+
+  function makeCard(scene, x, y, kind) {
+    var c = scene.add.container(x, y).setDepth(2);
+    var bg = scene.add.graphics();
+    var art = scene.add.graphics();
+    var label = scene.add.text(0, CARD_H / 2 - 20, '', {
+      fontFamily: SANS, fontSize: '13px', color: '#fff6e8'
+    }).setOrigin(0.5, 0.5);
+    // letter-spaced look via spaces
+    c.add([bg, art, label]);
+    var card = {
+      container: c, bg: bg, art: art, label: label,
+      kind: kind, isFaceUp: false, isMatched: false, x: x, y: y
+    };
+    c.setSize(CARD_W, CARD_H);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', function () { onCardClicked(scene, card); });
+    c.on('pointerover', function () {
+      if (!card.isFaceUp && !card.isMatched && scene.started) scene.tweens.add({ targets: c, scaleX: 1.04, scaleY: 1.04, duration: 120 });
+    });
+    c.on('pointerout', function () {
+      scene.tweens.add({ targets: c, scaleX: 1, scaleY: 1, duration: 120 });
+    });
+    drawCard(card);
+    return card;
+  }
+
+  function cardTopLeft() { return { x: -CARD_W / 2, y: -CARD_H / 2 }; }
+
+  function drawCard(card) {
+    var bg = card.bg, art = card.art;
+    bg.clear(); art.clear();
+    var tl = cardTopLeft();
+
+    if (!card.isFaceUp) {
+      bg.fillStyle(CARD_DARK, 1);
+      bg.fillRoundedRect(tl.x, tl.y, CARD_W, CARD_H, 22);
+      bg.lineStyle(card.isMatched ? 4 : 2, card.isMatched ? GOLD : CREAM, card.isMatched ? 1 : 0.55);
+      bg.strokeRoundedRect(tl.x, tl.y, CARD_W, CARD_H, 22);
+      bg.lineStyle(1, CREAM, 0.18);
+      bg.strokeRoundedRect(tl.x + 8, tl.y + 8, CARD_W - 16, CARD_H - 16, 15);
+
+      // back art: ring + four-point star + dots
+      art.lineStyle(1.5, CREAM, 0.8);
+      art.strokeCircle(0, -6, 22);
+      art.fillStyle(CREAM, 0.95);
+      // vertical diamond
+      art.fillTriangle(0, -26, -5, -6, 5, -6);
+      art.fillTriangle(0, 14, -5, -6, 5, -6);
+      // horizontal diamond
+      art.fillTriangle(-20, -6, 0, -10.5, 0, -1.5);
+      art.fillTriangle(20, -6, 0, -10.5, 0, -1.5);
+      art.fillStyle(CREAM, 0.9);
+      art.fillCircle(0, -6, 3.4);
+      art.fillStyle(CREAM, 0.7);
+      art.fillCircle(-30, 30, 2); art.fillCircle(30, 30, 2); art.fillCircle(0, 38, 1.8);
+      card.label.setText('');
+    } else {
+      var matched = card.isMatched;
+      if (matched) {
+        bg.fillStyle(GOLD, 0.22);
+        bg.fillRoundedRect(tl.x - 5, tl.y - 5, CARD_W + 10, CARD_H + 10, 26);
+      }
+      bg.fillStyle(CARD_FRONT, 1);
+      bg.fillRoundedRect(tl.x, tl.y, CARD_W, CARD_H, 22);
+      bg.lineStyle(matched ? 4 : 2, matched ? GOLD : CREAM, matched ? 1 : 0.95);
+      bg.strokeRoundedRect(tl.x, tl.y, CARD_W, CARD_H, 22);
+
+      var def = CONSTELLATIONS[card.kind];
+      var insetX = 32, insetTop = 30, insetBottom = 44;
+      var aw = CARD_W - insetX * 2, ah = CARD_H - insetTop - insetBottom;
+      var P = def.pts.map(function (p) {
+        return { x: -CARD_W / 2 + insetX + p[0] * aw, y: -CARD_H / 2 + insetTop + p[1] * ah };
+      });
+      art.lineStyle(2.5, CREAM, 0.95);
+      def.lines.forEach(function (L) {
+        art.lineBetween(P[L[0]].x, P[L[0]].y, P[L[1]].x, P[L[1]].y);
+      });
+      P.forEach(function (p, idx) {
+        var big = (idx === 0);
+        art.fillStyle(CREAM, 0.28);
+        art.fillCircle(p.x, p.y, big ? 11 : 9);
+        art.fillStyle(GOLD, 1);
+        art.fillCircle(p.x, p.y, big ? 6.5 : 5.5);
+        art.fillStyle(0x27396a, 1);
+        art.fillCircle(p.x, p.y, 2);
+      });
+      card.label.setText(spaced(def.name.toUpperCase()));
+      card.label.setColor(matched ? '#ffd98a' : '#fff6e8');
+    }
+  }
+
+  function spaced(s) { return s.split('').join(' '); }
+
+  function onCardClicked(scene, card) {
+    if (!scene.started || scene.locked) return;
+    if (card.isFaceUp || card.isMatched) return;
+    flipUp(scene, card, function () {
+      if (!scene.firstCard) {
+        scene.firstCard = card;
+      } else {
+        scene.moves++;
+        updateHud(scene);
+        var a = scene.firstCard, b = card;
+        scene.firstCard = null;
+        if (a.kind === b.kind) {
+          a.isMatched = true; b.isMatched = true;
+          scene.pairs++;
+          drawCard(a); drawCard(b);
+          // gentle glow pop
+          [a, b].forEach(function (c) {
+            scene.tweens.add({ targets: c.container, scaleX: 1.07, scaleY: 1.07, duration: 140, yoyo: true });
+          });
+          updateHud(scene);
+          if (scene.pairs >= 6) {
+            scene.locked = true;
+            scene.time.delayedCall(900, function () { showWin(scene); });
+          }
+        } else {
+          scene.locked = true;
+          scene.time.delayedCall(850, function () {
+            flipDown(scene, a, null);
+            flipDown(scene, b, function () { scene.locked = false; });
+          });
+        }
+      }
+    });
+  }
+
+  function flipUp(scene, card, done) {
+    scene.tweens.add({
+      targets: card.container, scaleX: 0, duration: 140, ease: 'Sine.easeIn',
+      onComplete: function () {
+        card.isFaceUp = true;
+        drawCard(card);
+        scene.tweens.add({ targets: card.container, scaleX: 1, duration: 160, ease: 'Sine.easeOut', onComplete: function () { if (done) done(); } });
+      }
+    });
+  }
+
+  function flipDown(scene, card, done) {
+    scene.tweens.add({
+      targets: card.container, scaleX: 0, duration: 140, ease: 'Sine.easeIn',
+      onComplete: function () {
+        card.isFaceUp = false;
+        drawCard(card);
+        scene.tweens.add({ targets: card.container, scaleX: 1, duration: 160, ease: 'Sine.easeOut', onComplete: function () { if (done) done(); } });
+      }
+    });
+  }
+
+  function makeButton(scene, parent, x, y, w, h, labelText, onClick) {
+    var c = scene.add.container(x, y);
+    var g = scene.add.graphics();
+    function paint(hover) {
+      g.clear();
+      if (hover) { g.fillStyle(GOLD, 0.3); g.fillRoundedRect(-w/2-4, -h/2-4, w+8, h+8, 20); }
+      g.fillStyle(0xfff6e8, 1);
+      g.fillRoundedRect(-w/2, -h/2, w, h, 18);
+      g.lineStyle(2, 0xffd98a, 1);
+      g.strokeRoundedRect(-w/2, -h/2, w, h, 18);
+    }
+    paint(false);
+    var t = scene.add.text(0, 1, labelText, { fontFamily: SANS, fontSize: '21px', color: '#1b2648', fontStyle: 'bold' }).setOrigin(0.5);
+    c.add([g, t]);
+    c.setSize(w, h);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerover', function () { paint(true); });
+    c.on('pointerout', function () { paint(false); });
+    c.on('pointerdown', onClick);
+    parent.add(c);
+    return c;
+  }
+
+  function createStartOverlay(scene) {
+    var o = scene.add.container(0, 0).setDepth(20);
+    var dim = scene.add.rectangle(450, 350, 900, 700, 0x060b1e, 0.72);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0x101c3f, 1);
+    panel.fillRoundedRect(450-270, 350-240, 540, 480, 28);
+    panel.lineStyle(2, CREAM, 0.85);
+    panel.strokeRoundedRect(450-270, 350-240, 540, 480, 28);
+    panel.lineStyle(1, CREAM, 0.25);
+    panel.strokeRoundedRect(450-258, 350-228, 516, 456, 22);
+
+    // small drawn constellation mark above title
+    var mark = scene.add.graphics();
+    mark.lineStyle(2, CREAM, 0.9);
+    mark.lineBetween(410, 178, 450, 152);
+    mark.lineBetween(450, 152, 490, 178);
+    mark.lineBetween(430, 196, 470, 196);
+    mark.fillStyle(GOLD, 1);
+    mark.fillCircle(410, 178, 5); mark.fillCircle(450, 152, 6);
+    mark.fillCircle(490, 178, 5); mark.fillCircle(430, 196, 4); mark.fillCircle(470, 196, 4);
+
+    var title = scene.add.text(450, 240, 'Sky Pairs', {
+      fontFamily: SERIF, fontSize: '64px', color: '#fff6e8'
+    }).setOrigin(0.5);
+    var sub = scene.add.text(450, 292, 'a quiet game of star pictures  •  ages 4 – 7', {
+      fontFamily: SERIF, fontSize: '17px', color: '#9aa8c7', fontStyle: 'italic'
+    }).setOrigin(0.5);
+
+    var rules = scene.add.text(450, 372,
+      'Turn over two cards.\nFind the two with the same stars.\nMatch all six pairs together.',
+      { fontFamily: SANS, fontSize: '19px', color: '#fff6e8', align: 'center', lineSpacing: 10 }
+    ).setOrigin(0.5);
+
+    o.add([dim, panel, mark, title, sub, rules]);
+    makeButton(scene, o, 450, 490, 220, 58, 'Begin', function () {
+      o.setVisible(false);
+      scene.started = true;
+    });
+    scene.startOverlay = o;
+  }
+
+  function createWinOverlay(scene) {
+    var o = scene.add.container(0, 0).setDepth(30).setVisible(false);
+    var dim = scene.add.rectangle(450, 350, 900, 700, 0x060b1e, 0.68);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xfff6e8, 1);
+    panel.fillRoundedRect(450-250, 350-200, 500, 400, 28);
+    panel.lineStyle(3, GOLD, 1);
+    panel.strokeRoundedRect(450-250, 350-200, 500, 400, 28);
+
+    // drawn laurel of stars
+    var deco = scene.add.graphics();
+    deco.lineStyle(2, 0x27396a, 0.9);
+    deco.strokeCircle(450, 212, 15);
+    deco.fillStyle(0x27396a, 1);
+    deco.fillCircle(450, 212, 4);
+    var dots = [[398,216],[414,206],[486,206],[502,216]];
+    dots.forEach(function (p) { deco.fillStyle(0x27396a, 0.7); deco.fillCircle(p[0], p[1], 3); });
+
+    var title = scene.add.text(450, 272, 'All pairs found', {
+      fontFamily: SERIF, fontSize: '44px', color: '#1b2648'
+    }).setOrigin(0.5);
+    var sub = scene.add.text(450, 322, 'the sky is complete', {
+      fontFamily: SERIF, fontSize: '18px', color: '#5a6a94', fontStyle: 'italic'
+    }).setOrigin(0.5);
+    var score = scene.add.text(450, 378, '', {
+      fontFamily: SANS, fontSize: '21px', color: '#1b2648'
+    }).setOrigin(0.5);
+
+    o.add([dim, panel, deco, title, sub, score]);
+    scene.winScore = score;
+    makeButton(scene, o, 450, 462, 220, 58, 'Play again', function () {
+      resetGame(scene);
+    });
+    scene.winOverlay = o;
+  }
+
+  function showWin(scene) {
+    scene.started = false;
+    var m = scene.moves;
+    scene.winScore.setText('You found 6 pairs in ' + m + (m === 1 ? ' move.' : ' moves.'));
+    scene.winOverlay.setVisible(true);
+  }
+
+  function resetGame(scene) {
+    scene.winOverlay.setVisible(false);
+    scene.moves = 0; scene.pairs = 0;
+    scene.locked = false; scene.firstCard = null;
+    updateHud(scene);
+    var ids = [];
+    for (var k = 0; k < 6; k++) { ids.push(k); ids.push(k); }
+    Phaser.Utils.Array.Shuffle(ids);
+    scene.cards.forEach(function (card, i) {
+      card.kind = ids[i];
+      card.isMatched = false;
+      card.isFaceUp = false;
+      card.container.scaleX = 1; card.container.scaleY = 1;
+      drawCard(card);
+    });
+    scene.started = true;
+  }
+})();
+</script>
+</body>
+</html>

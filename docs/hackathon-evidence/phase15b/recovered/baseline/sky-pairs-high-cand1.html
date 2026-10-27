@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Pairs - A Quiet Matching Game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #060a1c; height: 100%; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #game { line-height: 0; }
+  #game canvas { border-radius: 14px; box-shadow: 0 20px 80px rgba(0,0,0,0.55); }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  var OFFWHITE = 0xf5efe0;
+  var INK = '#1a2342';
+  var SERIF = "Georgia, 'Palatino Linotype', 'Times New Roman', serif";
+  var SANS = "'Trebuchet MS', 'Segoe UI', Verdana, sans-serif";
+
+  var CARD_W = 168;
+  var CARD_H = 148;
+
+  var SETS = [
+    { name: 'DIPPER', pts: [[-46,-16],[-16,-20],[12,-16],[34,4],[10,24]], segs: [[0,1],[1,2],[2,3],[3,4]] },
+    { name: 'CROWN', pts: [[-50,16],[-28,-10],[0,-20],[28,-10],[50,16]], segs: [[0,1],[1,2],[2,3],[3,4]] },
+    { name: 'TRIANGLE', pts: [[0,-26],[-32,22],[32,22]], segs: [[0,1],[1,2],[2,0]] },
+    { name: 'DIAMOND', pts: [[0,-28],[28,0],[0,28],[-28,0]], segs: [[0,1],[1,2],[2,3],[3,0]] },
+    { name: 'W', pts: [[-52,-18],[-26,20],[0,-8],[26,20],[52,-18]], segs: [[0,1],[1,2],[2,3],[3,4]] },
+    { name: 'CROSS', pts: [[0,-30],[0,30],[-28,2],[28,2],[0,2]], segs: [[0,4],[4,1],[2,3]] }
+  ];
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function drawCardBack(g, w, h) {
+    g.clear();
+    g.fillStyle(0x1a2342, 1);
+    g.lineStyle(2, OFFWHITE, 0.85);
+    g.fillRoundedRect(-w/2, -h/2, w, h, 18);
+    g.strokeRoundedRect(-w/2, -h/2, w, h, 18);
+    g.lineStyle(1, OFFWHITE, 0.22);
+    g.strokeRoundedRect(-w/2 + 10, -h/2 + 10, w - 20, h - 20, 12);
+    g.lineStyle(2, OFFWHITE, 0.9);
+    g.beginPath(); g.moveTo(0, -16); g.lineTo(0, 16); g.strokePath();
+    g.beginPath(); g.moveTo(-16, 0); g.lineTo(16, 0); g.strokePath();
+    g.fillStyle(OFFWHITE, 0.95);
+    g.fillCircle(0, 0, 4.5);
+    g.fillStyle(OFFWHITE, 0.7);
+    g.fillCircle(-30, -26, 1.8);
+    g.fillCircle(28, -20, 1.8);
+    g.fillCircle(-22, 30, 1.8);
+    g.fillCircle(30, 28, 1.4);
+  }
+
+  function drawCardFace(g, set, w, h) {
+    g.clear();
+    g.fillStyle(0x232c55, 1);
+    g.lineStyle(2.5, OFFWHITE, 0.95);
+    g.fillRoundedRect(-w/2, -h/2, w, h, 18);
+    g.strokeRoundedRect(-w/2, -h/2, w, h, 18);
+    var oy = -12;
+    g.lineStyle(2, OFFWHITE, 0.9);
+    for (var s = 0; s < set.segs.length; s++) {
+      var a = set.pts[set.segs[s][0]];
+      var b = set.pts[set.segs[s][1]];
+      g.beginPath(); g.moveTo(a[0], a[1] + oy); g.lineTo(b[0], b[1] + oy); g.strokePath();
+    }
+    for (var i = 0; i < set.pts.length; i++) {
+      var px = set.pts[i][0], py = set.pts[i][1] + oy;
+      g.fillStyle(OFFWHITE, 0.16);
+      g.fillCircle(px, py, 10);
+      g.fillStyle(OFFWHITE, 1);
+      g.fillCircle(px, py, 5);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(px, py, 2.1);
+    }
+  }
+
+  function makeButton(scene, x, y, w, h, label, onTap) {
+    var c = scene.add.container(x, y).setDepth(30);
+    var bg = scene.add.graphics();
+    var txt = scene.add.text(0, 0, label, {
+      fontFamily: SERIF, fontSize: '21px', fontStyle: 'bold', color: INK
+    }).setOrigin(0.5);
+    c.add([bg, txt]);
+    function paint(hover) {
+      bg.clear();
+      bg.fillStyle(hover ? 0xfffaf0 : OFFWHITE, 1);
+      bg.lineStyle(2, 0x2a3563, hover ? 0.9 : 0.35);
+      bg.fillRoundedRect(-w/2, -h/2, w, h, 29);
+      bg.strokeRoundedRect(-w/2, -h/2, w, h, 29);
+    }
+    paint(false);
+    c.setSize(w, h);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerover', function () { paint(true); });
+    c.on('pointerout', function () { paint(false); c.setScale(1); });
+    c.on('pointerdown', function () { c.setScale(0.96); });
+    c.on('pointerup', function () { c.setScale(1); onTap(); });
+    return c;
+  }
+
+  var scene = {
+    firstCard: null,
+    secondCard: null,
+    lockBoard: true,
+    moves: 0,
+    pairs: 0,
+    cards: [],
+
+    create: function () {
+      this.cameras.main.setBackgroundColor('#0b1026');
+      this.buildBackground();
+      this.buildHUD();
+      this.buildBoard();
+      this.buildStartOverlay();
+      this.buildWinOverlay();
+      this.dealCards();
+      this.lockBoard = true;
+    },
+
+    buildBackground: function () {
+      var neb = this.add.graphics().setDepth(0);
+      neb.fillStyle(0x2b3a7a, 0.20);
+      neb.fillEllipse(180, 480, 420, 240);
+      neb.fillStyle(0x4a2b6e, 0.14);
+      neb.fillEllipse(730, 420, 460, 260);
+      neb.fillStyle(0x1d4a5e, 0.12);
+      neb.fillEllipse(480, 180, 520, 200);
+
+      var glow = this.add.graphics().setDepth(1);
+      glow.fillStyle(OFFWHITE, 0.08);
+      glow.fillCircle(782, 118, 52);
+      glow.fillStyle(OFFWHITE, 1);
+      glow.fillCircle(782, 118, 30);
+      glow.fillStyle(0x0b1026, 1);
+      glow.fillCircle(794, 110, 26);
+
+      for (var i = 0; i < 120; i++) {
+        var x = Math.random() * 900, y = Math.random() * 700;
+        var r = Math.random() < 0.85 ? 1.1 : 1.9;
+        this.add.circle(x, y, r, OFFWHITE, 0.25 + Math.random() * 0.45).setDepth(1);
+      }
+      for (var k = 0; k < 34; k++) {
+        var sx = Math.random() * 900, sy = 100 + Math.random() * 560;
+        var star = this.add.circle(sx, sy, 1.6 + Math.random() * 1.2, OFFWHITE, 0.85).setDepth(1);
+        this.tweens.add({
+          targets: star, alpha: 0.15,
+          duration: 900 + Math.random() * 1900,
+          yoyo: true, repeat: -1,
+          ease: 'Sine.easeInOut', delay: Math.random() * 2200
+        });
+      }
+    },
+
+    buildHUD: function () {
+      var line = this.add.graphics().setDepth(10);
+      line.lineStyle(1, OFFWHITE, 0.22);
+      line.beginPath(); line.moveTo(64, 98); line.lineTo(836, 98); line.strokePath();
+
+      this.add.text(72, 34, 'SKY PAIRS', {
+        fontFamily: SERIF, fontSize: '26px', fontStyle: 'bold', color: '#f5efe0'
+      }).setDepth(10);
+
+      this.add.text(72, 64, 'a quiet matching game', {
+        fontFamily: SANS, fontSize: '13px', color: '#9aa3c7'
+      }).setDepth(10);
+
+      this.movesText = this.add.text(450, 52, 'Moves  0', {
+        fontFamily: SANS, fontSize: '19px', color: '#f5efe0'
+      }).setOrigin(0.5).setDepth(10);
+
+      this.pairsText = this.add.text(828, 52, 'Pairs  0 / 6', {
+        fontFamily: SANS, fontSize: '19px', color: '#f5efe0'
+      }).setOrigin(1, 0.5).setDepth(10);
+
+      this.hintText = this.add.text(450, 664, 'Tap a card to turn it over  -  there is no clock', {
+        fontFamily: SANS, fontSize: '14px', color: '#8b94b8'
+      }).setOrigin(0.5).setDepth(10).setAlpha(0);
+    },
+
+    buildBoard: function () {
+      var cols = 4, rows = 3;
+      var gapX = 28, gapY = 22;
+      var totalW = cols * CARD_W + (cols - 1) * gapX;
+      var totalH = rows * CARD_H + (rows - 1) * gapY;
+      var startX = (900 - totalW) / 2 + CARD_W / 2;
+      var startY = 128 + CARD_H / 2;
+      var self = this;
+      var n = 0;
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          (function (idx, x, y) {
+            var cont = self.add.container(x, y).setDepth(5);
+            var backG = self.add.graphics();
+            var faceG = self.add.graphics();
+            drawCardBack(backG, CARD_W, CARD_H);
+            drawCardFace(faceG, SETS[0], CARD_W, CARD_H);
+            faceG.setVisible(false);
+            var label = self.add.text(0, CARD_H / 2 - 24, SETS[0].name, {
+              fontFamily: SANS, fontSize: '13px', color: '#c9d1ec'
+            }).setOrigin(0.5).setVisible(false);
+            var zone = self.add.zone(0, 0, CARD_W, CARD_H).setInteractive({ useHandCursor: true });
+            cont.add([backG, faceG, label, zone]);
+            var card = { container: cont, backG: backG, faceG: faceG, label: label, setIndex: 0, faceUp: false, matched: false };
+            zone.on('pointerdown', function () { self.onCard(card); });
+            zone.on('pointerover', function () {
+              if (!card.faceUp && !card.matched && !self.lockBoard) self.tweens.add({ targets: cont, scaleX: 1.04, scaleY: 1.04, duration: 140 });
+            });
+            zone.on('pointerout', function () {
+              if (!card.faceUp) self.tweens.add({ targets: cont, scaleX: 1, scaleY: 1, duration: 140 });
+            });
+            self.cards.push(card);
+          })(n, startX + c * (CARD_W + gapX), startY + r * (CARD_H + gapY));
+          n++;
+        }
+      }
+    },
+
+    dealCards: function () {
+      var order = shuffle([0,0,1,1,2,2,3,3,4,4,5,5]);
+      for (var i = 0; i < this.cards.length; i++) {
+        var card = this.cards[i];
+        card.setIndex = order[i];
+        card.faceUp = false;
+        card.matched = false;
+        card.container.setScale(1, 1);
+        card.container.setAlpha(1);
+        drawCardFace(card.faceG, SETS[order[i]], CARD_W, CARD_H);
+        card.label.setText(SETS[order[i]].name);
+        card.backG.setVisible(true);
+        card.faceG.setVisible(false);
+        card.label.setVisible(false);
+      }
+      this.moves = 0;
+      this.pairs = 0;
+      this.firstCard = null;
+      this.secondCard = null;
+      this.updateHUD();
+    },
+
+    updateHUD: function () {
+      this.movesText.setText('Moves  ' + this.moves);
+      this.pairsText.setText('Pairs  ' + this.pairs + ' / 6');
+    },
+
+    setFace: function (card, up) {
+      card.faceUp = up;
+      card.backG.setVisible(!up);
+      card.faceG.setVisible(up);
+      card.label.setVisible(up);
+    },
+
+    flipTo: function (card, up, done) {
+      var self = this;
+      this.tweens.add({
+        targets: card.container, scaleX: 0, duration: 130, ease: 'Sine.easeIn',
+        onComplete: function () {
+          self.setFace(card, up);
+          self.tweens.add({
+            targets: card.container, scaleX: 1, duration: 150, ease: 'Sine.easeOut',
+            onComplete: function () { if (done) done(); }
+          });
+        }
+      });
+    },
+
+    onCard: function (card) {
+      if (this.lockBoard) return;
+      if (card.faceUp || card.matched) return;
+      if (this.secondCard) return;
+      var self = this;
+      this.flipTo(card, true);
+      if (!this.firstCard) {
+        this.firstCard = card;
+      } else {
+        if (card === this.firstCard) return;
+        this.secondCard = card;
+        this.moves++;
+        this.updateHUD();
+        this.lockBoard = true;
+        this.time.delayedCall(520, function () { self.checkPair(); });
+      }
+    },
+
+    checkPair: function () {
+      var a = this.firstCard, b = this.secondCard;
+      var self = this;
+      if (a && b && a.setIndex === b.setIndex) {
+        a.matched = true; b.matched = true;
+        this.pairs++;
+        this.updateHUD();
+        this.burst(a.container.x, a.container.y);
+        this.burst(b.container.x, b.container.y);
+        this.tweens.add({ targets: [a.container, b.container], scaleX: 1.06, scaleY: 1.06, duration: 160, yoyo: true });
+        this.firstCard = null; this.secondCard = null;
+        this.lockBoard = false;
+        if (this.pairs >= 6) {
+          this.lockBoard = true;
+          this.time.delayedCall(800, function () { self.showWin(); });
+        }
+      } else if (a && b) {
+        this.time.delayedCall(650, function () {
+          self.flipTo(a, false);
+          self.flipTo(b, false, function () {
+            self.firstCard = null; self.secondCard = null;
+            self.lockBoard = false;
+          });
+        });
+      } else {
+        this.lockBoard = false;
+      }
+    },
+
+    burst: function (x, y) {
+      for (var i = 0; i < 9; i++) {
+        var ang = (Math.PI * 2 * i) / 9 + Math.random() * 0.3;
+        var dot = this.add.circle(x, y, 3, OFFWHITE, 0.95).setDepth(8);
+        this.tweens.add({
+          targets: dot, x: x + Math.cos(ang) * 52, y: y + Math.sin(ang) * 52,
+          alpha: 0, duration: 550 + Math.random() * 250, ease: 'Sine.easeOut',
+          onComplete: (function (d) { return function () { d.destroy(); }; })(dot)
+        });
+      }
+    },
+
+    panelBase: function (holder, w, h) {
+      var g = this.add.graphics();
+      var x = 450 - w / 2, y = 350 - h / 2;
+      g.fillStyle(0x141b38, 0.98);
+      g.lineStyle(2, OFFWHITE, 0.9);
+      g.fillRoundedRect(x, y, w, h, 24);
+      g.strokeRoundedRect(x, y, w, h, 24);
+      g.lineStyle(1, OFFWHITE, 0.18);
+      g.strokeRoundedRect(x + 12, y + 12, w - 24, h - 24, 16);
+      holder.add(g);
+    },
+
+    buildStartOverlay: function () {
+      var self = this;
+      this.startLayer = this.add.container(0, 0).setDepth(20);
+      var dim = this.add.rectangle(450, 350, 900, 700, 0x060a1c, 0.62);
+      dim.setInteractive();
+      this.startLayer.add(dim);
+      this.panelBase(this.startLayer, 560, 450);
+
+      this.startLayer.add(this.add.text(450, 178, 'A   Q U I E T   M A T C H I N G   G A M E', {
+        fontFamily: SANS, fontSize: '12px', color: '#9aa3c7'
+      }).setOrigin(0.5));
+
+      this.startLayer.add(this.add.text(450, 232, 'Sky Pairs', {
+        fontFamily: SERIF, fontSize: '66px', fontStyle: 'bold', color: '#f5efe0'
+      }).setOrigin(0.5));
+
+      var rule = this.add.graphics();
+      rule.lineStyle(1, OFFWHITE, 0.5);
+      rule.beginPath(); rule.moveTo(360, 278); rule.lineTo(540, 278); rule.strokePath();
+      this.startLayer.add(rule);
+
+      var body = this.add.text(450, 336,
+        'Turn over two cards and find the pairs\nthat show the same stars.\nTake your time - there is no clock.', {
+        fontFamily: SANS, fontSize: '17px', color: '#c9d1ec',
+        align: 'center', lineSpacing: 9
+      }).setOrigin(0.5);
+      this.startLayer.add(body);
+
+      this.startLayer.add(this.add.text(450, 424, '6 pairs  -  ages 4 to 7', {
+        fontFamily: SANS, fontSize: '14px', color: '#8b94b8'
+      }).setOrigin(0.5));
+
+      var btn = makeButton(this, 450, 492, 262, 58, 'Begin Stargazing', function () {
+        self.startLayer.setVisible(false);
+        self.lockBoard = false;
+        self.tweens.add({ targets: self.hintText, alpha: 1, duration: 600 });
+        self.time.delayedCall(5000, function () {
+          self.tweens.add({ targets: self.hintText, alpha: 0.55, duration: 800 });
+        });
+      });
+      this.startLayer.add(btn);
+    },
+
+    buildWinOverlay: function () {
+      var self = this;
+      this.winLayer = this.add.container(0, 0).setDepth(21).setVisible(false);
+      var dim = this.add.rectangle(450, 350, 900, 700, 0x060a1c, 0.62);
+      dim.setInteractive();
+      this.winLayer.add(dim);
+      this.panelBase(this.winLayer, 560, 420);
+
+      this.winLayer.add(this.add.text(450, 210, 'A L L   S I X   P A I R S   F O U N D', {
+        fontFamily: SANS, fontSize: '12px', color: '#9aa3c7'
+      }).setOrigin(0.5));
+
+      this.winLayer.add(this.add.text(450, 264, 'Lovely Stargazing', {
+        fontFamily: SERIF, fontSize: '50px', fontStyle: 'bold', color: '#f5efe0'
+      }).setOrigin(0.5));
+
+      this.winStats = this.add.text(450, 336, '', {
+        fontFamily: SANS, fontSize: '17px', color: '#c9d1ec', align: 'center', lineSpacing: 8
+      }).setOrigin(0.5);
+      this.winLayer.add(this.winStats);
+
+      var rule = this.add.graphics();
+      rule.lineStyle(1, OFFWHITE, 0.4);
+      rule.beginPath(); rule.moveTo(380, 300); rule.lineTo(520, 300); rule.strokePath();
+      this.winLayer.add(rule);
+
+      var btn = makeButton(this, 450, 420, 220, 58, 'Play Again', function () {
+        self.winLayer.setVisible(false);
+        self.dealCards();
+        self.lockBoard = false;
+      });
+      this.winLayer.add(btn);
+    },
+
+    showWin: function () {
+      var word = this.moves === 1 ? 'move' : 'moves';
+      this.winStats.setText('You found all 6 pairs in ' + this.moves + ' ' + word + '.\nThe sky is calm because of you.');
+      this.winLayer.setVisible(true);
+      this.winLayer.setAlpha(0);
+      this.tweens.add({ targets: this.winLayer, alpha: 1, duration: 450 });
+    },
+
+    update: function () {}
+  };
+
+  new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: 900,
+    height: 700,
+    backgroundColor: '#0b1026',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: 900,
+      height: 700
+    },
+    scene: scene
+  });
+})();
+</script>
+</body>
+</html>
