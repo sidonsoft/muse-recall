@@ -253,6 +253,95 @@ describe('guard engine — 18 acceptance cases', () => {
   });
 });
 
+describe('v1.1.0 comment-masking regressions (Phase 12D accuracy fix)', () => {
+  const verdictFor = (
+    result: ReturnType<typeof evaluateDecisions>,
+    rule: string,
+  ): string | undefined => result.evaluations.find((e) => e.rule === rule)?.verdict;
+
+  it('line comment naming a countdown does not block', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}// the old countdown ring lived here\nlet elapsed = 0;`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+  });
+
+  it('block comment naming a countdown does not block', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      '/* countdown UI experiment retired — see design notes */\ndealCards();',
+    );
+    expect(result.verdict).toBe('PASS');
+  });
+
+  it('HTML comment naming a countdown does not block', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      '<!-- the old countdown ring lived above the board -->\n<script>let elapsed = 0;</script>',
+    );
+    expect(result.verdict).toBe('PASS');
+  });
+
+  it('a "//" inside a string URL is not treated as a comment (real code still blocks)', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `${PHASER}<script>let timeLeft = 10; timeLeft -= 1;</script>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+    expect(result.findings[0]?.evidence).toContain('timeLeft');
+  });
+
+  it('apostrophe in an HTML text node cannot swallow following live code', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `<p>Don't worry — the round simply ends.</p>\n<script>let timeLeft = 10; timeLeft -= 1;</script>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+  });
+
+  it('superseded hex in a comment no longer blocks the corrected palette', () => {
+    const result = evaluateDecisions(
+      [OCEAN_DECISION],
+      `/* the old accent was #FF7E5F before the rebrand */<style>:root { --accent: #4EA8DE; --ink: #102A43; }</style>`,
+      { supersededDecisions: [SUNSET_SUPERSEDED] },
+    );
+    expect(verdictFor(result, 'superseded-palette')).toBe('PASS');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('comment-only red/green wording yields UNVERIFIED, never BLOCK', () => {
+    const result = evaluateDecisions(
+      [A11Y_DECISION],
+      '// the old red/green pairing confused colour-blind players\napplyEmojiSet();',
+    );
+    expect(verdictFor(result, 'colour-only-cue')).toBe('UNVERIFIED');
+  });
+
+  it('commented animation/penalty wording no longer blocks', () => {
+    const flash = evaluateDecisions(
+      [CHILD_DECISION],
+      '/* animation: flash 1s infinite — retired, replaced by static glow */\nbox.classList.add("glow");',
+    );
+    expect(verdictFor(flash, 'flashing-effects')).toBe('PASS');
+    const penalty = evaluateDecisions(
+      [CHILD_DECISION],
+      '// score-- retired after playtest feedback\ncelebrateMatch();',
+    );
+    expect(verdictFor(penalty, 'mistake-penalty')).toBe('PASS');
+  });
+
+  it('evidence is still sliced from the ORIGINAL source around the live match', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      '// countdown retired\nlet timeLeft = 10;\ntimeLeft -= 1;',
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+    const evidence = result.findings[0]?.evidence ?? '';
+    expect(evidence).toContain('let timeLeft = 10;');
+  });
+});
+
 describe('integration adapter', () => {
   it('projects blocking findings into validation-issue strings and separates UNVERIFIED notes', () => {
     const result = evaluateDecisions([CHILD_DECISION], `${PHASER}<div id="countdown">10</div>`);
