@@ -172,9 +172,11 @@ verified after fixing a bridge-ordering bug: defining `window.Phaser` after the 
 it replaced the library, so the preview had no canvas. The bridge now injects before the first
 script in `<head>`; the real game then loaded Phaser 3.80.1 and produced a meaningful snapshot.
 
-The real modification could not be re-run after the fix because the Muse subscription window was
-exhausted. Deterministic tests prove the source-aware path; the next real run should be done
-after the quota resets.
+**Historical note (superseded):** this paragraph described the state before the quota failover
+was implemented. The subscription block was later resolved by automatic failover to
+`muse-spark-1.3-contributor`, and Phase 11 ran five successful real modifications (see
+`docs/PHASE11_RELEASE_READINESS.md`). The historical result is preserved above rather than
+rewritten.
 
 ## Muse Spark via Meta Model API (quota unblock)
 

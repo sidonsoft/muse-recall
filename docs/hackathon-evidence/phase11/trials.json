@@ -1,0 +1,214 @@
+{
+  "generated_at": "2026-10-27T01:33:32.456Z",
+  "baseline": {
+    "reused": true,
+    "version": 1
+  },
+  "trials": [
+    {
+      "trial": 1,
+      "request": "Add a subtle golden glow behind cards when they match.",
+      "screenshot": {
+        "bytes": 162866,
+        "method": "bridge",
+        "min": 35.177,
+        "max": 254.99999999999997,
+        "colourful": 2696,
+        "blank": false
+      },
+      "job_id": "935f0935-d5dc-41e1-86fb-ab902d6238cb",
+      "status": "succeeded",
+      "seconds": 104.2,
+      "base_version": 1,
+      "usage": {
+        "calls": 7,
+        "input_tokens": 206205,
+        "output_tokens": 1593,
+        "runtime_ms": 103579
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "error": null,
+      "failover": true,
+      "model": "muse-spark-1.3-contributor (fallback)",
+      "lines": {
+        "added": 11,
+        "removed": 2,
+        "original": 258,
+        "pct": 5.038759689922481
+      },
+      "preserved_marker": true,
+      "approved": true,
+      "approval_error": null,
+      "verified_preview": true,
+      "page_errors": [],
+      "rollback": true
+    },
+    {
+      "trial": 2,
+      "request": "Improve the Restart button hover feedback so it feels responsive.",
+      "screenshot": {
+        "bytes": 162866,
+        "method": "bridge",
+        "min": 35.177,
+        "max": 254.99999999999997,
+        "colourful": 2696,
+        "blank": false
+      },
+      "job_id": "a5f14791-f323-419c-9726-e71c429e6d47",
+      "status": "succeeded",
+      "seconds": 48.1,
+      "base_version": 1,
+      "usage": {
+        "calls": 7,
+        "input_tokens": 210413,
+        "output_tokens": 2070,
+        "runtime_ms": 46777
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "error": null,
+      "failover": true,
+      "model": "muse-spark-1.3-contributor (fallback)",
+      "lines": {
+        "added": 22,
+        "removed": 4,
+        "original": 258,
+        "pct": 10.077519379844961
+      },
+      "preserved_marker": true,
+      "approved": true,
+      "approval_error": null,
+      "verified_preview": true,
+      "page_errors": [],
+      "rollback": true
+    },
+    {
+      "trial": 3,
+      "request": "Add a small score pop animation when a pair is matched.",
+      "screenshot": {
+        "bytes": 162866,
+        "method": "bridge",
+        "min": 35.177,
+        "max": 254.99999999999997,
+        "colourful": 2696,
+        "blank": false
+      },
+      "job_id": "fe0ffaa1-c30b-4289-b479-053a3c477492",
+      "status": "succeeded",
+      "seconds": 34.1,
+      "base_version": 1,
+      "usage": {
+        "calls": 5,
+        "input_tokens": 134076,
+        "output_tokens": 1113,
+        "runtime_ms": 32521
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "error": null,
+      "failover": true,
+      "model": "muse-spark-1.3-contributor (fallback)",
+      "lines": {
+        "added": 3,
+        "removed": 0,
+        "original": 258,
+        "pct": 1.1627906976744187
+      },
+      "preserved_marker": true,
+      "approved": true,
+      "approval_error": null,
+      "verified_preview": true,
+      "page_errors": [],
+      "rollback": true
+    },
+    {
+      "trial": 4,
+      "request": "Improve HUD text contrast so the score and moves are easier to read.",
+      "screenshot": {
+        "bytes": 162866,
+        "method": "bridge",
+        "min": 35.177,
+        "max": 254.99999999999997,
+        "colourful": 2696,
+        "blank": false
+      },
+      "job_id": "0d4f595c-5665-4d6c-ab06-dd63244fe434",
+      "status": "succeeded",
+      "seconds": 44.1,
+      "base_version": 1,
+      "usage": {
+        "calls": 7,
+        "input_tokens": 201666,
+        "output_tokens": 1640,
+        "runtime_ms": 43008
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "error": null,
+      "failover": true,
+      "model": "muse-spark-1.3-contributor (fallback)",
+      "lines": {
+        "added": 6,
+        "removed": 2,
+        "original": 258,
+        "pct": 3.10077519379845
+      },
+      "preserved_marker": true,
+      "approved": true,
+      "approval_error": null,
+      "verified_preview": true,
+      "page_errors": [],
+      "rollback": true
+    },
+    {
+      "trial": 5,
+      "request": "Add a subtle completion banner animation when all pairs are matched.",
+      "screenshot": {
+        "bytes": 162866,
+        "method": "bridge",
+        "min": 35.177,
+        "max": 254.99999999999997,
+        "colourful": 2696,
+        "blank": false
+      },
+      "job_id": "3fe0024a-ccb6-42b6-88e0-ad85047deaec",
+      "status": "succeeded",
+      "seconds": 48.1,
+      "base_version": 1,
+      "usage": {
+        "calls": 8,
+        "input_tokens": 243468,
+        "output_tokens": 1764,
+        "runtime_ms": 48074
+      },
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "error": null,
+      "failover": true,
+      "model": "muse-spark-1.3-contributor (fallback)",
+      "lines": {
+        "added": 12,
+        "removed": 1,
+        "original": 258,
+        "pct": 5.038759689922481
+      },
+      "preserved_marker": true,
+      "approved": true,
+      "approval_error": null,
+      "verified_preview": true,
+      "page_errors": [],
+      "rollback": true
+    }
+  ]
+}
