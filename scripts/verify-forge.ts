@@ -53,7 +53,7 @@ async function assertCurrentStudio(page: Page): Promise<void> {
     await previewTab.waitFor({ timeout: 20_000 });
   } catch {
     const legacyForge = await page.getByRole('button', { name: /^Forge$/ }).count();
-    const body = ((await page.locator('body').innerText()) ?? '')
+    const body = ((await page.locator('body').textContent()) ?? '')
       .replace(/\s+/g, ' ')
       .slice(0, 180);
     throw new Error(
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
     await page.getByRole('tab', { name: 'Source' }).click();
     const sourcePanel = page.locator('#studio-panel-source');
     await sourcePanel.getByText('staged source').waitFor({ timeout: 10_000 });
-    const sourceText = (await sourcePanel.innerText()) ?? '';
+    const sourceText = (await sourcePanel.textContent()) ?? '';
     if (!sourceText.includes('index.html') || !/sha [a-f0-9]{10}/.test(sourceText)) {
       throw new Error('Source panel did not show index.html and its SHA-256.');
     }
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
     await frame.getByRole('heading', { name: 'Task list' }).waitFor({ timeout: 30_000 });
     await page.getByRole('tab', { name: 'Source' }).click();
     await sourcePanel.getByText('v1', { exact: true }).waitFor({ timeout: 10_000 });
-    if (((await sourcePanel.innerText()) ?? '').includes('staged source')) {
+    if (((await sourcePanel.textContent()) ?? '').includes('staged source')) {
       throw new Error('Source still reports a staged artifact after approval.');
     }
     check('approved preview and source replace the staged view');
@@ -192,14 +192,14 @@ async function main(): Promise<void> {
     // ---- Decision Guard and memory visibility ---------------------------
     const guard = page.getByRole('region', { name: 'Decision Guard advisory' });
     await guard.waitFor({ timeout: 10_000 });
-    const guardText = (await guard.innerText()) ?? '';
+    const guardText = (await guard.textContent()) ?? '';
     if (!/(NOT VERIFIED|NO VIOLATION|VIOLATION DETECTED|NOT EVALUATED)/.test(guardText)) {
       throw new Error('Decision Guard advisory did not report an assessment.');
     }
     const memory = page.getByRole('region', { name: 'Project memory' });
     await memory.waitFor({ timeout: 10_000 });
     if (
-      !((await memory.innerText()) ?? '').includes(
+      !((await memory.textContent()) ?? '').includes(
         'Retrieved context, not proof that it changed a model decision.',
       )
     ) {
