@@ -1,15 +1,22 @@
 /**
- * Browser smoke verification.
+ * Broad browser smoke verification for the current product.
  *
- * Drives the real UI against a running API: system status, a live Muse check,
- * the provider bench, and the full memory inspector journey (create → inspect →
- * correct → explain retrieval → delete). Fails on any console error, page
- * exception, or HTTP error.
+ * Scope: System health, provider bench, the memory inspector journey (create →
+ * inspect → correct → explain retrieval → delete), two conversation turns with
+ * retrieval evidence, and the HTML Studio landing/tab shell. It is a smoke
+ * test, not the Studio generation/review workflow: that is `pnpm verify:forge`
+ * (browser) and `pnpm verify:forge-workflow` (backend).
+ *
+ * Fails on any console error, page exception, or HTTP error.
  *
  * Usage:
  *   pnpm dev:server   # terminal 1
  *   pnpm dev:web      # terminal 2
- *   pnpm exec tsx scripts/verify-ui.ts
+ *   pnpm verify:browser
+ *
+ * `VERIFY_URL` selects the web client (default http://127.0.0.1:5173). Point
+ * it at the server you actually intend to test; the script asserts product
+ * surfaces rather than a port number.
  *
  * Screenshots default to `test-results/verify-ui/` (gitignored). Pass
  * `--screenshot <path>` only when you deliberately want to write elsewhere;

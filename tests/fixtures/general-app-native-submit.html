@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Native submit failure fixture</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #141311; color: #f1eee6; font-family: system-ui, sans-serif; }
+      main { width: min(28rem, 100% - 2rem); }
+      input, button { padding: 0.55rem; border-radius: 0.4rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Task list</h1>
+      <p id="count" aria-live="polite">0 tasks</p>
+      <!-- Deliberately incompatible: submission navigates, so the sandbox
+           (no allow-forms) and CSP form-action 'none' block it. Used only to
+           prove the failure mode is still rejected. -->
+      <form id="task-form" action="/submitted" method="get">
+        <label for="task-input">New task</label>
+        <input id="task-input" name="task" type="text" required />
+        <button type="submit">Add task</button>
+      </form>
+      <ul id="task-list"></ul>
+    </main>
+    <script>
+      const count = document.getElementById('count');
+      const list = document.getElementById('task-list');
+      const tasks = [];
+      function render() {
+        list.replaceChildren();
+        for (const task of tasks) {
+          const item = document.createElement('li');
+          item.textContent = task;
+          list.append(item);
+        }
+        count.textContent = `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`;
+      }
+      // No submit listener and no preventDefault: the browser owns submission.
+      render();
+    </script>
+  </body>
+</html>

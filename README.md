@@ -90,16 +90,18 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (491 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (518 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
 pnpm verify:runtime         # load-time browser check used by HTML Studio approval
-pnpm verify:forge           # end-to-end HTML Studio loop against the deterministic fixture
+pnpm verify:formsandbox     # native submission blocked; JS/Enter interactions work
+pnpm verify:forge-workflow  # backend generate/stage/diff/approve/reject/rollback
+pnpm verify:forge           # HTML Studio browser loop (FORGE_VERIFY_BASE, default :5173)
+pnpm verify:browser         # broad product UI smoke (VERIFY_URL, default :5173)
 pnpm demo:seed              # seed the recorded demo project and its decisions
 pnpm bench:retrieval        # retrieval latency, selectivity, accuracy, stale rate
 pnpm bench:muse-overhead    # repeated real Muse calls; token variance and memory cost
-pnpm exec tsx scripts/verify-ui.ts   # drives the real UI in Chrome, fails on any error
 pnpm demo:sessions          # Demo A + B against real Muse, writes evidence JSON
 pnpm bench:context          # Demo C: baseline history vs retrieved memory
 pnpm eval:retrieval         # 22 retrieval questions, optional real Muse answers

@@ -72,3 +72,76 @@ describe('production prompt parity', () => {
     expect(prompt.endsWith(REQUEST)).toBe(true);
   });
 });
+
+/**
+ * The preview sandbox is `sandbox="allow-scripts"` with CSP `form-action 'none'`.
+ * The generator must be told that contract explicitly, or it will produce apps
+ * whose primary action is a blocked native form submission (the live FocusFlow
+ * attempt 1 failure).
+ */
+describe('generation interaction contract', () => {
+  const generate = buildForgePrompt({ kind: 'generate', prompt: 'A task planner.' });
+  const modify = buildForgePrompt({ kind: 'modify', prompt: REQUEST, request: REQUEST });
+
+  it.each([
+    ['generate', generate],
+    ['modify', modify],
+  ])('%s describes JavaScript-driven interactions', (_kind, prompt) => {
+    expect(prompt).toContain('client-side JavaScript');
+    expect(prompt).toContain('click or keydown listeners');
+    expect(prompt).toContain('native form submission');
+    expect(prompt).toContain('page navigation');
+  });
+
+  it.each([
+    ['generate', generate],
+    ['modify', modify],
+  ])('%s forbids submit controls because preventDefault cannot rescue them', (_kind, prompt) => {
+    expect(prompt).toContain('<button type="submit">');
+    // The empirical Chrome behaviour: the sandbox blocks before the submit
+    // event, so the prompt must not present preventDefault as a workaround.
+    expect(prompt).toContain('event.preventDefault()');
+    expect(prompt).toMatch(/cannot rescue|instead of relying/);
+  });
+
+  it.each([
+    ['generate', generate],
+    ['modify', modify],
+  ])('%s still allows semantic form markup', (_kind, prompt) => {
+    expect(prompt.toLowerCase()).toContain('semantic <form>');
+    expect(prompt).not.toMatch(/do not use (a |any )?<form/i);
+  });
+
+  it.each([
+    ['generate', generate],
+    ['modify', modify],
+  ])('%s preserves accessibility and keyboard operation', (_kind, prompt) => {
+    expect(prompt).toContain('accessible label');
+    expect(prompt.toLowerCase()).toContain('keyboard');
+    expect(prompt).toContain('Enter');
+  });
+
+  it.each([
+    ['generate', generate],
+    ['modify', modify],
+  ])('%s rules out unsupported browser capabilities', (_kind, prompt) => {
+    expect(prompt).toContain('browser storage');
+    expect(prompt).toContain('external services');
+    expect(prompt).toContain('unrestricted browser capabilities');
+  });
+
+  it('generation names the unsupported storage APIs explicitly', () => {
+    expect(generate).toContain('localStorage');
+    expect(generate).toContain('sessionStorage');
+    expect(generate).toContain('IndexedDB');
+  });
+
+  it('keeps the contract before the user request so it cannot be truncated', () => {
+    expect(generate.indexOf('Interaction contract')).toBeLessThan(
+      generate.indexOf('Application request:'),
+    );
+    expect(modify.indexOf('sandbox interaction contract')).toBeLessThan(
+      modify.indexOf('Requested change:'),
+    );
+  });
+});

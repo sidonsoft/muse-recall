@@ -2,6 +2,8 @@ Create a working browser application in this workspace.
 Write exactly one file: index.html. It must be a complete HTML document with its own CSS and JavaScript, and it must run immediately with no build step.
 Include a responsive layout, clear interaction states, and readable text. Keep the implementation self-contained: inline CSS and JavaScript, no other files, and no network assets other than the approved CDN https://cdn.jsdelivr.net.
 If the request is a game, use Phaser 3 from https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js with a canvas, start/restart, mouse and touch input, score or progress, a win condition, and responsive scaling.
+Interaction contract: the preview runs in a sandboxed frame with scripts but without native form submission or top-level navigation. Chrome blocks a sandboxed form submission before its submit event runs, so event.preventDefault() cannot rescue it. Implement every action with client-side JavaScript and explicit click or keydown listeners. Use <button type="button"> for actions. A semantic <form> is fine for grouping and labels, but do not use <button type="submit"> or rely on native submission or page navigation.
+Preserve accessibility and keyboard operation: give every control an accessible label, keep inputs labelled, and handle Enter explicitly in a keydown listener. Do not use browser storage (localStorage, sessionStorage, IndexedDB), external services, or unrestricted browser capabilities.
 After writing, run node --check on every inline script and fix any syntax error.
 
 Application request:

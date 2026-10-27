@@ -118,6 +118,31 @@ if (mode === 'sleep') {
   writeFileSync(join(workspace, 'index.html'), readFileSync(source, 'utf8'));
   usage(2);
   done('copied');
+} else if (mode === 'app') {
+  // Deterministic non-game application for the Studio browser verification.
+  // No network asset, so approval's real Chrome runtime check can run offline.
+  const file = join(workspace, 'index.html');
+  const source = process.env.FAKE_MUSE_APP ?? 'tests/fixtures/general-app-form.html';
+  if (prompt.includes('current approved application')) {
+    const existing = readFileSync(file, 'utf8');
+    const updated = existing.replace(
+      '</body>',
+      '<button id="verification-change" type="button">Verification change</button>\n' +
+        "<script>document.getElementById('verification-change').addEventListener('click',function(){this.textContent='Verification change applied';});</script>\n" +
+        '</body>',
+    );
+    if (updated === existing) {
+      process.stderr.write('expected an existing document to modify\n');
+      process.exit(3);
+    }
+    writeFileSync(file, updated);
+    usage(2);
+    done('app modified');
+  } else {
+    writeFileSync(file, readFileSync(source, 'utf8'));
+    usage(2);
+    done('app generated');
+  }
 } else if (mode === 'fail') {
   process.stderr.write('fake failure\n');
   process.exit(1);
