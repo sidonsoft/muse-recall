@@ -1,32 +1,46 @@
-# Muse Memory Lab
+# Muse Recall
 
-A local-first **memory companion** for Meta Muse. It remembers what matters across
-sessions, keeps that memory correctable, explains why a memory was retrieved, and
-generates the interface a task needs instead of making you read a wall of chat.
+**Muse Recall** (monorepo `muse-memory-lab`) is a local-first **memory companion** for
+Meta Muse. It remembers what matters across sessions, keeps that memory correctable,
+explains why a memory was retrieved, and generates the interface a task needs instead of
+making you read a wall of chat. Its game-studio workspace, **Muse Forge**, applies the
+same memory to an approved Phaser game: Muse edits the existing source, retrieves the
+decisions that still apply, and stages every change for human review.
 
-> **Status: Phase 2 (Persistent memory engine) complete.** Working today: the monorepo,
-> the API, SQLite persistence, the Meta Muse provider integration, and a full memory
-> engine with a browser inspector. Generative UI, chat sessions, tools, and the Muse
-> comparison evaluation are **not built yet** — and the app says so in its own interface.
-> See [Project status](#project-status).
+> **Status: Phase 14C (final recording clearance) complete — submission package ready,
+> submission not performed.** Implemented and verified: the memory engine, chat sessions,
+> declarative generative UI, authorized agent tools with write approval, the advisory
+> Decision Guard, and the Muse Forge modify-in-place loop with load-time runtime
+> verification. The default branch contains the approved Phase 14C recording candidate.
+> See [Project status](#project-status) and the
+> [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 ---
 
 ## What this is
 
 A conventional assistant forgets everything between sessions, or compensates by
-replaying an ever-growing transcript into the context window. Muse Memory Lab takes the
+replaying an ever-growing transcript into the context window. Muse Recall takes the
 other path:
 
 - **Persistent, correctable memory** — a custom SQLite-backed engine with typed memories,
   provenance, confidence, deduplication, transactional supersession, final deletion, and
   an append-only audit trail. Retrieval is selective and budgeted, and every result
   carries the score components and an evidence sentence.
-- **Generative interface** *(Phase 4)* — Muse will return a validated declarative UI
-  spec rendered by a fixed component registry. No model-authored JavaScript ever runs.
-- **An agent harness that owns the loop** *(Phase 3)* — model provider, memory, tools,
-  and permissions stay separate boundaries, so retrieved text can never widen its own
+- **Generative interface** — Muse returns a validated declarative UI spec rendered by a
+  fixed component registry. No model-authored JavaScript ever runs.
+- **An agent harness that owns the loop** — model provider, memory, tools, and
+  permissions stay separate boundaries, so retrieved text can never widen its own
   authority.
+- **Muse Forge** — an AI game-studio workspace. Meta Muse edits an approved Phaser game
+  in place instead of regenerating it; each job records the prompt it sent, that prompt's
+  SHA-256, and the decisions it retrieved; changes are staged as a reviewable diff, and
+  approval runs a load-time browser check before promotion.
+- **Advisory Decision Guard** — compares source patterns against the same project
+  decisions and cites them with evidence. It is advisory only: it never blocks approval
+  and is not compliance verification.
+- **Versioned rollback** — every approval promotes an immutable version, and rollback
+  follows the recorded parent, so a non-linear history restores the right ancestor.
 
 ---
 
@@ -45,7 +59,7 @@ Verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.13, SQLite 3.53.4.
 ### Run it
 
 ```bash
-git clone <your-fork> muse-memory-lab && cd muse-memory-lab
+git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
 pnpm install
 cp .env.example .env          # defaults are already local-first
 
@@ -58,9 +72,12 @@ inference, then open **Memories** to inspect, correct, delete, and explain retri
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (162 tests)
+pnpm verify                 # lint + typecheck + tests (484 passed, 3 skipped)
+pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
+pnpm verify:runtime         # load-time browser check used by Muse Forge approval
+pnpm verify:forge           # end-to-end Forge loop against the deterministic fixture
 pnpm bench:retrieval        # retrieval latency, selectivity, accuracy, stale rate
 pnpm bench:muse-overhead    # repeated real Muse calls; token variance and memory cost
 pnpm exec tsx scripts/verify-ui.ts   # drives the real UI in Chrome, fails on any error
@@ -70,6 +87,7 @@ pnpm eval:retrieval         # 22 retrieval questions, optional real Muse answers
 pnpm demo:tools             # real Muse plans tools; writes approved through the API
 pnpm demo:showcase          # Demos A, B, D, E end to end (fresh database recommended)
 pnpm eval:comparison        # persistent memory vs inline facts (n=4 per configuration)
+pnpm eval:guard             # advisory Decision Guard accuracy corpus
 ```
 
 `pnpm bench:retrieval` on the reference machine:
@@ -111,10 +129,38 @@ default.
 | Muse-planned tool calls with write approval | 5 | **Complete**, verified live |
 | Evaluation comparison (n=4 per configuration) | 6 | **Complete**, measured |
 | Integrated showcase (Demos A–E) | 6 | **8/8 checks**, real Muse |
-| Demo video, repository visibility, submission | 6 | **Owner action pending** |
+| Product strategy and competitive validation | 7 | **Complete** |
+| Muse Forge prototype, WebGL capture, runtime gate | 9–10 | **Complete**, recorded |
+| Real-model reliability trials + release readiness | 11 | **Complete**, 5/5 real trials |
+| Creative-memory A/B/C evaluation | 11–12 | **Complete**, directional (one run per condition) |
+| Decision Guard engine + accuracy audit | 12 | **Complete**, advisory only; v1.2.0 audited |
+| Release-candidate hardening | 12E | **Complete** |
+| Hackathon submission package | 13 | **Complete** |
+| Demo production + rollback-ancestry fix | 14A | **Complete**, verified |
+| Independent submission/evidence audit | 14B | **Complete** on a separate branch; not merged |
+| Final recording clearance | 14C | **Complete** |
+| Record/upload video and submit the form | — | **Owner action pending** |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.
+
+### Evidence classes
+
+The submission documents label each claim so a reviewer can tell them apart:
+
+1. **Authentic Muse output** — recorded real model generations and edits (for example
+   `experiments/muse-forge/game/index.html`, `demo/forge-baseline/index.html`, and the
+   Phase 11 trials).
+2. **Synthetic test cases** — fixtures and generated corpora, including the Decision
+   Guard accuracy corpus and the synthetic secrets used by redaction tests.
+3. **Deterministic replay** — tests and the offline `echo` provider; deterministic, not a
+   model.
+4. **Independent verification** — the Phase 14B audit, produced on its own branch and
+   deliberately not merged.
+5. **Development documentation** — phase reports, plans and the development log.
+
+See [docs/submission/EVIDENCE_MAP.md](docs/submission/EVIDENCE_MAP.md) for the
+claim-by-claim mapping.
 
 ---
 
@@ -277,11 +323,19 @@ Correction check: the superseded memory is absent from active retrieval. Project
 tokens → 1 turn / 16,900). Sample size is small; no significance is claimed. Full report:
 [docs/EVALUATION_REPORT.md](docs/EVALUATION_REPORT.md).
 
+Later phases add real-model evidence: five Phase 11A modification trials (5/5 approved,
+all rolled back), the Phase 12A/12C memory-influence A/B/C trial (one run per condition),
+and the Phase 14A rehearsal and rollback-ancestry records. Those artefacts are indexed in
+[docs/submission/EVIDENCE_MAP.md](docs/submission/EVIDENCE_MAP.md) with their evidence
+class and limitations.
+
 ## Submission materials
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
-- [Submission description](docs/HACKATHON_SUBMISSION.md)
-- [Demo script](docs/DEMO_SCRIPT.md) and [video storyboard](docs/VIDEO_STORYBOARD.md)
+- [Submission copy](docs/submission/SUBMISSION_COPY.md) — current 100/300-word descriptions
+- [Phase 14C recording clearance](docs/PHASE14C_RECORDING_CLEARANCE.md)
+- [Three-minute demo script](docs/submission/DEMO_SCRIPT_3MIN.md) and [runbook](docs/submission/DEMO_RUNBOOK.md)
+- [Evidence map](docs/submission/EVIDENCE_MAP.md) and [project story](docs/submission/PROJECT_STORY.md)
 - [Evaluation report](docs/EVALUATION_REPORT.md) and [architecture overview](docs/ARCHITECTURE_OVERVIEW.md)
 
 ## Known limitations
@@ -299,15 +353,24 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 - **Deletion is irreversible through the API.** That is the guarantee, not a bug.
 - **Single-user, loopback-only.** No authentication or rate limiting; not production-ready for
   public multi-user hosting.
-- **Repository is private**, so commit links are 404 when logged out; visibility is an
-  administrative decision, not a technical one.
+- **Runtime verification is load-time only.** Forge approval loads the staged build in
+  headless Chrome and rejects page errors or a missing canvas; it does **not** play the
+  game, inspect pixels, or prove gameplay correctness.
+- **The Decision Guard is advisory.** It checks source patterns against remembered
+  decisions and cites evidence; it never blocks approval and is not compliance
+  verification.
+- **The A/B/C memory-influence trial is directional.** One run per condition, not a
+  statistical result.
 
 ---
 
 ## Roadmap
 
-1. **Phase 6 — Evaluation and submission.** Baseline comparison through the existing harness,
-   demo video, repository visibility for judging, feature freeze.
+1. **Hackathon submission.** Record and upload the three-minute video, confirm the
+   repository is public for judging, and complete the submission form (owner actions;
+   nothing is submitted automatically).
+2. **Post-event hardening.** Broader game support, additional Decision Guard rule
+   families, and multi-user authentication are out of scope for this release.
 
 ---
 

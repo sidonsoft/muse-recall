@@ -31,8 +31,9 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] Browser verification (28 checks) including generated form completion and submission; tool approval verified separately
 - [x] Evaluation comparison with measured results and stated sample size
 - [x] Integrated showcase 8/8 checks with real Muse (`docs/benchmarks/showcase.json`)
-- [x] Security review: no secrets in history, no tracked `.env`/databases, six bounded tools,
-      no outbound HTTP from the app, generated UI is declarative data only
+- [x] Security review: no active secrets (one historical test-fixture key rotated/revoked
+      2026-10-27; see `docs/PHASE11_RELEASE_READINESS.md`), no tracked `.env`/databases, six
+      bounded tools, no outbound HTTP from the app, generated UI is declarative data only
 - [x] Documentation set (submission, evaluation, architecture, demo, storyboard)
 - [x] No feature work beyond Phase 5 scope
 - [ ] Repository visibility confirmed against the rules **(owner)**

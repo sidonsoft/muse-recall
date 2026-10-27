@@ -180,8 +180,9 @@ and an audit log that includes invalid and denied calls. Verified with 263 tests
 - Evaluation: `pnpm eval:comparison` (n=4 per configuration) — both configurations 4/4 correct;
   memory +67.5 input tokens per call; correction and isolation checks pass.
 - Integrated showcase: `pnpm demo:showcase` — **8/8** checks with real Muse on a fresh database.
-- Product quality and security review recorded; no secrets in history; six bounded tools; no
-  outbound HTTP from the application.
+- Product quality and security review recorded; no active secrets (one historical
+  test-fixture key was rotated/revoked on 2026-10-27; see `docs/PHASE11_RELEASE_READINESS.md`);
+  six bounded tools; no outbound HTTP from the application.
 - Submission materials: `docs/SUBMISSION_CHECKLIST.md`, `docs/HACKATHON_SUBMISSION.md`,
   `docs/EVALUATION_REPORT.md`, `docs/ARCHITECTURE_OVERVIEW.md`, `docs/DEMO_SCRIPT.md`,
   `docs/VIDEO_STORYBOARD.md`.

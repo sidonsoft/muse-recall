@@ -11,7 +11,7 @@ Branch `agent/phase11-release` from `6fe663b`. Feature freeze. No merge, no subm
 | Key never in persisted jobs | PASS | `ForgeJob` schema has no key field; JSON job files sanitised |
 | Key never in API responses | PASS | Integration test serialises the whole job response and asserts absence |
 | Key never in browser-visible errors | PASS | Errors are sanitised server-side before storage/return |
-| Key not in current git tree | PASS (finding fixed) | A redaction test fixture contained the literal key; it was replaced with a synthetic value in this branch. The value remains in earlier history and **must be rotated** |
+| Key not in current git tree | PASS (finding fixed) | A redaction test fixture contained the literal key; it was replaced with a synthetic value in this branch. The exposed value was rotated/revoked on 2026-10-27 (recorded at `a806145`); it remains in earlier history but is no longer valid |
 | Env not exposed | PASS | Configuration is read server-side; meta/health expose provider kind/model only |
 | Credential transport | PASS | Only the intended stdin mechanism; `--provider meta` |
 
@@ -35,9 +35,10 @@ possible secret format is removed.
 | Budgets not reset | PASS (runtime/call checks unchanged) |
 | Fallback cannot bypass validation/approval | PASS (invalid fallback → failed job → 409 approval) |
 
-Residual risk: redaction is pattern-based; a novel credential format could survive. A literal key
-was committed in a test fixture (`c097767`) before review; it is removed from the tree but remains
-in history, so **rotation is mandatory**, not optional. Local-only, single-user scope is unchanged.
+Residual risk: redaction is pattern-based; a novel credential format could survive. An old key was
+committed in a test fixture (`c097767`) before review; it was removed from the tree and **rotated on
+2026-10-27**. The revoked value remains in history but is no longer valid; the replacement is not
+stored in the repository. Local-only, single-user scope is unchanged.
 
 ## 2. Real-model reliability — **5/5**
 
@@ -89,7 +90,7 @@ above is the corrected run. The product's one-step rollback is intentional; the 
 - Preview is sandboxed but served from the application origin.
 - Loopback-only, no authentication; not safe for public multi-user hosting.
 - Failover covers quota exhaustion only; auth/network failures fail closed by design.
-- The API key used during testing must be rotated; it appeared in chat.
+- The API key used during testing was rotated/revoked on 2026-10-27 after it appeared in chat.
 
 ## 5. Demo readiness
 
@@ -111,8 +112,8 @@ claim gameplay correctness beyond load/render verification.
 - Record and upload the three-minute video.
 - Decide repository visibility for judging.
 - Complete the submission form; do not submit automatically.
-- Rotate the exposed API key now: it appeared in chat and in an earlier commit's test fixture;
-  the current tree no longer contains it, but history does.
+- ~~Rotate the exposed API key~~ — done 2026-10-27 (`a806145`); the revoked value remains in
+  history but is invalid, and the replacement is not stored in the repository.
 
 ## 7. Recommendation — **CONDITIONAL GO**
 

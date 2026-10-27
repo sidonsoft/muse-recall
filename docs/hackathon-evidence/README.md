@@ -51,11 +51,15 @@ Expected results, as re-run on 2026-10-27:
 
 ## Security review performed before publication
 
-- **No credentials in history.** All commits were scanned for API-key, token, private-key,
-  and password patterns. The only matches are documentation references to the environment
-  variable name `META_API_KEY`; no value appears anywhere.
+- **One historical credential, now revoked.** A redaction test fixture introduced at
+  `c097767` contained a literal Muse API key. It was removed from the tree at `d35fa9d`
+  and the exposed value was rotated/revoked on 2026-10-27 (recorded at `a806145` on
+  `agent/phase11-release`). The value necessarily remains in earlier Git history because
+  this project does not rewrite history; it is no longer valid. No secret value is
+  reproduced in this repository's documentation. A full-history scan found no other
+  live credential: the remaining matches are synthetic test fixtures.
 - **Only `.env.example` is tracked**, containing placeholders and local defaults. `.env` is
-  ignored.
+  ignored and was never committed.
 - **Local data is ignored:** `data/`, `*.db`, WAL/SHM files, build output, and
   `node_modules/` are excluded by `.gitignore`. The memory databases created during
   development (including conversation transcripts) are on disk but untracked.

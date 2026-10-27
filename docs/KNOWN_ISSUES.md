@@ -201,13 +201,13 @@ memory instead of superseding. Unusual phrasing may therefore create a duplicate
 a correction; the user can correct it in the inspector.
 **Mitigation:** Every capture reports what it stored and which record it superseded.
 
-### KI-23 — Repository is private, so commit permalinks are 404 when logged out
+### KI-23 — Repository visibility (resolved for public release)
 
-**Severity:** Blocking for submission if judges need public access
-**Detail:** `https://github.com/sidonsoft/muse-recall` is private. GitHub returns 404 to
-unauthenticated requests, including commit URLs.
-**Fix:** Confirm the Official Rules' visibility requirement and make the repository public
-(or share it with judging accounts) before submission.
+**Severity:** Was blocking for submission if judges need public access
+**Detail:** The repository was private, so GitHub returned 404 to unauthenticated requests,
+including commit URLs.
+**Status:** Resolved — the repository is being published for judging. Historical commits,
+branches and evidence remain accessible; no history was rewritten.
 
 ---
 

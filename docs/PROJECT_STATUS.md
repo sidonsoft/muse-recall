@@ -131,13 +131,16 @@ memory.
   database (Demos A, B, D, E); evidence: `docs/benchmarks/showcase.json`.
 - **Browser verification:** 28 checks pass, including generated form completion and
   submission, with zero console or HTTP errors.
-- **Security/privacy review:** no secrets in history; no tracked `.env` or databases; six
-  bounded tools; no outbound HTTP from the app; generated UI is declarative data only.
+- **Security/privacy review:** no active secrets; one literal key in a historical test
+  fixture (`c097767`, removed at `d35fa9d`) was rotated/revoked on 2026-10-27 (`a806145`);
+  no tracked `.env` or databases; six bounded tools; no outbound HTTP from the app;
+  generated UI is declarative data only.
 - **Feature freeze** in effect.
 - **Submission materials:** checklist, submission description, evaluation report,
   architecture overview, demo script, video storyboard.
-- **Pending owner actions:** confirm repository visibility against the Official Rules
-  (currently private), record/upload the video, complete the submission form.
+- **Pending owner actions:** record/upload the video and complete the submission form.
+  Repository visibility was resolved by the public release (see
+  `docs/PUBLIC_RELEASE_REPORT.md`).
 
 ## Verified
 

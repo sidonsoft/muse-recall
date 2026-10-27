@@ -6,8 +6,8 @@ Feature freeze is in effect. The remaining work is submission, not development.
 
 1. Read the Official Rules on the submission platform; confirm repository visibility, video
    length, disclosures, and deadline (currently documented as Nov 4, 9:00 PM ET).
-2. Decide repository visibility. It is currently private; if judges must open it, make it
-   public or grant access. Nothing in the code depends on visibility.
+2. Repository visibility: the repository is being made public so judges can open it without
+   authentication. Nothing in the code depends on visibility.
 3. Record the 3-minute video using `docs/VIDEO_STORYBOARD.md` and `docs/DEMO_SCRIPT.md` on a
    fresh database.
 4. Complete the submission form with the repository URL, video URL, and the description in
