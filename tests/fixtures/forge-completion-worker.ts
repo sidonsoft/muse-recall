@@ -145,9 +145,24 @@ process.exit(run.status ?? 1);
     throw new Error(`job did not terminalize: ${job.status}`);
   }
 
-  const persisted = JSON.parse(
-    await readFile(join(workspace.projectDir('demo'), 'jobs', `${created.id}.json`), 'utf8'),
-  ) as { status: string };
+  const jobPath = join(workspace.projectDir('demo'), 'jobs', `${created.id}.json`);
+  let persisted: { status: string } | null = null;
+  // The in-memory terminal status is published before the required write is
+  // flushed. Wait for the durable record so this assertion tests persistence,
+  // not a timing accident on a faster or slower runner.
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    try {
+      persisted = JSON.parse(await readFile(jobPath, 'utf8')) as { status: string };
+      if (persisted.status !== 'queued' && persisted.status !== 'running') break;
+    } catch {
+      // The file may not exist until the terminal write starts.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  if (!persisted || persisted.status === 'queued' || persisted.status === 'running') {
+    throw new Error(`terminal record was not persisted: ${persisted?.status ?? 'missing'}`);
+  }
+
   const health = await app.inject({ method: 'GET', url: '/api/health' });
   const invocations = (await readFile(invocationLog, 'utf8'))
     .split('\n')
