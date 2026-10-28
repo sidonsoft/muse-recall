@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#EAF6FB;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Segoe UI",Inter,system-ui,sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;position:relative}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,.18);border:1px solid rgba(78,168,222,.25)}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  #a11y-bar{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.94);border:1px solid #4EA8DE;border-radius:999px;padding:6px 10px;box-shadow:0 4px 12px rgba(16,42,67,.12)}
+  #a11y-bar button{appearance:none;border:2px solid #4EA8DE;background:#fff;color:#102A43;border-radius:999px;padding:6px 12px;font:700 13px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+  #a11y-bar button[aria-pressed="true"]{background:#4EA8DE;color:#fff;border-color:#102A43}
+  #a11y-bar button:focus-visible{outline:3px solid #102A43;outline-offset:2px}
+  #a11y-bar #restart-a11y{background:#102A43;color:#EAF6FB;border-color:#102A43}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="a11y-bar" role="toolbar" aria-label="Game controls">
+    <span id="mode-label" style="font:700 11px 'Segoe UI',system-ui,sans-serif;color:#102A43;letter-spacing:.06em;text-transform:uppercase">Mode:</span>
+    <div role="group" aria-label="Difficulty selection">
+      <button type="button" id="btn-mode-normal" aria-pressed="true" aria-label="Standard Dive, 6 pairs, relaxed pace">Standard</button>
+      <button type="button" id="btn-mode-hard" aria-pressed="false" aria-label="Abyss Challenge, 8 pairs with 75 second timer and faster flips">Abyss Challenge</button>
+    </div>
+    <button type="button" id="restart-a11y" aria-label="Restart current game">Restart</button>
+  </div>
+  <div id="aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+  <div id="kb-help" class="sr-only">Use Tab to reach mode buttons, Enter to select. During game use arrow keys to move focus between cards and Enter or Space to flip. Press R to restart.</div>
+</div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F988}", name: "Shark" },
+    { emoji: "\u{1F40B}", name: "Whale" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1FABC}", name: "Jellyfish" },
+    { emoji: "\u{1F991}", name: "Squid" },
+    { emoji: "\u{1F420}", name: "Tropical Fish" },
+    { emoji: "\u{1F9AD}", name: "Seal" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#D6EAF8",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var hudMoves, hudScore, hudMsg, hudTimer, hudMode, endOverlay, endTitle, endDetail, startOverlay;
+  var difficulty = "normal", totalPairs = 6, timeLeft = 75, timerId = null, focusedIndex = 0, sceneRef = null, focusHighlight = null;
+
+  function create() {
+    var s = this;
+    sceneRef = s;
+    drawFarm(s);
+    makeHud(s);
+    ensureFocusHighlight(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupDomControls();
+    document.addEventListener("keydown", handleKeydown);
+    announce("Ocean Match loaded. Standard Dive selected. Press Tab to choose Abyss Challenge or Enter to start.");
+  }
+
+  function drawFarm(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xD6EAF8, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xB6E1F2, 1); g.fillRect(0, 0, W, 180);
+    g.fillStyle(0x4EA8DE, 1); g.fillRect(0, 470, W, 230);
+    g.fillStyle(0xEAF6FB, 1);
+    g.fillEllipse(180, 110, 160, 40); g.fillEllipse(240, 100, 120, 36);
+    g.fillEllipse(560, 80, 140, 38);
+    g.fillStyle(0xEAF6FB, 0.95); g.fillCircle(770, 110, 48);
+    g.fillStyle(0xB6E1F2, 1); g.fillCircle(770, 110, 36);
+    g.fillStyle(0x1B4F72, 1); g.fillEllipse(120, 560, 220, 80);
+    g.fillStyle(0x102A43, 1); g.fillEllipse(780, 580, 180, 70);
+    g.fillStyle(0x2A7F9E, 1);
+    for (var x = 320; x <= 860; x += 60) { g.fillRect(x, 500, 8, 70); g.fillCircle(x + 4, 500, 12); }
+    g.fillStyle(0xffffff, 0.9);
+    for (var i = 0; i < 12; i++) {
+      var bx = 30 + i * 78, by = 620 + (i % 2) * 20;
+      g.fillCircle(bx, by, 6); g.fillCircle(bx + 8, by - 12, 4); g.fillCircle(bx - 6, by - 18, 3);
+    }
+    var cols = [0x4EA8DE, 0x89C2D9, 0xB6E1F2, 0x1B4F72];
+    for (var j = 0; j < 10; j++) {
+      var fx = 40 + j * 88, fy = 630 + (j % 2) * 20;
+      g.fillStyle(0x2A7F9E, 1); g.fillRect(fx - 2, fy, 4, 18);
+      g.fillStyle(cols[j % 4], 1); g.fillCircle(fx, fy - 6, 8);
+      g.fillStyle(0xEAF6FB, 1); g.fillCircle(fx, fy - 6, 3);
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Segoe UI",Inter,system-ui,sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} Ocean Match", textStyle(34)).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(20));
+    hudScore = scene.add.text(24, 84, "Pairs: 0 / 6", textStyle(20));
+    hudTimer = scene.add.text(24, 110, "Time: 75s", textStyle(20, "#1B4F72")).setVisible(false);
+    hudMode = scene.add.text(W - 24, 28, "STANDARD \u2022 6 PAIRS", textStyle(12, "#1B4F72")).setOrigin(1, 0.5);
+    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(20, "#1B4F72")).setOrigin(1, 0.5);
+    var btn = scene.add.container(W - 110, 116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(20, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    scene.add.text(W / 2, 168, "Find all pairs \u2014 Standard is calm, Abyss is relentless", textStyle(16, "#1B4F72")).setOrigin(0.5);
+  }
+
+  function shuffledDeck(pairCount) {
+    var count = pairCount || totalPairs;
+    var pool = ANIMALS.slice(0, count);
+    var deck = [];
+    pool.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var deck = shuffledDeck();
+    var isHard = difficulty === "hard";
+    var cols = 4, rows = isHard ? 4 : 3;
+    var cw = isHard ? 160 : 185, ch = isHard ? 118 : 140, gx = isHard ? 75 : 62, gy = isHard ? 185 : 195, padX = isHard ? 18 : 22, padY = isHard ? 14 : 16;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card));
+    });
+    focusedIndex = 0;
+    updateFocusVisual();
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 14);
+    back.fillStyle(0xffffff, 0.9);
+    back.fillCircle(-w / 4, -h / 4, 10); back.fillCircle(w / 4, 0, 7); back.fillCircle(0, h / 4, 11);
+    var paw = scene.add.text(0, -4, "\u{1F30A}", { fontSize: "42px" }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xB6E1F2, 0x89C2D9, 0x61A5C2, 0xA9D6E5, 0xD6EAF8, 0xEAF6FB, 0x4EA8DE, 0x1B4F72, 0x2A7F9E, 0x102A43];
+    fg.fillStyle(0xffffff, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 14);
+    var emo = scene.add.text(0, -14, data.emoji, { fontSize: "54px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 42, data.name, textStyle(16)).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, x: x, y: y, w: w, h: h };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    return card;
+  }
+
+  function ensureFocusHighlight(scene) {
+    if (focusHighlight) return;
+    focusHighlight = scene.add.graphics().setDepth(5);
+  }
+
+  function updateFocusVisual() {
+    if (!sceneRef || !focusHighlight) return;
+    focusHighlight.clear();
+    if (!started || cards.length === 0 || focusedIndex < 0 || focusedIndex >= cards.length) return;
+    var c = cards[focusedIndex];
+    if (!c || c.matched) return;
+    focusHighlight.lineStyle(3, 0x102A43, 1);
+    focusHighlight.strokeRoundedRect(c.x - c.w / 2 - 4, c.y - c.h / 2 - 4, c.w + 8, c.h + 8, 20);
+    focusHighlight.lineStyle(2, 0x4EA8DE, 1);
+    focusHighlight.strokeRoundedRect(c.x - c.w / 2 - 2, c.y - c.h / 2 - 2, c.w + 4, c.h + 4, 18);
+  }
+
+  function setFocus(idx) {
+    focusedIndex = idx;
+    if (focusedIndex < 0) focusedIndex = 0;
+    if (focusedIndex >= cards.length) focusedIndex = cards.length - 1;
+    updateFocusVisual();
+    var c = cards[focusedIndex];
+    if (c) announce(c.data.name + " card focused, " + (focusedIndex + 1) + " of " + cards.length);
+  }
+
+  function clearFocus() {
+    if (focusHighlight) focusHighlight.clear();
+  }
+
+  function announce(msg) {
+    var el = document.getElementById("aria-live");
+    if (el) {
+      el.textContent = "";
+      setTimeout(function () { el.textContent = msg; }, 40);
+    }
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    var idx = cards.indexOf(card);
+    if (idx !== -1) { focusedIndex = idx; updateFocusVisual(); }
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); announce("First card " + card.data.name + " revealed"); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / " + totalPairs);
+        var isWin = matches === totalPairs;
+        hudMsg.setText(isWin ? "All pairs found!" : "Match! \u{1F30A}");
+        announce(isWin ? "All pairs found in " + moves + " moves" : "Match found " + card.data.name + ", " + matches + " of " + totalPairs);
+        lockBoard = false;
+        updateFocusVisual();
+        if (!isWin) {
+          var next = -1;
+          for (var i = 0; i < cards.length; i++) { if (!cards[i].matched && !cards[i].faceUp) { next = i; break; } }
+          if (next !== -1) setFocus(next);
+        } else {
+          clearFocus();
+          showWin(scene);
+        }
+      }, 350);
+    } else {
+      hudMsg.setText("No match \u2014 try again");
+      announce("No match " + a.data.name + " and " + card.data.name);
+      var delay = difficulty === "hard" ? 500 : 700;
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; updateFocusVisual(); });
+      }, delay);
+    }
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-320, -200, 640, 400, 28);
+    panel.lineStyle(4, 0x4EA8DE, 1); panel.strokeRoundedRect(-320, -200, 640, 400, 28);
+    var title = scene.add.text(0, -140, "\u{1F30A} Ocean Match", textStyle(38)).setOrigin(0.5);
+    var sub = scene.add.text(0, -92, "Choose your depth. Standard is calm \u2014\nAbyss Challenge tests veterans.", Object.assign(textStyle(18), { align: "center" })).setOrigin(0.5);
+    var row = scene.add.text(0, -32, "\u{1F419} \u{1F988} \u{1F40B} \u{1F980} \u{1F422} \u{1F42C} \u{1FABC} \u{1F991}", { fontSize: "34px" }).setOrigin(0.5);
+    var btnStandardBg = scene.add.graphics();
+    btnStandardBg.fillStyle(0xffffff, 1); btnStandardBg.fillRoundedRect(-280, 40, 260, 70, 20);
+    btnStandardBg.lineStyle(3, 0x4EA8DE, 1); btnStandardBg.strokeRoundedRect(-280, 40, 260, 70, 20);
+    var btnStandardTx1 = scene.add.text(-150, 58, "Standard Dive", textStyle(18, "#102A43")).setOrigin(0.5);
+    var btnStandardTx2 = scene.add.text(-150, 78, "6 pairs \u2022 relaxed", textStyle(13, "#1B4F72")).setOrigin(0.5);
+    var btnHardBg = scene.add.graphics();
+    btnHardBg.fillStyle(0x4EA8DE, 1); btnHardBg.fillRoundedRect(20, 40, 260, 70, 20);
+    btnHardBg.lineStyle(3, 0x102A43, 1); btnHardBg.strokeRoundedRect(20, 40, 260, 70, 20);
+    var btnHardTx1 = scene.add.text(150, 58, "Abyss Challenge", textStyle(18, "#ffffff")).setOrigin(0.5);
+    var btnHardTx2 = scene.add.text(150, 78, "8 pairs \u2022 75s \u2022 fast flip", textStyle(13, "#EAF6FB")).setOrigin(0.5);
+    var hint = scene.add.text(0, 145, "Press 1 for Standard, 2 for Abyss \u2022 Enter to start \u2022 Arrows to switch", textStyle(13, "#1B4F72")).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, row, btnStandardBg, btnStandardTx1, btnStandardTx2, btnHardBg, btnHardTx1, btnHardTx2, hint]);
+    btnStandardBg.setInteractive(new Phaser.Geom.Rectangle(-280, 40, 260, 70), Phaser.Geom.Rectangle.Contains);
+    btnHardBg.setInteractive(new Phaser.Geom.Rectangle(20, 40, 260, 70), Phaser.Geom.Rectangle.Contains);
+    btnStandardBg.on("pointerdown", function () { setDifficulty("normal"); startGame(scene); });
+    btnHardBg.on("pointerdown", function () { setDifficulty("hard"); startGame(scene); });
+    btnStandardBg.on("pointerover", function () { scene.tweens.add({ targets: btnStandardBg, scaleX: 1.02, scaleY: 1.02, duration: 100 }); });
+    btnStandardBg.on("pointerout", function () { btnStandardBg.setScale(1); });
+    btnHardBg.on("pointerover", function () { btnHardBg.setScale(1.03); });
+    btnHardBg.on("pointerout", function () { btnHardBg.setScale(1); });
+  }
+
+  function startGame(scene) {
+    started = true; lockBoard = false;
+    startOverlay.setVisible(false);
+    hudMsg.setText(difficulty === "hard" ? "Abyss mode: 75s!" : "Tap a card!");
+    announce(difficulty === "hard" ? "Abyss Challenge started, 8 pairs, 75 seconds, faster flips" : "Standard Dive started, 6 pairs");
+    if (difficulty === "hard") startTimer(scene);
+    else hudTimer.setVisible(false);
+    focusedIndex = 0;
+    updateFocusVisual();
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-300, -180, 600, 360, 28);
+    panel.lineStyle(4, 0x4EA8DE, 1); panel.strokeRoundedRect(-300, -180, 600, 360, 28);
+    endTitle = scene.add.text(0, -110, "\u{1F389} You Win! \u{1F389}", textStyle(36)).setOrigin(0.5);
+    endDetail = scene.add.text(0, -50, "", Object.assign(textStyle(20), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-140, 50, 280, 60, 30);
+    var btnTx = scene.add.text(0, 80, "\u21BB Play Again", textStyle(22, "#ffffff")).setOrigin(0.5);
+    var btnSwitchBg = scene.add.graphics();
+    btnSwitchBg.fillStyle(0xffffff, 1); btnSwitchBg.fillRoundedRect(-140, 120, 280, 50, 25);
+    btnSwitchBg.lineStyle(2, 0x102A43, 1); btnSwitchBg.strokeRoundedRect(-140, 120, 280, 50, 25);
+    var btnSwitchTx = scene.add.text(0, 145, "Switch Mode", textStyle(16, "#102A43")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx, btnSwitchBg, btnSwitchTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-140, 50, 280, 60), Phaser.Geom.Rectangle.Contains);
+    btnSwitchBg.setInteractive(new Phaser.Geom.Rectangle(-140, 120, 280, 50), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+    btnSwitchBg.on("pointerdown", function () {
+      endOverlay.setVisible(false);
+      startOverlay.setVisible(true);
+      started = false; lockBoard = true;
+      clearFocus();
+      stopTimer();
+      hudMsg.setText("Choose your depth");
+      announce("Choose difficulty, Standard or Abyss Challenge");
+    });
+    btnBg.on("pointerover", function () { btnBg.setScale(1.04); });
+    btnBg.on("pointerout", function () { btnBg.setScale(1); });
+  }
+
+  function showWin(scene) {
+    stopTimer();
+    var isHard = difficulty === "hard";
+    var stars = 0;
+    if (isHard) {
+      if (moves <= 14 && timeLeft > 30) stars = 3;
+      else if (moves <= 18 && timeLeft > 15) stars = 2;
+      else stars = 1;
+    } else {
+      stars = moves <= 10 ? 3 : (moves <= 16 ? 2 : 1);
+    }
+    var detail = "You found all " + totalPairs + " pairs!\nMoves: " + moves;
+    if (isHard) detail += "  \u2022  Time left: " + timeLeft + "s";
+    detail += "  " + "\u2B50".repeat(stars);
+    if (isHard && stars === 3) detail += "\nAbyss Conqueror!";
+    endTitle.setText("\u{1F389} You Win! \u{1F389}");
+    endDetail.setText(detail);
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("You win! \u{1F30A}");
+    announce("Victory! " + detail.replace("\n", " "));
+    for (var i = 0; i < 40; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u{1F30A}", "\u2B50", "\u{1F389}", "\u{1F419}"][i % 4], { fontSize: "28px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-80, 80), duration: Phaser.Math.Between(1200, 2200), onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function showTimeUp(scene) {
+    lockBoard = true; started = false;
+    clearFocus();
+    endTitle.setText("\u23F1\uFE0F Time's Up!");
+    endDetail.setText("The abyss claimed you.\nPairs: " + matches + " / " + totalPairs + "  \u2022  Moves: " + moves + "\nTry again or switch to Standard.");
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("Time's up! \u{1F30A}");
+    announce("Time's up, you found " + matches + " of " + totalPairs + " pairs");
+  }
+
+  function startTimer(scene) {
+    stopTimer();
+    timeLeft = 75;
+    hudTimer.setText("Time: " + timeLeft + "s");
+    hudTimer.setVisible(true);
+    hudTimer.setColor("#102A43");
+    timerId = scene.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: function () {
+        timeLeft--;
+        hudTimer.setText("Time: " + timeLeft + "s");
+        if (timeLeft <= 10) {
+          hudTimer.setColor("#b00020");
+          scene.tweens.add({ targets: hudTimer, scaleX: 1.12, scaleY: 1.12, yoyo: true, duration: 120 });
+        }
+        if (timeLeft <= 0) {
+          stopTimer();
+          showTimeUp(scene);
+        }
+      }
+    });
+  }
+
+  function stopTimer() {
+    if (timerId) { timerId.remove(false); timerId = null; }
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / " + totalPairs); hudMsg.setText(difficulty === "hard" ? "Abyss mode: 75s!" : "Tap a card!");
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    stopTimer();
+    if (difficulty === "hard") startTimer(scene);
+    else hudTimer.setVisible(false);
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+    announce("Game restarted, " + totalPairs + " pairs, " + difficulty + " mode");
+  }
+
+  function setDifficulty(newDiff) {
+    if (newDiff !== "normal" && newDiff !== "hard") return;
+    difficulty = newDiff;
+    totalPairs = difficulty === "hard" ? 8 : 6;
+    var btnN = document.getElementById("btn-mode-normal");
+    var btnH = document.getElementById("btn-mode-hard");
+    if (btnN && btnH) {
+      btnN.setAttribute("aria-pressed", difficulty === "normal" ? "true" : "false");
+      btnH.setAttribute("aria-pressed", difficulty === "hard" ? "true" : "false");
+    }
+    if (hudScore) hudScore.setText("Pairs: " + matches + " / " + totalPairs);
+    if (hudMode) hudMode.setText(difficulty === "hard" ? "ABYSS \u2022 8 PAIRS \u2022 75S" : "STANDARD \u2022 6 PAIRS");
+    if (sceneRef) {
+      if (started) {
+        restart(sceneRef);
+      } else {
+        cards.forEach(function (c) { c.view.destroy(); });
+        buildBoard(sceneRef);
+        if (startOverlay) startOverlay.setVisible(true);
+        lockBoard = true;
+      }
+    }
+    announce(difficulty === "hard" ? "Abyss Challenge selected, 8 pairs, 75 seconds, faster flips" : "Standard Dive selected, 6 pairs, relaxed");
+  }
+
+  function handleKeydown(e) {
+    var active = document.activeElement;
+    var isDomControl = active && active.closest && active.closest("#a11y-bar");
+    if (e.key === "r" || e.key === "R") {
+      if (sceneRef && (started || (endOverlay && endOverlay.visible))) { restart(sceneRef); e.preventDefault(); }
+      return;
+    }
+    if (startOverlay && startOverlay.visible) {
+      if (e.key === "1") { setDifficulty("normal"); e.preventDefault(); }
+      else if (e.key === "2") { setDifficulty("hard"); e.preventDefault(); }
+      else if (e.key === "Enter" || e.key === " ") {
+        if (!isDomControl) { startGame(sceneRef); e.preventDefault(); }
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        setDifficulty(difficulty === "normal" ? "hard" : "normal"); e.preventDefault();
+      }
+      return;
+    }
+    if (endOverlay && endOverlay.visible) {
+      if (e.key === "Enter" || e.key === " ") {
+        if (!isDomControl) { restart(sceneRef); e.preventDefault(); }
+      } else if (e.key === "Escape") {
+        endOverlay.setVisible(false);
+        if (startOverlay) startOverlay.setVisible(true);
+        started = false; lockBoard = true; stopTimer(); clearFocus();
+        hudMsg.setText("Choose your depth");
+        announce("Choose difficulty");
+        e.preventDefault();
+      }
+      return;
+    }
+    if (!started || lockBoard) return;
+    if (isDomControl) return;
+    if (e.key === "ArrowLeft") {
+      var n1 = focusedIndex - 1;
+      if (n1 >= 0) { setFocus(n1); e.preventDefault(); }
+    } else if (e.key === "ArrowRight") {
+      var n2 = focusedIndex + 1;
+      if (n2 < cards.length) { setFocus(n2); e.preventDefault(); }
+    } else if (e.key === "ArrowUp") {
+      var n3 = focusedIndex - 4;
+      if (n3 >= 0) { setFocus(n3); e.preventDefault(); }
+    } else if (e.key === "ArrowDown") {
+      var n4 = focusedIndex + 4;
+      if (n4 < cards.length) { setFocus(n4); e.preventDefault(); }
+    } else if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+      var card = cards[focusedIndex];
+      if (card) { onCard(sceneRef, card); e.preventDefault(); }
+    }
+  }
+
+  function setupDomControls() {
+    var btnNormal = document.getElementById("btn-mode-normal");
+    var btnHard = document.getElementById("btn-mode-hard");
+    var btnRestartA11y = document.getElementById("restart-a11y");
+    if (btnNormal) {
+      btnNormal.addEventListener("click", function () { setDifficulty("normal"); });
+      btnNormal.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDifficulty("normal"); } });
+    }
+    if (btnHard) {
+      btnHard.addEventListener("click", function () { setDifficulty("hard"); });
+      btnHard.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDifficulty("hard"); } });
+    }
+    if (btnRestartA11y) {
+      btnRestartA11y.addEventListener("click", function () { if (sceneRef) restart(sceneRef); });
+      btnRestartA11y.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (sceneRef) restart(sceneRef); } });
+    }
+  }
+
+  function update() {}
+})();
+</script>
+</body>
+</html>

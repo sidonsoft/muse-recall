@@ -44,7 +44,7 @@
     "verify:security": "tsx scripts/verify-origin-guard.ts",
     "verify:research": "tsx scripts/verify-phase15b.ts",
     "verify:research16": "tsx scripts/verify-phase16.ts",
-    "verify:research17": "tsx scripts/verify-phase17.ts",
+    "verify:research17": "tsx scripts/verify-phase17.ts && tsx scripts/verify-phase17-sums.ts",
     "verify:research17-pilot": "tsx scripts/verify-phase17.ts --pilot",
     "evidence:ux": "tsx scripts/ux-evidence.ts",
     "verify:formsandbox": "tsx scripts/verify-form-sandbox.ts",

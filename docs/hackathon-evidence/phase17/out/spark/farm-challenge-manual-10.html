@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Farmyard Memory Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#fdf6ec;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="game" role="application" aria-label="Farmyard Match memory card game"></div>
+<p id="farm-status" class="visually-hidden" role="status" aria-live="polite">Farmyard Match loaded. Choose Easy or Hard, then press Start.</p>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F404}", name: "Cow" },
+    { emoji: "\u{1F437}", name: "Pig" },
+    { emoji: "\u{1F414}", name: "Hen" },
+    { emoji: "\u{1F40E}", name: "Horse" },
+    { emoji: "\u{1F411}", name: "Sheep" },
+    { emoji: "\u{1F988}", name: "Duck" }
+  ];
+  var W = 900, H = 700;
+  // Harder challenge mode: same gentle rules (no timers, no penalties,
+  // no flashing), just more pairs to remember. Extra animals only appear in hard mode.
+  var EXTRA_ANIMALS = [
+    { emoji: "\u{1F410}", name: "Goat" },
+    { emoji: "\u{1F407}", name: "Bunny" }
+  ];
+  var MODES = {
+    easy: { label: "Easy", pairs: 6, cols: 4, rows: 3, tag: "6 pairs" },
+    hard: { label: "Hard", pairs: 8, cols: 4, rows: 4, tag: "8 pairs" }
+  };
+  var mode = "easy", selectedMode = "easy", totalPairs = 6;
+  function animalsFor(m) { return m === "hard" ? ANIMALS.concat(EXTRA_ANIMALS) : ANIMALS.slice(); }
+  function announce(msg) {
+    var el = document.getElementById("farm-status");
+    if (el) { el.textContent = msg; }
+  }
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#fdeec9",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var hudMoves, hudScore, hudMsg, hudMode, hudSub, endOverlay, endTitle, endDetail, startOverlay;
+  var modeBtnEasy, modeBtnHard, focusRing, focusedIdx = 0;
+  var modeToggleLabel, endModeLabel;
+
+  function create() {
+    var s = this;
+    drawFarm(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    focusRing = s.add.graphics().setDepth(5);
+    drawFocus(s);
+    bindKeys(s);
+  }
+
+  function refreshHudMode() {
+    if (hudMode) { hudMode.setText("Mode: " + MODES[mode].label + " (" + MODES[mode].tag + ")"); }
+    if (hudScore) { hudScore.setText("Pairs: " + matches + " / " + totalPairs); }
+    refreshToggleLabel();
+  }
+
+  function drawFocus(scene) {
+    if (!focusRing) { return; }
+    focusRing.clear();
+    if (!started || !cards.length) { return; }
+    var c = cards[focusedIdx];
+    if (!c || c.matched) { return; }
+    // Steady solid outline (no blinking) so keyboard users can see the focused card.
+    focusRing.lineStyle(5, 0x4EA8DE, 1);
+    var w = c.w + 10, h = c.h + 10, x = c.view.x, y = c.view.y;
+    focusRing.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 24);
+  }
+
+  function moveFocus(scene, dx, dy) {
+    if (!cards.length) { return; }
+    var cols = MODES[mode].cols;
+    var n = cards.length;
+    var r = Math.floor(focusedIdx / cols), c = focusedIdx % cols;
+    var rows = Math.ceil(n / cols);
+    c = (c + dx + cols) % cols;
+    r = (r + dy + rows) % rows;
+    var next = Math.min(r * cols + c, n - 1);
+    focusedIdx = next;
+    // Skip already-matched cards when moving with the keyboard.
+    for (var k = 0; k < n; k++) {
+      if (!cards[focusedIdx].matched) { break; }
+      focusedIdx = (focusedIdx + 1) % n;
+    }
+    drawFocus(scene);
+    var d = cards[focusedIdx].data;
+    announce("Focused " + d.name + ", card " + (focusedIdx + 1) + " of " + n + ". Press Enter to flip.");
+  }
+
+  function bindKeys(s) {
+    // Explicit keydown handling (no form submission): full keyboard play.
+    s.input.keyboard.on("keydown", function (e) {
+      if (e.key === "1") { setSelectedMode(s, "easy"); }
+      else if (e.key === "2") { setSelectedMode(s, "hard"); }
+      else if ((e.key === "Enter" || e.key === " ") && startOverlay && startOverlay.visible) { startGame(s); }
+      else if ((e.key === "Enter" || e.key === " ") && endOverlay && endOverlay.visible) { restart(s); }
+      else if (e.key === "Enter" || e.key === " ") { if (cards[focusedIdx]) { onCard(s, cards[focusedIdx]); } }
+      else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") { moveFocus(s, -1, 0); }
+      else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") { moveFocus(s, 1, 0); }
+      else if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { moveFocus(s, 0, -1); }
+      else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { moveFocus(s, 0, 1); }
+      else if (e.key === "r" || e.key === "R") { restart(s); }
+      else if (e.key === "m" || e.key === "M") { setMode(s, mode === "hard" ? "easy" : "hard"); }
+    });
+  }
+
+  function drawFarm(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xfdeec9, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xcdeeb0, 1); g.fillRect(0, 470, W, 230);
+    g.fillStyle(0xfff6dd, 1); g.fillCircle(770, 110, 55);
+    g.fillStyle(0xffe08a, 1); g.fillCircle(770, 110, 42);
+    g.fillStyle(0xffffff, 1);
+    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+    g.fillEllipse(560, 80, 140, 44);
+    // barn
+    g.fillStyle(0xe26d5a, 1); g.fillRect(80, 330, 150, 140);
+    g.fillStyle(0xb34a3e, 1); g.fillTriangle(60, 330, 155, 250, 250, 330);
+    g.fillStyle(0xfff3e0, 1); g.fillRect(135, 390, 40, 80);
+    g.lineStyle(4, 0xfff3e0, 1);
+    g.lineBetween(80, 330, 230, 330);
+    // fence
+    g.lineStyle(8, 0xb98850, 1);
+    for (var x = 320; x <= 860; x += 60) { g.lineBetween(x, 500, x, 570); }
+    g.lineBetween(300, 515, 880, 515); g.lineBetween(300, 545, 880, 545);
+    // flowers
+    var cols = [0xf49ac1, 0xff9d76, 0x9ad0f5, 0xc5a3ff];
+    for (var i = 0; i < 10; i++) {
+      var fx = 30 + i * 88, fy = 620 + (i % 2) * 30;
+      g.fillStyle(0x5da85f, 1); g.fillRect(fx - 2, fy, 5, 26);
+      g.fillStyle(cols[i % 4], 1);
+      g.fillCircle(fx, fy - 8, 9);
+      g.fillStyle(0xfff200, 1); g.fillCircle(fx, fy - 8, 4);
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#5b3a29", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F33B} Farmyard Match", textStyle(34)).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(24));
+    hudScore = scene.add.text(24, 90, "Pairs: 0 / 6", textStyle(24));
+    hudMode = scene.add.text(24, 122, "Mode: Easy (6 pairs)", textStyle(20, "#102A43"));
+    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(24, "#7a4a2b")).setOrigin(1, 0.5);
+    var btn = scene.add.container(W - 110, 116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x5da85f, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(24, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    // Mode toggle: same gentle rules, just Easy (6 pairs) or Hard (8 pairs). No timers, no penalties.
+    var mbtn = scene.add.container(W - 302, 116);
+    var mbg = scene.add.graphics();
+    mbg.fillStyle(0x4EA8DE, 1); mbg.fillRoundedRect(-80, -26, 160, 52, 26);
+    modeToggleLabel = scene.add.text(0, 0, "\u{1F30A} Hard", textStyle(22, "#ffffff")).setOrigin(0.5);
+    mbtn.add([mbg, modeToggleLabel]);
+    mbg.setInteractive(new Phaser.Geom.Rectangle(-80, -26, 160, 52), Phaser.Geom.Rectangle.Contains);
+    // Explicit click listener (no form submission); keyboard shortcut M does the same.
+    mbg.on("pointerdown", function () { setMode(scene, mode === "hard" ? "easy" : "hard"); });
+    mbg.on("pointerover", function () { mbtn.setScale(1.06); });
+    mbg.on("pointerout", function () { mbtn.setScale(1); });
+    hudSub = scene.add.text(W / 2, 168, "Find the 6 animal pairs!", textStyle(22, "#8a6a4a")).setOrigin(0.5);
+    refreshHudMode();
+  }
+
+  function refreshToggleLabel() {
+    if (modeToggleLabel) { modeToggleLabel.setText(mode === "hard" ? "\u{1F331} Easy" : "\u{1F30A} Hard"); }
+    if (hudSub) { hudSub.setText(mode === "hard" ? "Hard challenge: find the 8 animal pairs!" : "Find the 6 animal pairs!"); }
+    if (endModeLabel) { endModeLabel.setText(mode === "hard" ? "Hard challenge \u2022 8 pairs \u2022 no timer" : "Easy game \u2022 6 pairs"); }
+  }
+
+  function shuffledDeck() {
+    var deck = [];
+    animalsFor(mode).forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    totalPairs = MODES[mode].pairs;
+    var deck = shuffledDeck();
+    var cols = MODES[mode].cols;
+    // Hard mode fits 16 cards in the same board area with slightly shorter cards.
+    var cw = 185, ch = (mode === "hard" ? 106 : 140), gx = 62, gy = (mode === "hard" ? 188 : 195), padX = 22, padY = (mode === "hard" ? 12 : 16);
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card));
+    });
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    back.fillStyle(0x8ecae6, 1); back.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+    back.fillStyle(0xffffff, 0.85);
+    back.fillCircle(-w / 4, -h / 4, 12); back.fillCircle(w / 4, 0, 9); back.fillCircle(0, h / 4, 14);
+    var small = h < 120;
+    var paw = scene.add.text(0, -6, "\u{1F43E}", { fontSize: small ? "40px" : "56px" }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xfff1a8, 0xffc8dd, 0xc8e7ff, 0xd8f3b8, 0xffd6a5, 0xe4c1f9, 0xd0f0ff, 0xe8e8ff];
+    fg.fillStyle(0xffffff, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+    var emo = scene.add.text(0, small ? -14 : -18, data.emoji, { fontSize: small ? "44px" : "62px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, small ? 32 : 44, data.name, textStyle(small ? 19 : 22)).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, w: w, h: h };
+    cont.on("pointerdown", function () { focusedIdx = cards.indexOf(card); drawFocus(scene); onCard(scene, card); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    scene.sound.noop = true;
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); announce("One card up. Pick one more!"); drawFocus(scene); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        // Gentle match pulse (single smooth scale, no flashing).
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / " + totalPairs);
+        var done = matches === totalPairs;
+        hudMsg.setText(done ? "You did it!" : "Yay! A pair! \u{1F389}");
+        announce(done ? "You found all " + totalPairs + " pairs. Well done!" : "Yay! A pair! " + matches + " of " + totalPairs + " found. Keep going!");
+        lockBoard = false;
+        drawFocus(scene);
+        if (done) { showWin(scene); }
+      }, 350);
+    } else {
+      // No penalty for a miss: same encouraging message in both modes.
+      hudMsg.setText("Try again! \u{1F340}");
+      announce("Those two did not match. Try again — every try helps you learn!");
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; drawFocus(scene); });
+      }, 700);
+    }
+  }
+
+  // Flat overlay children (same pattern as the existing Start button) so clicks hit reliably.
+  function modeButton(overlay, x, y, w, key, label, hint) {
+    var scene = overlay.scene;
+    var bg = scene.add.graphics();
+    function paint() {
+      bg.clear();
+      var sel = selectedMode === key;
+      // Ocean accent for the challenge mode; selected mode gets a dark outline.
+      bg.fillStyle(key === "hard" ? 0x4EA8DE : 0x5da85f, 1);
+      if (!sel) { bg.fillStyle(key === "hard" ? 0x8ecae6 : 0x9ccc9c, 1); }
+      bg.fillRoundedRect(x - w / 2, y - 30, w, 60, 30);
+      if (sel) { bg.lineStyle(5, 0x102A43, 1); bg.strokeRoundedRect(x - w / 2, y - 30, w, 60, 30); }
+    }
+    paint();
+    var tx = scene.add.text(x, y - 8, label, textStyle(24, "#ffffff")).setOrigin(0.5);
+    var sub2 = scene.add.text(x, y + 16, hint, { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "15px", color: "#ffffff" }).setOrigin(0.5);
+    overlay.add([bg, tx, sub2]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(x - w / 2, y - 30, w, 60), Phaser.Geom.Rectangle.Contains);
+    // Explicit click listener (no form submission) + keyboard via 1/2 keys.
+    bg.on("pointerdown", function () { setSelectedMode(scene, key); });
+    return { repaint: paint };
+  }
+
+  function setSelectedMode(scene, key) {
+    selectedMode = key;
+    if (modeBtnEasy) { modeBtnEasy.repaint(); }
+    if (modeBtnHard) { modeBtnHard.repaint(); }
+    announce(key === "hard" ? "Hard challenge selected: 8 pairs. Press Start or Enter to play." : "Easy game selected: 6 pairs. Press Start or Enter to play.");
+  }
+
+  function setMode(scene, key) {
+    mode = key; selectedMode = key;
+    if (modeBtnEasy) { modeBtnEasy.repaint(); }
+    if (modeBtnHard) { modeBtnHard.repaint(); }
+    restart(scene);
+    announce(key === "hard" ? "Hard challenge: 8 pairs. Take your time, there is no timer." : "Easy game: 6 pairs. Have fun!");
+  }
+
+  function startGame(scene) {
+    mode = selectedMode;
+    moves = 0; matches = 0; firstPick = null; focusedIdx = 0;
+    started = true; lockBoard = false;
+    totalPairs = MODES[mode].pairs;
+    hudMoves.setText("Moves: 0");
+    refreshHudMode();
+    hudMsg.setText(mode === "hard" ? "Hard mode: take your time!" : "Tap a card!");
+    startOverlay.setVisible(false);
+    endOverlay.setVisible(false);
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+    drawFocus(scene);
+    announce(mode === "hard" ? "Hard challenge started: find all 8 pairs. No timer, no penalties — just keep trying!" : "Game started: find all 6 pairs. Tap a card!");
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-310, -215, 620, 430, 30);
+    panel.lineStyle(6, 0x4EA8DE, 1); panel.strokeRoundedRect(-310, -215, 620, 430, 30);
+    var title = scene.add.text(0, -158, "\u{1F33B} Farmyard Match \u{1F404}", textStyle(38, "#102A43")).setOrigin(0.5);
+    var sub = scene.add.text(0, -100, "Flip the cards and find the pairs!\nEasy is 6 pairs, Hard is 8. Both are just for fun.", Object.assign(textStyle(21, "#102A43"), { align: "center" })).setOrigin(0.5);
+    var row = scene.add.text(0, 42, "\u{1F404} \u{1F437} \u{1F414} \u{1F40E} \u{1F411} \u{1F988}", { fontSize: "40px" }).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 88, 260, 70, 35);
+    var btnTx = scene.add.text(0, 123, "\u25B6  Start", textStyle(30, "#ffffff")).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, row, btnBg, btnTx]);
+    modeBtnEasy = modeButton(startOverlay, -140, -28, 250, "easy", "\u{1F331} Easy", "6 pairs  (key 1)");
+    modeBtnHard = modeButton(startOverlay, 140, -28, 250, "hard", "\u{1F30A} Hard", "8 pairs  (key 2)");
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 88, 260, 70), Phaser.Geom.Rectangle.Contains);
+    // Explicit click listener (no form submission); Enter/Space handled in bindKeys.
+    btnBg.on("pointerdown", function () { startGame(scene); });
+    setSelectedMode(scene, selectedMode);
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-290, -170, 580, 340, 30);
+    panel.lineStyle(6, 0xffb703, 1); panel.strokeRoundedRect(-290, -170, 580, 340, 30);
+    endTitle = scene.add.text(0, -110, "\u{1F389} You Win! \u{1F389}", textStyle(42)).setOrigin(0.5);
+    endModeLabel = scene.add.text(0, -58, "", textStyle(20, "#102A43")).setOrigin(0.5);
+    endDetail = scene.add.text(0, -12, "", Object.assign(textStyle(25), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 48, 260, 66, 33);
+    var btnTx = scene.add.text(0, 81, "\u21BB Play Again", textStyle(28, "#ffffff")).setOrigin(0.5);
+    var swapBg = scene.add.graphics();
+    swapBg.fillStyle(0x4EA8DE, 1); swapBg.fillRoundedRect(-150, 122, 300, 40, 20);
+    var swapTx = scene.add.text(0, 142, "Try Hard (8 pairs)", textStyle(19, "#ffffff")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endModeLabel, endDetail, swapBg, swapTx, btnBg, btnTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 48, 260, 66), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+    swapBg.setInteractive(new Phaser.Geom.Rectangle(-150, 122, 300, 40), Phaser.Geom.Rectangle.Contains);
+    // Explicit click listener (no form submission); lets the winner try the other mode.
+    swapBg.on("pointerdown", function () { setMode(scene, mode === "hard" ? "easy" : "hard"); });
+    endOverlay._swapTx = swapTx;
+    refreshToggleLabel();
+  }
+
+  function showWin(scene) {
+    // Encouraging stars only (no penalties): thresholds scale with board size.
+    var stars = totalPairs === 8 ? (moves <= 14 ? 3 : (moves <= 22 ? 2 : 1)) : (moves <= 10 ? 3 : (moves <= 16 ? 2 : 1));
+    endDetail.setText("You found all " + totalPairs + " pairs!\nMoves: " + moves + "  " + "\u2B50".repeat(stars));
+    refreshToggleLabel();
+    if (endOverlay._swapTx) { endOverlay._swapTx.setText(mode === "hard" ? "Try Easy (6 pairs)" : "Try Hard (8 pairs)"); }
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("You win! \u{1F389}");
+    announce("You win! You found all " + totalPairs + " pairs in " + moves + " moves. " + "\u2B50".repeat(stars));
+    for (var i = 0; i < 40; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u{1F33B}", "\u2B50", "\u{1F389}", "\u{1F404}"][i % 4], { fontSize: "28px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-80, 80), duration: Phaser.Math.Between(1200, 2200), onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; firstPick = null; focusedIdx = 0; lockBoard = false; started = true;
+    totalPairs = MODES[mode].pairs;
+    hudMoves.setText("Moves: 0");
+    refreshHudMode();
+    hudMsg.setText(mode === "hard" ? "Hard mode: take your time!" : "Tap a card!");
+    if (focusRing) { focusRing.clear(); }
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+    drawFocus(scene);
+    announce(mode === "hard" ? "Hard challenge restarted: find all 8 pairs. No timer — keep trying!" : "Game restarted: find all 6 pairs. Tap a card!");
+  }
+
+  function update() {}
+})();
+</script>
+</body>
+</html>

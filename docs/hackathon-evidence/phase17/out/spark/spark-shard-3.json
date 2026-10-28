@@ -1,0 +1,1529 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark",
+    "model": "muse-spark-1.3-contributor",
+    "effort": "high",
+    "path": "production HTML Studio (Forge) modify job: server, retrieval, muse CLI tool loop",
+    "max_runtime_ms": 1800000,
+    "max_calls": 100,
+    "max_input_tokens": 10000000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": false,
+  "shard": 3,
+  "shards": 6,
+  "results": [
+    {
+      "id": "orchard-arcade-manual-02",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "cc77d58a-99b4-4dd0-9df9-9f4eab22ca07",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "55e5ee5d-1724-4c07-ab3b-b28de436b2a8",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 26,
+        "input_tokens": 1292405,
+        "output_tokens": 12970,
+        "runtime_ms": 222646
+      },
+      "memory_ids": [
+        "cc77d58a-99b4-4dd0-9df9-9f4eab22ca07"
+      ],
+      "prompt_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "910a116c656620de9a3d60b20d65987ab4be2564d0b9a08ac0e2d09de0e5f58b",
+      "output_bytes": 23028,
+      "seconds": 226.4
+    },
+    {
+      "id": "focus-reward-none-06",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "5f3ec7e3-953a-4baf-a77f-e4eeb0684fbf",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 14,
+        "input_tokens": 557115,
+        "output_tokens": 4482,
+        "runtime_ms": 88756
+      },
+      "memory_ids": [],
+      "prompt_sha256": "36d7fb1b375d16031e18f321f35ba928cabe19e612aeeb91599b9c92a7a1d7b3",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "36d7fb1b375d16031e18f321f35ba928cabe19e612aeeb91599b9c92a7a1d7b3",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "d21417dc6ff18f0e856713d6949a0ee771eb6d259fa38fbcc9aa450ab1e5b3b2",
+      "output_bytes": 19979,
+      "seconds": 90.9
+    },
+    {
+      "id": "farm-challenge-memory-01",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "47e1c5c4-4164-4153-a7e9-0fa19f7629cd",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "3a7dd912-a272-453d-829a-330979017ebb",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "bd050541-5f4d-4832-85bb-564643d550b5",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 31,
+        "input_tokens": 1658773,
+        "output_tokens": 16446,
+        "runtime_ms": 309216
+      },
+      "memory_ids": [
+        "47e1c5c4-4164-4153-a7e9-0fa19f7629cd",
+        "3a7dd912-a272-453d-829a-330979017ebb"
+      ],
+      "prompt_sha256": "bbf4abb3a073a41a8edd005433618f9e473cb007fdfe1c619581fd8d1fc67301",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "bbf4abb3a073a41a8edd005433618f9e473cb007fdfe1c619581fd8d1fc67301",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "ab5c29959cf41e9a29e7e38019b6847e0db531b73f8b14329bd29f23223fdf4a",
+      "output_bytes": 17742,
+      "seconds": 310.1
+    },
+    {
+      "id": "focus-lively-memory-05",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "ade7b386-b33d-4476-850b-064a457f8059",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "384f0668-6a55-4fbf-8997-1c6818cf33ed",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "27d988a3-3005-4c09-93dd-fdfd093ff458",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 18,
+        "input_tokens": 716822,
+        "output_tokens": 4828,
+        "runtime_ms": 168537
+      },
+      "memory_ids": [
+        "ade7b386-b33d-4476-850b-064a457f8059",
+        "384f0668-6a55-4fbf-8997-1c6818cf33ed"
+      ],
+      "prompt_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "e13dc38f8345ec5dbc580428cf5f66cecc1678f1ee4b8b5b96c0a3c4c9c175ef",
+      "output_bytes": 16519,
+      "seconds": 172
+    },
+    {
+      "id": "orchard-challenge-manual-10",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "3e808e33-6f3d-481f-86cf-12090199dcc9",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "04df1f2f-e4ca-48d3-aad4-95476d816d34",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 33,
+        "input_tokens": 1622483,
+        "output_tokens": 12989,
+        "runtime_ms": 186180
+      },
+      "memory_ids": [
+        "3e808e33-6f3d-481f-86cf-12090199dcc9"
+      ],
+      "prompt_sha256": "c90f169dd0722916c1c92d3d7ce1e9b227c2db5c083b472b92b0e28d8ae09881",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "c90f169dd0722916c1c92d3d7ce1e9b227c2db5c083b472b92b0e28d8ae09881",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "6d0dbed22cc5a296cc3231f967c0ae464d506da183538b9c08a5c98a0adb866d",
+      "output_bytes": 21999,
+      "seconds": 186.8
+    },
+    {
+      "id": "orchard-arcade-manual-10",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "bd954809-efe4-4641-8687-da910cbe1962",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "f5b31c34-b3e4-4985-8ecc-b24125c2e90d",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 20,
+        "input_tokens": 892433,
+        "output_tokens": 9495,
+        "runtime_ms": 120320
+      },
+      "memory_ids": [
+        "bd954809-efe4-4641-8687-da910cbe1962"
+      ],
+      "prompt_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "63b5d15170ab668ae14172e047c91dd4d884f0986d8d703eabb5fbfd9df66e72",
+      "output_bytes": 20774,
+      "seconds": 123.9
+    },
+    {
+      "id": "farm-challenge-none-08",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "7e191689-42ca-43e0-b655-75db3243df7b",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 21,
+        "input_tokens": 1123099,
+        "output_tokens": 19891,
+        "runtime_ms": 261630
+      },
+      "memory_ids": [],
+      "prompt_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "bfa034d658060a69deb815cecc70b43f9b0c189ffdfafe59199c53592d374da7",
+      "output_bytes": 24057,
+      "seconds": 264.8
+    },
+    {
+      "id": "focus-reward-corrected-08",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.",
+      "seeded": [
+        {
+          "id": "fed622f2-e311-467b-9008-d7bf22b24443",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "6ae267e0-fa37-4aa1-bde8-72c63f85c264",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": {
+        "superseded_id": "fed622f2-e311-467b-9008-d7bf22b24443",
+        "replacement_id": "0afbfabd-7f53-4f58-bdac-fe5003f91a82"
+      },
+      "job_id": "e0c33da6-8b3b-4836-9f68-f75787f47500",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 15,
+        "input_tokens": 613771,
+        "output_tokens": 5728,
+        "runtime_ms": 141907
+      },
+      "memory_ids": [
+        "0afbfabd-7f53-4f58-bdac-fe5003f91a82",
+        "6ae267e0-fa37-4aa1-bde8-72c63f85c264"
+      ],
+      "prompt_sha256": "2f6c701ff749b8364700a326184ac6daa2967ea90223b1991f0abf49db7bb540",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "2f6c701ff749b8364700a326184ac6daa2967ea90223b1991f0abf49db7bb540",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "output_sha256": "ecc30d4ec493bb3292fe6498c545034d8071cc21382eb04c0374923fd008e875",
+      "output_bytes": 20201,
+      "seconds": 145
+    },
+    {
+      "id": "orchard-challenge-none-07",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "d5352410-c7be-47bb-8ea3-a923b99f2671",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 20,
+        "input_tokens": 913563,
+        "output_tokens": 8617,
+        "runtime_ms": 154741
+      },
+      "memory_ids": [],
+      "prompt_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "3bb1bd2e4c3a1bc6100ced3e3affb7302022a6cc2979e67a7adbb8c545e4a822",
+      "output_bytes": 21041,
+      "seconds": 157.2
+    },
+    {
+      "id": "focus-reward-manual-08",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+      "seeded": [
+        {
+          "id": "410dccd2-50bb-4f77-8dc7-f731ec1a6068",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "e6051227-e6d3-4476-8291-ca69ac5934b3",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 12,
+        "input_tokens": 461604,
+        "output_tokens": 3768,
+        "runtime_ms": 79692
+      },
+      "memory_ids": [
+        "410dccd2-50bb-4f77-8dc7-f731ec1a6068"
+      ],
+      "prompt_sha256": "5a9e372df85f7094958b8a8342e1909142944b3ab11c03e8a56829b1e239c813",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "5a9e372df85f7094958b8a8342e1909142944b3ab11c03e8a56829b1e239c813",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "f8422978c2ce52ea1d33f36d91f70e7329506d509bb63b81ad764f54b67de564",
+      "output_bytes": 17037,
+      "seconds": 81.9
+    },
+    {
+      "id": "farm-arcade-manual-05",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "2576d15d-2345-4ad6-9d1d-3549e4ac6e81",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "66b95088-db1b-45da-b1e6-bc60f2ffa44d",
+      "status": "failed",
+      "error": "Job exceeded the 1800s runtime budget.",
+      "usage": {
+        "calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "runtime_ms": 1800016
+      },
+      "memory_ids": [
+        "2576d15d-2345-4ad6-9d1d-3549e4ac6e81"
+      ],
+      "prompt_sha256": "440b577599ca461f097f6b10289615326c9d4dd6c1aea840dab625bb7ff0cbdb",
+      "validation": null,
+      "prompt_file_sha256": "440b577599ca461f097f6b10289615326c9d4dd6c1aea840dab625bb7ff0cbdb",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "seconds": 1803.2
+    },
+    {
+      "id": "farm-challenge-corrected-10",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "0d14e5a3-8e0d-48f5-996e-686e4116acbd",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "a944aea5-ed1f-4663-a0e6-bf8754a807de",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": {
+        "superseded_id": "0d14e5a3-8e0d-48f5-996e-686e4116acbd",
+        "replacement_id": "6db2b388-4ebc-4e1b-bbce-cee0eae8098b"
+      },
+      "job_id": "c1104119-121c-4322-8a7e-99b75927484c",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 24,
+        "input_tokens": 1228210,
+        "output_tokens": 14680,
+        "runtime_ms": 275697
+      },
+      "memory_ids": [
+        "6db2b388-4ebc-4e1b-bbce-cee0eae8098b",
+        "a944aea5-ed1f-4663-a0e6-bf8754a807de"
+      ],
+      "prompt_sha256": "bd47c5beb419647262e0636c437a2423e0afbcec0e3c853683c462d4bdda7af4",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "bd47c5beb419647262e0636c437a2423e0afbcec0e3c853683c462d4bdda7af4",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "output_sha256": "ec027fadd24fd6bce62263741b55523ebf32f15b41136dab47b54ce711e2cd9e",
+      "output_bytes": 21004,
+      "seconds": 277.1
+    },
+    {
+      "id": "farm-challenge-memory-07",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "c7309d51-b6d3-43da-be94-14715083c41e",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "a88c3100-db5d-497a-9d25-38c0c63a0a63",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "69779bf0-4496-491a-828f-58a71e3be818",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 43,
+        "input_tokens": 2528046,
+        "output_tokens": 23835,
+        "runtime_ms": 209843
+      },
+      "memory_ids": [
+        "c7309d51-b6d3-43da-be94-14715083c41e",
+        "a88c3100-db5d-497a-9d25-38c0c63a0a63"
+      ],
+      "prompt_sha256": "bbf4abb3a073a41a8edd005433618f9e473cb007fdfe1c619581fd8d1fc67301",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "bbf4abb3a073a41a8edd005433618f9e473cb007fdfe1c619581fd8d1fc67301",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "d2e5c9113a9d18dc01fd8f535ecd93e7ab2e97b5b7a62f7c9d632c4be3aceebe",
+      "output_bytes": 18856,
+      "seconds": 211
+    },
+    {
+      "id": "focus-reward-manual-06",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+      "seeded": [
+        {
+          "id": "5c889b44-6918-44c2-ae6c-69f0b8a67f56",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "52f3df42-51d8-4d6d-8e11-04c6823ce66a",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 15,
+        "input_tokens": 601073,
+        "output_tokens": 4450,
+        "runtime_ms": 150951
+      },
+      "memory_ids": [
+        "5c889b44-6918-44c2-ae6c-69f0b8a67f56"
+      ],
+      "prompt_sha256": "5a9e372df85f7094958b8a8342e1909142944b3ab11c03e8a56829b1e239c813",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "5a9e372df85f7094958b8a8342e1909142944b3ab11c03e8a56829b1e239c813",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "6c7a61240268443cd1aea19b90c769a72d53c18de3b5528fbb3db4e994adc836",
+      "output_bytes": 17854,
+      "seconds": 154
+    },
+    {
+      "id": "focus-lively-manual-10",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+      "seeded": [
+        {
+          "id": "4359c30d-8e27-467e-a772-938f74de00f7",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "604cbfd0-e252-4b1f-83a6-cf666f72a9c7",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 15,
+        "input_tokens": 592898,
+        "output_tokens": 4798,
+        "runtime_ms": 78617
+      },
+      "memory_ids": [
+        "4359c30d-8e27-467e-a772-938f74de00f7"
+      ],
+      "prompt_sha256": "c81258c4ace5e6ccd15ec147360b01577daaf034819a73fb007345ef35ad1c1f",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "c81258c4ace5e6ccd15ec147360b01577daaf034819a73fb007345ef35ad1c1f",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "1f70596f6f44f5021be79eb4176344d592ac4beb7ca16a87b3a8dfb7920af9e5",
+      "output_bytes": 16735,
+      "seconds": 81.9
+    },
+    {
+      "id": "focus-lively-memory-04",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "db123c3f-7799-484c-b19b-e7b2765f2f2b",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "8bd0edcc-b33d-47a4-8b20-f95eb4503d04",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "31f00e4a-f6f9-4f59-93e7-54cff5f80f4f",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 16,
+        "input_tokens": 630748,
+        "output_tokens": 4136,
+        "runtime_ms": 82388
+      },
+      "memory_ids": [
+        "db123c3f-7799-484c-b19b-e7b2765f2f2b",
+        "8bd0edcc-b33d-47a4-8b20-f95eb4503d04"
+      ],
+      "prompt_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "3aa00f7d0cada77005bff477dc3e537095dbb06344ffbbc28f8a6dceed49b46f",
+      "output_bytes": 17153,
+      "seconds": 84.6
+    },
+    {
+      "id": "focus-lively-corrected-09",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "2e7edb4d-4329-48ee-80c0-6daae49c73c3",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "7d4dd870-46f5-49f3-9caa-65b30089d3f0",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": {
+        "superseded_id": "2e7edb4d-4329-48ee-80c0-6daae49c73c3",
+        "replacement_id": "0cb7943b-b8b1-4345-a1a6-2f4ecef8b048"
+      },
+      "job_id": "66291bbd-b893-45a7-8885-c4809b82a113",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 24,
+        "input_tokens": 1031977,
+        "output_tokens": 7080,
+        "runtime_ms": 176032
+      },
+      "memory_ids": [
+        "0cb7943b-b8b1-4345-a1a6-2f4ecef8b048",
+        "7d4dd870-46f5-49f3-9caa-65b30089d3f0"
+      ],
+      "prompt_sha256": "c3c664b832663e4e86daa038fad12af098dfab70936cabf59916f8d33168cfbc",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "c3c664b832663e4e86daa038fad12af098dfab70936cabf59916f8d33168cfbc",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "output_sha256": "94b7a0f8ca113d0aaea9934c78fb31a4aa6f8c832e901cc8afbc2bff74580055",
+      "output_bytes": 18996,
+      "seconds": 178.1
+    },
+    {
+      "id": "focus-reward-manual-02",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+      "seeded": [
+        {
+          "id": "7932f3fa-5829-4b95-a627-93b719154490",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "1a462887-0b0d-45e7-8f6e-ea747b4e8dc6",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 15,
+        "input_tokens": 595733,
+        "output_tokens": 4169,
+        "runtime_ms": 91378
+      },
+      "memory_ids": [
+        "7932f3fa-5829-4b95-a627-93b719154490"
+      ],
+      "prompt_sha256": "5a9e372df85f7094958b8a8342e1909142944b3ab11c03e8a56829b1e239c813",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "5a9e372df85f7094958b8a8342e1909142944b3ab11c03e8a56829b1e239c813",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "eb26c4ae754d08e242c0b2086c0dbd6fb16ec7fefd999481891481d753120ba0",
+      "output_bytes": 17638,
+      "seconds": 93.9
+    },
+    {
+      "id": "focus-lively-memory-06",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "24d622cb-0547-4e92-9d93-052e6473b15e",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "8c649e42-8a0d-44d4-b7fd-10512efc49c7",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "0ed0c753-f999-48af-9675-9c595c9d57de",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 12,
+        "input_tokens": 468779,
+        "output_tokens": 4907,
+        "runtime_ms": 93875
+      },
+      "memory_ids": [
+        "24d622cb-0547-4e92-9d93-052e6473b15e",
+        "8c649e42-8a0d-44d4-b7fd-10512efc49c7"
+      ],
+      "prompt_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "6d31cf1553a48fb22f40220378e113c2d6ef1035f6eb284058ef8b47c0971da0",
+      "output_bytes": 16857,
+      "seconds": 97.7
+    },
+    {
+      "id": "farm-challenge-none-10",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "b63ac8ab-6adb-491f-8d2a-880fee246884",
+      "status": "failed",
+      "error": "Job exceeded the 1800s runtime budget.",
+      "usage": {
+        "calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "runtime_ms": 1800029
+      },
+      "memory_ids": [],
+      "prompt_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "validation": null,
+      "prompt_file_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "seconds": 1803.1
+    },
+    {
+      "id": "orchard-arcade-none-07",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "88686a82-8569-434e-a99c-88ca70358916",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 43,
+        "input_tokens": 2595687,
+        "output_tokens": 26362,
+        "runtime_ms": 498489
+      },
+      "memory_ids": [],
+      "prompt_sha256": "3fae2ab6208f3a3e3d7099f8491ea466e7b505bfc1cccfd73b120b4ab1aff9e0",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "3fae2ab6208f3a3e3d7099f8491ea466e7b505bfc1cccfd73b120b4ab1aff9e0",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "62e4e6ff47d83570714a0bfb451033210f013d5790e42ca8d6081a8429c32a86",
+      "output_bytes": 28363,
+      "seconds": 499.5
+    },
+    {
+      "id": "focus-lively-corrected-08",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "ad1b8ba5-8f9a-45f4-bf25-04c6391b7eff",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "46529a69-dca2-4131-b38e-e0507eaada87",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": {
+        "superseded_id": "ad1b8ba5-8f9a-45f4-bf25-04c6391b7eff",
+        "replacement_id": "0ca20254-a5c6-410b-b832-c6e028e317f5"
+      },
+      "job_id": "be1e63ec-24f7-49d8-b28d-48a358c91b77",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 23,
+        "input_tokens": 975648,
+        "output_tokens": 7264,
+        "runtime_ms": 147658
+      },
+      "memory_ids": [
+        "0ca20254-a5c6-410b-b832-c6e028e317f5",
+        "46529a69-dca2-4131-b38e-e0507eaada87"
+      ],
+      "prompt_sha256": "c3c664b832663e4e86daa038fad12af098dfab70936cabf59916f8d33168cfbc",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "c3c664b832663e4e86daa038fad12af098dfab70936cabf59916f8d33168cfbc",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "output_sha256": "bd1ac73b7c6641e55a8b2dba66100d155ba4fb4384ab237741b0f71eb061e583",
+      "output_bytes": 18936,
+      "seconds": 151
+    },
+    {
+      "id": "orchard-arcade-manual-09",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "4a9b9c39-bd28-43b6-b7fe-1fb63b6cccd1",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "21ed246f-0c2d-4843-a14e-8387c0f9006a",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 18,
+        "input_tokens": 825671,
+        "output_tokens": 8978,
+        "runtime_ms": 149711
+      },
+      "memory_ids": [
+        "4a9b9c39-bd28-43b6-b7fe-1fb63b6cccd1"
+      ],
+      "prompt_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "14964c0fa46089f4f2f12b2fdd406f01aa1a4390438151a5c5fb3e4141f9d693",
+      "output_bytes": 22938,
+      "seconds": 150.7
+    },
+    {
+      "id": "focus-lively-memory-09",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "c042246c-68e2-41d6-96da-14fc4a133186",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "49114970-596c-4fde-af27-c07ed6cc6c00",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "0daba101-a05f-4272-8424-8b30c99e6dcf",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 18,
+        "input_tokens": 725787,
+        "output_tokens": 4966,
+        "runtime_ms": 112619
+      },
+      "memory_ids": [
+        "c042246c-68e2-41d6-96da-14fc4a133186",
+        "49114970-596c-4fde-af27-c07ed6cc6c00"
+      ],
+      "prompt_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "747e3ed3d0644d0ffb23d0a4ad13bb9cd8a69d54d57fbdc3395dfc0e1fab96bf",
+      "output_bytes": 17185,
+      "seconds": 114.9
+    },
+    {
+      "id": "orchard-challenge-manual-05",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "9ac5f0e8-a008-46d8-9bfd-b8d8b5e8a75a",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "170f6155-2895-4bb5-98e7-be5ab6464922",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 43,
+        "input_tokens": 2435353,
+        "output_tokens": 14839,
+        "runtime_ms": 393913
+      },
+      "memory_ids": [
+        "9ac5f0e8-a008-46d8-9bfd-b8d8b5e8a75a"
+      ],
+      "prompt_sha256": "c90f169dd0722916c1c92d3d7ce1e9b227c2db5c083b472b92b0e28d8ae09881",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "c90f169dd0722916c1c92d3d7ce1e9b227c2db5c083b472b92b0e28d8ae09881",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "2b4dfddbdaee26157587aa7704629649720d72709610b3f06f95c91e657ba92b",
+      "output_bytes": 21411,
+      "seconds": 397.3
+    },
+    {
+      "id": "farm-challenge-none-07",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "14c2a224-7785-4c9f-88be-c62cdcb72aa7",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 40,
+        "input_tokens": 2451589,
+        "output_tokens": 28717,
+        "runtime_ms": 455501
+      },
+      "memory_ids": [],
+      "prompt_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "8dfad6ecaafac925e10071cf354b4f0430a7e8e19fb4e4e1798a66147b6b1649",
+      "output_bytes": 16605,
+      "seconds": 457.1
+    },
+    {
+      "id": "focus-reward-none-10",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "f511f2f4-0ab4-481b-b482-128faff8fbda",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 11,
+        "input_tokens": 427125,
+        "output_tokens": 4610,
+        "runtime_ms": 134505
+      },
+      "memory_ids": [],
+      "prompt_sha256": "36d7fb1b375d16031e18f321f35ba928cabe19e612aeeb91599b9c92a7a1d7b3",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "36d7fb1b375d16031e18f321f35ba928cabe19e612aeeb91599b9c92a7a1d7b3",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "995674e3d97fb2f3dab6d0d20f5778183d94932bf5741ac831f5ed2ff2462f6e",
+      "output_bytes": 20213,
+      "seconds": 135.9
+    },
+    {
+      "id": "farm-challenge-manual-08",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "02788401-9a3b-40d0-bea6-e59297f31409",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "6c1c0a99-c932-4b02-abe9-abe2985e616c",
+      "status": "failed",
+      "error": "Job exceeded the 1800s runtime budget.",
+      "usage": {
+        "calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "runtime_ms": 1800020
+      },
+      "memory_ids": [
+        "02788401-9a3b-40d0-bea6-e59297f31409"
+      ],
+      "prompt_sha256": "b4a4505686cd9bf83373602dbd1c853eb59ed6252515ca794b3cdcccfc14f653",
+      "validation": null,
+      "prompt_file_sha256": "b4a4505686cd9bf83373602dbd1c853eb59ed6252515ca794b3cdcccfc14f653",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "seconds": 1802.6
+    },
+    {
+      "id": "orchard-arcade-none-08",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "c50230ed-ac9f-4675-8aac-b1f6dbcf2c1d",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 39,
+        "input_tokens": 2152399,
+        "output_tokens": 18558,
+        "runtime_ms": 297600
+      },
+      "memory_ids": [],
+      "prompt_sha256": "3fae2ab6208f3a3e3d7099f8491ea466e7b505bfc1cccfd73b120b4ab1aff9e0",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "3fae2ab6208f3a3e3d7099f8491ea466e7b505bfc1cccfd73b120b4ab1aff9e0",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "90a5947ad19befd8078a736d0c4f5ef0d720ed4a0bd4241f659b1ea0a6b8d6c7",
+      "output_bytes": 24506,
+      "seconds": 301
+    },
+    {
+      "id": "orchard-challenge-memory-09",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "aa8e3efe-dc9c-4b8f-b5f6-d1d11693f0f0",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "dac7d0e6-064d-439f-9a78-23c2bb191a9d",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "41e3104b-dc6f-4fbe-9a49-02ea03433e11",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 23,
+        "input_tokens": 1116865,
+        "output_tokens": 10303,
+        "runtime_ms": 194320
+      },
+      "memory_ids": [
+        "aa8e3efe-dc9c-4b8f-b5f6-d1d11693f0f0",
+        "dac7d0e6-064d-439f-9a78-23c2bb191a9d"
+      ],
+      "prompt_sha256": "5c5bcc61501c1bbc3ef67d86bdac3bb6b04b47816dfff8c86c09123fec2648d2",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "5c5bcc61501c1bbc3ef67d86bdac3bb6b04b47816dfff8c86c09123fec2648d2",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "75d9f1f83b790072cd2736b112f14a8d47992678e3a1ef933d99b347d9d26584",
+      "output_bytes": 20409,
+      "seconds": 196
+    },
+    {
+      "id": "focus-lively-memory-08",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "f916008d-4684-4911-b4a9-2f69ac63bd2b",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "260f21ba-5ae6-4c4b-af79-3454caeb7434",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "6db8b5ad-b54d-436a-bfbe-92ec5e4d6bb1",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 20,
+        "input_tokens": 823429,
+        "output_tokens": 5389,
+        "runtime_ms": 127601
+      },
+      "memory_ids": [
+        "f916008d-4684-4911-b4a9-2f69ac63bd2b",
+        "260f21ba-5ae6-4c4b-af79-3454caeb7434"
+      ],
+      "prompt_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "0bc874cb8e4eb7b8d1b4488535f84e29f434ac7d99ba690ddea87f1e02a25b2d",
+      "output_bytes": 17347,
+      "seconds": 129.9
+    },
+    {
+      "id": "farm-challenge-memory-05",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "7784b843-3168-405c-8d03-aac5af6f7027",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "e4844b49-22c7-4289-b45f-e3a63a9eaa08",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "7fb43fca-2ea8-4d2f-a4c5-cdeb9422f56e",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 21,
+        "input_tokens": 1094179,
+        "output_tokens": 14105,
+        "runtime_ms": 263476
+      },
+      "memory_ids": [
+        "7784b843-3168-405c-8d03-aac5af6f7027",
+        "e4844b49-22c7-4289-b45f-e3a63a9eaa08"
+      ],
+      "prompt_sha256": "bbf4abb3a073a41a8edd005433618f9e473cb007fdfe1c619581fd8d1fc67301",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "bbf4abb3a073a41a8edd005433618f9e473cb007fdfe1c619581fd8d1fc67301",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "ea8b1a4b8cc77be988599857a66f2a04daa7af843d0b8c01893888c2e0395066",
+      "output_bytes": 14874,
+      "seconds": 265.6
+    },
+    {
+      "id": "farm-arcade-memory-02",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "seeded": [
+        {
+          "id": "23ae8d70-0531-4563-a248-90db0fa0f12d",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "e2886948-afcd-4982-aa30-ff6eeb295e8e",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "fb14c635-4132-41f6-945c-d59cc14bfe6e",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 26,
+        "input_tokens": 1419901,
+        "output_tokens": 17350,
+        "runtime_ms": 265901
+      },
+      "memory_ids": [
+        "23ae8d70-0531-4563-a248-90db0fa0f12d",
+        "e2886948-afcd-4982-aa30-ff6eeb295e8e"
+      ],
+      "prompt_sha256": "3f15e3dd9a8f130164ca2601acd1c20941978c8d4ebb58a49ae6b27110d1aaac",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "3f15e3dd9a8f130164ca2601acd1c20941978c8d4ebb58a49ae6b27110d1aaac",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "472b696fc3c01cc3612a984a5a6e8388e98252950bb2814bdd6da59d0e39b98d",
+      "output_bytes": 20980,
+      "seconds": 268.1
+    },
+    {
+      "id": "orchard-challenge-corrected-07",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "aaff0042-6301-4e55-9dec-ca8f47013c17",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "10462358-a56e-4d12-84f8-8b64f19d5794",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": {
+        "superseded_id": "aaff0042-6301-4e55-9dec-ca8f47013c17",
+        "replacement_id": "dd636d69-30f9-48b5-97ec-ac41235f3aaf"
+      },
+      "job_id": "96f37529-9cb0-46f9-93fe-a81ef0287412",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 25,
+        "input_tokens": 1242602,
+        "output_tokens": 10125,
+        "runtime_ms": 192923
+      },
+      "memory_ids": [
+        "dd636d69-30f9-48b5-97ec-ac41235f3aaf",
+        "10462358-a56e-4d12-84f8-8b64f19d5794"
+      ],
+      "prompt_sha256": "7b6a391afaeddd1f59b64aaf34285ebb6c0192c87e62772c6449b7d49e0e51d4",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "7b6a391afaeddd1f59b64aaf34285ebb6c0192c87e62772c6449b7d49e0e51d4",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "output_sha256": "a9fa520a7de56c762dc5819ed6e03f0758ed39659bd8787e4bb002643935f4af",
+      "output_bytes": 20118,
+      "seconds": 196
+    },
+    {
+      "id": "orchard-challenge-memory-07",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "b42fb294-b518-4695-b2d1-453e9375ccec",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "7711d85e-3bba-40e6-a288-e24a8114a132",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "7fdd3216-158a-4bc2-86c7-a774dd7a06f0",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 23,
+        "input_tokens": 1111792,
+        "output_tokens": 10381,
+        "runtime_ms": 157788
+      },
+      "memory_ids": [
+        "b42fb294-b518-4695-b2d1-453e9375ccec",
+        "7711d85e-3bba-40e6-a288-e24a8114a132"
+      ],
+      "prompt_sha256": "5c5bcc61501c1bbc3ef67d86bdac3bb6b04b47816dfff8c86c09123fec2648d2",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "5c5bcc61501c1bbc3ef67d86bdac3bb6b04b47816dfff8c86c09123fec2648d2",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "2127675b6bb92b8474062ab62053cb22c29d063dfb4e1dcddafb2c17a2c8e484",
+      "output_bytes": 21929,
+      "seconds": 160
+    },
+    {
+      "id": "farm-challenge-corrected-06",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "c6beca51-456a-4873-bb44-6b9e173ba54b",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "0e7afe57-c433-4d89-9358-f19ee50f95ec",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": {
+        "superseded_id": "c6beca51-456a-4873-bb44-6b9e173ba54b",
+        "replacement_id": "c7b37627-aa83-44bd-95b0-80cd739962af"
+      },
+      "job_id": "fde2bf92-23c9-49f9-84a4-14055f678d9d",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 27,
+        "input_tokens": 1434044,
+        "output_tokens": 20301,
+        "runtime_ms": 345543
+      },
+      "memory_ids": [
+        "c7b37627-aa83-44bd-95b0-80cd739962af",
+        "0e7afe57-c433-4d89-9358-f19ee50f95ec"
+      ],
+      "prompt_sha256": "bd47c5beb419647262e0636c437a2423e0afbcec0e3c853683c462d4bdda7af4",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "bd47c5beb419647262e0636c437a2423e0afbcec0e3c853683c462d4bdda7af4",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "output_sha256": "4e5f6872a328fe7386cf313d525e0bd3a8a6c3b784f3240587430473ab70c43e",
+      "output_bytes": 16643,
+      "seconds": 349.2
+    },
+    {
+      "id": "focus-lively-none-04",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "8b735199-9c51-4905-a4de-9d2afc35c6ec",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 12,
+        "input_tokens": 494920,
+        "output_tokens": 7197,
+        "runtime_ms": 100009
+      },
+      "memory_ids": [],
+      "prompt_sha256": "189dd0db6f9cefb62c26a22e45023dc28932dcad1986fe0c0fd09baf6eb37127",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "189dd0db6f9cefb62c26a22e45023dc28932dcad1986fe0c0fd09baf6eb37127",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "e85b09c076b35ef5b163e714b6fdc4b8da7bea60ed702bc156ca4554661a026a",
+      "output_bytes": 18000,
+      "seconds": 102.9
+    },
+    {
+      "id": "farm-arcade-manual-09",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "5d2d6823-4a44-4ed9-9409-706c078bb2b3",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "661c4cdb-a218-484b-89e6-2b8a0f2f30ae",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 50,
+        "input_tokens": 3303400,
+        "output_tokens": 32574,
+        "runtime_ms": 261990
+      },
+      "memory_ids": [
+        "5d2d6823-4a44-4ed9-9409-706c078bb2b3"
+      ],
+      "prompt_sha256": "440b577599ca461f097f6b10289615326c9d4dd6c1aea840dab625bb7ff0cbdb",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "440b577599ca461f097f6b10289615326c9d4dd6c1aea840dab625bb7ff0cbdb",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "ff51ebda5285f19d66b1c51a57e48e76c08b8d045f8a785ff74b89761130b409",
+      "output_bytes": 21578,
+      "seconds": 265.1
+    },
+    {
+      "id": "orchard-arcade-manual-04",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "b5a2abd7-9818-475e-b841-b0544f980fd0",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "408a25b7-709e-4c5b-b192-39b55348079a",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 28,
+        "input_tokens": 1361715,
+        "output_tokens": 9463,
+        "runtime_ms": 210885
+      },
+      "memory_ids": [
+        "b5a2abd7-9818-475e-b841-b0544f980fd0"
+      ],
+      "prompt_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "f9d5c33f9f2ab74815aa59599ee0723b13e422ef6ff7024c31e00aa06c520738",
+      "output_bytes": 21962,
+      "seconds": 214
+    },
+    {
+      "id": "focus-lively-memory-01",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "e90d9d3c-5080-495d-80ee-f6f9d0c8388c",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "c68f5beb-d715-4e4c-930a-2c3b9b16a383",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "job_id": "4d4a1617-e92d-4dd2-b209-ecce927cd9dc",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 17,
+        "input_tokens": 689812,
+        "output_tokens": 5971,
+        "runtime_ms": 114007
+      },
+      "memory_ids": [
+        "e90d9d3c-5080-495d-80ee-f6f9d0c8388c",
+        "c68f5beb-d715-4e4c-930a-2c3b9b16a383"
+      ],
+      "prompt_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "eff532530ce347591fb3ff56d3602c8d73ee3abe4206a8e595cf54f93fc57947",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "b8b936301f902c1f36bb19835014d8150ecb440d0989f5e68491b6b649256438",
+      "output_bytes": 17455,
+      "seconds": 114.9
+    }
+  ]
+}
