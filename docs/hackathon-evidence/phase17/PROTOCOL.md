@@ -1,10 +1,10 @@
-# Phase 17 — protocol (DRAFT, not locked)
+# Phase 17 — protocol (locked before the first trial run)
 
-**Status:** draft for review. No trial run has been executed. Harness pilots (`pilot/`) are
-excluded from analysis. When approved, this file, `design.json`, the detectors, the analysis
-code and the three baselines are hashed into `protocol.sha256`, committed, and **pushed to
-GitHub before the first trial run**, so the lock carries an external timestamp (the commit on
-`origin`) rather than a local file time.
+**Status:** locked before the first trial run on 2026-10-28 (Brisbane). No trial run had been
+executed when this line was written. Harness pilots (`pilot/`) are excluded from analysis. This
+file, `design.json`, the detectors, the analysis code and the three baselines are hashed into
+`protocol.sha256`, committed, and **pushed to GitHub before the first trial run**, so the lock
+carries an external timestamp (the commit on `origin`) rather than a local file time.
 
 ## 1. Why Phase 17
 
