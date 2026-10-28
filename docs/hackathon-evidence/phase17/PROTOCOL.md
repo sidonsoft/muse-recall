@@ -96,7 +96,8 @@ code-only detectors that strip comments and string literals first (UI copy canno
   zero or reset, **plus** a life or heart lost (`lives -= 1`, `hearts--`, …). Losing a life for a
   miss is a penalty for a mistake; the Phase 16 detector cannot see it because the Farmyard game had
   no lives. This reading was written and fixture-tested before the pilot, and it agrees with the
-  Phase 16 detector on all 85 usable Phase 16 / 16B outputs, so Phase 16 numbers are unchanged
+  Phase 16 detector on all 85 Phase 16 / 16B outputs scored in those trials (including the 12 16B
+  replies later found truncated), so Phase 16 / 16B numbers are unchanged
   under it.
 - **calm motion** — `detectors.calm_motion`: a CSS `@keyframes` rule, a non-`none` `animation` /
   `animation-name` declaration (in `<style>`, `style=""`, or CSS that script injects from a string),
