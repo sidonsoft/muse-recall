@@ -1,12 +1,12 @@
 # Muse Recall — submission copy
 
-Copy for the submission form, written to match the V14 demonstration video (Ocean Pairs, 2:46).
+Copy for the submission form, written to match the demo video (Ocean Pairs, 2:46).
 Quantitative claims come from the Phase 16 / 16B trials, the Phase 11A reliability trials, the
 Phase 12A memory-influence trial, the Phase 12D Guard accuracy audit, the Phase 14A verification
 record, the live FocusFlow and Ocean Pairs demonstrations (2026-10-28), and the Phase 15B trial
 (see [EVIDENCE_MAP.md](EVIDENCE_MAP.md)); nothing is extrapolated.
 
-**Word limits.** 100-word description: **99 words** (limit 100). 300-word description: **281
+**Word limits.** 100-word description: **98 words** (limit 100). 300-word description: **281
 words** (limit 300). Counts are whitespace-delimited; re-count after any edit.
 
 ---
@@ -30,7 +30,7 @@ preserve developer control.
 
 ## 100-word description
 
-Muse Recall is a local-first HTML development workspace powered by Meta's Muse Spark. Describe an app and Muse Spark writes it; ask for a change and it edits the approved source. Project decisions persist across sessions, with provenance and correctable history, and reach every later change. Each change is staged: preview it and read the diff, then approve, reject or roll back. In pre-registered trials on two Meta models, a remembered child-safety rule took violations from 28 of 28 edits to 0 of 29; palette-only memory left 18 of 28. Muse Spark builds it. Recall remembers why. You decide.
+Muse Recall is a local-first HTML development workspace powered by Meta's Muse Spark. Describe an app and Muse Spark writes it; ask for a change and it edits the approved source. Project decisions persist across sessions, with provenance and correctable history, and reach every later change. Each change is staged: preview it and read the diff, then approve, reject or roll back. In pre-registered trials on two Meta models, a remembered child-safety rule took violations from 28 of 28 usable edits to 0 of 27; palette-only memory changed nothing. Muse Spark builds it. Recall remembers why. You decide.
 
 ## 300-word description
 
@@ -42,7 +42,7 @@ Recall stores project decisions with provenance and an append-only history. A co
 
 In the demo, Ocean Pairs is a children's memory game built with one rule: no countdowns, flashing or penalties. Asked later for a countdown and a penalty, Muse Spark returned no change. A fitting change was reviewed, approved, then rolled back.
 
-Does the remembered rule matter? Two pre-registered 48-run trials applied the same "make it more exciting" request to one game. Without memory, 28 of 28 usable edits added a countdown, flash or score penalty. With palette-only memory, 18 of 28 did. With the rule, 0 of 29 did, on both Muse Spark and Muse Spark Open (rule versus no memory, p < 10⁻⁶ on each). The violation detector was locked before the runs.
+Does the remembered rule matter? Two pre-registered 48-run trials applied the same "make it more exciting" request to one game. Without memory, 28 of 28 usable edits added a countdown, flash or score penalty. With palette-only memory, 18 of 18 did. With the rule, 0 of 27 did, on both Muse Spark and Muse Spark Open (rule versus no memory, p < 10⁻⁶ on each). The violation detector was locked before the runs.
 
 Limits: one game, one request, one rule; source code, not runtime safety; Decision Guard is advisory; single-user and loopback-only.
 
@@ -125,8 +125,10 @@ Vitest, and reproducible evidence scripts.
   `not_verified` with zero findings; it did not detect or block anything in that run.
 - Phase 16 / 16B is bounded: one baseline game, one request, one remembered rule, two models. It
   measures code mechanics, not runtime safety. The rule arm also carries the palette decision. On
-  Muse Spark 11 of 48 runs were unusable; counting them as violations does not change the
-  conclusion. Phase 16B used a chat completion rather than the CLI tool loop. Lock times are local
+  Muse Spark 11 of 48 runs were unusable, and on Muse Spark Open 12 of 48 were cut off at the
+  output token limit; counting them as violations does not change the conclusion. The open-model
+  truncated outputs were first scored as clean; excluding them is a disclosed post-hoc correction
+  ([CORRECTION_1.md](../hackathon-evidence/phase16b/CORRECTION_1.md)). Phase 16B used a chat completion rather than the CLI tool loop. Lock times are local
   file times, not an external registration.
 - Phase 15B (earlier, superseded by Phase 16) is bounded: one configured Muse model, one game, one remembered rule, one request, edit
   path only. The original automated coder was not preserved; the corrected coder was produced after
@@ -136,9 +138,6 @@ Vitest, and reproducible evidence scripts.
 - The app is a single-user, loopback-only development build: no authentication, no multi-tenant
   hosting. Host-header validation raises the cost of DNS rebinding, and the origin guard blocks
   cross-site mutations; neither is a substitute for authentication in a multi-user deployment.
-- The demonstration video is V14 (2:46, 1920×1080), delivered separately from the repository. It
-  replaces the V2 video described in [V2_VIDEO_PRODUCTION_MANIFEST.md](V2_VIDEO_PRODUCTION_MANIFEST.md)
-  and [V2_VIDEO_QA_REPORT.md](V2_VIDEO_QA_REPORT.md), which are kept as historical records.
 
 ## Future roadmap
 

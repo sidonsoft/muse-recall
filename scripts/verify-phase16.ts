@@ -11,8 +11,11 @@
  *   - Phase 16 jobs were supplied 0 / 1 / 2 decisions in the three arms;
  *   - the locked detector (run with python3) passes its fixtures, reproduces
  *     the Phase 15B corrected coding, and gives 12/12, 12/12, 0/13 (Phase 16)
- *     and 16/16, 6/16, 0/16 (Phase 16B);
- *   - the two-tailed Fisher p-values and both analysis files reproduce.
+ *     and 16/16, 6/16, 0/16 (Phase 16B as published);
+ *   - the two-tailed Fisher p-values and both analysis files reproduce;
+ *   - Phase 16B correction 1: the 12 outputs cut off at the token limit
+ *     (`finish_reason: length`, no `</html>`) are unusable, giving 16/16, 6/6,
+ *     0/14 (see `phase16b/CORRECTION_1.md`). Every Phase 16 output is complete.
  *
  * No network, no model, no mutation. Requires python3 on PATH.
  */
@@ -133,6 +136,11 @@ interface RunRecord {
   status: string;
   output_sha256?: string;
   memory_ids?: string[];
+  finish_reason?: string | null;
+}
+
+function isComplete(path: string): boolean {
+  return readFileSync(path, 'utf8').toLowerCase().includes('</html>');
 }
 
 function loadRecords(dir: string, prefix: string): RunRecord[] {
@@ -160,8 +168,12 @@ interface ArmCount {
   unusable: number;
 }
 
-function score(dir: string, records: RunRecord[]): Record<Arm, ArmCount> {
-  const usable = records.filter((r) => r.status === 'succeeded');
+function score(
+  dir: string,
+  records: RunRecord[],
+  isUsable: (record: RunRecord) => boolean = (record) => record.status === 'succeeded',
+): Record<Arm, ArmCount> {
+  const usable = records.filter(isUsable);
   for (const record of records) {
     const path = join(dir, 'out', `${record.id}.html`);
     if (record.status === 'succeeded') {
@@ -174,7 +186,7 @@ function score(dir: string, records: RunRecord[]): Record<Arm, ArmCount> {
   const counts = {} as Record<Arm, ArmCount>;
   for (const arm of ARMS) {
     const rows = records.filter((r) => r.arm === arm);
-    const ok = rows.filter((r) => r.status === 'succeeded');
+    const ok = rows.filter(isUsable);
     counts[arm] = {
       usable: ok.length,
       violations: ok.filter((r) => verdicts[join(dir, 'out', `${r.id}.html`)]).length,
@@ -238,6 +250,12 @@ function main(): void {
     );
   }
   const c16 = score(P16, records16);
+  for (const record of records16.filter((r) => r.status === 'succeeded')) {
+    assert(
+      isComplete(join(P16, 'out', `${record.id}.html`)),
+      `Phase 16 output ${record.id} is truncated`,
+    );
+  }
   assert(
     c16['no-memory'].violations === 12 && c16['no-memory'].usable === 12,
     `Phase 16 no-memory unexpected: ${JSON.stringify(c16['no-memory'])}`,
@@ -329,6 +347,41 @@ function main(): void {
   );
   assert(outputs16b.length === 48, `expected 48 Phase 16B outputs, got ${outputs16b.length}`);
 
+  // Correction 1: a response cut off at the token limit is unusable, not clean.
+  for (const record of records16b) {
+    const complete = isComplete(join(P16B, 'out', `${record.id}.html`));
+    assert(
+      complete === (record.finish_reason === 'stop'),
+      `${record.id}: finish_reason ${record.finish_reason} but complete=${complete}`,
+    );
+  }
+  const truncated = records16b.filter((r) => r.finish_reason === 'length');
+  assert(truncated.length === 12, `expected 12 truncated 16B outputs, got ${truncated.length}`);
+  const fixed = score(
+    P16B,
+    records16b,
+    (record) => record.status === 'succeeded' && record.finish_reason === 'stop',
+  );
+  assert(
+    fixed['no-memory'].violations === 16 && fixed['no-memory'].usable === 16,
+    `corrected 16B no-memory unexpected: ${JSON.stringify(fixed['no-memory'])}`,
+  );
+  assert(
+    fixed.palette.violations === 6 && fixed.palette.usable === 6 && fixed.palette.unusable === 10,
+    `corrected 16B palette unexpected: ${JSON.stringify(fixed.palette)}`,
+  );
+  assert(
+    fixed.rule.violations === 0 && fixed.rule.usable === 14 && fixed.rule.unusable === 2,
+    `corrected 16B rule unexpected: ${JSON.stringify(fixed.rule)}`,
+  );
+  const fixedNoMemory = contrast(fixed.rule, fixed['no-memory']);
+  const fixedPalette = contrast(fixed.rule, fixed.palette);
+  const fixedWorstRule = fixed.rule.violations + fixed.rule.unusable;
+  const fixedWorst = fisherTwoTailed(fixedWorstRule, 16 - fixedWorstRule, 16, 0);
+  close(fixedNoMemory, 6.876506707086773e-9, 'corrected 16B rule vs no memory');
+  close(fixedPalette, 2.5799793601651186e-5, 'corrected 16B rule vs palette');
+  close(fixedWorst, 5.09083319121424e-7, 'corrected 16B worst case');
+
   const line = (c: ArmCount) => `${c.violations}/${c.usable}`;
   console.log('Phase 16 / 16B evidence verification');
   console.log(
@@ -346,11 +399,18 @@ function main(): void {
     `    rule vs no memory p=${p16NoMemory.toExponential(2)}, rule vs palette p=${p16Palette.toExponential(2)}, worst case p=${p16Worst.toExponential(2)}`,
   );
   console.log(
-    `  Phase 16B (Muse Spark Open): no memory ${line(c16b['no-memory'])}, palette ${line(c16b.palette)}, rule ${line(c16b.rule)}`,
+    `  Phase 16B as published: no memory ${line(c16b['no-memory'])}, palette ${line(c16b.palette)}, rule ${line(c16b.rule)}`,
   );
   console.log(
     `    rule vs no memory p=${p16bNoMemory.toExponential(2)}, rule vs palette p=${p16bPalette.toFixed(3)}, palette vs no memory p=${p16bPaletteNoMemory.toExponential(2)}`,
   );
+  console.log(
+    `  Phase 16B corrected (${truncated.length} truncated outputs unusable): no memory ${line(fixed['no-memory'])}, palette ${line(fixed.palette)}, rule ${line(fixed.rule)}`,
+  );
+  console.log(
+    `    rule vs no memory p=${fixedNoMemory.toExponential(2)}, rule vs palette p=${fixedPalette.toExponential(2)}, worst case p=${fixedWorst.toExponential(2)}`,
+  );
+  console.log('    every Phase 16 output is a complete document');
   console.log('PASS');
 }
 

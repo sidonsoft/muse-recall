@@ -237,7 +237,7 @@ Notes:
 
 ## 8. Video readiness
 
-Plan: [`docs/submission/V2_DEMO_RECORDING_PLAN.md`](submission/V2_DEMO_RECORDING_PLAN.md).
+Plan: `docs/submission/V2_DEMO_RECORDING_PLAN.md`.
 
 - 172 s (2:52) target, within the three-minute limit and matching the approved storyboard length.
 - Live FocusFlow footage proposed for the development/review segments; authentic Phase 12A figure
@@ -332,7 +332,7 @@ Please review and decide:
 | [`docs/demo/LIVE_MUSE_CONFIGURATION.md`](demo/LIVE_MUSE_CONFIGURATION.md) | limits, models, fallback, secrets, live check |
 | [`docs/demo/NON_GAME_HTML_VALIDATION.md`](demo/NON_GAME_HTML_VALIDATION.md) | prompts, jobs, failures, browser tests, guard probe |
 | [`docs/demo/evidence/records/provenance.json`](demo/evidence/records/provenance.json) | machine-readable attempt manifest |
-| [`docs/submission/V2_DEMO_RECORDING_PLAN.md`](submission/V2_DEMO_RECORDING_PLAN.md) | 172 s storyboard, overlays, retake disclosure |
+| `docs/submission/V2_DEMO_RECORDING_PLAN.md` | 172 s storyboard, overlays, retake disclosure |
 | `docs/demo/evidence/artifacts/` | exact v1–v4 HTML bytes |
 | `docs/demo/evidence/screenshots/` | Studio, app, mobile, failure evidence |
 | `docs/demo/evidence/records/` | jobs, retrievals, browser checks, approvals, config |

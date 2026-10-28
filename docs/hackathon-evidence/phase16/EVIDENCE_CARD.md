@@ -2,7 +2,13 @@
 
 **One page for judges.** This is the research shown at the end of the demo video. Full detail:
 Phase 16 [`PROTOCOL.md`](PROTOCOL.md) and [`RESULTS.md`](RESULTS.md); Phase 16B
-[`PROTOCOL_OPEN.md`](../phase16b/PROTOCOL_OPEN.md) and [`RESULTS_OPEN.md`](../phase16b/RESULTS_OPEN.md).
+[`PROTOCOL_OPEN.md`](../phase16b/PROTOCOL_OPEN.md), [`RESULTS_OPEN.md`](../phase16b/RESULTS_OPEN.md)
+(as first published) and [`CORRECTION_1.md`](../phase16b/CORRECTION_1.md).
+
+> **Correction (2026-10-28).** 12 of the 48 Phase 16B outputs were cut off at the model's output
+> token limit and had been scored as clean. They are now counted as unusable. The open-model
+> palette-only result changes from 6/16 to 6/6; the rule result from 0/16 to 0/14. The figures
+> below are corrected. Details: [`CORRECTION_1.md`](../phase16b/CORRECTION_1.md).
 
 ```bash
 pnpm verify:research16   # re-derives every number below from the committed files (needs python3)
@@ -41,20 +47,24 @@ and matched the Phase 15B corrected coding on all 32 runs.
 | Arm | Muse Spark | Muse Spark Open | Combined |
 |---|---:|---:|---:|
 | No memory | 12/12 | 16/16 | **28/28** |
-| Palette only | 12/12 | 6/16 | **18/28** |
-| Rule + palette | **0/13** | **0/16** | **0/29** |
+| Palette only | 12/12 | 6/6 | **18/18** |
+| Rule + palette | **0/13** | **0/14** | **0/27** |
+
+Counts are violations over usable (complete) outputs.
 
 | Contrast (two-tailed Fisher, Holm α = .025) | Muse Spark | Muse Spark Open |
 |---|---:|---:|
-| Rule vs no memory | p = 1.9 × 10⁻⁷ | p = 3.3 × 10⁻⁹ |
-| Rule vs palette only | p = 1.9 × 10⁻⁷ | p = .018 |
+| Rule vs no memory | p = 1.9 × 10⁻⁷ | p = 6.9 × 10⁻⁹ |
+| Rule vs palette only | p = 1.9 × 10⁻⁷ | p = 2.6 × 10⁻⁵ |
 
 - **Unusable runs.** Muse Spark: 11 of 48 (5 hit the 600 s runtime limit, 6 the call or token
-  budget), spread 4 / 4 / 3 across arms. Counting every unusable run as a violation, rule vs no
-  memory is still 3/16 vs 16/16, p = 3.2 × 10⁻⁶. Muse Spark Open: 0 of 48.
-- **Palette only is not inert on the open model.** It cut violations from 16/16 to 6/16
-  (descriptive, p = .00025) but did not remove them. Only the rule arm reached zero on both models,
-  so the supported claim is about the remembered rule, not memory in general.
+  budget), spread 4 / 4 / 3 across arms. Muse Spark Open: 12 of 48 cut off at the output token
+  limit, spread 0 / 10 / 2. Counting every unusable run as a violation, rule vs no memory is still
+  3/16 vs 16/16 (p = 3.2 × 10⁻⁶) on Muse Spark and 2/16 vs 16/16 (p = 5.1 × 10⁻⁷) on Muse Spark
+  Open.
+- **Palette-only memory did nothing on either model.** Every complete palette-only output violated
+  the rule. Only the rule arm reached zero, on both models, so the supported claim is about the
+  remembered rule, not memory in general.
 - **Memory reached the model.** Every Phase 16 job record lists the decisions retrieval supplied:
   0, 1 and 2 in the three arms, for all 48 runs.
 
@@ -62,9 +72,9 @@ and matched the Phase 15B corrected coding on all 32 runs.
 
 > In two pre-registered 48-run trials, one on Muse Spark and one on Muse Spark Open, the same
 > "make it more exciting" request added a countdown, flash or score penalty in every usable edit
-> without project memory (28 of 28). With the remembered child-safety rule, none did (0 of 29).
-> Palette-only memory did not remove the violations on either model (18 of 28). One baseline game,
-> one request, one rule; source-code mechanics, not a general safety claim.
+> without project memory (28 of 28). With the remembered child-safety rule, none did (0 of 27).
+> Palette-only memory left every usable edit in violation on both models (18 of 18). One baseline
+> game, one request, one rule; source-code mechanics, not a general safety claim.
 
 Do **not** say the rule "guarantees" compliance, that the result generalises across tasks or
 models, or that memory in general reduces violations.
@@ -81,13 +91,17 @@ models, or that memory in general reduces violations.
   tool loop, no baseline screenshot, and a memory block written in the production format (`- `
   lines, production decision text) rather than produced by retrieval.
 - The open-model endpoint ran at temperature 0 but was not deterministic: all 48 outputs differ.
+- The open-model unusable runs are concentrated in the palette-only arm (10 of 16), so that arm
+  rests on 6 complete outputs. The correction that excludes them was made after the results were
+  known; it is disclosed in [`CORRECTION_1.md`](../phase16b/CORRECTION_1.md).
 
 ## Provenance
 
 The trials ran on 2026-10-28 (AEST) from a separate checkout of this repository at the approved
 release commit `328092c`, with the evidence written outside the repository. The files here are
 byte-identical copies of that working directory; `SHA256SUMS` in each folder lists them, and
-`pnpm verify:research16` checks it. This card is the only file added afterwards.
+`pnpm verify:research16` checks it. This card and `phase16b/CORRECTION_1.md` are the only files
+added afterwards.
 
 | Local time (file mtime) | Event |
 |---|---|

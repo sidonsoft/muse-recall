@@ -22,7 +22,7 @@ those decisions and cites them. Nothing goes live until you approve it.
 | | |
 | --- | --- |
 | **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
-| **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 edits to 0 of 29. Palette-only memory did not (18 of 28). [Evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md); re-derive it with `pnpm verify:research16`. |
+| **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27. Palette-only memory changed nothing (18 of 18). [Evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md); re-derive it with `pnpm verify:research16`. |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
 | **Engineering** | `pnpm verify` runs lint, typecheck and 549 tests. A staged change loads in headless Chrome before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers one game, one request and one rule. See [Known limitations](#known-limitations). |
@@ -37,14 +37,20 @@ the runs.
 | Project memory | Muse Spark | Muse Spark Open | Combined |
 | --- | ---: | ---: | ---: |
 | None | 12/12 | 16/16 | **28/28** |
-| Palette decisions only | 12/12 | 6/16 | **18/28** |
-| Child-safety rule + palette | **0/13** | **0/16** | **0/29** |
+| Palette decisions only | 12/12 | 6/6 | **18/18** |
+| Child-safety rule + palette | **0/13** | **0/14** | **0/27** |
 
-Two-tailed Fisher exact tests, rule vs no memory: p = 1.9 × 10⁻⁷ (Muse Spark) and
-3.3 × 10⁻⁹ (Muse Spark Open). Rule vs palette only: p = 1.9 × 10⁻⁷ and p = .018. On Muse
-Spark, 11 of 48 runs hit the runtime limit or the call and token budget; counting every one as a violation,
-rule vs no memory is still 3/16 vs 16/16 (p = 3.2 × 10⁻⁶). This measures code on one
-baseline game. It is not a general safety claim.
+Counts are violations over usable (complete) outputs. Two-tailed Fisher exact tests, rule vs no
+memory: p = 1.9 × 10⁻⁷ (Muse Spark) and 6.9 × 10⁻⁹ (Muse Spark Open). Rule vs palette only:
+p = 1.9 × 10⁻⁷ and 2.6 × 10⁻⁵. Some runs were unusable: on Muse Spark, 11 of 48 hit the runtime
+limit or the call and token budget; on Muse Spark Open, 12 of 48 were cut off at the output token
+limit. Counting every unusable run as a violation, rule vs no memory is still 3/16 vs 16/16 and
+2/16 vs 16/16. This measures code on one baseline game. It is not a general safety claim.
+
+> **Correction (2026-10-28).** The Muse Spark Open figures were first published as 6/16
+> (palette only) and 0/16 (rule), because 12 truncated outputs had been scored as clean. The
+> demo video shows the corrected figures. See
+> [the correction](docs/hackathon-evidence/phase16b/CORRECTION_1.md).
 
 ### Try it
 
@@ -246,8 +252,7 @@ default.
 | Cross-origin state-mutation guard + regression tests | security | **Complete** |
 | Final release integration and verification | release | **Complete**; released to `main` by fast-forward (`328092c`) |
 | Phase 16 three-arm trial (Muse Spark) and 16B replication (Muse Spark Open) | 16 / 16B | **Complete**; evidence and verifier published |
-| V2 demonstration production | release | Superseded by V14 |
-| V14 demonstration (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
+| Demo video (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
 | Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
@@ -467,8 +472,11 @@ the production HTML Studio path. Phase 16B repeated the same cells on Muse Spark
 Results are in the [table at the top](#results-a-remembered-rule-on-two-models).
 
 - Pre-registered contrasts (Holm, α = .025): rule vs no memory and rule vs palette only, on each
-  model. All four are significant; the smallest effect is rule vs palette only on Muse Spark Open
-  (0/16 vs 6/16, p = .018).
+  model. All four are significant (largest p = 2.6 × 10⁻⁵, rule vs palette only on Muse Spark
+  Open, 0/14 vs 6/6).
+- Phase 16B correction: 12 open-model outputs cut off at the token limit had been scored as clean;
+  they are now unusable. This removed an apparent palette-only effect on the open model. See
+  [CORRECTION_1.md](docs/hackathon-evidence/phase16b/CORRECTION_1.md).
 - Every Phase 16 job record lists the decisions retrieval supplied: 0, 1 and 2 across the arms.
 - Phase 16B used a chat completion with the production prompt builder rather than the CLI tool
   loop, and its memory block was written in the production format rather than retrieved. Both
@@ -517,8 +525,6 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 - [Product positioning](docs/PRODUCT_POSITIONING.md) — identity, claims register, honesty boundaries
 - [HTML Studio assessment](docs/HTML_STUDIO_ASSESSMENT.md) — capability, security, export, scope
 - [UX audit](docs/UX_AUDIT.md) and [design system](docs/DESIGN_SYSTEM.md)
-- Historical storyboards and the V2 video records (superseded by V14): [V2_DEMO_RECORDING_PLAN.md](docs/submission/V2_DEMO_RECORDING_PLAN.md), [REVISED_DEMO_STORYBOARD.md](docs/submission/REVISED_DEMO_STORYBOARD.md), [DEMO_SCRIPT_3MIN.md](docs/submission/DEMO_SCRIPT_3MIN.md), [VIDEO_STORYBOARD.md](docs/VIDEO_STORYBOARD.md), [RECUT_BRIEF_PHASE15A.md](docs/submission/RECUT_BRIEF_PHASE15A.md)
-- [Phase 14C recording clearance](docs/PHASE14C_RECORDING_CLEARANCE.md) and [demo runbook](docs/submission/DEMO_RUNBOOK.md)
 - [Evidence map](docs/submission/EVIDENCE_MAP.md) and [project story](docs/submission/PROJECT_STORY.md)
 - [Evaluation report](docs/EVALUATION_REPORT.md) and [architecture overview](docs/ARCHITECTURE_OVERVIEW.md)
 
@@ -552,7 +558,8 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
   statistical result.
 - **Phase 16 / 16B is bounded.** One baseline game, one request, one rule and two models. It
   measures code, not runtime behaviour. The rule arm also carries the palette. Phase 16B ran the
-  task through a chat completion, not the CLI tool loop.
+  task through a chat completion, not the CLI tool loop. A quarter of its runs were cut off at the
+  output token limit and are unusable; excluding them is a disclosed post-hoc correction.
 - **Phase 15B is bounded and partly post-hoc.** One model, one game, one remembered rule and one
   request; the corrected 0/16 coding was produced after unblinding and is not confirmatory. The
   original scoring code was not preserved and its loss is disclosed.
@@ -573,7 +580,7 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 ## Roadmap
 
-1. **Hackathon submission.** Upload the V14 video, make the repository public for judging,
+1. **Hackathon submission.** Upload the demo video, make the repository public for judging,
    and complete the submission form (owner actions; nothing is submitted automatically).
 2. **Post-event hardening.** Additional Decision Guard rule families, interaction and
    pixel verification, verified self-contained export, and multi-user authentication
