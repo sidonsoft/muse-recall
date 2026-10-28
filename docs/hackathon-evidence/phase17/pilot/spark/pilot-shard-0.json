@@ -1,0 +1,84 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark",
+    "model": "muse-spark-1.3-contributor",
+    "effort": "high",
+    "path": "production HTML Studio (Forge) modify job: server, retrieval, muse CLI tool loop",
+    "max_runtime_ms": 600000,
+    "max_calls": 40,
+    "max_input_tokens": 6000000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 0,
+  "shards": 6,
+  "results": [
+    {
+      "id": "pilot-farm-challenge-none",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "d385058c-a12d-41ed-a251-bcd96d6db857",
+      "status": "budget_exceeded",
+      "error": "Budget exceeded: 49 calls, 3130840 input tokens.",
+      "usage": {
+        "calls": 49,
+        "input_tokens": 3130840,
+        "output_tokens": 28393,
+        "runtime_ms": 405099
+      },
+      "memory_ids": [],
+      "prompt_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "seconds": 406.4
+    },
+    {
+      "id": "pilot-orchard-arcade-manual",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "0885d686-d4d2-43a7-b103-dc29cceee175",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "job_id": "2b779097-4b8a-4d91-85e3-a5d3fcd43e3a",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 21,
+        "input_tokens": 1041259,
+        "output_tokens": 11204,
+        "runtime_ms": 228708
+      },
+      "memory_ids": [
+        "0885d686-d4d2-43a7-b103-dc29cceee175"
+      ],
+      "prompt_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "2d240faae4c7115893ede2d5d028c35c2cc81b596b07678fca980705d26fdde6",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "b97141ba966024f00d78eaeb91dabed1eca68bf7a242fcb31632c4d2a4506079",
+      "output_bytes": 22954,
+      "seconds": 231.9
+    }
+  ]
+}

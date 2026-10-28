@@ -1,0 +1,277 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#EAF6FF;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game-wrap{position:relative;width:100vw;height:100vh;max-width:900px;max-height:700px;display:flex;align-items:center;justify-content:center}
+  #game{width:100%;height:100%}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,0.15);display:block}
+  #dom-start-screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(16,42,67,0.45);z-index:20;border-radius:18px;padding:16px;box-sizing:border-box}
+  #dom-start-panel{background:#FFFFFF;border-radius:30px;border:6px solid #4EA8DE;padding:26px 22px;text-align:center;max-width:640px;width:100%;box-shadow:0 12px 30px rgba(16,42,67,0.2)}
+  .mode-btn{font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif;cursor:pointer;transition:transform 0.15s ease, background 0.15s ease, border-color 0.15s ease}
+  .mode-btn:hover{transform:translateY(-2px)}
+  .mode-btn:focus{outline:3px solid #102A43;outline-offset:3px}
+  .mode-btn:active{transform:translateY(0px)}
+  #bottom-controls{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;z-index:15;background:rgba(255,255,255,0.96);padding:8px 12px;border-radius:24px;box-shadow:0 4px 12px rgba(16,42,67,0.12);border:2px solid #4EA8DE;flex-wrap:wrap;justify-content:center;max-width:94%}
+  .bottom-btn{font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif;border-radius:18px;padding:8px 14px;font-size:14px;font-weight:bold;cursor:pointer;border:2px solid #4EA8DE;background:#FFFFFF;color:#102A43}
+  .bottom-btn[aria-pressed="true"]{background:#4EA8DE;color:#FFFFFF;border-color:#4EA8DE}
+  .bottom-btn:focus{outline:3px solid #102A43;outline-offset:2px}
+  #a11y-live{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <div id="game"></div>
+  <div id="dom-start-screen" role="dialog" aria-modal="true" aria-labelledby="dom-start-title">
+    <div id="dom-start-panel">
+      <h1 id="dom-start-title" style="margin:0 0 6px;color:#102A43;font-size:36px;line-height:1.1;">&#127754; Ocean Memory Match &#128025;</h1>
+      <p style="margin:0;color:#334E68;font-size:19px;line-height:1.4;">Flip the cards and find the sea friends!<br>Choose your challenge to begin.</p>
+      <div style="margin:18px 0 6px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+        <button type="button" id="btn-calm" class="mode-btn" aria-label="Start Calm Waters mode with 6 pairs and 12 cards, gentle difficulty for relaxed play" aria-pressed="true" style="min-width:210px;background:#4EA8DE;color:#FFFFFF;border:3px solid #4EA8DE;border-radius:20px;padding:16px 16px;font-size:19px;font-weight:bold;line-height:1.2;">
+          <span style="font-size:26px;">&#127754;</span> Calm Waters<br><span style="font-size:15px;font-weight:normal;opacity:0.98;">6 pairs &#8226; 12 cards</span><br><span style="font-size:13px;font-weight:normal;opacity:0.95;">Gentle &amp; relaxing</span>
+        </button>
+        <button type="button" id="btn-deep" class="mode-btn" aria-label="Start Deep Dive hard mode with 8 pairs and 16 cards, harder challenge for experienced players" aria-pressed="false" style="min-width:210px;background:#FFFFFF;color:#102A43;border:3px solid #4EA8DE;border-radius:20px;padding:16px 16px;font-size:19px;font-weight:bold;line-height:1.2;">
+          <span style="font-size:26px;">&#10024;</span> Deep Dive<br><span style="font-size:15px;font-weight:normal;">8 pairs &#8226; 16 cards</span><br><span style="font-size:13px;font-weight:normal;color:#486581;">For ocean experts!</span>
+        </button>
+      </div>
+      <p style="margin:10px 0 0;color:#486581;font-size:13px;line-height:1.3;">Hard mode adds more sea friends to remember &#8212; no timers, no penalties, just a bigger ocean to explore.</p>
+    </div>
+  </div>
+  <div id="bottom-controls" aria-label="Challenge controls" style="display:none;">
+    <span style="color:#102A43;font-size:13px;font-weight:bold;margin-right:2px;">Challenge:</span>
+    <button type="button" id="bottom-calm" class="bottom-btn" aria-label="Switch to Calm Waters easy mode with 6 pairs" aria-pressed="true">Calm Waters</button>
+    <button type="button" id="bottom-deep" class="bottom-btn" aria-label="Switch to Deep Dive hard mode with 8 pairs" aria-pressed="false">Deep Dive</button>
+    <button type="button" id="bottom-restart" class="bottom-btn" aria-label="Restart the current game" style="background:#102A43;color:#FFFFFF;border-color:#102A43;">&#8635; Restart</button>
+  </div>
+</div>
+<div id="a11y-live" aria-live="polite" aria-atomic="true"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F433}", name: "Whale" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F988}", name: "Shark" },
+    { emoji: "\u{1F420}", name: "Fish" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F41A}", name: "Shell" }
+  ];
+  var DIFFICULTIES = {
+    calm: { key: "calm", label: "Calm Waters", pairs: 6, cols: 4, rows: 3, cardW: 185, cardH: 140, padX: 22, padY: 16, startY: 195, desc: "6 pairs \u2022 Gentle waves" },
+    deep: { key: "deep", label: "Deep Dive", pairs: 8, cols: 4, rows: 4, cardW: 165, cardH: 118, padX: 18, padY: 12, startY: 182, desc: "8 pairs \u2022 Ocean expert!" }
+  };
+  var W = 900, H = 700;
+  var currentMode = "calm";
+  var totalPairs = 6;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#E0F2FE",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var hudMoves, hudScore, hudMsg, hudMode, hudInstruction, endOverlay, endTitle, endDetail, startOverlay;
+  var focusIndicator = null, focusedIdx = 0, keyboardMode = false;
+  var domStartScreen, domLive, bottomControls, btnCalm, btnDeep, bottomCalm, bottomDeep, bottomRestart;
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupDomControls();
+    setupKeyboard(s);
+    updateModeUI();
+    updateBottomControls();
+    announce("Ocean Memory Match loaded. Choose Calm Waters with 6 pairs or Deep Dive hard mode with 8 pairs.");
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xE0F2FE, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xEBF8FF, 1); g.fillRect(0, 0, W, 160);
+    g.fillStyle(0xBAE6FD, 1); g.fillRect(0, 140, W, 42);
+    g.fillStyle(0x7DD3FC, 0.65); g.fillRect(0, 170, W, 28);
+    g.fillStyle(0xF0F9FF, 1); g.fillRect(0, 520, W, 180);
+    g.fillStyle(0xE6F0FA, 1); g.fillEllipse(220, 620, 420, 90); g.fillEllipse(680, 640, 520, 100);
+    g.lineStyle(3, 0x4EA8DE, 0.32);
+    g.beginPath(); g.moveTo(0, 152);
+    for (var x = 0; x <= W; x += 18) { g.lineTo(x, 152 + Math.sin(x * 0.02) * 6); }
+    g.strokePath();
+    g.lineStyle(3, 0x4EA8DE, 0.22);
+    g.beginPath(); g.moveTo(0, 172);
+    for (var x = 0; x <= W; x += 18) { g.lineTo(x, 172 + Math.cos(x * 0.015) * 5); }
+    g.strokePath();
+    g.fillStyle(0xFFF6B5, 1); g.fillCircle(770, 110, 48);
+    g.fillStyle(0xFFE08A, 1); g.fillCircle(770, 110, 36);
+    g.fillStyle(0xFFFFFF, 1);
+    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+    g.fillEllipse(560, 80, 140, 44); g.fillEllipse(520, 95, 100, 36);
+    g.fillStyle(0xFFFFFF, 0.88);
+    for (var i = 0; i < 12; i++) {
+      var bx = 40 + (i * 75) % 860;
+      var by = 200 + (i % 3) * 110;
+      var br = 6 + (i % 3) * 3;
+      g.fillCircle(bx, by, br);
+      g.fillCircle(bx + 7, by - 9, br * 0.55);
+    }
+    g.fillStyle(0x4EA8DE, 0.95);
+    for (var s2 = 0; s2 < 5; s2++) {
+      var sx = 320 + s2 * 110;
+      g.fillEllipse(sx, 560, 18, 78);
+      g.fillEllipse(sx + 12, 545, 14, 58);
+      g.fillEllipse(sx - 10, 550, 12, 50);
+    }
+    g.fillStyle(0x7DD3CE, 1);
+    g.fillEllipse(120, 580, 42, 30); g.fillEllipse(140, 570, 30, 24);
+    g.fillStyle(0xA5F3FC, 1);
+    g.fillEllipse(800, 590, 50, 36); g.fillEllipse(820, 575, 36, 28);
+    g.fillStyle(0xFFB5A7, 1);
+    g.fillCircle(100, 640, 13); g.fillCircle(750, 660, 11); g.fillCircle(400, 650, 9);
+    g.fillStyle(0xFFE8A3, 1);
+    g.fillCircle(180, 655, 10); g.fillCircle(600, 635, 12); g.fillCircle(520, 645, 8);
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} Ocean Match", textStyle(32)).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 54, "Moves: 0", textStyle(20));
+    hudScore = scene.add.text(24, 80, "Pairs: 0 / 6", textStyle(20));
+    hudMode = scene.add.text(24, 106, "Calm Waters \u2022 6 pairs", Object.assign(textStyle(15), { color: "#334E68" }));
+    hudMsg = scene.add.text(W - 24, 56, "Choose a challenge!", textStyle(20, "#334E68")).setOrigin(1, 0.5);
+    hudInstruction = scene.add.text(W / 2, 168, "Find the 6 sea pairs \u2014 or brave the Deep Dive!", textStyle(18, "#486581")).setOrigin(0.5);
+    var btn = scene.add.container(W - 110, 116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(20, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.05); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    focusIndicator = scene.add.graphics().setDepth(5).setVisible(false);
+  }
+
+  function shuffledDeck(pairCount) {
+    var deck = [];
+    var pool = ANIMALS.slice(0, pairCount);
+    pool.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var cfg = DIFFICULTIES[currentMode];
+    totalPairs = cfg.pairs;
+    var deck = shuffledDeck(cfg.pairs);
+    var cols = cfg.cols, rows = cfg.rows;
+    var cw = cfg.cardW, ch = cfg.cardH, padX = cfg.padX, padY = cfg.padY;
+    var totalW = cols * cw + (cols - 1) * padX;
+    var gx = (W - totalW) / 2;
+    var gy = cfg.startY;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    focusedIdx = 0;
+    updateFocusIndicator();
+    if (hudScore) { hudScore.setText("Pairs: " + matches + " / " + totalPairs); }
+    if (hudMode) { hudMode.setText(DIFFICULTIES[currentMode].label + " \u2022 " + totalPairs + " pairs"); }
+    if (hudInstruction) {
+      if (currentMode === "deep") { hudInstruction.setText("Deep Dive: find all 8 sea pairs! \u2728"); }
+      else { hudInstruction.setText("Calm Waters: find the 6 sea pairs! \u{1F30A}"); }
+    }
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xFFFFFF, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 14);
+    back.fillStyle(0xFFFFFF, 0.92);
+    back.fillCircle(-w / 4, -h / 4, 10); back.fillCircle(w / 5, -2, 8); back.fillCircle(0, h / 4, 12);
+    back.fillStyle(0xFFFFFF, 0.55); back.fillCircle(-w / 6, h / 6, 5);
+    var paw = scene.add.text(0, -4, "\u{1F4A7}", { fontSize: (w > 170 ? "48px" : "40px") }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xE0F2FE, 0xBAE6FD, 0xCFFAFE, 0xE0E7FF, 0xDDD6FE, 0xA5F3FC, 0xF0F9FF, 0xDBEAFE];
+    fg.fillStyle(0xFFFFFF, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 14);
+    var emoSize = w > 170 ? "58px" : "50px";
+    var emo = scene.add.text(0, -16, data.emoji, { fontSize: emoSize }).setOrigin(0.5);
+    var nm = scene.add.text(0, 38, data.name, textStyle(w > 170 ? 18 : 16)).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, index: idx };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    announce(card.data.name + " revealed");
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); updateFocusIndicator(); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.06, yoyo: true, duration: 160 });
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / " + totalPairs);
+        if (matches === totalPairs) {
+          hudMsg.setText("You did it! \u{1F389}");
+          announce("Pair found! " + matches + " of " + totalPairs);
+          showWin(scene);
+        } else {
+          hudMsg.setText("Yay! A pair! \u{1F389}");
+          announce("Pair found! " + matches + " of " + totalPairs);
+          lockBoard = false;
+          updateFocusIndicator();
+        }
+      },
