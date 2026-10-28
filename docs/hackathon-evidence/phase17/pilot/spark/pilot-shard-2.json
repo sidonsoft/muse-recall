@@ -1,0 +1,84 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark",
+    "model": "muse-spark-1.3-contributor",
+    "effort": "high",
+    "path": "production HTML Studio (Forge) modify job: server, retrieval, muse CLI tool loop",
+    "max_runtime_ms": 600000,
+    "max_calls": 40,
+    "max_input_tokens": 6000000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 2,
+  "shards": 6,
+  "results": [
+    {
+      "id": "pilot-farm-challenge-manual",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "597d5a16-af09-4c72-b806-40981449a2b9",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "job_id": "bc43581f-c8cd-4fcf-8801-61fadfc9f779",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 19,
+        "input_tokens": 1022719,
+        "output_tokens": 15914,
+        "runtime_ms": 130217
+      },
+      "memory_ids": ["597d5a16-af09-4c72-b806-40981449a2b9"],
+      "prompt_sha256": "b4a4505686cd9bf83373602dbd1c853eb59ed6252515ca794b3cdcccfc14f653",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "b4a4505686cd9bf83373602dbd1c853eb59ed6252515ca794b3cdcccfc14f653",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "output_sha256": "e9fbd65c365293a64d5acafc87cb093501af8481389e2508b2b2517de55f778a",
+      "output_bytes": 19570,
+      "seconds": 133.3
+    },
+    {
+      "id": "pilot-focus-reward-none",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "fbb3c2a8-20cc-445c-81ed-8f68708d2a5d",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 15,
+        "input_tokens": 607971,
+        "output_tokens": 4380,
+        "runtime_ms": 74736
+      },
+      "memory_ids": [],
+      "prompt_sha256": "36d7fb1b375d16031e18f321f35ba928cabe19e612aeeb91599b9c92a7a1d7b3",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "36d7fb1b375d16031e18f321f35ba928cabe19e612aeeb91599b9c92a7a1d7b3",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "b336759357222dd90198f72f5d39edff14313e9b2b6a7bfb95fc8a34b2fe4870",
+      "output_bytes": 20206,
+      "seconds": 75.9
+    }
+  ]
+}

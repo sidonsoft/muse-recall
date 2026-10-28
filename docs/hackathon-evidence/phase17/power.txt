@@ -1,0 +1,17 @@
+k/cell runs/model     scenario unusable   H1    H2    H3
+     6        144     expected     0.00   1.00  0.86  1.00
+     6        144     expected     0.25   1.00  0.76  1.00
+     6        144  pessimistic     0.00   1.00  0.63  0.71
+     6        144  pessimistic     0.25   0.98  0.51  0.57
+     8        192     expected     0.00   1.00  0.96  1.00
+     8        192     expected     0.25   1.00  0.88  1.00
+     8        192  pessimistic     0.00   1.00  0.76  0.85
+     8        192  pessimistic     0.25   1.00  0.64  0.74
+    10        240     expected     0.00   1.00  0.99  1.00
+    10        240     expected     0.25   1.00  0.95  1.00
+    10        240  pessimistic     0.00   1.00  0.82  0.93
+    10        240  pessimistic     0.25   1.00  0.70  0.83
+    12        288     expected     0.00   1.00  1.00  1.00
+    12        288     expected     0.25   1.00  0.98  1.00
+    12        288  pessimistic     0.00   1.00  0.89  0.96
+    12        288  pessimistic     0.25   1.00  0.80  0.91
