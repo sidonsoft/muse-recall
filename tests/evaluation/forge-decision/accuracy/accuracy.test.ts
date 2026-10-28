@@ -423,7 +423,7 @@ go.setFill('#00FF00'); stop.setFill('#FF0000');`;
   });
 
   it('S13 regex work stays bounded on a 400 KB near-miss source', () => {
-    const chunk = `${'animation' + 'x'.repeat(60)};`;
+    const chunk = `animation${'x'.repeat(60)};`;
     const heavy = `${CDN}${chunk.repeat(Math.floor((MAX_SOURCE_CHARS - CDN.length) / chunk.length))}`;
     expect(heavy.length).toBeLessThanOrEqual(MAX_SOURCE_CHARS);
     const started = performance.now();

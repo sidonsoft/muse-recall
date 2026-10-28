@@ -131,7 +131,7 @@ API, which is why the UI can be trusted as a view of real state.
 | Memory API | Vitest + `inject` | Every endpoint, status codes, envelopes, deleted-content guarantees |
 | Retrieval benchmark | Script | Latency, selectivity, recall, correction accuracy, stale rate |
 | Live integration | Vitest, opt-in | Actual Muse inference, structured output, streaming |
-| UI | Playwright-core + system Chrome | Real render, full memory workflow, zero console/HTTP errors |
+| UI | Playwright-core + Playwright-managed Chromium | Managed Studio workflow; some legacy scripts still use system Chrome |
 
 The fake-CLI approach is what lets the provider tests be deterministic without
 mocking our own parsing logic: the adapter under test is the real one.

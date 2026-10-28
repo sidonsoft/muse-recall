@@ -19,9 +19,14 @@ import { MemorySchema, MemoryTypeSchema } from './memory.js';
 export const RetrievalBudgetSchema = z.object({
   /** Hard cap on how many memories may be selected. */
   max_memories: z.number().int().min(1).max(50).default(8),
-  /** Hard cap on combined characters of injected memory content. */
+  /**
+   * Hard cap on the **rendered** memory context. Accounting includes HTML
+   * escaping, provenance headers, delimiters, safety wording, and the
+   * two-block layouts used by chat and Forge. Rendered output is never sliced
+   * through an entity; records that do not fit are excluded.
+   */
   max_characters: z.number().int().min(200).max(50_000).default(4_000),
-  /** Per-memory cap; longer memories are truncated, not dropped. */
+  /** Per-memory raw-content cap; longer memories are truncated, not dropped. */
   max_memory_characters: z.number().int().min(100).max(8_000).default(1_000),
 });
 export type RetrievalBudget = z.infer<typeof RetrievalBudgetSchema>;

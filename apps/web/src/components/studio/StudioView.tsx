@@ -20,12 +20,30 @@ import { StudioMemory } from './StudioMemory.tsx';
 
 const DEMO_PROJECT_ID = 'forge-demo';
 const PROJECT_KEY = 'muse-recall.project';
-const TERMINAL = ['succeeded', 'failed', 'cancelled', 'budget_exceeded', 'rejected'];
+const DRAFT_PREFIX = 'muse-recall.studio.draft';
+const TERMINAL = ['interrupted', 'succeeded', 'failed', 'cancelled', 'budget_exceeded', 'rejected'];
 
-const DEFAULT_PROMPT =
-  'A colourful farmyard memory-matching game for children aged 4-7. Twelve cards (six pairs), large touch targets, score and moves, restart, a win overlay, and a responsive layout.';
+interface StudioDraft {
+  prompt: string;
+  change: string;
+}
 
-const DEFAULT_CHANGE = 'Make the animal cards larger and keep the ocean palette.';
+const EMPTY_DRAFT: StudioDraft = { prompt: '', change: '' };
+
+function draftKey(projectId: string, field: keyof StudioDraft): string {
+  return `${DRAFT_PREFIX}.${field}.${encodeURIComponent(projectId)}`;
+}
+
+function readDraft(projectId: string): StudioDraft {
+  const read = (field: keyof StudioDraft): string => {
+    try {
+      return localStorage.getItem(draftKey(projectId, field)) ?? '';
+    } catch {
+      return '';
+    }
+  };
+  return { prompt: read('prompt'), change: read('change') };
+}
 
 type StudioTab = 'preview' | 'source' | 'diff';
 type Action = 'open' | 'generate' | 'modify' | 'approve' | 'reject' | 'rollback' | null;
@@ -80,8 +98,7 @@ export function StudioView({
   const [memoryError, setMemoryError] = useState<string | null>(null);
   const [memoriesLoading, setMemoriesLoading] = useState(true);
 
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
-  const [change, setChange] = useState(DEFAULT_CHANGE);
+  const [drafts, setDrafts] = useState<Record<string, StudioDraft>>({});
   const [promptMode, setPromptMode] = useState<PromptMode>('change');
   const [job, setJob] = useState<ForgeJob | null>(null);
   const [diff, setDiff] = useState<ForgeDiff | null>(null);
@@ -101,16 +118,44 @@ export function StudioView({
   const [captureMemory, setCaptureMemory] = useState(false);
   const [decision, setDecision] = useState('');
   const [action, setAction] = useState<Action>(null);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [loadingProject, setLoadingProject] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
   const [error, setError] = useState<string | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const artifactRequest = useRef(0);
+  const draft = drafts[projectId] ?? EMPTY_DRAFT;
+  const prompt = draft.prompt;
+  const change = draft.change;
 
   const message = useCallback((tone: 'ok' | 'warn' | 'err', text: string) => {
     setNotice({ tone, text });
   }, []);
+
+  useEffect(() => {
+    // Load a project's saved draft when it is first opened. Existing in-memory
+    // edits win, so switching away and back cannot clobber a newer draft.
+    setDrafts((current) => {
+      if (current[projectId]) return current;
+      return { ...current, [projectId]: readDraft(projectId) };
+    });
+  }, [projectId]);
+
+  const updateDraft = useCallback(
+    (field: keyof StudioDraft, value: string) => {
+      setDrafts((current) => {
+        const next = { ...(current[projectId] ?? EMPTY_DRAFT), [field]: value };
+        try {
+          localStorage.setItem(draftKey(projectId, field), value);
+        } catch {
+          // Private browsing or storage pressure; the in-memory draft still works.
+        }
+        return { ...current, [projectId]: next };
+      });
+    },
+    [projectId],
+  );
 
   const loadArtifact = useCallback(async (id: string, jobId?: string) => {
     const request = ++artifactRequest.current;
@@ -256,6 +301,38 @@ export function StudioView({
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
+  async function acknowledgeRecovery(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    setRecoveryBusy(true);
+    try {
+      const report = await api.forgeAcknowledgeRecovery(projectId, ids);
+      setProject((current) => (current ? { ...current, recovery: report } : current));
+      message('ok', 'Recovery notices acknowledged. Audit records and job files were kept.');
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  async function retryStorage(): Promise<void> {
+    setRecoveryBusy(true);
+    try {
+      const report = await api.forgeStorageCheck(projectId);
+      setProject((current) => (current ? { ...current, recovery: report } : current));
+      message(
+        report.storage.ok ? 'ok' : 'err',
+        report.storage.ok
+          ? 'Forge storage health check passed.'
+          : 'Forge storage is still unavailable; the active failure was kept.',
+      );
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
   const previewKey = `${previewMode}-${activeJobId ?? project?.state.current_version ?? 'none'}-${device}-${reload}`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the rendered document changes
@@ -321,7 +398,7 @@ export function StudioView({
         void loadArtifact(projectId, finished.id);
         message(
           'warn',
-          'Muse Spark staged an HTML version. Review the change, then approve or reject.',
+          'Studio generation staged an HTML version. Review the change, then approve or reject.',
         );
       } else {
         setError(finished.error ?? `Generation ${finished.status.replace('_', ' ')}.`);
@@ -407,7 +484,9 @@ export function StudioView({
       void loadMemories(projectId);
       message(
         'ok',
-        `Approved v${result.state.current_version ?? ''}. The previous version stays in history.`,
+        result.state.versions.length <= 1
+          ? 'First version approved.'
+          : `Approved v${result.state.current_version ?? ''}. Previous versions remain available in history.`,
       );
       await api
         .forgeState(projectId)
@@ -501,7 +580,7 @@ export function StudioView({
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     message(
       'ok',
-      `Downloaded ${name}. It is a standalone HTML file; any external CDN scripts still need network access.`,
+      `Downloaded ${name}. It runs outside Studio’s sandbox and may need network access for external dependencies.`,
     );
   }
 
@@ -522,9 +601,23 @@ export function StudioView({
     diff && state ? Math.max(0, ...state.versions.map((entry) => entry.version)) + 1 : null;
   const previewJobId = previewMode === 'staged' ? activeJobId : null;
   const previewSrc = api.forgePreviewUrl(projectId, previewJobId ?? undefined);
-  const title = artifact?.title ?? humanizeId(projectId);
-  const offline = meta?.provider.id !== 'muse-cli';
-  const model = meta?.provider.configured_model ?? null;
+  const currentProject = projects.find((entry) => entry.id === projectId) ?? null;
+  const projectName =
+    currentProject?.name && currentProject.name !== projectId ? currentProject.name : null;
+  const title = projectName ?? artifact?.title ?? humanizeId(projectId);
+  const forge = meta?.forge ?? null;
+  const studioOffline = forge?.provider === 'echo';
+  const studioModel = forge?.configured_model ?? null;
+  const engineLabel = !forge
+    ? 'Studio generation'
+    : studioOffline
+      ? 'Echo (offline)'
+      : studioModel
+        ? `${studioModel} (configured)`
+        : 'CLI default (configured)';
+  const activeDecisionCount = memories
+    ? memories.filter((memory) => memory.status === 'active').length
+    : null;
   const canCapture = (hasGame || previewJobId !== null) && previewReady;
 
   const tabs: { id: StudioTab; label: string; badge?: string }[] = [
@@ -557,7 +650,9 @@ export function StudioView({
         <div className="min-w-0">
           <h1 className="truncate text-[15px] font-semibold text-ink">{title}</h1>
           <p className="meta truncate">
-            {projectId} · index.html · from prompt to working browser application
+            {projectId}
+            {artifact?.title && artifact.title !== title ? ` · ${artifact.title}` : ''} · index.html
+            · from prompt to working browser application
           </p>
         </div>
 
@@ -598,6 +693,15 @@ export function StudioView({
             <Icon name="download" className="size-3.5" />
             Download HTML
           </button>
+          <details className="relative">
+            <summary className="cursor-pointer select-none rounded-md border border-line px-2 py-1 text-[10px] text-muted hover:text-ink-dim">
+              Export info
+            </summary>
+            <div className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-line bg-surface p-2.5 text-[10px] leading-relaxed text-muted shadow-xl">
+              Exported HTML runs outside Studio’s sandbox. It may need network access for external
+              dependencies such as a CDN; it is not verified as self-contained or offline-ready.
+            </div>
+          </details>
         </div>
       </div>
 
@@ -614,6 +718,91 @@ export function StudioView({
             >
               <Icon name="x" className="size-3.5" />
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {project?.recovery && (!project.recovery.storage.ok || project.recovery.issues.length > 0) ? (
+        <div className="border-b border-warn/25 bg-warn/5 px-4 py-2" role="status">
+          <div className="flex items-start gap-2">
+            <Icon name="alert" className="mt-0.5 size-3.5 shrink-0 text-warn" />
+            <div className="min-w-0 flex-1 text-[11px] leading-relaxed text-warn">
+              <p>
+                Recovered {project.recovery.startup.loaded_jobs} job
+                {project.recovery.startup.loaded_jobs === 1 ? '' : 's'} at startup.
+                {project.recovery.startup.interrupted_jobs > 0
+                  ? ` ${project.recovery.startup.interrupted_jobs} interrupted by a server restart and not resumed.`
+                  : ''}
+                {project.recovery.later_recovery.loaded_jobs > 0
+                  ? ` ${project.recovery.later_recovery.loaded_jobs} additional job${project.recovery.later_recovery.loaded_jobs === 1 ? '' : 's'} recovered when storage was retested.`
+                  : ''}
+                {!project.recovery.storage.ok
+                  ? project.recovery.storage.scope === 'store' ||
+                    project.recovery.storage.scope === 'both'
+                    ? ' Forge storage is unavailable at the workspace root; in-memory state may be newer than the files.'
+                    : ' The selected project directory failed its durable-write check; in-memory state may be newer than the files.'
+                  : ''}
+                {project.recovery.acknowledged_issues > 0
+                  ? ` ${project.recovery.acknowledged_issues} historical notice${project.recovery.acknowledged_issues === 1 ? '' : 's'} acknowledged.`
+                  : ''}
+              </p>
+              {!project.recovery.storage.root_ok && project.recovery.storage.root_error ? (
+                <p className="mt-1 font-mono text-[10px] text-warn/90">
+                  Workspace root: {project.recovery.storage.root_error}
+                </p>
+              ) : null}
+              {project.recovery.storage.project_ok === false &&
+              project.recovery.storage.project_error ? (
+                <p className="mt-1 font-mono text-[10px] text-warn/90">
+                  Project directory: {project.recovery.storage.project_error}
+                </p>
+              ) : null}
+              {project.recovery.issues.length > 0 ? (
+                <ul className="mt-1 list-inside list-disc space-y-0.5 font-mono text-[10px] text-warn/90">
+                  {project.recovery.issues.slice(0, 4).map((issue) => (
+                    <li key={issue.id}>
+                      {issue.kind === 'active'
+                        ? 'active storage'
+                        : issue.scope === 'store'
+                          ? 'store-wide history'
+                          : 'project history'}{' '}
+                      · {issue.file}: {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {project.recovery.issues.some((issue) => issue.kind === 'startup') ? (
+                  <button
+                    type="button"
+                    disabled={recoveryBusy}
+                    onClick={() =>
+                      void acknowledgeRecovery(
+                        project.recovery?.issues
+                          .filter((issue) => issue.kind === 'startup')
+                          .map((issue) => issue.id) ?? [],
+                      )
+                    }
+                    className="rounded border border-warn/30 px-2 py-0.5 text-[10px] hover:bg-warn/10 disabled:opacity-50"
+                  >
+                    Acknowledge notices
+                  </button>
+                ) : null}
+                {!project.recovery.storage.ok ? (
+                  <button
+                    type="button"
+                    disabled={recoveryBusy}
+                    onClick={() => void retryStorage()}
+                    className="rounded border border-warn/30 px-2 py-0.5 text-[10px] hover:bg-warn/10 disabled:opacity-50"
+                  >
+                    Retry storage
+                  </button>
+                ) : null}
+                <span className="text-[9.5px] text-warn/80">
+                  Acknowledgement keeps audit records; active failures stay visible.
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
@@ -655,9 +844,9 @@ export function StudioView({
             onMode={setPromptMode}
             hasGame={hasGame}
             prompt={prompt}
-            onPrompt={setPrompt}
+            onPrompt={(value) => updateDraft('prompt', value)}
             change={change}
-            onChange={setChange}
+            onChange={(value) => updateDraft('change', value)}
             screenshot={screenshot}
             previewReady={previewReady}
             canCapture={hasGame || previewJobId !== null}
@@ -669,13 +858,16 @@ export function StudioView({
             job={job}
             diff={diff}
             onCancel={() => void cancel()}
-            engineLabel={offline ? 'echo (offline)' : 'Muse Spark'}
+            engineLabel={engineLabel}
           />
           <StudioMemory
+            key={projectId}
+            projectId={projectId}
             memories={memories}
             loading={memoriesLoading}
             error={memoryError}
             job={job}
+            onCreated={() => loadMemories(projectId)}
             onOpenMemory={(id) => onOpenMemory(id, projectId)}
             onOpenMemoryView={onOpenMemoryView}
           />
@@ -890,7 +1082,7 @@ export function StudioView({
                 <PanelEmpty
                   icon="spark"
                   title="No HTML application yet"
-                  body="Describe the application on the left. Muse Spark writes a staged index.html; you approve it before it becomes current."
+                  body="Describe the application on the left. Studio generation writes a staged index.html; you approve it before it becomes current."
                   action={
                     <button
                       type="button"
@@ -928,7 +1120,7 @@ export function StudioView({
             </div>
           </div>
 
-          <ArtifactFooter artifact={artifact} model={model} offline={offline} />
+          <ArtifactFooter artifact={artifact} model={studioModel} offline={studioOffline} />
         </section>
 
         <div className="flex min-h-0 flex-col xl:overflow-hidden">
@@ -936,6 +1128,7 @@ export function StudioView({
             state={state}
             diff={diff}
             job={job}
+            projectDecisionCount={activeDecisionCount}
             busy={busy}
             previewError={previewError}
             captureMemory={captureMemory}

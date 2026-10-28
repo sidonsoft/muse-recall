@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
 import {
   copyFile,
@@ -14,6 +14,7 @@ import {
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   FORGE_PROJECT_ID_PATTERN,
+  type ForgeApprovalVerification,
   type ForgeDiff,
   type ForgeState,
   ForgeStateSchema,
@@ -21,6 +22,7 @@ import {
   type ForgeVersion,
   ForgeVersionSchema,
 } from '@mml/shared';
+import { isMissingFile } from './fs-utils.js';
 
 /**
  * The only code allowed to touch generated application files.
@@ -45,6 +47,9 @@ export type ForgeErrorCode =
   | 'nothing_to_rollback'
   | 'no_current_version'
   | 'staged_changed'
+  | 'state_corrupt'
+  | 'persistence_failed'
+  | 'shutting_down'
   | 'decision_required';
 
 export class ForgeError extends Error {
@@ -116,29 +121,96 @@ export class ForgeWorkspace {
     await mkdir(join(dir, 'versions'), { recursive: true });
     await mkdir(join(dir, 'staging'), { recursive: true });
     await mkdir(join(dir, 'jobs'), { recursive: true });
-    try {
-      await readFile(join(dir, 'state.json'), 'utf8');
-    } catch {
+    // Only a genuinely missing state file is initialised. A present file is
+    // validated through the same path used by `state()`; malformed content is
+    // left byte-for-byte intact so it can be repaired or inspected.
+    const found = await this.readStateFile(projectId);
+    if (found.kind === 'missing') {
       await this.writeState(projectId, { current: null, versions: [] });
+      return;
     }
+    this.parseState(projectId, found.raw);
   }
 
   async state(projectId: string): Promise<ForgeState> {
-    const dir = this.projectDir(projectId);
+    const found = await this.readStateFile(projectId);
+    if (found.kind === 'missing') {
+      return { project_id: projectId, current_version: null, versions: [], can_rollback: false };
+    }
+    return this.parseState(projectId, found.raw);
+  }
+
+  /**
+   * Shared validation path for a present state file.
+   *
+   * JSON `null` and arrays are explicitly rejected: spreading `null` would
+   * otherwise produce an empty state object and make a corrupt file look like
+   * a fresh project.
+   */
+  private parseState(projectId: string, raw: unknown): ForgeState {
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge state file is not a state object. Restore or repair state.json before continuing.',
+      );
+    }
     try {
-      const parsed = JSON.parse(await readFile(join(dir, 'state.json'), 'utf8')) as unknown;
       const state = ForgeStateSchema.parse({
-        project_id: projectId,
         can_rollback: false,
-        ...(parsed as object),
+        ...raw,
+        project_id: projectId,
       });
+      const versions = new Set<number>();
+      for (const entry of state.versions) {
+        if (versions.has(entry.version)) {
+          throw new Error(`duplicate version v${entry.version}`);
+        }
+        versions.add(entry.version);
+      }
+      if (state.current_version !== null && !versions.has(state.current_version)) {
+        throw new Error(`current_version v${state.current_version} is not in versions`);
+      }
       return {
         ...state,
         project_id: projectId,
         can_rollback: rollbackTarget(state) !== null,
       };
+    } catch (error) {
+      if (error instanceof ForgeError) throw error;
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge state file is malformed. Restore or repair state.json before reviewing this project.',
+      );
+    }
+  }
+
+  /**
+   * Read the state file with a distinct missing-file sentinel.
+   *
+   * `null` cannot be the sentinel because JSON.parse("null") is a valid
+   * (but invalid state) document. Missing is structural; the caller decides
+   * whether to initialise it.
+   */
+  private async readStateFile(
+    projectId: string,
+  ): Promise<{ kind: 'missing' } | { kind: 'present'; raw: unknown }> {
+    let raw: string;
+    try {
+      raw = await readFile(join(this.projectDir(projectId), 'state.json'), 'utf8');
+    } catch (error) {
+      if (isMissingFile(error)) return { kind: 'missing' };
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge state file could not be read. Restore it before continuing.',
+      );
+    }
+    try {
+      return { kind: 'present', raw: JSON.parse(raw) as unknown };
     } catch {
-      return { project_id: projectId, current_version: null, versions: [], can_rollback: false };
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge state file is not valid JSON. Restore or repair state.json before continuing.',
+      );
     }
   }
 
@@ -320,6 +392,8 @@ export class ForgeWorkspace {
       jobId: string;
       /** sha256 of the bytes that passed runtime verification, when known. */
       expectedSha256?: string;
+      /** Approval-time checks to record with this immutable version. */
+      verification?: ForgeApprovalVerification;
     },
   ): Promise<{ version: number; previous: number | null; sha256: string }> {
     const validation = await this.validateStaged(projectId, jobId);
@@ -372,6 +446,7 @@ export class ForgeWorkspace {
       base_version: options.baseVersion,
       job_id: options.jobId,
       sha256,
+      ...(options.verification ? { approval_verification: options.verification } : {}),
     });
     await this.writeState(projectId, {
       current: next,
@@ -451,8 +526,8 @@ export class ForgeWorkspace {
       null,
       2,
     );
-    const temp = join(dir, `.state-${process.pid}-${Date.now()}.tmp`);
-    await writeFile(temp, `${payload}\n`, 'utf8');
+    const temp = join(dir, `.state-${process.pid}-${randomUUID()}.tmp`);
+    await writeFile(temp, `${payload}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
     await rename(temp, join(dir, 'state.json'));
   }
 

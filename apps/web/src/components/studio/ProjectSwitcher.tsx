@@ -25,6 +25,8 @@ export function ProjectSwitcher({
   const [draft, setDraft] = useState(projectId);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const named = projects.find((project) => project.id === projectId)?.name;
+  const currentLabel = named && named !== projectId ? named : projectId;
 
   useEffect(() => {
     setDraft(projectId);
@@ -59,10 +61,10 @@ export function ProjectSwitcher({
         aria-expanded={open}
         disabled={disabled}
         className="btn btn-sm max-w-[190px]"
-        title={`Project: ${projectId}`}
+        title={`Project: ${currentLabel} (${projectId})`}
       >
         <Icon name="branch" className="size-3.5 text-muted" />
-        <span className="truncate font-mono text-[11px]">{projectId}</span>
+        <span className="truncate text-[11px]">{currentLabel}</span>
         <Icon name="chevronDown" className="size-3 text-muted" />
       </button>
       {open ? (

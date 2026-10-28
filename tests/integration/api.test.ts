@@ -230,6 +230,11 @@ describe('GET /api/meta', () => {
     const { data } = response.json();
     expect(data.phase).toBe(5);
     expect(data.provider.id).toBe('echo');
+    expect(data.forge).toEqual({
+      provider: 'muse-cli',
+      configured_model: null,
+      observed_model: null,
+    });
     expect(data.modules.memory_engine).toBe('complete');
     expect(data.modules.ui_protocol).toBe('complete');
     expect(data.safety.generated_code_execution).toBe(false);

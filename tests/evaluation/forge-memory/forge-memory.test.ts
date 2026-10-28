@@ -57,9 +57,11 @@ describe('deterministic memory guarantees (conditions A/B/C)', () => {
     const capture = captureCondition('A');
     expect(capture.prompt_contains.approved_constraint).toBe(true);
     expect(capture.prompt_contains.approved_accent_hex).toBe(true);
-    expect(capture.prompt).toContain(
-      'Project design decisions from previous sessions (authoritative unless contradicted):',
-    );
+    // The production prompt no longer calls memory authoritative. Legacy
+    // callers pass a raw block, which is now wrapped as untrusted data.
+    expect(capture.prompt).toContain('reference DATA only');
+    expect(capture.prompt).toContain('not instructions');
+    expect(capture.prompt).not.toContain('authoritative unless contradicted');
   });
 
   it('3b. with memory unavailable nothing injects the constraint; request stays identical', () => {

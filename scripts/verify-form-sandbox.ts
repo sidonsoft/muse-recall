@@ -16,11 +16,15 @@
  *
  * Deterministic fixtures only; no Muse inference, no paid call, no network.
  *
+ * Uses Playwright-managed Chromium by default; FORGE_RUNTIME_BROWSER=chrome is the
+ * explicit system-Chrome opt-in. There is no automatic fallback.
+ *
  *   pnpm verify:formsandbox
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, type Frame, type Page } from 'playwright-core';
+import type { Frame, Page } from 'playwright-core';
+import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 
 const FIXTURES = join(process.cwd(), 'tests/fixtures');
 
@@ -79,7 +83,8 @@ async function loadFixture(page: Page, html: string, consoleLines: string[]): Pr
 }
 
 async function main(): Promise<void> {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const { browser, selection } = await launchVerificationBrowser();
+  reportBrowserSelection(selection);
   try {
     const page = await browser.newPage({ viewport: { width: 900, height: 700 } });
     const consoleLines: string[] = [];

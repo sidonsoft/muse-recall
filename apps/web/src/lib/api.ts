@@ -10,6 +10,8 @@ import {
   ForgeJobSchema,
   type ForgeProjectView,
   ForgeProjectViewSchema,
+  type ForgeRecoveryReport,
+  ForgeRecoveryReportSchema,
   type ForgeState,
   ForgeStateSchema,
   type HealthResponse,
@@ -342,6 +344,20 @@ export const api = {
   forgeState: (projectId: string) =>
     request<ForgeProjectView>(`/api/forge/projects/${projectId}`, { method: 'GET' }, (data) =>
       ForgeProjectViewSchema.parse(data),
+    ),
+
+  forgeAcknowledgeRecovery: (projectId: string, issueIds: string[]) =>
+    request<ForgeRecoveryReport>(
+      `/api/forge/projects/${projectId}/recovery/ack`,
+      { method: 'POST', body: JSON.stringify({ issue_ids: issueIds }) },
+      (data) => ForgeRecoveryReportSchema.parse(data),
+    ),
+
+  forgeStorageCheck: (projectId: string) =>
+    request<ForgeRecoveryReport>(
+      `/api/forge/projects/${projectId}/storage-check`,
+      { method: 'POST' },
+      (data) => ForgeRecoveryReportSchema.parse(data),
     ),
 
   forgeGenerate: (projectId: string, prompt: string) =>

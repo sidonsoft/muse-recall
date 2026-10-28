@@ -9,6 +9,8 @@ import {
   ForgeJobSchema,
   ForgeModifySchema,
   ForgeProjectViewSchema,
+  ForgeRecoveryAckSchema,
+  ForgeRecoveryReportSchema,
   ForgeStateSchema,
 } from '@mml/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
@@ -48,17 +50,19 @@ export function registerForgeRoutes(
 ): void {
   const { manager, workspace } = deps;
 
+  const projectView = async (projectId: string) =>
+    ForgeProjectViewSchema.parse({
+      state: await workspace.state(projectId),
+      jobs: manager.list(projectId),
+      recovery: manager.recovery(projectId),
+    });
+
   app.post('/api/forge/projects', async (request, reply) => {
     return guard(reply, async () => {
       const body = ForgeCreateProjectSchema.parse(request.body ?? {});
       deps.engine.ensureProject(body.project_id, body.name ?? body.project_id);
       await workspace.ensureProject(body.project_id);
-      return envelope(
-        ForgeProjectViewSchema.parse({
-          state: await workspace.state(body.project_id),
-          jobs: manager.list(body.project_id),
-        }),
-      );
+      return envelope(await projectView(body.project_id));
     });
   });
 
@@ -66,9 +70,24 @@ export function registerForgeRoutes(
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
       await workspace.ensureProject(id);
+      return envelope(await projectView(id));
+    });
+  });
+
+  app.post('/api/forge/projects/:id/recovery/ack', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      const body = ForgeRecoveryAckSchema.parse(request.body ?? {});
       return envelope(
-        ForgeProjectViewSchema.parse({ state: await workspace.state(id), jobs: manager.list(id) }),
+        ForgeRecoveryReportSchema.parse(await manager.acknowledge(id, body.issue_ids)),
       );
+    });
+  });
+
+  app.post('/api/forge/projects/:id/storage-check', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      return envelope(ForgeRecoveryReportSchema.parse(await manager.checkStorage(id)));
     });
   });
 
@@ -350,11 +369,15 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
             ? 422
             : error.code === 'too_many_jobs'
               ? 429
-              : error.code === 'path_escape' ||
-                  error.code === 'invalid_project_id' ||
-                  error.code === 'decision_required'
-                ? 400
-                : 409;
+              : error.code === 'persistence_failed' || error.code === 'shutting_down'
+                ? 503
+                : error.code === 'state_corrupt'
+                  ? 500
+                  : error.code === 'path_escape' ||
+                      error.code === 'invalid_project_id' ||
+                      error.code === 'decision_required'
+                    ? 400
+                    : 409;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message, issues: error.details },

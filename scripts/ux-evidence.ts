@@ -7,6 +7,9 @@
  * inference is required; validation, staging, runtime verification, approval,
  * rejection and rollback are the production code paths.
  *
+ * Uses Playwright-managed Chromium by default; FORGE_RUNTIME_BROWSER=chrome is the
+ * explicit system-Chrome opt-in. There is no automatic fallback.
+ *
  *   pnpm evidence:ux
  *
  * Writes to `docs/ux-evidence/final/`. It never touches the recorded Phase 11–15
@@ -17,7 +20,8 @@ import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Page } from 'playwright-core';
+import type { Browser, Page } from 'playwright-core';
+import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 import { seedForgeDemo } from './lib/demo-seed.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -155,12 +159,14 @@ async function main(): Promise<void> {
     { VITE_PROXY_TARGET: API },
   );
 
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+  let browser: Browser | null = null;
   try {
     await waitFor(`${API}/api/health`, 'API');
     await waitFor(WEB, 'web client');
 
-    browser = await chromium.launch({ channel: 'chrome', headless: true });
+    const launched = await launchVerificationBrowser();
+    browser = launched.browser;
+    reportBrowserSelection(launched.selection);
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const errors: string[] = [];
     let offlineExpected = false;
@@ -187,7 +193,7 @@ async function main(): Promise<void> {
       const iframeCount = await page.locator('iframe').count();
       if (iframeCount === 0) {
         console.error('no preview iframe', {
-          text: (await page.locator('body').textContent()).slice(0, 1_500),
+          text: ((await page.locator('body').textContent()) ?? '').slice(0, 1_500),
           frames: page.frames().map((entry) => entry.url()),
           state: await state(),
         });

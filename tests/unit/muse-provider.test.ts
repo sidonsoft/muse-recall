@@ -24,7 +24,30 @@ const mode = process.env.MML_FAKE_MODE || 'ok';
 const emit = (payload_type, payload) =>
   process.stdout.write(JSON.stringify({ payload_type, payload }) + '\\n');
 
-if (mode === 'hang') {
+if (mode === 'env') {
+  const selected = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) =>
+      ['MML_FAKE_MODE', 'HOME', 'PATH', 'META_API_KEY', 'SOME_SERVER_SECRET', 'NODE_OPTIONS'].includes(key),
+    ),
+  );
+  emit('run.terminal.completed', {
+    terminal: 'completed',
+    text: JSON.stringify(selected),
+    reason: null,
+  });
+} else if (mode === 'stdin') {
+  let input = '';
+  process.stdin.on('data', (chunk) => {
+    input += chunk.toString();
+  });
+  process.stdin.on('end', () => {
+    emit('run.terminal.completed', {
+      terminal: 'completed',
+      text: JSON.stringify({ key: input, args: process.argv.slice(2) }),
+      reason: null,
+    });
+  });
+} else if (mode === 'hang') {
   setInterval(() => {}, 1000);
 } else if (mode === 'fail') {
   emit('run.terminal.failed', { terminal: 'failed', text: '', reason: 'model refused' });
@@ -187,6 +210,38 @@ describe('MuseCliProvider', () => {
     expect(args).toContain('--disable-web-tools');
     expect(args).toContain('--output-schema');
     expect(args[args.indexOf('--output-schema') + 1]).toMatch(/schema\.json$/);
+  });
+
+  it('does not inherit server secrets or code-injection variables', async () => {
+    process.env.MML_FAKE_MODE = 'env';
+    process.env.META_API_KEY = 'inherited-meta-key';
+    process.env.SOME_SERVER_SECRET = 'must-not-leak';
+    process.env.NODE_OPTIONS = '--require=/tmp/inject.cjs';
+    try {
+      const response = await provider().generate({ messages: [{ role: 'user', content: 'hi' }] });
+      const env = JSON.parse(response.text) as Record<string, string>;
+      expect(env.MML_FAKE_MODE).toBe('env');
+      expect(env.HOME).toBeTruthy();
+      expect(env.PATH).toBeTruthy();
+      expect(env).not.toHaveProperty('META_API_KEY');
+      expect(env).not.toHaveProperty('SOME_SERVER_SECRET');
+      expect(env).not.toHaveProperty('NODE_OPTIONS');
+    } finally {
+      delete process.env.META_API_KEY;
+      delete process.env.SOME_SERVER_SECRET;
+      delete process.env.NODE_OPTIONS;
+    }
+  });
+
+  it('delivers a primary API key over stdin, not argv', async () => {
+    process.env.MML_FAKE_MODE = 'stdin';
+    const response = await provider({ apiKey: 'primary-secret' }).generate({
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    const payload = JSON.parse(response.text) as { key: string; args: string[] };
+    expect(payload.key).toBe('primary-secret');
+    expect(payload.args).toContain('--api-key-stdin');
+    expect(payload.args.join(' ')).not.toContain('primary-secret');
   });
 
   it('rejects an invalid request without spawning anything', async () => {

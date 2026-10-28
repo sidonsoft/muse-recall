@@ -1,4 +1,4 @@
-import type { MemoryEngine } from '@mml/memory-engine';
+import { type MemoryEngine, renderMemoryEntry } from '@mml/memory-engine';
 import { ProviderError } from '@mml/muse-provider';
 import {
   type CapturedMemory,
@@ -665,16 +665,25 @@ export class TurnProcessor {
   }
 
   private turnMemoryRows(retrieval: RetrievalResult) {
-    return retrieval.results.map((result) => ({
-      memoryId: result.memory.id,
-      score: result.score,
-      evidence: result.evidence,
-      memoryType: result.memory.type,
-      scope: result.memory.scope,
-      pinned: result.pinned,
-      truncated: result.truncated,
-      characters: result.injected_content.length,
-    }));
+    let constraintIndex = 0;
+    let otherIndex = 0;
+    return retrieval.results.map((result) => {
+      const constraint = result.memory.type === 'constraint' || result.memory.type === 'goal';
+      // The prompt renders constraints and other memories in separate blocks,
+      // each with its own index. Use that block-local index so the reported
+      // contribution includes the exact provenance header.
+      const index = constraint ? constraintIndex++ : otherIndex++;
+      return {
+        memoryId: result.memory.id,
+        score: result.score,
+        evidence: result.evidence,
+        memoryType: result.memory.type,
+        scope: result.memory.scope,
+        pinned: result.pinned,
+        truncated: result.truncated,
+        characters: renderMemoryEntry(result, index).length,
+      };
+    });
   }
 }
 

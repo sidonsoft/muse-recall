@@ -17,6 +17,7 @@ import {
   type RetrievedMemory,
 } from '@mml/shared';
 import { memoryContentHash } from './content-hash.js';
+import { renderedMemoryCharacters, renderMemoryLayout } from './context.js';
 import { toFtsQuery } from './fts.js';
 import { MEMORY_SELECT_COLUMNS, type MemoryRow, rowToMemory } from './rows.js';
 
@@ -272,7 +273,6 @@ export function retrieveMemories(
   ];
 
   const selected: RetrievedMemory[] = [];
-  let charactersUsed = 0;
   let truncatedCount = 0;
 
   for (const candidate of ordered) {
@@ -282,23 +282,38 @@ export function retrieveMemories(
     }
 
     const { text, truncated } = truncate(candidate.memory.content, budget.max_memory_characters);
-    if (charactersUsed + text.length > budget.max_characters) {
+    const entry = retrievedEntry(candidate, text, truncated);
+    // `max_characters` is a rendered-context budget, not a raw-content sum.
+    // Account for escaping, per-record provenance headers, delimiters, safety
+    // wording, and the two-block layouts used by chat and Forge. A record that
+    // does not fit is skipped; rendered text is never sliced through an entity.
+    if (renderedMemoryCharacters([...selected, entry]) > budget.max_characters) {
       exclusions.character_budget += 1;
       continue;
     }
 
-    charactersUsed += text.length;
     if (truncated) truncatedCount += 1;
+    selected.push(entry);
+  }
 
-    selected.push({
-      memory: candidate.memory,
-      injected_content: text,
-      truncated,
-      pinned: candidate.pinned,
-      score: round(candidate.score),
-      rank_components: roundComponents(candidate.components),
-      evidence: truncated ? `${candidate.evidence} · truncated for injection` : candidate.evidence,
-    });
+  // Escaping can expand every stored character (for example `&` -> `&amp;`).
+  // If that makes every record too large to include whole, keep the
+  // highest-priority record as a safely truncated prefix instead of returning
+  // an empty memory context. Truncation happens on raw text before escaping,
+  // so it can never split an entity, and the safety wrapper is still complete.
+  if (selected.length === 0 && ordered.length > 0) {
+    for (const candidate of ordered) {
+      const fitted = fitEntryToRenderedBudget(
+        candidate,
+        budget.max_characters,
+        budget.max_memory_characters,
+      );
+      if (!fitted) continue;
+      exclusions.character_budget = Math.max(0, exclusions.character_budget - 1);
+      truncatedCount += 1;
+      selected.push(fitted);
+      break;
+    }
   }
 
   // Reserved pins were *selected* first to guarantee their inclusion, but the
@@ -310,6 +325,11 @@ export function retrieveMemories(
     if (byUpdated !== 0) return byUpdated;
     return a.memory.id.localeCompare(b.memory.id);
   });
+
+  // Report the exact canonical block the preview injects. The selection above
+  // used the larger upper bound across supported layouts, so this can never
+  // exceed the configured budget.
+  const charactersUsed = renderMemoryLayout(selected, 'canonical').length;
 
   const metadata: RetrievalMetadata = {
     query: parsed.query,
@@ -545,9 +565,61 @@ function compareScored(a: ScoredCandidate, b: ScoredCandidate): number {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function retrievedEntry(
+  candidate: ScoredCandidate,
+  text: string,
+  truncated: boolean,
+): RetrievedMemory {
+  return {
+    memory: candidate.memory,
+    injected_content: text,
+    truncated,
+    pinned: candidate.pinned,
+    score: round(candidate.score),
+    rank_components: roundComponents(candidate.components),
+    evidence: truncated ? `${candidate.evidence} · truncated for injection` : candidate.evidence,
+  };
+}
+
+/**
+ * Find the longest raw prefix whose rendered record fits one empty-ish budget.
+ * Used only when no record fits whole; the normal path never truncates merely
+ * because a lower-priority record consumed the remaining budget.
+ */
+function fitEntryToRenderedBudget(
+  candidate: ScoredCandidate,
+  budget: number,
+  maxMemoryCharacters: number,
+): RetrievedMemory | null {
+  const capped = truncate(candidate.memory.content, maxMemoryCharacters).text;
+  if (capped.length <= 1) return null;
+
+  let low = 1;
+  let high = capped.length;
+  let best: number | null = null;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    const { text, truncated } = truncate(capped, middle);
+    const entry = retrievedEntry(candidate, text, truncated);
+    if (renderedMemoryCharacters([entry]) <= budget) {
+      best = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  if (best === null || best < 2) return null;
+  const { text, truncated } = truncate(capped, best);
+  return retrievedEntry(candidate, text, truncated);
+}
+
 function truncate(content: string, max: number): { text: string; truncated: boolean } {
   if (content.length <= max) return { text: content, truncated: false };
-  return { text: `${content.slice(0, Math.max(0, max - 1))}…`, truncated: true };
+  let end = Math.max(0, max - 1);
+  // Do not split a surrogate pair when the cap lands between its halves.
+  const code = content.charCodeAt(end - 1);
+  if (code >= 0xd800 && code <= 0xdbff) end -= 1;
+  return { text: `${content.slice(0, end)}…`, truncated: true };
 }
 
 function clamp01(value: number): number {

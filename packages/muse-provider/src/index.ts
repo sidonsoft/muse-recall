@@ -16,6 +16,8 @@ export interface ProviderConfig {
   museTimeoutMs?: number;
   cwd?: string;
   env?: Record<string, string>;
+  /** Meta Model API key delivered over stdin, never argv/env. */
+  apiKey?: string;
   museFallbackApiKey?: string;
   museFallbackModel?: string;
 }
@@ -37,6 +39,7 @@ export function createModelProvider(config: ProviderConfig): ModelProvider {
         timeoutMs: config.museTimeoutMs,
         cwd: config.cwd,
         env: config.env,
+        ...(config.apiKey ? { apiKey: config.apiKey } : {}),
         ...(config.museFallbackApiKey ? { fallbackApiKey: config.museFallbackApiKey } : {}),
         ...(config.museFallbackModel ? { fallbackModel: config.museFallbackModel } : {}),
       });

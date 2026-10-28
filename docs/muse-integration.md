@@ -155,11 +155,35 @@ Rationale:
 | Method | Status |
 | --- | --- |
 | CLI account login (`muse login`, browser code approval) | Verified working — this is what the reference machine uses |
-| `META_API_KEY` environment variable | Documented by the CLI (`META_API_KEY always takes priority over the account login`); not exercised here |
+| `META_API_KEY` environment variable | Documented by the CLI as taking priority over login. Our adapters read it at the server boundary and deliver it over stdin; it is not inherited by the child environment. |
 | `muse auth set --provider meta --api-key-stdin` | Documented; provider enum is `meta` only |
 
 The API key never reaches the browser: the server spawns the CLI, and the CLI uses
 its own credential store.
+
+## 4b. Forge child invocation (post-hackathon hardening)
+
+Forge needs file-write tools, so it cannot use `--preset empty`. It passes the hermetic
+flags that remain compatible with writing the staged file:
+
+```
+muse exec --json --no-session-log --no-foreign-personal-context \
+  --disable-web-tools --disable-reminders --disable-request-user-input \
+  --workspace <staging> --prompt-file <staging>/prompt.txt \
+  --reasoning-effort <tier> [--provider meta --api-key-stdin] [--model <id>]
+```
+
+The child starts in `<staging>` and receives the shared environment allow-list
+(home/login, `PATH`/`Path` and platform lookup, locale/terminal, temp/XDG, proxy, and
+standard certificate configuration). It never inherits `DATABASE_PATH`,
+`WORKSPACE_ROOT`, provider keys, `NODE_OPTIONS`, `LD_PRELOAD`, `DYLD_INSERT_LIBRARIES`, or
+`PYTHONPATH`. Provider keys are written to stdin only; the chat provider uses the same
+policy and delivers a configured `META_API_KEY` over stdin.
+
+This is **not** a claim that `--workspace` is an OS sandbox. It roots the CLI's
+policy-gated tools; the process still runs as the server user with that user's
+filesystem permissions. The CLI's own sandbox and approval system remain the enforcement
+layer. See [security.md](security.md#forge-child-process).
 
 ## 5. Unknowns and risks
 

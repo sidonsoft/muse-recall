@@ -25,9 +25,13 @@
  * `FORGE_VERIFY_BASE` selects the web client (default http://127.0.0.1:5173).
  * `FORGE_VERIFY_SHOTS` selects the screenshot directory; it defaults to the
  * disposable `test-results/verify-forge/`, never tracked evidence.
+ *
+ * Uses Playwright-managed Chromium by default. Set FORGE_RUNTIME_BROWSER=chrome
+ * only for an explicit system-Chrome run; there is no automatic fallback.
  */
 import { mkdirSync } from 'node:fs';
-import { chromium, type Page } from 'playwright-core';
+import type { Page } from 'playwright-core';
+import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 
 const BASE = process.env.FORGE_VERIFY_BASE ?? 'http://127.0.0.1:5173';
 /** Test output, never historical evidence. `docs/assets` is read-only here. */
@@ -76,7 +80,8 @@ async function assertCurrentStudio(page: Page): Promise<void> {
 
 async function main(): Promise<void> {
   mkdirSync(SHOTS, { recursive: true });
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const { browser, selection } = await launchVerificationBrowser();
+  reportBrowserSelection(selection);
   try {
     const context = await browser.newContext({
       viewport: { width: 1500, height: 1000 },
@@ -102,6 +107,12 @@ async function main(): Promise<void> {
     await dialog.waitFor({ timeout: 10_000 });
     await dialog.getByLabel('Project id').fill(PROJECT);
     await dialog.getByRole('button', { name: 'Open', exact: true }).click();
+    // An empty project already says "no approved version"; wait for the
+    // selected project id so the prompt is not filled into the old project
+    // and then reset by the project switch.
+    await page.waitForFunction((id) => document.body.textContent?.includes(id) ?? false, PROJECT, {
+      timeout: 20_000,
+    });
     await page.getByText('no approved version', { exact: true }).waitFor({ timeout: 20_000 });
     check('opened an empty project in the current Studio');
 
@@ -109,8 +120,18 @@ async function main(): Promise<void> {
     await page
       .getByLabel('Application description')
       .fill('A small accessible task list with add, delete and a task count.');
+    await page.waitForFunction(
+      () => {
+        const button = [...document.querySelectorAll('button')].find((entry) =>
+          entry.textContent?.includes('Generate HTML'),
+        );
+        return button !== undefined && !button.disabled;
+      },
+      undefined,
+      { timeout: 20_000 },
+    );
     await page.getByRole('button', { name: 'Generate HTML' }).click();
-    await page.getByText(/Muse Spark staged an HTML version/).waitFor({ timeout: LONG });
+    await page.getByText(/Studio generation staged an HTML version/).waitFor({ timeout: LONG });
     check('generated a staged HTML application');
 
     // ---- Preview ---------------------------------------------------------
@@ -148,7 +169,7 @@ async function main(): Promise<void> {
     // ---- Approval --------------------------------------------------------
     const review = page.getByRole('region', { name: 'Review' });
     await review.getByRole('button', { name: /^Approve/ }).click();
-    await page.getByText(/Approved v1\./).waitFor({ timeout: 60_000 });
+    await page.getByText(/First version approved\./).waitFor({ timeout: 60_000 });
     await page.getByText('v1 approved').waitFor({ timeout: 10_000 });
     check('approved the first version');
 
@@ -193,7 +214,9 @@ async function main(): Promise<void> {
     const guard = page.getByRole('region', { name: 'Decision Guard advisory' });
     await guard.waitFor({ timeout: 10_000 });
     const guardText = (await guard.textContent()) ?? '';
-    if (!/(NOT VERIFIED|NO VIOLATION|VIOLATION DETECTED|NOT EVALUATED)/.test(guardText)) {
+    if (
+      !/(NOT VERIFIED|NO VIOLATION|VIOLATION DETECTED|NOT EVALUATED|NO DECISIONS)/.test(guardText)
+    ) {
       throw new Error('Decision Guard advisory did not report an assessment.');
     }
     const memory = page.getByRole('region', { name: 'Project memory' });

@@ -1,4 +1,5 @@
-import { chromium } from 'playwright-core';
+import { type ForgeRuntimeBrowserSelection, redactSecrets } from '@mml/shared';
+import { type Browser, chromium } from 'playwright-core';
 
 /**
  * Runs a staged browser application in a real browser before it can be approved.
@@ -24,6 +25,10 @@ export interface RuntimeCheckResult {
   errors: string[];
   /** Requests aborted by the verification allowlist (credentials stripped). */
   blocked: string[];
+  /** Browser identity/version, when the checker can report it. */
+  browser?: string | null;
+  /** Explicit launch policy and bounded diagnostics. */
+  browser_selection?: ForgeRuntimeBrowserSelection;
 }
 
 /** The only remote origin a staged application may load during verification. */
@@ -48,11 +53,118 @@ export function isAllowedRuntimeRequest(raw: string): boolean {
   return ALLOWED_REMOTE_HOSTS.has(url.hostname.toLowerCase());
 }
 
+type BrowserPolicy = 'managed' | 'chrome';
+
+function browserPolicy(): BrowserPolicy | null {
+  const configured =
+    process.env.FORGE_RUNTIME_BROWSER ??
+    (process.env.FORGE_RUNTIME_CHANNEL === 'chrome' ? 'chrome' : 'managed');
+  return configured === 'managed' || configured === 'chrome' ? configured : null;
+}
+
+const MAX_SELECTION_TEXT = 160;
+const MAX_DIAGNOSTIC_TEXT = 300;
+
+/** Bound after redaction, so replacements cannot push a value over its schema limit. */
+function boundedRedacted(message: string, limit: number): string {
+  const redacted = redactSecrets(message);
+  if (redacted.length <= limit) return redacted;
+  const marker = '…';
+  return `${redacted.slice(0, Math.max(0, limit - marker.length))}${marker}`.slice(0, limit);
+}
+
+function browserFailure(
+  attempted: string,
+  detail: string,
+  action: string,
+  maxLength = MAX_DIAGNOSTIC_TEXT,
+): string {
+  // Keep the actionable setup guidance intact and truncate only the raw
+  // launcher output. Bound the complete string, not just the detail, because
+  // the appended guidance previously made the field exceed its schema limit.
+  const boundedDetail = boundedRedacted(detail, 150);
+  return boundedRedacted(
+    `${attempted} could not be launched. ${action} Details: ${boundedDetail}`,
+    maxLength,
+  );
+}
+
+async function launchVerificationBrowser(): Promise<
+  | { browser: Browser; selection: ForgeRuntimeBrowserSelection }
+  | { browser: null; selection: ForgeRuntimeBrowserSelection; error: string }
+> {
+  const policy = browserPolicy();
+  if (!policy) {
+    const failure = boundedRedacted(
+      'Invalid FORGE_RUNTIME_BROWSER value. Use "managed" or "chrome".',
+      MAX_DIAGNOSTIC_TEXT,
+    );
+    return {
+      browser: null,
+      selection: {
+        policy: 'managed',
+        attempted: 'managed Chromium',
+        selected: null,
+        failure,
+      },
+      error: failure,
+    };
+  }
+  const attempted = policy === 'managed' ? 'managed Chromium' : 'system Chrome';
+  try {
+    const browser =
+      policy === 'managed'
+        ? await chromium.launch({ headless: true })
+        : await chromium.launch({ channel: 'chrome', headless: true });
+    return {
+      browser,
+      selection: { policy, attempted, selected: null, failure: null },
+    };
+  } catch (error) {
+    const action =
+      policy === 'managed'
+        ? 'Run "pnpm exec playwright-core install chromium" or explicitly set FORGE_RUNTIME_BROWSER=chrome.'
+        : 'Install Chrome or set FORGE_RUNTIME_BROWSER=managed after installing Playwright Chromium.';
+    const failure = browserFailure(
+      attempted,
+      error instanceof Error ? error.message : String(error),
+      action,
+    );
+    return {
+      browser: null,
+      selection: { policy, attempted, selected: null, failure },
+      error: failure,
+    };
+  }
+}
+
 export async function checkGameRuntime(
   html: string,
   timeoutMs = 20_000,
 ): Promise<RuntimeCheckResult> {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const launched = await launchVerificationBrowser();
+  if (!launched.browser) {
+    return {
+      ok: false,
+      canvas: false,
+      rendered: false,
+      errors: [launched.error],
+      blocked: [],
+      browser: null,
+      browser_selection: launched.selection,
+    };
+  }
+  const browser = launched.browser;
+  let browserIdentity: string | null = null;
+  try {
+    browserIdentity = boundedRedacted(`Chromium ${await browser.version()}`, MAX_SELECTION_TEXT);
+  } catch {
+    browserIdentity = null;
+  }
+  const selection: ForgeRuntimeBrowserSelection = {
+    ...launched.selection,
+    selected: browserIdentity ?? launched.selection.attempted,
+  };
   try {
     const page = await browser.newPage();
     const errors: string[] = [];
@@ -129,6 +241,8 @@ export async function checkGameRuntime(
       rendered,
       errors: [...reason, ...failure],
       blocked,
+      browser: browserIdentity,
+      browser_selection: selection,
     };
   } finally {
     await browser.close();
