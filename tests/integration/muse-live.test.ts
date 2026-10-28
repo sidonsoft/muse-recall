@@ -16,6 +16,7 @@ describe.skipIf(!enabled)('live Muse integration', () => {
     model: process.env.MUSE_MODEL ?? 'muse-wonder-1.0',
     reasoningEffort: 'low',
     timeoutMs: 120_000,
+    ...(process.env.META_API_KEY ? { apiKey: process.env.META_API_KEY } : {}),
   });
 
   it('completes a real inference round-trip', async () => {

@@ -44,6 +44,7 @@ function advisory(overrides: Partial<DecisionGuardAdvisory> = {}): DecisionGuard
       },
     ],
     evaluated_memory_ids: [DECISION_ID],
+    applicable_rules: ['countdown-mechanics'],
     superseded_memory_ids: [],
     source_sha256: 'a'.repeat(64),
     runtime_verified: true,
@@ -52,8 +53,10 @@ function advisory(overrides: Partial<DecisionGuardAdvisory> = {}): DecisionGuard
   };
 }
 
-function render(value: DecisionGuardAdvisory | null): string {
-  return renderToStaticMarkup(createElement(DecisionGuardPanel, { advisory: value }));
+function render(value: DecisionGuardAdvisory | null, projectDecisionCount?: number): string {
+  return renderToStaticMarkup(
+    createElement(DecisionGuardPanel, { advisory: value, projectDecisionCount }),
+  );
 }
 
 describe('Decision Guard advisory panel', () => {
@@ -140,5 +143,28 @@ describe('Decision Guard advisory panel', () => {
     expect(markup).toContain('compliance was not checked');
     expect(markup).not.toContain('PASS');
     expect(markup).not.toContain('compliant');
+  });
+
+  it('says there are no project decisions instead of listing generic game checks', () => {
+    const markup = render(null, 0);
+    expect(markup).toContain('No project decisions to check.');
+    expect(markup).toContain('NO DECISIONS');
+    expect(markup).not.toContain('Supported checks only');
+  });
+
+  it('shows applicable checks and coverage limits when decisions exist', () => {
+    const markup = render(advisory(), 1);
+    expect(markup).toContain('Applicable checks');
+    expect(markup).toContain('countdown mechanics');
+    expect(markup).toContain('Coverage limits');
+    expect(markup).toContain('staged load check is a separate runtime gate');
+  });
+
+  it('marks an old snapshot without applicable-rule telemetry as not recorded', () => {
+    const withoutRules = advisory();
+    delete (withoutRules as { applicable_rules?: unknown }).applicable_rules;
+    const markup = render(withoutRules, 1);
+    expect(markup).toContain('not recorded for this snapshot');
+    expect(markup).not.toContain('Applicable checks: </p>');
   });
 });

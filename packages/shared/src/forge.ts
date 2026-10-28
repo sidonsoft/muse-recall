@@ -21,6 +21,12 @@ export type ForgeJobKind = z.infer<typeof ForgeJobKindSchema>;
 export const FORGE_JOB_STATUSES = [
   'queued',
   'running',
+  /**
+   * The server stopped before this job reached a terminal state. Interrupted
+   * jobs are never resumed automatically: the status is an explicit record
+   * that the model run did not finish. Staged bytes are kept for inspection.
+   */
+  'interrupted',
   'succeeded',
   'failed',
   'cancelled',
@@ -43,6 +49,41 @@ export const ForgeValidationSchema = z.object({
   issues: z.array(z.string()),
 });
 export type ForgeValidation = z.infer<typeof ForgeValidationSchema>;
+
+/**
+ * Approval-time verification record for an approved artifact.
+ *
+ * Historical versions may lack this field entirely; that means "not recorded",
+ * not "passed". Diagnostics are bounded and redacted before persistence.
+ */
+export const ForgeRuntimeBrowserSelectionSchema = z.object({
+  policy: z.enum(['managed', 'chrome']),
+  attempted: z.string().max(160),
+  selected: z.string().max(160).nullable(),
+  /** Bounded, redacted launch failure; null on success. */
+  failure: z.string().max(300).nullable(),
+});
+export type ForgeRuntimeBrowserSelection = z.infer<typeof ForgeRuntimeBrowserSelectionSchema>;
+
+export const ForgeRuntimeVerificationSchema = z.object({
+  ok: z.boolean(),
+  checked_at: z.iso.datetime(),
+  /** sha256 of the exact bytes the browser loaded. */
+  artifact_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  /** Browser identity/version when the checker could report it. */
+  browser: z.string().max(160).nullable(),
+  /** Explicit selection policy and bounded launch diagnostics. */
+  browser_selection: ForgeRuntimeBrowserSelectionSchema.optional(),
+  errors: z.array(z.string().max(300)).max(20),
+});
+export type ForgeRuntimeVerification = z.infer<typeof ForgeRuntimeVerificationSchema>;
+
+export const ForgeApprovalVerificationSchema = z.object({
+  syntax_structure: ForgeValidationSchema.nullable(),
+  runtime: ForgeRuntimeVerificationSchema.nullable(),
+  recorded_at: z.iso.datetime(),
+});
+export type ForgeApprovalVerification = z.infer<typeof ForgeApprovalVerificationSchema>;
 
 /**
  * Phase 12C — Decision Guard advisory contract.
@@ -144,6 +185,11 @@ export const DecisionGuardAdvisorySchema = z.object({
   unverified: z.array(DecisionGuardUnverifiedSchema).max(32),
   /** Active decisions passed to the engine — the auditable decision set. */
   evaluated_memory_ids: z.array(z.uuid()).max(32),
+  /**
+   * Supported rules that applied to at least one evaluated decision. Missing
+   * on historical snapshots; an empty array means no supported rule matched.
+   */
+  applicable_rules: z.array(DecisionGuardRuleSchema).max(16).optional(),
   /** Superseded decisions resolved separately for correction rules. */
   superseded_memory_ids: z.array(z.uuid()).max(32),
   /** sha256 of the exact staged source that was evaluated. */
@@ -185,6 +231,8 @@ export const ForgeJobSchema = z.object({
    * it is recorded for review and never blocks approval.
    */
   decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
+  /** Approval-time checks for this job, when it was approved by this build. */
+  approval_verification: ForgeApprovalVerificationSchema.nullable().optional(),
   version: z.number().int().min(1).nullable(),
 });
 export type ForgeJob = z.infer<typeof ForgeJobSchema>;
@@ -201,6 +249,8 @@ export const ForgeVersionSchema = z.object({
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
+  /** Approval-time checks recorded with this immutable version. */
+  approval_verification: ForgeApprovalVerificationSchema.optional(),
 });
 export type ForgeVersion = z.infer<typeof ForgeVersionSchema>;
 
@@ -268,6 +318,83 @@ export const ForgeApproveSchema = z
 
 export const ForgeRollbackSchema = z.object({});
 
+/**
+ * Durable-job recovery report.
+ *
+ * Startup recovery is observable rather than silent: unreadable job records,
+ * storage write failures, and jobs interrupted by a restart are reported to
+ * the user instead of being presented as an empty project.
+ */
+export const FORGE_RECOVERY_ISSUE_CODES = [
+  'job_unreadable',
+  'job_invalid',
+  'job_project_mismatch',
+  'job_duplicate',
+  'job_persist_failed',
+  'job_store_unreadable',
+  'job_interrupted',
+  'staged_missing',
+  'state_unreadable',
+] as const;
+export const ForgeRecoveryIssueCodeSchema = z.enum(FORGE_RECOVERY_ISSUE_CODES);
+export type ForgeRecoveryIssueCode = z.infer<typeof ForgeRecoveryIssueCodeSchema>;
+
+export const FORGE_RECOVERY_ISSUE_KINDS = ['startup', 'active'] as const;
+export const ForgeRecoveryIssueKindSchema = z.enum(FORGE_RECOVERY_ISSUE_KINDS);
+export type ForgeRecoveryIssueKind = z.infer<typeof ForgeRecoveryIssueKindSchema>;
+
+export const ForgeRecoveryIssueSchema = z.object({
+  /** Stable id used for acknowledgement; not a deletion tombstone. */
+  id: z.string().min(1).max(400),
+  kind: ForgeRecoveryIssueKindSchema,
+  code: ForgeRecoveryIssueCodeSchema,
+  /** Relative path inside the Forge workspace; never an absolute host path. */
+  file: z.string().max(300),
+  message: z.string().min(1).max(300),
+  project_id: ForgeProjectIdSchema,
+  job_id: z.uuid().nullable(),
+});
+export type ForgeRecoveryIssue = z.infer<typeof ForgeRecoveryIssueSchema>;
+
+export const ForgeRecoveryStartupSchema = z.object({
+  scanned_at: z.iso.datetime(),
+  /** Jobs present when recovery ran; excludes jobs created later. */
+  loaded_jobs: z.number().int().min(0),
+  interrupted_jobs: z.number().int().min(0),
+});
+export type ForgeRecoveryStartup = z.infer<typeof ForgeRecoveryStartupSchema>;
+
+export const ForgeRecoveryStorageSchema = z.object({
+  ok: z.boolean(),
+  error: z.string().max(300).nullable(),
+  /** Healthy, project-scoped, root/store-wide, or both failures. */
+  scope: z.enum(['healthy', 'project', 'store', 'both']),
+  /** Independent results from a health check or startup read. */
+  root_ok: z.boolean(),
+  root_error: z.string().max(300).nullable(),
+  project_ok: z.boolean().nullable(),
+  project_error: z.string().max(300).nullable(),
+});
+export type ForgeRecoveryStorage = z.infer<typeof ForgeRecoveryStorageSchema>;
+
+export const ForgeRecoveryReportSchema = z.object({
+  /** Immutable statistics from the startup recovery pass. */
+  startup: ForgeRecoveryStartupSchema,
+  /** Current in-memory job counts, for display only. */
+  current_jobs: z.number().int().min(0),
+  current_interrupted_jobs: z.number().int().min(0),
+  /** Unacknowledged historical incidents plus active storage failures. */
+  issues: z.array(ForgeRecoveryIssueSchema).max(50),
+  /** Historical incidents hidden by acknowledgement. */
+  acknowledged_issues: z.number().int().min(0),
+  storage: ForgeRecoveryStorageSchema,
+});
+export type ForgeRecoveryReport = z.infer<typeof ForgeRecoveryReportSchema>;
+
+export const ForgeRecoveryAckSchema = z.object({
+  issue_ids: z.array(z.string().min(1).max(400)).min(1).max(50),
+});
+
 export const ForgeJobListSchema = z.object({ items: z.array(ForgeJobSchema) });
 export const ForgeApprovalResultSchema = z.object({
   job: ForgeJobSchema,
@@ -277,6 +404,11 @@ export type ForgeApprovalResult = z.infer<typeof ForgeApprovalResultSchema>;
 export const ForgeProjectViewSchema = z.object({
   state: ForgeStateSchema,
   jobs: z.array(ForgeJobSchema),
+  /**
+   * Optional for old persisted fixtures and third-party clients; the server
+   * always sends it. A missing report must not be read as "all clear".
+   */
+  recovery: ForgeRecoveryReportSchema.optional(),
 });
 export type ForgeProjectView = z.infer<typeof ForgeProjectViewSchema>;
 

@@ -46,7 +46,8 @@
     "verify:research16": "tsx scripts/verify-phase16.ts",
     "evidence:ux": "tsx scripts/ux-evidence.ts",
     "verify:formsandbox": "tsx scripts/verify-form-sandbox.ts",
-    "verify:forge-workflow": "vitest run tests/integration/forge-api.test.ts"
+    "verify:forge-workflow": "vitest run tests/integration/forge-api.test.ts",
+    "verify:studio-workflow": "tsx scripts/verify-studio-workflow.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

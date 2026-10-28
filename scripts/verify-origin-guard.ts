@@ -11,13 +11,15 @@
  *
  * Everything runs on isolated ephemeral ports with the deterministic fake-Muse
  * fixture and the echo provider. No live model, no network, no keys.
+ *
+ * Uses Playwright-managed Chromium by default; FORGE_RUNTIME_BROWSER=chrome is the
+ * explicit system-Chrome opt-in. There is no automatic fallback.
  */
 import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildApp } from '../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../apps/server/src/config.js';
 import { ForgeJobManager } from '../apps/server/src/forge/runner.js';
@@ -25,6 +27,7 @@ import { ForgeWorkspace } from '../apps/server/src/forge/workspace.js';
 import { ProviderHealthTracker } from '../apps/server/src/provider-health.js';
 import { MemoryEngine, openDatabase } from '../packages/memory-engine/src/index.js';
 import { EchoProvider } from '../packages/muse-provider/src/index.js';
+import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 
 const FIXTURE = fileURLToPath(new URL('../tests/fixtures/fake-muse.mjs', import.meta.url));
 const PROJECT = 'origin-guard-demo';
@@ -142,7 +145,8 @@ async function main() {
     assert(secondApprove.statusCode === 200, 'v2 approval failed');
     assert((await currentVersion(app)) === 2, 'expected approved v2 before attack');
 
-    const browser = await chromium.launch({ channel: 'chrome', headless: true });
+    const { browser, selection } = await launchVerificationBrowser();
+    reportBrowserSelection(selection);
     try {
       // Cross-origin attempt, exactly the audit's step 3 shape.
       const attacker = await browser.newPage();

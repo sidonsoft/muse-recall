@@ -252,6 +252,9 @@ describe('advisory evaluation', () => {
     expect(finding?.evidence).toContain('timeLeft');
     expect(finding?.evidence.length).toBeLessThanOrEqual(240);
     expect(advisory.evaluated_memory_ids).toEqual([CHILD.id]);
+    expect(advisory.applicable_rules).toEqual(
+      expect.arrayContaining(['countdown-mechanics', 'flashing-effects', 'mistake-penalty']),
+    );
   });
 
   it('reports no finding for a compliant source', () => {
@@ -279,6 +282,7 @@ describe('advisory evaluation', () => {
     const entry = advisory.unverified.find((item) => item.decision_id === ROUNDED.id);
     expect(entry?.code).toBe('unsupported_decision');
     expect(entry?.reason).toMatch(/cannot be claimed/);
+    expect(advisory.applicable_rules).toEqual([]);
   });
 
   it('evaluates a corrected palette and resolves its superseded history', () => {
@@ -378,6 +382,7 @@ describe('advisory evaluation', () => {
     expect(advisory.engine_verdict).toBe('UNVERIFIED');
     expect(advisory.assessment).toBe('not_verified');
     expect(advisory.unverified.map((entry) => entry.code)).toContain('no_decisions');
+    expect(advisory.applicable_rules).toEqual([]);
   });
 
   it('records runtime status, the source hash and the injected clock', () => {

@@ -690,6 +690,16 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
     engineVerdict: result.verdict,
   });
 
+  // The UI can then show which supported checks actually applied, rather than
+  // a generic list that implies checks ran when no decision matched. Keep the
+  // engine's deterministic order and deduplicate across decisions.
+  const applicableRules: string[] = [];
+  for (const evaluation of result.evaluations) {
+    if (evaluation.rule !== NONE_APPLICABLE && !applicableRules.includes(evaluation.rule)) {
+      applicableRules.push(evaluation.rule);
+    }
+  }
+
   const candidate: DecisionGuardAdvisory = redactAdvisoryText(
     {
       mode: 'advisory',
@@ -700,6 +710,7 @@ export function evaluateDecisionGuardAdvisory(input: EvaluateAdvisoryInput): Dec
       findings,
       unverified: boundedUnverified,
       evaluated_memory_ids: resolution.evaluatedMemoryIds.slice(0, MAX_EVALUATED_DECISIONS),
+      applicable_rules: applicableRules.slice(0, 16),
       superseded_memory_ids: resolution.supersededMemoryIds.slice(0, MAX_EVALUATED_DECISIONS),
       source_sha256: sourceSha256,
       runtime_verified: input.runtimeVerified,

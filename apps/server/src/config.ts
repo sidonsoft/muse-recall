@@ -38,6 +38,8 @@ const EnvSchema = z.object({
   MUSE_FALLBACK_API_KEY: z.string().min(10).optional(),
   MUSE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
   MUSE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(900_000).default(120_000),
+  /** Optional Meta API key for chat; delivered to the CLI over stdin. */
+  META_API_KEY: z.string().min(10).optional(),
   TOOL_APPROVAL_POLICY: z.enum(['always', 'never']).default('always'),
   WORKSPACE_ROOT: z.string().min(1).default('./workspaces'),
   MEMORY_MAX_MEMORIES: z.coerce
@@ -226,6 +228,7 @@ export function loadConfig(
       museReasoningEffort: value.MUSE_REASONING_EFFORT as MuseReasoningEffort,
       museTimeoutMs: value.MUSE_TIMEOUT_MS,
       cwd,
+      ...(value.META_API_KEY ? { apiKey: value.META_API_KEY } : {}),
     },
     serviceVersion: SERVICE_VERSION,
   };

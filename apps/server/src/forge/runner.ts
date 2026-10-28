@@ -1,21 +1,29 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
   type DecisionGuardAdvisory,
+  type ForgeApprovalVerification,
   type ForgeJob,
   type ForgeJobKind,
   ForgeJobSchema,
   type ForgeJobStatus,
+  type ForgeRecoveryIssue,
+  type ForgeRecoveryReport,
+  type ForgeRecoveryStorage,
+  type ForgeRuntimeBrowserSelection,
   type ForgeState,
   type ForgeUsage,
   type ForgeValidation,
   type Memory,
+  type RetrievedMemory,
   redactSecrets,
 } from '@mml/shared';
+import { forgeChildEnv } from './child-env.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
+import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
@@ -46,7 +54,16 @@ export interface ForgeManagerOptions {
   fallbackApiKey?: string;
   fallbackModel?: string;
   /** Browser runtime check run before approval; injectable for tests. */
-  runtimeCheck?: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
+  runtimeCheck?: (html: string) => Promise<{
+    ok: boolean;
+    errors: string[];
+    browser?: string | null;
+    browser_selection?: ForgeRuntimeBrowserSelection;
+  }>;
+  /** Durable job persistence; injectable for failure tests. */
+  jobStore?: ForgeJobPersistence;
+  /** Grace period before a shutdown escalates from SIGTERM to SIGKILL. */
+  shutdownGraceMs?: number;
   now?: () => Date;
 }
 
@@ -83,8 +100,30 @@ export class ForgeJobManager {
   private readonly fallbackApiKey: string | undefined;
   private readonly fallbackModel: string | undefined;
   private readonly carry = new Map<string, ForgeUsage>();
-  private readonly runtimeCheck: (html: string) => Promise<{ ok: boolean; errors: string[] }>;
+  private readonly runtimeCheck: (html: string) => Promise<{
+    ok: boolean;
+    errors: string[];
+    browser?: string | null;
+    browser_selection?: ForgeRuntimeBrowserSelection;
+  }>;
   private readonly now: () => Date;
+  private readonly store: ForgeJobPersistence;
+  private readonly shutdownGraceMs: number;
+  private readonly recoveryStartedAt: string;
+  private readonly loadIssues: ForgeRecoveryIssue[] = [];
+  private readonly persistenceIssues = new Map<string, ForgeRecoveryIssue>();
+  private readonly acknowledgedIssueIds = new Set<string>();
+  private acknowledgementTail: Promise<void> = Promise.resolve();
+  private readonly startupLoadedByProject = new Map<string, number>();
+  private readonly startupInterruptedByProject = new Map<string, number>();
+  private readonly projectStorageErrors = new Map<string, string>();
+  private recoveryPromise: Promise<ForgeRecoveryReport> | null = null;
+  private rootStorageError: string | null = null;
+  private shuttingDown = false;
+  private shutdownPromise: Promise<void> | null = null;
+  private readonly starts = new Set<Promise<unknown>>();
+  private readonly completions = new Map<string, { promise: Promise<void>; resolve: () => void }>();
+  private readonly terminalJobs = new Set<string>();
   private readonly jobs = new Map<string, ForgeJob>();
   private readonly state = new Map<string, ExecuteState>();
   private readonly cancelled = new Set<string>();
@@ -105,6 +144,9 @@ export class ForgeJobManager {
     this.fallbackModel = options.fallbackModel ?? 'muse-spark-1.3-contributor';
     this.runtimeCheck = options.runtimeCheck ?? checkGameRuntime;
     this.now = options.now ?? (() => new Date());
+    this.store = options.jobStore ?? new ForgeJobStore(this.workspace);
+    this.shutdownGraceMs = options.shutdownGraceMs ?? 5_000;
+    this.recoveryStartedAt = this.now().toISOString();
   }
 
   list(projectId: string): ForgeJob[] {
@@ -117,8 +159,396 @@ export class ForgeJobManager {
     return this.jobs.get(jobId);
   }
 
+  /**
+   * Reload persisted jobs exactly once.
+   *
+   * Queued and running records are marked `interrupted`, never resumed: a
+   * model call may have consumed quota or written files before the restart,
+   * and silently re-running it would duplicate both. Succeeded-but-unapplied
+   * jobs keep their staged bytes so the review can continue.
+   */
+  recover(): Promise<ForgeRecoveryReport> {
+    if (!this.recoveryPromise) this.recoveryPromise = this.recoverOnce();
+    return this.recoveryPromise;
+  }
+
+  /** Wait for all queued durable writes. Used during shutdown. */
+  async flush(): Promise<void> {
+    await Promise.allSettled([...this.jobs.keys()].map((jobId) => this.store.flush(jobId)));
+  }
+
+  /**
+   * Stop accepting work, terminate owned children with bounded escalation, and
+   * wait for terminal state to be persisted. Repeat calls share one promise.
+   */
+  shutdown(): Promise<void> {
+    if (this.shutdownPromise) return this.shutdownPromise;
+    this.shuttingDown = true;
+    this.shutdownPromise = this.performShutdown();
+    return this.shutdownPromise;
+  }
+
+  private async performShutdown(): Promise<void> {
+    // An in-flight start either aborts at its next checkpoint or registers a
+    // completion before this returns. Waiting here closes that race without
+    // broad process matching.
+    await Promise.allSettled([...this.starts]);
+
+    // Mark every non-terminal job cancelled before signalling, so a child that
+    // exits from SIGTERM is recorded as cancelled rather than as a failure.
+    for (const job of this.jobs.values()) {
+      if (job.status === 'queued' || job.status === 'running') this.cancelled.add(job.id);
+    }
+    this.signalActive('SIGTERM');
+    if (!(await this.waitForCompletions(this.shutdownGraceMs))) {
+      this.signalActive('SIGKILL');
+      if (!(await this.waitForCompletions(this.shutdownGraceMs))) {
+        // A close callback that never ran must not leave an unobservable
+        // queued/running record behind. Terminalization is idempotent.
+        for (const job of [...this.jobs.values()]) {
+          if (job.status === 'queued' || job.status === 'running') {
+            await this.finish(job, {
+              status: 'cancelled',
+              error: 'Cancelled because the server shut down.',
+            });
+          }
+        }
+      }
+    }
+    await this.flush();
+  }
+
+  private signalActive(signal: NodeJS.Signals): void {
+    for (const execState of this.state.values()) {
+      const child = execState.child;
+      if (!child || child.exitCode !== null || child.signalCode !== null) continue;
+      try {
+        child.kill(signal);
+      } catch {
+        // The child may have exited between the check and the signal.
+      }
+    }
+  }
+
+  private async waitForCompletions(timeoutMs: number): Promise<boolean> {
+    const pending = [...this.completions.values()].map((entry) => entry.promise);
+    if (pending.length === 0) return true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(false), timeoutMs);
+    });
+    const result = await Promise.race([Promise.allSettled(pending).then(() => true), timeout]);
+    if (timer) clearTimeout(timer);
+    return result;
+  }
+
+  private assertAccepting(): void {
+    if (this.shuttingDown) {
+      throw new ForgeError(
+        'shutting_down',
+        'The server is shutting down; no new Forge job can start.',
+      );
+    }
+  }
+
+  private beginCompletion(jobId: string): void {
+    let resolve!: () => void;
+    const promise = new Promise<void>((done) => {
+      resolve = done;
+    });
+    this.completions.set(jobId, { promise, resolve });
+  }
+
+  private complete(jobId: string): void {
+    const completion = this.completions.get(jobId);
+    if (!completion) return;
+    this.completions.delete(jobId);
+    completion.resolve();
+  }
+
+  /** Observable recovery/storage state, scoped to one project when asked. */
+  recovery(projectId?: string): ForgeRecoveryReport {
+    const currentJobs = projectId ? this.list(projectId) : [...this.jobs.values()];
+    const startupLoaded = projectId
+      ? (this.startupLoadedByProject.get(projectId) ?? 0)
+      : [...this.startupLoadedByProject.values()].reduce((sum, count) => sum + count, 0);
+    const startupInterrupted = projectId
+      ? (this.startupInterruptedByProject.get(projectId) ?? 0)
+      : [...this.startupInterruptedByProject.values()].reduce((sum, count) => sum + count, 0);
+
+    const issues = [...this.loadIssues, ...this.persistenceIssues.values()]
+      .filter(
+        (issue) =>
+          projectId === undefined ||
+          issue.project_id === projectId ||
+          // A store-wide read failure has no project scope; it must not look
+          // like an empty project when a single project is opened.
+          (issue.code === 'job_store_unreadable' && issue.file === '.'),
+      )
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const visible = issues.filter(
+      (issue) => issue.kind === 'active' || !this.acknowledgedIssueIds.has(issue.id),
+    );
+    const persistenceFailure = projectId
+      ? [...this.persistenceIssues.values()].find((issue) => issue.project_id === projectId)
+      : undefined;
+    const projectFailure = projectId
+      ? (this.projectStorageErrors.get(projectId) ?? persistenceFailure?.message ?? null)
+      : null;
+    const rootFailure = this.rootStorageError;
+    const storageScope: ForgeRecoveryStorage['scope'] =
+      rootFailure && projectFailure
+        ? 'both'
+        : rootFailure
+          ? 'store'
+          : projectFailure
+            ? 'project'
+            : 'healthy';
+    const storageError = projectFailure ?? rootFailure ?? null;
+
+    return {
+      startup: {
+        scanned_at: this.recoveryStartedAt,
+        loaded_jobs: startupLoaded,
+        interrupted_jobs: startupInterrupted,
+      },
+      current_jobs: currentJobs.length,
+      current_interrupted_jobs: currentJobs.filter((job) => job.status === 'interrupted').length,
+      issues: visible.slice(-50),
+      acknowledged_issues: issues.length - visible.length,
+      storage: {
+        ok: storageError === null,
+        error: storageError,
+        scope: storageScope,
+        root_ok: rootFailure === null,
+        root_error: rootFailure,
+        project_ok: projectId ? projectFailure === null : null,
+        project_error: projectId ? projectFailure : null,
+      },
+    };
+  }
+
+  /** Acknowledge historical notices without deleting job or audit records. */
+  acknowledge(projectId: string, issueIds: string[]): Promise<ForgeRecoveryReport> {
+    // Serialize read/modify/write so concurrent acknowledgements cannot
+    // overwrite each other, and never publish an id before the write succeeds.
+    const operation = this.acknowledgementTail.then(
+      () => this.acknowledgeNow(projectId, issueIds),
+      () => this.acknowledgeNow(projectId, issueIds),
+    );
+    this.acknowledgementTail = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
+  private async acknowledgeNow(
+    projectId: string,
+    issueIds: string[],
+  ): Promise<ForgeRecoveryReport> {
+    const requested = new Set(issueIds);
+    const allowed = this.loadIssues.filter(
+      (issue) =>
+        issue.kind === 'startup' &&
+        (issue.project_id === projectId || issue.project_id === 'forge') &&
+        requested.has(issue.id),
+    );
+    if (allowed.length === 0) return this.recovery(projectId);
+
+    const proposed = new Set(this.acknowledgedIssueIds);
+    for (const issue of allowed) proposed.add(issue.id);
+    await this.saveAcknowledgements(proposed);
+    // Publish only after the durable write succeeded.
+    this.acknowledgedIssueIds.clear();
+    for (const id of proposed) this.acknowledgedIssueIds.add(id);
+    return this.recovery(projectId);
+  }
+
+  /** Explicit storage health check with independent root/project outcomes. */
+  async checkStorage(projectId: string): Promise<ForgeRecoveryReport> {
+    let result: Awaited<ReturnType<ForgeJobPersistence['healthCheck']>>;
+    try {
+      result = await this.store.healthCheck(projectId);
+    } catch (error) {
+      const message = this.boundedStorageMessage(error);
+      // Unknown check failure: do not claim either scope is healthy.
+      this.rootStorageError = message;
+      this.projectStorageErrors.set(projectId, message);
+      return this.recovery(projectId);
+    }
+
+    if (result.root.ok) {
+      this.rootStorageError = null;
+    } else {
+      this.rootStorageError = this.boundedStorageText(result.root.error);
+    }
+
+    if (result.project.ok) {
+      this.projectStorageErrors.delete(projectId);
+      // The project-directory check retests queued job writes for this project.
+      for (const [jobId, issue] of this.persistenceIssues) {
+        if (issue.project_id === projectId) this.persistenceIssues.delete(jobId);
+      }
+    } else {
+      this.projectStorageErrors.set(projectId, this.boundedStorageText(result.project.error));
+    }
+    return this.recovery(projectId);
+  }
+
+  private boundedStorageMessage(error: unknown): string {
+    return this.boundedStorageText(error instanceof Error ? error.message : String(error));
+  }
+
+  private boundedStorageText(value: string | null): string {
+    return this.sanitize(value ?? 'Storage health check failed.').slice(0, 300);
+  }
+
+  private async loadAcknowledgements(): Promise<void> {
+    try {
+      const raw = await readFile(this.acknowledgementPath(), 'utf8');
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return;
+      for (const value of parsed) {
+        if (typeof value === 'string' && value.length > 0 && value.length <= 400) {
+          this.acknowledgedIssueIds.add(value);
+        }
+      }
+    } catch {
+      // A missing or malformed acknowledgement file must not hide active failures.
+    }
+  }
+
+  private async saveAcknowledgements(ids: Set<string>): Promise<void> {
+    const root = this.workspace.getRoot();
+    await mkdir(root, { recursive: true });
+    const target = this.acknowledgementPath();
+    const temp = join(root, `.recovery-ack-${process.pid}-${randomUUID()}.tmp`);
+    try {
+      await writeFile(temp, `${JSON.stringify([...ids].sort(), null, 2)}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
+      await rename(temp, target);
+    } catch {
+      await rm(temp, { force: true }).catch(() => undefined);
+      throw new ForgeError(
+        'persistence_failed',
+        'The recovery acknowledgement could not be saved. Check workspace permissions and disk space.',
+      );
+    }
+  }
+
+  private acknowledgementPath(): string {
+    return join(this.workspace.getRoot(), '.recovery-ack.json');
+  }
+
+  private async recoverOnce(): Promise<ForgeRecoveryReport> {
+    await this.loadAcknowledgements();
+    let loaded: Awaited<ReturnType<ForgeJobPersistence['loadAll']>>;
+    try {
+      loaded = await this.store.loadAll();
+    } catch {
+      this.rootStorageError = 'The Forge job store could not be read.';
+      this.recordLoadIssue('job_store_unreadable', '.', this.rootStorageError, 'forge', null);
+      return this.recovery();
+    }
+    this.loadIssues.push(...loaded.issues);
+
+    for (const job of loaded.jobs) {
+      if (this.jobs.has(job.id)) continue;
+      this.startupLoadedByProject.set(
+        job.project_id,
+        (this.startupLoadedByProject.get(job.project_id) ?? 0) + 1,
+      );
+      let current = job;
+      if (job.status === 'queued' || job.status === 'running') {
+        current = ForgeJobSchema.parse({
+          ...job,
+          status: 'interrupted',
+          error:
+            'Interrupted by a server restart. The model run was not resumed; any staged files are kept for inspection.',
+          finished_at: this.now().toISOString(),
+        });
+        this.startupInterruptedByProject.set(
+          job.project_id,
+          (this.startupInterruptedByProject.get(job.project_id) ?? 0) + 1,
+        );
+        this.recordLoadIssue(
+          'job_interrupted',
+          `${job.project_id}/jobs/${job.id}.json`,
+          'A running job was interrupted by the server restart and was not resumed.',
+          job.project_id,
+          job.id,
+        );
+        await this.persistQuiet(current);
+      } else if (job.status === 'succeeded' && job.version === null) {
+        // A crash between promoting the version and writing the job record
+        // leaves the version in state.json with this job's id. Reconcile it
+        // instead of offering an already-applied change for review again.
+        const reconciled = await this.reconcilePromotion(job);
+        if (reconciled) current = reconciled;
+      }
+      if (current.status === 'succeeded' && current.version === null) {
+        const staged = await this.workspace
+          .stagedSnapshot(current.project_id, current.id)
+          .catch(() => null);
+        if (!staged) {
+          this.recordLoadIssue(
+            'staged_missing',
+            `${current.project_id}/staging/${current.id}`,
+            'The staged review file is missing, so this job cannot be approved.',
+            current.project_id,
+            current.id,
+          );
+        }
+      }
+      this.jobs.set(current.id, current);
+    }
+    return this.recovery();
+  }
+
+  private async reconcilePromotion(job: ForgeJob): Promise<ForgeJob | null> {
+    try {
+      const state = await this.workspace.state(job.project_id);
+      const applied = state.versions.find((entry) => entry.job_id === job.id);
+      if (!applied) return null;
+      const reconciled = ForgeJobSchema.parse({ ...job, version: applied.version });
+      await this.persistQuiet(reconciled);
+      return reconciled;
+    } catch {
+      this.recordLoadIssue(
+        'state_unreadable',
+        `${job.project_id}/state.json`,
+        'Promotion history could not be reconciled with the project state.',
+        job.project_id,
+        job.id,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Reject new work once shutdown begins. The wrapper tracks in-flight starts
+   * so `shutdown()` can wait for them to abort at their next checkpoint (or
+   * expose a child that it must terminate).
+   */
   async start(input: StartJobInput): Promise<ForgeJob> {
+    this.assertAccepting();
+    const start = this.startJob(input);
+    this.starts.add(start);
+    try {
+      return await start;
+    } finally {
+      this.starts.delete(start);
+    }
+  }
+
+  private async startJob(input: StartJobInput): Promise<ForgeJob> {
+    this.assertAccepting();
     await this.workspace.ensureProject(input.projectId);
+    this.assertAccepting();
     const active = this.list(input.projectId).filter(
       (job) => job.status === 'queued' || job.status === 'running',
     ).length;
@@ -127,68 +557,90 @@ export class ForgeJobManager {
     }
     const id = randomUUID();
     const staging = await this.workspace.createStaging(input.projectId, id);
+    if (this.shuttingDown) {
+      await this.workspace.reject(input.projectId, id).catch(() => undefined);
+      this.assertAccepting();
+    }
 
     // A modification must start from the approved source. An empty workspace
     // makes the model regenerate the application instead of editing it.
     let baseVersion: number | null = null;
-    if (input.kind === 'modify') {
-      const state = await this.workspace.state(input.projectId);
-      if (state.current_version === null) {
-        throw new ForgeError(
-          'no_current_version',
-          'Generate and approve an application before requesting a modification.',
-        );
+    let memories: RetrievedMemory[] = [];
+    let job: ForgeJob;
+    try {
+      if (input.kind === 'modify') {
+        const state = await this.workspace.state(input.projectId);
+        if (state.current_version === null) {
+          throw new ForgeError(
+            'no_current_version',
+            'Generate and approve an application before requesting a modification.',
+          );
+        }
+        const current = await this.workspace.currentHtml(input.projectId);
+        if (current === null) {
+          throw new ForgeError('no_current_version', 'The approved application could not be read.');
+        }
+        baseVersion = state.current_version;
+        await writeFile(join(staging, 'index.html'), current, 'utf8');
       }
-      const current = await this.workspace.currentHtml(input.projectId);
-      if (current === null) {
-        throw new ForgeError('no_current_version', 'The approved application could not be read.');
-      }
-      baseVersion = state.current_version;
-      await writeFile(join(staging, 'index.html'), current, 'utf8');
+
+      const query = buildRetrievalQuery({
+        projectId: input.projectId,
+        kind: input.kind,
+        prompt: input.prompt,
+        request: input.request,
+      });
+      const retrieval = this.engine.retrieve(
+        {
+          project_id: input.projectId,
+          query,
+          budget: { max_memories: 6, max_characters: 3_000 },
+        },
+        { now: this.now() },
+      );
+      const memoryIds = retrieval.results.map((result) => result.memory.id);
+      memories = retrieval.results;
+
+      job = ForgeJobSchema.parse({
+        id,
+        project_id: input.projectId,
+        kind: input.kind,
+        status: 'queued',
+        prompt: input.prompt,
+        request: input.request ?? null,
+        summary: null,
+        error: null,
+        created_at: this.now().toISOString(),
+        started_at: null,
+        finished_at: null,
+        logs: [],
+        usage: null,
+        memory_ids: memoryIds,
+        base_version: baseVersion,
+        validation: null,
+        version: null,
+      });
+    } catch (error) {
+      // No execution began; do not leave staging behind for a job that never
+      // existed. Completed/recovered staging is never removed by this path.
+      await this.workspace.reject(input.projectId, id).catch(() => undefined);
+      throw error;
     }
 
-    const query = buildRetrievalQuery({
-      projectId: input.projectId,
-      kind: input.kind,
-      prompt: input.prompt,
-      request: input.request,
-    });
-    const retrieval = this.engine.retrieve(
-      {
-        project_id: input.projectId,
-        query,
-        budget: { max_memories: 6, max_characters: 3_000 },
-      },
-      { now: this.now() },
-    );
-    const memoryIds = retrieval.results.map((result) => result.memory.id);
-    const memoryBlock =
-      retrieval.results.length > 0
-        ? retrieval.results.map((result) => `- ${result.injected_content}`).join('\n')
-        : '';
-
-    const job = ForgeJobSchema.parse({
-      id,
-      project_id: input.projectId,
-      kind: input.kind,
-      status: 'queued',
-      prompt: input.prompt,
-      request: input.request ?? null,
-      summary: null,
-      error: null,
-      created_at: this.now().toISOString(),
-      started_at: null,
-      finished_at: null,
-      logs: [],
-      usage: null,
-      memory_ids: memoryIds,
-      base_version: baseVersion,
-      validation: null,
-      version: null,
-    });
-
     this.jobs.set(id, job);
-    await this.persist(job);
+    try {
+      await this.persist(job);
+    } catch {
+      // A job that cannot be stored durably must not start a paid model run:
+      // after a crash there would be no record of what was executed.
+      this.jobs.delete(id);
+      this.persistenceIssues.delete(id);
+      await this.workspace.reject(input.projectId, id).catch(() => undefined);
+      throw new ForgeError(
+        'persistence_failed',
+        'The job could not be stored durably, so it was not started. Check workspace permissions and disk space.',
+      );
+    }
     this.state.set(id, {
       child: null,
       timedOut: false,
@@ -196,18 +648,26 @@ export class ForgeJobManager {
       terminalText: null,
       usage: { calls: 0, input_tokens: 0, output_tokens: 0, runtime_ms: 0 },
     });
+    // Register completion before any post-persist I/O so shutdown can always
+    // observe and terminalize this job, even if screenshot writing fails.
+    this.beginCompletion(id);
+    try {
+      const images: string[] = [];
+      if (input.screenshot && input.kind === 'modify') {
+        const imagePath = join(staging, 'preview.png');
+        await writeFile(imagePath, input.screenshot);
+        images.push(imagePath);
+      }
 
-    const images: string[] = [];
-    if (input.screenshot && input.kind === 'modify') {
-      const imagePath = join(staging, 'preview.png');
-      await writeFile(imagePath, input.screenshot);
-      images.push(imagePath);
+      void this.execute(job, staging, memories, images).catch((error: unknown) => {
+        void this.finish(job, { status: 'failed', error: (error as Error).message });
+      });
+      return job;
+    } catch (error) {
+      await this.finish(job, { status: 'failed', error: (error as Error).message });
+      await this.workspace.reject(input.projectId, id).catch(() => undefined);
+      throw error;
     }
-
-    void this.execute(job, staging, memoryBlock, images).catch((error: unknown) => {
-      void this.finish(job, { status: 'failed', error: (error as Error).message });
-    });
-    return job;
   }
 
   cancel(jobId: string): ForgeJob | undefined {
@@ -260,29 +720,60 @@ export class ForgeJobManager {
         ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged application is missing.'] };
       if (!runtime.ok) {
+        const checkedAt = this.now().toISOString();
+        const runtimeDetails = runtime.errors
+          .slice(0, 20)
+          .map((error) => this.sanitize(error).slice(0, 300));
         const failed = ForgeJobSchema.parse({
           ...current,
           status: 'failed',
           error: 'Runtime verification failed.',
-          validation: { ok: false, issues: runtime.errors },
-          finished_at: this.now().toISOString(),
+          validation: { ok: false, issues: runtimeDetails },
+          approval_verification: staged
+            ? {
+                syntax_structure: current.validation,
+                runtime: {
+                  ok: false,
+                  checked_at: checkedAt,
+                  artifact_sha256: staged.sha256,
+                  browser: runtime.browser ?? null,
+                  ...(runtime.browser_selection
+                    ? { browser_selection: runtime.browser_selection }
+                    : {}),
+                  errors: runtimeDetails,
+                },
+                recorded_at: checkedAt,
+              }
+            : null,
+          finished_at: checkedAt,
         });
         this.jobs.set(current.id, failed);
-        await this.persist(failed);
+        try {
+          await this.persist(failed);
+        } catch {
+          // The runtime failure is still the primary result. Keep its bounded
+          // diagnostics in the response even though the failed record could not
+          // be stored; do not expose the raw filesystem error.
+          throw new ForgeError(
+            'persistence_failed',
+            'Runtime verification failed and the failure could not be recorded durably.',
+            [...runtimeDetails, 'The failed job record could not be saved.'],
+          );
+        }
         throw new ForgeError(
           'runtime_failed',
           'The staged application failed runtime verification.',
-          runtime.errors,
+          runtimeDetails,
         );
       }
 
       // Decision Guard (Phase 12C) runs only after the blocking runtime check
-      // passed. It records a fresh advisory snapshot for the reviewed source;
-      // it can neither change `validation` nor stop the promotion below.
+      // passed. It is advisory metadata: do not add a separate durable write
+      // that can block approval. The approved lifecycle record below carries
+      // the snapshot atomically with the promotion result.
       const decisionGuard = staged ? this.advisory(current, staged.html, true) : null;
       if (decisionGuard) {
         current.decision_guard = decisionGuard;
-        await this.persist(current);
       }
 
       // Capturing a decision is an explicit user act. The model's terminal
@@ -295,21 +786,52 @@ export class ForgeJobManager {
         );
       }
 
-      const summary = current.summary ?? current.request ?? current.prompt;
+      const summary = versionSummary(current);
+      const checkedAt = this.now().toISOString();
+      const approvalVerification: ForgeApprovalVerification = {
+        syntax_structure: current.validation,
+        runtime: staged
+          ? {
+              ok: runtime.ok,
+              checked_at: checkedAt,
+              artifact_sha256: staged.sha256,
+              browser: runtime.browser ?? null,
+              ...(runtime.browser_selection
+                ? { browser_selection: runtime.browser_selection }
+                : {}),
+              errors: runtime.errors
+                .slice(0, 20)
+                .map((error) => this.sanitize(error).slice(0, 300)),
+            }
+          : null,
+        recorded_at: checkedAt,
+      };
       const promoted = await this.workspace.promote(current.project_id, current.id, summary, {
         baseVersion: current.base_version,
         jobId: current.id,
         ...(staged ? { expectedSha256: staged.sha256 } : {}),
+        verification: approvalVerification,
       });
 
       const approved = ForgeJobSchema.parse({
         ...current,
         status: 'succeeded',
         version: promoted.version,
+        approval_verification: approvalVerification,
         finished_at: this.now().toISOString(),
       });
       this.jobs.set(current.id, approved);
-      await this.persist(approved);
+      try {
+        await this.persist(approved);
+      } catch {
+        // The version is already promoted and immutable. Report the partial
+        // write instead of implying the approval did not happen; startup
+        // recovery reconciles the job record from state.json.
+        throw new ForgeError(
+          'persistence_failed',
+          `v${promoted.version} is now the approved version, but its job record could not be updated. Reopen the project to reconcile it.`,
+        );
+      }
 
       if (options.captureMemory) {
         this.engine.create({
@@ -366,7 +888,14 @@ export class ForgeJobManager {
         finished_at: this.now().toISOString(),
       });
       this.jobs.set(current.id, rejected);
-      await this.persist(rejected);
+      try {
+        await this.persist(rejected);
+      } catch {
+        throw new ForgeError(
+          'persistence_failed',
+          'The staged files were removed, but the rejection could not be recorded durably. Reopen the project before relying on this state.',
+        );
+      }
       return rejected;
     });
   }
@@ -380,27 +909,52 @@ export class ForgeJobManager {
   private async execute(
     job: ForgeJob,
     staging: string,
-    memoryBlock: string,
+    memories: RetrievedMemory[],
     images: string[],
     attempt: 'primary' | 'fallback' = 'primary',
   ): Promise<void> {
     const execState = this.state.get(job.id);
-    if (!execState) return;
+    if (!execState || this.terminalJobs.has(job.id)) return;
+    if (this.shuttingDown || this.cancelled.has(job.id)) {
+      await this.finish(job, {
+        status: 'cancelled',
+        error: this.shuttingDown ? 'Cancelled because the server shut down.' : null,
+      });
+      return;
+    }
 
     const prompt = buildForgePrompt({
       kind: job.kind,
       prompt: job.prompt,
       request: job.request,
-      memoryBlock,
+      memories,
       hasScreenshot: images.length > 0,
     });
     this.update(job, { prompt_sha256: createHash('sha256').update(prompt).digest('hex') });
     const promptPath = join(staging, 'prompt.txt');
     await writeFile(promptPath, prompt, 'utf8');
+    // Shutdown may begin while the prompt is being written; do not spawn a
+    // child after the manager has promised to stop.
+    if (this.shuttingDown || this.cancelled.has(job.id)) {
+      await this.finish(job, {
+        status: 'cancelled',
+        error: this.shuttingDown ? 'Cancelled because the server shut down.' : null,
+      });
+      return;
+    }
 
     const args = [
       'exec',
       '--json',
+      // Keep the child out of the developer's personal context and the
+      // network, and stop it from persisting a second transcript or blocking
+      // on a human. Forge needs file-write tools, so it cannot use the
+      // provider's `--preset empty`; these flags are the common subset.
+      '--no-session-log',
+      '--no-foreign-personal-context',
+      '--disable-web-tools',
+      '--disable-reminders',
+      '--disable-request-user-input',
       '--workspace',
       staging,
       '--prompt-file',
@@ -418,8 +972,13 @@ export class ForgeJobManager {
     const startedAt = Date.now();
 
     const child = spawn(this.museBin, args, {
+      // Running from the staging directory makes relative paths in the child
+      // default to the job's workspace. It is a convenience, not a sandbox:
+      // the process still has the server user's OS permissions.
+      cwd: staging,
+      env: forgeChildEnv(this.env),
       stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
-      ...(this.env ? { env: { ...process.env, ...this.env } } : {}),
+      windowsHide: true,
     });
     if (apiKey && child.stdin) {
       child.stdin.write(apiKey);
@@ -468,7 +1027,11 @@ export class ForgeJobManager {
 
       void (async () => {
         if (cancelled) {
-          await this.finish(job, { ...base, status: 'cancelled' });
+          await this.finish(job, {
+            ...base,
+            status: 'cancelled',
+            error: this.shuttingDown ? 'Cancelled because the server shut down.' : null,
+          });
           return;
         }
         if (execState.timedOut) {
@@ -494,7 +1057,7 @@ export class ForgeJobManager {
             `Subscription quota exhausted; retrying with ${this.fallbackModel ?? 'the API key'}.`,
           );
           await this.resetStaging(job, staging);
-          await this.execute(job, staging, memoryBlock, images, 'fallback');
+          await this.execute(job, staging, memories, images, 'fallback');
           return;
         }
         if (code !== 0 || execState.terminal === 'failed') {
@@ -603,11 +1166,14 @@ export class ForgeJobManager {
     this.update(job, { logs });
   }
 
-  private update(job: ForgeJob, patch: Partial<ForgeJob>): void {
+  private update(job: ForgeJob, patch: Partial<ForgeJob>, required = false): void {
     const next = { ...job, ...patch };
     this.jobs.set(job.id, next);
     Object.assign(job, next);
-    void this.persist(next);
+    // Logs and usage are intermediate: the store coalesces superseded
+    // snapshots. Terminal transitions pass `required` and are awaited by
+    // `finish`/approval/rejection.
+    void this.persist(next, required).catch(() => undefined);
   }
 
   private async resetStaging(job: ForgeJob, staging: string): Promise<void> {
@@ -655,30 +1221,128 @@ export class ForgeJobManager {
       finished_at?: string;
     },
   ): Promise<void> {
+    if (this.terminalJobs.has(job.id)) return;
+    this.terminalJobs.add(job.id);
     this.cancelled.delete(job.id);
     const carried = this.carry.get(job.id);
     this.carry.delete(job.id);
-    this.update(job, {
-      status: patch.status,
-      error: patch.error ? this.sanitize(patch.error) : null,
-      summary: patch.summary ? this.sanitize(patch.summary) : job.summary,
-      validation: patch.validation ?? job.validation,
-      decision_guard: patch.decision_guard ?? job.decision_guard,
-      usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
-      finished_at: patch.finished_at ?? this.now().toISOString(),
-    });
+    this.update(
+      job,
+      {
+        status: patch.status,
+        error: patch.error ? this.sanitize(patch.error) : null,
+        summary: patch.summary ? this.sanitize(patch.summary) : job.summary,
+        validation: patch.validation ?? job.validation,
+        decision_guard: patch.decision_guard ?? job.decision_guard,
+        usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
+        finished_at: patch.finished_at ?? this.now().toISOString(),
+      },
+      true,
+    );
     this.state.delete(job.id);
+    // Make the terminal record observable before callers see completion. A
+    // failed write is already recorded by `persist` and shown in recovery().
+    await this.store.flush(job.id).catch(() => undefined);
+    this.complete(job.id);
   }
 
-  private async persist(job: ForgeJob): Promise<void> {
+  private async persist(job: ForgeJob, required = true): Promise<void> {
     try {
-      const dir = join(this.workspace.projectDir(job.project_id), 'jobs');
-      await mkdir(dir, { recursive: true });
-      await writeFile(join(dir, `${job.id}.json`), `${JSON.stringify(job, null, 2)}\n`, 'utf8');
-    } catch {
-      // Persistence is best-effort; in-memory state remains authoritative.
+      await this.store.save(job, { required });
+      this.persistenceIssues.delete(job.id);
+    } catch (error) {
+      this.recordPersistenceIssue(job, error);
+      throw error;
     }
   }
+
+  private async persistQuiet(job: ForgeJob): Promise<void> {
+    await this.persist(job).catch(() => undefined);
+  }
+
+  private recordPersistenceIssue(job: ForgeJob, error: unknown): void {
+    const message = this.persistenceMessage(error);
+    this.persistenceIssues.set(job.id, {
+      id: this.issueId(
+        'job_persist_failed',
+        job.project_id,
+        job.id,
+        `${job.project_id}/jobs/${job.id}.json`,
+      ),
+      kind: 'active',
+      code: 'job_persist_failed',
+      file: `${job.project_id}/jobs/${job.id}.json`,
+      message,
+      project_id: job.project_id,
+      job_id: job.id,
+    });
+  }
+
+  private persistenceMessage(error: unknown): string {
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code?: string }).code)
+        : 'unknown';
+    return `A durable job write failed${code === 'unknown' ? '' : ` (${code})`}.`;
+  }
+
+  private recordLoadIssue(
+    code: ForgeRecoveryIssue['code'],
+    file: string,
+    message: string,
+    projectId: string,
+    jobId: string | null,
+  ): void {
+    const relative = file.slice(0, 300);
+    this.loadIssues.push({
+      id: this.issueId(code, projectId, jobId, relative),
+      kind: 'startup',
+      code,
+      file: relative,
+      message: message.slice(0, 300),
+      project_id: projectId,
+      job_id: jobId,
+    });
+  }
+
+  private issueId(
+    code: ForgeRecoveryIssue['code'],
+    projectId: string,
+    jobId: string | null,
+    file: string,
+  ): string {
+    return `${code}:${projectId}:${jobId ?? ''}:${file}`.slice(0, 400);
+  }
+}
+
+const GENERIC_VERSION_SUMMARIES = new Set([
+  'application updated',
+  'application updated.',
+  'game updated',
+  'game updated.',
+  'app generated',
+  'app modified',
+  'generated',
+  'modified',
+  'copied',
+  'completed',
+  'done',
+]);
+
+/**
+ * Prefer a meaningful recorded summary. Model terminal text often says only
+ * "Application updated."; fall back to the user's bounded request instead of
+ * inventing a description or promoting model prose into memory.
+ */
+function versionSummary(job: ForgeJob): string {
+  const clean = (value: string | null | undefined): string =>
+    (value ?? '').trim().replace(/\s+/g, ' ');
+  const candidate = clean(job.summary);
+  if (candidate.length > 0 && !GENERIC_VERSION_SUMMARIES.has(candidate.toLowerCase())) {
+    return candidate.slice(0, 500);
+  }
+  const request = clean(job.request ?? job.prompt);
+  return (request.length > 0 ? request : 'First approved version').slice(0, 500);
 }
 
 function quotaFailure(job: ForgeJob): boolean {

@@ -1,4 +1,4 @@
-import type { ForgeDiff, ForgeJob, ForgeState } from '@mml/shared';
+import type { ForgeApprovalVerification, ForgeDiff, ForgeJob, ForgeState } from '@mml/shared';
 import { useState } from 'react';
 import { formatBytes, formatDateTime, shortSha } from '../../lib/format.ts';
 import { DecisionGuardPanel } from '../forge/DecisionGuardAdvisory.tsx';
@@ -16,6 +16,7 @@ export function ReviewPanel({
   state,
   diff,
   job,
+  projectDecisionCount,
   busy,
   previewError,
   captureMemory,
@@ -30,6 +31,8 @@ export function ReviewPanel({
   state: ForgeState | null;
   diff: ForgeDiff | null;
   job: ForgeJob | null;
+  /** null while project memory is loading; 0 means no stored decisions. */
+  projectDecisionCount: number | null;
   busy: boolean;
   previewError: string | null;
   captureMemory: boolean;
@@ -57,7 +60,7 @@ export function ReviewPanel({
   const blockedReason = previewError
     ? 'Approve is disabled while the preview reports a runtime error.'
     : validation && !validation.ok
-      ? 'Approve is disabled because validation failed.'
+      ? 'Approve is disabled because the syntax/structure checks failed.'
       : captureMemory && decision.trim().length === 0
         ? 'Write the decision you want to remember before approving.'
         : null;
@@ -92,10 +95,14 @@ export function ReviewPanel({
                   }`}
                 >
                   <Icon name={validation?.ok ? 'check' : 'alert'} className="size-3" />
-                  {validation?.ok ? 'Validation passed' : 'Validation failed'}
+                  {validation?.ok ? 'Syntax/structure passed' : 'Syntax/structure failed'}
                 </span>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted">{diff.summary}</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-muted">
+                These are automated syntax, structure and load checks. They do not prove gameplay or
+                design correctness; reading the diff and playing the preview is still your review.
+              </p>
 
               {change.large ? (
                 <div className="mt-2 rounded-md border border-warn/30 bg-warn/5 px-2.5 py-2">
@@ -123,7 +130,10 @@ export function ReviewPanel({
               </button>
             </div>
 
-            <DecisionGuardPanel advisory={diff.decision_guard} />
+            <DecisionGuardPanel
+              advisory={diff.decision_guard}
+              projectDecisionCount={projectDecisionCount}
+            />
             <Provenance job={job} />
             <VersionHistory state={state} busy={busy} onRollback={onRollback} />
           </div>
@@ -195,24 +205,11 @@ export function ReviewPanel({
             <p className="mx-auto mt-1 max-w-[250px] text-[11px] leading-relaxed text-muted">
               {currentVersion > 0
                 ? `v${currentVersion} is the approved application. A generated change waits here for your decision.`
-                : 'Ask Muse Spark for a first version. It will wait here until you approve it.'}
+                : 'Ask Studio generation for a first version. It will wait here until you approve it.'}
             </p>
           </div>
 
-          <div className="rounded-lg border border-line bg-surface-2/40 p-3">
-            <div className="flex items-center gap-1.5">
-              <Icon name="alert" className="size-3.5 text-warn" />
-              <p className="text-[11.5px] font-medium text-ink">Decision Guard</p>
-              <span className="chip ml-auto">advisory</span>
-            </div>
-            <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">
-              Every staged change is checked against remembered decisions. Findings appear here,
-              with their evidence, and never block approval.
-            </p>
-            <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-muted">
-              countdown · flashing · penalties · superseded palette · colour-only cues
-            </p>
-          </div>
+          <DecisionGuardPanel advisory={null} projectDecisionCount={projectDecisionCount} />
 
           {job ? <Provenance job={job} /> : null}
           <VersionHistory state={state} busy={busy} onRollback={onRollback} />
@@ -244,7 +241,7 @@ function Provenance({ job }: { job: ForgeJob | null }) {
         <Row label="base" value={job.base_version ? `v${job.base_version}` : 'none'} />
         <Row label="memories" value={`${job.memory_ids.length} supplied`} />
         <Row
-          label="validation"
+          label="syntax/structure"
           value={job.validation ? (job.validation.ok ? 'passed' : 'failed') : 'pending'}
         />
         {job.usage ? (
@@ -403,11 +400,19 @@ export function VersionHistory({
                   v{version.version}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] leading-snug text-ink-dim">{version.summary}</p>
+                  <p className="text-[11px] leading-snug text-ink-dim">
+                    {displayVersionSummary(version.summary)}
+                  </p>
                   <p className="mt-0.5 font-mono text-[10px] text-muted">
                     {formatDateTime(version.created_at)}
                     {version.sha256 ? ` · ${shortSha(version.sha256, 7)}` : ''}
                   </p>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer select-none text-[10px] text-muted hover:text-ink-dim">
+                      Approval checks
+                    </summary>
+                    <ApprovalChecks verification={version.approval_verification} />
+                  </details>
                 </div>
                 {isCurrent ? (
                   <span className="chip border-accent/30 text-accent">current</span>
@@ -422,6 +427,84 @@ export function VersionHistory({
           Undo restores v{target.version} (the recorded parent) and keeps the list for audit.
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Historical versions may contain generic model text such as
+ * "Application updated." Display a neutral fallback without rewriting the
+ * immutable version record.
+ */
+function displayVersionSummary(summary: string): string {
+  const normalized = summary.trim();
+  if (
+    normalized.length === 0 ||
+    /^(?:application|game|app) updated\.?$/i.test(normalized) ||
+    /^(?:app )?(?:generated|modified)\.?$/i.test(normalized) ||
+    /^copied\.?$/i.test(normalized)
+  ) {
+    return 'Version recorded without a descriptive summary.';
+  }
+  return summary;
+}
+
+/**
+ * Approval-time checks recorded with a version.
+ *
+ * Missing fields are rendered as "not recorded" — never as passed — so an old
+ * version cannot inherit a verification claim it never had.
+ */
+function ApprovalChecks({ verification }: { verification: ForgeApprovalVerification | undefined }) {
+  const runtime = verification?.runtime;
+  const syntax = verification?.syntax_structure;
+  const selection = runtime?.browser_selection;
+  const rows: Array<[string, string]> = [
+    ['Syntax/structure', syntax ? (syntax.ok ? 'passed' : 'failed') : 'not recorded'],
+    ['Runtime load check', runtime ? (runtime.ok ? 'passed' : 'failed') : 'not recorded'],
+    [
+      'Checked artifact',
+      runtime?.artifact_sha256 ? `sha ${shortSha(runtime.artifact_sha256, 12)}` : 'not recorded',
+    ],
+    ['Checked at', runtime ? formatDateTime(runtime.checked_at) : 'not recorded'],
+    ['Browser', runtime?.browser ?? 'not recorded'],
+    ['Browser policy', selection?.policy ?? 'not recorded'],
+    ['Browser attempted', selection?.attempted ?? 'not recorded'],
+    ['Browser selected', selection ? (selection.selected ?? 'none') : 'not recorded'],
+    ['Launch failure', selection ? (selection.failure ?? 'none') : 'not recorded'],
+  ];
+
+  return (
+    <div
+      className="mt-1 rounded border border-line bg-surface-2/50 px-2 py-1.5"
+      data-testid="approval-checks"
+    >
+      {verification ? null : (
+        <p className="mb-1 text-[10px] text-warn">
+          Approval verification was not recorded for this version.
+        </p>
+      )}
+      <dl className="space-y-0.5 text-[10px]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-baseline justify-between gap-3" data-check={label}>
+            <dt className="text-muted">{label}</dt>
+            <dd className="truncate text-right font-mono text-ink-dim" data-check-value={label}>
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {runtime && runtime.errors.length > 0 ? (
+        <ul className="mt-1 list-inside list-disc space-y-0.5 text-[10px] text-err">
+          {runtime.errors.map((error, index) => (
+            <li key={`${String(index)}:${error}`}>{error}</li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="mt-1 text-[9.5px] leading-relaxed text-muted">
+        This is a load-time browser check only. Interactions, gameplay and design are not
+        automatically verified; human review remains separate.
+      </p>
     </div>
   );
 }
@@ -453,12 +536,19 @@ export function ArtifactFooter({
         |
       </span>
       <span className="font-mono">sha {shortSha(artifact?.sha256, 10)}</span>
-      <span className="ml-auto inline-flex items-center gap-1.5">
+      <span
+        className="ml-auto inline-flex items-center gap-1.5"
+        title="Configured HTML Studio generation identity. Execution identity is not independently recorded."
+      >
         <Icon name="spark" className="size-3 text-accent" />
         <span className={offline ? 'text-warn' : 'text-ink-dim'}>
-          {offline ? 'Echo (offline test provider)' : 'Muse Spark'}
+          {offline ? 'Studio generation · echo (offline)' : 'Studio generation'}
         </span>
-        {model ? <span className="font-mono">{model}</span> : null}
+        {model ? (
+          <span className="font-mono">{model} (configured)</span>
+        ) : (
+          <span>CLI default (configured)</span>
+        )}
       </span>
     </div>
   );

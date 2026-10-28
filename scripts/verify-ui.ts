@@ -22,10 +22,13 @@
  * `--screenshot <path>` only when you deliberately want to write elsewhere;
  * the historical evidence under `docs/assets/` must not be overwritten by a
  * routine test run.
+ *
+ * Uses Playwright-managed Chromium by default. Set FORGE_RUNTIME_BROWSER=chrome
+ * only for an explicit system-Chrome run; there is no automatic fallback.
  */
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { chromium } from 'playwright-core';
+import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 
 const url = process.env.VERIFY_URL ?? 'http://127.0.0.1:5173';
 const screenshotFlag = process.argv.indexOf('--screenshot');
@@ -45,7 +48,8 @@ function screenshotName(suffix: string): string {
   return screenshotPath.replace(/(\.png)$/, `-${suffix}.png`);
 }
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const { browser, selection } = await launchVerificationBrowser();
+reportBrowserSelection(selection);
 const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
 const page = await context.newPage();
 

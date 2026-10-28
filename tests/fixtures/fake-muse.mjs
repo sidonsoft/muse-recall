@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const value = (flag) => {
   const index = args.indexOf(flag);
   return index >= 0 ? args[index + 1] : null;
 };
+const FIXTURES_DIR = dirname(fileURLToPath(import.meta.url));
 const workspace = value('--workspace');
 const promptPath = value('--prompt-file');
 const prompt = promptPath ? readFileSync(promptPath, 'utf8') : '';
@@ -122,7 +124,7 @@ if (mode === 'sleep') {
   // Deterministic non-game application for the Studio browser verification.
   // No network asset, so approval's real Chrome runtime check can run offline.
   const file = join(workspace, 'index.html');
-  const source = process.env.FAKE_MUSE_APP ?? 'tests/fixtures/general-app-form.html';
+  const source = process.env.FAKE_MUSE_APP ?? join(FIXTURES_DIR, 'general-app-form.html');
   if (prompt.includes('current approved application')) {
     const existing = readFileSync(file, 'utf8');
     const updated = existing.replace(
@@ -143,6 +145,26 @@ if (mode === 'sleep') {
     usage(2);
     done('app generated');
   }
+} else if (mode === 'ignore-term' || mode === 'ignore-term-fallback') {
+  // Shutdown regression: stay alive after SIGTERM so the manager must
+  // escalate to SIGKILL. The pid file is written inside the staging workspace.
+  if (mode === 'ignore-term-fallback' && !usesApiKey) quota();
+  writeFileSync(join(workspace, 'child.pid'), String(process.pid));
+  process.on('SIGTERM', () => {
+    // Deliberately held until SIGKILL.
+  });
+  setInterval(() => {}, 1_000);
+  usage(1);
+} else if (mode === 'env-probe') {
+  // Test-only: record exactly what the app handed the child. Nothing here is
+  // interpreted as a command; the probe is written inside the staging works.
+  writeFileSync(
+    join(workspace, 'probe.json'),
+    JSON.stringify({ cwd: process.cwd(), env: process.env, args }, null, 2),
+  );
+  writeFileSync(join(workspace, 'index.html'), html('env-probe'));
+  usage(1);
+  done('probed');
 } else if (mode === 'fail') {
   process.stderr.write('fake failure\n');
   process.exit(1);

@@ -25,6 +25,11 @@ export function TopBar({
   const providerId = meta?.provider.id ?? null;
   const liveMuse = providerId === 'muse-cli';
   const model = meta?.provider.configured_model ?? null;
+  const chatLabel = liveMuse
+    ? 'Chat · Muse CLI'
+    : providerId
+      ? `Chat · ${providerId} (offline)`
+      : 'Chat · no provider';
   const healthTone =
     health?.status === 'ok'
       ? 'ok'
@@ -119,11 +124,12 @@ export function TopBar({
 
         <span className="hidden h-4 w-px bg-line sm:block" aria-hidden="true" />
 
-        <span className="inline-flex items-center gap-1.5 text-[11px]">
+        <span
+          className="inline-flex items-center gap-1.5 text-[11px]"
+          title="General conversation provider. HTML Studio generation is configured separately."
+        >
           <Icon name="spark" className="size-3.5 text-accent" />
-          <span className={liveMuse ? 'text-ink-dim' : 'text-warn'}>
-            {liveMuse ? 'Muse Spark' : providerId ? `${providerId} (offline)` : 'No provider'}
-          </span>
+          <span className={liveMuse ? 'text-ink-dim' : 'text-warn'}>{chatLabel}</span>
           {model ? (
             <span className="hidden font-mono text-[10.5px] text-muted xl:inline">{model}</span>
           ) : null}

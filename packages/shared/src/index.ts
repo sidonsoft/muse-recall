@@ -6,6 +6,7 @@
  * Nothing in this package may import a runtime framework or node built-in.
  */
 export * from './api.js';
+export * from './child-env.js';
 export * from './evaluation.js';
 export * from './forge.js';
 export * from './health.js';

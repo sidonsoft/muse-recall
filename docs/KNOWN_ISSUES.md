@@ -108,9 +108,13 @@ loopback interface.
 ### KI-5 — Browser verification is a script, not a test project
 
 **Severity:** Low
-**Detail:** `scripts/verify-ui.ts` drives Chrome for 18 checks and fails on console or
+**Detail:** `scripts/verify-ui.ts` drives Playwright-managed Chromium for its UI checks
+(explicit system Chrome only with `FORGE_RUNTIME_BROWSER=chrome`) and fails on console or
 HTTP errors, but it is not part of `pnpm test` and needs a running server plus Vite.
-**Fix (Phase 6):** Promote it to a Playwright test project with a managed web server.
+**Status (post-hackathon hardening):** Partially resolved. `pnpm verify:studio-workflow`
+now manages its own API, production web preview, temp database/workspace, ports and
+Playwright Chromium, and CI runs it with the deterministic fake provider. The older broad
+UI scripts still require manually started servers.
 
 ### KI-6 — Unknown Muse model ids silently fall back
 
@@ -270,3 +274,139 @@ is not executed inside the original stream.
 **Severity:** Informational (by design)
 **Detail:** Phase 5 deliberately ships six project/memory tools only. `WORKSPACE_ROOT` is
 reserved for a later phase; there is no arbitrary command path.
+
+---
+
+## Post-hackathon local-beta hardening
+
+### KI-31 — Forge job persistence is single-process
+
+**Severity:** Low for the intended single-user app; blocking for multi-process hosting
+**Detail:** Each job is one atomically replaced JSON file under `WORKSPACE_ROOT/forge`.
+Writes for a job are serialised inside one server process, and startup recovery loads all
+readable records. There is no file lease, database transaction, or cross-process lock, so
+two servers must not share a Forge workspace.
+**Mitigation:** The app remains local and single-user; recovery issues are visible in the
+Studio banner and `GET /api/forge/projects/:id`.
+**Fix:** Move job metadata into SQLite with a lease/owner column if a hosted variant is ever
+built.
+
+### KI-32 — The Forge child is not OS-isolated
+
+**Severity:** Medium (local trust boundary)
+**Detail:** `--workspace` roots the Muse CLI's policy-gated tools, and the child now starts
+in the staging directory with an allow-listed environment and hermetic flags. It still runs
+with the server user's filesystem permissions; the app does not own a container, VM, or
+separate OS user.
+**Mitigation:** Do not enable `--yolo`/`--disable-sandbox`; keep the CLI's sandbox and
+approval layer on. Run Forge in a dedicated container/user if stronger isolation is needed.
+**Fix:** Containerised worker with only the staging directory mounted.
+
+### KI-33 — Interrupted jobs are not resumed
+
+**Severity:** Low (explicit trade-off)
+**Detail:** A `queued`/`running` job found at startup becomes `interrupted` with an
+explanation. It is not retried, because a partial model run may already have consumed quota
+or written staged files. The user must start a new job.
+**Mitigation:** The staged bytes, logs and usage are preserved for inspection. On a
+graceful `app.close()`, active jobs are marked cancelled, owned children receive SIGTERM
+then SIGKILL after a bounded grace period, and terminal state is flushed before shutdown
+returns. Only an ungraceful process death produces `interrupted`.
+**Fix:** A resumable-job design would need idempotent provider calls and a durable lease;
+out of scope for this milestone.
+
+### KI-34 — Atomic rename without a filesystem sync
+
+**Severity:** Low
+**Detail:** Job and state writes use temp-file + rename, which survives a process crash but
+not necessarily a sudden power loss before the filesystem flushes. There is no `fsync` of
+the file or directory. Intermediate log/usage snapshots are coalesced; creation, terminal
+states, approval and rejection are awaited but still not power-loss-fsynced.
+**Mitigation:** Startup validates every record and reports unreadable ones instead of
+showing an empty project.
+**Fix:** Add `fsync`/directory sync if the beta needs power-loss durability guarantees.
+
+### KI-35 — Browser coverage is representative, not exhaustive
+
+**Severity:** Low
+**Detail:** The managed Chromium job covers generation, staged review, approval,
+modification, rejection, rollback, restart recovery, recovery-banner acknowledgement and
+representative form/keyboard interactions. It is not a visual-regression, pixel, gameplay,
+accessibility, or cross-browser audit. Runtime approval defaults to managed Chromium;
+system Chrome requires an explicit policy and never silently replaces a failed managed
+launch.
+**Mitigation:** Screenshots/logs are written to `test-results/`; the UI labels automated
+syntax/loading checks separately from human review.
+**Fix:** Add visual snapshots and a second browser engine when the suite is expanded.
+
+### KI-36 — Legacy raw memory input remains for the frozen Phase 15A script
+
+**Severity:** Low (research compatibility)
+**Detail:** `buildForgePrompt` still accepts a raw `memoryBlock` string for
+`scripts/phase15a-child-safety-trial.ts`. That path is wrapped and escaped in the same
+untrusted-data block, but it has no per-record id/provenance. Production Forge passes
+structured retrieval records instead.
+**Mitigation:** Tests assert the legacy path cannot close the block.
+**Fix:** Freeze a local prompt snapshot for the historical protocol and remove the legacy
+input from production code.
+
+### KI-37 — Approval verification telemetry is forward-only
+
+**Severity:** Low
+**Detail:** Versions approved before this hardening build have no recorded runtime browser
+identity, timestamp or checked hash. The UI renders those fields as “not recorded”; it does
+not infer a successful check from the version’s presence.
+**Mitigation:** The version’s own SHA-256 and the approval pipeline remain unchanged.
+**Fix:** Backfilling historical telemetry would require re-running verification on
+historical bytes and must not be presented as an original approval check.
+
+### KI-38 — Studio generation identity is configured, not observed
+
+**Severity:** Low
+**Detail:** Studio shows the configured Forge model (or “CLI default”) and labels it
+“configured.” The current pipeline does not persist an independently observed execution
+model id. The chat provider’s model is shown separately and is not evidence about Forge.
+**Mitigation:** The UI never claims the configured model was independently verified.
+**Fix:** Persist model identity from CLI telemetry if the protocol provides it reliably.
+
+### KI-39 — Studio drafts are browser-local
+
+**Severity:** Informational
+**Detail:** Per-project prompt/change drafts are stored in `localStorage`, so they survive
+project switches in one browser but do not sync across browsers or devices.
+**Mitigation:** Drafts are explicitly project-scoped; examples only fill on selection.
+**Fix:** Persist drafts server-side only with a clear retention/deletion policy.
+
+### KI-40 — Recovery acknowledgement is local workspace state
+
+**Severity:** Informational
+**Detail:** Acknowledged recovery-notice ids are stored in
+`<WORKSPACE_ROOT>/forge/.recovery-ack.json`. It is not signed or authenticated, is shared
+by all local users of that workspace, and deleting it re-surfaces historical notices. It
+never deletes job records or clears active storage failures. Writes are serialized and the
+proposed set is published in memory only after the atomic write succeeds.
+**Mitigation:** Active failures remain visible until a successful storage health check;
+interrupted jobs remain `interrupted` for audit.
+**Fix:** A multi-user deployment would need authenticated per-user acknowledgement state.
+
+### KI-41 — Intermediate writes are coalesced, not transactional
+
+**Severity:** Low
+**Detail:** A burst of log updates can replace pending intermediate snapshots before they
+are written. Required snapshots (creation, terminal, approval, rejection) are never
+abandoned for an older intermediate update, but a process crash can lose the latest
+intermediate logs/usage.
+**Mitigation:** Terminal/approval records are awaited and failures are surfaced.
+**Fix:** Move job persistence into SQLite with transactions if stronger audit durability
+is needed.
+
+### KI-42 — Frozen phase scripts still launch system Chrome explicitly
+
+**Severity:** Informational
+**Detail:** Historical phase/evidence scripts (`scripts/phase12c*`, `scripts/phase12e*`,
+`scripts/phase14a*`, `scripts/phase15a*`) retain their original explicit Chrome launches
+so frozen evidence remains reproducible. They are not current verification entry points.
+**Mitigation:** Current verification scripts and the runtime checker use
+`scripts/lib/browser.ts` / the server policy: managed Chromium by default, explicit
+`FORGE_RUNTIME_BROWSER=chrome` only, no fallback.
+**Fix:** Rewrite the phase scripts only if their evidence is deliberately re-baselined.

@@ -24,7 +24,7 @@ those decisions and cites them. Nothing goes live until you approve it.
 | **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
 | **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27. Palette-only memory changed nothing (18 of 18). [Evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md); re-derive it with `pnpm verify:research16`. |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 549 tests. A staged change loads in headless Chrome before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 611 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers one game, one request and one rule. See [Known limitations](#known-limitations). |
 
 ### Results: a remembered rule on two models
@@ -70,6 +70,12 @@ Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickst
 > commits add the Phase 16 / 16B evidence, verification scripts, documentation and a fix
 > to the demo seed script. See [Project status](#project-status) and the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
+>
+> **Local-beta hardening:** an isolated worktree adds a durable Forge job store with
+> restart recovery, bounded memory rendering with record identity and provenance, a
+> scrubbed child-process environment, and a managed deterministic browser workflow. It
+> does not change the research protocol, detectors, baselines, outputs or tags. Phase 17
+> is running on its own branch and is **not merged**; no Phase 17 result is claimed here.
 
 ---
 
@@ -171,7 +177,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (549 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (611 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -181,6 +187,8 @@ pnpm verify:research        # Phase 15B: 32 hashes, order, counts, Fisher p, rec
 pnpm verify:research16      # Phase 16/16B: locked hashes, order, detector counts, Fisher p (python3)
 pnpm verify:formsandbox     # native submission blocked; JS/Enter interactions work
 pnpm verify:forge-workflow  # backend generate/stage/diff/approve/reject/rollback
+pnpm verify:studio-workflow # managed Chromium: generate, review, approve, modify, reject,
+                            # rollback, restart recovery; deterministic fake provider
 pnpm verify:forge           # HTML Studio browser loop (FORGE_VERIFY_BASE, default :5173)
 pnpm verify:browser         # broad product UI smoke (VERIFY_URL, default :5173)
 pnpm demo:seed              # seed the recorded demo project and its decisions
@@ -194,6 +202,18 @@ pnpm demo:showcase          # Demos A, B, D, E end to end (fresh database recomm
 pnpm eval:comparison        # persistent memory vs inline facts (n=4 per configuration)
 pnpm eval:guard             # advisory Decision Guard accuracy corpus
 ```
+
+`verify:studio-workflow` needs a production build and the Playwright-managed Chromium
+(`pnpm build && pnpm exec playwright-core install chromium`). It preflights the browser and
+fails with an actionable message if it is missing; it does not fall back to system Chrome.
+It starts its own API, web preview, database, workspace and ports; it never touches the
+development servers.
+
+**Verification labels are not interchangeable.** `node --check`/HTML validation is
+syntax and structure only. The approval gate loads the staged page once in a browser
+(successful loading). `verify:studio-workflow` drives representative interactions.
+None of that is human review: reading the diff, playing the preview, and judging the
+design remain manual.
 
 `pnpm bench:retrieval` on the reference machine:
 
@@ -254,6 +274,8 @@ default.
 | Phase 16 three-arm trial (Muse Spark) and 16B replication (Muse Spark Open) | 16 / 16B | **Complete**; evidence and verifier published |
 | Demo video (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
 | Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
+| Post-hackathon local-beta hardening | hardening | **Implemented on an isolated branch**; pending review, browser CI run and merge |
+| Phase 17 open-model research | 17 | **Running on a separate branch**; results not merged or claimed |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.
@@ -309,6 +331,23 @@ Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 ![Memory detail with correction history](docs/assets/phase2-ui-memory-detail.png)
 
 ![Retrieval explanation with score components](docs/assets/phase2-ui-memory-retrieval.png)
+
+---
+
+## Declarative UI vs HTML Studio
+
+The repository has two deliberately different execution models; do not conflate them:
+
+| Surface | What the model produces | How it runs | What it can do |
+| --- | --- | --- | --- |
+| Generated interface (`packages/ui-protocol`) | Validated JSON blocks from a closed schema (heading, text, form, table, …) | Rendered by a fixed React registry | No model-authored JavaScript; values are validated against the stored surface |
+| HTML Studio / Forge | One `index.html` with inline CSS and JavaScript, staged as a job | Only inside `<iframe sandbox="allow-scripts">` with a restrictive CSP and an opaque origin | Arbitrary client-side JavaScript inside the frame; no access to app storage, cookies, or the app origin |
+
+The Studio preview is not imported into the application origin and is not evaluated by
+the server. Downloaded HTML loses the sandbox and runs as an ordinary local file; the UI
+says so. The server-side runtime check loads the staged document with network blocked
+except the approved CDN, but that is a one-shot load check, not a sandbox for later
+interaction.
 
 ---
 
@@ -392,7 +431,7 @@ Boundaries that matter:
 
 More: [architecture](docs/architecture.md) · [memory design](docs/memory-design.md) ·
 [Muse integration](docs/muse-integration.md) · [security](docs/security.md) ·
-[evaluation](docs/evaluation.md).
+[evaluation](docs/evaluation.md) · [local-beta hardening](docs/LOCAL_BETA_HARDENING.md).
 
 ---
 
@@ -409,14 +448,21 @@ the process working directory (`apps/server` when run via the pnpm scripts).
 | `MUSE_MODEL` | `muse-wonder-1.0` | Any model the CLI offers |
 | `MUSE_REASONING_EFFORT` | `medium` | `none`…`ultra` |
 | `MUSE_TIMEOUT_MS` | `120000` | Hard per-call budget |
+| `META_API_KEY` | unset | Optional chat key, delivered to the CLI over stdin |
 | `MEMORY_MAX_MEMORIES` | `8` | Retrieval count budget |
 | `MEMORY_MAX_CHARACTERS` | `4000` | Combined injected characters |
 | `MEMORY_MAX_MEMORY_CHARACTERS` | `1000` | Per-memory cap (truncates, never drops) |
 | `MEMORY_SWEEP_ON_START` | `true` | Expire stale memories at startup |
-| `TOOL_APPROVAL_POLICY` | `always` | Approval mode for future tool calls |
+| `TOOL_APPROVAL_POLICY` | `always` | Approval mode for agent tool calls |
+| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions |
+| `FORGE_MUSE_BIN` | unset | Override the Muse CLI binary used only by Forge |
+| `FORGE_MUSE_MODEL` | unset | Forge model id (for example `muse-spark-1.3-contributor`) |
+| `FORGE_REASONING_EFFORT` | `low` | Forge reasoning tier |
+| `FORGE_MAX_RUNTIME_MS` | `600000` | Hard wall-clock budget per Forge job |
+| `FORGE_RUNTIME_BROWSER` | `managed` | Runtime verification browser: `managed` or explicit `chrome` |
 
 The API key never reaches the browser: the server shells out to the Muse CLI, which
-uses its own stored login (or `META_API_KEY` in the server environment).
+uses its own stored login (or a `META_API_KEY` delivered over stdin).
 
 ---
 
@@ -575,6 +621,28 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 - **Cross-origin mutations are blocked, not authenticated.** A server-side Origin guard now rejects
   foreign and `null` origins on state-changing routes. It is proportionate for a single-user
   loopback tool; a multi-user deployment would still require authentication and CSRF tokens.
+- **Forge jobs are durable on disk but single-process.** One JSON file per job, atomic
+  replace, and startup recovery; there is no database transaction or multi-process lease.
+  A queued/running job interrupted by a restart is marked `interrupted`, never resumed.
+- **The Forge child is not OS-isolated.** `--workspace` roots the CLI's policy-gated tools
+  and the child starts in the staging directory with a scrubbed environment, but it still
+  runs with the server user's filesystem permissions. The CLI's own sandbox/approval flags
+  are the remaining enforcement layer.
+- **Browser coverage is representative, not exhaustive.** The managed workflow drives
+  generation, review, approval, modification, rejection, rollback, restart recovery,
+  project drafts, explicit decision creation and approval verification in managed
+  Chromium. It is not a visual-regression, pixel, gameplay, or accessibility audit.
+- **Approval verification telemetry starts with this build.** Versions approved before
+  this change have no recorded runtime hash/browser/timestamp; the UI says “not recorded”
+  rather than implying the check passed.
+- **Recovery notices are acknowledgeable, not erased.** Acknowledgement hides historical
+  incidents for this workspace; it leaves job files and audit records in place. Active
+  storage failures remain visible until a healthy storage check clears them.
+- **Runtime browser selection is explicit.** The default is Playwright-managed Chromium;
+  system Chrome is used only when `FORGE_RUNTIME_BROWSER=chrome` is set. There is no
+  automatic fallback after an arbitrary launch failure.
+- **Studio identity is configured, not observed.** The Studio shows the configured Forge
+  model; execution-time model telemetry is not independently recorded.
 
 ---
 
@@ -582,9 +650,14 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 1. **Hackathon submission.** Upload the demo video, make the repository public for judging,
    and complete the submission form (owner actions; nothing is submitted automatically).
-2. **Post-event hardening.** Additional Decision Guard rule families, interaction and
-   pixel verification, verified self-contained export, and multi-user authentication
-   remain out of scope for this release.
+2. **Local beta hardening (current).** Durable Forge jobs and restart recovery, bounded
+   memory rendering, a scrubbed child environment, and managed browser coverage are in
+   place. Remaining work is tracked in [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
+3. **Reconcile Phase 17.** Review the separate Phase 17 branch and its completed results
+   before any integration. Do not merge it or claim unfinished results.
+4. **Out of scope for this release.** Authentication, hosted collaboration, embeddings,
+   multi-file generation, new model providers, additional Decision Guard rule families,
+   interaction/pixel verification, and a verified self-contained export.
 
 ---
 

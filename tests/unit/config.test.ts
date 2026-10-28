@@ -26,6 +26,11 @@ describe('loadConfig', () => {
     expect(config.provider.museTimeoutMs).toBe(5_000);
   });
 
+  it('passes a configured chat API key to the provider without placing it in argv', () => {
+    const config = loadConfig({ META_API_KEY: 'meta-key-12345' }, '/repo');
+    expect(config.provider.apiKey).toBe('meta-key-12345');
+  });
+
   it('splits and trims CORS origins, dropping blanks', () => {
     const config = loadConfig({ CORS_ORIGINS: ' http://a.test , http://b.test ,, ' }, '/repo');
     expect(config.corsOrigins).toEqual(['http://a.test', 'http://b.test']);

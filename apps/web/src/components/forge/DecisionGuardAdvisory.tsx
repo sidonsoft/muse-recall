@@ -25,6 +25,43 @@ import { Icon } from '../Icon.tsx';
 const SUPPORTED_CHECKS =
   'countdown mechanics, flashing effects, mistake penalties, superseded palette, colour-only cues';
 
+const RULE_LABELS: Record<string, string> = {
+  'countdown-mechanics': 'countdown mechanics',
+  'flashing-effects': 'flashing effects',
+  'mistake-penalty': 'mistake penalties',
+  'superseded-palette': 'superseded palette',
+  'colour-only-cue': 'colour-only cues',
+};
+
+function ruleLabel(rule: string): string {
+  return RULE_LABELS[rule] ?? rule.replace(/-/g, ' ');
+}
+
+function ApplicableChecks({ rules }: { rules: string[] | undefined }) {
+  if (rules === undefined) {
+    return (
+      <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">
+        Applicable checks: <span className="text-ink-dim">not recorded for this snapshot.</span>
+      </p>
+    );
+  }
+  if (rules.length === 0) {
+    return (
+      <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">
+        Applicable checks:{' '}
+        <span className="text-ink-dim">
+          none — no supported check matched the stored decisions.
+        </span>
+      </p>
+    );
+  }
+  return (
+    <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">
+      Applicable checks: <span className="text-ink-dim">{rules.map(ruleLabel).join(' · ')}</span>
+    </p>
+  );
+}
+
 function assessmentLabel(assessment: DecisionGuardAssessment | undefined | null): string {
   switch (assessment) {
     case 'violation_detected':
@@ -113,9 +150,19 @@ function UnverifiedRow({ entry }: { entry: DecisionGuardUnverified }) {
   );
 }
 
-export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdvisory | null }) {
+export function DecisionGuardPanel({
+  advisory,
+  projectDecisionCount,
+}: {
+  advisory: DecisionGuardAdvisory | null;
+  /** null means project memory has not loaded; 0 means there are no decisions. */
+  projectDecisionCount?: number | null;
+}) {
   const findings = advisory?.findings ?? [];
-  const unverified = advisory?.unverified ?? [];
+  const noDecisions = projectDecisionCount === 0;
+  const unverified = (advisory?.unverified ?? []).filter(
+    (entry) => !noDecisions || entry.code !== 'no_decisions',
+  );
 
   return (
     <section
@@ -131,17 +178,43 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
           className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium ${assessmentTone(advisory)}`}
           data-testid="decision-guard-assessment"
         >
-          {advisory ? assessmentLabel(advisory.assessment) : 'NOT EVALUATED'}
+          {noDecisions
+            ? 'NO DECISIONS'
+            : advisory
+              ? assessmentLabel(advisory.assessment)
+              : 'NOT EVALUATED'}
         </span>
       </div>
       <p className="mt-1 text-[11.5px] font-medium text-ink-dim">
         Findings do not block approval in this version.
       </p>
-      {advisory ? (
+      {noDecisions ? (
+        <>
+          <p
+            className="mt-1.5 text-[11px] font-medium text-ink-dim"
+            data-testid="decision-guard-no-decisions"
+          >
+            No project decisions to check.
+          </p>
+          <p className="mt-1 text-[10.5px] leading-relaxed text-muted">
+            This project has no stored decisions, so Decision Guard has no constraint to compare
+            against the staged source. Add a project decision from Project memory to give it
+            context.
+          </p>
+          <p
+            className="mt-1 text-[10.5px] leading-relaxed text-muted"
+            data-testid="decision-guard-scope"
+          >
+            Coverage: only stored project decisions with supported patterns are checked. This is not
+            a code or runtime certification; the approval load check is separate.
+          </p>
+        </>
+      ) : advisory ? (
         <>
           <p className="mt-1.5 text-[11px] leading-relaxed text-ink-dim">
             {advisory.assessment_reason}
           </p>
+          <ApplicableChecks rules={advisory.applicable_rules} />
 
           {findings.length > 0 ? (
             <ul className="mt-2 space-y-2" data-testid="decision-guard-findings">
@@ -165,6 +238,11 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
             </ul>
           ) : null}
 
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">
+            Coverage limits: only the applicable supported checks are evaluated; other constraints
+            are not verified. A staged load check is a separate runtime gate and is not interaction
+            testing or human review.
+          </p>
           <details className="mt-2">
             <summary className="cursor-pointer select-none text-[10.5px] text-muted hover:text-ink-dim">
               Scope and evidence limits
@@ -193,12 +271,20 @@ export function DecisionGuardPanel({ advisory }: { advisory: DecisionGuardAdviso
           <p className="mt-1.5 text-[11px] text-muted">
             No advisory snapshot was recorded for this change, so compliance was not checked.
           </p>
+          {projectDecisionCount !== null &&
+          projectDecisionCount !== undefined &&
+          projectDecisionCount > 0 ? (
+            <p className="mt-1 text-[10.5px] leading-relaxed text-muted">
+              Applicable checks will be listed when a change is staged.
+            </p>
+          ) : null}
           <p
             className="mt-1 text-[10.5px] leading-relaxed text-muted"
             data-testid="decision-guard-scope"
           >
             Supported checks only: {SUPPORTED_CHECKS}. A passing supported check is not a compliance
-            certification, and constraints outside these checks are not verified.
+            certification, and constraints outside these checks are not verified. Runtime loading is
+            checked separately at approval.
           </p>
         </>
       )}

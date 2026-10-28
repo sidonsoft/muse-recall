@@ -293,7 +293,7 @@ export function DiffPanel({
       <PanelEmpty
         icon="diff"
         title="Nothing staged for review"
-        body="Ask Muse Spark for a change and its staged source diff appears here. The approved application is untouchable until you approve."
+        body="Ask Studio generation for a change and its staged source diff appears here. The approved application is untouchable until you approve."
       />
     );
   }

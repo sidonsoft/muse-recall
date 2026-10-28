@@ -50,3 +50,50 @@ jobs:
           DATABASE_PATH: ./data/ci.db
           MODEL_PROVIDER: echo
           LOG_LEVEL: silent
+
+  browser:
+    name: Managed browser workflow (fake provider)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Pin the browser to the Playwright version in the lockfile. The cache
+      # key includes the lockfile so a Playwright upgrade cannot silently reuse
+      # an incompatible Chromium.
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright-core install --with-deps chromium
+
+      - name: Build production artifacts
+        run: pnpm run build
+        env:
+          DATABASE_PATH: ./data/ci.db
+          MODEL_PROVIDER: echo
+          LOG_LEVEL: silent
+
+      # Uses the deterministic fake Muse CLI. No credentials, no model quota,
+      # and no live checks. Live-model suites stay opt-in via MML_LIVE_MUSE=1.
+      - name: Run managed Studio workflow
+        run: pnpm verify:studio-workflow
+        env:
+          MODEL_PROVIDER: echo
+          LOG_LEVEL: warn

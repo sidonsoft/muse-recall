@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import {
+  buildChildEnv,
   type ModelCapabilities,
   type ModelEvent,
   type ModelMessage,
@@ -52,6 +53,8 @@ export interface MuseCliProviderOptions {
   cwd?: string;
   /** Extra environment for the child process. */
   env?: Record<string, string>;
+  /** Meta Model API key delivered over stdin; never placed in argv or env. */
+  apiKey?: string;
   /** Meta Model API key used only when the subscription reports quota exhaustion. */
   fallbackApiKey?: string;
   /** Model id for the fallback attempt. */
@@ -90,6 +93,7 @@ export class MuseCliProvider implements ModelProvider {
   private readonly preset: string;
   private readonly cwd: string;
   private readonly env: Record<string, string>;
+  private readonly apiKey: string | undefined;
   private readonly extraArgs: string[];
   private readonly fallbackApiKey: string | undefined;
   private readonly fallbackModel: string | undefined;
@@ -102,6 +106,7 @@ export class MuseCliProvider implements ModelProvider {
     this.preset = options.preset ?? 'empty';
     this.cwd = options.cwd ?? process.cwd();
     this.env = options.env ?? {};
+    this.apiKey = options.apiKey;
     this.extraArgs = options.extraArgs ?? [];
     this.fallbackApiKey = options.fallbackApiKey;
     this.fallbackModel = options.fallbackModel ?? 'muse-spark-1.3-contributor';
@@ -224,7 +229,7 @@ export class MuseCliProvider implements ModelProvider {
       const promptPath = join(tmpDir, 'prompt.md');
       await writeFile(promptPath, formatPrompt(parsed.data.messages), 'utf8');
 
-      const apiKey = fallback ? this.fallbackApiKey : undefined;
+      const apiKey = fallback ? this.fallbackApiKey : this.apiKey;
       const args = [
         'exec',
         '--json',
@@ -256,7 +261,7 @@ export class MuseCliProvider implements ModelProvider {
 
       child = spawn(this.bin, args, {
         cwd: this.cwd,
-        env: { ...process.env, ...this.env },
+        env: buildChildEnv({ overrides: this.env }),
         stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       });
       if (apiKey && child.stdin) {

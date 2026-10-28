@@ -92,7 +92,10 @@ export function PromptPanel({
           <Icon name="spark" className="size-3.5 text-accent" />
           Development
         </h2>
-        <span className="chip" title="Configured generation provider">
+        <span
+          className="chip"
+          title="Configured Studio generation model. Execution identity is not independently recorded."
+        >
           {engineLabel}
         </span>
       </div>
@@ -171,7 +174,7 @@ export function PromptPanel({
               }}
               rows={3}
               maxLength={2000}
-              placeholder="Make the cards larger, keep the ocean palette."
+              placeholder="Describe what you want to change."
               className="field mt-1.5 resize-y"
               aria-label="Change request"
             />
@@ -226,13 +229,13 @@ export function PromptPanel({
               }}
               rows={6}
               maxLength={4000}
-              placeholder="A children's memory-matching game with six animal pairs, large touch targets, and a win overlay."
+              placeholder="Describe the browser application you want."
               className="field mt-1.5 resize-y"
               aria-label="Application description"
             />
             <p className="mt-1 text-[10.5px] text-muted">⌘/Ctrl + Enter to generate.</p>
             <div className="mt-2">
-              <p className="eyebrow">Try an example</p>
+              <p className="eyebrow">Start from an example (optional)</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {EXAMPLES.map((example) => (
                   <button
@@ -345,13 +348,15 @@ export function jobLabel(status: string): string {
     case 'queued':
       return 'Queued';
     case 'running':
-      return 'Muse Spark is writing…';
+      return 'Studio generation is writing…';
     case 'succeeded':
       return 'Generated';
     case 'failed':
       return 'Generation failed';
     case 'cancelled':
       return 'Cancelled';
+    case 'interrupted':
+      return 'Interrupted by restart';
     case 'budget_exceeded':
       return 'Stopped at budget';
     case 'rejected':

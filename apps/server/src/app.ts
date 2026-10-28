@@ -136,6 +136,30 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     bodyLimit: 1_048_576,
   });
 
+  // Stop Forge before the rest of the app closes: reject new jobs, terminate
+  // owned children with bounded escalation, await terminal persistence, then
+  // flush any remaining writes.
+  app.addHook('onClose', async () => {
+    await forgeManager.shutdown();
+  });
+
+  // Reload durable Forge jobs before any request can list a project. The
+  // report is logged and exposed through the project API; a malformed record
+  // is never reported as an empty project.
+  const forgeRecovery = await forgeManager.recover();
+  if (forgeRecovery.issues.length > 0 || !forgeRecovery.storage.ok) {
+    app.log.warn(
+      {
+        loaded_jobs: forgeRecovery.startup.loaded_jobs,
+        interrupted_jobs: forgeRecovery.startup.interrupted_jobs,
+        issues: forgeRecovery.issues.length,
+        storage_ok: forgeRecovery.storage.ok,
+        storage_scope: forgeRecovery.storage.scope,
+      },
+      'Forge recovery reported issues',
+    );
+  }
+
   // Reject requests whose Host header does not name a loopback host on an
   // expected local port. Binding to 127.0.0.1 does not stop DNS rebinding.
   app.addHook('onRequest', async (request, reply) => {
@@ -396,6 +420,12 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         name: provider.name,
         configured_model: config.provider.museModel ?? null,
         capabilities,
+      },
+      forge: {
+        provider: 'muse-cli',
+        configured_model: config.forge?.model ?? null,
+        // Forge does not currently persist an independently observed model id.
+        observed_model: null,
       },
       modules: {
         memory_engine: 'complete',

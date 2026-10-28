@@ -17,11 +17,22 @@ export const ServiceMetaSchema = z.object({
   environment: z.string(),
   /** Delivery phase from the build brief. */
   phase: z.number().int().min(1),
+  /** General conversation provider (chat/provider bench). */
   provider: z.object({
     id: z.string(),
     name: z.string(),
     configured_model: z.string().nullable(),
     capabilities: ModelCapabilitiesSchema,
+  }),
+  /**
+   * HTML Studio generation configuration. This is separate from the chat
+   * provider: Forge may use a different CLI model. `observed_model` is only
+   * populated from execution telemetry; null means it was not recorded.
+   */
+  forge: z.object({
+    provider: z.string(),
+    configured_model: z.string().nullable(),
+    observed_model: z.string().nullable(),
   }),
   modules: z.object({
     memory_engine: ModuleStatusSchema,

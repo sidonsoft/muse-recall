@@ -1,4 +1,4 @@
-import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -335,5 +335,37 @@ describe('diff helpers', () => {
     expect(diff).toContain('-b');
     expect(diff).toContain('+B');
     expect(diff).toContain(' a');
+  });
+});
+
+describe('state file integrity', () => {
+  const statePath = () => join(workspace.projectDir('demo-game'), 'state.json');
+
+  it('treats an absent state file as missing, then initialises it', async () => {
+    await unlink(statePath());
+    expect(await workspace.state('demo-game')).toMatchObject({
+      current_version: null,
+      versions: [],
+    });
+    await workspace.ensureProject('demo-game');
+    const state = await workspace.state('demo-game');
+    expect(state.current_version).toBeNull();
+    expect(state.versions).toEqual([]);
+  });
+
+  it.each([
+    ['JSON null', 'null'],
+    ['invalid JSON', '{ "current_version": 1,'],
+    ['a JSON array', '[]'],
+    ['a non-object scalar', '"state"'],
+    ['a current version absent from history', '{"current_version":2,"versions":[]}'],
+    ['a malformed versions field', '{"current_version":null,"versions":"nope"}'],
+  ])('refuses %s and preserves the bytes', async (_label, malformed) => {
+    await writeFile(statePath(), malformed, 'utf8');
+    await expect(workspace.state('demo-game')).rejects.toMatchObject({ code: 'state_corrupt' });
+    await expect(workspace.ensureProject('demo-game')).rejects.toMatchObject({
+      code: 'state_corrupt',
+    });
+    expect(await readFile(statePath(), 'utf8')).toBe(malformed);
   });
 });
