@@ -41,7 +41,7 @@ const MANIFEST_SHA256 = '2f1f76668d31ebfa171ff042e2509493e329f72d20a18bce1f57a3c
 /** SHA-256 of the preserved as-run analysis. */
 const ANALYSIS_SHA256 = 'f384fca782cc7b0f8c8675f4218b98ef1ebbfbc9e0eedd4b0f1687e598fd9d64';
 /** SHA-256 of the correction manifest (checksums of the corrected reporting). */
-const CORRECTIONS_SHA256 = '7a953fee3340aae541aed50d89d4894d60696e517ba4e91960e82cb8a06e0551';
+const CORRECTIONS_SHA256 = '1f506e226468963ed5f6f94b7d9a2f3b437ce5676c2b0fd6ce40596c70cb6c32';
 const LOCK_COMMIT = '6640e83f3c999cd1349420ad5e95bc329fff7d36';
 const LOCK_TAG = 'phase17-preregistration';
 

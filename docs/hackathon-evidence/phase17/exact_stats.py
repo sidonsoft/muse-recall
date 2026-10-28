@@ -231,8 +231,11 @@ def main() -> int:
         if committed != built:
             print('FAIL: phase17-analysis-corrected.json does not reproduce from the raw records', file=sys.stderr)
             return 1
-        n = sum(2 for _ in built['models'])
-        print(f'  exact statistics: {n} pre-registered tests reproduce from the raw records')
+        blocks = len(built['models']) * 2
+        print(
+            f'  exact statistics: {blocks} model x detector blocks '
+            '(H1, H2, H3, worst case) reproduce from the raw records'
+        )
         return 0
     sys.stdout.write(text)
     return 0
