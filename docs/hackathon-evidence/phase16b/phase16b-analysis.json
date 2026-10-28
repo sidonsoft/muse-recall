@@ -1,0 +1,45 @@
+{
+  "model": "meta-models/muse-spark-open-1026",
+  "n": 48,
+  "arms": {
+    "no-memory": {
+      "usable": 16,
+      "violations": 16,
+      "rate": 1.0
+    },
+    "palette": {
+      "usable": 16,
+      "violations": 6,
+      "rate": 0.375
+    },
+    "rule": {
+      "usable": 16,
+      "violations": 0,
+      "rate": 0.0
+    }
+  },
+  "rule_vs_no-memory": {
+    "fisher_p": 3.3273419550419868e-09,
+    "risk_difference": -1.0,
+    "ci95": [
+      -1.0,
+      -0.7261892780213047
+    ]
+  },
+  "rule_vs_palette": {
+    "fisher_p": 0.01767395871956495,
+    "risk_difference": -0.375,
+    "ci95": [
+      -0.613593529020652,
+      -0.10359908218005431
+    ]
+  },
+  "palette_vs_no_memory": {
+    "fisher_p": 0.0002482629652915478,
+    "risk_difference": -0.625,
+    "ci95": [
+      -0.8151901744524719,
+      -0.31773296983604654
+    ]
+  }
+}

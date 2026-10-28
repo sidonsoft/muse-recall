@@ -1,0 +1,223 @@
+{
+  "model": "meta-models/muse-spark-open-1026",
+  "shard": 2,
+  "shards": 6,
+  "results": [
+    {
+      "id": "rule-01",
+      "arm": "rule",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4483,
+        "completion_tokens": 20000,
+        "total_tokens": 24483,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 14631,
+          "audio_tokens": 0,
+          "reasoning_tokens": 13593,
+          "rejected_prediction_tokens": 22980
+        }
+      },
+      "finish_reason": "length",
+      "status": "succeeded",
+      "output_bytes": 18247,
+      "output_sha256": "a7c69090934762a484abfb462b9f8f84af79a955f89b280383987ed807ae836d",
+      "seconds": 93.5
+    },
+    {
+      "id": "rule-09",
+      "arm": "rule",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4483,
+        "completion_tokens": 14791,
+        "total_tokens": 19274,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 10700,
+          "audio_tokens": 0,
+          "reasoning_tokens": 8410,
+          "rejected_prediction_tokens": 17937
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "output_bytes": 18816,
+      "output_sha256": "2b5daa326c793c6821e8a87675b8c1cef34bb2b0218637e2211a99a8c41ae6c5",
+      "seconds": 71.2
+    },
+    {
+      "id": "palette-16",
+      "arm": "palette",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4465,
+        "completion_tokens": 20000,
+        "total_tokens": 24465,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4352
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 14729,
+          "audio_tokens": 0,
+          "reasoning_tokens": 16206,
+          "rejected_prediction_tokens": 22168
+        }
+      },
+      "finish_reason": "length",
+      "status": "succeeded",
+      "output_bytes": 10371,
+      "output_sha256": "90e9c34ada956ec66a209be99b202b7d487e62190e248937dfd4bdcd33487cf1",
+      "seconds": 79.8
+    },
+    {
+      "id": "rule-08",
+      "arm": "rule",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4483,
+        "completion_tokens": 14582,
+        "total_tokens": 19065,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 10483,
+          "audio_tokens": 0,
+          "reasoning_tokens": 7615,
+          "rejected_prediction_tokens": 18210
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "output_bytes": 20624,
+      "output_sha256": "bc731ae67da45ba4f341181f84ca6cdd14ed6b897af9c482fb6be6e9901e3398",
+      "seconds": 65.3
+    },
+    {
+      "id": "rule-04",
+      "arm": "rule",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4483,
+        "completion_tokens": 12882,
+        "total_tokens": 17365,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 9401,
+          "audio_tokens": 0,
+          "reasoning_tokens": 6933,
+          "rejected_prediction_tokens": 14966
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "output_bytes": 17647,
+      "output_sha256": "5409073f568748f7fa4ea58b3362ae73b85ab16c9196d5cc68c558fb5ae33937",
+      "seconds": 55.2
+    },
+    {
+      "id": "palette-13",
+      "arm": "palette",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4465,
+        "completion_tokens": 20000,
+        "total_tokens": 24465,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4352
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 14692,
+          "audio_tokens": 0,
+          "reasoning_tokens": 16270,
+          "rejected_prediction_tokens": 22457
+        }
+      },
+      "finish_reason": "length",
+      "status": "succeeded",
+      "output_bytes": 10224,
+      "output_sha256": "42db7c5e8e9fcb921f7a67de90bdf3d3493b09a98e5e676c1042047637ba4e88",
+      "seconds": 78.5
+    },
+    {
+      "id": "no-memory-08",
+      "arm": "no-memory",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4427,
+        "completion_tokens": 15179,
+        "total_tokens": 19606,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4352
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 11209,
+          "audio_tokens": 0,
+          "reasoning_tokens": 4808,
+          "rejected_prediction_tokens": 16581
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "output_bytes": 31422,
+      "output_sha256": "72e3b088b0b6d13bb0b1d3149dc136763a0cfd71cc6c16470f570abfdec12afb",
+      "seconds": 60.2
+    },
+    {
+      "id": "rule-16",
+      "arm": "rule",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4483,
+        "completion_tokens": 14703,
+        "total_tokens": 19186,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 10813,
+          "audio_tokens": 0,
+          "reasoning_tokens": 6420,
+          "rejected_prediction_tokens": 16417
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "output_bytes": 24870,
+      "output_sha256": "160271784a4cd694309dff27b5e010911946e306c5a437c231f4d22d42fbd1b4",
+      "seconds": 48.8
+    }
+  ]
+}

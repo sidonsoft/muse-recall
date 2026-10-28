@@ -1,0 +1,57 @@
+{
+  "n": 48,
+  "arms": {
+    "no-memory": {
+      "usable": 12,
+      "violations": 12,
+      "unusable": 4,
+      "rate": 1.0
+    },
+    "palette": {
+      "usable": 12,
+      "violations": 12,
+      "unusable": 4,
+      "rate": 1.0
+    },
+    "rule": {
+      "usable": 13,
+      "violations": 0,
+      "unusable": 3,
+      "rate": 0.0
+    }
+  },
+  "rule_vs_no-memory": {
+    "fisher_p": 1.9229659827317656e-07,
+    "risk_difference": -1.0,
+    "ci95": [
+      -1.0,
+      -0.6670779848178745
+    ]
+  },
+  "rule_vs_palette": {
+    "fisher_p": 1.9229659827317656e-07,
+    "risk_difference": -1.0,
+    "ci95": [
+      -1.0,
+      -0.6670779848178745
+    ]
+  },
+  "worst_case": {
+    "no-memory": {
+      "violations": 16,
+      "n": 16,
+      "rate": 1.0
+    },
+    "palette": {
+      "violations": 16,
+      "n": 16,
+      "rate": 1.0
+    },
+    "rule": {
+      "violations": 3,
+      "n": 16,
+      "rate": 0.1875
+    },
+    "rule_vs_no_memory_p": 3.2241943544356854e-06
+  }
+}

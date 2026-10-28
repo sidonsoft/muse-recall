@@ -1,5 +1,7 @@
 # Muse Recall — submission description
 
+> **Historical document.** This is an earlier product description (the Phase 5 memory companion with generated forms and tools). The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+
 ## Problem
 
 AI assistants lose useful context between sessions. Users re-explain project constraints,

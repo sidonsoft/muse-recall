@@ -1,0 +1,165 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Arcade</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#EAF6FF;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;outline:none}
+  #game:focus-visible{box-shadow:0 0 0 4px #4EA8DE}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,.15)}
+  #live{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="game" tabindex="0" aria-label="Ocean Memory Arcade game board"></div>
+<div id="live" aria-live="polite"></div>
+<script>
+(function () {
+  var OCEAN_ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F433}", name: "Whale" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{2B50}", name: "Starfish" },
+    { emoji: "\u{1F420}", name: "Fish" },
+    { emoji: "\u{1F988}", name: "Shark" }
+  ];
+  var W = 900, H = 700;
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#E0F2FE",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0, level = 1, score = 0, streak = 0, bestStreak = 0;
+  var hudMoves, hudScore, hudMsg, hudLevel, hudStreak, endOverlay, endTitle, endDetail, startOverlay, nextBtnBg, nextBtnTx;
+  var focusedIndex = 0;
+  var bubbles = [];
+  var announce = function(msg){ var el=document.getElementById("live"); if(el) el.textContent=msg; };
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    createBubbles(s);
+    setupKeyboard(s);
+    s.input.keyboard.on("keydown-ENTER", function(){ handleEnter(s); });
+    s.input.keyboard.on("keydown-SPACE", function(){ handleEnter(s); });
+  }
+  function drawOcean(scene){
+    var g = scene.add.graphics();
+    g.fillStyle(0xE0F2FE,1); g.fillRect(0,0,W,H);
+    g.fillStyle(0xD6EAF8,1); g.fillRect(0,0,W,160);
+    g.fillStyle(0xA9DEF9,1);
+    for(var i=0;i<3;i++){
+      g.fillEllipse(180+i*220, 90 + (i%2)*20, 180, 50);
+      g.fillEllipse(240+i*220, 80 + (i%2)*15, 140, 40);
+    }
+    g.fillStyle(0x4EA8DE,1); g.fillRect(0,470,W,230);
+    g.fillStyle(0x7EC8E3,1);
+    g.beginPath();
+    g.moveTo(0,470);
+    for(var x=0;x<=W;x+=20){
+      g.lineTo(x, 470 + Math.sin(x*0.02)*12);
+    }
+    g.lineTo(W,500); g.lineTo(0,500); g.closePath(); g.fillPath();
+    g.fillStyle(0xE1F5FE,0.9);
+    for(var b=0;b<6;b++){
+      var bx=80+b*140, by=520+b%2*30;
+      g.fillEllipse(bx,by,90,18);
+    }
+    g.fillStyle(0x102A43,0.08); g.fillRect(0,620,W,80);
+    var cols=[0x4EA8DE,0x7EC8E3,0xA9DEF9,0x5DADE2];
+    for(var i=0;i<10;i++){
+      var fx=30+i*88, fy=620+(i%2)*30;
+      g.fillStyle(0x2E86AB,1); g.fillRect(fx-2,fy,5,26);
+      g.fillStyle(cols[i%4],1); g.fillCircle(fx,fy-8,9);
+      g.fillStyle(0xEAF6FF,1); g.fillCircle(fx,fy-8,4);
+    }
+    g.fillStyle(0x102A43,0.06);
+    g.fillCircle(770,110,55); g.fillStyle(0x4EA8DE,0.15); g.fillCircle(770,110,42);
+  }
+  function textStyle(size,color){
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size+"px", color: color||"#102A43", fontStyle: "bold" };
+  }
+  function makeHud(scene){
+    scene.add.text(24,14,"Ocean Match Arcade",textStyle(32)).setOrigin(0,0);
+    hudLevel = scene.add.text(24,52,"Level 1",textStyle(20,"#2E86AB")).setOrigin(0,0);
+    hudMoves = scene.add.text(24,78,"Moves: 0",textStyle(20));
+    hudScore = scene.add.text(24,102,"Pairs: 0 / 6  \u2022  Score: 0",textStyle(20));
+    hudStreak = scene.add.text(24,126,"Streak: 0",textStyle(18,"#2E86AB")).setOrigin(0,0);
+    hudMsg = scene.add.text(W-24,60,"Tap a card!",textStyle(22,"#2E86AB")).setOrigin(1,0.5);
+    var btn = scene.add.container(W-110,116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE,1); bg.fillRoundedRect(-86,-26,172,52,26);
+    var label = scene.add.text(0,0,"\u21BB Restart",textStyle(20,"#ffffff")).setOrigin(0.5);
+    btn.add([bg,label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86,-26,172,52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function(){ restart(scene); });
+    bg.on("pointerover", function(){ btn.setScale(1.06); });
+    bg.on("pointerout", function(){ btn.setScale(1); });
+    scene.add.text(W/2,168,"Find pairs \u2022 Build streaks \u2022 Unlock levels!",textStyle(18,"#5D7A8C")).setOrigin(0.5);
+  }
+  function getPairsForLevel(lv){
+    if(lv===1) return 6;
+    if(lv===2) return 8;
+    return 8;
+  }
+  function shuffledDeck(){
+    var pairCount = getPairsForLevel(level);
+    var pool = OCEAN_ANIMALS.slice(0, pairCount);
+    var deck=[];
+    pool.forEach(function(a,i){
+      deck.push({key:i, emoji:a.emoji, name:a.name});
+      deck.push({key:i, emoji:a.emoji, name:a.name});
+    });
+    for(var i=deck.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var t=deck[i]; deck[i]=deck[j]; deck[j]=t;
+    }
+    return deck;
+  }
+  function buildBoard(scene){
+    cards.forEach(function(c){ c.view.destroy(); });
+    cards=[];
+    var deck=shuffledDeck();
+    var pairCount=getPairsForLevel(level);
+    var cols = 4;
+    var cw, ch, gx, gy, padX, padY;
+    if(pairCount<=6){
+      cw=185; ch=140; gx=62; gy=195; padX=22; padY=16;
+    } else {
+      cw=165; ch=125; gx=42; gy=185; padX=18; padY=14;
+    }
+    deck.forEach(function(card,idx){
+      var r=Math.floor(idx/cols), c=idx%cols;
+      var cx=gx+c*(cw+padX)+cw/2;
+      var cy=gy+r*(ch+padY)+ch/2;
+      cards.push(makeCard(scene,cx,cy,cw,ch,card,idx));
+    });
+    focusedIndex=0;
+    updateFocus();
+    hudScore.setText("Pairs: 0 / "+pairCount+"  \u2022  Score: "+score);
+  }
+  function makeCard(scene,x,y,w,h,data,idx){
+    var cont=scene.add.container(x,y);
+    var back=scene.add.graphics();
+    back.fillStyle(0xffffff,1); back.fillRoundedRect(-w/2,-h/2,w,h,22);
+    back.fillStyle(0x4EA8DE,1); back.fillRoundedRect(-w/2+8,-h/2+8,w-16,h-16,16);
+    back.fillStyle(0xffffff,0.9);
+    back.fillCircle(-w/4,-h/4,10); back.fillCircle(w/4,0,7); back.fillCircle(0,h/4,12);
+    var paw=scene.add.text(0,-6,"\u{1F30A}",{fontSize:"48px"}).setOrigin(0.5);
+    var face=scene.add.container(0,0).setVisible

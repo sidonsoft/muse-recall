@@ -1,0 +1,52 @@
+{
+  "protocol": "PROTOCOL.md",
+  "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+  "model": "muse-spark-1.3-contributor",
+  "effort": "high",
+  "seed": 23732262,
+  "pilot": true,
+  "results": [
+    {
+      "id": "pilot-no-memory",
+      "arm": "no-memory",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "job_id": "0ea17096-71a4-4bd6-a80a-39f33c7831da",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 34,
+        "input_tokens": 1942658,
+        "output_tokens": 26836,
+        "runtime_ms": 242244
+      },
+      "memory_ids": [],
+      "guard": null,
+      "seconds": 243.8,
+      "output_sha256": "e07b83ec8abc5d5b65122b28b3cfbd0bcc3116b27409fbeedd5598a7741b1319",
+      "output_bytes": 19786
+    },
+    {
+      "id": "pilot-palette",
+      "arm": "palette",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "job_id": "45b2e09d-a1f0-478b-b0f5-b10951fcc73e",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 24,
+        "input_tokens": 1162130,
+        "output_tokens": 11713,
+        "runtime_ms": 196285
+      },
+      "memory_ids": [
+        "de6a15b6-5098-4db4-aeaf-99e57e27bfb0"
+      ],
+      "guard": null,
+      "seconds": 199.4,
+      "output_sha256": "b114835623b3869aa2acd7d56329c0e8b444d23116cb6593f5a8622c2df73a49",
+      "output_bytes": 18429
+    }
+  ]
+}

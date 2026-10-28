@@ -1,5 +1,7 @@
 # Muse Recall — project story (Phase 14A)
 
+> **Historical document.** This is the Phase 14A project story. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../../README.md) and the [submission copy](SUBMISSION_COPY.md). Kept for the development record.
+
 **Demonstration environment:** Muse Forge (the game-studio workspace inside the app)
 **One-line message:** An AI creative studio that remembers your decisions, checks its work, and keeps you in control.
 

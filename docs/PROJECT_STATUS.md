@@ -1,5 +1,7 @@
 # Project status
 
+> **Historical document.** This is the Phase 6 status snapshot. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../README.md#project-status) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+
 **Last updated:** 2026-10-27
 **Milestone:** Phase 6 — Evaluation, stabilization, and submission preparation
 **State:** Complete — submission-ready with administrative actions pending

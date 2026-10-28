@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Arcade Memory Rush</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#0a1e2e;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.35), 0 0 0 3px rgba(78,168,222,.25)}
+</style>
+</head>
+<body>
+<div id="game" role="application" aria-label="Ocean Arcade Memory Rush game"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F988}", name: "Shark" },
+    { emoji: "\u{1F40B}", name: "Whale" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F41F}", name: "Tropical Fish" },
+    { emoji: "\u{1F991}", name: "Squid" },
+    { emoji: "\u{1F9AD}", name: "Seal" },
+    { emoji: "\u{1F421}", name: "Puffer" },
+    { emoji: "\u{1F990}", name: "Shrimp" },
+    { emoji: "\u{1F41A}", name: "Shell" }
+  ];
+  var W = 900, H = 700;
+  var DIFFS = {
+    easy: { label: "EASY", time: 75, cols: 4, rows: 3, pairs: 6, color: 0x4EA8DE, desc: "75s • Chill" },
+    normal: { label: "NORMAL", time: 60, cols: 4, rows: 3, pairs: 6, color: 0x00b4d8, desc: "60s • Arcade" },
+    hard: { label: "HARD", time: 45, cols: 4, rows: 4, pairs: 8, color: 0xffb703, desc: "45s • 8 Pairs" },
+    turbo: { label: "TURBO", time: 50, cols: 6, rows: 4, pairs: 12, color: 0xff3b30, desc: "50s • Shuffle!" }
+  };
+  var currentDiff = DIFFS.normal;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#0a2a4a",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0, score = 0, combo = 0, bestCombo = 0;
+  var timeLeft = 60, maxTime = 60;
+  var hudMoves, hudScore, hudPairs, hudMsg, hudTime, hudCombo, hudStreak, timeBar, timeBarBg;
+  var endOverlay, endTitle, endDetail, endSub, startOverlay;
+  var timerEvent = null, shuffleEvent = null;
+  var bubbles = [], focusedIndex = 0, focusRing = null;
+  var audioCtx = null;
+  var wavePhase = 0;
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupKeyboard(s);
+    ensureAudio();
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0x0a2a4a, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0x102A43, 1); g.fillRect(0, 0, W, 150);
+    g.fillStyle(0x4EA8DE, 1); g.fillRect(0, 146, W, 6);
+    for (var i = 0; i < 150; i++) {
+      var a = 0.06 * (1 - i / 150);
+      g.fillStyle(0xe6f6ff, a); g.fillRect(0, i, W, 1);
+    }
+    g.lineStyle(2, 0xffffff, 0.18);
+    for (var wy = 158; wy < 182; wy += 10) {
+      g.beginPath();
+      g.moveTo(0, wy);
+      for (var x = 0; x <= W; x += 18) {
+        g.lineTo(x, wy + Math.sin(x * 0.025 + wy) * 5);
+      }
+      g.strokePath();
+    }
+    g.lineStyle(2, 0xffffff, 0.06);
+    for (var r = 0; r < 5; r++) {
+      var rx = 90 + r * 190;
+      g.lineBetween(rx, 152, rx - 50, H);
+      g.lineBetween(rx + 22, 152, rx + 70, H);
+    }
+    g.fillStyle(0x0d3b66, 1); g.fillRect(0, 620, W, 80);
+    g.fillStyle(0x123a5a, 1); g.fillRect(0, 620, W, 10);
+    g.fillStyle(0x4EA8DE, 0.9);
+    for (var c = 0; c < 6; c++) {
+      var cx = 40 + c * 160;
+      g.fillTriangle(cx, 620, cx - 18, 580, cx + 18, 580);
+      g.fillCircle(cx, 575, 10);
+    }
+    g.fillStyle(0xffb703, 1);
+    for (var s2 = 0; s2 < 4; s2++) {
+      var sx = 120 + s2 * 220;
+      g.fillCircle(sx, 640, 14); g.fillCircle(sx + 12, 635, 10); g.fillCircle(sx - 10, 638, 8);
+    }
+    bubbles = [];
+    for (var b = 0; b < 18; b++) {
+      var bx = Phaser.Math.Between(20, W - 20);
+      var by = Phaser.Math.Between(180, 620);
+      var br = Phaser.Math.Between(3, 9);
+      var bub = scene.add.graphics();
+      bub.fillStyle(0xffffff, 0.18); bub.fillCircle(0, 0, br);
+      bub.lineStyle(1, 0xffffff, 0.35); bub.strokeCircle(0, 0, br);
+      bub.x = bx; bub.y = by;
+      bub.setData("r", br); bub.setData("spd", 0.3 + Math.random() * 0.9); bub.setData("ox", bx);
+      bubbles.push(bub);
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(18, 12, "\u{1F30A} OCEAN ARCADE RUSH", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0, 0);
+    scene.add.text(18, 46, "MATCH FAST \u2022 COMBO UP \u2022 BEAT THE CLOCK!", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "12px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0, 0);
+    var diffBadge = scene.add.graphics();
+    diffBadge.fillStyle(0x4EA8DE, 1); diffBadge.fillRoundedRect(W - 148, 14, 130, 28, 14);
+    scene.add.text(W - 83, 28, "ARCADE", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+
+    hudScore = scene.add.text(18, 72, "SCORE 0", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "22px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0, 0);
+    hudPairs = scene.add.text(18, 98, "PAIRS 0 / 6", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "14px", color: "#a8d8f0", fontStyle: "bold" }).setOrigin(0, 0);
+    hudMoves = scene.add.text(18, 118, "MOVES 0", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#7fb8d6", fontStyle: "bold" }).setOrigin(0, 0);
+
+    hudTime = scene.add.text(W - 18, 72, "60.0s", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(1, 0);
+    scene.add.text(W - 18, 102, "TIME", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "11px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(1, 0);
+    hudStreak = scene.add.text(W - 18, 118, "BEST x0", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "12px", color: "#ffd166", fontStyle: "bold" }).setOrigin(1, 0);
+
+    hudCombo = scene.add.text(W / 2, 78, "", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "20px", color: "#ffd166", fontStyle: "bold", stroke: "#102A43", strokeThickness: 4 }).setOrigin(0.5, 0).setVisible(false);
+    hudMsg = scene.add.text(W / 2, 124, "\u26A1 TAP A CARD \u2014 GO!", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "14px", color: "#ffffff", fontStyle: "bold", backgroundColor: "#102A43" }).setOrigin(0.5, 0).setPadding(8, 4, 8, 4);
+
+    timeBarBg = scene.add.graphics();
+    timeBarBg.fillStyle(0x0a1e2e, 1); timeBarBg.fillRoundedRect(14, 148, W - 28, 12, 6);
+    timeBarBg.lineStyle(1, 0xffffff, 0.15); timeBarBg.strokeRoundedRect(14, 148, W - 28, 12, 6);
+    timeBar = scene.add.graphics();
+    timeBar.fillStyle(0x4EA8DE, 1); timeBar.fillRoundedRect(14, 148, W - 28, 12, 6);
+
+    var btn = scene.add.container(W - 86, 118);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-70, -16, 140, 32, 16);
+    bg.lineStyle(2, 0xffffff, 0.9); bg.strokeRoundedRect(-70, -16, 140, 32, 16);
+    var label = scene.add.text(0, 0, "\u21BB RESTART", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-70, -16, 140, 32), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { beep(600, 0.12, "square", 0.18); restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    scene.add.text(W / 2, 168, "Find pairs fast! +2.5s bonus \u2022 Miss = -2s \u2022 Build COMBO x5!", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "12px", color: "#102A43", fontStyle: "bold", backgroundColor: "#e6f6ff" }).setOrigin(0.5).setPadding(8, 4, 8, 4);
+
+    focusRing = scene.add.graphics().setDepth(5).setVisible(false);
+  }
+
+  function shuffledDeck(count) {
+    var pool = ANIMALS.slice(0, count);
+    var deck = [];
+    pool.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var cols = currentDiff.cols, rows = currentDiff.rows, pairs = currentDiff.pairs;
+    var deck = shuffledDeck(pairs);
+    var boardW = W - 32, boardH = 440;
+    var padX = 12, padY = 10;
+    var cw = Math.floor((boardW - padX * (cols - 1)) / cols);
+    var ch = Math.floor((boardH - padY * (rows - 1)) / rows);
+    cw = Math.min(cw, 185); ch = Math.min(ch, 140);
+    var totalW = cols * cw + (cols - 1) * padX;
+    var totalH = rows * ch + (rows - 1) * padY;
+    var gx = (W - totalW) / 2, gy = 182 + (boardH - totalH) / 2;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    focusedIndex = 0;
+    updateFocusRing();
+    hudPairs.setText("PAIRS 0 / " + pairs);
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 12);
+    back.fillStyle(0xffffff, 0.95);
+    for (var i = 0; i < 3; i++) {
+      var bx = -w / 3 + i * (w / 3);
+      back.fillCircle(bx, -h / 6, 7); back.fillCircle(bx + 6, h / 6, 5);
+    }
+    back.fillStyle(0x102A43, 0.12); back.fillRoundedRect(-w / 2 + 6, h / 2 - 18, w - 12, 12, 6);
+    var paw = scene.add.text(0, -4, "\u{1F30A}", { fontSize: Math.min(42, w * 0.28) + "px" }).setOrigin(0.5);
+    var shine = scene.add.graphics();
+    shine.fillStyle(0xffffff, 0.22); shine.fillCircle(-w / 4, -h / 3, 10);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xfff1a8, 0xffc8dd, 0xc8e7ff, 0xd8f3b8, 0xffd6a5, 0xe4c1f9, 0xb5e48c, 0x90e0ef, 0xffafcc, 0xa2d2ff, 0xfdffb6, 0xffc6ff];
+    fg.fillStyle(0xffffff, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 12);
+    fg.lineStyle(2, 0x102A43, 0.08); fg.strokeRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 12);
+    var emoSize = Math.min(52, w * 0.32);
+    var emo = scene.add.text(0, -14, data.emoji, { fontSize: emoSize + "px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, h / 2 - 18, data.name, { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: Math.min(14, w * 0.09) + "px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw, shine]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, index: idx };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    cont.on("pointerover", function () { if (!card.matched && !card.faceUp) { scene.tweens.add({ targets: cont, scale: 1.04, duration: 120 }); } });
+    cont.on("pointerout", function () { if (!card.matched) { scene.tweens.add({ targets: cont, scale: 1, duration: 120 }); } });
+    return card;
+  }
+
+  function updateFocusRing() {
+    if (!focusRing || cards.length === 0) return;
+    if (!started) { focusRing.setVisible(false); return; }
+    var c = cards[focusedIndex];
+    if (!c) return;
+    focusRing.clear();
+    focusRing.lineStyle(3, 0xffd166, 1);
+    focusRing.strokeRoundedRect(c.view.x - c.view.displayWidth / 2 - 4, c.view.y - c.view.displayHeight / 2 - 4, c.view.displayWidth + 8, c.view.displayHeight + 8, 14);
+    focusRing.setVisible(true);
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 110, ease: "Quad.easeIn", onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, ease: "Back.easeOut", onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    ensureAudio(); beep(700, 0.08, "sine", 0.14);
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("ONE MORE! \u26A1"); hudMsg.setStyle({ backgroundColor: "#4EA8DE", color: "#102A43" }); return; }
+    moves++;
+    hudMoves.setText("MOVES " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.12, yoyo: true, duration: 160, ease: "Back.easeOut" });
+        scene.tweens.add({ targets: [a.view, card.view], angle: { from: -3, to: 3 }, yoyo: true, duration: 120, repeat: 1 });
+        matches++;
+        hudPairs.setText("PAIRS " + matches + " / " + currentDiff.pairs);
+        var base = 100 + Math.floor(timeLeft * 1.5);
+        addScore(base, true);
+        hudMsg.setText(matches === currentDiff.pairs ? "ALL PAIRS! \u{1F389}" : "MATCH! +" + (base * Math.min(combo, 5)) + " \u2728");
+        hudMsg.setStyle({ backgroundColor: "#ffd166", color: "#102A43" });
+        beep(880, 0.18, "sine", 0.2); setTimeout(function(){ beep(1100, 0.18, "sine", 0.18); }, 90);
+        particleBurst(scene, card.view.x, card.view.y, "\u2B50");
+        particleBurst(scene, a.view.x, a.view.y, "\u{1F389}");
+        if (matches === currentDiff.pairs) {
+          scene.time.delayedCall(400, function(){ showEnd(scene, true); });
+        } else {
+          lockBoard = false;
+        }
+        updateFocusRing();
+      }, 280);
+    } else {
+      hudMsg.setText("MISS! -2s \u274C");
+      hudMsg.setStyle({ backgroundColor: "#ff3b30", color: "#ffffff" });
+      addScore(0, false);
+      beep(180, 0.25, "square", 0.14);
+      scene.cameras.main.shake(140, 0.006);
+      scene.tweens.add({ targets: [a.view, card.view], x: { from: a.view.x - 6, to: a.view.x + 6 }, yoyo: true, duration: 80, repeat: 2, ease: "Sine.easeInOut" });
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; updateFocusRing(); });
+      }, 650);
+    }
+  }
+
+  function ensureAudio() {
+    try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx && audioCtx.state === "suspended") audioCtx.resume(); } catch (e) {}
+  }
+  function beep(freq, dur, type, vol) {
+    try {
+      ensureAudio(); if (!audioCtx) return;
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || "sine"; o.frequency.value = freq; g.gain.value = vol || 0.15;
+      o.connect(g); g.connect(audioCtx.destination); o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      o.stop(audioCtx.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function addScore(base, isMatch) {
+    if (isMatch) {
+      combo++;
+      if (combo > bestCombo) bestCombo = combo;
+      hudStreak.setText("BEST x" + bestCombo);
+      var mult = Math.min(combo, 5);
+      var pts = base * mult;
+      timeLeft = Math.min(maxTime, timeLeft + 2.5);
+      score += pts;
+      hudScore.setText("SCORE " + score);
+      if (combo > 1) {
+        hudCombo.setText("\u{1F525} COMBO x" + mult + " +" + pts);
+        hudCombo.setVisible(true);
+        hudCombo.setScale(1.4);
+        hudCombo.scene.tweens.add({ targets: hudCombo, scale: 1, duration: 220, ease: "Back.easeOut" });
+        hudCombo.scene.time.delayedCall(1400, function(){ if (hudCombo) hudCombo.setVisible(false); });
+        if (combo >= 3) {
+          hudCombo.scene.cameras.main.flash(120, 255, 209, 102, false);
+          beep(1200, 0.12, "triangle", 0.16);
+        }
+      } else {
+        hudCombo.setVisible(false);
+      }
+    } else {
+      combo = 0;
+      if (hudCombo) hudCombo.setVisible(false);
+      timeLeft = Math.max(0, timeLeft - 2);
+      score = Math.max(0, score - 15);
+      hudScore.setText("SCORE " + score);
+    }
+    updateTimerDisplay();
+  }
+
+  function particleBurst(scene, x, y, emoji) {
+    for (var i = 0; i < 6; i++) {
+      var p = scene.add.text(x, y, emoji, { fontSize: "20px" }).setOrigin(0.5).setDepth(30);
+      var tx = x + Phaser.Math.Between(-90, 90);
+      var ty = y + Phaser.Math.Between(-80, -20);
+      scene.tweens.add({ targets: p, x: tx, y: ty, alpha: 0, scale: 1.4, duration: Phaser.Math.Between(500, 800), ease: "Quad.easeOut", onComplete: (function(t){ return function(){ t.destroy(); }; })(p) });
+    }
+  }
+
+  function startTimer(scene) {
+    if (timerEvent) timerEvent.remove();
+    if (shuffleEvent) shuffleEvent.remove();
+    timerEvent = scene.time.addEvent({ delay: 100, loop: true, callback: function () {
+      if (!started || lockBoard && timeLeft > 0) {
+        if (timeLeft <= 0) { handleTimeOut(scene); }
+        return;
+      }
+      if (!started) return;
+      timeLeft -= 0.1;
+      if (timeLeft <= 0) { timeLeft = 0; updateTimerDisplay(); handleTimeOut(scene); }
+      else updateTimerDisplay();
+    }});
+    if (currentDiff === DIFFS.turbo) {
+      shuffleEvent = scene.time.addEvent({ delay: 9000, loop: true, callback: function(){ if (started && !lockBoard) shuffleUnmatched(scene); }});
+    }
+  }
+
+  function updateTimerDisplay() {
+    if (!hudTime || !timeBar) return;
+    hudTime.setText(timeLeft.toFixed(1) + "s");
+    var pct = Phaser.Math.Clamp(timeLeft / maxTime, 0, 1);
+    timeBar.clear();
+    var col = pct > 0.5 ? 0x4EA8DE : pct > 0.25 ? 0xffb703 : 0xff3b30;
+    timeBar.fillStyle(col, 1);
+    timeBar.fillRoundedRect(14, 148, (W - 28) * pct, 12, 6);
+    if (pct < 0.25) {
+      hudTime.setColor("#ff3b30");
+      hudTime.setScale(1.08);
+    } else if (pct < 0.5) {
+      hudTime.setColor("#ffb703");
+      hudTime.setScale(1);
+    } else {
+      hudTime.setColor("#ffffff");
+      hudTime.setScale(1);
+    }
+  }
+
+  function shuffleUnmatched(scene) {
+    var unmatched = cards.filter(function(c){ return !c.matched; });
+    if (unmatched.length < 4) return;
+    var positions = unmatched.map(function(c){ return { x: c.view.x, y: c.view.y }; });
+    for (var i = positions.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = positions[i]; positions[i] = positions[j]; positions[j] = t; }
+    unmatched.forEach(function(c, i){
+      scene.tweens.add({ targets: c.view, x: positions[i].x, y: positions[i].y, duration: 320, ease: "Back.easeOut", delay: i * 30 });
+      scene.tweens.add({ targets: c.view, scale: 1.08, yoyo: true, duration: 160, delay: i * 30 });
+    });
+    hudMsg.setText("\u{1F300} TURBO SHUFFLE!");
+    hudMsg.setStyle({ backgroundColor: "#ff3b30", color: "#ffffff" });
+    beep(320, 0.3, "square", 0.14);
+    scene.cameras.main.shake(160, 0.009);
+  }
+
+  function handleTimeOut(scene) {
+    started = false; lockBoard = true;
+    if (timerEvent) { timerEvent.remove(); timerEvent = null; }
+    if (shuffleEvent) { shuffleEvent.remove(); shuffleEvent = null; }
+    beep(120, 0.6, "sawtooth", 0.18);
+    scene.cameras.main.shake(300, 0.012);
+    showEnd(scene, false);
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.72); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-320, -210, 640, 420, 28);
+    panel.lineStyle(5, 0x4EA8DE, 1); panel.strokeRoundedRect(-320, -210, 640, 420, 28);
+    panel.fillStyle(0xe6f6ff, 1); panel.fillRoundedRect(-320, -210, 640, 70, 28);
+    panel.fillRect(-320, -160, 640, 30);
+    var title = scene.add.text(0, -175, "\u{1F30A} OCEAN ARCADE RUSH", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "36px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var sub = scene.add.text(0, -135, "ARCADE MEMORY • COMBO • TIME ATTACK", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "12px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    var desc = scene.add.text(0, -95, "Match pairs before time runs out!\nBuild combos for x5 multiplier • Miss loses time", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "15px", color: "#102A43", fontStyle: "bold", align: "center" }).setOrigin(0.5);
+    desc.setLineSpacing(6);
+    var row = scene.add.text(0, -42, "\u{1F419} \u{1F988} \u{1F40B} \u{1F422} \u{1F980} \u{1F42C}", { fontSize: "34px" }).setOrigin(0.5);
+    var diffLabel = scene.add.text(0, 8, "CHOOSE DIFFICULTY", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "12px", color: "#5b7a8a", fontStyle: "bold" }).setOrigin(0.5);
+
+    var diffs = [DIFFS.easy, DIFFS.normal, DIFFS.hard, DIFFS.turbo];
+    var btns = [];
+    diffs.forEach(function(d, idx){
+      var bx = -225 + idx * 150;
+      var isSel = d === currentDiff;
+      var bgg = scene.add.graphics();
+      bgg.fillStyle(isSel ? d.color : 0xffffff, 1); bgg.fillRoundedRect(bx - 68, 30, 136, 64, 16);
+      bgg.lineStyle(3, d.color, 1); bgg.strokeRoundedRect(bx - 68, 30, 136, 64, 16);
+      var lab = scene.add.text(bx, 48, d.label, { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "15px", color: isSel ? "#ffffff" : "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+      var des = scene.add.text(bx, 68, d.desc, { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "11px", color: isSel ? "#ffffff" : "#5b7a8a", fontStyle: "bold" }).setOrigin(0.5);
+      bgg.setInteractive(new Phaser.Geom.Rectangle(bx - 68, 30, 136, 64), Phaser.Geom.Rectangle.Contains);
+      bgg.on("pointerdown", function(){
+        currentDiff = d;
+        beep(800, 0.1, "sine", 0.16);
+        startOverlay.destroy(); startOverlay = null;
+        makeStartOverlay(scene);
+      });
+      bgg.on("pointerover", function(){ lab.setScale(1.08); });
+      bgg.on("pointerout", function(){ lab.setScale(1); });
+      btns.push(bgg); btns.push(lab); btns.push(des);
+    });
+
+    var playBg = scene.add.graphics();
+    playBg.fillStyle(0x4EA8DE, 1); playBg.fillRoundedRect(-150, 118, 300, 62, 31);
+    playBg.lineStyle(3, 0x102A43, 1); playBg.strokeRoundedRect(-150, 118, 300, 62, 31);
+    var playTx = scene.add.text(0, 149, "\u25B6  START RUSH", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "22px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 192, "Keys: Arrows + Enter/Space • R = Restart", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "11px", color: "#5b7a8a", fontStyle: "bold" }).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, desc, row, diffLabel].concat(btns).concat([playBg, playTx, hint]));
+    playBg.setInteractive(new Phaser.Geom.Rectangle(-150, 118, 300, 62), Phaser.Geom.Rectangle.Contains);
+    playBg.on("pointerdown", function () {
+      ensureAudio(); beep(900, 0.15, "sine", 0.2);
+      started = true; lockBoard = false;
+      maxTime = currentDiff.time; timeLeft = maxTime;
+      score = 0; combo = 0; bestCombo = 0; moves = 0; matches = 0;
+      hudScore.setText("SCORE 0"); hudMoves.setText("MOVES 0"); hudPairs.setText("PAIRS 0 / " + currentDiff.pairs);
+      hudStreak.setText("BEST x0"); hudMsg.setText("\u26A1 GO! GO! GO!");
+      hudMsg.setStyle({ backgroundColor: "#4EA8DE", color: "#ffffff" });
+      updateTimerDisplay();
+      startTimer(scene);
+      buildBoard(scene);
+      startOverlay.setVisible(false);
+      updateFocusRing();
+    });
+    playBg.on("pointerover", function(){ playTx.setScale(1.06); });
+    playBg.on("pointerout", function(){ playTx.setScale(1); });
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.68); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-310, -190, 620, 380, 28);
+    panel.lineStyle(5, 0x4EA8DE, 1); panel.strokeRoundedRect(-310, -190, 620, 380, 28);
+    endTitle = scene.add.text(0, -120, "\u{1F389} YOU WIN! \u{1F389}", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "38px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    endDetail = scene.add.text(0, -60, "", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "18px", color: "#102A43", fontStyle: "bold", align: "center" }).setOrigin(0.5);
+    endDetail.setLineSpacing(6);
+    endSub = scene.add.text(0, 10, "", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#5b7a8a", fontStyle: "bold", align: "center" }).setOrigin(0.5);
+    endSub.setLineSpacing(4);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-150, 60, 300, 62, 31);
+    btnBg.lineStyle(3, 0x102A43, 1); btnBg.strokeRoundedRect(-150, 60, 300, 62, 31);
+    var btnTx = scene.add.text(0, 91, "\u21BB PLAY AGAIN", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "20px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    var btn2Bg = scene.add.graphics();
+    btn2Bg.fillStyle(0xffffff, 1); btn2Bg.fillRoundedRect(-150, 132, 300, 44, 22);
+    btn2Bg.lineStyle(2, 0x4EA8DE, 1); btn2Bg.strokeRoundedRect(-150, 132, 300, 44, 22);
+    var btn2Tx = scene.add.text(0, 154, "CHANGE DIFFICULTY", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, endSub, btnBg, btnTx, btn2Bg, btn2Tx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-150, 60, 300, 62), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { beep(700, 0.12, "sine", 0.16); restart(scene); });
+    btnBg.on("pointerover", function(){ btnTx.setScale(1.06); });
+    btnBg.on("pointerout", function(){ btnTx.setScale(1); });
+    btn2Bg.setInteractive(new Phaser.Geom.Rectangle(-150, 132, 300, 44), Phaser.Geom.Rectangle.Contains);
+    btn2Bg.on("pointerdown", function(){
+      endOverlay.setVisible(false);
+      if (timerEvent) { timerEvent.remove(); timerEvent = null; }
+      if (shuffleEvent) { shuffleEvent.remove(); shuffleEvent = null; }
+      started = false; lockBoard = true;
+      if (startOverlay) startOverlay.destroy();
+      makeStartOverlay(scene);
+      startOverlay.setVisible(true);
+    });
+  }
+
+  function showEnd(scene, won) {
+    if (timerEvent) { timerEvent.remove(); timerEvent = null; }
+    if (shuffleEvent) { shuffleEvent.remove(); shuffleEvent = null; }
+    started = false; lockBoard = true;
+    if (focusRing) focusRing.setVisible(false);
+    var timeBonus = Math.floor(timeLeft * 12);
+    var total = score + (won ? timeBonus : 0);
+    var stars = 1;
+    if (won) {
+      if (total > 1200 || (moves <= 12 && timeLeft > 20)) stars = 3;
+      else if (total > 700 || moves <= 18) stars = 2;
+    }
+    if (won) {
+      endTitle.setText("\u{1F389} ARCADE CLEAR! \u{1F389}");
+      endTitle.setColor("#102A43");
+      endDetail.setText("SCORE " + score + " + TIME BONUS " + timeBonus + " = " + total + "\n" + "\u2B50".repeat(stars) + "  MOVES " + moves + "  BEST COMBO x" + bestCombo);
+      endSub.setText("Time left " + timeLeft.toFixed(1) + "s • " + currentDiff.label + " MODE\nCan you beat " + (total + 150) + " next run?");
+      hudMsg.setText("\u{1F389} CLEAR! SCORE " + total + " \u2B50".repeat(stars));
+      hudMsg.setStyle({ backgroundColor: "#ffd166", color: "#102A43" });
+      for (var i = 0; i < 50; i++) {
+        var p = scene.add.text(Phaser.Math.Between(0, W), -20, ["\u{1F30A}", "\u2B50", "\u{1F389}", "\u{1F419}", "\u{1F4A5}"][i % 5], { fontSize: "26px" }).setDepth(30);
+        scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-100, 100), rotation: Phaser.Math.Between(-2, 2), duration: Phaser.Math.Between(1400, 2400), delay: i * 40, onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+      }
+      beep(880, 0.2, "sine", 0.2); setTimeout(function(){ beep(1100, 0.2, "sine", 0.2); }, 140); setTimeout(function(){ beep(1320, 0.4, "sine", 0.22); }, 280);
+    } else {
+      endTitle.setText("\u23F1 TIME UP!");
+      endTitle.setColor("#ff3b30");
+      endDetail.setText("SCORE " + score + " • PAIRS " + matches + " / " + currentDiff.pairs + "\n" + (matches >= currentDiff.pairs / 2 ? "Great effort!" : "Keep rushing!") + "  BEST COMBO x" + bestCombo);
+      endSub.setText("You ran out of time with " + (currentDiff.pairs - matches) + " pairs left\nTry EASY for more time or build combos for bonus!");
+      hudMsg.setText("\u23F1 TIME UP! SCORE " + score);
+      hudMsg.setStyle({ backgroundColor: "#ff3b30", color: "#ffffff" });
+      beep(160, 0.5, "sawtooth", 0.18);
+    }
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.85, to: 1 }, duration: 260, ease: "Back.easeOut" });
+  }
+
+  function showWin(scene) { showEnd(scene, true); }
+
+  function restart(scene, diffKey) {
+    if (diffKey && DIFFS[diffKey]) currentDiff = DIFFS[diffKey];
+    moves = 0; matches = 0; score = 0; combo = 0; bestCombo = 0; firstPick = null; lockBoard = false; started = true;
+    maxTime = currentDiff.time; timeLeft = maxTime;
+    hudMoves.setText("MOVES 0"); hudScore.setText("SCORE 0"); hudPairs.setText("PAIRS 0 / " + currentDiff.pairs);
+    hudStreak.setText("BEST x0"); hudMsg.setText("\u26A1 RUSH AGAIN!");
+    hudMsg.setStyle({ backgroundColor: "#4EA8DE", color: "#ffffff" });
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    updateTimerDisplay();
+    startTimer(scene);
+    buildBoard(scene);
+    beep(700, 0.12, "sine", 0.16);
+  }
+
+  function setupKeyboard(scene) {
+    scene.input.keyboard.on("keydown", function(e){
+      if (e.code === "KeyR") { restart(scene); return; }
+      if (!started) {
+        if (e.code === "Enter" || e.code === "Space") {
+          var playBtn = startOverlay && startOverlay.visible;
+          if (playBtn) {
+            ensureAudio();
+            started = true; lockBoard = false;
+            maxTime = currentDiff.time; timeLeft = maxTime;
+            score = 0; combo = 0; bestCombo = 0; moves = 0; matches = 0;
+            hudScore.setText("SCORE 0"); hudMoves.setText("MOVES 0"); hudPairs.setText("PAIRS 0 / " + currentDiff.pairs);
+            hudStreak.setText("BEST x0"); hudMsg.setText("\u26A1 GO! GO! GO!");
+            updateTimerDisplay(); startTimer(scene); buildBoard(scene);
+            startOverlay.setVisible(false); updateFocusRing();
+          }
+        }
+        return;
+      }
+      if (e.code === "ArrowRight" || e.code === "ArrowDown") {
+        focusedIndex = (focusedIndex + 1) % cards.length; updateFocusRing(); beep(500, 0.06, "sine", 0.08);
+      } else if (e.code === "ArrowLeft" || e.code === "ArrowUp") {
+        focusedIndex = (focusedIndex - 1 + cards.length) % cards.length; updateFocusRing(); beep(500, 0.06, "sine", 0.08);
+      } else if (e.code === "Enter" || e.code === "Space") {
+        var c = cards[focusedIndex];
+        if (c) onCard(scene, c);
+      } else if (e.code === "Escape") {
+        if (endOverlay.visible) endOverlay.setVisible(false);
+      }
+    });
+  }
+
+  function update() {
+    wavePhase += 0.02;
+    for (var i = 0; i < bubbles.length; i++) {
+      var b = bubbles[i];
+      b.y -= b.getData("spd");
+      b.x = b.getData("ox") + Math.sin(wavePhase + i) * 6;
+      b.alpha = 0.5 + Math.sin(wavePhase * 1.5 + i) * 0.2;
+      if (b.y < 155) { b.y = 620; b.x = Phaser.Math.Between(20, W - 20); b.setData("ox", b.x); }
+    }
+    if (started && timeLeft < maxTime * 0.25 && Math.floor(Date.now() / 300) % 2 === 0) {
+      if (timeBar) timeBar.setAlpha(0.6);
+    } else if (timeBar) timeBar.setAlpha(1);
+  }
+})();
+</script>
+</body>
+</html>

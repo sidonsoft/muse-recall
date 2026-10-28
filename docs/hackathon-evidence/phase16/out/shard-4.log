@@ -1,0 +1,10 @@
+TRIAL 8 runs; baseline 79c9d67a654e
+rule-11 succeeded 316.6 2
+rule-12 succeeded 253.2 2
+palette-09 succeeded 229.1 1
+no-memory-02 succeeded 247.1 0
+rule-05 succeeded 313.2 2
+no-memory-15 budget_exceeded 496.2 0
+no-memory-16 failed 601.3 0
+rule-02 succeeded 253.1 2
+done 6/8

@@ -1,0 +1,10 @@
+OPEN REPLICATION shard 3/6: 8 runs
+rule-15 succeeded 61.6 12697
+no-memory-01 succeeded 72.9 15652
+no-memory-04 succeeded 63.9 15136
+palette-11 succeeded 75 20000
+no-memory-06 succeeded 78.9 18641
+palette-05 succeeded 76.9 20000
+palette-14 succeeded 59 15114
+palette-12 succeeded 58.7 14605
+done 8 / 8

@@ -1,5 +1,7 @@
 # V2 video production manifest — Muse Recall
 
+> **Historical document.** This is the V2 video production record. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../../README.md) and the [submission copy](SUBMISSION_COPY.md). Kept for the development record.
+
 **Prepared:** 2026-10-28 (Australia/Brisbane)
 **Deliverable:** `Muse_Recall_Demo_V2_1080p.mp4`
 **Status:** rendered and QA'd; **not submitted**. Director acceptance remains pending.

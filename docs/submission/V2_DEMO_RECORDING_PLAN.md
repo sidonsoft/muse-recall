@@ -1,5 +1,7 @@
 # V2 demonstration — recording plan (live FocusFlow)
 
+> **Historical document.** This is the V2 (FocusFlow) recording plan. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../../README.md) and the [submission copy](SUBMISSION_COPY.md). Kept for the development record.
+
 **Status: canonical storyboard for the final release candidate.** It supersedes
 `REVISED_DEMO_STORYBOARD.md`, `DEMO_SCRIPT_3MIN.md`, `VIDEO_STORYBOARD.md` and
 `RECUT_BRIEF_PHASE15A.md` for the V2 recording. Those documents are retained as history and must not

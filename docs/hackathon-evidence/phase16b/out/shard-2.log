@@ -1,0 +1,10 @@
+OPEN REPLICATION shard 2/6: 8 runs
+rule-01 succeeded 93.5 20000
+rule-09 succeeded 71.2 14791
+palette-16 succeeded 79.8 20000
+rule-08 succeeded 65.3 14582
+rule-04 succeeded 55.2 12882
+palette-13 succeeded 78.5 20000
+no-memory-08 succeeded 60.2 15179
+rule-16 succeeded 48.8 14703
+done 8 / 8

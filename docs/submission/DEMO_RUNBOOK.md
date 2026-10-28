@@ -1,5 +1,7 @@
 # Muse Recall — demo runbook (Phase 14C recording clearance)
 
+> **Historical document.** This is the Phase 14C recording runbook. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../../README.md) and the [submission copy](SUBMISSION_COPY.md). Kept for the development record.
+
 **Demo branch:** `agent/phase14a-demo-production`
 **Clearance baseline:** `4d668bb047eceada02bd124d7f69cde44b3adbed`
 **Release candidate base:** `agent/phase12e-release-hardening` at

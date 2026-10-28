@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocean Memory Arcade</title>
+<style>
+  :root{
+    --accent:#4EA8DE;
+    --ink:#102A43;
+    --card-back:#4EA8DE;
+    --panel:#FFFFFF;
+    --sea-light:#DFF3FA;
+    --gold:#FFD166;
+    --good:#2A9D8F;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+    color:var(--ink);
+    background:linear-gradient(180deg,#0B2545 0%,#13315C 30%,#4EA8DE 78%,#BDE0FE 100%);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:16px;
+  }
+  main{
+    width:100%;
+    max-width:880px;
+    background:var(--sea-light);
+    border-radius:20px;
+    border:4px solid var(--ink);
+    box-shadow:0 10px 0 rgba(16,42,67,.35);
+    padding:16px 16px 20px;
+  }
+  header{text-align:center}
+  h1{
+    margin:.2em 0 .1em;
+    font-size:clamp(1.4rem,4.5vw,2.4rem);
+    letter-spacing:2px;
+    color:var(--ink);
+    text-shadow:0 2px 0 #fff,0 0 18px rgba(78,168,222,.8);
+  }
+  .encourage{
+    margin:.2em 0 .8em;
+    font-size:clamp(1rem,2.6vw,1.15rem);
+    font-weight:700;
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:stretch;
+    justify-content:center;
+    margin-bottom:10px;
+  }
+  .stat{
+    background:var(--panel);
+    border:3px solid var(--ink);
+    border-radius:14px;
+    padding:8px 14px;
+    min-width:110px;
+    text-align:center;
+    box-shadow:0 4px 0 rgba(16,42,67,.25);
+  }
+  .stat .label{font-size:.75rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+  .stat .value{font-size:1.5rem;font-weight:900;font-variant-numeric:tabular-nums}
+  .controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0 10px}
+  button.action{
+    font:inherit;
+    font-weight:900;
+    font-size:1.05rem;
+    letter-spacing:1px;
+    color:#fff;
+    background:var(--accent);
+    border:3px solid var(--ink);
+    border-radius:999px;
+    padding:10px 22px;
+    cursor:pointer;
+    box-shadow:0 4px 0 var(--ink);
+  }
+  button.action:hover{filter:brightness(1.08)}
+  button.action:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
+  button.action:focus-visible{outline:4px solid var(--gold);outline-offset:2px}
+  button.action[disabled]{opacity:.55;cursor:default;transform:none}
+  #game-wrap{
+    background:linear-gradient(180deg,#12395B,#1B6CA8);
+    border:3px solid var(--ink);
+    border-radius:16px;
+    overflow:hidden;
+    width:100%;
+    aspect-ratio:4/3;
+    max-height:62vh;
+    margin:0 auto;
+  }
+  #game-wrap canvas{display:block;margin:0 auto}
+  .help{
+    text-align:center;
+    font-size:.95rem;
+    margin:10px 4px 0;
+    line-height:1.45;
+  }
+  #message{
+    text-align:center;
+    font-weight:900;
+    min-height:1.6em;
+    margin:8px 0 0;
+    font-size:1.05rem;
+  }
+  @media (max-width:520px){
+    .stat{min-width:92px;padding:6px 10px}
+    #game-wrap{aspect-ratio:3/3.4;max-height:none}
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>OCEAN MEMORY ARCADE</h1>
+    <p class="encourage">You can do it, little ocean explorer!</p>
+  </header>
+
+  <div class="hud" role="status" aria-label="Game scoreboard">
+    <div class="stat"><div class="label">Moves</div><div class="value" id="movesVal">0</div></div>
+    <div class="stat"><div class="label">Score</div><div class="value" id="scoreVal">0</div></div>
+    <div class="stat"><div class="label">Pairs</div><div class="value" id="pairsVal">0 / 6</div></div>
+  </div>
+
+  <div class="controls">
+    <button type="button" class="action" id="startBtn" aria-label="Start memory game">START</button>
+    <button type="button" class="action" id="restartBtn" aria-label="Restart memory game">RESTART</button>
+  </div>
+
+  <div id="game-wrap" role="application" aria-label="Animal memory card board. Use arrow keys to move, Enter to flip a card."></div>
+  <p id="message" aria-live="polite"></p>
+  <p class="help">Tap a card or use arrow keys plus Enter to flip it. Match all 6 ocean animal pairs. Every match adds 100 points.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var ANIMALS = [
+    { emoji: '🐙', name: 'Octopus' },
+    { emoji: '🐬', name: 'Dolphin' },
+    { emoji: '🐳', name: 'Whale' },
+    { emoji: '🐠', name: 'Fish' },
+    { emoji: '🐢', name: 'Turtle' },
+    { emoji: '🦀', name: 'Crab' }
+  ];
+
+  var startBtn = document.getElementById('startBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var movesVal = document.getElementById('movesVal');
+  var scoreVal = document.getElementById('scoreVal');
+  var pairsVal = document.getElementById('pairsVal');
+  var messageEl = document.getElementById('message');
+
+  function setMessage(text) {
+    messageEl.textContent = text;
+  }
+
+  var audioCtx = null;
+  function tone(freq, durMs, delayMs) {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime + (delayMs || 0) / 1000;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + durMs / 1000);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + durMs / 1000 + 0.05);
+    } catch (e) { /* sound is optional */ }
+  }
+
+  function flipSound() { tone(520, 120, 0); }
+  function matchSound() { tone(523, 140, 0); tone(659, 140, 110); tone(784, 220, 220); }
+  function winSound() { tone(523, 160, 0); tone(659, 160, 140); tone(784, 160, 280); tone(1047, 320, 420); }
+
+  var sceneRef = null;
+
+  function updateHud(moves, score, pairs) {
+    movesVal.textContent = String(moves);
+    scoreVal.textContent = String(score);
+    pairsVal.textContent = String(pairs) + ' / 6';
+  }
+
+  function startGame() {
+    if (sceneRef) sceneRef.startRound();
+  }
+  function restartGame() {
+    if (sceneRef) sceneRef.restartRound();
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+
+  // Explicit keyboard operation: Enter activates focused buttons and flips the focused card.
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') {
+      var active = document.activeElement;
+      if (active === startBtn) { ev.preventDefault(); startGame(); }
+      else if (active === restartBtn) { ev.preventDefault(); restartGame(); }
+      else if (sceneRef && document.activeElement === document.body) {
+        // Let the Phaser scene handler flip the focused card; avoid scrolling.
+        ev.preventDefault();
+        sceneRef.flipFocusedCard();
+      }
+    }
+  });
+
+  function shuffledDeck() {
+    var deck = [];
+    for (var i = 0; i < ANIMALS.length; i++) {
+      deck.push(i);
+      deck.push(i);
+    }
+    for (var k = deck.length - 1; k > 0; k--) {
+      var j = Math.floor(Math.random() * (k + 1));
+      var tmp = deck[k];
+      deck[k] = deck[j];
+      deck[j] = tmp;
+    }
+    return deck;
+  }
+
+  function MemoryScene() {
+    Phaser.Scene.call(this, { key: 'MemoryScene' });
+  }
+  MemoryScene.prototype = Object.create(Phaser.Scene.prototype);
+  MemoryScene.prototype.constructor = MemoryScene;
+
+  MemoryScene.prototype.create = function () {
+    sceneRef = this;
+    this.moves = 0;
+    this.score = 0;
+    this.matchedPairs = 0;
+    this.started = false;
+    this.lockBoard = true;
+    this.firstPick = null;
+    this.secondPick = null;
+    this.focusIndex = 0;
+    this.cards = [];
+    this.winLayer = null;
+
+    this.spawnBubbles();
+    this.buildBoard();
+    this.bindKeys();
+    updateHud(0, 0, 0);
+    setMessage('Press START to play.');
+    this.refreshCardStates();
+  };
+
+  MemoryScene.prototype.spawnBubbles = function () {
+    // Slow, gentle rising bubbles. No flashing or strobing.
+    this.bubbles = [];
+    for (var i = 0; i < 18; i++) {
+      var x = Phaser.Math.Between(10, 710);
+      var y = Phaser.Math.Between(0, 540);
+      var r = Phaser.Math.Between(3, 10);
+      var c = this.add.circle(x, y, r);
+      c.setStrokeStyle(2, 0xbde0fe, 0.55);
+      c.setFillStyle(0xffffff, 0.06);
+      this.bubbles.push({ obj: c, speed: Phaser.Math.FloatBetween(8, 26), drift: Phaser.Math.FloatBetween(-8, 8) });
+      (function (bubble, startX) {
+        this.tweens.add({
+          targets: bubble,
+          y: -20,
+          x: startX + Phaser.Math.Between(-40, 40),
+          duration: Phaser.Math.Between(9000, 18000),
+          repeat: -1,
+          delay: Phaser.Math.Between(0, 6000),
+          onRepeat: function () {
+            bubble.y = 560;
+            bubble.x = Phaser.Math.Between(10, 710);
+          }
+        });
+      }.call(this, c, x));
+    }
+  };
+
+  MemoryScene.prototype.cardXY = function (index) {
+    var cols = 4;
+    var rows = 3;
+    var marginX = 60;
+    var marginY = 70;
+    var gw = 720;
+    var gh = 400;
+    var cw = (gw - marginX * 2) / cols;
+    var ch = (gh - marginY * 2) / rows;
+    var col = index % cols;
+    var row = Math.floor(index / cols);
+    return {
+      x: marginX + cw * (col + 0.5),
+      y: 80 + marginY + ch * (row + 0.5),
+      w: Math.min(150, cw - 16),
+      h: Math.min(118, ch - 16)
+    };
+  };
+
+  MemoryScene.prototype.buildBoard = function () {
+    var self = this;
+    var deck = shuffledDeck();
+    for (var i = 0; i < 12; i++) {
+      (function (idx) {
+        var pos = self.cardXY(idx);
+        var holder = self.add.container(pos.x, pos.y);
+
+        var back = self.add.rectangle(0, 0, pos.w, pos.h, 0x4ea8de);
+        back.setStrokeStyle(5, 0x102a43, 1);
+        var backWave = self.add.text(0, -18, '~~~', { fontSize: '26px', color: '#dff3fa' }).setOrigin(0.5);
+        var backQ = self.add.text(0, 16, '?', { fontSize: '44px', fontStyle: '900', color: '#ffffff' }).setOrigin(0.5);
+
+        var front = self.add.rectangle(0, 0, pos.w, pos.h, 0xffffff);
+        front.setStrokeStyle(5, 0x102a43, 1);
+
+        var card = {
+          index: idx,
+          animal: deck[idx],
+          holder: holder,
+          backParts: [back, backWave, backQ],
+          frontParts: [front],
+          emojiText: null,
+          nameText: null,
+          matched: false,
+          faceUp: false,
+          w: pos.w,
+          h: pos.h,
+          ring: null
+        };
+
+        var animal = ANIMALS[deck[idx]];
+        card.emojiText = self.add.text(0, -14, animal.emoji, { fontSize: '52px' }).setOrigin(0.5);
+        card.nameText = self.add.text(0, 32, animal.name, { fontSize: '19px', fontStyle: '700', color: '#102A43' }).setOrigin(0.5);
+        card.frontParts.push(card.emojiText, card.nameText);
+
+        var ring = self.add.rectangle(0, 0, pos.w + 10, pos.h + 10);
+        ring.setStrokeStyle(4, 0xffd166, 1);
+        ring.setVisible(false);
+        holder.add([ring, back, backWave, backQ, front, card.emojiText, card.nameText]);
+        holder.setSize(pos.w, pos.h);
+        holder.setInteractive({ useHandCursor: true });
+        holder.on('pointerover', function () { self.focusIndex = idx; self.refreshCardStates(); });
+        holder.on('pointerdown', function () { self.tryFlip(card); });
+        card.ring = ring;
+
+        self.cards.push(card);
+      })(i);
+    }
+    this.showFaces(false);
+  };
+
+  MemoryScene.prototype.showFaces = function (faceUp) {
+    for (var i = 0; i < this.cards.length; i++) {
+      var c = this.cards[i];
+      c.faceUp = faceUp;
+      this.paintCard(c);
+    }
+  };
+
+  MemoryScene.prototype.paintCard = function (c) {
+    var i;
+    for (i = 0; i < c.backParts.length; i++) c.backParts[i].setVisible(!c.faceUp);
+    for (i = 0; i < c.frontParts.length; i++) c.frontParts[i].setVisible(c.faceUp);
+    if (c.matched) {
+      c.frontParts[0].setStrokeStyle(6, 0x2a9d8f, 1);
+    } else {
+      c.frontParts[0].setStrokeStyle(5, 0x102a43, 1);
+    }
+  };
+
+  MemoryScene.prototype.refreshCardStates = function () {
+    for (var i = 0; i < this.cards.length; i++) {
+      var c = this.cards[i];
+      var focused = (i === this.focusIndex);
+      c.ring.setVisible(focused);
+      var base = 1;
+      if (c.matched) base = 1;
+      else if (focused) base = 1.04;
+      c.holder.setScale(base);
+    }
+  };
+
+  MemoryScene.prototype.bindKeys = function () {
+    var self = this;
+    var kb = this.input.keyboard;
+    if (!kb) return;
+    kb.on('keydown-LEFT', function () { self.moveFocus(-1, 0); });
+    kb.on('keydown-RIGHT', function () { self.moveFocus(1, 0); });
+    kb.on('keydown-UP', function () { self.moveFocus(0, -1); });
+    kb.on('keydown-DOWN', function () { self.moveFocus(0, 1); });
+    kb.on('keydown-ENTER', function () { self.flipFocusedCard(); });
+    kb.on('keydown-SPACE', function () { self.flipFocusedCard(); });
+    kb.addCapture('LEFT,RIGHT,UP,DOWN,SPACE');
+  };
+
+  MemoryScene.prototype.moveFocus = function (dx, dy) {
+    var cols = 4;
+    var col = this.focusIndex % cols;
+    var row = Math.floor(this.focusIndex / cols);
+    col = (col + dx + cols) % cols;
+    row = (row + dy + 3) % 3;
+    this.focusIndex = row * cols + col;
+    this.refreshCardStates();
+  };
+
+  MemoryScene.prototype.flipFocusedCard = function () {
+    var card = this.cards[this.focusIndex];
+    if (card) this.tryFlip(card);
+  };
+
+  MemoryScene.prototype.startRound = function () {
+    this.closeWin();
+    this.moves = 0;
+    this.score = 0;
+    this.matchedPairs = 0;
+    this.started = true;
+    this.lockBoard = false;
+    this.firstPick = null;
+    this.secondPick = null;
+    var deck = shuffledDeck();
+    for (var i = 0; i < this.cards.length; i++) {
+      var c = this.cards[i];
+      c.animal = deck[i];
+      c.matched = false;
+      c.faceUp = false;
+      var animal = ANIMALS[c.animal];
+      c.emojiText.setText(animal.emoji);
+      c.nameText.setText(animal.name);
+      this.paintCard(c);
+    }
+    this.focusIndex = 0;
+    this.refreshCardStates();
+    updateHud(this.moves, this.score, this.matchedPairs);
+    setMessage('Find the matching pairs.');
+    startBtn.setAttribute('disabled', 'disabled');
+  };
+
+  MemoryScene.prototype.restartRound = function () {
+    this.startRound();
+  };
+
+  MemoryScene.prototype.tryFlip = function (card) {
+    if (!this.started) {
+      setMessage('Press START to play.');
+      return;
+    }
+    if (this.lockBoard || card.matched || card.faceUp) return;
+    if (this.firstPick && this.firstPick === card) return;
+    flipSound();
+    this.flipTo(card, true);
+    if (!this.firstPick) {
+      this.firstPick = card;
+      return;
+    }
+    this.secondPick = card;
+    this.moves += 1;
+    updateHud(this.moves, this.score, this.matchedPairs);
+    if (this.firstPick.animal === this.secondPick.animal) {
+      this.onMatch(this.firstPick, this.secondPick);
+    } else {
+      this.onMismatch(this.firstPick, this.secondPick);
+    }
+  };
+
+  MemoryScene.prototype.flipTo = function (card, faceUp) {
+    var self = this;
+    this.tweens.add({
+      targets: card.holder,
+      scaleX: 0,
+      duration: 130,
+      ease: 'Sine.easeInOut',
+      onComplete: function () {
+        card.faceUp = faceUp;
+        self.paintCard(card);
+        self.tweens.add({ targets: card.holder, scaleX: 1, duration: 130, ease: 'Sine.easeInOut' });
+      }
+    });
+  };
+
+  MemoryScene.prototype.onMatch = function (a, b) {
+    var self = this;
+    this.lockBoard = true;
+    this.time.delayedCall(300, function () {
+      a.matched = true;
+      b.matched = true;
+      self.paintCard(a);
+      self.paintCard(b);
+      self.matchedPairs += 1;
+      self.score += 100;
+      updateHud(self.moves, self.score, self.matchedPairs);
+      matchSound();
+      self.popScore(b.holder.x, b.holder.y - 70);
+      self.firstPick = null;
+      self.secondPick = null;
+      self.lockBoard = false;
+      self.refreshCardStates();
+      if (self.matchedPairs >= 6) self.onWin();
+      else setMessage('Nice match! Keep going.');
+    });
+  };
+
+  MemoryScene.prototype.onMismatch = function (a, b) {
+    var self = this;
+    this.lockBoard = true;
+    // No penalty: cards simply turn back over so children can try again.
+    this.time.delayedCall(750, function () {
+      self.flipTo(a, false);
+      self.flipTo(b, false);
+      self.time.delayedCall(180, function () {
+        self.firstPick = null;
+        self.secondPick = null;
+        self.lockBoard = false;
+        self.refreshCardStates();
+      });
+      setMessage('Good try! Look closely and try again.');
+    });
+  };
+
+  MemoryScene.prototype.popScore = function (x, y) {
+    var t = this.add.text(x, y, '+100', { fontSize: '30px', fontStyle: '900', color: '#FFD166', stroke: '#102A43', strokeThickness: 5 }).setOrigin(0.5);
+    this.tweens.add({ targets: t, y: y - 40, alpha: 0, duration: 800, ease: 'Sine.easeOut', onComplete: function () { t.destroy(); } });
+  };
+
+  MemoryScene.prototype.onWin = function () {
+    var self = this;
+    this.lockBoard = true;
+    winSound();
+    setMessage('You matched all 6 pairs in ' + this.moves + ' moves. Score ' + this.score + '.');
+    var layer = this.add.container(360, 270).setDepth(50);
+    var shade = this.add.rectangle(0, 0, 720, 540, 0x102a43, 0.55);
+    var panel = this.add.rectangle(0, 0, 460, 260, 0xffffff, 1);
+    panel.setStrokeStyle(5, 0x102a43, 1);
+    var title = this.add.text(0, -80, 'YOU WIN!', { fontSize: '52px', fontStyle: '900', color: '#102A43' }).setOrigin(0.5);
+    var detail = this.add.text(0, -16, this.moves + ' moves  •  ' + this.score + ' points', { fontSize: '24px', fontStyle: '700', color: '#102A43' }).setOrigin(0.5);
+    var again = this.add.text(0, 62, ' PLAY AGAIN ', { fontSize: '28px', fontStyle: '900', color: '#ffffff', backgroundColor: '#4EA8DE' }).setOrigin(0.5);
+    again.setPadding(18, 12, 18, 12);
+    again.setInteractive({ useHandCursor: true });
+    again.on('pointerdown', function () { self.restartRound(); });
+    layer.add([shade, panel, title, detail, again]);
+    this.winLayer = layer;
+    startBtn.removeAttribute('disabled');
+  };
+
+  MemoryScene.prototype.closeWin = function () {
+    if (this.winLayer) {
+      this.winLayer.destroy(true);
+      this.winLayer = null;
+    }
+  };
+
+  function boot() {
+    if (typeof Phaser === 'undefined') {
+      setMessage('Game library could not load. Check your connection and reload.');
+      return;
+    }
+    var config = {
+      type: Phaser.AUTO,
+      parent: 'game-wrap',
+      transparent: true,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 720,
+        height: 540
+      },
+      scene: [MemoryScene]
+    };
+    /* eslint-disable no-new */
+    new Phaser.Game(config);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

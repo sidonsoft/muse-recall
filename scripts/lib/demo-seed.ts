@@ -240,6 +240,10 @@ async function seedWorkspace(
 /** Seed both the workspace and the project memory for the demo. */
 export async function seedForgeDemo(options: DemoSeedOptions): Promise<DemoSeedResult> {
   const projectId = options.projectId ?? DEMO_PROJECT_ID;
+  // A fresh clone has no data directory until the server first starts.
+  if (options.databasePath !== ':memory:') {
+    await mkdir(dirname(options.databasePath), { recursive: true });
+  }
   const database = openDatabase({ path: options.databasePath, wal: false });
   let memories: ReturnType<typeof seedDemoMemories>;
   try {
