@@ -1,0 +1,176 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark Open",
+    "model": "meta-models/muse-spark-open-1026",
+    "endpoint": "https://inference.baseten.co/v1/chat/completions",
+    "path": "production buildForgePrompt with a memory block from production retrieval, baseline appended, one chat completion",
+    "temperature": 0,
+    "max_tokens": 20000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 4,
+  "shards": 6,
+  "results": [
+    {
+      "id": "pilot-farm-challenge-none",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "memory_ids": [],
+      "prompt_file_sha256": "bd086dba98c12d2f9ee2c931dc5f7fd91967ece8ef659a61814fd8afdfd80866",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4429,
+        "completion_tokens": 14429,
+        "total_tokens": 18858,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 10763,
+          "audio_tokens": 0,
+          "reasoning_tokens": 5088,
+          "rejected_prediction_tokens": 14899
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 28934,
+      "output_sha256": "27b1eec2684ff86c18888d0d4992bd37741b551a0d261c1efaa4d49e5f687c86",
+      "seconds": 40.6
+    },
+    {
+      "id": "pilot-orchard-arcade-manual",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "37a2374c-726b-49ba-8aa3-e092fe09d951",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "memory_ids": ["37a2374c-726b-49ba-8aa3-e092fe09d951"],
+      "prompt_file_sha256": "aa7436eac0a104eb05435c148ab0be31977f34de3e42a3e04a28bc1450ecd654",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 5620,
+        "completion_tokens": 16109,
+        "total_tokens": 21729,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 11803,
+          "audio_tokens": 0,
+          "reasoning_tokens": 7063,
+          "rejected_prediction_tokens": 18339
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 30509,
+      "output_sha256": "8713ccc9b57ace3a88857c4bdfaa81b03c77f2357738a9fe0b4971b0cd5f2b99",
+      "seconds": 47.3
+    },
+    {
+      "id": "pilot-focus-reward-none",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.",
+      "seeded": [],
+      "correction": null,
+      "memory_ids": [],
+      "prompt_file_sha256": "d59f1ba55136d9dc959d03187cf117f91ca920a8657fb681727616bf3d4fd1e4",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4866,
+        "completion_tokens": 9793,
+        "total_tokens": 14659,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 7567,
+          "audio_tokens": 0,
+          "reasoning_tokens": 3016,
+          "rejected_prediction_tokens": 8022
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 23588,
+      "output_sha256": "b5f3df74d3ea0979b864be1bbf2d0d730bd08d9cfdcbb67dd9ec1ebe04f7b5d2",
+      "seconds": 24.7
+    },
+    {
+      "id": "pilot-focus-lively-manual",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+      "seeded": [
+        {
+          "id": "dfa8d439-0f01-454b-aea8-ce2d8db3df32",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "memory_ids": ["dfa8d439-0f01-454b-aea8-ce2d8db3df32"],
+      "prompt_file_sha256": "44c92991af8856bdf04516ed7fe43cc21fc52cad343839a5bf8330f2783f66a7",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4944,
+        "completion_tokens": 11349,
+        "total_tokens": 16293,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 8615,
+          "audio_tokens": 0,
+          "reasoning_tokens": 4663,
+          "rejected_prediction_tokens": 10523
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 22538,
+      "output_sha256": "2d8f7de1a4a0f26de5f0d0f19cc0fd910b51df8f9b3d59d807bda1c92abf261a",
+      "seconds": 30.2
+    }
+  ]
+}

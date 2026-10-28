@@ -1,0 +1,49 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark",
+    "model": "muse-spark-1.3-contributor",
+    "effort": "high",
+    "path": "production HTML Studio (Forge) modify job: server, retrieval, muse CLI tool loop",
+    "max_runtime_ms": 1800000,
+    "max_calls": 100,
+    "max_input_tokens": 10000000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 0,
+  "shards": 2,
+  "results": [
+    {
+      "id": "pilot2-farm-challenge-none",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [],
+      "correction": null,
+      "job_id": "331ae52f-6b19-451d-a212-fb743f5766d8",
+      "status": "succeeded",
+      "error": null,
+      "usage": {
+        "calls": 32,
+        "input_tokens": 1756552,
+        "output_tokens": 16474,
+        "runtime_ms": 303566
+      },
+      "memory_ids": [],
+      "prompt_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "validation": {
+        "ok": true,
+        "issues": []
+      },
+      "prompt_file_sha256": "59adc07fb6a2c0b79396492c76515cd3658c20f517910a44067b866c61858e85",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "output_sha256": "f9536a35ede1ffdbff519d1fed2fda33d2941c39a8f4582b68be2ebc3be433b6",
+      "output_bytes": 17716,
+      "seconds": 307.2
+    }
+  ]
+}
