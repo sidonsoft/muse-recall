@@ -439,7 +439,7 @@ Status at handoff:
 | Local managed form/sandbox check (Node 24.22.1) | **Pass** — 7 checks |
 | GitHub Actions `verify` on pre-merge `b948800` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579/job/122915416541), Node 24, 632 passed / 3 skipped, build |
 | GitHub Actions `browser` on pre-merge `b948800` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579/job/122915417008), Chromium 156.0.8078.4, 32 checks |
-| GitHub Actions on merged final head | **Run on the commit after this handoff**; results recorded in PR checks |
+| GitHub Actions on merged head `0fbc1ef` | **Pass** — [run 40720866507](https://github.com/sidonsoft/muse-recall/actions/runs/40720866507); [verify](https://github.com/sidonsoft/muse-recall/actions/runs/40720866507/job/122931072830), 644 passed / 3 skipped; [browser](https://github.com/sidonsoft/muse-recall/actions/runs/40720866507/job/122931073416), Chromium 156.0.8078.4, 32 checks |
 | Node 24 compatibility (CI runtime) | **Pass** — local 24.22.1 and CI Node 24 |
 | Protected paths and tags unchanged | **Pass** — audit completed |
 | Phase 17 completed and reconciled | **Pass** — PR #2/#3 merged; included unchanged, no new result claimed |
