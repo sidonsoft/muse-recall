@@ -1,0 +1,33 @@
+{
+  "name": "Muse Recall (offline demo)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+  "containerEnv": {
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "MODEL_PROVIDER": "echo",
+    "WEB_HOST": "0.0.0.0"
+  },
+  "onCreateCommand": "corepack enable || sudo env \"PATH=$PATH\" corepack enable; corepack install",
+  "postCreateCommand": "pnpm install --frozen-lockfile && cp -n .env.example .env && pnpm demo:seed",
+  "postAttachCommand": {
+    "dev": "bash .devcontainer/start-dev.sh"
+  },
+  "forwardPorts": [5173, 8787],
+  "portsAttributes": {
+    "5173": {
+      "label": "Muse Recall",
+      "onAutoForward": "openBrowser"
+    },
+    "8787": {
+      "label": "Muse Recall API",
+      "onAutoForward": "silent"
+    }
+  },
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md"]
+    },
+    "vscode": {
+      "extensions": ["biomejs.biome"]
+    }
+  }
+}

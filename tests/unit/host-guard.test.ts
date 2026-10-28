@@ -59,3 +59,45 @@ describe('isAllowedHostHeader', () => {
     expect(isAllowedHostHeader('evil.example:80', ephemeral)).toBe(false);
   });
 });
+
+describe('isAllowedHostHeader with forwarded origins', () => {
+  const CODESPACE = 'https://judge-demo-x7q9-5173.app.github.dev';
+  const FORWARDED = { ...BASE, forwardedOrigins: [CODESPACE] };
+
+  it('rejects a forwarded public host by default', () => {
+    expect(isAllowedHostHeader('judge-demo-x7q9-5173.app.github.dev', BASE)).toBe(false);
+    expect(
+      isAllowedHostHeader('judge-demo-x7q9-5173.app.github.dev', { ...BASE, forwardedOrigins: [] }),
+    ).toBe(false);
+  });
+
+  it('accepts exactly the configured forwarded host, with or without its default port', () => {
+    expect(isAllowedHostHeader('judge-demo-x7q9-5173.app.github.dev', FORWARDED)).toBe(true);
+    expect(isAllowedHostHeader('JUDGE-DEMO-X7Q9-5173.app.github.dev', FORWARDED)).toBe(true);
+    expect(isAllowedHostHeader('judge-demo-x7q9-5173.app.github.dev:443', FORWARDED)).toBe(true);
+  });
+
+  it('rejects other hosts, ports and suffix tricks even when forwarding is configured', () => {
+    for (const host of [
+      'someone-else-5173.app.github.dev',
+      'judge-demo-x7q9-8787.app.github.dev',
+      'judge-demo-x7q9-5173.app.github.dev:8443',
+      'judge-demo-x7q9-5173.app.github.dev.evil.example',
+      'evil.example',
+      'user@judge-demo-x7q9-5173.app.github.dev',
+    ]) {
+      expect(isAllowedHostHeader(host, FORWARDED), host).toBe(false);
+    }
+  });
+
+  it('keeps loopback rules unchanged when forwarding is configured', () => {
+    expect(isAllowedHostHeader('127.0.0.1:8787', FORWARDED)).toBe(true);
+    expect(isAllowedHostHeader('127.0.0.1:9999', FORWARDED)).toBe(false);
+  });
+
+  it('ignores a malformed configured forwarded origin', () => {
+    expect(isAllowedHostHeader('evil.example', { ...BASE, forwardedOrigins: ['not a url'] })).toBe(
+      false,
+    );
+  });
+});

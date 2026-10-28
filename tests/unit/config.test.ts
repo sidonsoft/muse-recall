@@ -31,6 +31,37 @@ describe('loadConfig', () => {
     expect(config.corsOrigins).toEqual(['http://a.test', 'http://b.test']);
   });
 
+  it('trusts no forwarded origins unless FORWARDED_ORIGINS is set', () => {
+    expect(loadConfig({}, '/repo').forwardedOrigins).toEqual([]);
+    const config = loadConfig(
+      {
+        FORWARDED_ORIGINS:
+          ' https://judge-5173.app.github.dev , https://judge-8787.app.github.dev ,, ',
+      },
+      '/repo',
+    );
+    expect(config.forwardedOrigins).toEqual([
+      'https://judge-5173.app.github.dev',
+      'https://judge-8787.app.github.dev',
+    ]);
+    expect(config.corsOrigins).toEqual(['http://127.0.0.1:5173', 'http://localhost:5173']);
+  });
+
+  it('refuses a forwarded origin that is not one canonical https:// origin', () => {
+    for (const value of [
+      'http://judge-5173.app.github.dev',
+      'https://judge-5173.app.github.dev/',
+      'https://*.app.github.dev',
+      'https://user@judge-5173.app.github.dev',
+      'null',
+      'judge-5173.app.github.dev',
+    ]) {
+      expect(() => loadConfig({ FORWARDED_ORIGINS: value }, '/repo'), value).toThrow(
+        /FORWARDED_ORIGINS/,
+      );
+    }
+  });
+
   it('names the offending variable when a value is invalid', () => {
     expect(() => loadConfig({ PORT: 'not-a-number' }, '/repo')).toThrow(/PORT/);
     expect(() => loadConfig({ MODEL_PROVIDER: 'openai' }, '/repo')).toThrow(/MODEL_PROVIDER/);

@@ -16,6 +16,8 @@ const FIXTURE = fileURLToPath(new URL('../fixtures/fake-muse.mjs', import.meta.u
 const DEV_ORIGIN = 'http://localhost:5173';
 const SAME_ORIGIN = 'http://127.0.0.1:8787';
 const SAME_HOST = '127.0.0.1:8787';
+const CODESPACE_HOST = 'judge-demo-x7q9-5173.app.github.dev';
+const CODESPACE_ORIGIN = `https://${CODESPACE_HOST}`;
 
 interface Harness {
   app: FastifyInstance;
@@ -32,13 +34,14 @@ afterEach(async () => {
   }
 });
 
-function config(workspaceRoot: string): AppConfig {
+function config(workspaceRoot: string, forwardedOrigins: string[] = []): AppConfig {
   return {
     environment: 'test',
     host: '127.0.0.1',
     port: 0,
     logLevel: 'silent',
     corsOrigins: [DEV_ORIGIN],
+    forwardedOrigins,
     databasePath: ':memory:',
     wal: false,
     workspaceRoot,
@@ -64,7 +67,7 @@ function config(workspaceRoot: string): AppConfig {
   };
 }
 
-async function harness(mode = 'auto'): Promise<Harness> {
+async function harness(mode = 'auto', forwardedOrigins: string[] = []): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-origin-'));
   const database = openDatabase({ path: ':memory:', wal: false });
   const engine = new MemoryEngine(database.db);
@@ -81,7 +84,7 @@ async function harness(mode = 'auto'): Promise<Harness> {
     runtimeCheck: async () => ({ ok: true, errors: [] }),
   });
   const app = await buildApp({
-    config: config(root),
+    config: config(root, forwardedOrigins),
     db: database.db,
     dbPath: ':memory:',
     provider: new EchoProvider(),
@@ -108,11 +111,15 @@ function headers(origin: string | undefined, host = SAME_HOST): Record<string, s
   return out;
 }
 
-async function createProject(app: FastifyInstance, origin: string | undefined = SAME_ORIGIN) {
+async function createProject(
+  app: FastifyInstance,
+  origin: string | undefined = SAME_ORIGIN,
+  host = SAME_HOST,
+) {
   return app.inject({
     method: 'POST',
     url: '/api/forge/projects',
-    headers: headers(origin),
+    headers: headers(origin, host),
     payload: { project_id: 'demo-game', name: 'Demo Game' },
   });
 }
@@ -339,5 +346,61 @@ describe('cross-origin mutation guard', () => {
       payload: { project_id: 'demo-game' },
     });
     expect(response.statusCode).toBe(200);
+  });
+});
+
+describe('opt-in forwarded origins (GitHub Codespaces)', () => {
+  it('rejects the forwarded host and origin by default', async () => {
+    const h = await harness();
+    const viaHost = await createProject(h.app, CODESPACE_ORIGIN, CODESPACE_HOST);
+    expect(viaHost.statusCode).toBe(400);
+    expect(viaHost.json().error.code).toBe('invalid_host');
+
+    // A proxy that rewrites Host to loopback still cannot smuggle the origin in.
+    const viaLoopback = await createProject(h.app, CODESPACE_ORIGIN, '127.0.0.1:8787');
+    expect(viaLoopback.statusCode).toBe(403);
+    expect(viaLoopback.json().error.code).toBe('forbidden_origin');
+  });
+
+  it('accepts a configured forwarded origin whether or not the proxy rewrites Host', async () => {
+    const h = await harness('auto', [CODESPACE_ORIGIN]);
+    expect((await createProject(h.app, CODESPACE_ORIGIN, CODESPACE_HOST)).statusCode).toBe(200);
+
+    const h2 = await harness('auto', [CODESPACE_ORIGIN]);
+    expect((await createProject(h2.app, CODESPACE_ORIGIN, '127.0.0.1:5173')).statusCode).toBe(200);
+  });
+
+  it('returns CORS headers for a configured forwarded origin only', async () => {
+    const h = await harness('auto', [CODESPACE_ORIGIN]);
+    const trusted = await h.app.inject({
+      method: 'GET',
+      url: '/api/health',
+      headers: { host: CODESPACE_HOST, origin: CODESPACE_ORIGIN },
+    });
+    expect(trusted.headers['access-control-allow-origin']).toBe(CODESPACE_ORIGIN);
+
+    const foreign = await h.app.inject({
+      method: 'GET',
+      url: '/api/health',
+      headers: { host: CODESPACE_HOST, origin: 'https://other-5173.app.github.dev' },
+    });
+    expect(foreign.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('still rejects other codespaces, foreign origins and plain HTTP when configured', async () => {
+    const h = await harness('auto', [CODESPACE_ORIGIN]);
+    for (const origin of [
+      'https://someone-else-5173.app.github.dev',
+      'https://evil.example',
+      `http://${CODESPACE_HOST}`,
+      'null',
+    ]) {
+      const response = await createProject(h.app, origin, CODESPACE_HOST);
+      expect(response.statusCode, origin).toBe(403);
+    }
+    for (const host of ['someone-else-5173.app.github.dev', `${CODESPACE_HOST}.evil.example`]) {
+      const response = await createProject(h.app, CODESPACE_ORIGIN, host);
+      expect(response.statusCode, host).toBe(400);
+    }
   });
 });

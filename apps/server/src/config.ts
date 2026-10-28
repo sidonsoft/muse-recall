@@ -16,6 +16,7 @@ import {
 } from '@mml/muse-provider';
 import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
 import { z } from 'zod';
+import { normalizeOrigin } from './origin-guard.js';
 
 export const SERVICE_NAME = 'muse-memory-lab' as const;
 export const SERVICE_VERSION = '0.1.0';
@@ -26,6 +27,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65_535).default(8787),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   CORS_ORIGINS: z.string().default('http://127.0.0.1:5173,http://localhost:5173'),
+  FORWARDED_ORIGINS: z.string().default(''),
   DATABASE_PATH: z.string().min(1).default('./data/muse-memory-lab.db'),
   SQLITE_WAL: z
     .enum(['true', 'false'])
@@ -117,6 +119,12 @@ export interface AppConfig {
   port: number;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   corsOrigins: string[];
+  /**
+   * Public HTTPS origins of an explicitly trusted port-forwarding proxy (the
+   * Codespaces devcontainer sets these). Accepted by the Host guard, the
+   * cross-origin guard and CORS. Empty by default.
+   */
+  forwardedOrigins: string[];
   databasePath: string;
   wal: boolean;
   workspaceRoot: string;
@@ -179,6 +187,7 @@ export function loadConfig(
     corsOrigins: value.CORS_ORIGINS.split(',')
       .map((origin) => origin.trim())
       .filter((origin) => origin.length > 0),
+    forwardedOrigins: parseForwardedOrigins(value.FORWARDED_ORIGINS),
     databasePath: resolve(cwd, value.DATABASE_PATH),
     wal: value.SQLITE_WAL,
     workspaceRoot: resolve(cwd, value.WORKSPACE_ROOT),
@@ -229,6 +238,31 @@ export function loadConfig(
     },
     serviceVersion: SERVICE_VERSION,
   };
+}
+
+/**
+ * Parse `FORWARDED_ORIGINS`: a comma-separated list of exact
+ * `https://host[:port]` origins.
+ *
+ * Unlike `CORS_ORIGINS`, these also widen the Host guard beyond loopback, so a
+ * malformed, non-HTTPS or non-canonical entry stops startup instead of being
+ * silently ignored or normalized by guesswork.
+ */
+function parseForwardedOrigins(raw: string): string[] {
+  const entries = raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+  for (const entry of entries) {
+    const origin = normalizeOrigin(entry);
+    // Hostnames only: no wildcards or other characters the URL parser tolerates.
+    if (origin === null || !/^https:\/\/[a-z0-9.-]+(:\d+)?$/.test(origin)) {
+      throw new Error(
+        `Invalid environment configuration — FORWARDED_ORIGINS: "${entry}" is not a canonical https:// origin`,
+      );
+    }
+  }
+  return entries.map((entry) => entry.toLowerCase());
 }
 
 /**

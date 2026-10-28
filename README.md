@@ -24,7 +24,7 @@ those decisions and cites them. Nothing goes live until you approve it.
 | **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
 | **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 edits to 0 of 29. Palette-only memory did not (18 of 28). [Evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md); re-derive it with `pnpm verify:research16`. |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 549 tests. A staged change loads in headless Chrome before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 565 tests. A staged change loads in headless Chrome before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers one game, one request and one rule. See [Known limitations](#known-limitations). |
 
 ### Results: a remembered rule on two models
@@ -47,6 +47,12 @@ rule vs no memory is still 3/16 vs 16/16 (p = 3.2 × 10⁻⁶). This measures co
 baseline game. It is not a general safety claim.
 
 ### Try it
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/sidonsoft/muse-recall?quickstart=1)
+
+**No setup:** open it in Codespaces. It installs Node 24, seeds the demo project and opens the app in your browser on the offline provider.
+
+**Locally:** you need Node.js 24 or newer (for the built-in `node:sqlite`), then:
 
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
@@ -165,7 +171,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (549 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (565 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -359,6 +365,11 @@ is present: the request's own origin on the API port, or an origin listed in `CO
 `Origin: null`, malformed origins and foreign origins receive `403 forbidden_origin` before any
 handler runs. Non-browser clients that send no `Origin` continue to work; the guard is described in
 [docs/release/CROSS_ORIGIN_SECURITY_FIX.md](docs/release/CROSS_ORIGIN_SECURITY_FIX.md).
+
+`FORWARDED_ORIGINS` is an opt-in list of exact `https://` origins of a trusted port-forwarding proxy.
+The Codespaces devcontainer sets it to that codespace's two forwarded URLs, so the Host guard, the
+Origin guard, CORS and Vite accept them. It is empty by default: a local checkout accepts loopback
+only.
 
 ---
 

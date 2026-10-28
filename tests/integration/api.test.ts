@@ -30,6 +30,7 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     port: 0,
     logLevel: 'silent',
     corsOrigins: ['http://127.0.0.1:5173'],
+    forwardedOrigins: [],
     databasePath: ':memory:',
     wal: false,
     workspaceRoot: '/tmp/mml-workspaces',

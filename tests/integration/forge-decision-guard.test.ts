@@ -49,6 +49,7 @@ function config(workspaceRoot: string): AppConfig {
     port: 0,
     logLevel: 'silent',
     corsOrigins: [],
+    forwardedOrigins: [],
     databasePath: ':memory:',
     wal: false,
     workspaceRoot,

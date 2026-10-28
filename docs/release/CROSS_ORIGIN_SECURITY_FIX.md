@@ -64,6 +64,16 @@ workspace write runs.
 - A configured origin is normalized with the same parser; a malformed configuration entry
   contributes no trust instead of weakening the check.
 
+### Opt-in forwarded origins (GitHub Codespaces)
+
+`FORWARDED_ORIGINS` (default empty) lists exact, canonical `https://host[:port]` origins of a
+trusted port-forwarding proxy. Each entry is trusted by the Origin guard and CORS, and its hostname
+is accepted by the Host guard. A malformed, non-HTTPS or wildcard entry stops startup. Same-origin
+is still derived only from a loopback `Host`: a forwarded public host is trusted only through its
+configured origin, never through `http://<Host>`. Only the Codespaces devcontainer sets it
+(`.devcontainer/start-dev.sh`, from `CODESPACE_NAME` and
+`GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`); a local checkout keeps the loopback-only behaviour.
+
 ### Why absence of `Origin` is not treated as same-origin
 
 A request with no `Origin` is not assumed to come from the application. It is handled as a

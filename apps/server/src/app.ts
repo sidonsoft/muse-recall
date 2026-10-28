@@ -136,12 +136,17 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     bodyLimit: 1_048_576,
   });
 
+  // Browser origins allowed to mutate state and read responses: the configured
+  // local web origins plus any explicitly trusted forwarding-proxy origins.
+  const trustedOrigins = [...config.corsOrigins, ...config.forwardedOrigins];
+
   // Reject requests whose Host header does not name a loopback host on an
   // expected local port. Binding to 127.0.0.1 does not stop DNS rebinding.
   app.addHook('onRequest', async (request, reply) => {
     const allowed = isAllowedHostHeader(request.headers.host, {
       port: config.port,
       corsOrigins: config.corsOrigins,
+      forwardedOrigins: config.forwardedOrigins,
     });
     if (allowed) return;
     return reply
@@ -159,7 +164,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       method: request.method,
       origin: request.headers.origin,
       host: request.headers.host,
-      corsOrigins: config.corsOrigins,
+      corsOrigins: trustedOrigins,
       secFetchSite: request.headers['sec-fetch-site'],
     });
     if (verdict.allowed) return;
@@ -177,7 +182,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     origin: (origin, callback) => {
       // Allow non-browser clients (curl, tests) that send no Origin header.
       if (!origin) return callback(null, true);
-      if (config.corsOrigins.includes(origin)) return callback(null, true);
+      if (trustedOrigins.includes(origin)) return callback(null, true);
       return callback(null, false);
     },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

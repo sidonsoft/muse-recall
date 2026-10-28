@@ -40,6 +40,7 @@ function config(workspaceRoot: string): AppConfig {
     port: 0,
     logLevel: 'silent',
     corsOrigins: ['http://localhost:5173'],
+    forwardedOrigins: [],
     databasePath: ':memory:',
     wal: false,
     workspaceRoot,

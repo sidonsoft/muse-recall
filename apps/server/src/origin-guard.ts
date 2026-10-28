@@ -22,6 +22,8 @@
  * The host guard still runs first and limits the whole surface to loopback.
  */
 
+import { isLoopbackHostname, parseHostHeader } from './host-guard.js';
+
 export type OriginVerdict =
   | { allowed: true; reason: 'safe-method' | 'trusted-origin' | 'same-origin' | 'non-browser' }
   | {
@@ -85,9 +87,16 @@ export function normalizeOrigin(value: string): string | null {
   return normalized;
 }
 
-/** Origin implied by a validated `Host` header, on the server's plain-HTTP scheme. */
+/**
+ * Origin implied by a validated loopback `Host` header, on the server's
+ * plain-HTTP scheme. A forwarded public host (an opt-in Codespaces proxy) is
+ * served to the browser over the proxy's HTTPS, so it implies no same origin;
+ * it is trusted only through its exact configured origin.
+ */
 function requestOriginFromHost(host: string | undefined): string | null {
   if (host === undefined) return null;
+  const parsed = parseHostHeader(host);
+  if (parsed === null || !isLoopbackHostname(parsed.hostname)) return null;
   return normalizeOrigin(`http://${host}`);
 }
 

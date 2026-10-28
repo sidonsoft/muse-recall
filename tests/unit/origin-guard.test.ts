@@ -171,4 +171,22 @@ describe('evaluateRequestOrigin', () => {
       }),
     ).toEqual({ allowed: false, reason: 'untrusted-origin' });
   });
+
+  it('derives same-origin only from a loopback Host, never a forwarded public host', () => {
+    const host = 'judge-demo-x7q9-5173.app.github.dev';
+    for (const origin of [`http://${host}`, `https://${host}`]) {
+      expect(evaluateRequestOrigin({ ...BASE, host, origin }), origin).toEqual({
+        allowed: false,
+        reason: 'untrusted-origin',
+      });
+    }
+    expect(
+      evaluateRequestOrigin({
+        ...BASE,
+        host,
+        origin: `https://${host}`,
+        corsOrigins: [`https://${host}`],
+      }),
+    ).toEqual({ allowed: true, reason: 'trusted-origin' });
+  });
 });
