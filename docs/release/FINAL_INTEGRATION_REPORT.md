@@ -166,7 +166,7 @@ definitions, and the README says so.
 
 ### 5.1 Canonical storyboard
 
-[`docs/submission/V2_DEMO_RECORDING_PLAN.md`](../submission/V2_DEMO_RECORDING_PLAN.md) is canonical.
+`docs/submission/V2_DEMO_RECORDING_PLAN.md` is canonical.
 The following are marked superseded without deleting them:
 
 - `docs/submission/REVISED_DEMO_STORYBOARD.md`

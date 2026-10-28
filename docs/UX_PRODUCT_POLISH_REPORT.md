@@ -310,7 +310,7 @@ items, and a preview competing with a generic inspector. The revised UI changes 
 category, preview prominence, memory visibility and approval layout in every frame.
 
 **Recommendation:** re-record a V2 **only after director approval**, using
-[REVISED_DEMO_STORYBOARD.md](submission/REVISED_DEMO_STORYBOARD.md). Keep the existing cut as the
+`REVISED_DEMO_STORYBOARD.md`. Keep the existing cut as the
 approved fallback. Preserve the mandatory replay overlays and the Phase 12A provenance
 distinctions. Do not present replayed output as live generation.
 
@@ -383,4 +383,4 @@ The branch is not merged, not force-pushed, and the submission has not been made
 | Before/after frames, three viewports | [ux-evidence/README.md](ux-evidence/README.md) |
 | Capture script | `pnpm evidence:ux` (`scripts/ux-evidence.ts`) |
 | Audit comparison set | [assets/ux-audit/](assets/ux-audit/) |
-| Revised storyboard (not recorded) | [submission/REVISED_DEMO_STORYBOARD.md](submission/REVISED_DEMO_STORYBOARD.md) |
+| Revised storyboard (not recorded) | `submission/REVISED_DEMO_STORYBOARD.md` |
