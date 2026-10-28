@@ -4,11 +4,11 @@
 **Scope:** local, single-user beta. No deployment, no repository-visibility change, no
 hackathon submission, no paid model calls, no research-protocol/baseline/tag changes.
 
-Phase 17 remains active on its own branch (`claude/admiring-kilby-7f7211`, lock commit
-`219b73f`). At the final check it was still running (an owned Spark watcher/process
-remained active). This branch does not claim any Phase 17 result. Its checkout, files,
-servers, evidence, and tags were not touched. Integration remains gated on Phase 17
-completion and reconciliation.
+Phase 17 has a separate results branch (`phase17-results`, observed head `d3c7c6d`). It
+is not merged into this branch, and completion/reconciliation has not been independently
+confirmed. This branch does not claim any Phase 17 result. Its checkout, files, servers,
+evidence, and tags were not touched. Integration remains gated on Phase 17 completion and
+reconciliation.
 
 ## What changed
 
@@ -394,31 +394,32 @@ Local, Node **24.22.1**:
 
 ## Integration preparation
 
-- **Implementation commit:** `9c76ae94284269ed69ba1406d392fd3528b588df`
-  (`harden: durable Forge recovery and managed browser checks`).
 - **Draft PR:** [sidonsoft/muse-recall#1](https://github.com/sidonsoft/muse-recall/pull/1)
   against `main`. Draft only; not merged, tagged, deployed, or published.
-- **Post-review fix commit:** `878ce8f057dc1fb6116e2ea32aa9f0e7158df9a0`
-  (`fix: close Forge recovery and browser diagnostic gaps`).
-- **CI on `878ce8f`:** [run 40711026738](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738)
+- **Second-review implementation commit:** `0ff358e24e17edc0e7596da1a465c0ebd1cbb9fa`
+  (`fix: harden Forge completion, recovery, and memory budgets`).
+- **Regression timing fix:** `b94880036ece5744c3823c1507c096f04487ad8c`
+  (`test: wait for durable Forge completion before asserting`). The first CI attempt on
+  `0ff358e` failed only the new separate-process test because the worker read the job
+  after the in-memory status became terminal but before the required write flushed on
+  the slower runner. The worker now waits for the persisted terminal record; product
+  behavior was unchanged.
+- **CI on `b948800`:** [run 40716467579](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579)
   passed both jobs:
-  - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020114):
-    Node `24.21.0`; lint, typecheck, **618 passed / 3 skipped**, build — success.
-  - [browser job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020628):
-    Node `24.22.1`; installed Playwright Chromium `156.0.8078.4` and passed all
-    32 Studio workflow checks with `Browser: Chromium 156.0.8078.4 (managed)`.
-- **Pre-review CI:** [run 40706723095](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095)
-  passed on the implementation commit under **Node 24.21.0**:
-  - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524):
-    lint, typecheck, 611 passed / 3 skipped, build — success (pre-review run).
-  - [browser job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063):
-    installed Chromium `156.0.8078.4` (Playwright revision `1248`) and passed all
-    32 Studio workflow checks with `Browser: Chromium 156.0.8078.4 (managed)`.
-- **Local integration validation:** the pre-review head used Node 24.22.1, 611 passed /
-  3 skipped, build and all applicable managed-browser checks passed. The post-review run
-  uses 618 passed / 3 skipped; CI is reported separately, not inferred from local runs.
-- **Final pushed commit:** the docs-only handoff commit that follows `878ce8f`; its CI run
-  is recorded in the PR checks. It changes no code.
+  - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579/job/122915416541):
+    Node `24`; lint, typecheck, **632 passed / 3 skipped**, build — success.
+  - [browser job](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579/job/122915417008):
+    Node `24`; installed/selected Playwright Chromium `156.0.8078.4` and passed all
+    **32** Studio workflow checks with `Browser: Chromium 156.0.8078.4 (managed)`.
+- **Earlier review heads:** implementation `9c76ae9`; first post-review fixes `878ce8f`
+  ([CI 40711026738](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738));
+  handoff `9a0afc5` ([CI 40711390600](https://github.com/sidonsoft/muse-recall/actions/runs/40711390600)).
+  Those runs remain historical evidence, not the current head.
+- **Local integration validation:** Node 24.22.1, **632 passed / 3 skipped**, build and
+  all applicable managed-browser checks passed on this tree. CI results are reported
+  separately, not inferred from local runs.
+- **Final pushed commit:** the docs-only handoff commit that follows `b948800`; both CI
+  jobs are recorded in the PR checks for that exact head. It changes no code.
 
 ## Pre-integration gates
 
@@ -426,7 +427,7 @@ Status at handoff:
 
 | Gate | Status |
 | --- | --- |
-| Local `pnpm verify` on Node 24.22.1 (CI major), post-review | **Pass** — 618 passed, 3 skipped |
+| Local `pnpm verify` on Node 24.22.1 (CI major) | **Pass** — 632 passed, 3 skipped |
 | Local production build on Node 24.22.1 | **Pass** |
 | Local runtime verifier (Node 24.22.1, managed Chromium 156.0.8078.4) | **Pass** |
 | Local managed Studio workflow (Node 24.22.1) | **Pass** — 32 checks |
@@ -434,24 +435,21 @@ Status at handoff:
 | Local managed Forge workflow (`verify:forge`, Node 24.22.1) | **Pass** — 14 checks |
 | Local managed security check (Node 24.22.1) | **Pass** |
 | Local managed form/sandbox check (Node 24.22.1) | **Pass** — 7 checks |
-| Local production shutdown smoke | **Pass** (earlier isolated run) |
-| GitHub Actions `verify` job on post-review `878ce8f` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020114), Node 24.21.0, 618 passed / 3 skipped |
-| GitHub Actions `browser` job with pinned Chromium on `878ce8f` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020628), Chromium 156.0.8078.4, 32 checks |
-| GitHub Actions `verify` job on pre-review `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524), Node 24.21.0, 611 passed / 3 skipped |
-| GitHub Actions `browser` job on pre-review `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063), Chromium 156.0.8078.4 |
-| Node 24 compatibility (CI runtime) | **Pass** — local 24.22.1 and CI 24.21.0 |
+| GitHub Actions `verify` on `b948800` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579/job/122915416541), Node 24, 632 passed / 3 skipped, build |
+| GitHub Actions `browser` on `b948800` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40716467579/job/122915417008), Chromium 156.0.8078.4, 32 checks |
+| Node 24 compatibility (CI runtime) | **Pass** — local 24.22.1 and CI Node 24 |
 | Protected paths and tags unchanged | **Pass** — audit completed |
-| Phase 17 completed and reconciled | **Gated** — still running at the final check; no Phase 17 result claimed |
+| Phase 17 completed and reconciled | **Gated** — not confirmed complete; no Phase 17 result claimed |
 | Draft PR / final review | **Draft** — [PR #1](https://github.com/sidonsoft/muse-recall/pull/1); no merge |
 
 Before integration:
 
-1. Wait for Phase 17 to finish; review its completed results and deviations without
+1. Independently confirm Phase 17 completion and review its results/deviations without
    modifying its branch, evidence, or tags. Reconcile only findings that affect this
    hardening work. Integration remains gated until then.
-2. CI has passed for the implementation commit; re-run it if any branch content changes.
+2. CI has passed on `b948800`; re-run both jobs if any branch content changes, including the docs-only head.
 3. Node 24 behaviour for `node:sqlite`, signal handling, and the browser preview proxy
-   passed locally on 24.22.1 and on the GitHub runner at 24.21.0.
+   passed locally on 24.22.1 and on the GitHub runner on Node 24.
 4. The `browser` job installed and selected the lockfile-pinned Playwright Chromium
    (`156.0.8078.4`, revision `1248`), as recorded in the job log.
 5. Protected-path and tag audit is complete. Reconfirm on the final pushed commit.
@@ -554,8 +552,8 @@ validation used Node 26.8.1; the Node 24 run is the integration result.
   summaries, export disclosure, approval checks with browser identity/hash and explicit
   managed-browser policy, generation, staged review, approval, modification, rejection,
   rollback, restart recovery, recovery-banner acknowledgement, and the v3/base-v1 history
-  assertions. Phase 17 was still running; no Phase 17 files, servers, processes, evidence
-  or tags were touched.
+  assertions. Phase 17 remained on its separate results branch; no Phase 17 files,
+  servers, processes, evidence, or tags were touched, and no result is claimed.
 
 ## Before/after screenshots
 
