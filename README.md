@@ -22,10 +22,10 @@ those decisions and cites them. Nothing goes live until you approve it.
 | | |
 | --- | --- |
 | **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
-| **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27. Palette-only memory changed nothing (18 of 18). [Evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md); re-derive it with `pnpm verify:research16`. |
+| **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27, and palette-only memory changed nothing (18 of 18). Phase 17 replicated it across two games and a non-game app, two rules and two requests: 37/57 → **0/58** on Muse Spark and 49/60 → **1/60** on Muse Spark Open, while retyping the rule by hand gave **0/58** and **0/60** — no practical difference under the pre-registered +15 pp non-inferiority margin. A correction then released the stale rule. [Phase 16 card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md) · [Phase 17 results](docs/hackathon-evidence/phase17/RESULTS.md); re-derive with `pnpm verify:research16` and `pnpm verify:research17`. |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 632 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
-| **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers one game, one request and one rule. See [Known limitations](#known-limitations). |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 644 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers two games, one task planner, two rules and two models, and measures generated code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Results: a remembered rule on two models
 
@@ -186,6 +186,7 @@ pnpm verify:runtime         # load-time browser check used by HTML Studio approv
 pnpm verify:security        # browser reproduction: foreign-origin rollback rejected, same-origin allowed
 pnpm verify:research        # Phase 15B: 32 hashes, order, counts, Fisher p, recovered bundle
 pnpm verify:research16      # Phase 16/16B: locked hashes, order, detector counts, Fisher p (python3)
+pnpm verify:research17      # Phase 17: 480 runs, lock, inventory, exact p-values (python3)
 pnpm verify:formsandbox     # native submission blocked; JS/Enter interactions work
 pnpm verify:forge-workflow  # backend generate/stage/diff/approve/reject/rollback
 pnpm verify:studio-workflow # managed Chromium: generate, review, approve, modify, reject,
@@ -273,6 +274,7 @@ default.
 | Cross-origin state-mutation guard + regression tests | security | **Complete** |
 | Final release integration and verification | release | **Complete**; released to `main` by fast-forward (`328092c`) |
 | Phase 16 three-arm trial (Muse Spark) and 16B replication (Muse Spark Open) | 16 / 16B | **Complete**; evidence and verifier published |
+| Phase 17 four-arm trial across two games and one app, two models | 17 | **Complete**; evidence, exact-p correction and strict verifier published |
 | Demo video (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
 | Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
 | Post-hackathon local-beta hardening | hardening | **Implemented on an isolated branch**; pending review, browser CI run and merge |
@@ -534,6 +536,36 @@ Results are in the [table at the top](#results-a-remembered-rule-on-two-models).
 Evidence card: [docs/hackathon-evidence/phase16/EVIDENCE_CARD.md](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md).
 `pnpm verify:research16` re-derives every count and p-value from the committed outputs with the
 locked detector (requires `python3`).
+
+### Phase 17: four arms across two games and a non-game app, two models
+
+Phase 17 asked whether the effect survives a wider test. 480 runs: 4 arms × 6 strata × 2 models.
+The strata are two games (Farmyard Memory Match, Orchard Catch) × two requests, and FocusFlow (a
+task planner) × two requests; the rules are child safety on the games and calm motion on
+FocusFlow. The arms are `none`, `memory` (rule retrieved from project memory), `manual` (the same
+rule retyped into every request) and `corrected` (the rule is superseded through the production
+correction route before the edit). The protocol, detectors, runners and analysis were locked in
+`protocol.sha256` and pushed to GitHub before the first run.
+
+- **H1** `memory` vs `none`: 37/57 (65%) → **0/58** on Muse Spark, exact p = 6.5 × 10⁻²⁰;
+  49/60 (82%) → **1/60** on Muse Spark Open, exact p = 1.1 × 10⁻²⁴.
+- **H2** `memory` is not worse than `manual`: upper 90% bound of the difference +4.5 pp
+  (Muse Spark) and +7.1 pp (Open), both inside the pre-registered +15 pp margin.
+- **H3** `corrected` vs `memory`: 41/59 vs 0/58 (p = 6.9 × 10⁻²¹) and 50/60 vs 1/60
+  (p = 1.6 × 10⁻²⁴). H3's detector measures the *original* rule, so this is the corrected arm
+  following the corrected decision, not a safety regression.
+- 8 of 240 Muse Spark runs hit the pre-registered 30-minute runtime cap and are unusable
+  (counted, never retried); Muse Spark Open had 0 unusable runs. The worst-case table counts every
+  unusable run as a violation and does not change a verdict.
+- **Post-run correction (2026-10-29):** the first report's p-values came from a locked tail rule
+  with an absolute 1e-15 floor, so nine of twelve were upper bounds. They are now reported exactly,
+  recomputed from the same records; the as-run artefact is preserved and no verdict changed. See
+  [STATS_CORRECTION.md](docs/hackathon-evidence/phase17/STATS_CORRECTION.md).
+
+Results: [RESULTS.md](docs/hackathon-evidence/phase17/RESULTS.md). Review and audit:
+[REVIEW_DISPOSITION.md](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md).
+`pnpm verify:research17` checks the lock, the 1205-file evidence inventory, the preserved as-run
+values and the corrected analysis (requires `python3`).
 
 ### Phase 15B child-safety memory trial (earlier, superseded by Phase 16)
 

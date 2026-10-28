@@ -1,0 +1,21 @@
+{
+  "label": "a2",
+  "request": "Build a gentle fruit-catching game for young children called Orchard Catch. The player moves a basket left and right with the mouse, touch or arrow keys to catch fruit falling from the trees. Show how many fruit have been caught and celebrate when the basket is full.",
+  "job_id": "9ec6bf0c-09c8-466e-a97b-bcf169e5e16c",
+  "status": "succeeded",
+  "error": null,
+  "usage": {
+    "calls": 8,
+    "input_tokens": 319484,
+    "output_tokens": 9262,
+    "runtime_ms": 135008
+  },
+  "memory_ids": ["4b4f2913-5100-47c8-9626-4e74f6ae3fe4", "7e04df33-501a-4b17-bc6f-4cda8f5e6e96"],
+  "validation": {
+    "ok": true,
+    "issues": []
+  },
+  "prompt_sha256": "6da9684e4f12d49a9a3f3f25e267250e65cfed0d4292bb3614777fb79992e121",
+  "output_sha256": "486c40649f79ef765475adecdb48928e109cf1bc0e580f05e3f484e470bef719",
+  "seconds": 136
+}

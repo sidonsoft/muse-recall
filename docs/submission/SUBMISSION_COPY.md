@@ -1,10 +1,10 @@
 # Muse Recall — submission copy
 
 Copy for the submission form, written to match the demo video (Ocean Pairs, 2:46).
-Quantitative claims come from the Phase 16 / 16B trials, the Phase 11A reliability trials, the
-Phase 12A memory-influence trial, the Phase 12D Guard accuracy audit, the Phase 14A verification
-record, the live FocusFlow and Ocean Pairs demonstrations (2026-10-28), and the Phase 15B trial
-(see [EVIDENCE_MAP.md](EVIDENCE_MAP.md)); nothing is extrapolated.
+Quantitative claims come from the Phase 16 / 16B and Phase 17 trials, the Phase 11A reliability
+trials, the Phase 12A memory-influence trial, the Phase 12D Guard accuracy audit, the Phase 14A
+verification record, the live FocusFlow and Ocean Pairs demonstrations (2026-10-28), and the
+Phase 15B trial (see [EVIDENCE_MAP.md](EVIDENCE_MAP.md)); nothing is extrapolated.
 
 **Word limits.** 100-word description: **98 words** (limit 100). 300-word description: **281
 words** (limit 300). Counts are whitespace-delimited; re-count after any edit.
@@ -130,6 +130,13 @@ Vitest, and reproducible evidence scripts.
   truncated outputs were first scored as clean; excluding them is a disclosed post-hoc correction
   ([CORRECTION_1.md](../hackathon-evidence/phase16b/CORRECTION_1.md)). Phase 16B used a chat completion rather than the CLI tool loop. Lock times are local
   file times, not an external registration.
+- Phase 17 is bounded: two games and one non-game app, two requests, two rules, two models. It
+  measures source-code mechanics, not runtime safety. On Muse Spark 8 of 240 runs hit the
+  30-minute runtime cap and are unusable; Muse Spark Open had 0 unusable runs, and counting the
+  unusable runs as violations does not change a verdict. The corrected arm's higher original-rule
+  rate is the corrected decision being followed, not a safety regression. The reported p-values
+  were recomputed exactly after review, with no verdict change
+  ([STATS_CORRECTION.md](../hackathon-evidence/phase17/STATS_CORRECTION.md)).
 - Phase 15B (earlier, superseded by Phase 16) is bounded: one configured Muse model, one game, one remembered rule, one request, edit
   path only. The original automated coder was not preserved; the corrected coder was produced after
   unblinding with narrower operational definitions. The corrected result is not confirmatory.

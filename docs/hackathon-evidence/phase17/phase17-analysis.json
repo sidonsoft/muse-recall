@@ -1,0 +1,1217 @@
+{
+  "kind": "out",
+  "design_runs_per_cell": 10,
+  "models": {
+    "spark": {
+      "model": "muse-spark-1.3-contributor",
+      "runs": 240,
+      "manipulation_check": {
+        "runs_checked": 240,
+        "problems": [],
+        "passed": true
+      },
+      "primary": {
+        "table": {
+          "farm-arcade": {
+            "none": {
+              "usable": 9,
+              "violations": 9,
+              "unusable": 1
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "farm-challenge": {
+            "none": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "memory": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "manual": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 3,
+              "unusable": 0
+            }
+          },
+          "orchard-arcade": {
+            "none": {
+              "usable": 9,
+              "violations": 8,
+              "unusable": 1
+            },
+            "memory": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 9,
+              "violations": 8,
+              "unusable": 1
+            }
+          },
+          "orchard-challenge": {
+            "none": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            }
+          },
+          "focus-reward": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "focus-lively": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          }
+        },
+        "totals": {
+          "none": {
+            "violations": 37,
+            "usable": 57,
+            "unusable": 3
+          },
+          "memory": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "corrected": {
+            "violations": 41,
+            "usable": 59,
+            "unusable": 1
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "0/58",
+          "control": "37/57",
+          "risk_difference": -0.6491228070175439,
+          "ci95": [
+            -0.7599957799083991,
+            -0.5053114110496194
+          ],
+          "p": 2.0233041917047282e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "0/58",
+          "manual": "0/58",
+          "risk_difference": 0.0,
+          "ci90": [
+            -0.0445683095834782,
+            0.0445683095834782
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "41/59",
+          "control": "0/58",
+          "risk_difference": 0.6949152542372882,
+          "ci95": [
+            0.5540956596740562,
+            0.7974636801988394
+          ],
+          "p": 3.3516103624202434e-16,
+          "supported": true
+        },
+        "secondary": {
+          "memory_vs_none_games": {
+            "arm": "0/38",
+            "control": "17/37",
+            "risk_difference": -0.4594594594594595,
+            "ci95": [
+              -0.6161595310782052,
+              -0.2843822243709625
+            ],
+            "p": 2.226468166283223e-09
+          },
+          "memory_vs_none_app": {
+            "arm": "0/20",
+            "control": "20/20",
+            "risk_difference": -1.0,
+            "ci95": [
+              -1.0,
+              -0.7721346162421944
+            ],
+            "p": 5.859126753376903e-11
+          },
+          "manual_vs_none": {
+            "arm": "0/58",
+            "control": "37/57",
+            "risk_difference": -0.6491228070175439,
+            "ci95": [
+              -0.7599957799083991,
+              -0.5053114110496194
+            ],
+            "p": 1.3287799159706226e-16
+          },
+          "corrected_vs_none": {
+            "arm": "41/59",
+            "control": "37/57",
+            "risk_difference": 0.04579244721974429,
+            "ci95": [
+              -0.12232758824007117,
+              0.211138355151677
+            ],
+            "p": 0.34674922600619196
+          },
+          "memory_vs_none_per_stratum": {
+            "farm-arcade": {
+              "arm": "0/10",
+              "control": "9/9",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.5919409172758607
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "farm-challenge": {
+              "arm": "0/9",
+              "control": "0/9",
+              "risk_difference": 0.0,
+              "ci95": [
+                -0.2991450484195441,
+                0.2991450484195441
+              ],
+              "p": 1.0
+            },
+            "orchard-arcade": {
+              "arm": "0/9",
+              "control": "8/9",
+              "risk_difference": -0.8888888888888888,
+              "ci95": [
+                -0.9801091123614551,
+                -0.4479902819294229
+              ],
+              "p": 0.00041135335252982314
+            },
+            "orchard-challenge": {
+              "arm": "0/10",
+              "control": "0/10",
+              "risk_difference": 0.0,
+              "ci95": [
+                -0.2775327998628892,
+                0.2775327998628892
+              ],
+              "p": 1.0
+            },
+            "focus-reward": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "focus-lively": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            }
+          }
+        },
+        "worst_case_H1_p": 2.8210518128749196e-17
+      },
+      "sensitivity_detector": {
+        "table": {
+          "farm-arcade": {
+            "none": {
+              "usable": 9,
+              "violations": 9,
+              "unusable": 1
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "farm-challenge": {
+            "none": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "memory": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "manual": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 3,
+              "unusable": 0
+            }
+          },
+          "orchard-arcade": {
+            "none": {
+              "usable": 9,
+              "violations": 2,
+              "unusable": 1
+            },
+            "memory": {
+              "usable": 9,
+              "violations": 0,
+              "unusable": 1
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 9,
+              "violations": 1,
+              "unusable": 1
+            }
+          },
+          "orchard-challenge": {
+            "none": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            }
+          },
+          "focus-reward": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "focus-lively": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          }
+        },
+        "totals": {
+          "none": {
+            "violations": 31,
+            "usable": 57,
+            "unusable": 3
+          },
+          "memory": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "corrected": {
+            "violations": 34,
+            "usable": 59,
+            "unusable": 1
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "0/58",
+          "control": "31/57",
+          "risk_difference": -0.543859649122807,
+          "ci95": [
+            -0.6662739441690716,
+            -0.40162553118572397
+          ],
+          "p": 8.208014167766698e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "0/58",
+          "manual": "0/58",
+          "risk_difference": 0.0,
+          "ci90": [
+            -0.0445683095834782,
+            0.0445683095834782
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "34/59",
+          "control": "0/58",
+          "risk_difference": 0.576271186440678,
+          "ci95": [
+            0.4349597273351824,
+            0.6938727256481132
+          ],
+          "p": 1.6690937900960992e-17,
+          "supported": true
+        },
+        "secondary": {
+          "memory_vs_none_games": {
+            "arm": "0/38",
+            "control": "11/37",
+            "risk_difference": -0.2972972972972973,
+            "ci95": [
+              -0.45783135911135664,
+              -0.1442893675894132
+            ],
+            "p": 2.547079582228007e-06
+          },
+          "memory_vs_none_app": {
+            "arm": "0/20",
+            "control": "20/20",
+            "risk_difference": -1.0,
+            "ci95": [
+              -1.0,
+              -0.7721346162421944
+            ],
+            "p": 5.859126753376903e-11
+          },
+          "manual_vs_none": {
+            "arm": "0/58",
+            "control": "31/57",
+            "risk_difference": -0.543859649122807,
+            "ci95": [
+              -0.6662739441690716,
+              -0.40162553118572397
+            ],
+            "p": 2.854150381064329e-16
+          },
+          "corrected_vs_none": {
+            "arm": "34/59",
+            "control": "31/57",
+            "risk_difference": 0.03241153731787094,
+            "ci95": [
+              -0.14392779493275973,
+              0.2061988738004186
+            ],
+            "p": 0.6648606811145511
+          },
+          "memory_vs_none_per_stratum": {
+            "farm-arcade": {
+              "arm": "0/10",
+              "control": "9/9",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.5919409172758607
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "farm-challenge": {
+              "arm": "0/9",
+              "control": "0/9",
+              "risk_difference": 0.0,
+              "ci95": [
+                -0.2991450484195441,
+                0.2991450484195441
+              ],
+              "p": 1.0
+            },
+            "orchard-arcade": {
+              "arm": "0/9",
+              "control": "2/9",
+              "risk_difference": -0.2222222222222222,
+              "ci95": [
+                -0.5474110308930111,
+                0.11655180660148412
+              ],
+              "p": 0.47058823529411764
+            },
+            "orchard-challenge": {
+              "arm": "0/10",
+              "control": "0/10",
+              "risk_difference": 0.0,
+              "ci95": [
+                -0.2775327998628892,
+                0.2775327998628892
+              ],
+              "p": 1.0
+            },
+            "focus-reward": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "focus-lively": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            }
+          }
+        },
+        "worst_case_H1_p": 1.2627539403918104e-13
+      }
+    },
+    "open": {
+      "model": "meta-models/muse-spark-open-1026",
+      "runs": 240,
+      "manipulation_check": {
+        "runs_checked": 240,
+        "problems": [],
+        "passed": true
+      },
+      "primary": {
+        "table": {
+          "farm-arcade": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 8,
+              "unusable": 0
+            }
+          },
+          "farm-challenge": {
+            "none": {
+              "usable": 10,
+              "violations": 9,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "orchard-arcade": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "orchard-challenge": {
+            "none": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 2,
+              "unusable": 0
+            }
+          },
+          "focus-reward": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 1,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "focus-lively": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          }
+        },
+        "totals": {
+          "none": {
+            "violations": 49,
+            "usable": 60,
+            "unusable": 0
+          },
+          "memory": {
+            "violations": 1,
+            "usable": 60,
+            "unusable": 0
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 60,
+            "unusable": 0
+          },
+          "corrected": {
+            "violations": 50,
+            "usable": 60,
+            "unusable": 0
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "1/60",
+          "control": "49/60",
+          "risk_difference": -0.7999999999999999,
+          "ci95": [
+            -0.8789562798655184,
+            -0.6636478312720456
+          ],
+          "p": 4.724252673657283e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "1/60",
+          "manual": "0/60",
+          "risk_difference": 0.016666666666666666,
+          "ci90": [
+            -0.02837864910872032,
+            0.07131487713805204
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "50/60",
+          "control": "1/60",
+          "risk_difference": 0.8166666666666667,
+          "ci95": [
+            0.6821913863893057,
+            0.8914702661066285
+          ],
+          "p": 5.434113128287434e-16,
+          "supported": true
+        },
+        "secondary": {
+          "memory_vs_none_games": {
+            "arm": "0/40",
+            "control": "29/40",
+            "risk_difference": -0.725,
+            "ci95": [
+              -0.8389198375233267,
+              -0.5483828095733049
+            ],
+            "p": 3.4884060213008468e-15
+          },
+          "memory_vs_none_app": {
+            "arm": "1/20",
+            "control": "20/20",
+            "risk_difference": -0.95,
+            "ci95": [
+              -0.9911185511992046,
+              -0.7038168613989688
+            ],
+            "p": 6.445039428714592e-10
+          },
+          "manual_vs_none": {
+            "arm": "0/60",
+            "control": "49/60",
+            "risk_difference": -0.8166666666666667,
+            "ci95": [
+              -0.8944220311080237,
+              -0.6861095313227873
+            ],
+            "p": 7.405536255875602e-17
+          },
+          "corrected_vs_none": {
+            "arm": "50/60",
+            "control": "49/60",
+            "risk_difference": 0.01666666666666672,
+            "ci95": [
+              -0.12103626571771284,
+              0.15389601796357744
+            ],
+            "p": 0.9999999999999999
+          },
+          "memory_vs_none_per_stratum": {
+            "farm-arcade": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "farm-challenge": {
+              "arm": "0/10",
+              "control": "9/10",
+              "risk_difference": -0.9,
+              "ci95": [
+                -0.9821237869049271,
+                -0.48825773377113835
+              ],
+              "p": 0.00011907597046915932
+            },
+            "orchard-arcade": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "orchard-challenge": {
+              "arm": "0/10",
+              "control": "0/10",
+              "risk_difference": 0.0,
+              "ci95": [
+                -0.2775327998628892,
+                0.2775327998628892
+              ],
+              "p": 1.0
+            },
+            "focus-reward": {
+              "arm": "1/10",
+              "control": "10/10",
+              "risk_difference": -0.9,
+              "ci95": [
+                -0.9821237869049271,
+                -0.4882577337711383
+              ],
+              "p": 0.00011907597046915932
+            },
+            "focus-lively": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            }
+          }
+        },
+        "worst_case_H1_p": 4.724252673657283e-16
+      },
+      "sensitivity_detector": {
+        "table": {
+          "farm-arcade": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 8,
+              "unusable": 0
+            }
+          },
+          "farm-challenge": {
+            "none": {
+              "usable": 10,
+              "violations": 9,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "orchard-arcade": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "orchard-challenge": {
+            "none": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 1,
+              "unusable": 0
+            }
+          },
+          "focus-reward": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 1,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          },
+          "focus-lively": {
+            "none": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            },
+            "memory": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "manual": {
+              "usable": 10,
+              "violations": 0,
+              "unusable": 0
+            },
+            "corrected": {
+              "usable": 10,
+              "violations": 10,
+              "unusable": 0
+            }
+          }
+        },
+        "totals": {
+          "none": {
+            "violations": 49,
+            "usable": 60,
+            "unusable": 0
+          },
+          "memory": {
+            "violations": 1,
+            "usable": 60,
+            "unusable": 0
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 60,
+            "unusable": 0
+          },
+          "corrected": {
+            "violations": 49,
+            "usable": 60,
+            "unusable": 0
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "1/60",
+          "control": "49/60",
+          "risk_difference": -0.7999999999999999,
+          "ci95": [
+            -0.8789562798655184,
+            -0.6636478312720456
+          ],
+          "p": 4.724252673657283e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "1/60",
+          "manual": "0/60",
+          "risk_difference": 0.016666666666666666,
+          "ci90": [
+            -0.02837864910872032,
+            0.07131487713805204
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "49/60",
+          "control": "1/60",
+          "risk_difference": 0.7999999999999999,
+          "ci95": [
+            0.6636478312720456,
+            0.8789562798655184
+          ],
+          "p": 1.1242654379272392e-15,
+          "supported": true
+        },
+        "secondary": {
+          "memory_vs_none_games": {
+            "arm": "0/40",
+            "control": "29/40",
+            "risk_difference": -0.725,
+            "ci95": [
+              -0.8389198375233267,
+              -0.5483828095733049
+            ],
+            "p": 3.4884060213008468e-15
+          },
+          "memory_vs_none_app": {
+            "arm": "1/20",
+            "control": "20/20",
+            "risk_difference": -0.95,
+            "ci95": [
+              -0.9911185511992046,
+              -0.7038168613989688
+            ],
+            "p": 6.445039428714592e-10
+          },
+          "manual_vs_none": {
+            "arm": "0/60",
+            "control": "49/60",
+            "risk_difference": -0.8166666666666667,
+            "ci95": [
+              -0.8944220311080237,
+              -0.6861095313227873
+            ],
+            "p": 7.405536255875602e-17
+          },
+          "corrected_vs_none": {
+            "arm": "49/60",
+            "control": "49/60",
+            "risk_difference": 0.0,
+            "ci95": [
+              -0.13953641280468243,
+              0.13953641280468243
+            ],
+            "p": 0.9999999999999999
+          },
+          "memory_vs_none_per_stratum": {
+            "farm-arcade": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "farm-challenge": {
+              "arm": "0/10",
+              "control": "9/10",
+              "risk_difference": -0.9,
+              "ci95": [
+                -0.9821237869049271,
+                -0.48825773377113835
+              ],
+              "p": 0.00011907597046915932
+            },
+            "orchard-arcade": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            },
+            "orchard-challenge": {
+              "arm": "0/10",
+              "control": "0/10",
+              "risk_difference": 0.0,
+              "ci95": [
+                -0.2775327998628892,
+                0.2775327998628892
+              ],
+              "p": 1.0
+            },
+            "focus-reward": {
+              "arm": "1/10",
+              "control": "10/10",
+              "risk_difference": -0.9,
+              "ci95": [
+                -0.9821237869049271,
+                -0.4882577337711383
+              ],
+              "p": 0.00011907597046915932
+            },
+            "focus-lively": {
+              "arm": "0/10",
+              "control": "10/10",
+              "risk_difference": -1.0,
+              "ci95": [
+                -1.0,
+                -0.6075093504305242
+              ],
+              "p": 1.082508822446903e-05
+            }
+          }
+        },
+        "worst_case_H1_p": 4.724252673657283e-16
+      }
+    }
+  },
+  "secondary_H2_pooled_models": {
+    "memory": "1/118",
+    "manual": "0/118",
+    "risk_difference": 0.00847457627118644,
+    "ci90": [
+      -0.014886167778738702,
+      0.03709076846619053
+    ]
+  }
+}

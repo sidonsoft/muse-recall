@@ -1,0 +1,176 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark Open",
+    "model": "meta-models/muse-spark-open-1026",
+    "endpoint": "https://inference.baseten.co/v1/chat/completions",
+    "path": "production buildForgePrompt with a memory block from production retrieval, baseline appended, one chat completion",
+    "temperature": 0,
+    "max_tokens": 20000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 2,
+  "shards": 6,
+  "results": [
+    {
+      "id": "pilot-farm-arcade-manual",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Make the game more exciting and challenging, like an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "1f5b77ae-9988-48e4-bef8-3f146503bb74",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "memory_ids": ["1f5b77ae-9988-48e4-bef8-3f146503bb74"],
+      "prompt_file_sha256": "4316ed531bad4844317966c15b53dfa1eac098fa00bd813ae1de9010df960d13",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4482,
+        "completion_tokens": 19196,
+        "total_tokens": 23678,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 128
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 13991,
+          "audio_tokens": 0,
+          "reasoning_tokens": 10414,
+          "rejected_prediction_tokens": 22444
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 26462,
+      "output_sha256": "cff144f88531096e6fde6425128a4549bb5f4c0a0de263a605f4c89474fe7ab7",
+      "seconds": 59.1
+    },
+    {
+      "id": "pilot-orchard-arcade-none",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "seeded": [],
+      "correction": null,
+      "memory_ids": [],
+      "prompt_file_sha256": "70a4de1ae7a645ce931443e13fe2f15e438ab6235ca97700d39b72fafa097193",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 5564,
+        "completion_tokens": 19170,
+        "total_tokens": 24734,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 14411,
+          "audio_tokens": 0,
+          "reasoning_tokens": 6050,
+          "rejected_prediction_tokens": 18902
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 42132,
+      "output_sha256": "7ec2f0fbb970226db707a6892af7431c5dc740d6bdf1dfe75c2c4a1a8bc86cd1",
+      "seconds": 51.8
+    },
+    {
+      "id": "pilot-orchard-challenge-manual",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "seeded": [
+        {
+          "id": "c670008a-f812-4083-81a1-478ecef7e299",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": null,
+      "memory_ids": ["c670008a-f812-4083-81a1-478ecef7e299"],
+      "prompt_file_sha256": "8ca766f2b91ba0e7045cfa4cafd08f8e169ac722cd88f60f6fd03241bf6a6568",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 5622,
+        "completion_tokens": 11144,
+        "total_tokens": 16766,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 8375,
+          "audio_tokens": 0,
+          "reasoning_tokens": 4759,
+          "rejected_prediction_tokens": 11008
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 22134,
+      "output_sha256": "bc2e232c5bedee256bb19aacc19674d933ffb302e5e25ca21cb940a255d0a590",
+      "seconds": 30.8
+    },
+    {
+      "id": "pilot-focus-lively-none",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [],
+      "correction": null,
+      "memory_ids": [],
+      "prompt_file_sha256": "49e2e548fe9cf80c73e360383f2b71908f90c94a8113da69a2296b261c1f3ff5",
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4864,
+        "completion_tokens": 12856,
+        "total_tokens": 17720,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 10071,
+          "audio_tokens": 0,
+          "reasoning_tokens": 2159,
+          "rejected_prediction_tokens": 9424
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 35275,
+      "output_sha256": "2e1fd738fee9f78d471aa5e9648f2a54f65cbca72041a890107cf0141899d034",
+      "seconds": 30.5
+    }
+  ]
+}

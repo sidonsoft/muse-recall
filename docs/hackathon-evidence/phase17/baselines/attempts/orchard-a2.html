@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orchard Catch — A Gentle Fruit Game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  :root{
+    --accent:#6BBF59;
+    --accent-dark:#4E9A42;
+    --ink:#1F3A24;
+    --paper:#F6FBF1;
+    --card:#FFFFFF;
+    --soft:#E2EFDA;
+    --peach:#FFE8C2;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+    background:linear-gradient(180deg,#F6FBF1 0%,#EAF7E3 60%,#DFF0D2 100%);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:16px;
+    line-height:1.5;
+  }
+  header{max-width:560px;width:100%;text-align:center;margin-bottom:12px}
+  header h1{margin:6px 0 4px;font-size:clamp(1.6rem,5vw,2.2rem);letter-spacing:.5px}
+  header p{margin:6px 0;font-size:clamp(1rem,3.6vw,1.1rem)}
+  .tree-row{font-size:1.6rem;letter-spacing:6px}
+  main{width:100%;max-width:560px}
+  .card{
+    background:var(--card);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    padding:12px;
+    box-shadow:0 6px 18px rgba(31,58,36,.12);
+  }
+  .hud{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  .score-pill{
+    background:var(--paper);
+    border:2px solid var(--accent);
+    border-radius:999px;
+    padding:8px 14px;
+    font-weight:700;
+    font-size:1.05rem;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+  }
+  .controls{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    font-size:1.05rem;
+    font-weight:700;
+    color:var(--ink);
+    background:var(--peach);
+    border:3px solid var(--ink);
+    border-radius:14px;
+    padding:10px 18px;
+    min-height:48px;
+    min-width:110px;
+    cursor:pointer;
+  }
+  button.primary{background:var(--accent);color:#fff;border-color:var(--ink)}
+  button:hover{filter:brightness(1.05)}
+  button:focus-visible{outline:4px solid #2F6B2A;outline-offset:2px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .progress-wrap{margin:10px 2px 12px}
+  .progress-label{font-weight:700;margin-bottom:6px}
+  .progress-track{
+    background:var(--soft);
+    border:2px solid var(--ink);
+    border-radius:999px;
+    height:22px;
+    overflow:hidden;
+  }
+  #progressFill{
+    background:var(--accent);
+    height:100%;
+    width:0%;
+    border-radius:999px;
+    transition:width .4s ease;
+  }
+  #gameWrap{
+    width:100%;
+    aspect-ratio:3/4;
+    max-height:62vh;
+    border-radius:14px;
+    overflow:hidden;
+    border:2px solid var(--ink);
+    background:#EAF7E3;
+  }
+  #gameWrap canvas{display:block;width:100% !important;height:100% !important}
+  .help{margin-top:10px;font-size:1rem;background:#F2F9EA;border-radius:12px;padding:10px 12px}
+  #celebration{
+    display:none;
+    margin-top:12px;
+    text-align:center;
+    background:#FFF7DF;
+    border:3px dashed var(--accent-dark);
+    border-radius:14px;
+    padding:12px;
+    font-size:1.15rem;
+    font-weight:700;
+  }
+  #celebration.show{display:block}
+  footer{max-width:560px;text-align:center;margin-top:12px;font-size:.95rem;opacity:.9}
+  @media (max-width:420px){
+    .hud{justify-content:center}
+    button{flex:1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="tree-row" aria-hidden="true">🌳 🌳 🌳</div>
+  <h1>Orchard Catch</h1>
+  <p>Move the basket left and right to catch falling fruit. Fill the basket to finish!</p>
+</header>
+<main>
+  <section class="card" aria-label="Orchard Catch game area">
+    <div class="hud">
+      <div id="status" class="score-pill" role="status" aria-live="polite">Caught 0 of 12 🧺</div>
+      <div class="controls">
+        <button type="button" id="startBtn" class="primary" aria-label="Start catching fruit">Start</button>
+        <button type="button" id="restartBtn" aria-label="Restart the game">Restart</button>
+        <button type="button" id="soundBtn" aria-label="Turn gentle pop sound on or off" aria-pressed="true">Sound: On</button>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label" id="progressLabel">Basket progress</div>
+      <div class="progress-track" role="progressbar" aria-labelledby="progressLabel" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0" id="progressBar">
+        <div id="progressFill"></div>
+      </div>
+    </div>
+    <div id="gameWrap" role="img" aria-label="Meadow orchard game canvas. Move the basket to catch falling fruit."></div>
+    <div class="help">
+      🖱️ Move mouse &nbsp;•&nbsp; 👆 Drag on touch &nbsp;•&nbsp; ⌨️ Arrow keys<br>
+      No rush, no losing — missed fruit just rests in the grass. 🌼
+    </div>
+    <div id="celebration" role="status" aria-live="polite">🎉 Basket full! Wonderful picking! 🎉</div>
+  </section>
+</main>
+<footer>Gentle play: no timers, no flashing, no penalties. Made for young pickers.</footer>
+
+<script>
+(function () {
+  'use strict';
+  var GOAL = 12;
+  var GAME_W = 480;
+  var GAME_H = 640;
+  // Simple, well-supported fruit emoji only (avoids font gaps on some systems).
+  var FRUITS = ['\u{1F34E}', '\u{1F34A}', '\u{1F34F}', '\u{1F352}', '\u{1F347}'];
+
+  var caught = 0;
+  var playing = false;
+  var won = false;
+  var soundOn = true;
+  var audioCtx = null;
+
+  var statusEl = document.getElementById('status');
+  var startBtn = document.getElementById('startBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var soundBtn = document.getElementById('soundBtn');
+  var progressFill = document.getElementById('progressFill');
+  var progressBar = document.getElementById('progressBar');
+  var celebrationEl = document.getElementById('celebration');
+
+  var sceneRef = null;
+
+  function softPop() {
+    if (!soundOn) return;
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(760, audioCtx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.28);
+    } catch (e) { /* stay silent on failure */ }
+  }
+
+  function updateHud() {
+    statusEl.textContent = 'Caught ' + caught + ' of ' + GOAL + ' \u{1F9FA}';
+    var pct = Math.min(100, Math.round((caught / GOAL) * 100));
+    progressFill.style.width = pct + '%';
+    progressBar.setAttribute('aria-valuenow', String(caught));
+    startBtn.disabled = playing;
+    restartBtn.disabled = (!playing && caught === 0 && !won);
+  }
+
+  function setCelebration(show) {
+    if (show) { celebrationEl.classList.add('show'); }
+    else { celebrationEl.classList.remove('show'); }
+  }
+
+  function startGame() {
+    caught = 0;
+    playing = true;
+    won = false;
+    setCelebration(false);
+    updateHud();
+    if (sceneRef) { sceneRef.resetRound(); }
+    if (startBtn) { startBtn.blur(); }
+  }
+
+  function restartGame() {
+    startGame();
+    if (restartBtn) { restartBtn.blur(); }
+  }
+
+  function toggleSound() {
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? 'Sound: On' : 'Sound: Off';
+    soundBtn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+    soundBtn.blur();
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+  soundBtn.addEventListener('click', toggleSound);
+
+  // Explicit keyboard operation: Enter activates each action button.
+  [startBtn, restartBtn, soundBtn].forEach(function (btn) {
+    btn.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        btn.click();
+      }
+    });
+  });
+  // Pressing Enter anywhere (outside buttons) starts or restarts gently.
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter') return;
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'BUTTON') return; // button handler above already runs
+    if (!playing) {
+      ev.preventDefault();
+      startGame();
+    }
+  });
+
+  function makeScene() {
+    var basket = null;
+    var basketTargetX = GAME_W / 2;
+    var fruits = [];
+    var spawnEvent = null;
+    var infoText = null;
+    var countText = null;
+    var cursors = null;
+
+    function paintMeadow(scene) {
+      scene.cameras.main.setBackgroundColor('#DDF0D2');
+      var g = scene.add.graphics();
+      // sky band
+      g.fillStyle(0xEAF7E3, 1);
+      g.fillRect(0, 0, GAME_W, 420);
+      // soft sun (static, non-flashing)
+      g.fillStyle(0xFFF3C4, 1);
+      g.fillCircle(410, 70, 34);
+      // tree row
+      var treeX = [60, 180, 300, 420];
+      treeX.forEach(function (x, i) {
+        g.fillStyle(0x8A5A3B, 1);
+        g.fillRect(x - 9, 120, 18, 90);
+        g.fillStyle(i % 2 === 0 ? 0x7CC46F : 0x6BBF59, 1);
+        g.fillCircle(x, 105, 52);
+        g.fillCircle(x - 34, 125, 34);
+        g.fillCircle(x + 34, 125, 34);
+        g.fillStyle(0xFF8A8A, 1);
+        g.fillCircle(x - 18, 100, 7);
+        g.fillCircle(x + 14, 112, 7);
+        g.fillCircle(x + 4, 88, 6);
+      });
+      // grassy hill
+      g.fillStyle(0xBFE6AC, 1);
+      g.fillEllipse(GAME_W / 2, 640, 640, 260);
+      g.fillStyle(0xA9DB94, 1);
+      g.fillEllipse(GAME_W / 2, 680, 560, 200);
+      // little flowers (static)
+      var flowers = [[40, 520], [120, 560], [210, 530], [330, 555], [430, 525]];
+      flowers.forEach(function (p) {
+        g.fillStyle(0xffffff, 1);
+        g.fillCircle(p[0], p[1], 6);
+        g.fillStyle(0xF2B8C6, 1);
+        g.fillCircle(p[0], p[1], 3);
+      });
+    }
+
+    function clearFruits(scene) {
+      fruits.forEach(function (f) { f.destroy(); });
+      fruits = [];
+    }
+
+    function celebrate(scene) {
+      won = true;
+      playing = false;
+      updateHud();
+      setCelebration(true);
+      infoText.setText('Basket full! Wonderful picking! \u{1F389}');
+      // Gentle leaf shower: slow soft shapes, no flashing or blinking.
+      for (var i = 0; i < 36; i++) {
+        var colors = [0x6BBF59, 0xA9DB94, 0xFFD98E, 0xF2B8C6, 0xffffff];
+        var c = scene.add.circle(
+          Phaser.Math.Between(20, GAME_W - 20),
+          Phaser.Math.Between(-120, -10),
+          Phaser.Math.Between(4, 8),
+          colors[i % colors.length],
+          0.95
+        );
+        scene.tweens.add({
+          targets: c,
+          y: GAME_H - Phaser.Math.Between(20, 120),
+          x: c.x + Phaser.Math.Between(-40, 40),
+          angle: Phaser.Math.Between(-90, 90),
+          duration: Phaser.Math.Between(1800, 3400),
+          ease: 'Sine.easeInOut',
+          delay: i * 60
+        });
+      }
+      scene.tweens.add({
+        targets: basket,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        duration: 350,
+        yoyo: true,
+        ease: 'Sine.easeInOut'
+      });
+    }
+
+    function catchFruit(scene, fruit) {
+      caught += 1;
+      softPop();
+      updateHud();
+      countText.setText('Basket: ' + caught + ' / ' + GOAL);
+      // gentle thank-you float (fades slowly, no flash)
+      var thanks = scene.add.text(fruit.x, fruit.y - 20, '+1 \u2764\uFE0F', {
+        fontSize: '22px',
+        color: '#2F6B2A'
+      }).setOrigin(0.5);
+      scene.tweens.add({
+        targets: thanks,
+        y: thanks.y - 36,
+        alpha: 0,
+        duration: 700,
+        ease: 'Sine.easeOut',
+        onComplete: function () { thanks.destroy(); }
+      });
+      scene.tweens.add({
+        targets: basket,
+        scaleX: 1.15,
+        scaleY: 1.15,
+        duration: 140,
+        yoyo: true,
+        ease: 'Sine.easeInOut'
+      });
+      fruit.destroy();
+      fruits = fruits.filter(function (f) { return f !== fruit; });
+      if (caught >= GOAL) { celebrate(scene); }
+    }
+
+    function spawnFruit(scene) {
+      if (!playing || won) return;
+      var x = Phaser.Math.Between(40, GAME_W - 40);
+      var emoji = FRUITS[Phaser.Math.Between(0, FRUITS.length - 1)];
+      var fruit = scene.add.text(x, -30, emoji, { fontSize: '42px' }).setOrigin(0.5);
+      fruit.setData('speed', Phaser.Math.Between(95, 155));
+      fruit.setData('sway', Phaser.Math.FloatBetween(0, Math.PI * 2));
+      fruits.push(fruit);
+    }
+
+    return {
+      create: function () {
+        var scene = this;
+        sceneRef = {
+          resetRound: function () {
+            caught = 0;
+            playing = true;
+            won = false;
+            clearFruits(scene);
+            countText.setText('Basket: 0 / ' + GOAL);
+            infoText.setText('Catch the fruit! \u{1F60A}');
+            basket.setPosition(GAME_W / 2, GAME_H - 70).setScale(1);
+            basketTargetX = GAME_W / 2;
+            updateHud();
+          }
+        };
+        paintMeadow(scene);
+        countText = scene.add.text(16, 14, 'Basket: 0 / ' + GOAL, {
+          fontSize: '22px',
+          color: '#1F3A24',
+          backgroundColor: 'rgba(255,255,255,0.85)',
+          padding: { x: 10, y: 6 }
+        }).setDepth(5);
+        infoText = scene.add.text(GAME_W / 2, 250, 'Tap Start to play! \u{1F60A}', {
+          fontSize: '24px',
+          color: '#1F3A24',
+          align: 'center',
+          backgroundColor: 'rgba(255,255,255,0.9)',
+          padding: { x: 14, y: 10 },
+          wordWrap: { width: GAME_W - 80 }
+        }).setOrigin(0.5).setDepth(5);
+        basket = scene.add.text(GAME_W / 2, GAME_H - 70, '\u{1F9FA}', { fontSize: '68px' })
+          .setOrigin(0.5).setDepth(4);
+        // Soft shadow under basket
+        var shadow = scene.add.ellipse(GAME_W / 2, GAME_H - 28, 110, 18, 0x1F3A24, 0.12);
+        scene.tweens.add({
+          targets: shadow,
+          alpha: 0.12,
+          duration: 10
+        });
+        scene.input.on('pointermove', function (p) {
+          var rect = scene.scale.canvas.getBoundingClientRect();
+          var px = (p.x / rect.width) * GAME_W;
+          basketTargetX = Phaser.Math.Clamp(px, 40, GAME_W - 40);
+        });
+        scene.input.on('pointerdown', function (p) {
+          var rect = scene.scale.canvas.getBoundingClientRect();
+          var px = (p.x / rect.width) * GAME_W;
+          basketTargetX = Phaser.Math.Clamp(px, 40, GAME_W - 40);
+          if (!playing && !won) { startGame(); }
+        });
+        if (scene.input.keyboard) {
+          cursors = scene.input.keyboard.createCursorKeys();
+        }
+        spawnEvent = scene.time.addEvent({
+          delay: 1000,
+          loop: true,
+          callback: function () { spawnFruit(scene); }
+        });
+        updateHud();
+      },
+      update: function (time, delta) {
+        if (!basket) return;
+        var dt = Math.min(delta, 50) / 1000;
+        if (playing && cursors) {
+          var step = 340 * dt;
+          if (cursors.left.isDown) { basketTargetX -= step; }
+          if (cursors.right.isDown) { basketTargetX += step; }
+          basketTargetX = Phaser.Math.Clamp(basketTargetX, 40, GAME_W - 40);
+        }
+        // Ease basket toward target for smooth, child-friendly motion.
+        basket.x += (basketTargetX - basket.x) * Math.min(1, dt * 12);
+        if (Math.abs(basketTargetX - basket.x) < 1) { basket.x = basketTargetX; }
+
+        var scene = this;
+        for (var i = fruits.length - 1; i >= 0; i--) {
+          var f = fruits[i];
+          var speed = f.getData('speed') || 120;
+          var sway = (f.getData('sway') || 0) + dt * 2;
+          f.setData('sway', sway);
+          f.y += speed * dt;
+          f.x += Math.sin(sway) * 20 * dt;
+          // Catch zone around the basket mouth.
+          if (playing && !won &&
+              f.y > basket.y - 62 && f.y < basket.y + 18 &&
+              Math.abs(f.x - basket.x) < 52) {
+            catchFruit(scene, f);
+            continue;
+          }
+          // Missed fruit rests softly in the grass: fade slowly, no penalty.
+          if (f.y >= GAME_H - 46) {
+            fruits.splice(i, 1);
+            scene.tweens.add({
+              targets: f,
+              alpha: 0,
+              y: f.y + 12,
+              duration: 900,
+              ease: 'Sine.easeOut',
+              onComplete: (function (target) {
+                return function () { target.destroy(); };
+              })(f)
+            });
+          }
+        }
+      }
+    };
+  }
+
+  function boot() {
+    if (!window.Phaser) {
+      statusEl.textContent = 'Game library could not load. Please check your connection and reload.';
+      return;
+    }
+    var config = {
+      type: Phaser.AUTO,
+      parent: 'gameWrap',
+      width: GAME_W,
+      height: GAME_H,
+      backgroundColor: '#DDF0D2',
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: GAME_W,
+        height: GAME_H
+      },
+      scene: makeScene()
+    };
+    // eslint-disable-next-line no-unused-vars
+    var game = new Phaser.Game(config);
+    updateHud();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orchard Catch — Arcade Harvest</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  :root{
+    --accent:#6BBF59;
+    --ink:#1F3A24;
+    --cream:#FAFDF3;
+    --meadow:#EAF4DC;
+    --card:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+    background:var(--meadow);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  header{
+    text-align:center;
+    padding:20px 16px 8px;
+    max-width:640px;
+  }
+  .badge{
+    display:inline-block;
+    background:var(--accent);
+    color:#fff;
+    font-size:.78rem;
+    font-weight:bold;
+    letter-spacing:.9px;
+    padding:5px 12px;
+    border-radius:999px;
+    margin-bottom:8px;
+    border:2px solid #1F3A24;
+  }
+  h1{margin:0 0 6px;font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:.5px}
+  .subtitle{margin:0;font-size:clamp(1rem,2.6vw,1.15rem);line-height:1.5}
+  main{
+    width:100%;
+    max-width:640px;
+    padding:12px 16px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:stretch;
+  }
+  .panel{
+    background:var(--card);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    padding:12px 14px;
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .progress-wrap{flex:1 1 220px;min-width:200px}
+  #catchLabel{font-weight:bold;font-size:1.05rem;margin:0 0 6px}
+  progress{
+    width:100%;
+    height:18px;
+    appearance:none;
+  }
+  progress::-webkit-progress-bar{background:#E3EDD4;border-radius:999px}
+  progress::-webkit-progress-value{background:var(--accent);border-radius:999px}
+  progress::-moz-progress-bar{background:var(--accent);border-radius:999px}
+  .stats{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:10px 0 6px;
+    align-items:center;
+  }
+  .stat{
+    font-size:.92rem;
+    font-weight:bold;
+    background:var(--cream);
+    border:2px solid var(--accent);
+    border-radius:999px;
+    padding:6px 11px;
+    line-height:1;
+  }
+  .stat.score{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stat.lives{background:#fff;color:#c0392b;border-color:#e46b5e}
+  .stat.level{background:#fff;color:var(--ink)}
+  .stat.time{background:#1F3A24;color:#fff;border-color:#1F3A24}
+  .stat.combo{background:#fff3e0;color:#d35400;border-color:#f0a14b}
+  .stat.flash{animation:pop .28s ease}
+  #comboDisplay{
+    margin:4px 0 0;
+    min-height:1.3em;
+    font-weight:bold;
+    font-size:.98rem;
+    color:#d35400;
+  }
+  #highScoreLine{margin:4px 0 0;font-size:.9rem;opacity:.85}
+  @keyframes pop{0%{transform:scale(.85)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .shake{animation:shake .25s ease}
+  .controls{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    font:inherit;
+    font-weight:bold;
+    color:var(--ink);
+    background:#DDF0CE;
+    border:3px solid var(--accent);
+    border-radius:999px;
+    padding:10px 20px;
+    cursor:pointer;
+    min-height:48px;
+    min-width:110px;
+  }
+  button:hover:not(:disabled){background:var(--accent);color:#fff}
+  button:focus-visible{outline:4px solid #1F3A24;outline-offset:2px}
+  button:disabled{opacity:.5;cursor:default}
+  button.primary{background:var(--accent);color:#fff}
+  button.primary:hover:not(:disabled){background:#57a847}
+  #statusMessage{
+    margin:0;
+    min-height:1.6em;
+    font-weight:bold;
+    font-size:1.05rem;
+  }
+  #gameWrap{
+    background:linear-gradient(#DFF0D2,#FAFDF3);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  #game{display:flex;justify-content:center}
+  #game canvas{border-radius:14px;max-width:100%}
+  .help{font-size:.98rem;line-height:1.55;margin:0}
+  .help strong{color:var(--ink)}
+  footer{padding:0 16px 24px;text-align:center;font-size:.9rem;max-width:640px}
+  @media (max-width:480px){
+    .hud{flex-direction:column;align-items:stretch}
+    .controls{justify-content:stretch}
+    .controls button{flex:1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="badge" aria-label="Arcade mode active">● ARCADE MODE ●</div>
+  <h1>Orchard Catch</h1>
+  <p class="subtitle">Arcade harvest! Catch fruit for points, build combos, dodge rotten hazards. 3 lives, 60 seconds — how high can you score?</p>
+</header>
+
+<main>
+  <section class="panel hud" aria-label="Game progress and controls">
+    <div class="progress-wrap">
+      <p id="catchLabel" aria-live="polite">Caught 0 of 20 fruit</p>
+      <progress id="catchProgress" max="20" value="0" aria-label="Fruit caught progress"></progress>
+      <div class="stats" aria-label="Arcade stats">
+        <span class="stat score" id="scoreDisplay" aria-live="polite">Score 0</span>
+        <span class="stat lives" id="livesDisplay" aria-label="Lives remaining">♥♥♥</span>
+        <span class="stat level" id="levelDisplay">Lv 1</span>
+        <span class="stat time" id="timeDisplay" aria-live="polite">60s</span>
+        <span class="stat combo" id="comboBadge" style="display:none">Combo x1</span>
+      </div>
+      <p id="comboDisplay" aria-live="polite"></p>
+      <p id="highScoreLine" aria-live="polite">Best: 0</p>
+      <p id="statusMessage" aria-live="polite">Press Start for arcade action!</p>
+    </div>
+    <div class="controls" role="group" aria-label="Game actions">
+      <button type="button" id="startBtn" class="primary" aria-label="Start catching fruit">Start</button>
+      <button type="button" id="restartBtn" aria-label="Restart the game and empty the basket" disabled>Restart</button>
+    </div>
+  </section>
+
+  <div id="gameWrap">
+    <div id="game" aria-label="Orchard game canvas. Use left and right arrow keys, mouse, or touch to move the basket."></div>
+  </div>
+
+  <section class="panel" aria-label="How to play">
+    <p class="help"><strong>Arcade Rules:</strong> Catch fruit = +10 pts × combo multiplier. Keep catching without missing to build combo (x2, x3…). Missed fruit breaks combo and costs a life. Rotten fruit (purple-black) costs a life and -15 pts — avoid it! Level up every 80 pts: fruit falls faster and spawns quicker. Survive 60 seconds or fill the basket (20 fruit) to win. 3 lives only!</p>
+  </section>
+</main>
+
+<footer>
+  <p>Arcade harvest — fast, challenging, and rewarding. No luck, just reflexes.</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var GOAL = 20;
+  var MAX_LIVES = 3;
+  var START_TIME = 60;
+  var caught = 0;
+  var score = 0;
+  var lives = MAX_LIVES;
+  var level = 1;
+  var combo = 0;
+  var bestCombo = 0;
+  var timeLeft = START_TIME;
+  var highScore = 0;
+  var playing = false;
+  var won = false;
+  var gameOverFlag = false;
+  var sceneRef = null;
+
+  var startBtn = document.getElementById('startBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var catchLabel = document.getElementById('catchLabel');
+  var catchProgress = document.getElementById('catchProgress');
+  var statusMessage = document.getElementById('statusMessage');
+  var scoreDisplay = document.getElementById('scoreDisplay');
+  var livesDisplay = document.getElementById('livesDisplay');
+  var levelDisplay = document.getElementById('levelDisplay');
+  var timeDisplay = document.getElementById('timeDisplay');
+  var comboBadge = document.getElementById('comboBadge');
+  var comboDisplay = document.getElementById('comboDisplay');
+  var highScoreLine = document.getElementById('highScoreLine');
+
+  function formatLives() {
+    var hearts = '';
+    for (var i = 0; i < MAX_LIVES; i++) {
+      hearts += i < lives ? '♥' : '♡';
+    }
+    return hearts;
+  }
+
+  function updateStats() {
+    scoreDisplay.textContent = 'Score ' + score;
+    livesDisplay.textContent = formatLives();
+    livesDisplay.setAttribute('aria-label', 'Lives remaining ' + lives + ' of ' + MAX_LIVES);
+    levelDisplay.textContent = 'Lv ' + level;
+    timeDisplay.textContent = timeLeft + 's';
+    highScoreLine.textContent = 'Best: ' + highScore + (bestCombo > 1 ? ' • Best Combo x' + bestCombo : '');
+    if (combo > 1) {
+      comboBadge.style.display = 'inline-block';
+      var mult = 1 + Math.floor(combo / 3);
+      comboBadge.textContent = 'Combo x' + mult + ' (' + combo + ')';
+      comboBadge.classList.remove('flash');
+      void comboBadge.offsetWidth;
+      comboBadge.classList.add('flash');
+      comboDisplay.textContent = combo >= 3 ? '🔥 ' + combo + ' streak! Keep it up!' : 'Combo ' + combo + ' — don\'t miss!';
+    } else if (combo === 1) {
+      comboBadge.style.display = 'inline-block';
+      comboBadge.textContent = 'Combo x1';
+      comboDisplay.textContent = 'Nice catch! Build a streak!';
+    } else {
+      comboBadge.style.display = 'none';
+      if (playing) {
+        comboDisplay.textContent = '';
+      }
+    }
+  }
+
+  function updateHud(message) {
+    catchLabel.textContent = 'Caught ' + caught + ' of ' + GOAL + ' fruit';
+    catchProgress.max = GOAL;
+    catchProgress.value = String(caught);
+    catchProgress.setAttribute('aria-valuenow', String(caught));
+    catchProgress.setAttribute('aria-valuemax', String(GOAL));
+    if (typeof message === 'string') {
+      statusMessage.textContent = message;
+    }
+    updateStats();
+  }
+
+  function setButtons() {
+    startBtn.disabled = playing && !won && !gameOverFlag;
+    restartBtn.disabled = !playing && !won && !gameOverFlag && caught === 0 && score === 0;
+  }
+
+  function startGame() {
+    caught = 0;
+    score = 0;
+    lives = MAX_LIVES;
+    level = 1;
+    combo = 0;
+    timeLeft = START_TIME;
+    playing = true;
+    won = false;
+    gameOverFlag = false;
+    updateHud('Arcade GO! Catch fast, dodge rotten fruit!');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+
+  function restartGame() {
+    caught = 0;
+    score = 0;
+    lives = MAX_LIVES;
+    level = 1;
+    combo = 0;
+    timeLeft = START_TIME;
+    playing = true;
+    won = false;
+    gameOverFlag = false;
+    updateHud('Fresh arcade run — beat your best!');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+
+  function onWin() {
+    won = true;
+    playing = false;
+    if (score > highScore) { highScore = score; }
+    updateHud('HARVEST COMPLETE! Score ' + score + ' • Lv ' + level + ' • Best combo x' + (1 + Math.floor(bestCombo / 3)) + '!');
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+  }
+
+  function onGameOver(reason) {
+    gameOverFlag = true;
+    playing = false;
+    if (score > highScore) { highScore = score; }
+    updateHud(reason + ' Final Score: ' + score + ' • Lv ' + level);
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+
+  startBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+  restartBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!restartBtn.disabled) { restartGame(); }
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.activeElement === document.body) {
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+
+  function makeFruitTexture(scene, key, bodyColor, leafColor) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 0);
+    g.fillRect(0, 0, 44, 48);
+    g.fillStyle(bodyColor, 1);
+    g.fillCircle(22, 26, 15);
+    g.fillStyle(0xffffff, 0.35);
+    g.fillCircle(16, 20, 5);
+    g.fillStyle(0x8a5a2b, 1);
+    g.fillRect(20, 4, 4, 9);
+    g.fillStyle(leafColor, 1);
+    g.fillEllipse(30, 10, 12, 7);
+    g.generateTexture(key, 44, 48);
+    g.destroy();
+  }
+
+  function makeHazardTexture(scene) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 0);
+    g.fillRect(0, 0, 44, 48);
+    g.fillStyle(0x3d2b4a, 1);
+    g.fillCircle(22, 26, 15);
+    g.fillStyle(0x6b4a7a, 1);
+    g.fillCircle(22, 26, 10);
+    g.fillStyle(0x1a1a1a, 1);
+    g.fillCircle(17, 24, 3);
+    g.fillCircle(27, 24, 3);
+    g.fillStyle(0x8a5a2b, 1);
+    g.fillRect(20, 4, 4, 9);
+    g.fillStyle(0x4a3a2a, 1);
+    g.fillEllipse(30, 10, 12, 7);
+    g.lineStyle(2, 0x000000, 0.6);
+    g.strokeCircle(22, 26, 15);
+    g.generateTexture('fruit-hazard', 44, 48);
+    g.destroy();
+  }
+
+  var OrchardScene = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function OrchardScene() {
+      Phaser.Scene.call(this, { key: 'orchard' });
+      this.basket = null;
+      this.fruits = null;
+      this.cursors = null;
+      this.spawnTimer = null;
+      this.timerEvent = null;
+      this.comboResetTimer = null;
+      this.banner = null;
+      this.bannerSub = null;
+      this.deco = null;
+    },
+    create: function () {
+      sceneRef = this;
+      var W = this.scale.width;
+      var H = this.scale.height;
+
+      this.cameras.main.setBackgroundColor('#EAF4DC');
+
+      var bg = this.add.graphics();
+      bg.fillStyle(0xcfe8b8, 1);
+      bg.fillEllipse(W / 2, H + 90, W + 160, 300);
+      bg.fillStyle(0xd8edc2, 1);
+      bg.fillEllipse(W * 0.15, H + 130, 320, 220);
+
+      var trees = this.add.graphics();
+      var canopy = [0x9ed08a, 0x8ccb78, 0xaedba0];
+      var spots = [[70, 110, 62], [200, 80, 74], [340, 105, 66], [445, 150, 52]];
+      for (var i = 0; i < spots.length; i++) {
+        var sx = spots[i][0], sy = spots[i][1], sr = spots[i][2];
+        trees.fillStyle(0x8a5a2b, 1);
+        trees.fillRect(sx - 8, sy + 20, 16, 70);
+        trees.fillStyle(canopy[i % canopy.length], 1);
+        trees.fillCircle(sx, sy, sr);
+        trees.fillCircle(sx - sr * 0.55, sy + 14, sr * 0.6);
+        trees.fillCircle(sx + sr * 0.55, sy + 14, sr * 0.6);
+      }
+
+      var grass = this.add.graphics();
+      grass.fillStyle(0x6BBF59, 1);
+      grass.fillRect(0, H - 56, W, 56);
+      grass.fillStyle(0x7fca70, 1);
+      for (var b = 0; b < 24; b++) {
+        grass.fillTriangle(b * 22, H - 56, b * 22 + 11, H - 70, b * 22 + 22, H - 56);
+      }
+
+      makeFruitTexture(this, 'fruit-red', 0xe46b5e, 0x5da24e);
+      makeFruitTexture(this, 'fruit-orange', 0xf0a14b, 0x5da24e);
+      makeFruitTexture(this, 'fruit-plum', 0x9b7bc4, 0x6BBF59);
+      makeFruitTexture(this, 'fruit-pear', 0xa8c256, 0x4d8f43);
+      makeHazardTexture(this);
+
+      var bk = this.make.graphics({ x: 0, y: 0, add: false });
+      bk.fillStyle(0xb07a3f, 1);
+      bk.fillRoundedRect(0, 10, 110, 44, 12);
+      bk.fillStyle(0x8a5a2b, 1);
+      for (var w = 0; w < 5; w++) {
+        bk.fillRect(12 + w * 20, 12, 5, 40);
+      }
+      bk.fillStyle(0x7a4f22, 1);
+      bk.fillRoundedRect(0, 0, 110, 16, 8);
+      bk.generateTexture('basket', 110, 54);
+      bk.destroy();
+
+      this.physics.world.setBounds(0, 0, W, H);
+
+      this.basket = this.physics.add.image(W / 2, H - 100, 'basket');
+      this.basket.setImmovable(true);
+      this.basket.body.allowGravity = false;
+      this.basket.setCollideWorldBounds(true);
+
+      var hint = this.add.text(W / 2, H - 200, 'ARCADE START!\nCatch fruit • Dodge purple rot • Build combo!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '16px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffee',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5);
+      hint.setDepth(5);
+      this.hintText = hint;
+
+      this.fruits = this.physics.add.group();
+
+      this.physics.add.overlap(this.basket, this.fruits, this.catchFruit, null, this);
+
+      this.cursors = this.input.keyboard.createCursorKeys();
+
+      this.scoreText = this.add.text(14, 12, 'Score 0  Lv 1', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '18px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffdd',
+        padding: { x: 10, y: 6 }
+      }).setDepth(10);
+
+      this.comboText = this.add.text(W / 2, 70, '', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '22px',
+        color: '#d35400',
+        align: 'center',
+        backgroundColor: '#fff3e0dd',
+        padding: { x: 10, y: 6 }
+      }).setOrigin(0.5).setDepth(10).setVisible(false);
+
+      this.banner = this.add.text(W / 2, H / 2 - 30, 'Basket Full!\nWonderful picking!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '30px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffee',
+        padding: { x: 22, y: 18 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.bannerSub = this.add.text(W / 2, H / 2 + 80, 'Press Restart for another round', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '16px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffcc',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.input.on('pointermove', function (pointer) {
+        if (!playing || won || gameOverFlag) { return; }
+        var nx = Phaser.Math.Clamp(pointer.x, 60, W - 60);
+        this.basket.x = nx;
+      }, this);
+
+      this.spawnTimer = this.time.addEvent({
+        delay: 900,
+        loop: true,
+        callback: this.spawnFruit,
+        callbackScope: this
+      });
+
+      this.timerEvent = this.time.addEvent({
+        delay: 1000,
+        loop: true,
+        callback: this.tickTimer,
+        callbackScope: this
+      });
+
+      this.resetRound();
+    },
+    resetRound: function () {
+      if (!this.fruits) { return; }
+      this.fruits.clear(true, true);
+      caught = 0;
+      score = 0;
+      lives = MAX_LIVES;
+      level = 1;
+      combo = 0;
+      timeLeft = START_TIME;
+      this.refreshScore();
+      this.banner.setVisible(false);
+      this.bannerSub.setVisible(false);
+      this.comboText.setVisible(false);
+      if (this.hintText) { this.hintText.setVisible(true); this.hintText.setText('ARCADE START!\nCatch fruit • Dodge purple rot • Build combo!'); }
+      if (this.basket) { this.basket.setPosition(this.scale.width / 2, this.scale.height - 100); this.basket.setScale(1); this.basket.setAlpha(1); }
+      if (this.spawnTimer) {
+        this.spawnTimer.remove(false);
+        this.spawnTimer = this.time.addEvent({ delay: 900, loop: true, callback: this.spawnFruit, callbackScope: this });
+      }
+      if (this.timerEvent) {
+        this.timerEvent.remove(false);
+        this.timerEvent = this.time.addEvent({ delay: 1000, loop: true, callback: this.tickTimer, callbackScope: this });
+      }
+      if (this.comboResetTimer) { this.comboResetTimer.remove(false); this.comboResetTimer = null; }
+      this.cameras.main.setBackgroundColor('#EAF4DC');
+      updateHud();
+      setButtons();
+    },
+    refreshScore: function () {
+      this.scoreText.setText('Score ' + score + '  Lv ' + level + '  ♥ ' + lives);
+    },
+    getSpawnDelay: function () {
+      var d = 900 - (level - 1) * 85 - Math.floor(score / 50) * 10;
+      return Math.max(380, d);
+    },
+    updateDifficulty: function () {
+      var newDelay = this.getSpawnDelay();
+      if (this.spawnTimer && Math.abs(this.spawnTimer.delay - newDelay) > 20) {
+        this.spawnTimer.remove(false);
+        this.spawnTimer = this.time.addEvent({ delay: newDelay, loop: true, callback: this.spawnFruit, callbackScope: this });
+      }
+    },
+    tickTimer: function () {
+      if (!playing || won || gameOverFlag) { return; }
+      timeLeft -= 1;
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        updateHud();
+        this.refreshScore();
+        this.triggerGameOver('Time\'s up! ');
+        return;
+      }
+      if (timeLeft <= 10) {
+        this.cameras.main.flash(120, 228, 107, 94);
+        timeDisplay.classList.add('shake');
+        setTimeout(function () { timeDisplay.classList.remove('shake'); }, 250);
+      }
+      updateHud();
+    },
+    spawnFruit: function () {
+      if (!playing || won || gameOverFlag) { return; }
+      var W = this.scale.width;
+      var isHazard = Math.random() < (0.14 + level * 0.025 + Math.min(0.12, score / 800));
+      var keys = ['fruit-red', 'fruit-orange', 'fruit-plum', 'fruit-pear'];
+      var key = isHazard ? 'fruit-hazard' : keys[Phaser.Math.Between(0, keys.length - 1)];
+      var x = Phaser.Math.Between(40, W - 40);
+      var f = this.fruits.create(x, -30, key);
+      var baseMin = 140 + level * 18 + Math.floor(score / 40);
+      var baseMax = 210 + level * 22 + Math.floor(score / 30);
+      f.setVelocityY(Phaser.Math.Between(baseMin, baseMax));
+      f.setMaxVelocity(520, 520);
+      f.body.allowGravity = false;
+      f.setData('landed', false);
+      f.setData('hazard', isHazard);
+      if (isHazard) {
+        f.setTint(0xffffff);
+        f.setScale(1.05);
+        this.tweens.add({ targets: f, angle: 360, duration: 900, repeat: -1, ease: 'Linear' });
+      } else {
+        this.tweens.add({
+          targets: f,
+          x: x + Phaser.Math.Between(-30, 30),
+          duration: Phaser.Math.Between(700, 1200),
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+      if (Math.random() < 0.18 + level * 0.04) {
+        var f2x = Phaser.Math.Clamp(x + Phaser.Math.Between(-90, 90), 40, W - 40);
+        var f2 = this.fruits.create(f2x, -50, keys[Phaser.Math.Between(0, keys.length - 1)]);
+        f2.setVelocityY(Phaser.Math.Between(baseMin + 10, baseMax + 20));
+        f2.body.allowGravity = false;
+        f2.setData('landed', false);
+        f2.setData('hazard', false);
+        this.tweens.add({
+          targets: f2,
+          x: f2x + Phaser.Math.Between(-24, 24),
+          duration: Phaser.Math.Between(700, 1100),
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+    },
+    showScorePopup: function (x, y, text, color) {
+      var t = this.add.text(x, y, text, {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '20px',
+        color: color,
+        backgroundColor: '#ffffffdd',
+        padding: { x: 8, y: 4 }
+      }).setOrigin(0.5).setDepth(12);
+      this.tweens.add({
+        targets: t,
+        y: y - 50,
+        alpha: 0,
+        scaleX: 1.15,
+        scaleY: 1.15,
+        duration: 650,
+        ease: 'Sine.easeOut',
+        onComplete: function () { t.destroy(); }
+      });
+    },
+    catchFruit: function (basket, fruit) {
+      if (!playing || won || gameOverFlag) { return; }
+      if (fruit.getData('landed')) { return; }
+      fruit.setData('landed', true);
+      this.tweens.killTweensOf(fruit);
+      var isHazard = fruit.getData('hazard');
+
+      if (isHazard) {
+        lives -= 1;
+        score = Math.max(0, score - 15);
+        combo = 0;
+        if (this.comboResetTimer) { this.comboResetTimer.remove(false); this.comboResetTimer = null; }
+        this.cameras.main.shake(220, 0.012);
+        this.cameras.main.flash(180, 200, 60, 60);
+        this.showScorePopup(fruit.x, fruit.y - 10, '-15! ROTTEN!', '#c0392b');
+        this.tweens.add({
+          targets: fruit,
+          scaleX: 1.4,
+          scaleY: 1.4,
+          alpha: 0,
+          angle: 180,
+          duration: 280,
+          ease: 'Back.easeIn',
+          onComplete: function () { fruit.destroy(); }
+        });
+        this.tweens.add({
+          targets: basket,
+          scaleX: 0.9,
+          scaleY: 1.1,
+          duration: 100,
+          yoyo: true,
+          ease: 'Sine.easeOut'
+        });
+        if (this.hintText) { this.hintText.setVisible(false); }
+        this.refreshScore();
+        updateHud(lives > 0 ? 'Ouch! Rotten fruit! Lives: ' + lives : 'Hit by rot!');
+        if (lives <= 0) {
+          this.triggerGameOver('Wiped out by rot! ');
+          return;
+        }
+        return;
+      }
+
+      caught += 1;
+      combo += 1;
+      if (combo > bestCombo) { bestCombo = combo; }
+      var mult = 1 + Math.floor(combo / 3);
+      var pts = 10 * mult;
+      if (combo >= 5) { pts += 5; }
+      if (combo >= 8) { pts += 10; }
+      score += pts;
+
+      if (this.comboResetTimer) { this.comboResetTimer.remove(false); }
+      this.comboResetTimer = this.time.delayedCall(2200, function () {
+        if (combo > 0) {
+          combo = 0;
+          updateHud('Combo lost! Keep catching!');
+        }
+      }, [], this);
+
+      this.refreshScore();
+      updateHud();
+
+      if (this.hintText) { this.hintText.setVisible(false); }
+
+      var popupColor = mult > 1 ? '#d35400' : '#1F3A24';
+      var popupText = '+' + pts + (mult > 1 ? ' x' + mult + '!' : '');
+      if (combo >= 3) { popupText = '🔥 ' + popupText; }
+      this.showScorePopup(fruit.x, fruit.y - 10, popupText, popupColor);
+
+      if (combo >= 3) {
+        this.comboText.setText(combo >= 5 ? 'COMBO x' + mult + '! +' + pts : 'Combo x' + mult + '!');
+        this.comboText.setVisible(true);
+        this.comboText.setAlpha(1);
+        this.comboText.setScale(0.8);
+        this.tweens.add({ targets: this.comboText, scaleX: 1, scaleY: 1, duration: 180, ease: 'Back.easeOut' });
+        this.time.delayedCall(700, function () {
+          this.tweens.add({ targets: this.comboText, alpha: 0, duration: 300, onComplete: function () { this.comboText.setVisible(false); }.bind(this) });
+        }, [], this);
+      }
+
+      this.tweens.add({
+        targets: fruit,
+        x: basket.x,
+        y: basket.y - 10,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        alpha: 0.4,
+        duration: 180,
+        ease: 'Sine.easeIn',
+        onComplete: function () { fruit.destroy(); }
+      });
+      this.tweens.add({
+        targets: basket,
+        scaleX: 1.12,
+        scaleY: 0.88,
+        duration: 110,
+        yoyo: true,
+        ease: 'Sine.easeOut'
+      });
+
+      var newLevel = 1 + Math.floor(score / 80);
+      if (newLevel > level) {
+        level = newLevel;
+        this.refreshScore();
+        updateHud('LEVEL UP! Lv ' + level + ' — faster!');
+        this.cameras.main.flash(160, 107, 191, 89);
+        this.showScorePopup(basket.x, basket.y - 60, 'LEVEL ' + level + '!', '#6BBF59');
+        this.updateDifficulty();
+      }
+
+      if (caught >= GOAL) {
+        this.celebrate();
+      }
+    },
+    celebrate: function () {
+      won = true;
+      onWin();
+      var self = this;
+      this.fruits.clear(true, true);
+      if (this.spawnTimer) { this.spawnTimer.remove(false); }
+      if (this.timerEvent) { this.timerEvent.remove(false); }
+      this.banner.setText('HARVEST COMPLETE!\nScore ' + score + ' • Lv ' + level);
+      this.bannerSub.setText('Best: ' + highScore + ' • Press Restart for another arcade run');
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 600,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 700,
+        delay: 300
+      });
+      for (var k = 0; k < 32; k++) {
+        var colors = [0xe46b5e, 0xf0a14b, 0x9b7bc4, 0xa8c256, 0xffffff, 0x6BBF59];
+        var c = this.add.circle(
+          Phaser.Math.Between(20, this.scale.width - 20),
+          Phaser.Math.Between(-40, 120),
+          Phaser.Math.Between(5, 9),
+          colors[k % colors.length],
+          0.95
+        );
+        c.setDepth(15);
+        self.tweens.add({
+          targets: c,
+          y: self.scale.height - 60,
+          x: c.x + Phaser.Math.Between(-80, 80),
+          duration: Phaser.Math.Between(1800, 3400),
+          delay: k * 70,
+          ease: 'Sine.easeInOut',
+          onComplete: (function (dot) {
+            return function () {
+              self.tweens.add({ targets: dot, alpha: 0, duration: 600, onComplete: function () { dot.destroy(); } });
+            };
+          })(c)
+        });
+      }
+      this.cameras.main.flash(300, 107, 191, 89);
+    },
+    triggerGameOver: function (reason) {
+      if (gameOverFlag || won) { return; }
+      gameOverFlag = true;
+      onGameOver(reason);
+      var self = this;
+      this.fruits.clear(true, true);
+      if (this.spawnTimer) { this.spawnTimer.remove(false); }
+      if (this.timerEvent) { this.timerEvent.remove(false); }
+      this.banner.setText('GAME OVER\nScore ' + score + ' • Lv ' + level);
+      this.bannerSub.setText(reason + 'Press Restart to try again');
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 500,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({ targets: this.bannerSub, alpha: 1, duration: 600, delay: 250 });
+      this.cameras.main.shake(400, 0.015);
+      this.cameras.main.flash(250, 180, 60, 60);
+      for (var k = 0; k < 14; k++) {
+        var d = this.add.circle(Phaser.Math.Between(30, this.scale.width - 30), Phaser.Math.Between(80, 200), 6, 0xc0392b, 0.9).setDepth(15);
+        self.tweens.add({ targets: d, y: self.scale.height - 40, alpha: 0, duration: Phaser.Math.Between(900, 1600), delay: k * 60, onComplete: (function (dot) { return function () { dot.destroy(); }; })(d) });
+      }
+    },
+    update: function (time, delta) {
+      if (!this.basket || !this.cursors) { return; }
+      var dt = Math.min(delta, 50) / 1000;
+      var speed = 380 + (level - 1) * 18;
+      if (playing && !won && !gameOverFlag) {
+        if (this.cursors.left.isDown) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x - speed * dt, 60, this.scale.width - 60);
+          if (this.hintText) { this.hintText.setVisible(false); }
+        } else if (this.cursors.right.isDown) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x + speed * dt, 60, this.scale.width - 60);
+          if (this.hintText) { this.hintText.setVisible(false); }
+        }
+        this.basket.body.updateFromGameObject();
+      }
+      var kids = this.fruits.getChildren().slice();
+      for (var i = 0; i < kids.length; i++) {
+        var f = kids[i];
+        if (f.y > this.scale.height - 62 && !f.getData('landed')) {
+          f.setData('landed', true);
+          this.tweens.killTweensOf(f);
+          f.body.setVelocity(0, 0);
+          var wasHazard = f.getData('hazard');
+          if (!wasHazard && playing && !won && !gameOverFlag) {
+            combo = 0;
+            if (this.comboResetTimer) { this.comboResetTimer.remove(false); this.comboResetTimer = null; }
+            lives -= 1;
+            this.cameras.main.shake(180, 0.008);
+            this.showScorePopup(f.x, f.y - 20, 'MISS! -1 ♥', '#c0392b');
+            this.refreshScore();
+            updateHud(lives > 0 ? 'Missed! Lives: ' + lives : 'No lives left!');
+            if (lives <= 0) {
+              this.triggerGameOver('Out of lives! ');
+            }
+          }
+          this.tweens.add({
+            targets: f,
+            alpha: 0,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            duration: 500,
+            ease: 'Sine.easeOut',
+            onComplete: (function (dot) {
+              return function () { dot.destroy(); };
+            })(f)
+          });
+        }
+      }
+    }
+  });
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: 480,
+    height: 640,
+    backgroundColor: '#EAF4DC',
+    physics: {
+      default: 'arcade',
+      arcade: { gravity: { x: 0, y: 0 }, debug: false }
+    },
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [OrchardScene]
+  };
+
+  // eslint-disable-next-line no-undef
+  var game = new Phaser.Game(config);
+
+  updateHud('Press Start for arcade action!');
+  setButtons();
+})();
+</script>
+</body>
+</html>

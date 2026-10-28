@@ -1,0 +1,15 @@
+The current approved application is already in this workspace at index.html.
+Edit that file in place: keep every part of the existing implementation that the request does not ask you to change.
+Modify index.html only; do not regenerate the application from scratch.
+The attached screenshot is the current rendered preview. Use it to understand the visual result.
+Apply the requested change while preserving behaviour the request does not mention, including existing controls, state handling, and responsive layout.
+Keep the existing sandbox interaction contract: client-side JavaScript actions with explicit click or keydown listeners, no <button type="submit"> controls, native form submission, or page navigation. Chrome blocks sandboxed submission before submit handlers run, so keep explicit Enter handling instead of relying on event.preventDefault().
+Preserve accessible labels and full keyboard operation. Semantic <form> markup is fine for grouping and labels only. Do not add browser storage, external services, or unrestricted browser capabilities.
+Keep the existing runtime and dependencies (including Phaser 3 if present). Do not add libraries or other files. After editing, run node --check on every inline script.
+
+Project design decisions from previous sessions (authoritative unless contradicted):
+- FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients.
+- FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.
+
+Requested change:
+Make completing a task feel more rewarding and celebratory.
