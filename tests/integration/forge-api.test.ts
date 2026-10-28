@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
+import type { ForgeRuntimeBrowserSelection } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
@@ -70,7 +71,12 @@ function config(workspaceRoot: string): AppConfig {
 async function harness(
   mode = 'auto',
   limits: { maxRuntimeMs?: number; maxCalls?: number } = {},
-  runtimeCheck: (html: string) => Promise<{ ok: boolean; errors: string[] }> = async () => ({
+  runtimeCheck: (html: string) => Promise<{
+    ok: boolean;
+    errors: string[];
+    browser?: string | null;
+    browser_selection?: ForgeRuntimeBrowserSelection;
+  }> = async () => ({
     ok: true,
     errors: [],
   }),
@@ -451,6 +457,52 @@ describe('forge workflow', () => {
 
     const after = await job(h.app, generated);
     expect(after.status).toBe('failed');
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('records a long browser launch failure without a schema error', async () => {
+    const longFailure = `managed Chromium could not be launched. Run "pnpm exec playwright-core install chromium" or explicitly set FORGE_RUNTIME_BROWSER=chrome. Details: api_key=supersecretvalue ${'x'.repeat(700)}`;
+    const h = await harness('auto', {}, async () => ({
+      ok: false,
+      errors: [longFailure],
+      browser: null,
+      browser_selection: {
+        policy: 'managed',
+        attempted: 'managed Chromium',
+        selected: null,
+        failure: longFailure,
+      },
+    }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(422);
+    expect(approve.json().error.code).toBe('runtime_failed');
+    expect(approve.json().error.code).not.toBe('invalid_request');
+
+    const recorded = await h.app.inject({ method: 'GET', url: `/api/forge/jobs/${generated}` });
+    expect(recorded.statusCode).toBe(200);
+    const failed = recorded.json().data as {
+      status: string;
+      version: number | null;
+      approval_verification: {
+        runtime: { browser_selection: { failure: string } };
+      } | null;
+    };
+    expect(failed.status).toBe('failed');
+    expect(failed.version).toBeNull();
+    const failure = failed.approval_verification?.runtime.browser_selection.failure;
+    expect(failure?.length).toBeLessThanOrEqual(300);
+    expect(failure).toContain('pnpm exec playwright-core install chromium');
+    expect(failure).not.toContain('supersecretvalue');
+
     const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
     expect(state.json().data.state.current_version).toBeNull();
   });

@@ -110,6 +110,38 @@ function managerFor(
   });
 }
 
+class PredicateStore implements ForgeJobPersistence {
+  readonly inner: ForgeJobStore;
+  readonly snapshots: Array<{ status: string; version: number | null }> = [];
+  failWhen: (job: ForgeJob) => boolean = () => false;
+  beforeSave: ((job: ForgeJob) => Promise<void>) | null = null;
+
+  constructor(workspace: ForgeWorkspace) {
+    this.inner = new ForgeJobStore(workspace);
+  }
+
+  async save(job: ForgeJob, options: { required?: boolean } = {}): Promise<void> {
+    this.snapshots.push({ status: job.status, version: job.version });
+    if (this.failWhen(job)) {
+      throw Object.assign(new Error('injected conditional storage failure'), { code: 'ENOSPC' });
+    }
+    if (this.beforeSave) await this.beforeSave(job);
+    await this.inner.save(job, options);
+  }
+
+  async flush(jobId: string): Promise<void> {
+    await this.inner.flush(jobId);
+  }
+
+  async loadAll() {
+    return this.inner.loadAll();
+  }
+
+  async healthCheck(projectId: string) {
+    return this.inner.healthCheck(projectId);
+  }
+}
+
 class ControlledStore implements ForgeJobPersistence {
   readonly inner: ForgeJobStore;
   readonly failAfterFirstSave = new Set<string>();
@@ -266,6 +298,13 @@ describe('Forge restart recovery', () => {
     expect(manager.get(good.id)).toBeDefined();
     expect(report.issues).toHaveLength(1);
     expect(report.issues[0]?.code).toBe('job_unreadable');
+    // A malformed individual record is not directory unavailability.
+    expect(manager.recovery('demo').storage).toMatchObject({
+      ok: true,
+      scope: 'healthy',
+      root_ok: true,
+      project_ok: true,
+    });
   });
 
   it('surfaces a malformed state file instead of showing an empty project', async () => {
@@ -537,10 +576,206 @@ describe('Forge restart recovery', () => {
       });
       expect(manager.recovery('other').storage.ok).toBe(false);
 
+      // The directory and the affected job write now succeed; only then may
+      // the project incident clear.
+      store.failAfterFirstSave.delete('other');
       const checked = await manager.checkStorage('other');
       expect(checked.storage.ok).toBe(true);
       expect(checked.storage.scope).toBe('healthy');
     } finally {
+      await manager.shutdown();
+    }
+  });
+
+  it('persists the latest terminal state before clearing a storage retry warning', async () => {
+    const { workspace, engine } = await setup();
+    const store = new PredicateStore(workspace);
+    let failTerminal = true;
+    store.failWhen = (job) => failTerminal && job.status === 'succeeded' && job.version === null;
+    const manager = new ForgeJobManager({
+      workspace,
+      engine,
+      museBin: FIXTURE,
+      env: { FAKE_MUSE_MODE: 'auto' },
+      maxRuntimeMs: 10_000,
+      maxCalls: 10,
+      maxInputTokens: 10_000_000,
+      runtimeCheck: async () => ({ ok: true, errors: [] }),
+      jobStore: store,
+      shutdownGraceMs: 100,
+    });
+    try {
+      const created = await manager.start({
+        projectId: 'demo',
+        kind: 'generate',
+        prompt: 'A completed job whose terminal record is temporarily unwritable.',
+      });
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        const active = manager
+          .recovery('demo')
+          .issues.some((issue) => issue.code === 'job_persist_failed' && issue.kind === 'active');
+        if (manager.get(created.id)?.status === 'succeeded' && active) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+
+      expect(manager.get(created.id)?.status).toBe('succeeded');
+      const active = manager
+        .recovery('demo')
+        .issues.find((issue) => issue.code === 'job_persist_failed');
+      expect(active).toMatchObject({ kind: 'active', project_id: 'demo' });
+      expect(manager.recovery('demo').storage).toMatchObject({ ok: false, scope: 'project' });
+
+      const jobPath = join(workspace.projectDir('demo'), 'jobs', `${created.id}.json`);
+      const beforeRetry = JSON.parse(await readFile(jobPath, 'utf8')) as ForgeJob;
+      expect(beforeRetry.status).not.toBe('succeeded');
+
+      failTerminal = false;
+      const checked = await manager.checkStorage('demo');
+      expect(checked.storage).toMatchObject({
+        ok: true,
+        scope: 'healthy',
+        root_ok: true,
+        project_ok: true,
+      });
+      expect(checked.issues.filter((issue) => issue.kind === 'active')).toEqual([]);
+
+      const persisted = JSON.parse(await readFile(jobPath, 'utf8')) as ForgeJob;
+      expect(persisted.status).toBe('succeeded');
+      expect(persisted.validation?.ok).toBe(true);
+      expect(persisted.finished_at).not.toBeNull();
+
+      const reopened = managerFor(workspace, engine);
+      const recovered = await reopened.recover();
+      expect(reopened.get(created.id)?.status).toBe('succeeded');
+      expect(recovered.startup.interrupted_jobs).toBe(0);
+      expect(recovered.issues).toEqual([]);
+    } finally {
+      await manager.shutdown();
+    }
+  });
+
+  it('keeps the persistence warning when a storage retry still fails', async () => {
+    const { workspace, engine } = await setup();
+    const store = new PredicateStore(workspace);
+    store.failWhen = (job) => job.status === 'succeeded' && job.version === null;
+    const manager = new ForgeJobManager({
+      workspace,
+      engine,
+      museBin: FIXTURE,
+      env: { FAKE_MUSE_MODE: 'auto' },
+      maxRuntimeMs: 10_000,
+      maxCalls: 10,
+      maxInputTokens: 10_000_000,
+      runtimeCheck: async () => ({ ok: true, errors: [] }),
+      jobStore: store,
+      shutdownGraceMs: 100,
+    });
+    try {
+      const created = await manager.start({
+        projectId: 'demo',
+        kind: 'generate',
+        prompt: 'A completed job whose retry remains unwritable.',
+      });
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        const active = manager
+          .recovery('demo')
+          .issues.some((issue) => issue.code === 'job_persist_failed' && issue.kind === 'active');
+        if (manager.get(created.id)?.status === 'succeeded' && active) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+
+      const checked = await manager.checkStorage('demo');
+      expect(checked.storage).toMatchObject({ ok: false, scope: 'project', root_ok: true });
+      const active = checked.issues.find((issue) => issue.code === 'job_persist_failed');
+      expect(active).toMatchObject({ kind: 'active', job_id: created.id });
+
+      const jobPath = join(workspace.projectDir('demo'), 'jobs', `${created.id}.json`);
+      const notYetPersisted = JSON.parse(await readFile(jobPath, 'utf8')) as ForgeJob;
+      expect(notYetPersisted.status).not.toBe('succeeded');
+
+      store.failWhen = () => false;
+      const repaired = await manager.checkStorage('demo');
+      expect(repaired.storage).toMatchObject({ ok: true, scope: 'healthy' });
+      expect(repaired.issues.filter((issue) => issue.kind === 'active')).toEqual([]);
+      const persisted = JSON.parse(await readFile(jobPath, 'utf8')) as ForgeJob;
+      expect(persisted.status).toBe('succeeded');
+    } finally {
+      await manager.shutdown();
+    }
+  });
+
+  it('does not let a stale retry overwrite a concurrent approval', async () => {
+    const { workspace, engine } = await setup();
+    const store = new PredicateStore(workspace);
+    store.failWhen = (job) => job.status === 'succeeded' && job.version === null;
+    const manager = new ForgeJobManager({
+      workspace,
+      engine,
+      museBin: FIXTURE,
+      env: { FAKE_MUSE_MODE: 'auto' },
+      maxRuntimeMs: 10_000,
+      maxCalls: 10,
+      maxInputTokens: 10_000_000,
+      runtimeCheck: async () => ({ ok: true, errors: [] }),
+      jobStore: store,
+      shutdownGraceMs: 100,
+    });
+    let releaseRetry: (() => void) | null = null;
+    try {
+      const created = await manager.start({
+        projectId: 'demo',
+        kind: 'generate',
+        prompt: 'A completed job approved while its storage retry is in flight.',
+      });
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        const active = manager
+          .recovery('demo')
+          .issues.some((issue) => issue.code === 'job_persist_failed' && issue.kind === 'active');
+        if (manager.get(created.id)?.status === 'succeeded' && active) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      expect(manager.get(created.id)?.status).toBe('succeeded');
+
+      store.failWhen = () => false;
+      store.snapshots.length = 0;
+      let markReached!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        markReached = resolve;
+      });
+      const released = new Promise<void>((resolve) => {
+        releaseRetry = resolve;
+      });
+      let gated = false;
+      store.beforeSave = async (job) => {
+        if (gated || job.status !== 'succeeded' || job.version !== null) return;
+        gated = true;
+        markReached();
+        await released;
+      };
+
+      const retry = manager.checkStorage('demo');
+      await reached;
+      const approved = await manager.approve(created.id, { captureMemory: false });
+      expect(approved.job.version).toBe(1);
+      releaseRetry?.();
+      releaseRetry = null;
+      await retry;
+
+      // The retry's stale version-less snapshot was attempted, then the
+      // manager wrote the approval's newest revision again.
+      expect(store.snapshots).toEqual(
+        expect.arrayContaining([
+          { status: 'succeeded', version: null },
+          { status: 'succeeded', version: 1 },
+        ]),
+      );
+      const persisted = JSON.parse(
+        await readFile(join(workspace.projectDir('demo'), 'jobs', `${created.id}.json`), 'utf8'),
+      ) as ForgeJob;
+      expect(persisted.status).toBe('succeeded');
+      expect(persisted.version).toBe(1);
+    } finally {
+      releaseRetry?.();
       await manager.shutdown();
     }
   });
@@ -741,6 +976,108 @@ describe('Forge restart recovery', () => {
       expect((await manager.checkStorage('demo')).storage.scope).toBe('healthy');
     },
   );
+
+  it.runIf(process.platform !== 'win32')(
+    'reflects a returned workspace-root read failure until the root is retested',
+    async () => {
+      const { root, workspace, engine } = await setup();
+      const forgeRoot = join(root, 'forge');
+      const manager = managerFor(workspace, engine);
+
+      let incidentId = '';
+      try {
+        await chmod(forgeRoot, 0o000);
+        const report = await manager.recover();
+        const scoped = manager.recovery('demo');
+        expect(scoped.storage).toMatchObject({
+          ok: false,
+          scope: 'store',
+          root_ok: false,
+          project_ok: true,
+        });
+        expect(scoped.storage.root_error?.length).toBeLessThanOrEqual(300);
+        const incident = report.issues.find((issue) => issue.code === 'job_store_unreadable');
+        expect(incident).toBeDefined();
+        expect(incident?.file).toBe('.');
+        incidentId = incident?.id as string;
+      } finally {
+        await chmod(forgeRoot, 0o700);
+      }
+
+      // The historical notice can be acknowledged, but the ongoing failure
+      // remains visible until the root itself is successfully retested.
+      const acknowledged = await manager.acknowledge('demo', [incidentId]);
+      expect(acknowledged.issues).toEqual([]);
+      expect(acknowledged.storage).toMatchObject({
+        ok: false,
+        scope: 'store',
+        root_ok: false,
+      });
+
+      const repaired = await manager.checkStorage('demo');
+      expect(repaired.storage).toMatchObject({
+        ok: true,
+        scope: 'healthy',
+        root_ok: true,
+        project_ok: true,
+      });
+    },
+  );
+
+  it('reflects a returned project-directory read failure independently of the root', async () => {
+    const { root, workspace, engine } = await setup();
+    await workspace.ensureProject('good');
+    const demoJobs = join(root, 'forge', 'demo', 'jobs');
+    await rm(demoJobs, { recursive: true, force: true });
+    await writeFile(demoJobs, 'not a directory', 'utf8');
+    const manager = managerFor(workspace, engine);
+
+    const report = await manager.recover();
+    expect(manager.recovery('demo').storage).toMatchObject({
+      ok: false,
+      scope: 'project',
+      root_ok: true,
+      project_ok: false,
+    });
+    expect(manager.recovery('demo').storage.project_error?.length).toBeLessThanOrEqual(300);
+    // The other project and the root remain healthy.
+    expect(manager.recovery('good').storage).toMatchObject({
+      ok: true,
+      scope: 'healthy',
+      root_ok: true,
+      project_ok: true,
+    });
+
+    const incident = report.issues.find(
+      (issue) => issue.code === 'job_store_unreadable' && issue.project_id === 'demo',
+    );
+    expect(incident).toBeDefined();
+    const acknowledged = await manager.acknowledge('demo', [incident?.id as string]);
+    expect(acknowledged.issues).toEqual([]);
+    expect(acknowledged.storage).toMatchObject({
+      ok: false,
+      scope: 'project',
+      project_ok: false,
+    });
+
+    // Retesting a healthy project must not clear the broken project.
+    expect((await manager.checkStorage('good')).storage.scope).toBe('healthy');
+    expect(manager.recovery('demo').storage).toMatchObject({
+      ok: false,
+      scope: 'project',
+      project_ok: false,
+    });
+
+    await rm(demoJobs, { force: true });
+    await mkdir(demoJobs, { recursive: true });
+    const repaired = await manager.checkStorage('demo');
+    expect(repaired.storage).toMatchObject({
+      ok: true,
+      scope: 'healthy',
+      root_ok: true,
+      project_ok: true,
+    });
+  });
 
   it('reports a real project-directory failure independently of the root', async () => {
     const { root, workspace, engine } = await setup();

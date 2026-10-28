@@ -62,8 +62,31 @@ function browserPolicy(): BrowserPolicy | null {
   return configured === 'managed' || configured === 'chrome' ? configured : null;
 }
 
-function browserFailure(message: string, maxLength = 300): string {
-  return redactSecrets(message, { maxLength });
+const MAX_SELECTION_TEXT = 160;
+const MAX_DIAGNOSTIC_TEXT = 300;
+
+/** Bound after redaction, so replacements cannot push a value over its schema limit. */
+function boundedRedacted(message: string, limit: number): string {
+  const redacted = redactSecrets(message);
+  if (redacted.length <= limit) return redacted;
+  const marker = '…';
+  return `${redacted.slice(0, Math.max(0, limit - marker.length))}${marker}`.slice(0, limit);
+}
+
+function browserFailure(
+  attempted: string,
+  detail: string,
+  action: string,
+  maxLength = MAX_DIAGNOSTIC_TEXT,
+): string {
+  // Keep the actionable setup guidance intact and truncate only the raw
+  // launcher output. Bound the complete string, not just the detail, because
+  // the appended guidance previously made the field exceed its schema limit.
+  const boundedDetail = boundedRedacted(detail, 150);
+  return boundedRedacted(
+    `${attempted} could not be launched. ${action} Details: ${boundedDetail}`,
+    maxLength,
+  );
 }
 
 async function launchVerificationBrowser(): Promise<
@@ -72,7 +95,10 @@ async function launchVerificationBrowser(): Promise<
 > {
   const policy = browserPolicy();
   if (!policy) {
-    const failure = 'Invalid FORGE_RUNTIME_BROWSER value. Use "managed" or "chrome".';
+    const failure = boundedRedacted(
+      'Invalid FORGE_RUNTIME_BROWSER value. Use "managed" or "chrome".',
+      MAX_DIAGNOSTIC_TEXT,
+    );
     return {
       browser: null,
       selection: {
@@ -95,12 +121,15 @@ async function launchVerificationBrowser(): Promise<
       selection: { policy, attempted, selected: null, failure: null },
     };
   } catch (error) {
-    const detail = browserFailure(error instanceof Error ? error.message : String(error));
     const action =
       policy === 'managed'
         ? 'Run "pnpm exec playwright-core install chromium" or explicitly set FORGE_RUNTIME_BROWSER=chrome.'
         : 'Install Chrome or set FORGE_RUNTIME_BROWSER=managed after installing Playwright Chromium.';
-    const failure = `${attempted} could not be launched: ${detail}. ${action}`;
+    const failure = browserFailure(
+      attempted,
+      error instanceof Error ? error.message : String(error),
+      action,
+    );
     return {
       browser: null,
       selection: { policy, attempted, selected: null, failure },
@@ -128,7 +157,7 @@ export async function checkGameRuntime(
   const browser = launched.browser;
   let browserIdentity: string | null = null;
   try {
-    browserIdentity = `Chromium ${await browser.version()}`;
+    browserIdentity = boundedRedacted(`Chromium ${await browser.version()}`, MAX_SELECTION_TEXT);
   } catch {
     browserIdentity = null;
   }

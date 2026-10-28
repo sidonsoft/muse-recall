@@ -117,6 +117,7 @@ export class ForgeJobManager {
   private readonly startupLoadedByProject = new Map<string, number>();
   private readonly startupInterruptedByProject = new Map<string, number>();
   private readonly projectStorageErrors = new Map<string, string>();
+  private readonly jobRevisions = new Map<string, number>();
   private recoveryPromise: Promise<ForgeRecoveryReport> | null = null;
   private rootStorageError: string | null = null;
   private shuttingDown = false;
@@ -386,14 +387,76 @@ export class ForgeJobManager {
 
     if (result.project.ok) {
       this.projectStorageErrors.delete(projectId);
-      // The project-directory check retests queued job writes for this project.
-      for (const [jobId, issue] of this.persistenceIssues) {
-        if (issue.project_id === projectId) this.persistenceIssues.delete(jobId);
-      }
+      // The directory is writable again, but that says nothing about the job
+      // records whose required writes failed. Retry the newest in-memory state
+      // for each affected job before clearing its incident. A failed retry
+      // records a fresh active incident and keeps storage unhealthy.
+      await this.retryProjectPersistence(projectId);
     } else {
       this.projectStorageErrors.set(projectId, this.boundedStorageText(result.project.error));
     }
     return this.recovery(projectId);
+  }
+
+  /**
+   * Persist the latest affected job records after a successful directory
+   * health check. Retries use the store's per-job write queue, and a retry
+   * only clears its incident after a stable snapshot has been durably written.
+   * If state changes while a write is in flight, the newest revision is
+   * written again rather than letting a stale retry overwrite it.
+   */
+  private async retryProjectPersistence(projectId: string): Promise<void> {
+    const failed = [...this.persistenceIssues.values()].filter(
+      (issue) => issue.project_id === projectId && issue.job_id !== null,
+    );
+    for (const issue of failed) {
+      if (issue.job_id) await this.retryJobPersistence(issue.job_id, issue);
+    }
+  }
+
+  private async retryJobPersistence(
+    jobId: string,
+    expectedIncident: ForgeRecoveryIssue,
+  ): Promise<void> {
+    let incident = this.persistenceIssues.get(jobId);
+    if (incident !== expectedIncident) return;
+    let wrote = false;
+
+    // Three attempts cover the initial snapshot, a concurrent state change,
+    // and a final retry of the newest revision. If state keeps changing, the
+    // warning stays visible rather than claiming a stable durable record.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const job = this.jobs.get(jobId);
+      if (!job) return;
+      if (!wrote && this.persistenceIssues.get(jobId) !== expectedIncident) return;
+      const revision = this.jobRevisions.get(jobId) ?? 0;
+
+      try {
+        // Read the latest job synchronously above and enqueue immediately, so
+        // any later update is ordered after this write. `save` resolves only
+        // after this snapshot (or its coalesced successor) is written.
+        await this.store.save(job, { required: true });
+        await this.store.flush(jobId);
+        wrote = true;
+      } catch (error) {
+        this.recordPersistenceIssue(job, error);
+        incident = this.persistenceIssues.get(jobId);
+        if ((this.jobRevisions.get(jobId) ?? 0) === revision) return;
+        wrote = true;
+        continue;
+      }
+
+      if ((this.jobRevisions.get(jobId) ?? 0) !== revision) {
+        // A newer state arrived while the stale snapshot was being written.
+        // Write that revision too; otherwise the stale retry would win.
+        wrote = true;
+        continue;
+      }
+      if (this.persistenceIssues.get(jobId) === incident) {
+        this.persistenceIssues.delete(jobId);
+      }
+      return;
+    }
   }
 
   private boundedStorageMessage(error: unknown): string {
@@ -455,6 +518,7 @@ export class ForgeJobManager {
       return this.recovery();
     }
     this.loadIssues.push(...loaded.issues);
+    this.applyLoadedStorageFailures(loaded.issues);
 
     for (const job of loaded.jobs) {
       if (this.jobs.has(job.id)) continue;
@@ -504,9 +568,32 @@ export class ForgeJobManager {
           );
         }
       }
-      this.jobs.set(current.id, current);
+      this.setJob(current);
     }
     return this.recovery();
+  }
+
+  private setJob(job: ForgeJob): void {
+    this.jobs.set(job.id, job);
+    this.jobRevisions.set(job.id, (this.jobRevisions.get(job.id) ?? 0) + 1);
+  }
+
+  /**
+   * `loadAll` reports directory read failures as issues instead of throwing.
+   * Carry only those availability failures into storage health; malformed
+   * individual records stay historical notices and must not make the store
+   * look unavailable.
+   */
+  private applyLoadedStorageFailures(issues: ForgeRecoveryIssue[]): void {
+    for (const issue of issues) {
+      if (issue.code !== 'job_store_unreadable') continue;
+      const message = this.boundedStorageText(issue.message);
+      if (issue.file === '.') {
+        this.rootStorageError = message;
+      } else {
+        this.projectStorageErrors.set(issue.project_id, message);
+      }
+    }
   }
 
   private async reconcilePromotion(job: ForgeJob): Promise<ForgeJob | null> {
@@ -627,13 +714,14 @@ export class ForgeJobManager {
       throw error;
     }
 
-    this.jobs.set(id, job);
+    this.setJob(job);
     try {
       await this.persist(job);
     } catch {
       // A job that cannot be stored durably must not start a paid model run:
       // after a crash there would be no record of what was executed.
       this.jobs.delete(id);
+      this.jobRevisions.delete(id);
       this.persistenceIssues.delete(id);
       await this.workspace.reject(input.projectId, id).catch(() => undefined);
       throw new ForgeError(
@@ -719,6 +807,8 @@ export class ForgeJobManager {
       const runtime = staged
         ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged application is missing.'] };
+      const browserSelection = this.boundedBrowserSelection(runtime.browser_selection);
+      const browser = runtime.browser ? this.boundedText(runtime.browser, 160) : null;
       if (!runtime.ok) {
         const checkedAt = this.now().toISOString();
         const runtimeDetails = runtime.errors
@@ -736,10 +826,8 @@ export class ForgeJobManager {
                   ok: false,
                   checked_at: checkedAt,
                   artifact_sha256: staged.sha256,
-                  browser: runtime.browser ?? null,
-                  ...(runtime.browser_selection
-                    ? { browser_selection: runtime.browser_selection }
-                    : {}),
+                  browser,
+                  ...(browserSelection ? { browser_selection: browserSelection } : {}),
                   errors: runtimeDetails,
                 },
                 recorded_at: checkedAt,
@@ -747,7 +835,7 @@ export class ForgeJobManager {
             : null,
           finished_at: checkedAt,
         });
-        this.jobs.set(current.id, failed);
+        this.setJob(failed);
         try {
           await this.persist(failed);
         } catch {
@@ -795,10 +883,8 @@ export class ForgeJobManager {
               ok: runtime.ok,
               checked_at: checkedAt,
               artifact_sha256: staged.sha256,
-              browser: runtime.browser ?? null,
-              ...(runtime.browser_selection
-                ? { browser_selection: runtime.browser_selection }
-                : {}),
+              browser,
+              ...(browserSelection ? { browser_selection: browserSelection } : {}),
               errors: runtime.errors
                 .slice(0, 20)
                 .map((error) => this.sanitize(error).slice(0, 300)),
@@ -820,7 +906,7 @@ export class ForgeJobManager {
         approval_verification: approvalVerification,
         finished_at: this.now().toISOString(),
       });
-      this.jobs.set(current.id, approved);
+      this.setJob(approved);
       try {
         await this.persist(approved);
       } catch {
@@ -887,7 +973,7 @@ export class ForgeJobManager {
         status: 'rejected',
         finished_at: this.now().toISOString(),
       });
-      this.jobs.set(current.id, rejected);
+      this.setJob(rejected);
       try {
         await this.persist(rejected);
       } catch {
@@ -1168,7 +1254,7 @@ export class ForgeJobManager {
 
   private update(job: ForgeJob, patch: Partial<ForgeJob>, required = false): void {
     const next = { ...job, ...patch };
-    this.jobs.set(job.id, next);
+    this.setJob(next);
     Object.assign(job, next);
     // Logs and usage are intermediate: the store coalesces superseded
     // snapshots. Terminal transitions pass `required` and are awaited by
@@ -1188,6 +1274,31 @@ export class ForgeJobManager {
 
   private sanitize(text: string): string {
     return redactSecrets(text, { secrets: [this.apiKey, this.fallbackApiKey] });
+  }
+
+  /** Bound and redact untrusted launch diagnostics before schema validation. */
+  private boundedBrowserSelection(
+    selection: ForgeRuntimeBrowserSelection | undefined,
+  ): ForgeRuntimeBrowserSelection | undefined {
+    if (!selection) return undefined;
+    const policy =
+      selection.policy === 'managed' || selection.policy === 'chrome' ? selection.policy : null;
+    if (!policy) return undefined;
+    return {
+      policy,
+      attempted: this.boundedText(selection.attempted, 160),
+      selected:
+        typeof selection.selected === 'string' ? this.boundedText(selection.selected, 160) : null,
+      failure:
+        typeof selection.failure === 'string' ? this.boundedText(selection.failure, 300) : null,
+    };
+  }
+
+  private boundedText(text: string, limit: number): string {
+    const redacted = this.sanitize(text);
+    if (redacted.length <= limit) return redacted;
+    const marker = '…';
+    return `${redacted.slice(0, Math.max(0, limit - marker.length))}${marker}`.slice(0, limit);
   }
 
   /**

@@ -142,6 +142,9 @@ export class ForgeJobStore implements ForgeJobPersistence {
       try {
         await mkdir(dir, { recursive: true });
         await writeFile(temp, 'ok\n', { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+        // A directory that accepts writes but cannot be listed still prevents
+        // startup recovery from reading job records; treat it as unhealthy.
+        await readdir(dir);
         await rm(temp, { force: true });
         return { ok: true, error: null };
       } catch (error) {

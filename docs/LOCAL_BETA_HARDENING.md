@@ -188,6 +188,85 @@ phase/evidence script changed. The three submission/preregistration tags were un
   also checks that memory is labelled untrusted data rather than authoritative. No
   evaluation input, detector, baseline, or recorded output changed.
 
+## Post-review fixes (PR #1)
+
+Reviewed head: `d8cdc02`. Three independently reproduced review findings were fixed without
+changing the hardening scope.
+
+### 1. Storage Retry now restores durable job state before clearing the incident
+
+`ForgeJobManager.checkStorage()` previously retested only the directory. It cleared every
+project persistence incident after a temporary-file write, even when a terminal job record
+still said `running` on disk; a restart then recovered a completed job as `interrupted`.
+
+- After a successful project directory check, Retry storage now re-persists the **latest
+  in-memory state** of each job with a failed required write, then waits for the store to
+  flush that job before clearing the incident.
+- Retries are revision-fenced. If execution, approval, or rejection changes the job while a
+  retry write is in flight, the manager writes the newest revision again instead of letting
+  a stale snapshot win. The retry loop is bounded; if state cannot settle, the warning
+  remains visible rather than claiming durability.
+- A failed retry records a fresh active persistence incident. Storage stays unhealthy until
+  a later retry succeeds. Root and project checks/incidents remain independently scoped.
+- Regressions: successful retry restores the terminal record and reloads it as `succeeded`
+  across restart; an injected continuing failure keeps the active warning and leaves disk
+  non-terminal; an approval concurrent with a gated retry ends with the approved version on
+  disk, not the stale version-less snapshot.
+
+### 2. The complete browser-launch diagnostic is bounded and redacted
+
+The old launch path bounded only the Playwright error text, then appended setup guidance.
+The final `browser_selection.failure` could exceed the shared 300-character schema limit; a
+451-character missing-browser message made approval throw `ZodError` and return HTTP 400.
+
+- `runtime-check.ts` now redacts and bounds the **complete** diagnostic, keeping the
+  actionable `pnpm exec playwright-core install chromium` / explicit-Chrome guidance within
+  the limit. Successful browser identity strings are bounded too.
+- The manager defensively bounds and re-validates policy/attempted/selected/failure fields
+  before building the failed or approved job record, so an injected checker cannot push a
+  field over its schema limit.
+- Regressions: a mocked long managed-Chromium launch failure is `<=300` characters, keeps
+  setup guidance, redacts a synthetic `api_key` value, and parses against
+  `ForgeRuntimeBrowserSelectionSchema`. An approval/API regression injects the same long
+  failure, receives `422 runtime_failed` (not `400 invalid_request`), reads the recorded
+  `failed` job without a schema error, keeps the bounded diagnostic, and leaves the project
+  version unchanged. No system Chrome is launched.
+
+### 3. Returned startup read failures now affect storage health
+
+`ForgeJobStore.loadAll()` reports directory read failures through `loaded.issues`, but
+`recoverOnce()` only marked storage unhealthy when `loadAll()` threw. An unreadable root
+could therefore show `job_store_unreadable` while reporting `storage.ok: true` and
+`root_ok: true`.
+
+- Startup now translates `job_store_unreadable` issues into the corresponding root or
+  project storage error. Malformed individual records (`job_unreadable`, schema mismatch)
+  remain notices only and do not make the directory look unavailable.
+- Storage health checks now verify that the directory can be **listed** as well as written.
+- An ongoing failure remains in storage health even after its historical notice is
+  acknowledged. Only a successful root/project retest clears that scope; checking another
+  project or the root cannot clear a project-directory failure, and vice versa.
+- Regressions use real filesystem faults: a chmod-`000` workspace root and a project `jobs`
+  path replaced by a file. They cover scope isolation, acknowledgement, repair, and
+  clearing. The existing malformed-record test now also asserts healthy storage.
+
+### Re-review validation
+
+Local, Node **24.22.1**:
+
+- `pnpm verify` — **618 passed, 3 skipped** (621 total, 39 files); lint and typecheck clean.
+- `pnpm build` — pass.
+- Focused files: `runtime-browser-policy`, `forge-recovery`, `forge-api` — **69 passed**.
+- `verify:runtime` — pass, managed Chromium `156.0.8078.4`; valid/broken scenes and blocked
+  HTTP/WebSocket.
+- `verify:studio-workflow` — **32 checks**, managed Chromium.
+- `verify:forge` — **14 checks**, managed Chromium, run against an isolated production
+  API/Vite preview because the default port 5173 was occupied by an unrelated listener.
+- `verify:browser` — pass, same isolated production stack.
+- `verify:security` — pass, managed Chromium (foreign-origin rejected, same-origin allowed).
+- `verify:formsandbox` — **7 checks**, managed Chromium.
+- No system Chrome was launched; no paid inference was used.
+
 ## Integration preparation
 
 - **Implementation commit:** `9c76ae94284269ed69ba1406d392fd3528b588df`
@@ -197,13 +276,13 @@ phase/evidence script changed. The three submission/preregistration tags were un
 - **CI:** [run 40706723095](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095)
   passed on the implementation commit under **Node 24.21.0**:
   - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524):
-    lint, typecheck, 611 passed / 3 skipped, build — success.
+    lint, typecheck, 611 passed / 3 skipped, build — success (pre-review run).
   - [browser job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063):
     installed Chromium `156.0.8078.4` (Playwright revision `1248`) and passed all
     32 Studio workflow checks with `Browser: Chromium 156.0.8078.4 (managed)`.
-- **Local integration validation:** Node 24.22.1, 611 passed / 3 skipped, build and all
-  applicable managed-browser checks passed. CI is reported separately, not inferred from
-  the local run.
+- **Local integration validation:** the pre-review head used Node 24.22.1, 611 passed /
+  3 skipped, build and all applicable managed-browser checks passed. The post-review run
+  uses 618 passed / 3 skipped; CI is reported separately, not inferred from local runs.
 
 ## Pre-integration gates
 
@@ -211,7 +290,7 @@ Status at handoff:
 
 | Gate | Status |
 | --- | --- |
-| Local `pnpm verify` on Node 24.22.1 (CI major) | **Pass** — 611 passed, 3 skipped |
+| Local `pnpm verify` on Node 24.22.1 (CI major), post-review | **Pass** — 618 passed, 3 skipped |
 | Local production build on Node 24.22.1 | **Pass** |
 | Local runtime verifier (Node 24.22.1, managed Chromium 156.0.8078.4) | **Pass** |
 | Local managed Studio workflow (Node 24.22.1) | **Pass** — 32 checks |
@@ -283,8 +362,8 @@ deleting that file only re-shows historical notices, never deletes job records.
 Executed in the isolated worktree on Node **24.22.1** (the CI major) unless noted. Earlier
 validation used Node 26.8.1; the Node 24 run is the integration result.
 
-- `pnpm verify` — pass: lint and typecheck clean; 611 passed, 3 skipped (614 total,
-  39 files).
+- `pnpm verify` — pass: lint and typecheck clean; 618 passed, 3 skipped (621 total,
+  39 files) on the post-review head. The pre-review head had 611/614.
 - `pnpm build` — pass.
 - `pnpm lint` / `pnpm typecheck` — pass after the final script change.
 - `git diff --check` — clean.

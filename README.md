@@ -24,7 +24,7 @@ those decisions and cites them. Nothing goes live until you approve it.
 | **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
 | **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27. Palette-only memory changed nothing (18 of 18). [Evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md); re-derive it with `pnpm verify:research16`. |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 611 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 618 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers one game, one request and one rule. See [Known limitations](#known-limitations). |
 
 ### Results: a remembered rule on two models
@@ -177,7 +177,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (611 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (618 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
