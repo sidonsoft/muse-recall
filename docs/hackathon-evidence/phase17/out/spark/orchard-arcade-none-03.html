@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orchard Catch — A Gentle Fruit Game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  :root{
+    --accent:#6BBF59;
+    --ink:#1F3A24;
+    --cream:#FAFDF3;
+    --meadow:#EAF4DC;
+    --card:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+    background:var(--meadow);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  header{
+    text-align:center;
+    padding:20px 16px 8px;
+    max-width:640px;
+  }
+  h1{margin:0 0 6px;font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:.5px}
+  .subtitle{margin:0;font-size:clamp(1rem,2.6vw,1.15rem);line-height:1.5}
+  main{
+    width:100%;
+    max-width:640px;
+    padding:12px 16px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:stretch;
+  }
+  .panel{
+    background:var(--card);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    padding:12px 14px;
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .progress-wrap{flex:1 1 220px;min-width:200px}
+  #catchLabel{font-weight:bold;font-size:1.05rem;margin:0 0 6px}
+  progress{
+    width:100%;
+    height:18px;
+    appearance:none;
+  }
+  progress::-webkit-progress-bar{background:#E3EDD4;border-radius:999px}
+  progress::-webkit-progress-value{background:var(--accent);border-radius:999px}
+  progress::-moz-progress-bar{background:var(--accent);border-radius:999px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    font:inherit;
+    font-weight:bold;
+    color:var(--ink);
+    background:#DDF0CE;
+    border:3px solid var(--accent);
+    border-radius:999px;
+    padding:10px 20px;
+    cursor:pointer;
+    min-height:48px;
+    min-width:110px;
+  }
+  button:hover:not(:disabled){background:var(--accent);color:#fff}
+  button:focus-visible{outline:4px solid #1F3A24;outline-offset:2px}
+  button:disabled{opacity:.5;cursor:default}
+  button.primary{background:var(--accent);color:#fff}
+  button.primary:hover:not(:disabled){background:#57a847}
+  #statusMessage{
+    margin:0;
+    min-height:1.6em;
+    font-weight:bold;
+    font-size:1.05rem;
+  }
+  #arcadeStats{
+    margin:6px 0 0;
+    font-weight:bold;
+    font-size:1rem;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  #arcadeStats span{
+    background:#EAF4DC;
+    border-radius:999px;
+    padding:2px 12px;
+  }
+  #gameWrap{
+    background:linear-gradient(#DFF0D2,#FAFDF3);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  #game{display:flex;justify-content:center}
+  #game canvas{border-radius:14px;max-width:100%}
+  .help{font-size:.98rem;line-height:1.55;margin:0}
+  footer{padding:0 16px 24px;text-align:center;font-size:.9rem;max-width:640px}
+  @media (max-width:480px){
+    .hud{flex-direction:column;align-items:stretch}
+    .controls{justify-content:stretch}
+    .controls button{flex:1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Orchard Catch</h1>
+  <p class="subtitle">Catch the ripe fruit, dodge the sour ones, and chase a high score. Three misses ends the run — fill the basket to win!</p>
+</header>
+
+<main>
+  <section class="panel hud" aria-label="Game progress and controls">
+    <div class="progress-wrap">
+      <p id="catchLabel" aria-live="polite">Caught 0 of 12 fruit</p>
+      <progress id="catchProgress" max="12" value="0" aria-label="Fruit caught progress"></progress>
+      <p id="statusMessage" aria-live="polite">Press Start to begin picking.</p>
+      <p id="arcadeStats" aria-live="polite"><span id="scoreStat">Score: 0</span><span id="livesStat">Lives: 3</span><span id="levelStat">Level: 1</span></p>
+    </div>
+    <div class="controls" role="group" aria-label="Game actions">
+      <button type="button" id="startBtn" class="primary" aria-label="Start catching fruit">Start</button>
+      <button type="button" id="restartBtn" aria-label="Restart the game and empty the basket" disabled>Restart</button>
+    </div>
+  </section>
+
+  <div id="gameWrap">
+    <div id="game" aria-label="Orchard game canvas. Use left and right arrow keys, mouse, or touch to move the basket. Catch ripe and golden fruit, dodge sour fruit."></div>
+  </div>
+
+  <section class="panel" aria-label="How to play">
+    <p class="help"><strong>How to play:</strong> Move with your mouse, touch, or the left and right arrow keys. Catch ripe fruit for 10 points (streaks earn bonus points) and golden fruit for 50 points and 2 basket fills. Dodge the dark sour fruit — catching one costs a life. Missing a good fruit costs a life too. You have 3 lives; fruit falls faster every 4 catches. Fill the basket with 12 fruit to win!</p>
+  </section>
+</main>
+
+<footer>
+  <p>An arcade harvest: streaks, golden fruit, levels, and only 3 lives. How high can you score?</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var GOAL = 12;
+  var caught = 0;
+  var playing = false;
+  var won = false;
+  var lost = false;
+  var score = 0;
+  var lives = 3;
+  var level = 1;
+  var streak = 0;
+  var sceneRef = null;
+
+  var startBtn = document.getElementById('startBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var catchLabel = document.getElementById('catchLabel');
+  var catchProgress = document.getElementById('catchProgress');
+  var statusMessage = document.getElementById('statusMessage');
+  var scoreStat = document.getElementById('scoreStat');
+  var livesStat = document.getElementById('livesStat');
+  var levelStat = document.getElementById('levelStat');
+
+  function hearts(n) {
+    var s = '';
+    for (var i = 0; i < 3; i++) {
+      s += i < n ? '\u2665' : '\u2661';
+    }
+    return s;
+  }
+
+  function updateHud(message) {
+    catchLabel.textContent = 'Caught ' + caught + ' of ' + GOAL + ' fruit';
+    catchProgress.value = String(caught);
+    catchProgress.setAttribute('aria-valuenow', String(caught));
+    scoreStat.textContent = 'Score: ' + score;
+    livesStat.textContent = 'Lives: ' + hearts(Math.max(lives, 0)) + ' ' + Math.max(lives, 0);
+    levelStat.textContent = 'Level: ' + level;
+    if (typeof message === 'string') {
+      statusMessage.textContent = message;
+    }
+  }
+
+  function setButtons() {
+    startBtn.disabled = playing && !won && !lost;
+    restartBtn.disabled = !playing && !won && !lost && caught === 0;
+  }
+
+  function startGame() {
+    caught = 0;
+    score = 0;
+    lives = 3;
+    level = 1;
+    streak = 0;
+    playing = true;
+    won = false;
+    lost = false;
+    updateHud('Catch the ripe fruit, dodge the sour ones. Good luck!');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+
+  function restartGame() {
+    caught = 0;
+    score = 0;
+    lives = 3;
+    level = 1;
+    streak = 0;
+    playing = true;
+    won = false;
+    lost = false;
+    updateHud('A fresh basket and 3 fresh lives. Go!');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+
+  function onWin() {
+    won = true;
+    playing = false;
+    updateHud('Basket full! Final score: ' + score + '. Amazing harvest!');
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+  }
+
+  function onLose(reason) {
+    lost = true;
+    playing = false;
+    updateHud(reason + ' Final score: ' + score + '. Press Restart to try again!');
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+
+  startBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+  restartBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!restartBtn.disabled) { restartGame(); }
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.activeElement === document.body) {
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+
+  function makeFruitTexture(scene, key, bodyColor, leafColor) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 0);
+    g.fillRect(0, 0, 44, 48);
+    g.fillStyle(bodyColor, 1);
+    g.fillCircle(22, 26, 15);
+    g.fillStyle(0xffffff, 0.35);
+    g.fillCircle(16, 20, 5);
+    g.fillStyle(0x8a5a2b, 1);
+    g.fillRect(20, 4, 4, 9);
+    g.fillStyle(leafColor, 1);
+    g.fillEllipse(30, 10, 12, 7);
+    g.generateTexture(key, 44, 48);
+    g.destroy();
+  }
+
+  var OrchardScene = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function OrchardScene() {
+      Phaser.Scene.call(this, { key: 'orchard' });
+      this.basket = null;
+      this.fruits = null;
+      this.cursors = null;
+      this.spawnTimer = null;
+      this.banner = null;
+      this.bannerSub = null;
+      this.deco = null;
+    },
+    create: function () {
+      sceneRef = this;
+      var W = this.scale.width;
+      var H = this.scale.height;
+
+      this.cameras.main.setBackgroundColor('#EAF4DC');
+
+      // Soft hills
+      var bg = this.add.graphics();
+      bg.fillStyle(0xcfe8b8, 1);
+      bg.fillEllipse(W / 2, H + 90, W + 160, 300);
+      bg.fillStyle(0xd8edc2, 1);
+      bg.fillEllipse(W * 0.15, H + 130, 320, 220);
+
+      // Tree canopies (decorative, gentle greens)
+      var trees = this.add.graphics();
+      var canopy = [0x9ed08a, 0x8ccb78, 0xaedba0];
+      var spots = [[70, 110, 62], [200, 80, 74], [340, 105, 66], [445, 150, 52]];
+      for (var i = 0; i < spots.length; i++) {
+        var sx = spots[i][0], sy = spots[i][1], sr = spots[i][2];
+        trees.fillStyle(0x8a5a2b, 1);
+        trees.fillRect(sx - 8, sy + 20, 16, 70);
+        trees.fillStyle(canopy[i % canopy.length], 1);
+        trees.fillCircle(sx, sy, sr);
+        trees.fillCircle(sx - sr * 0.55, sy + 14, sr * 0.6);
+        trees.fillCircle(sx + sr * 0.55, sy + 14, sr * 0.6);
+      }
+
+      // Grass strip
+      var grass = this.add.graphics();
+      grass.fillStyle(0x6BBF59, 1);
+      grass.fillRect(0, H - 56, W, 56);
+      grass.fillStyle(0x7fca70, 1);
+      for (var b = 0; b < 24; b++) {
+        grass.fillTriangle(b * 22, H - 56, b * 22 + 11, H - 70, b * 22 + 22, H - 56);
+      }
+
+      makeFruitTexture(this, 'fruit-red', 0xe46b5e, 0x5da24e);
+      makeFruitTexture(this, 'fruit-orange', 0xf0a14b, 0x5da24e);
+      makeFruitTexture(this, 'fruit-plum', 0x9b7bc4, 0x6BBF59);
+      makeFruitTexture(this, 'fruit-pear', 0xa8c256, 0x4d8f43);
+      makeFruitTexture(this, 'fruit-gold', 0xffd23f, 0x4d8f43);
+      // Sour fruit: dark, frowning — dodge it!
+      var sg = this.make.graphics({ x: 0, y: 0, add: false });
+      sg.fillStyle(0xffffff, 0);
+      sg.fillRect(0, 0, 44, 48);
+      sg.fillStyle(0x5b6b4f, 1);
+      sg.fillCircle(22, 26, 15);
+      sg.fillStyle(0x3d4a35, 1);
+      sg.fillCircle(16, 20, 5);
+      sg.fillStyle(0x8a5a2b, 1);
+      sg.fillRect(20, 4, 4, 9);
+      sg.lineStyle(3, 0x2e3828, 1);
+      sg.beginPath();
+      sg.moveTo(14, 32);
+      sg.lineTo(19, 27);
+      sg.lineTo(24, 32);
+      sg.lineTo(29, 27);
+      sg.strokePath();
+      sg.generateTexture('fruit-sour', 44, 48);
+      sg.destroy();
+      // Sparkle ring so golden fruit reads as a bonus at a glance
+      var gg = this.make.graphics({ x: 0, y: 0, add: false });
+      gg.lineStyle(3, 0xffffff, 0.9);
+      gg.strokeCircle(22, 26, 18);
+      gg.lineStyle(2, 0xfff6c9, 1);
+      gg.strokeCircle(22, 26, 20);
+      gg.generateTexture('gold-ring', 44, 48);
+      gg.destroy();
+
+      // Basket texture
+      var bk = this.make.graphics({ x: 0, y: 0, add: false });
+      bk.fillStyle(0xb07a3f, 1);
+      bk.fillRoundedRect(0, 10, 110, 44, 12);
+      bk.fillStyle(0x8a5a2b, 1);
+      for (var w = 0; w < 5; w++) {
+        bk.fillRect(12 + w * 20, 12, 5, 40);
+      }
+      bk.fillStyle(0x7a4f22, 1);
+      bk.fillRoundedRect(0, 0, 110, 16, 8);
+      bk.generateTexture('basket', 110, 54);
+      bk.destroy();
+
+      this.physics.world.setBounds(0, 0, W, H);
+
+      this.basket = this.physics.add.image(W / 2, H - 100, 'basket');
+      this.basket.setImmovable(true);
+      this.basket.body.allowGravity = false;
+      this.basket.setCollideWorldBounds(true);
+
+      var hint = this.add.text(W / 2, H - 200, 'Move me with mouse, touch,\nor arrow keys', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '18px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffcc',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5);
+      hint.setDepth(5);
+      this.hintText = hint;
+
+      this.fruits = this.physics.add.group();
+      this.rings = this.add.group();
+
+      this.physics.add.overlap(this.basket, this.fruits, this.catchFruit, null, this);
+
+      this.cursors = this.input.keyboard.createCursorKeys();
+
+      this.scoreText = this.add.text(14, 12, 'Basket: 0 / ' + GOAL, {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '20px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffdd',
+        padding: { x: 12, y: 8 },
+        lineSpacing: 4
+      }).setDepth(10);
+
+      this.banner = this.add.text(W / 2, H / 2 - 30, 'Basket Full!\nWonderful picking!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '34px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffee',
+        padding: { x: 22, y: 18 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.bannerSub = this.add.text(W / 2, H / 2 + 80, 'Press Restart for another round', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '18px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffcc',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.input.on('pointermove', function (pointer) {
+        if (!playing || won || lost) { return; }
+        var nx = Phaser.Math.Clamp(pointer.x, 60, W - 60);
+        this.basket.x = nx;
+      }, this);
+
+      this.spawnTimer = this.time.addEvent({
+        delay: 850,
+        loop: true,
+        callback: this.spawnFruit,
+        callbackScope: this
+      });
+
+      this.resetRound();
+    },
+    spawnDelayFor: function (lvl) {
+      return Math.max(850 - (lvl - 1) * 130, 330);
+    },
+    retuneTimer: function () {
+      if (!this.spawnTimer) { return; }
+      this.spawnTimer.remove(false);
+      this.spawnTimer = this.time.addEvent({
+        delay: this.spawnDelayFor(level),
+        loop: true,
+        callback: this.spawnFruit,
+        callbackScope: this
+      });
+    },
+    resetRound: function () {
+      if (!this.fruits) { return; }
+      this.fruits.clear(true, true);
+      if (this.rings) { this.rings.clear(true, true); }
+      caught = 0;
+      score = 0;
+      lives = 3;
+      level = 1;
+      streak = 0;
+      this.retuneTimer();
+      this.refreshScore();
+      this.banner.setVisible(false);
+      this.bannerSub.setVisible(false);
+      if (this.hintText) { this.hintText.setVisible(true); }
+      if (this.basket) { this.basket.setPosition(this.scale.width / 2, this.scale.height - 100); }
+      updateHud();
+      setButtons();
+    },
+    refreshScore: function () {
+      this.scoreText.setText('Basket: ' + caught + ' / ' + GOAL + '   Score: ' + score + '\nLives: ' + lives + '   Level: ' + level + '   Streak: ' + streak);
+    },
+    spawnFruit: function () {
+      if (!playing || won || lost) { return; }
+      var W = this.scale.width;
+      var keys = ['fruit-red', 'fruit-orange', 'fruit-plum', 'fruit-pear'];
+      var roll = Math.random();
+      var key;
+      var bad = false;
+      var golden = false;
+      if (roll < 0.14) {
+        key = 'fruit-sour';
+        bad = true;
+      } else if (roll < 0.26) {
+        key = 'fruit-gold';
+        golden = true;
+      } else {
+        key = keys[Phaser.Math.Between(0, keys.length - 1)];
+      }
+      var x = Phaser.Math.Between(40, W - 40);
+      var f = this.fruits.create(x, -30, key);
+      var speed = Phaser.Math.Between(150, 220) + (level - 1) * 45;
+      if (golden) { speed += 60; }
+      if (bad) { speed += 30; }
+      f.setVelocityY(Math.min(speed, 560));
+      f.setMaxVelocity(600, 600);
+      f.body.allowGravity = false;
+      f.setData('landed', false);
+      f.setData('bad', bad);
+      f.setData('golden', golden);
+      if (golden) {
+        var ring = this.add.image(0, 0, 'gold-ring');
+        this.rings.add(ring);
+        ring.setScale(1.15);
+        f.setData('ring', ring);
+        this.tweens.add({
+          targets: ring,
+          alpha: 0.25,
+          scaleX: 1.45,
+          scaleY: 1.45,
+          duration: 420,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+      // Arcade sway, wider at higher levels
+      var sway = 26 + (level - 1) * 10;
+      this.tweens.add({
+        targets: f,
+        x: x + Phaser.Math.Between(-sway, sway),
+        duration: Math.max(Phaser.Math.Between(700, 1300) - (level - 1) * 80, 380),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    },
+    popupText: function (x, y, msg, color) {
+      var t = this.add.text(x, y, msg, {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '22px',
+        fontStyle: 'bold',
+        color: color,
+        backgroundColor: '#ffffffe6',
+        padding: { x: 8, y: 4 }
+      }).setOrigin(0.5).setDepth(18);
+      this.tweens.add({
+        targets: t,
+        y: y - 46,
+        alpha: 0,
+        duration: 850,
+        ease: 'Sine.easeOut',
+        onComplete: function () { t.destroy(); }
+      });
+    },
+    burst: function (x, y, colorHex) {
+      var self = this;
+      for (var k = 0; k < 8; k++) {
+        var dot = this.add.circle(x, y, Phaser.Math.Between(3, 6), colorHex, 1);
+        dot.setDepth(16);
+        self.tweens.add({
+          targets: dot,
+          x: x + Phaser.Math.Between(-55, 55),
+          y: y + Phaser.Math.Between(-55, 25),
+          alpha: 0,
+          duration: Phaser.Math.Between(300, 600),
+          ease: 'Sine.easeOut',
+          onComplete: (function (d) {
+            return function () { d.destroy(); };
+          })(dot)
+        });
+      }
+    },
+    clearRing: function (fruit) {
+      var ring = fruit.getData('ring');
+      if (ring) {
+        this.tweens.killTweensOf(ring);
+        ring.destroy();
+        fruit.setData('ring', null);
+      }
+    },
+    checkLevelUp: function () {
+      var next = 1 + Math.floor(caught / 4);
+      if (next > level) {
+        level = next;
+        this.retuneTimer();
+        this.refreshScore();
+        updateHud('Level ' + level + '! Faster fruit — keep dodging the sour ones!');
+        this.cameras.main.shake(140, 0.004);
+      }
+    },
+    loseLife: function (reason) {
+      lives -= 1;
+      streak = 0;
+      this.refreshScore();
+      this.cameras.main.shake(170, 0.006);
+      if (lives <= 0) {
+        this.gameOver(reason);
+      } else {
+        updateHud(reason + ' ' + lives + (lives === 1 ? ' life' : ' lives') + ' left!');
+      }
+    },
+    catchFruit: function (basket, fruit) {
+      if (!playing || won || lost) { return; }
+      if (fruit.getData('landed')) { return; }
+      fruit.setData('landed', true);
+      this.tweens.killTweensOf(fruit);
+      this.clearRing(fruit);
+      if (this.hintText) { this.hintText.setVisible(false); }
+      // Sour fruit: penalty, no basket fill
+      if (fruit.getData('bad')) {
+        var sx = fruit.x, sy = fruit.y;
+        fruit.destroy();
+        this.burst(sx, sy, 0x5b6b4f);
+        this.popupText(sx, sy - 10, 'SOUR! -1 life', '#3d4a35');
+        // Basket recoil
+        this.tweens.add({
+          targets: basket,
+          scaleX: 0.9,
+          scaleY: 1.12,
+          duration: 140,
+          yoyo: true,
+          ease: 'Sine.easeOut'
+        });
+        this.loseLife('Ouch, sour fruit!');
+        return;
+      }
+      var golden = fruit.getData('golden');
+      var gain = golden ? 50 : 10 + Math.min(streak, 8) * 2;
+      score += gain;
+      streak += 1;
+      if (golden) {
+        caught += 2;
+        if (caught > GOAL) { caught = GOAL; }
+      } else {
+        caught += 1;
+      }
+      if (streak > 0 && streak % 5 === 0) {
+        score += 25;
+        this.popupText(basket.x, basket.y - 70, 'STREAK x' + streak + '! +25', '#b8860b');
+      } else {
+        this.popupText(basket.x, basket.y - 60, '+' + gain, golden ? '#b8860b' : '#1F3A24');
+      }
+      this.burst(basket.x, basket.y - 16, golden ? 0xffd23f : 0xe46b5e);
+      this.refreshScore();
+      updateHud();
+      // Pop into the basket
+      this.tweens.add({
+        targets: fruit,
+        x: basket.x,
+        y: basket.y - 10,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        alpha: 0.4,
+        duration: 200,
+        ease: 'Sine.easeIn',
+        onComplete: function () { fruit.destroy(); }
+      });
+      // Basket squash, punchier for golden catches
+      this.tweens.add({
+        targets: basket,
+        scaleX: golden ? 1.16 : 1.08,
+        scaleY: golden ? 0.86 : 0.92,
+        duration: 120,
+        yoyo: true,
+        ease: 'Sine.easeOut'
+      });
+      if (caught >= GOAL) {
+        this.celebrate();
+        return;
+      }
+      this.checkLevelUp();
+    },
+    gameOver: function (reason) {
+      onLose(reason);
+      this.fruits.clear(true, true);
+      if (this.rings) { this.rings.clear(true, true); }
+      this.banner.setText('Game Over!\nScore: ' + score);
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setText('Caught ' + caught + ' of ' + GOAL + ' fruit. Press Restart to try again');
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 500,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 700,
+        delay: 250
+      });
+    },
+    celebrate: function () {
+      won = true;
+      onWin();
+      var self = this;
+      this.fruits.clear(true, true);
+      if (this.rings) { this.rings.clear(true, true); }
+      this.banner.setText('Basket Full!\nScore: ' + score);
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setText('Streak best: x' + streak + '. Press Restart for another round');
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 700,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 900,
+        delay: 350
+      });
+      // Victory shower: more petals, faster fall
+      for (var k = 0; k < 46; k++) {
+        var colors = [0xe46b5e, 0xf0a14b, 0x9b7bc4, 0xa8c256, 0xffffff];
+        var c = this.add.circle(
+          Phaser.Math.Between(20, this.scale.width - 20),
+          Phaser.Math.Between(-40, 120),
+          Phaser.Math.Between(4, 8),
+          colors[k % colors.length],
+          0.9
+        );
+        c.setDepth(15);
+        self.tweens.add({
+          targets: c,
+          y: self.scale.height - 60,
+          x: c.x + Phaser.Math.Between(-60, 60),
+          duration: Phaser.Math.Between(2200, 4200),
+          delay: k * 90,
+          ease: 'Sine.easeInOut',
+          onComplete: (function (dot) {
+            return function () {
+              self.tweens.add({ targets: dot, alpha: 0, duration: 900, onComplete: function () { dot.destroy(); } });
+            };
+          })(c)
+        });
+      }
+    },
+    update: function (time, delta) {
+      if (!this.basket || !this.cursors) { return; }
+      var dt = Math.min(delta, 50) / 1000;
+      var speed = 430;
+      if (playing && !won && !lost) {
+        if (this.cursors.left.isDown) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x - speed * dt, 60, this.scale.width - 60);
+          if (this.hintText) { this.hintText.setVisible(false); }
+        } else if (this.cursors.right.isDown) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x + speed * dt, 60, this.scale.width - 60);
+          if (this.hintText) { this.hintText.setVisible(false); }
+        }
+        this.basket.body.updateFromGameObject();
+      }
+      // Gold rings track their fruit while it sways
+      var kids = this.fruits.getChildren().slice();
+      for (var i = 0; i < kids.length; i++) {
+        var f = kids[i];
+        if (!f.active) { continue; }
+        var ring = f.getData('ring');
+        if (ring) {
+          ring.setPosition(f.x, f.y);
+        }
+        if (f.y > this.scale.height - 62 && !f.getData('landed')) {
+          f.setData('landed', true);
+          this.tweens.killTweensOf(f);
+          this.clearRing(f);
+          f.body.setVelocity(0, 0);
+          if (playing && !won && !lost) {
+            if (f.getData('bad')) {
+              // Dodged a sour one: small reward, streak kept
+              score += 5;
+              this.popupText(f.x, this.scale.height - 120, 'Dodged! +5', '#4d8f43');
+              this.refreshScore();
+              updateHud();
+            } else {
+              var wasGold = f.getData('golden');
+              this.popupText(f.x, this.scale.height - 120, wasGold ? 'Golden lost!' : 'Missed!', '#a33b32');
+              this.loseLife(wasGold ? 'A golden fruit hit the grass!' : 'A fruit hit the grass!');
+            }
+          }
+          this.tweens.add({
+            targets: f,
+            alpha: 0,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            duration: 600,
+            ease: 'Sine.easeOut',
+            onComplete: (function (dot) {
+              return function () { dot.destroy(); };
+            })(f)
+          });
+        }
+      }
+    }
+  });
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: 480,
+    height: 640,
+    backgroundColor: '#EAF4DC',
+    physics: {
+      default: 'arcade',
+      arcade: { gravity: { x: 0, y: 0 }, debug: false }
+    },
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [OrchardScene]
+  };
+
+  // eslint-disable-next-line no-undef
+  var game = new Phaser.Game(config);
+
+  updateHud('Press Start to begin picking.');
+  setButtons();
+})();
+</script>
+</body>
+</html>

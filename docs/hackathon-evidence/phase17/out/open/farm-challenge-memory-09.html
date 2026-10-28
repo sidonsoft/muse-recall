@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#EAF6FF;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,.15)}
+  #modeBar{display:flex;gap:12px;align-items:center;justify-content:center;margin:8px 0 6px 0;flex-wrap:wrap}
+  .mode-btn{font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif;font-size:15px;font-weight:700;padding:9px 16px;border-radius:999px;border:2px solid #4EA8DE;cursor:pointer;transition:transform .12s ease, background .12s ease, color .12s ease}
+  .mode-btn:focus-visible{outline:3px solid #102A43;outline-offset:2px}
+  .mode-btn:active{transform:scale(.97)}
+  #announce{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="modeBar" role="group" aria-label="Difficulty selection">
+  <span style="color:#102A43;font-weight:700;font-size:15px">Difficulty:</span>
+  <button type="button" class="mode-btn" id="btnEasy" aria-pressed="true" aria-label="Easy mode, 6 pairs">Easy • 6 pairs</button>
+  <button type="button" class="mode-btn" id="btnHard" aria-pressed="false" aria-label="Challenge mode, 8 pairs">Challenge • 8 pairs</button>
+</div>
+<div id="announce" aria-live="polite" aria-atomic="true"></div>
+<div id="game"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F404}", name: "Cow" },
+    { emoji: "\u{1F437}", name: "Pig" },
+    { emoji: "\u{1F414}", name: "Hen" },
+    { emoji: "\u{1F40E}", name: "Horse" },
+    { emoji: "\u{1F411}", name: "Sheep" },
+    { emoji: "\u{1F988}", name: "Duck" },
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F422}", name: "Turtle" }
+  ];
+  var W = 900, H = 700;
+
+  var difficulty = "easy";
+  var totalPairs = 6;
+  var sceneRef = null;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#EAF6FF",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var hudMoves, hudScore, hudMsg, hudMode, endOverlay, endTitle, endDetail, startOverlay;
+  var startEasyBg, startHardBg, startEasyTx, startHardTx, modeToggleBg, modeToggleLabel;
+  var focusedIndex = 0;
+  var focusRing = null;
+
+  function create() {
+    var s = this;
+    sceneRef = s;
+    drawFarm(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupKeyboard(s);
+    syncModeButtons();
+    updateStartDifficultyUI();
+    updateFocusVisual();
+  }
+
+  function drawFarm(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xEAF6FF, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xD6EAF8, 1); g.fillRect(0, 0, W, 470);
+    g.fillStyle(0xCAF0F8, 1); g.fillRect(0, 470, W, 230);
+    g.fillStyle(0xffffff, 1); g.fillCircle(770, 110, 55);
+    g.fillStyle(0x90E0EF, 1); g.fillCircle(770, 110, 42);
+    g.fillStyle(0xffffff, 1);
+    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+    g.fillEllipse(560, 80, 140, 44);
+    g.fillStyle(0xE0F7FA, 1); g.fillEllipse(450, 685, 920, 110);
+    g.fillStyle(0x4EA8DE, 1);
+    for (var i = 0; i < 5; i++) {
+      var sx = 90 + i * 180;
+      g.fillEllipse(sx, 620, 18, 78);
+      g.fillEllipse(sx + 10, 600, 14, 58);
+    }
+    g.fillStyle(0x0077B6, 1);
+    for (var j = 0; j < 5; j++) {
+      var sx2 = 170 + j * 180;
+      g.fillEllipse(sx2, 630, 12, 68);
+    }
+    g.fillStyle(0x90E0EF, 1);
+    g.fillCircle(120, 560, 22); g.fillCircle(140, 570, 18); g.fillCircle(100, 575, 16);
+    g.fillStyle(0x48CAE4, 1);
+    g.fillCircle(780, 560, 20); g.fillCircle(800, 570, 16); g.fillCircle(760, 575, 14);
+    g.fillStyle(0xffffff, 0.9);
+    var bx = [80, 160, 260, 340, 420, 520, 620, 700, 820, 880, 300, 480];
+    var by = [220, 260, 210, 300, 240, 280, 230, 310, 250, 290, 340, 360];
+    for (var k = 0; k < bx.length; k++) {
+      var r = 7 + (k % 3) * 3;
+      g.fillCircle(bx[k], by[k], r);
+      g.lineStyle(2, 0x4EA8DE, 0.35); g.strokeCircle(bx[k], by[k], r);
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function announceLive(msg) {
+    var el = document.getElementById("announce");
+    if (el) { el.textContent = msg; }
+  }
+
+  function getAnimalsForMode() {
+    if (difficulty === "hard") { return ANIMALS.slice(0, 8); }
+    return ANIMALS.slice(0, 6);
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} Ocean Match", textStyle(34, "#102A43")).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(20, "#102A43"));
+    hudScore = scene.add.text(24, 86, "Pairs: 0 / 6", textStyle(20, "#102A43"));
+    hudMode = scene.add.text(24, 112, "Mode: Easy (6)", textStyle(16, "#1A4A6B"));
+    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(22, "#102A43")).setOrigin(1, 0.5);
+
+    var btn = scene.add.container(W - 110, 96);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -22, 172, 44, 22);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(20, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -22, 172, 44), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+
+    var modeBtn = scene.add.container(W - 110, 148);
+    modeToggleBg = scene.add.graphics();
+    modeToggleBg.fillStyle(0xffffff, 1); modeToggleBg.fillRoundedRect(-86, -18, 172, 36, 18);
+    modeToggleBg.lineStyle(2, 0x4EA8DE, 1); modeToggleBg.strokeRoundedRect(-86, -18, 172, 36, 18);
+    modeToggleLabel = scene.add.text(0, 0, "Challenge: OFF", textStyle(15, "#102A43")).setOrigin(0.5);
+    modeBtn.add([modeToggleBg, modeToggleLabel]);
+    modeToggleBg.setInteractive(new Phaser.Geom.Rectangle(-86, -18, 172, 36), Phaser.Geom.Rectangle.Contains);
+    modeToggleBg.on("pointerdown", function () {
+      var next = difficulty === "easy" ? "hard" : "easy";
+      setDifficulty(next);
+    });
+    modeToggleBg.on("pointerover", function () { modeBtn.setScale(1.04); });
+    modeToggleBg.on("pointerout", function () { modeBtn.setScale(1); });
+
+    scene.add.text(W / 2, 168, "Find the pairs! Challenge has 8 pairs.", textStyle(18, "#1A4A6B")).setOrigin(0.5);
+    updateModeToggleVisual();
+  }
+
+  function updateModeToggleVisual() {
+    if (!modeToggleLabel || !modeToggleBg) { return; }
+    var isHard = difficulty === "hard";
+    modeToggleLabel.setText(isHard ? "Challenge: ON" : "Challenge: OFF");
+    modeToggleLabel.setColor(isHard ? "#ffffff" : "#102A43");
+    modeToggleBg.clear();
+    if (isHard) {
+      modeToggleBg.fillStyle(0x4EA8DE, 1); modeToggleBg.fillRoundedRect(-86, -18, 172, 36, 18);
+    } else {
+      modeToggleBg.fillStyle(0xffffff, 1); modeToggleBg.fillRoundedRect(-86, -18, 172, 36, 18);
+      modeToggleBg.lineStyle(2, 0x4EA8DE, 1); modeToggleBg.strokeRoundedRect(-86, -18, 172, 36, 18);
+    }
+  }
+
+  function shuffledDeck() {
+    var pool = getAnimalsForMode();
+    var deck = [];
+    pool.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    if (focusRing) { focusRing.destroy(); focusRing = null; }
+    var deck = shuffledDeck();
+    var isHard = difficulty === "hard";
+    var cols = 4, rows = isHard ? 4 : 3;
+    var cw = 185, ch = isHard ? 112 : 140;
+    var gx = 62, gy = isHard ? 185 : 195;
+    var padX = 22, padY = isHard ? 12 : 16;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    focusRing = scene.add.graphics().setDepth(5);
+    focusedIndex = 0;
+    updateFocusVisual();
+    if (hudScore) { hudScore.setText("Pairs: " + matches + " / " + totalPairs); }
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+    back.fillStyle(0xffffff, 0.85);
+    back.fillCircle(-w / 4, -h / 4, 10); back.fillCircle(w / 4, 0, 7); back.fillCircle(0, h / 4, 12);
+    var paw = scene.add.text(0, -6, "\u{1F41A}", { fontSize: "48px" }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xCAF0F8, 0x90E0EF, 0xADE8F4, 0x48CAE4, 0x00B4D8, 0x0096C7, 0x0077B6, 0x023E8A];
+    fg.fillStyle(0xffffff, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+    var emo = scene.add.text(0, -14, data.emoji, { fontSize: isHardBoard() ? "52px" : "62px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 38, data.name, textStyle(isHardBoard() ? 18 : 22, "#102A43")).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, idx: idx, w: w, h: h };
+    cont.on("pointerdown", function () {
+      focusedIndex = idx;
+      updateFocusVisual();
+      onCard(scene, card);
+    });
+    return card;
+  }
+
+  function isHardBoard() {
+    return difficulty === "hard";
+  }
+
+  function updateFocusVisual() {
+    if (!focusRing || !cards.length) { return; }
+    focusRing.clear();
+    if (!started) { return; }
+    var c = cards[focusedIndex];
+    if (!c || c.matched) { return; }
+    focusRing.lineStyle(4, 0x102A43, 1);
+    focusRing.strokeRoundedRect(c.view.x - c.w / 2 - 4, c.view.y - c.h / 2 - 4, c.w + 8, c.h + 8, 24);
+    focusRing.lineStyle(2, 0xffffff, 1);
+    focusRing.strokeRoundedRect(c.view.x - c.w / 2 - 6, c.view.y - c.h / 2 - 6, c.w + 12, c.h + 12, 26);
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    announceLive("Flipped " + card.data.name);
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); updateFocusVisual(); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / " + totalPairs);
+        hudMsg.setText(matches === totalPairs ? "You did it!" : "Yay! A pair! \u{1F389}");
+        announceLive("Pair found! " + card.data.name + " " + matches + " of " + totalPairs);
+        lockBoard = false;
+        updateFocusVisual();
+        if (matches === totalPairs) { showWin(scene); }
+      }, 350);
+    } else {
+      hudMsg.setText("Try again! \u{1F340}");
+      announceLive("Not a match, try again");
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; updateFocusVisual(); });
+      }, 700);
+    }
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-310, -210, 620, 420, 30);
+    panel.lineStyle(6, 0x4EA8DE, 1); panel.strokeRoundedRect(-310, -210, 620, 420, 30);
+    var title = scene.add.text(0, -150, "\u{1F30A} Ocean Match \u{1F419}", textStyle(38, "#102A43")).setOrigin(0.5);
+    var sub = scene.add.text(0, -95, "Flip the cards and find\nall the animal pairs!", Object.assign(textStyle(22, "#102A43"), { align: "center" })).setOrigin(0.5);
+    var row = scene.add.text(0, -30, "\u{1F404} \u{1F437} \u{1F414} \u{1F40E} \u{1F411} \u{1F988} \u{1F419} \u{1F422}", { fontSize: "36px" }).setOrigin(0.5);
+    var choose = scene.add.text(0, 18, "Choose difficulty:", textStyle(18, "#102A43")).setOrigin(0.5);
+
+    startEasyBg = scene.add.graphics();
+    startEasyBg.fillStyle(0x4EA8DE, 1); startEasyBg.fillRoundedRect(-260, 40, 240, 52, 26);
+    startEasyTx = scene.add.text(-140, 66, "Easy \u2022 6 pairs", textStyle(18, "#ffffff")).setOrigin(0.5);
+    startHardBg = scene.add.graphics();
+    startHardBg.fillStyle(0xffffff, 1); startHardBg.fillRoundedRect(20, 40, 240, 52, 26);
+    startHardBg.lineStyle(3, 0x4EA8DE, 1); startHardBg.strokeRoundedRect(20, 40, 240, 52, 26);
+    startHardTx = scene.add.text(140, 66, "Challenge \u2022 8 pairs", textStyle(18, "#102A43")).setOrigin(0.5);
+
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-130, 115, 260, 64, 32);
+    var btnTx = scene.add.text(0, 147, "\u25B6  Start", textStyle(28, "#ffffff")).setOrigin(0.5);
+    var hint = scene.add.text(0, 195, "Tip: Use mouse, tap, or arrow keys + Enter", textStyle(14, "#1A4A6B")).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, row, choose, startEasyBg, startEasyTx, startHardBg, startHardTx, btnBg, btnTx, hint]);
+
+    startEasyBg.setInteractive(new Phaser.Geom.Rectangle(-260, 40, 240, 52), Phaser.Geom.Rectangle.Contains);
+    startHardBg.setInteractive(new Phaser.Geom.Rectangle(20, 40, 240, 52), Phaser.Geom.Rectangle.Contains);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 115, 260, 64), Phaser.Geom.Rectangle.Contains);
+
+    startEasyBg.on("pointerdown", function () { setDifficulty("easy"); });
+    startHardBg.on("pointerdown", function () { setDifficulty("hard"); });
+    btnBg.on("pointerdown", function () {
+      started = true; lockBoard = false;
+      startOverlay.setVisible(false);
+      hudMsg.setText(difficulty === "hard" ? "Challenge: find 8 pairs!" : "Tap a card!");
+      focusedIndex = 0;
+      updateFocusVisual();
+      announceLive(difficulty === "hard" ? "Game started in challenge mode with 8 pairs" : "Game started in easy mode with 6 pairs");
+    });
+    updateStartDifficultyUI();
+  }
+
+  function updateStartDifficultyUI() {
+    if (!startEasyBg || !startHardBg) { return; }
+    var isHard = difficulty === "hard";
+    startEasyBg.clear(); startHardBg.clear();
+    if (!isHard) {
+      startEasyBg.fillStyle(0x4EA8DE, 1); startEasyBg.fillRoundedRect(-260, 40, 240, 52, 26);
+      startEasyTx.setColor("#ffffff");
+      startHardBg.fillStyle(0xffffff, 1); startHardBg.fillRoundedRect(20, 40, 240, 52, 26);
+      startHardBg.lineStyle(3, 0x4EA8DE, 1); startHardBg.strokeRoundedRect(20, 40, 240, 52, 26);
+      startHardTx.setColor("#102A43");
+    } else {
+      startEasyBg.fillStyle(0xffffff, 1); startEasyBg.fillRoundedRect(-260, 40, 240, 52, 26);
+      startEasyBg.lineStyle(3, 0x4EA8DE, 1); startEasyBg.strokeRoundedRect(-260, 40, 240, 52, 26);
+      startEasyTx.setColor("#102A43");
+      startHardBg.fillStyle(0x4EA8DE, 1); startHardBg.fillRoundedRect(20, 40, 240, 52, 26);
+      startHardTx.setColor("#ffffff");
+    }
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-290, -170, 580, 340, 30);
+    panel.lineStyle(6, 0x4EA8DE, 1); panel.strokeRoundedRect(-290, -170, 580, 340, 30);
+    endTitle = scene.add.text(0, -100, "\u{1F389} You Win! \u{1F389}", textStyle(42, "#102A43")).setOrigin(0.5);
+    endDetail = scene.add.text(0, -30, "", Object.assign(textStyle(22, "#102A43"), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-130, 50, 260, 70, 35);
+    var btnTx = scene.add.text(0, 85, "\u21BB Play Again", textStyle(26, "#ffffff")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 50, 260, 70), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+  }
+
+  function showWin(scene) {
+    var stars;
+    if (difficulty === "hard") {
+      stars = moves <= 14 ? 3 : (moves <= 20 ? 2 : 1);
+    } else {
+      stars = moves <= 10 ? 3 : (moves <= 16 ? 2 : 1);
+    }
+    var modeLabel = difficulty === "hard" ? "Challenge (8 pairs)" : "Easy (6 pairs)";
+    endDetail.setText("You found all " + totalPairs + " pairs!\n" + modeLabel + "\nMoves: " + moves + "  " + "\u2B50".repeat(stars));
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("You win! \u{1F389}");
+    announceLive("You win! Found all " + totalPairs + " pairs in " + moves + " moves");
+    for (var i = 0; i < 40; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u{1F30A}", "\u2B50", "\u{1F389}", "\u{1F419}"][i % 4], { fontSize: "28px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-80, 80), duration: Phaser.Math.Between(1200, 2200), onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / " + totalPairs); hudMsg.setText(difficulty === "hard" ? "Challenge: find 8 pairs!" : "Tap a card!");
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    buildBoard(scene);
+    announceLive("New game started in " + difficulty + " mode");
+  }
+
+  function setDifficulty(mode) {
+    difficulty = mode;
+    totalPairs = mode === "hard" ? 8 : 6;
+    if (hudScore) { hudScore.setText("Pairs: " + matches + " / " + totalPairs); }
+    if (hudMode) { hudMode.setText(mode === "hard" ? "Mode: Challenge (8)" : "Mode: Easy (6)"); }
+    updateModeToggleVisual();
+    syncModeButtons();
+    updateStartDifficultyUI();
+    if (sceneRef) {
+      if (started) {
+        restart(sceneRef);
+      } else {
+        buildBoard(sceneRef);
+        if (hudMsg) { hudMsg.setText(mode === "hard" ? "Challenge mode: 8 pairs ready!" : "Easy mode: 6 pairs ready!"); }
+      }
+    }
+    announceLive(mode === "hard" ? "Challenge mode selected, 8 pairs" : "Easy mode selected, 6 pairs");
+  }
+
+  function syncModeButtons() {
+    var btnEasy = document.getElementById("btnEasy");
+    var btnHard = document.getElementById("btnHard");
+    if (!btnEasy || !btnHard) { return; }
+    var isHard = difficulty === "hard";
+    btnEasy.setAttribute("aria-pressed", String(!isHard));
+    btnHard.setAttribute("aria-pressed", String(isHard));
+    btnEasy.style.background = isHard ? "#ffffff" : "#4EA8DE";
+    btnEasy.style.color = isHard ? "#102A43" : "#ffffff";
+    btnHard.style.background = isHard ? "#4EA8DE" : "#ffffff";
+    btnHard.style.color = isHard ? "#ffffff" : "#102A43";
+    updateModeToggleVisual();
+  }
+
+  function setupKeyboard(scene) {
+    scene.input.keyboard.on("keydown", function (e) {
+      if (!started) {
+        if (e.key === "Enter" || e.key === " ") {
+          if (startOverlay && startOverlay.visible) {
+            started = true; lockBoard = false;
+            startOverlay.setVisible(false);
+            hudMsg.setText(difficulty === "hard" ? "Challenge: find 8 pairs!" : "Tap a card!");
+            focusedIndex = 0; updateFocusVisual();
+          }
+        }
+        if (e.key === "1") { setDifficulty("easy"); }
+        if (e.key === "2") { setDifficulty("hard"); }
+        return;
+      }
+      if (e.key === "r" || e.key === "R") { restart(scene); return; }
+      if (e.key === "1") { setDifficulty("easy"); return; }
+      if (e.key === "2") { setDifficulty("hard"); return; }
+      var cols = 4;
+      if (e.key === "ArrowRight") {
+        focusedIndex = (focusedIndex + 1) % cards.length;
+        updateFocusVisual();
+      } else if (e.key === "ArrowLeft") {
+        focusedIndex = (focusedIndex - 1 + cards.length) % cards.length;
+        updateFocusVisual();
+      } else if (e.key === "ArrowDown") {
+        focusedIndex = (focusedIndex + cols) % cards.length;
+        updateFocusVisual();
+      } else if (e.key === "ArrowUp") {
+        focusedIndex = (focusedIndex - cols + cards.length) % cards.length;
+        updateFocusVisual();
+      } else if (e.key === "Enter" || e.key === " ") {
+        var c = cards[focusedIndex];
+        if (c) { onCard(scene, c); }
+      }
+    });
+  }
+
+  function update() {}
+
+  // DOM mode bar wiring
+  document.addEventListener("DOMContentLoaded", function () {
+    var btnEasy = document.getElementById("btnEasy");
+    var btnHard = document.getElementById("btnHard");
+    if (btnEasy) {
+      btnEasy.addEventListener("click", function () { setDifficulty("easy"); });
+      btnEasy.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDifficulty("easy"); } });
+    }
+    if (btnHard) {
+      btnHard.addEventListener("click", function () { setDifficulty("hard"); });
+      btnHard.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDifficulty("hard"); } });
+    }
+    syncModeButtons();
+  });
+})();
+</script>
+</body>
+</html>

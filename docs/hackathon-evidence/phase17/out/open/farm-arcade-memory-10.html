@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#E6F6FF;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,.15)}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F433}", name: "Whale" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F420}", name: "Fish" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F988}", name: "Shark" },
+    { emoji: "\u{1F9AD}", name: "Seal" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#E0F2FF",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0, totalPairs = 6, difficulty = "calm";
+  var hudMoves, hudScore, hudMsg, endOverlay, endTitle, endDetail, startOverlay;
+  var bubbles = [];
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    createBubbles(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    s.input.keyboard.on("keydown-ENTER", function () {
+      if (startOverlay && startOverlay.visible) { startGame(s, "calm"); }
+      else if (endOverlay && endOverlay.visible) { restart(s); }
+    });
+    s.input.keyboard.on("keydown-SPACE", function () {
+      if (startOverlay && startOverlay.visible) { startGame(s, "adventure"); }
+    });
+    s.input.keyboard.on("keydown-R", function () { restart(s); });
+    s.input.keyboard.on("keydown-r", function () { restart(s); });
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xE6F6FF, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xB8E0F6, 1); g.fillRect(0, 140, W, 360);
+    g.fillStyle(0xA8D8EA, 1); g.fillRect(0, 500, W, 120);
+    g.fillStyle(0xD4EAF7, 1); g.fillRect(0, 620, W, 80);
+    g.lineStyle(3, 0x7FBCD6, 0.55);
+    for (var y = 170; y < 500; y += 38) {
+      g.beginPath();
+      for (var x = 0; x <= W; x += 18) {
+        var wy = y + Math.sin(x * 0.015 + y * 0.01) * 7;
+        if (x === 0) { g.moveTo(x, wy); } else { g.lineTo(x, wy); }
+      }
+      g.strokePath();
+    }
+    g.fillStyle(0xFFF6DD, 1); g.fillCircle(770, 110, 52);
+    g.fillStyle(0xFFE8A3, 1); g.fillCircle(770, 110, 38);
+    g.fillStyle(0xFFFFFF, 1);
+    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+    g.fillEllipse(560, 80, 140, 44);
+    g.fillStyle(0x7FBCD6, 1);
+    for (var i = 0; i < 5; i++) {
+      var sx = 50 + i * 180;
+      g.fillEllipse(sx, 640, 16, 58);
+      g.fillEllipse(sx + 12, 625, 12, 44);
+      g.fillEllipse(sx - 10, 630, 10, 36);
+    }
+    g.fillStyle(0xFFFFFF, 0.4);
+    for (var s = 0; s < 8; s++) {
+      g.fillCircle(80 + s * 110, 650 + (s % 2) * 12, 5);
+    }
+  }
+
+  function createBubbles(scene) {
+    for (var i = 0; i < 12; i++) {
+      var bub = scene.add.graphics();
+      var r = 4 + Math.random() * 7;
+      bub.fillStyle(0xFFFFFF, 0.45);
+      bub.fillCircle(0, 0, r);
+      bub.x = Math.random() * W;
+      bub.y = 180 + Math.random() * 420;
+      bub.speed = 0.25 + Math.random() * 0.6;
+      bub.drift = (Math.random() - 0.5) * 0.4;
+      bub.setDepth(1);
+      bubbles.push(bub);
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} Ocean Match", textStyle(34)).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(22));
+    hudScore = scene.add.text(24, 90, "Pairs: 0 / 6", textStyle(22));
+    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(20, "#102A43")).setOrigin(1, 0.5);
+    var btn = scene.add.container(W - 110, 116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(20, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.05); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    scene.add.text(W / 2, 168, "Find the pairs — calm or reef adventure!", textStyle(18, "#3A5A73")).setOrigin(0.5);
+  }
+
+  function getLayout() {
+    if (totalPairs === 6) {
+      return { cols: 4, rows: 3, cw: 185, ch: 140, gx: 62, gy: 195, padX: 22, padY: 16 };
+    } else {
+      return { cols: 4, rows: 4, cw: 165, ch: 115, gx: 62, gy: 175, padX: 18, padY: 12 };
+    }
+  }
+
+  function shuffledDeck() {
+    var pool = ANIMALS.slice(0, totalPairs);
+    var deck = [];
+    pool.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var deck = shuffledDeck();
+    var L = getLayout();
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / L.cols), c = idx % L.cols;
+      var cx = L.gx + c * (L.cw + L.padX) + L.cw / 2;
+      var cy = L.gy + r * (L.ch + L.padY) + L.ch / 2;
+      cards.push(makeCard(scene, cx, cy, L.cw, L.ch, card));
+    });
+    hudScore.setText("Pairs: 0 / " + totalPairs);
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    cont.setDepth(5);
+    var back = scene.add.graphics();
+    back.fillStyle(0xFFFFFF, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    back.fillStyle(0xA8D8EA, 1); back.fillRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 14);
+    back.fillStyle(0xFFFFFF, 0.85);
+    back.fillCircle(-w / 4, -h / 4, 10); back.fillCircle(w / 4, 0, 7); back.fillCircle(0, h / 4, 11);
+    var shell = scene.add.text(0, -4, "\u{1F41A}", { fontSize: "48px" }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xA8D8EA, 0xB8E0F6, 0xD4EAF7, 0x7FBCD6, 0x90E0EF, 0xCAF0F8, 0xE6F6FF, 0x4EA8DE];
+    fg.fillStyle(0xFFFFFF, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 14);
+    var emo = scene.add.text(0, -16, data.emoji, { fontSize: "54px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 38, data.name, textStyle(18)).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, shell]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    cont.on("pointerover", function () { if (!card.matched && !card.faceUp) { scene.tweens.add({ targets: cont, scale: 1.03, duration: 120 }); } });
+    cont.on("pointerout", function () { scene.tweens.add({ targets: cont, scale: 1, duration: 120 }); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more! \u{1F30A}"); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 180, ease: "Sine.easeInOut" });
+        for (var i = 0; i < 6; i++) {
+          var b = scene.add.text(a.view.x + Phaser.Math.Between(-20, 20), a.view.y, "\u{1F7E6}", { fontSize: "14px", color: "#4EA8DE" }).setDepth(10).setAlpha(0.7);
+          scene.tweens.add({ targets: b, y: b.y - 40 - Math.random() * 20, alpha: 0, duration: 700 + i * 80, onComplete: (function (t) { return function () { t.destroy(); }; })(b) });
+        }
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / " + totalPairs);
+        hudMsg.setText(matches === totalPairs ? "You did it! \u{1F389}" : "Yay! A pair! \u{2728}");
+        lockBoard = false;
+        if (matches === totalPairs) { showWin(scene); }
+      }, 350);
+    } else {
+      hudMsg.setText("Try again! \u{1F340}");
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; });
+      }, 700);
+    }
+  }
+
+  function startGame(scene, mode) {
+    if (mode === "adventure") { totalPairs = 8; difficulty = "adventure"; }
+    else { totalPairs = 6; difficulty = "calm"; }
+    started = true; lockBoard = false; moves = 0; matches = 0; firstPick = null;
+    hudMoves.setText("Moves: 0");
+    hudScore.setText("Pairs: 0 / " + totalPairs);
+    hudMsg.setText("Tap a card!");
+    startOverlay.setVisible(false);
+    endOverlay.setVisible(false);
+    buildBoard(scene);
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xFFFFFF, 1); panel.fillRoundedRect(-310, -200, 620, 400, 28);
+    panel.lineStyle(5, 0x4EA8DE, 1); panel.strokeRoundedRect(-310, -200, 620, 400, 28);
+    var title = scene.add.text(0, -135, "\u{1F30A} Ocean Match \u{1F419}", textStyle(38)).setOrigin(0.5);
+    var sub = scene.add.text(0, -85, "Choose your dive — gentle or a bit more challenge!\nNo timers, no penalties, just ocean fun.", Object.assign(textStyle(18), { align: "center" })).setOrigin(0.5);
+    var row = scene.add.text(0, -30, "\u{1F419} \u{1F433} \u{1F42C} \u{1F420} \u{1F980} \u{1F422}", { fontSize: "38px" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 5, "More pairs = more to remember!", textStyle(16, "#3A5A73")).setOrigin(0.5);
+    var calmBg = scene.add.graphics();
+    calmBg.fillStyle(0x4EA8DE, 1); calmBg.fillRoundedRect(-260, 35, 240, 62, 22);
+    var calmTx = scene.add.text(-140, 66, "Calm Bay \u2022 6 pairs", textStyle(20, "#ffffff")).setOrigin(0.5);
+    var advBg = scene.add.graphics();
+    advBg.fillStyle(0x102A43, 1); advBg.fillRoundedRect(20, 35, 240, 62, 22);
+    var advTx = scene.add.text(140, 66, "Reef Rush \u2022 8 pairs", textStyle(20, "#ffffff")).setOrigin(0.5);
+    var keys = scene.add.text(0, 125, "Tip: Press ENTER for Calm, SPACE for Reef \u2022 R to Restart", textStyle(14, "#5A7A96")).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, row, hint, calmBg, calmTx, advBg, advTx, keys]);
+    calmBg.setInteractive(new Phaser.Geom.Rectangle(-260, 35, 240, 62), Phaser.Geom.Rectangle.Contains);
+    advBg.setInteractive(new Phaser.Geom.Rectangle(20, 35, 240, 62), Phaser.Geom.Rectangle.Contains);
+    calmBg.on("pointerdown", function () { startGame(scene, "calm"); });
+    advBg.on("pointerdown", function () { startGame(scene, "adventure"); });
+    calmBg.on("pointerover", function () { calmBg.setAlpha(0.9); });
+    calmBg.on("pointerout", function () { calmBg.setAlpha(1); });
+    advBg.on("pointerover", function () { advBg.setAlpha(0.9); });
+    advBg.on("pointerout", function () { advBg.setAlpha(1); });
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xFFFFFF, 1); panel.fillRoundedRect(-290, -170, 580, 340, 28);
+    panel.lineStyle(5, 0x4EA8DE, 1); panel.strokeRoundedRect(-290, -170, 580, 340, 28);
+    endTitle = scene.add.text(0, -100, "\u{1F389} You Win! \u{1F389}", textStyle(40)).setOrigin(0.5);
+    endDetail = scene.add.text(0, -30, "", Object.assign(textStyle(22), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-130, 50, 260, 62, 30);
+    var btnTx = scene.add.text(0, 81, "\u21BB Play Again", textStyle(24, "#ffffff")).setOrigin(0.5);
+    var menuBg = scene.add.graphics();
+    menuBg.fillStyle(0xFFFFFF, 1); menuBg.fillRoundedRect(-130, 125, 260, 44, 22);
+    menuBg.lineStyle(2, 0x4EA8DE, 1); menuBg.strokeRoundedRect(-130, 125, 260, 44, 22);
+    var menuTx = scene.add.text(0, 147, "Change Mode", textStyle(18, "#102A43")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx, menuBg, menuTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 50, 260, 62), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+    menuBg.setInteractive(new Phaser.Geom.Rectangle(-130, 125, 260, 44), Phaser.Geom.Rectangle.Contains);
+    menuBg.on("pointerdown", function () {
+      endOverlay.setVisible(false);
+      startOverlay.setVisible(true);
+      lockBoard = true; started = false;
+    });
+  }
+
+  function showWin(scene) {
+    var par = totalPairs === 6 ? 10 : 14;
+    var stars = moves <= par ? 3 : (moves <= par + 6 ? 2 : 1);
+    endDetail.setText("You found all " + totalPairs + " pairs!\nMoves: " + moves + "  " + "\u2B50".repeat(stars) + "\n" + (difficulty === "adventure" ? "Reef Rush cleared! \u{1F30A}" : "Calm Bay cleared! \u2728"));
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.9, to: 1 }, duration: 260, ease: "Back.easeOut" });
+    hudMsg.setText("You win! \u{1F389}");
+    for (var i = 0; i < 28; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u{1F30A}", "\u2B50", "\u{1F389}", "\u{1F41A}"][i % 4], { fontSize: "26px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-60, 60), duration: Phaser.Math.Between(1400, 2200), ease: "Sine.easeIn", onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / " + totalPairs); hudMsg.setText("Tap a card!");
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+  }
+
+  function update() {
+    for (var i = 0; i < bubbles.length; i++) {
+      var b = bubbles[i];
+      b.y -= b.speed;
+      b.x += b.drift + Math.sin(b.y * 0.02) * 0.2;
+      if (b.y < 145) { b.y = H - 20; b.x = Math.random() * W; }
+      if (b.x < 0) { b.x = W; } if (b.x > W) { b.x = 0; }
+    }
+  }
+})();
+</script>
+</body>
+</html>

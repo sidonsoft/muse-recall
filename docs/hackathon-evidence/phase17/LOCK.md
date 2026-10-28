@@ -18,6 +18,9 @@ gh api 'repos/sidonsoft/muse-recall/activity?ref=claude/admiring-kilby-7f7211' -
 pnpm verify:research17                                         # every file in protocol.sha256 matches
 ```
 
-The repository history was later rewritten to drop commit-message trailers. On the rewritten branch,
-the same locked tree is commit `52ce00f` (`git diff 6640e83 52ce00f` is empty). The pushed
-`6640e83`, its branch and its tag are kept unchanged as the public pre-registration record.
+The repository history was later rewritten to drop commit-message trailers, and the Phase 17
+commits were rebased onto `main` for the pull request. The same locked tree is commit `52ce00f`
+on the rewritten local branch and `da821d7` on the `phase17-results` pull-request branch
+(`git diff 6640e83 52ce00f` and `git diff 6640e83 da821d7` are both empty; `protocol.sha256`
+verifies by content, not by commit). The pushed `6640e83`, its branch and its tag are kept
+unchanged as the public pre-registration record.

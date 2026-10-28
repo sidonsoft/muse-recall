@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Deep Blue Arcade Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#071a2e;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Orbitron","Segoe UI",sans-serif;background:radial-gradient(ellipse at top,#0f2f4d 0%,#071a2e 55%,#04101f 100%)}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 0 30px rgba(78,168,222,.35),0 8px 30px rgba(0,0,0,.5);border:2px solid rgba(78,168,222,.25)}
+</style>
+</head>
+<body>
+<div id="game" role="application" aria-label="Deep Blue Arcade Memory Match - match pairs before time runs out"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\uD83D\uDC19", name: "Octopus" },
+    { emoji: "\uD83E\uDD88", name: "Shark" },
+    { emoji: "\uD83D\uDC33", name: "Whale" },
+    { emoji: "\uD83D\uDC2C", name: "Dolphin" },
+    { emoji: "\uD83E\uDD80", name: "Crab" },
+    { emoji: "\uD83D\uDC22", name: "Turtle" },
+    { emoji: "\uD83D\uDC20", name: "Tropic" },
+    { emoji: "\uD83E\uDD91", name: "Squid" },
+    { emoji: "\uD83E\uDEBC", name: "Jelly" },
+    { emoji: "\uD83E\uDD9E", name: "Lobster" },
+    { emoji: "\uD83D\uDC1A", name: "Shell" },
+    { emoji: "\uD83D\uDC21", name: "Blowfish" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#071a2e",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false, paused = false;
+  var moves = 0, matches = 0, score = 0, combo = 0, bestCombo = 0, level = 1, timeLeft = 60, maxTime = 60;
+  var hudMoves, hudScore, hudLevel, hudTime, hudMsg, hudCombo, timerBar, timerBg;
+  var endOverlay, endTitle, endDetail, endSub, startOverlay, pauseOverlay;
+  var timerEvent = null, tideEvent = null, selectedIndex = -1;
+  var audioCtx = null;
+
+  function getAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    return audioCtx;
+  }
+  function playTone(freq, dur, type, vol) {
+    var ctx = getAudio();
+    if (!ctx) return;
+    try {
+      var o = ctx.createOscillator();
+      var g = ctx.createGain();
+      o.type = type || "sine";
+      o.frequency.value = freq;
+      g.gain.value = vol || 0.2;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+      o.stop(ctx.currentTime + dur);
+    } catch (e) {}
+  }
+  function playSound(kind) {
+    if (kind === "flip") { playTone(650, 0.1, "sine", 0.14); }
+    else if (kind === "match") { playTone(523, 0.14, "sine", 0.22); setTimeout(function(){ playTone(659, 0.14, "sine", 0.22); }, 90); setTimeout(function(){ playTone(784, 0.22, "sine", 0.24); }, 180); }
+    else if (kind === "miss") { playTone(180, 0.25, "sawtooth", 0.14); setTimeout(function(){ playTone(140, 0.2, "square", 0.1); }, 80); }
+    else if (kind === "combo") { playTone(880, 0.15, "sine", 0.25); setTimeout(function(){ playTone(1108, 0.25, "sine", 0.25); }, 110); }
+    else if (kind === "win") { [523,659,784,1046].forEach(function(f,i){ setTimeout(function(){ playTone(f, 0.35, "sine", 0.22); }, i*120); }); }
+    else if (kind === "tick") { playTone(1000, 0.06, "square", 0.07); }
+    else if (kind === "level") { playTone(400, 0.15, "sine", 0.18); setTimeout(function(){ playTone(600, 0.15, "sine", 0.18); }, 130); setTimeout(function(){ playTone(900, 0.35, "sine", 0.22); }, 260); }
+  }
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makePauseOverlay(s);
+    makeEndOverlay(s);
+    setupKeyboard(s);
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    for (var i = 0; i < H; i++) {
+      var t = i / H;
+      var r = Math.round(7 + t * 12);
+      var gc = Math.round(26 + t * 28);
+      var b = Math.round(46 + t * 55);
+      var col = (r << 16) | (gc << 8) | b;
+      g.fillStyle(col, 1);
+      g.fillRect(0, i, W, 1);
+    }
+    g.lineStyle(1, 0x4EA8DE, 0.07);
+    for (var x = 0; x < W; x += 40) { g.lineBetween(x, 0, x, H); }
+    for (var y = 0; y < H; y += 40) { g.lineBetween(0, y, W, y); }
+    g.fillStyle(0x102A43, 0.18);
+    g.fillEllipse(220, 680, 620, 90);
+    g.fillEllipse(720, 690, 520, 70);
+    g.fillStyle(0x4EA8DE, 0.06);
+    g.fillEllipse(450, 300, 900, 400);
+    for (var i = 0; i < 22; i++) {
+      var bx = Phaser.Math.Between(20, W - 20);
+      var by = Phaser.Math.Between(110, H - 20);
+      var sz = Phaser.Math.Between(2, 5);
+      g.fillStyle(0xffffff, 0.09);
+      g.fillCircle(bx, by, sz);
+      g.fillStyle(0x4EA8DE, 0.13);
+      g.fillCircle(bx, by, sz + 2);
+    }
+    g.fillStyle(0x000000, 0.12);
+    g.fillRect(0, 0, W, 18);
+    g.fillRect(0, H - 18, W, 18);
+  }
+
+  function makeHud(scene) {
+    var hudBg = scene.add.graphics().setDepth(1);
+    hudBg.fillStyle(0xe6f7ff, 1);
+    hudBg.fillRoundedRect(12, 12, W - 24, 78, 16);
+    hudBg.lineStyle(2, 0x4EA8DE, 0.95);
+    hudBg.strokeRoundedRect(12, 12, W - 24, 78, 16);
+    scene.add.text(28, 20, "◉ DEEP BLUE ARCADE", { fontFamily: '"Orbitron","Segoe UI",sans-serif', fontSize: "13px", color: "#102A43", fontStyle: "bold" }).setDepth(2);
+    hudScore = scene.add.text(28, 38, "SCORE 0", { fontFamily: '"Orbitron",sans-serif', fontSize: "20px", color: "#102A43", fontStyle: "bold" }).setDepth(2);
+    hudLevel = scene.add.text(200, 42, "LVL 1", { fontFamily: '"Orbitron",sans-serif', fontSize: "13px", color: "#4EA8DE", fontStyle: "bold" }).setDepth(2);
+    hudLevel.setStroke("#102A43", 2);
+    hudMoves = scene.add.text(28, 64, "MOVES 0  •  PAIRS 0/6", { fontFamily: '"Orbitron",sans-serif', fontSize: "11px", color: "#5a7a9a" }).setDepth(2);
+    hudCombo = scene.add.text(W / 2, 44, "", { fontFamily: '"Orbitron",sans-serif', fontSize: "16px", color: "#ff6b35", fontStyle: "bold" }).setOrigin(0.5).setDepth(2);
+    hudCombo.setVisible(false);
+    scene.add.text(W - 180, 20, "TIME", { fontFamily: '"Orbitron",sans-serif', fontSize: "10px", color: "#102A43" }).setDepth(2);
+    hudTime = scene.add.text(W - 28, 20, "60.0", { fontFamily: '"Orbitron",sans-serif', fontSize: "22px", color: "#102A43", fontStyle: "bold" }).setOrigin(1, 0).setDepth(2);
+    timerBg = scene.add.graphics().setDepth(2);
+    timerBg.fillStyle(0x102A43, 0.14);
+    timerBg.fillRoundedRect(W - 180, 48, 152, 14, 7);
+    timerBar = scene.add.graphics().setDepth(2);
+    updateTimerBar();
+    hudMsg = scene.add.text(W / 2, 102, "PRESS START TO DIVE!", { fontFamily: '"Orbitron",sans-serif', fontSize: "13px", color: "#e6f7ff", fontStyle: "bold" }).setOrigin(0.5).setDepth(2);
+    hudMsg.setStroke("#102A43", 3);
+    var pauseBtn = scene.add.container(W - 150, 70).setDepth(2);
+    var pBg = scene.add.graphics();
+    pBg.fillStyle(0x102A43, 1);
+    pBg.fillRoundedRect(-34, -14, 68, 28, 14);
+    pBg.lineStyle(2, 0x4EA8DE, 1);
+    pBg.strokeRoundedRect(-34, -14, 68, 28, 14);
+    var pTx = scene.add.text(0, 0, "⏸ PAUSE", { fontFamily: '"Orbitron",sans-serif', fontSize: "10px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    pauseBtn.add([pBg, pTx]);
+    pBg.setInteractive(new Phaser.Geom.Rectangle(-34, -14, 68, 28), Phaser.Geom.Rectangle.Contains);
+    pBg.on("pointerdown", function(){ togglePause(scene); playSound("flip"); });
+    pBg.on("pointerover", function(){ pauseBtn.setScale(1.05); });
+    pBg.on("pointerout", function(){ pauseBtn.setScale(1); });
+    var btn = scene.add.container(W - 62, 70).setDepth(2);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1);
+    bg.fillRoundedRect(-50, -14, 100, 28, 14);
+    bg.lineStyle(2, 0xffffff, 0.9);
+    bg.strokeRoundedRect(-50, -14, 100, 28, 14);
+    var label = scene.add.text(0, 0, "↻ RESTART", { fontFamily: '"Orbitron",sans-serif', fontSize: "10px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-50, -14, 100, 28), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); playSound("flip"); });
+    bg.on("pointerover", function () { btn.setScale(1.05); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    scene.add.text(W / 2, H - 10, "ARROWS: SELECT  •  ENTER/SPACE: FLIP  •  P: PAUSE  •  R: RESTART", { fontFamily: '"Orbitron",sans-serif', fontSize: "9px", color: "#8ecae6" }).setOrigin(0.5).setDepth(2);
+  }
+
+  function updateTimerBar() {
+    if (!timerBar) return;
+    timerBar.clear();
+    var pct = Phaser.Math.Clamp(timeLeft / maxTime, 0, 1);
+    var w = 152 * pct;
+    var col = pct > 0.5 ? 0x4EA8DE : pct > 0.25 ? 0xffb703 : 0xff3b30;
+    timerBar.fillStyle(col, 1);
+    timerBar.fillRoundedRect(W - 180, 48, w, 14, 7);
+    if (pct < 0.25 && pct > 0) {
+      timerBar.fillStyle(0xff3b30, 0.22);
+      timerBar.fillRoundedRect(W - 180 - 3, 48 - 2, w + 6, 18, 9);
+    }
+  }
+
+  function shuffledDeck(pairCount) {
+    var deck = [];
+    for (var i = 0; i < pairCount; i++) {
+      var a = ANIMALS[i % ANIMALS.length];
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    }
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { if (c.selectRing) c.selectRing.destroy(); c.view.destroy(); });
+    cards = [];
+    selectedIndex = -1;
+    var pairCount = level === 1 ? 6 : level === 2 ? 8 : 12;
+    var cols = level === 1 ? 4 : level === 2 ? 4 : 6;
+    var deck = shuffledDeck(pairCount);
+    var cw, ch, gx, gy, padX, padY;
+    if (level === 1) { cw = 185; ch = 132; gx = 62; gy = 128; padX = 22; padY = 14; }
+    else if (level === 2) { cw = 155; ch = 118; gx = 48; gy = 128; padX = 16; padY = 12; }
+    else { cw = 125; ch = 102; gx = 32; gy = 128; padX = 12; padY = 10; }
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    matches = 0;
+    if (hudLevel) hudLevel.setText("LVL " + level);
+    if (hudMoves) hudMoves.setText("MOVES " + moves + "  •  PAIRS " + matches + "/" + pairCount);
+    updateSelection();
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    cont.setSize(w, h);
+    var shadow = scene.add.graphics();
+    shadow.fillStyle(0x000000, 0.28);
+    shadow.fillRoundedRect(-w / 2 + 4, -h / 2 + 6, w, h, 16);
+    var back = scene.add.graphics();
+    back.fillStyle(0x102A43, 1);
+    back.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    back.lineStyle(3, 0x4EA8DE, 1);
+    back.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
+    back.fillStyle(0x4EA8DE, 0.14);
+    back.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 12);
+    back.lineStyle(1, 0x4EA8DE, 0.28);
+    back.strokeCircle(0, 0, w * 0.24);
+    back.strokeCircle(0, 0, w * 0.38);
+    var q = scene.add.text(0, -4, "?", { fontFamily: '"Orbitron",sans-serif', fontSize: (w * 0.36) + "px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    q.setStroke("#e6f7ff", 2);
+    var dot = scene.add.graphics();
+    dot.fillStyle(0x4EA8DE, 1);
+    dot.fillCircle(0, h / 2 - 13, 3.5);
+    var showBack = scene.add.container(0, 0, [shadow, back, q, dot]);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    fg.fillStyle(0xffffff, 1);
+    fg.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    fg.lineStyle(3, 0x4EA8DE, 1);
+    fg.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
+    var palette = [0xe6f7ff, 0xd4f1ff, 0xc2e8ff, 0xb0dfff, 0x9ed6ff, 0x8ccdff, 0xe0f7ff, 0xccf0ff, 0xd6f0ff, 0xe8f6ff, 0xc8e9ff, 0xb8e0ff];
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 12);
+    var glow = scene.add.graphics();
+    glow.fillStyle(0x4EA8DE, 0.13);
+    glow.fillRoundedRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 18);
+    var emo = scene.add.text(0, -10, data.emoji, { fontSize: (w * 0.38) + "px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, h / 2 - 16, data.name.toUpperCase(), { fontFamily: '"Orbitron",sans-serif', fontSize: (w * 0.11) + "px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    face.add([glow, fg, emo, nm]);
+    cont.add([showBack, face]);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, idx: idx, w: w, h: h, x: x, y: y, selectRing: null };
+    cont.on("pointerdown", function () { selectedIndex = idx; updateSelection(); onCard(scene, card); });
+    cont.on("pointerover", function () { if (!card.matched && !card.faceUp && selectedIndex !== idx) scene.tweens.add({ targets: cont, scale: 1.03, duration: 90 }); });
+    cont.on("pointerout", function () { if (selectedIndex !== idx) scene.tweens.add({ targets: cont, scale: 1, duration: 90 }); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 110, ease: "Power2", onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, ease: "Back.easeOut", onComplete: done || function () {} });
+    }});
+  }
+
+  function createParticles(scene, x, y, color) {
+    for (var i = 0; i < 12; i++) {
+      var p = scene.add.graphics().setDepth(12);
+      p.fillStyle(color, 1);
+      p.fillCircle(0, 0, Phaser.Math.Between(3, 6));
+      p.x = x; p.y = y;
+      var tx = x + Phaser.Math.Between(-90, 90);
+      var ty = y + Phaser.Math.Between(-90, 90);
+      scene.tweens.add({ targets: p, x: tx, y: ty, alpha: 0, scale: 0, duration: Phaser.Math.Between(400, 700), ease: "Power2", onComplete: (function(g){ return function(){ g.destroy(); }; })(p) });
+    }
+  }
+
+  function shakeScreen(scene) {
+    scene.cameras.main.shake(180, 0.008);
+  }
+
+  function onCard(scene, card) {
+    if (!started || paused || lockBoard || card.faceUp || card.matched) { return; }
+    var ctx = getAudio(); if (ctx && ctx.state === "suspended") ctx.resume();
+    playSound("flip");
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("FIND ITS MATCH!"); hudMsg.setColor("#4EA8DE"); return; }
+    moves++;
+    var pairCount = level === 1 ? 6 : level === 2 ? 8 : 12;
+    hudMoves.setText("MOVES " + moves + "  •  PAIRS " + matches + "/" + pairCount);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        var base = 100 * level;
+        var timeBonus = Math.floor(timeLeft * 2);
+        var comboBonus = combo * 50;
+        var points = base + timeBonus + comboBonus;
+        if (combo >= 2) points = Math.floor(points * (1 + combo * 0.18));
+        score += points;
+        combo++;
+        if (combo > bestCombo) bestCombo = combo;
+        if (hudScore) hudScore.setText("SCORE " + score);
+        if (combo > 1) {
+          hudCombo.setText("COMBO x" + combo + "! +" + points);
+          hudCombo.setVisible(true);
+          hudCombo.setScale(0.5);
+          hudCombo.setColor(combo >= 3 ? "#ff3b30" : "#ff6b35");
+          scene.tweens.add({ targets: hudCombo, scale: 1.1, duration: 140, yoyo: true, onComplete: function(){ scene.time.delayedCall(900, function(){ hudCombo.setVisible(false); }); } });
+          playSound("combo");
+          var flash = scene.add.graphics().setDepth(5);
+          flash.fillStyle(0x4EA8DE, 0.14);
+          flash.fillRect(0, 0, W, H);
+          scene.tweens.add({ targets: flash, alpha: 0, duration: 280, onComplete: function(){ flash.destroy(); } });
+        } else {
+          hudMsg.setText("MATCH! +" + points);
+          hudMsg.setColor("#00c853");
+        }
+        createParticles(scene, a.view.x, a.view.y, 0x4EA8DE);
+        createParticles(scene, card.view.x, card.view.y, 0x4EA8DE);
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 150, ease: "Back.easeOut" });
+        matches++;
+        hudMoves.setText("MOVES " + moves + "  •  PAIRS " + matches + "/" + pairCount);
+        playSound("match");
+        lockBoard = false;
+        if (matches === pairCount) {
+          stopTimer();
+          if (level < 3) {
+            hudMsg.setText("LEVEL " + level + " CLEAR!");
+            hudMsg.setColor("#4EA8DE");
+            scene.time.delayedCall(700, function(){ nextLevel(scene); });
+          } else {
+            showWin(scene);
+          }
+        } else {
+          if (combo >= 3) { hudMsg.setText("FRENZY! x" + combo + " KEEP GOING!"); hudMsg.setColor("#ff3b30"); }
+        }
+      }, 300);
+    } else {
+      combo = 0;
+      hudCombo.setVisible(false);
+      hudMsg.setText("MISS! -3 SEC");
+      hudMsg.setColor("#ff3b30");
+      timeLeft = Math.max(0, timeLeft - 3);
+      updateTimerBar();
+      if (hudTime) hudTime.setText(timeLeft.toFixed(1));
+      playSound("miss");
+      shakeScreen(scene);
+      scene.tweens.add({ targets: a.view, x: a.view.x + 5, duration: 50, yoyo: true, repeat: 3 });
+      scene.tweens.add({ targets: card.view, x: card.view.x + 5, duration: 50, yoyo: true, repeat: 3 });
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; });
+      }, 700);
+    }
+  }
+
+  function updateTimerBarWrapper() { updateTimerBar(); }
+
+  function startTimer(scene) {
+    stopTimer();
+    maxTime = level === 1 ? 60 : level === 2 ? 55 : 50;
+    if (timeLeft > maxTime) timeLeft = maxTime;
+    if (timeLeft === 0 || level === 1 && moves === 0 && matches === 0 && score === 0) {
+      timeLeft = maxTime;
+    }
+    updateTimerBar();
+    if (hudTime) hudTime.setText(timeLeft.toFixed(1));
+    timerEvent = scene.time.addEvent({ delay: 100, loop: true, callback: function(){
+      if (!started || paused) return;
+      timeLeft -= 0.1;
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        updateTimerBar();
+        if (hudTime) hudTime.setText("0.0");
+        stopTimer();
+        showGameOver(scene);
+        return;
+      }
+      updateTimerBar();
+      if (hudTime) hudTime.setText(timeLeft.toFixed(1));
+      if (timeLeft < 10 && Math.floor(timeLeft * 10) % 10 === 0) {
+        playSound("tick");
+        hudTime.setColor(timeLeft < 5 ? "#ff3b30" : "#ff6b35");
+        scene.tweens.add({ targets: hudTime, scale: 1.12, duration: 80, yoyo: true });
+      } else if (timeLeft >= 10) {
+        hudTime.setColor("#102A43");
+      }
+    }});
+    tideEvent = scene.time.addEvent({ delay: 18000, loop: true, callback: function(){
+      if (!started || paused || lockBoard) return;
+      var pc = level === 1 ? 6 : level === 2 ? 8 : 12;
+      if (matches >= pc) return;
+      tideShift(scene);
+    }});
+  }
+
+  function stopTimer(){
+    if (timerEvent) { timerEvent.remove(); timerEvent = null; }
+    if (tideEvent) { tideEvent.remove(); tideEvent = null; }
+  }
+
+  function tideShift(scene){
+    var unmatched = cards.filter(function(c){ return !c.matched; });
+    if (unmatched.length < 4) return;
+    hudMsg.setText("⚡ TIDE SHIFT! ⚡");
+    hudMsg.setColor("#4EA8DE");
+    playSound("tick");
+    var positions = unmatched.map(function(c){ return { x: c.view.x, y: c.view.y }; });
+    for (var i = positions.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = positions[i]; positions[i] = positions[j]; positions[j] = t;
+    }
+    unmatched.forEach(function(card, idx){
+      scene.tweens.add({ targets: card.view, x: positions[idx].x, y: positions[idx].y, duration: 420, ease: "Power2", delay: idx * 28 });
+      card.x = positions[idx].x; card.y = positions[idx].y;
+    });
+    scene.cameras.main.flash(280, 78, 168, 222);
+  }
+
+  function nextLevel(scene){
+    level++;
+    playSound("level");
+    var bonus = Math.floor(timeLeft * 5);
+    score += bonus;
+    if (hudScore) hudScore.setText("SCORE " + score);
+    var overlay = scene.add.container(W/2, H/2).setDepth(15);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.88);
+    bg.fillRect(-W/2, -H/2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xe6f7ff, 1);
+    panel.fillRoundedRect(-260, -110, 520, 220, 20);
+    panel.lineStyle(4, 0x4EA8DE, 1);
+    panel.strokeRoundedRect(-260, -110, 520, 220, 20);
+    var t1 = scene.add.text(0, -60, "LEVEL " + level, { fontFamily: '"Orbitron",sans-serif', fontSize: "36px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var t2 = scene.add.text(0, -10, "TIME BONUS +" + bonus, { fontFamily: '"Orbitron",sans-serif', fontSize: "18px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    var t3 = scene.add.text(0, 30, level === 2 ? "BOARD EXPANDED! 4×4" : "FINAL DEPTH! 6×4", { fontFamily: '"Orbitron",sans-serif', fontSize: "13px", color: "#5a7a9a" }).setOrigin(0.5);
+    var t4 = scene.add.text(0, 70, "GET READY...", { fontFamily: '"Orbitron",sans-serif', fontSize: "11px", color: "#102A43" }).setOrigin(0.5);
+    overlay.add([bg, panel, t1, t2, t3, t4]);
+    overlay.setAlpha(0);
+    scene.tweens.add({ targets: overlay, alpha: 1, duration: 280 });
+    scene.time.delayedCall(1700, function(){
+      scene.tweens.add({ targets: overlay, alpha: 0, duration: 280, onComplete: function(){ overlay.destroy(); }});
+      moves = 0; matches = 0; combo = 0; firstPick = null; lockBoard = false;
+      var pc = level === 1 ? 6 : level === 2 ? 8 : 12;
+      if (hudMoves) hudMoves.setText("MOVES 0  •  PAIRS 0/" + pc);
+      hudMsg.setText("LEVEL " + level + " - GO!");
+      hudMsg.setColor("#e6f7ff");
+      cards.forEach(function(c){ if(c.selectRing) c.selectRing.destroy(); c.view.destroy(); });
+      buildBoard(scene);
+      timeLeft = level === 2 ? 55 : 50;
+      maxTime = timeLeft;
+      updateTimerBar();
+      if (hudTime) hudTime.setText(timeLeft.toFixed(1));
+      startTimer(scene);
+    });
+  }
+
+  function makeBadge(scene, x, y, top, bottom){
+    var c = scene.add.container(x, y);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0xffffff, 1);
+    bg.fillRoundedRect(-70, -28, 140, 56, 12);
+    bg.lineStyle(2, 0x4EA8DE, 0.5);
+    bg.strokeRoundedRect(-70, -28, 140, 56, 12);
+    var t1 = scene.add.text(0, -8, top, { fontFamily: '"Orbitron",sans-serif', fontSize: "11px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var t2 = scene.add.text(0, 10, bottom, { fontFamily: '"Orbitron",sans-serif', fontSize: "9px", color: "#5a7a9a" }).setOrigin(0.5);
+    c.add([bg, t1, t2]);
+    return c;
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x071a2e, 0.88);
+    bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xe6f7ff, 1);
+    panel.fillRoundedRect(-320, -210, 640, 420, 24);
+    panel.lineStyle(4, 0x4EA8DE, 1);
+    panel.strokeRoundedRect(-320, -210, 640, 420, 24);
+    var header = scene.add.graphics();
+    header.fillStyle(0x4EA8DE, 1);
+    header.fillRoundedRect(-320, -210, 640, 60, 24);
+    header.fillRect(-320, -170, 640, 20);
+    var title = scene.add.text(0, -180, "◉ DEEP BLUE ARCADE", { fontFamily: '"Orbitron",sans-serif', fontSize: "18px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    var subtitle = scene.add.text(0, -162, "MEMORY MATCH", { fontFamily: '"Orbitron",sans-serif', fontSize: "10px", color: "#102A43" }).setOrigin(0.5);
+    var bigTitle = scene.add.text(0, -110, "ARCADE", { fontFamily: '"Orbitron",sans-serif', fontSize: "46px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    bigTitle.setStroke("#4EA8DE", 2);
+    var sub2 = scene.add.text(0, -70, "MEMORY RUSH", { fontFamily: '"Orbitron",sans-serif', fontSize: "15px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    var desc = scene.add.text(0, -22, "Match pairs before time runs out!\nBuild combos • Survive Tide Shifts • Clear 3 levels", { fontFamily: '"Segoe UI",sans-serif', fontSize: "13px", color: "#334e68", align: "center" }).setOrigin(0.5);
+    desc.setLineSpacing(5);
+    var badges = scene.add.container(0, 38);
+    var b1 = makeBadge(scene, -160, 0, "⏱ 60 SEC", "PER LEVEL");
+    var b2 = makeBadge(scene, 0, 0, "⚡ COMBO", "x2 x3 FRENZY");
+    var b3 = makeBadge(scene, 160, 0, "🌊 TIDE", "SHIFT EVERY 18s");
+    badges.add([b1, b2, b3]);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x102A43, 1);
+    btnBg.fillRoundedRect(-140, 80, 280, 64, 32);
+    btnBg.lineStyle(3, 0x4EA8DE, 1);
+    btnBg.strokeRoundedRect(-140, 80, 280, 64, 32);
+    var btnTx = scene.add.text(0, 112, "▶  DIVE IN", { fontFamily: '"Orbitron",sans-serif', fontSize: "19px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    var hint2 = scene.add.text(0, 165, "KEYBOARD: ARROWS + ENTER  •  MOUSE / TOUCH SUPPORTED", { fontFamily: '"Orbitron",sans-serif', fontSize: "8px", color: "#5a7a9a" }).setOrigin(0.5);
+    startOverlay.add([bg, panel, header, title, subtitle, bigTitle, sub2, desc, badges, btnBg, btnTx, hint2]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-140, 80, 280, 64), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () {
+      started = true; lockBoard = false;
+      startOverlay.setVisible(false);
+      hudMsg.setText("GO! FIND MATCHES!");
+      hudMsg.setColor("#e6f7ff");
+      timeLeft = 60; maxTime = 60;
+      updateTimerBar();
+      startTimer(scene);
+      playSound("level");
+      var ctx = getAudio(); if (ctx && ctx.state === "suspended") ctx.resume();
+    });
+    btnBg.on("pointerover", function(){ startOverlay.setScale(1.01); });
+    btnBg.on("pointerout", function(){ startOverlay.setScale(1); });
+  }
+
+  function makePauseOverlay(scene){
+    pauseOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.88);
+    bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xe6f7ff, 1);
+    panel.fillRoundedRect(-260, -140, 520, 280, 20);
+    panel.lineStyle(4, 0x4EA8DE, 1);
+    panel.strokeRoundedRect(-260, -140, 520, 280, 20);
+    var title = scene.add.text(0, -80, "⏸ PAUSED", { fontFamily: '"Orbitron",sans-serif', fontSize: "34px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var sub = scene.add.text(0, -30, "TAKE A BREATH", { fontFamily: '"Orbitron",sans-serif', fontSize: "13px", color: "#5a7a9a" }).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1);
+    btnBg.fillRoundedRect(-110, 20, 220, 56, 28);
+    var btnTx = scene.add.text(0, 48, "▶ RESUME", { fontFamily: '"Orbitron",sans-serif', fontSize: "15px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 90, "PRESS P OR ESC", { fontFamily: '"Orbitron",sans-serif', fontSize: "10px", color: "#5a7a9a" }).setOrigin(0.5);
+    pauseOverlay.add([bg, panel, title, sub, btnBg, btnTx, hint]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-110, 20, 220, 56), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { togglePause(scene); });
+  }
+
+  function togglePause(scene){
+    if (!started) return;
+    if (endOverlay.visible) return;
+    paused = !paused;
+    pauseOverlay.setVisible(paused);
+    if (paused) { hudMsg.setText("PAUSED - PRESS P TO RESUME"); hudMsg.setColor("#4EA8DE"); }
+    else { hudMsg.setText("GO!"); hudMsg.setColor("#e6f7ff"); }
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x071a2e, 0.88);
+    bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xe6f7ff, 1);
+    panel.fillRoundedRect(-300, -190, 600, 380, 24);
+    panel.lineStyle(4, 0x4EA8DE, 1);
+    panel.strokeRoundedRect(-300, -190, 600, 380, 24);
+    endTitle = scene.add.text(0, -120, "", { fontFamily: '"Orbitron",sans-serif', fontSize: "30px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    endDetail = scene.add.text(0, -60, "", { fontFamily: '"Segoe UI",sans-serif', fontSize: "15px", color: "#334e68", align: "center" }).setOrigin(0.5);
+    endDetail.setLineSpacing(6);
+    endSub = scene.add.text(0, 20, "", { fontFamily: '"Orbitron",sans-serif', fontSize: "11px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1);
+    btnBg.fillRoundedRect(-130, 60, 260, 56, 28);
+    var btnTx = scene.add.text(0, 88, "↻ PLAY AGAIN", { fontFamily: '"Orbitron",sans-serif', fontSize: "15px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 135, "PRESS R TO RESTART", { fontFamily: '"Orbitron",sans-serif', fontSize: "10px", color: "#5a7a9a" }).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, endSub, btnBg, btnTx, hint]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 60, 260, 56), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+  }
+
+  function showWin(scene) {
+    var stars = score >= 3000 ? 3 : score >= 1800 ? 2 : 1;
+    var rank = score >= 3500 ? "ABYSS MASTER" : score >= 2500 ? "DEEP DIVER" : score >= 1500 ? "REEF RANGER" : "TIDE POOL ROOKIE";
+    endTitle.setText("★ MISSION CLEAR ★");
+    endDetail.setText("ALL 3 LEVELS CONQUERED!\nSCORE: " + score + "  •  MOVES: " + moves + "\nBEST COMBO: x" + bestCombo + "  " + "★".repeat(stars));
+    endSub.setText("RANK: " + rank + "  •  TIME LEFT: " + timeLeft.toFixed(1) + "s");
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.85, to: 1 }, duration: 300, ease: "Back.easeOut" });
+    hudMsg.setText("★ YOU WIN! ★");
+    hudMsg.setColor("#4EA8DE");
+    playSound("win");
+    for (var i = 0; i < 50; i++) {
+      var p = scene.add.text(Phaser.Math.Between(0, W), -20, ["✦","★","●","⬢","🌊"][i % 5], { fontSize: Phaser.Math.Between(14, 24) + "px", color: i % 2 ? "#4EA8DE" : "#e6f7ff" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-100, 100), duration: Phaser.Math.Between(1500, 2500), delay: i * 40, onComplete: (function(t){ return function(){ t.destroy(); }; })(p) });
+    }
+  }
+
+  function showGameOver(scene) {
+    var lvlText = level === 1 ? "LEVEL 1" : level === 2 ? "LEVEL 2" : "FINAL LEVEL";
+    endTitle.setText("◉ TIME'S UP");
+    endTitle.setColor("#ff3b30");
+    var pc = level === 1 ? 6 : level === 2 ? 8 : 12;
+    endDetail.setText(lvlText + " FAILED\nSCORE: " + score + "  •  PAIRS: " + matches + "/" + pc + "\nMOVES: " + moves + "  •  BEST COMBO: x" + bestCombo);
+    endSub.setText("TIP: BUILD COMBOS FOR BONUS! WATCH FOR TIDE SHIFTS");
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.85, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("GAME OVER - PRESS RESTART");
+    hudMsg.setColor("#ff3b30");
+    playSound("miss");
+    scene.cameras.main.shake(400, 0.012);
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; score = 0; combo = 0; bestCombo = 0; level = 1; timeLeft = 60; maxTime = 60; firstPick = null; lockBoard = false; started = true; paused = false; selectedIndex = -1;
+    hudScore.setText("SCORE 0"); hudMoves.setText("MOVES 0  •  PAIRS 0/6"); hudLevel.setText("LVL 1"); hudTime.setText("60.0"); hudTime.setColor("#102A43"); hudMsg.setText("GO! FIND MATCHES!"); hudMsg.setColor("#e6f7ff"); hudCombo.setVisible(false);
+    endOverlay.setVisible(false); pauseOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    stopTimer();
+    cards.forEach(function (c) { if (c.selectRing) c.selectRing.destroy(); c.view.destroy(); });
+    buildBoard(scene);
+    startTimer(scene);
+    playSound("flip");
+  }
+
+  function updateSelection(){
+    cards.forEach(function(c){
+      if (c.selectRing) { c.selectRing.destroy(); c.selectRing = null; }
+      c.view.setScale(1);
+    });
+    if (selectedIndex >= 0 && selectedIndex < cards.length) {
+      var card = cards[selectedIndex];
+      if (!card.matched) {
+        card.view.setScale(1.06);
+        var r = card.view.scene.add.graphics().setDepth(4);
+        r.lineStyle(3, 0xffb703, 1);
+        r.strokeRoundedRect(card.view.x - card.w/2 - 5, card.view.y - card.h/2 - 5, card.w + 10, card.h + 10, 18);
+        card.selectRing = r;
+        card.view.scene.tweens.add({ targets: r, alpha: { from: 1, to: 0.35 }, duration: 420, yoyo: true, repeat: -1 });
+      }
+    }
+  }
+
+  function setupKeyboard(scene){
+    window.addEventListener("keydown", function(e){
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!started || paused) return;
+        if (cards.length === 0) return;
+        var cols = level === 1 ? 4 : level === 2 ? 4 : 6;
+        if (selectedIndex === -1) selectedIndex = 0;
+        else {
+          if (e.key === "ArrowRight") selectedIndex = (selectedIndex + 1) % cards.length;
+          else if (e.key === "ArrowLeft") selectedIndex = (selectedIndex - 1 + cards.length) % cards.length;
+          else if (e.key === "ArrowDown") selectedIndex = (selectedIndex + cols) % cards.length;
+          else if (e.key === "ArrowUp") selectedIndex = (selectedIndex - cols + cards.length) % cards.length;
+        }
+        updateSelection();
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (!started && startOverlay && startOverlay.visible) {
+          started = true; lockBoard = false; startOverlay.setVisible(false); hudMsg.setText("GO! FIND MATCHES!"); hudMsg.setColor("#e6f7ff"); timeLeft = 60; maxTime = 60; updateTimerBar(); startTimer(scene); playSound("level");
+          var ctx = getAudio(); if (ctx && ctx.state === "suspended") ctx.resume();
+          return;
+        }
+        if (paused) return;
+        if (endOverlay.visible) { restart(scene); return; }
+        if (selectedIndex >= 0 && selectedIndex < cards.length) {
+          onCard(scene, cards[selectedIndex]);
+        } else {
+          var avail = cards.filter(function(c){ return !c.matched && !c.faceUp; });
+          if (avail.length) onCard(scene, avail[0]);
+        }
+      } else if (e.key === "p" || e.key === "P" || e.key === "Escape") {
+        if (!started) return;
+        togglePause(scene);
+      } else if (e.key === "r" || e.key === "R") {
+        restart(scene);
+      }
+    });
+  }
+
+  function update() {
+    if (timeLeft < 10 && started && !paused && timerBar) {
+      timerBar.setAlpha(0.75 + Math.sin(Date.now() * 0.012) * 0.25);
+    }
+  }
+})();
+</script>
+</body>
+</html>
