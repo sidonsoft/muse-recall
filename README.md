@@ -75,8 +75,8 @@ Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickst
 > restart recovery, bounded memory rendering with record identity and provenance, a
 > scrubbed child-process environment, and a managed deterministic browser workflow. It
 > does not change the research protocol, detectors, baselines, outputs or tags. Phase 17
-> has a separate results branch that is **not merged or reconciled**; no Phase 17 result
-> is claimed here.
+> results and evidence are merged into `main` and included here without alteration; this
+> hardening change makes no new Phase 17 claim.
 
 ---
 
@@ -178,7 +178,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (632 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (644 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -277,8 +277,7 @@ default.
 | Phase 17 four-arm trial across two games and one app, two models | 17 | **Complete**; evidence, exact-p correction and strict verifier published |
 | Demo video (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
 | Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
-| Post-hackathon local-beta hardening | hardening | **Implemented on an isolated branch**; pending review, browser CI run and merge |
-| Phase 17 open-model research | 17 | **Separate results branch**; not merged, reconciled, or claimed |
+| Post-hackathon local-beta hardening | hardening | **Implemented** in draft PR #1; pending final merge |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.
@@ -686,9 +685,7 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 2. **Local beta hardening (current).** Durable Forge jobs and restart recovery, bounded
    memory rendering, a scrubbed child environment, and managed browser coverage are in
    place. Remaining work is tracked in [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
-3. **Reconcile Phase 17.** Independently confirm completion and review the separate Phase 17 results branch
-   before any integration. Do not merge it or claim unfinished results.
-4. **Out of scope for this release.** Authentication, hosted collaboration, embeddings,
+3. **Out of scope for this release.** Authentication, hosted collaboration, embeddings,
    multi-file generation, new model providers, additional Decision Guard rule families,
    interaction/pixel verification, and a verified self-contained export.
 
