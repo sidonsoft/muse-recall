@@ -343,11 +343,24 @@ export const FORGE_RECOVERY_ISSUE_KINDS = ['startup', 'active'] as const;
 export const ForgeRecoveryIssueKindSchema = z.enum(FORGE_RECOVERY_ISSUE_KINDS);
 export type ForgeRecoveryIssueKind = z.infer<typeof ForgeRecoveryIssueKindSchema>;
 
+export const FORGE_RECOVERY_ISSUE_SCOPES = ['store', 'project'] as const;
+export const ForgeRecoveryIssueScopeSchema = z.enum(FORGE_RECOVERY_ISSUE_SCOPES);
+export type ForgeRecoveryIssueScope = z.infer<typeof ForgeRecoveryIssueScopeSchema>;
+
 export const ForgeRecoveryIssueSchema = z.object({
   /** Stable id used for acknowledgement; not a deletion tombstone. */
   id: z.string().min(1).max(400),
   kind: ForgeRecoveryIssueKindSchema,
   code: ForgeRecoveryIssueCodeSchema,
+  /**
+   * Explicit incident scope. A store-wide issue is visible in every project
+   * view and may be acknowledged from any project. A project issue belongs to
+   * exactly one project, even when that project's id is `forge` (which is also
+   * the historical sentinel used by store-wide issues).
+   *
+   * Defaults to `project` for older clients; the server always sends it.
+   */
+  scope: ForgeRecoveryIssueScopeSchema.default('project'),
   /** Relative path inside the Forge workspace; never an absolute host path. */
   file: z.string().max(300),
   message: z.string().min(1).max(300),
@@ -363,6 +376,18 @@ export const ForgeRecoveryStartupSchema = z.object({
   interrupted_jobs: z.number().int().min(0),
 });
 export type ForgeRecoveryStartup = z.infer<typeof ForgeRecoveryStartupSchema>;
+
+/**
+ * Jobs discovered by a later, explicit storage retry after an incomplete read
+ * at startup. These are deliberately separate from the immutable startup
+ * counts: a repaired directory can reveal records that the first scan could
+ * not see.
+ */
+export const ForgeRecoveryLaterSchema = z.object({
+  loaded_jobs: z.number().int().min(0),
+  interrupted_jobs: z.number().int().min(0),
+});
+export type ForgeRecoveryLater = z.infer<typeof ForgeRecoveryLaterSchema>;
 
 export const ForgeRecoveryStorageSchema = z.object({
   ok: z.boolean(),
@@ -380,6 +405,8 @@ export type ForgeRecoveryStorage = z.infer<typeof ForgeRecoveryStorageSchema>;
 export const ForgeRecoveryReportSchema = z.object({
   /** Immutable statistics from the startup recovery pass. */
   startup: ForgeRecoveryStartupSchema,
+  /** Jobs first discovered by a later storage retry, never counted as startup. */
+  later_recovery: ForgeRecoveryLaterSchema.default({ loaded_jobs: 0, interrupted_jobs: 0 }),
   /** Current in-memory job counts, for display only. */
   current_jobs: z.number().int().min(0),
   current_interrupted_jobs: z.number().int().min(0),

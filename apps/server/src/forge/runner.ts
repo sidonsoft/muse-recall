@@ -116,6 +116,9 @@ export class ForgeJobManager {
   private acknowledgementTail: Promise<void> = Promise.resolve();
   private readonly startupLoadedByProject = new Map<string, number>();
   private readonly startupInterruptedByProject = new Map<string, number>();
+  private readonly laterLoadedByProject = new Map<string, number>();
+  private readonly laterInterruptedByProject = new Map<string, number>();
+  private readonly loadIssueIds = new Set<string>();
   private readonly projectStorageErrors = new Map<string, string>();
   private readonly jobRevisions = new Map<string, number>();
   private recoveryPromise: Promise<ForgeRecoveryReport> | null = null;
@@ -124,6 +127,7 @@ export class ForgeJobManager {
   private shutdownPromise: Promise<void> | null = null;
   private readonly starts = new Set<Promise<unknown>>();
   private readonly completions = new Map<string, { promise: Promise<void>; resolve: () => void }>();
+  private readonly finalizations = new Map<string, Promise<void>>();
   private readonly terminalJobs = new Set<string>();
   private readonly jobs = new Map<string, ForgeJob>();
   private readonly state = new Map<string, ExecuteState>();
@@ -276,15 +280,17 @@ export class ForgeJobManager {
     const startupInterrupted = projectId
       ? (this.startupInterruptedByProject.get(projectId) ?? 0)
       : [...this.startupInterruptedByProject.values()].reduce((sum, count) => sum + count, 0);
+    const laterLoaded = projectId
+      ? (this.laterLoadedByProject.get(projectId) ?? 0)
+      : [...this.laterLoadedByProject.values()].reduce((sum, count) => sum + count, 0);
+    const laterInterrupted = projectId
+      ? (this.laterInterruptedByProject.get(projectId) ?? 0)
+      : [...this.laterInterruptedByProject.values()].reduce((sum, count) => sum + count, 0);
 
     const issues = [...this.loadIssues, ...this.persistenceIssues.values()]
       .filter(
         (issue) =>
-          projectId === undefined ||
-          issue.project_id === projectId ||
-          // A store-wide read failure has no project scope; it must not look
-          // like an empty project when a single project is opened.
-          (issue.code === 'job_store_unreadable' && issue.file === '.'),
+          projectId === undefined || issue.scope === 'store' || issue.project_id === projectId,
       )
       .sort((a, b) => a.id.localeCompare(b.id));
     const visible = issues.filter(
@@ -312,6 +318,10 @@ export class ForgeJobManager {
         scanned_at: this.recoveryStartedAt,
         loaded_jobs: startupLoaded,
         interrupted_jobs: startupInterrupted,
+      },
+      later_recovery: {
+        loaded_jobs: laterLoaded,
+        interrupted_jobs: laterInterrupted,
       },
       current_jobs: currentJobs.length,
       current_interrupted_jobs: currentJobs.filter((job) => job.status === 'interrupted').length,
@@ -352,8 +362,11 @@ export class ForgeJobManager {
     const allowed = this.loadIssues.filter(
       (issue) =>
         issue.kind === 'startup' &&
-        (issue.project_id === projectId || issue.project_id === 'forge') &&
-        requested.has(issue.id),
+        requested.has(issue.id) &&
+        // Store-wide notices are intentionally visible (and acknowledgeable)
+        // from every project. A project's own notice is not, even when its id
+        // is the historical `forge` store sentinel.
+        (issue.scope === 'store' || issue.project_id === projectId),
     );
     if (allowed.length === 0) return this.recovery(projectId);
 
@@ -379,14 +392,29 @@ export class ForgeJobManager {
       return this.recovery(projectId);
     }
 
+    const rootWasUnreadable = this.rootStorageError !== null;
+    const projectWasUnreadable = this.projectStorageErrors.has(projectId);
+
     if (result.root.ok) {
-      this.rootStorageError = null;
+      if (rootWasUnreadable) {
+        // A writable root is not enough: the records that could not be listed
+        // at startup must be re-read before the store-wide error can clear.
+        await this.reloadAfterStorageRecovery();
+      } else {
+        this.rootStorageError = null;
+      }
     } else {
       this.rootStorageError = this.boundedStorageText(result.root.error);
     }
 
     if (result.project.ok) {
-      this.projectStorageErrors.delete(projectId);
+      // A store-wide reload can discover a project read failure after the
+      // project scope was captured. Retry that project too before clearing it.
+      if (projectWasUnreadable || this.projectStorageErrors.has(projectId)) {
+        await this.reloadAfterStorageRecovery(projectId);
+      } else {
+        this.projectStorageErrors.delete(projectId);
+      }
       // The directory is writable again, but that says nothing about the job
       // records whose required writes failed. Retry the newest in-memory state
       // for each affected job before clearing its incident. A failed retry
@@ -396,6 +424,60 @@ export class ForgeJobManager {
       this.projectStorageErrors.set(projectId, this.boundedStorageText(result.project.error));
     }
     return this.recovery(projectId);
+  }
+
+  /**
+   * Re-read records hidden by an earlier directory failure. Reconciliation
+   * never overwrites a job already in memory: that record may be newer than
+   * disk, or it may still be executing. Newly discovered queued/running jobs
+   * become interrupted and are never resumed.
+   *
+   * The relevant error is cleared *before* the read so a repeated failure is
+   * observable rather than being masked by the previously known message.
+   * Returns false when the scope is still not readable.
+   */
+  private async reloadAfterStorageRecovery(projectId?: string): Promise<boolean> {
+    if (projectId === undefined) {
+      this.rootStorageError = null;
+    } else {
+      this.projectStorageErrors.delete(projectId);
+    }
+
+    let loaded: Awaited<ReturnType<ForgeJobPersistence['loadAll']>>;
+    try {
+      loaded = await this.store.loadAll(projectId === undefined ? {} : { projectId });
+    } catch (error) {
+      const message = this.boundedStorageMessage(error);
+      if (projectId === undefined) {
+        this.rootStorageError = message;
+        this.recordLoadIssue(
+          'job_store_unreadable',
+          '.',
+          'The Forge job store could not be re-read after recovery.',
+          'forge',
+          null,
+          'store',
+        );
+      } else {
+        this.projectStorageErrors.set(projectId, message);
+        this.recordLoadIssue(
+          'job_store_unreadable',
+          `${projectId}/jobs`,
+          'The project job directory could not be re-read after recovery.',
+          projectId,
+          null,
+        );
+      }
+      return false;
+    }
+
+    this.addLoadIssues(loaded.issues);
+    this.applyLoadedStorageFailures(loaded.issues);
+    await this.reconcileRecoveredJobs(loaded.jobs, 'later');
+
+    return projectId === undefined
+      ? this.rootStorageError === null
+      : !this.projectStorageErrors.has(projectId);
   }
 
   /**
@@ -514,19 +596,38 @@ export class ForgeJobManager {
       loaded = await this.store.loadAll();
     } catch {
       this.rootStorageError = 'The Forge job store could not be read.';
-      this.recordLoadIssue('job_store_unreadable', '.', this.rootStorageError, 'forge', null);
+      this.recordLoadIssue(
+        'job_store_unreadable',
+        '.',
+        this.rootStorageError,
+        'forge',
+        null,
+        'store',
+      );
       return this.recovery();
     }
-    this.loadIssues.push(...loaded.issues);
+    this.addLoadIssues(loaded.issues);
     this.applyLoadedStorageFailures(loaded.issues);
+    await this.reconcileRecoveredJobs(loaded.jobs, 'startup');
+    return this.recovery();
+  }
 
-    for (const job of loaded.jobs) {
+  /**
+   * Reconcile records that surface during startup or a later storage retry.
+   *
+   * A job already present in memory always wins: it can be newer than the
+   * record on disk, and an active child must never be replaced by a stale
+   * `queued` snapshot. Newly discovered queued/running records are terminalized
+   * as interrupted, never resumed. Succeeded-unapplied jobs keep their staging.
+   */
+  private async reconcileRecoveredJobs(
+    jobs: ForgeJob[],
+    source: 'startup' | 'later',
+  ): Promise<void> {
+    for (const job of jobs) {
       if (this.jobs.has(job.id)) continue;
-      this.startupLoadedByProject.set(
-        job.project_id,
-        (this.startupLoadedByProject.get(job.project_id) ?? 0) + 1,
-      );
       let current = job;
+      let interrupted = false;
       if (job.status === 'queued' || job.status === 'running') {
         current = ForgeJobSchema.parse({
           ...job,
@@ -535,10 +636,7 @@ export class ForgeJobManager {
             'Interrupted by a server restart. The model run was not resumed; any staged files are kept for inspection.',
           finished_at: this.now().toISOString(),
         });
-        this.startupInterruptedByProject.set(
-          job.project_id,
-          (this.startupInterruptedByProject.get(job.project_id) ?? 0) + 1,
-        );
+        interrupted = true;
         this.recordLoadIssue(
           'job_interrupted',
           `${job.project_id}/jobs/${job.id}.json`,
@@ -568,9 +666,40 @@ export class ForgeJobManager {
           );
         }
       }
+
+      if (source === 'startup') {
+        this.startupLoadedByProject.set(
+          job.project_id,
+          (this.startupLoadedByProject.get(job.project_id) ?? 0) + 1,
+        );
+        if (interrupted) {
+          this.startupInterruptedByProject.set(
+            job.project_id,
+            (this.startupInterruptedByProject.get(job.project_id) ?? 0) + 1,
+          );
+        }
+      } else {
+        this.laterLoadedByProject.set(
+          job.project_id,
+          (this.laterLoadedByProject.get(job.project_id) ?? 0) + 1,
+        );
+        if (interrupted) {
+          this.laterInterruptedByProject.set(
+            job.project_id,
+            (this.laterInterruptedByProject.get(job.project_id) ?? 0) + 1,
+          );
+        }
+      }
       this.setJob(current);
     }
-    return this.recovery();
+  }
+
+  private addLoadIssues(issues: ForgeRecoveryIssue[]): void {
+    for (const issue of issues) {
+      if (this.loadIssueIds.has(issue.id)) continue;
+      this.loadIssueIds.add(issue.id);
+      this.loadIssues.push(issue);
+    }
   }
 
   private setJob(job: ForgeJob): void {
@@ -588,7 +717,7 @@ export class ForgeJobManager {
     for (const issue of issues) {
       if (issue.code !== 'job_store_unreadable') continue;
       const message = this.boundedStorageText(issue.message);
-      if (issue.file === '.') {
+      if (issue.scope === 'store') {
         this.rootStorageError = message;
       } else {
         this.projectStorageErrors.set(issue.project_id, message);
@@ -748,11 +877,13 @@ export class ForgeJobManager {
       }
 
       void this.execute(job, staging, memories, images).catch((error: unknown) => {
-        void this.finish(job, { status: 'failed', error: (error as Error).message });
+        void this.failCompletion(job, error).catch(() => undefined);
       });
       return job;
     } catch (error) {
-      await this.finish(job, { status: 'failed', error: (error as Error).message });
+      await this.finish(job, { status: 'failed', error: this.errorMessage(error) }).catch(
+        () => undefined,
+      );
       await this.workspace.reject(input.projectId, id).catch(() => undefined);
       throw error;
     }
@@ -1098,108 +1229,188 @@ export class ForgeJobManager {
 
     child.on('error', (error) => {
       clearTimeout(timer);
-      void this.finish(job, {
-        status: 'failed',
-        error: `Could not start Muse: ${error.message}`,
-      });
+      // Spawn failures race the close event. Both paths share one idempotent
+      // finalization and must never leave a rejected promise unobserved.
+      void this.failCompletion(job, error).catch(() => undefined);
+    });
+
+    child.stdin?.on('error', (error) => {
+      this.log(job, `stdin: ${this.errorMessage(error)}`);
+    });
+    child.stdout?.on('error', (error) => {
+      this.log(job, `stdout: ${this.errorMessage(error)}`);
+    });
+    child.stderr?.on('error', (error) => {
+      this.log(job, `stderr: ${this.errorMessage(error)}`);
     });
 
     child.on('close', (code) => {
       clearTimeout(timer);
       const runtime = Date.now() - startedAt;
       execState.usage = { ...execState.usage, runtime_ms: runtime };
-      const cancelled = this.cancelled.has(job.id);
-      const base = { usage: execState.usage, finished_at: this.now().toISOString() };
-
-      void (async () => {
-        if (cancelled) {
-          await this.finish(job, {
-            ...base,
-            status: 'cancelled',
-            error: this.shuttingDown ? 'Cancelled because the server shut down.' : null,
-          });
-          return;
-        }
-        if (execState.timedOut) {
-          await this.finish(job, {
-            ...base,
-            status: 'failed',
-            error: `Job exceeded the ${Math.round(this.maxRuntimeMs / 1000)}s runtime budget.`,
-          });
-          return;
-        }
-        if (
-          (code !== 0 || execState.terminal === 'failed') &&
-          attempt === 'primary' &&
-          this.fallbackApiKey &&
-          quotaFailure(job)
-        ) {
-          this.carry.set(
-            job.id,
-            addUsage(execState.usage, this.carry.get(job.id)) ?? execState.usage,
-          );
-          this.log(
-            job,
-            `Subscription quota exhausted; retrying with ${this.fallbackModel ?? 'the API key'}.`,
-          );
-          await this.resetStaging(job, staging);
-          await this.execute(job, staging, memories, images, 'fallback');
-          return;
-        }
-        if (code !== 0 || execState.terminal === 'failed') {
-          const stderr = job.logs
-            .filter((line) => line.startsWith('stderr:'))
-            .slice(-2)
-            .join(' ')
-            .slice(0, 400);
-          await this.finish(job, {
-            ...base,
-            status: 'failed',
-            error:
-              execState.terminalText ??
-              `Muse exited with code ${String(code)}.${stderr ? ` ${stderr}` : ''}`,
-          });
-          return;
-        }
-
-        const validation = await this.workspace.validateStaged(job.project_id, job.id);
-        if (!validation.ok) {
-          await this.finish(job, {
-            ...base,
-            status: 'failed',
-            error: 'Generated application failed validation.',
-            validation,
-          });
-          return;
-        }
-        if (
-          execState.usage.calls > this.maxCalls ||
-          execState.usage.input_tokens > this.maxInputTokens
-        ) {
-          await this.finish(job, {
-            ...base,
-            status: 'budget_exceeded',
-            error: `Budget exceeded: ${execState.usage.calls} calls, ${execState.usage.input_tokens} input tokens.`,
-            validation,
-          });
-          return;
-        }
-
-        // Advisory snapshot for human review. It is computed after structural
-        // validation and recorded beside — never inside — `validation`. The
-        // blocking browser check runs on approve, which re-snapshots after it.
-        const staged = await this.workspace.stagedHtml(job.project_id, job.id);
-        const decisionGuard = staged === null ? null : this.advisory(job, staged, false);
-
-        await this.finish(job, {
-          ...base,
-          status: 'succeeded',
-          summary: execState.terminalText?.slice(0, 2_000) ?? 'Application updated.',
-          validation,
-          ...(decisionGuard ? { decision_guard: decisionGuard } : {}),
-        });
-      })();
+      // Completion does I/O (staging reset, validation, advisory evaluation)
+      // and can fail. It is deliberately contained here: an unhandled
+      // rejection would terminate the server before the job could be recorded.
+      void this.completeChild(job, code, execState, staging, memories, images, attempt)
+        .catch((error: unknown) => this.failCompletion(job, error))
+        .catch(() => undefined);
     });
+  }
+
+  /**
+   * Process a child's successful exit. Any failure in this path terminalizes
+   * the job with a bounded diagnostic instead of scheduling a fallback or
+   * leaving the completion promise unresolved.
+   */
+  private async completeChild(
+    job: ForgeJob,
+    code: number | null,
+    execState: ExecuteState,
+    staging: string,
+    memories: RetrievedMemory[],
+    images: string[],
+    attempt: 'primary' | 'fallback',
+  ): Promise<void> {
+    if (this.terminalJobs.has(job.id)) return;
+    const base = { usage: execState.usage, finished_at: this.now().toISOString() };
+    const cancelled = this.cancelled.has(job.id);
+
+    if (cancelled) {
+      await this.finish(job, {
+        ...base,
+        status: 'cancelled',
+        error: this.shuttingDown ? 'Cancelled because the server shut down.' : null,
+      });
+      return;
+    }
+    if (execState.timedOut) {
+      await this.finish(job, {
+        ...base,
+        status: 'failed',
+        error: `Job exceeded the ${Math.round(this.maxRuntimeMs / 1000)}s runtime budget.`,
+      });
+      return;
+    }
+    if (
+      (code !== 0 || execState.terminal === 'failed') &&
+      attempt === 'primary' &&
+      this.fallbackApiKey &&
+      quotaFailure(job)
+    ) {
+      this.carry.set(job.id, addUsage(execState.usage, this.carry.get(job.id)) ?? execState.usage);
+      this.log(
+        job,
+        `Subscription quota exhausted; retrying with ${this.fallbackModel ?? 'the API key'}.`,
+      );
+      // A staging reset reads the approved source. If that read fails, this
+      // throws and the fallback is never started; completion error handling
+      // records the failure on the job.
+      await this.resetStaging(job, staging);
+      if (this.terminalJobs.has(job.id)) return;
+      await this.execute(job, staging, memories, images, 'fallback');
+      return;
+    }
+    if (code !== 0 || execState.terminal === 'failed') {
+      const stderr = job.logs
+        .filter((line) => line.startsWith('stderr:'))
+        .slice(-2)
+        .join(' ')
+        .slice(0, 400);
+      await this.finish(job, {
+        ...base,
+        status: 'failed',
+        error:
+          execState.terminalText ??
+          `Muse exited with code ${String(code)}.${stderr ? ` ${stderr}` : ''}`,
+      });
+      return;
+    }
+
+    const validation = await this.workspace.validateStaged(job.project_id, job.id);
+    if (!validation.ok) {
+      await this.finish(job, {
+        ...base,
+        status: 'failed',
+        error: 'Generated application failed validation.',
+        validation,
+      });
+      return;
+    }
+    if (
+      execState.usage.calls > this.maxCalls ||
+      execState.usage.input_tokens > this.maxInputTokens
+    ) {
+      await this.finish(job, {
+        ...base,
+        status: 'budget_exceeded',
+        error: `Budget exceeded: ${execState.usage.calls} calls, ${execState.usage.input_tokens} input tokens.`,
+        validation,
+      });
+      return;
+    }
+
+    // Advisory snapshot for human review. It is computed after structural
+    // validation and recorded beside — never inside — `validation`. The
+    // blocking browser check runs on approve, which re-snapshots after it.
+    const staged = await this.workspace.stagedHtml(job.project_id, job.id);
+    const decisionGuard = staged === null ? null : this.advisory(job, staged, false);
+
+    await this.finish(job, {
+      ...base,
+      status: 'succeeded',
+      summary: execState.terminalText?.slice(0, 2_000) ?? 'Application updated.',
+      validation,
+      ...(decisionGuard ? { decision_guard: decisionGuard } : {}),
+    });
+  }
+
+  /**
+   * Terminalize a failed completion. Cancellation wins if it arrived before
+   * the failure was observed, preserving shutdown semantics. This method never
+   * rejects: it is the last line of defence against a second unhandled
+   * rejection inside the close handler.
+   */
+  private async failCompletion(job: ForgeJob, error: unknown): Promise<void> {
+    const cancelled = this.cancelled.has(job.id) || this.shuttingDown;
+    try {
+      await this.finish(job, {
+        status: cancelled ? 'cancelled' : 'failed',
+        error: cancelled
+          ? this.shuttingDown
+            ? 'Cancelled because the server shut down.'
+            : null
+          : this.errorMessage(error),
+      });
+    } catch {
+      // `finish` itself is defensive, but a terminal record must still resolve
+      // completion tracking if an unexpected sync error escaped it.
+      try {
+        this.update(
+          job,
+          {
+            status: 'failed',
+            error: 'Job completion failed and the result could not be recorded.',
+          },
+          true,
+        );
+      } catch {
+        // Nothing further can be persisted; completion still resolves below.
+      }
+      this.state.delete(job.id);
+      await this.store.flush(job.id).catch(() => undefined);
+      this.complete(job.id);
+    }
+  }
+
+  private errorMessage(error: unknown): string {
+    const raw =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : 'Unknown completion error.';
+    const detail = this.sanitize(raw).replaceAll(this.workspace.getRoot(), '<workspace>');
+    return this.boundedText(`Job completion failed: ${detail || 'unknown error'}`, 300);
   }
 
   private consumeLine(job: ForgeJob, execState: ExecuteState, line: string): void {
@@ -1320,7 +1531,7 @@ export class ForgeJobManager {
     });
   }
 
-  private async finish(
+  private finish(
     job: ForgeJob,
     patch: {
       status: ForgeJobStatus;
@@ -1332,29 +1543,62 @@ export class ForgeJobManager {
       finished_at?: string;
     },
   ): Promise<void> {
-    if (this.terminalJobs.has(job.id)) return;
+    // Close and spawn-error can race. Share one finalization promise so the
+    // second caller waits for the same durable record instead of returning
+    // early while completion tracking is still pending.
+    const existing = this.finalizations.get(job.id);
+    if (existing) return existing;
+    if (this.terminalJobs.has(job.id)) {
+      this.complete(job.id);
+      return Promise.resolve();
+    }
+
+    const operation = this.finalize(job, patch);
+    this.finalizations.set(job.id, operation);
+    const clear = (): void => {
+      if (this.finalizations.get(job.id) === operation) this.finalizations.delete(job.id);
+    };
+    void operation.then(clear, clear);
+    return operation;
+  }
+
+  private async finalize(
+    job: ForgeJob,
+    patch: {
+      status: ForgeJobStatus;
+      error?: string | null;
+      summary?: string | null;
+      validation?: ForgeValidation;
+      decision_guard?: DecisionGuardAdvisory;
+      usage?: ForgeUsage;
+      finished_at?: string;
+    },
+  ): Promise<void> {
     this.terminalJobs.add(job.id);
     this.cancelled.delete(job.id);
     const carried = this.carry.get(job.id);
     this.carry.delete(job.id);
-    this.update(
-      job,
-      {
-        status: patch.status,
-        error: patch.error ? this.sanitize(patch.error) : null,
-        summary: patch.summary ? this.sanitize(patch.summary) : job.summary,
-        validation: patch.validation ?? job.validation,
-        decision_guard: patch.decision_guard ?? job.decision_guard,
-        usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
-        finished_at: patch.finished_at ?? this.now().toISOString(),
-      },
-      true,
-    );
-    this.state.delete(job.id);
-    // Make the terminal record observable before callers see completion. A
-    // failed write is already recorded by `persist` and shown in recovery().
-    await this.store.flush(job.id).catch(() => undefined);
-    this.complete(job.id);
+    try {
+      this.update(
+        job,
+        {
+          status: patch.status,
+          error: patch.error ? this.sanitize(patch.error) : null,
+          summary: patch.summary ? this.sanitize(patch.summary) : job.summary,
+          validation: patch.validation ?? job.validation,
+          decision_guard: patch.decision_guard ?? job.decision_guard,
+          usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
+          finished_at: patch.finished_at ?? this.now().toISOString(),
+        },
+        true,
+      );
+    } finally {
+      this.state.delete(job.id);
+      // Make the terminal record observable before callers see completion. A
+      // failed write is already recorded by `persist` and shown in recovery().
+      await this.store.flush(job.id).catch(() => undefined);
+      this.complete(job.id);
+    }
   }
 
   private async persist(job: ForgeJob, required = true): Promise<void> {
@@ -1382,6 +1626,7 @@ export class ForgeJobManager {
       ),
       kind: 'active',
       code: 'job_persist_failed',
+      scope: 'project',
       file: `${job.project_id}/jobs/${job.id}.json`,
       message,
       project_id: job.project_id,
@@ -1403,14 +1648,19 @@ export class ForgeJobManager {
     message: string,
     projectId: string,
     jobId: string | null,
+    scope: ForgeRecoveryIssue['scope'] = 'project',
   ): void {
     const relative = file.slice(0, 300);
+    const id = this.issueId(code, projectId, jobId, relative);
+    if (this.loadIssueIds.has(id)) return;
+    this.loadIssueIds.add(id);
     this.loadIssues.push({
-      id: this.issueId(code, projectId, jobId, relative),
+      id,
       kind: 'startup',
       code,
+      scope,
       file: relative,
-      message: message.slice(0, 300),
+      message: this.sanitize(message).slice(0, 300),
       project_id: projectId,
       job_id: jobId,
     });

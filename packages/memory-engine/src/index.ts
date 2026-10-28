@@ -10,11 +10,15 @@
  */
 
 export { memoryContentHash, normaliseContent } from './content-hash.js';
+export type { MemoryBlockLayout } from './context.js';
 export {
   describeRetrieval,
   escapeMemoryText,
   formatMemoryContext,
+  renderedMemoryCharacters,
   renderMemoryBlock,
+  renderMemoryEntry,
+  renderMemoryLayout,
 } from './context.js';
 export type { OpenDatabaseOptions, OpenedDatabase } from './db.js';
 export { openDatabase, sqliteVersion } from './db.js';

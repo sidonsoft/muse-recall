@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -133,8 +133,8 @@ class PredicateStore implements ForgeJobPersistence {
     await this.inner.flush(jobId);
   }
 
-  async loadAll() {
-    return this.inner.loadAll();
+  async loadAll(options?: { projectId?: string }) {
+    return this.inner.loadAll(options);
   }
 
   async healthCheck(projectId: string) {
@@ -149,6 +149,7 @@ class ControlledStore implements ForgeJobPersistence {
   failHealth = false;
   rootHealthOk = true;
   readonly projectHealthFailures = new Set<string>();
+  readonly staleLoadedStatuses = new Map<string, ForgeJob['status']>();
   private readonly saves = new Map<string, number>();
 
   constructor(workspace: ForgeWorkspace) {
@@ -168,9 +169,14 @@ class ControlledStore implements ForgeJobPersistence {
     await this.inner.flush(jobId);
   }
 
-  async loadAll() {
+  async loadAll(options?: { projectId?: string }) {
     if (this.failLoads) throw new Error('injected store-wide read failure');
-    return this.inner.loadAll();
+    const result = await this.inner.loadAll(options);
+    for (const job of result.jobs) {
+      const stale = this.staleLoadedStatuses.get(job.id);
+      if (stale !== undefined) job.status = stale;
+    }
+    return result;
   }
 
   async healthCheck(projectId: string) {
@@ -780,7 +786,7 @@ describe('Forge restart recovery', () => {
     }
   });
 
-  it('treats a load failure as store-wide and clears it only with a successful health check', async () => {
+  it('retains a store-wide read failure until a health check can re-read records', async () => {
     const { workspace, engine } = await setup();
     const store = new ControlledStore(workspace);
     store.failLoads = true;
@@ -790,12 +796,21 @@ describe('Forge restart recovery', () => {
     expect(report.storage.scope).toBe('store');
     expect(report.issues[0]?.code).toBe('job_store_unreadable');
 
+    // The directory check can pass while the records remain unreadable. Do not
+    // report a complete recovery in that case.
+    const stillUnreadable = await manager.checkStorage('demo');
+    expect(stillUnreadable.storage.ok).toBe(false);
+    expect(stillUnreadable.storage.scope).toBe('store');
+    expect(stillUnreadable.storage.root_ok).toBe(false);
+
+    store.failLoads = false;
     const checked = await manager.checkStorage('demo');
     expect(checked.storage.ok).toBe(true);
     expect(checked.storage.scope).toBe('healthy');
     // The historical incident remains for audit until explicitly acknowledged.
     const incident = checked.issues.find((issue) => issue.code === 'job_store_unreadable');
     expect(incident).toBeDefined();
+    expect(incident?.scope).toBe('store');
     const acknowledged = await manager.acknowledge('demo', [incident?.id as string]);
     expect(acknowledged.issues).toEqual([]);
     expect(acknowledged.acknowledged_issues).toBe(1);
@@ -1099,6 +1114,283 @@ describe('Forge restart recovery', () => {
     expect((await manager.checkStorage('good')).storage.scope).toBe('healthy');
     expect(manager.recovery('demo').storage.scope).toBe('project');
   });
+
+  it.runIf(process.platform !== 'win32')(
+    'reloads a job hidden by an unreadable workspace root after repair',
+    async () => {
+      const { root, workspace, engine, store } = await setup();
+      const running = job({ status: 'running', started_at: '2026-10-01T00:01:00.000Z' });
+      await store.save(running);
+      const forgeRoot = join(root, 'forge');
+      const manager = managerFor(workspace, engine);
+
+      let before: Awaited<ReturnType<typeof manager.recover>>;
+      try {
+        await chmod(forgeRoot, 0o000);
+        before = await manager.recover();
+        expect(before.startup.loaded_jobs).toBe(0);
+        expect(before.later_recovery).toMatchObject({ loaded_jobs: 0, interrupted_jobs: 0 });
+        expect(manager.get(running.id)).toBeUndefined();
+        expect(before.storage).toMatchObject({ ok: false, scope: 'store', root_ok: false });
+      } finally {
+        await chmod(forgeRoot, 0o700);
+      }
+
+      const repaired = await manager.checkStorage('demo');
+      expect(repaired.storage).toMatchObject({ ok: true, scope: 'healthy' });
+      expect(manager.get(running.id)?.status).toBe('interrupted');
+      expect(repaired.startup.loaded_jobs).toBe(0);
+      expect(repaired.later_recovery).toMatchObject({ loaded_jobs: 1, interrupted_jobs: 1 });
+      expect(repaired.current_jobs).toBe(1);
+
+      const persisted = JSON.parse(
+        await readFile(join(workspace.projectDir('demo'), 'jobs', `${running.id}.json`), 'utf8'),
+      ) as ForgeJob;
+      expect(persisted.status).toBe('interrupted');
+    },
+  );
+
+  it('reloads one repaired project without clearing or duplicating another scope', async () => {
+    const { root, workspace, engine, store } = await setup();
+    await workspace.ensureProject('good');
+    const demoJob = job({ status: 'running', started_at: '2026-10-01T00:01:00.000Z' });
+    const goodJob = job({
+      project_id: 'good',
+      status: 'succeeded',
+      validation: { ok: true, issues: [] },
+    });
+    await store.save(demoJob);
+    await store.save(goodJob);
+    const demoJobs = join(root, 'forge', 'demo', 'jobs');
+    const displaced = join(root, 'forge', 'demo-jobs-displaced');
+    await rename(demoJobs, displaced);
+    await writeFile(demoJobs, 'not a directory', 'utf8');
+    const manager = managerFor(workspace, engine);
+
+    const before = await manager.recover();
+    expect(before.startup.loaded_jobs).toBe(1);
+    expect(manager.get(goodJob.id)?.status).toBe('succeeded');
+    expect(manager.get(demoJob.id)).toBeUndefined();
+    expect(manager.recovery('demo').storage).toMatchObject({
+      ok: false,
+      scope: 'project',
+      root_ok: true,
+      project_ok: false,
+    });
+
+    // Checking the healthy project must not clear demo's read failure.
+    expect((await manager.checkStorage('good')).storage.scope).toBe('healthy');
+    expect(manager.recovery('demo').storage.scope).toBe('project');
+
+    await rm(demoJobs, { force: true });
+    await rename(displaced, demoJobs);
+    const repaired = await manager.checkStorage('demo');
+    expect(repaired.storage).toMatchObject({ ok: true, scope: 'healthy' });
+    expect(manager.get(demoJob.id)?.status).toBe('interrupted');
+    // Per-project startup counts exclude the healthy project; the global
+    // startup count remains immutable and the new record is counted later.
+    expect(repaired.startup.loaded_jobs).toBe(0);
+    expect(manager.recovery().startup.loaded_jobs).toBe(1);
+    expect(repaired.later_recovery).toMatchObject({ loaded_jobs: 1, interrupted_jobs: 1 });
+    expect(manager.recovery('good').later_recovery).toMatchObject({
+      loaded_jobs: 0,
+      interrupted_jobs: 0,
+    });
+    expect(manager.recovery().later_recovery).toMatchObject({
+      loaded_jobs: 1,
+      interrupted_jobs: 1,
+    });
+
+    // Repeated retries are idempotent: no duplicate jobs or counts, and the
+    // already recovered interrupted notice is not appended again.
+    const repeated = await manager.checkStorage('demo');
+    expect(manager.list('demo')).toHaveLength(1);
+    expect(repeated.later_recovery).toMatchObject({ loaded_jobs: 1, interrupted_jobs: 1 });
+    expect(
+      repeated.issues.filter(
+        (issue) => issue.code === 'job_interrupted' && issue.job_id === demoJob.id,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('reconciles a promotion and keeps a reviewable staged record discovered later', async () => {
+    const { root, workspace, engine, store } = await setup();
+    const review = job({ status: 'succeeded', validation: { ok: true, issues: [] } });
+    await store.save(review);
+    const reviewStaging = join(workspace.projectDir('demo'), 'staging', review.id);
+    await mkdir(reviewStaging, { recursive: true });
+    await writeFile(join(reviewStaging, 'index.html'), VALID_HTML, 'utf8');
+
+    const applied = job({ status: 'succeeded', validation: { ok: true, issues: [] } });
+    await store.save(applied);
+    const appliedStaging = await workspace.createStaging('demo', applied.id);
+    await writeFile(join(appliedStaging, 'index.html'), VALID_HTML, 'utf8');
+    const promoted = await workspace.promote('demo', applied.id, 'Recovered promotion', {
+      baseVersion: null,
+      jobId: applied.id,
+    });
+
+    const demoJobs = join(root, 'forge', 'demo', 'jobs');
+    const displaced = join(root, 'forge', 'demo-jobs-displaced');
+    await rename(demoJobs, displaced);
+    await writeFile(demoJobs, 'not a directory', 'utf8');
+    const manager = managerFor(workspace, engine);
+    try {
+      await manager.recover();
+      expect(manager.get(review.id)).toBeUndefined();
+      await rm(demoJobs, { force: true });
+      await rename(displaced, demoJobs);
+
+      const repaired = await manager.checkStorage('demo');
+      expect(repaired.later_recovery.loaded_jobs).toBe(2);
+      expect(manager.get(review.id)?.status).toBe('succeeded');
+      expect(manager.get(applied.id)?.version).toBe(promoted.version);
+
+      const diff = await manager.diff(review.id);
+      expect(diff.files[0]?.after).toBe(VALID_HTML);
+      expect(diff.validation.ok).toBe(true);
+
+      const persisted = JSON.parse(
+        await readFile(join(workspace.projectDir('demo'), 'jobs', `${applied.id}.json`), 'utf8'),
+      ) as ForgeJob;
+      expect(persisted.version).toBe(promoted.version);
+    } finally {
+      await rm(demoJobs, { force: true }).catch(() => undefined);
+      await rename(displaced, demoJobs).catch(() => undefined);
+    }
+  });
+
+  it('never overwrites a newer in-memory running job during a storage reload', async () => {
+    const { workspace, engine } = await setup();
+    const store = new ControlledStore(workspace);
+    const manager = new ForgeJobManager({
+      workspace,
+      engine,
+      museBin: FIXTURE,
+      env: { FAKE_MUSE_MODE: 'sleep' },
+      maxRuntimeMs: 30_000,
+      maxCalls: 10,
+      maxInputTokens: 10_000_000,
+      runtimeCheck: async () => ({ ok: true, errors: [] }),
+      jobStore: store,
+      shutdownGraceMs: 100,
+    });
+    try {
+      const created = await manager.start({
+        projectId: 'demo',
+        kind: 'generate',
+        prompt: 'A running job that must survive a stale storage reload.',
+      });
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        if (manager.get(created.id)?.status === 'running') break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      expect(manager.get(created.id)?.status).toBe('running');
+
+      store.projectHealthFailures.add('demo');
+      expect((await manager.checkStorage('demo')).storage.scope).toBe('project');
+      store.projectHealthFailures.delete('demo');
+      store.staleLoadedStatuses.set(created.id, 'queued');
+
+      const reloaded = await manager.checkStorage('demo');
+      expect(reloaded.storage).toMatchObject({ ok: true, scope: 'healthy' });
+      expect(manager.get(created.id)?.status).toBe('running');
+      expect(reloaded.issues.some((issue) => issue.job_id === created.id)).toBe(false);
+    } finally {
+      await manager.shutdown();
+    }
+  });
+
+  it('does not let another project acknowledge a real forge project notice', async () => {
+    const { workspace, engine, store } = await setup();
+    await workspace.ensureProject('forge');
+    const interrupted = job({
+      project_id: 'forge',
+      status: 'running',
+      started_at: '2026-10-01T00:01:00.000Z',
+    });
+    await store.save(interrupted);
+    const manager = managerFor(workspace, engine);
+    const report = await manager.recover();
+    const notice = report.issues.find(
+      (issue) => issue.code === 'job_interrupted' && issue.job_id === interrupted.id,
+    );
+    expect(notice).toMatchObject({ scope: 'project', project_id: 'forge' });
+    expect(manager.recovery('demo').issues.some((issue) => issue.id === notice?.id)).toBe(false);
+
+    const wrongScope = await manager.acknowledge('demo', [notice?.id as string]);
+    expect(wrongScope.acknowledged_issues).toBe(0);
+    expect(manager.recovery('forge').issues.some((issue) => issue.id === notice?.id)).toBe(true);
+
+    const correctScope = await manager.acknowledge('forge', [notice?.id as string]);
+    expect(correctScope.acknowledged_issues).toBe(1);
+    expect(correctScope.issues.some((issue) => issue.id === notice?.id)).toBe(false);
+  });
+
+  it('keeps genuine store-wide notices available through project views', async () => {
+    const { workspace, engine } = await setup();
+    const store = new ControlledStore(workspace);
+    store.failLoads = true;
+    const manager = managerFor(workspace, engine, store);
+    const report = await manager.recover();
+    const notice = report.issues.find(
+      (issue) => issue.code === 'job_store_unreadable' && issue.scope === 'store',
+    );
+    expect(notice).toBeDefined();
+    expect(manager.recovery('demo').issues.some((issue) => issue.id === notice?.id)).toBe(true);
+    expect(manager.recovery('forge').issues.some((issue) => issue.id === notice?.id)).toBe(true);
+
+    const acknowledged = await manager.acknowledge('demo', [notice?.id as string]);
+    expect(acknowledged.acknowledged_issues).toBe(1);
+    expect(acknowledged.issues.some((issue) => issue.id === notice?.id)).toBe(false);
+
+    const reopened = managerFor(workspace, engine, store);
+    const afterRestart = await reopened.recover();
+    expect(afterRestart.acknowledged_issues).toBeGreaterThanOrEqual(1);
+    expect(afterRestart.issues.some((issue) => issue.id === notice?.id)).toBe(false);
+  });
+
+  it.runIf(process.platform !== 'win32')(
+    'returns bounded, host-path-free job-load diagnostics through the API',
+    async () => {
+      const { root, workspace, engine, db } = await setup();
+      const forgeRoot = join(root, 'forge');
+      let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+      try {
+        await chmod(forgeRoot, 0o000);
+        app = await buildApp({
+          config: appConfig(root),
+          db,
+          dbPath: ':memory:',
+          provider: new EchoProvider(),
+          engine,
+          forgeWorkspace: workspace,
+          forgeManager: managerFor(workspace, engine),
+          providerHealth: new ProviderHealthTracker(new EchoProvider(), 0),
+        });
+        await chmod(forgeRoot, 0o700);
+
+        const response = await app.inject({
+          method: 'GET',
+          url: '/api/forge/projects/demo',
+        });
+        expect(response.statusCode).toBe(200);
+        const view = response.json().data as {
+          recovery: {
+            issues: Array<{ code: string; scope: string; message: string; file: string }>;
+          };
+        };
+        const issue = view.recovery.issues.find((entry) => entry.code === 'job_store_unreadable');
+        expect(issue).toMatchObject({ scope: 'store', file: '.' });
+        expect(issue?.message.length).toBeLessThanOrEqual(300);
+        expect(issue?.message).not.toContain(root);
+        expect(issue?.message).not.toMatch(/\/Users\/|\/private\/|\/var\/folders\//);
+      } finally {
+        await chmod(forgeRoot, 0o700).catch(() => undefined);
+        await app?.close();
+      }
+    },
+  );
 
   it('keeps a prior successful acknowledgement when a later write fails', async () => {
     const { root, workspace, engine } = await setup();

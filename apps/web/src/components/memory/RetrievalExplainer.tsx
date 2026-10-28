@@ -135,7 +135,7 @@ export function RetrievalExplainer({
             </dl>
             <dl className="divide-y divide-line/70">
               <DataRow
-                label="chars"
+                label="rendered chars"
                 value={`${result.retrieval.metadata.characters_used} / ${result.retrieval.metadata.character_budget}`}
                 mono
               />

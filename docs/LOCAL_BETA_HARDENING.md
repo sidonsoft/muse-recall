@@ -27,6 +27,10 @@ completion and reconciliation.
   - a promotion that completed before the job record was written is reconciled from
     `state.json`.
   - malformed job files are left untouched and reported; readable jobs still load.
+  - a successful **Retry storage** re-reads records hidden by an earlier root or project
+    directory failure. New records are merged only when no newer/active in-memory job
+    exists; queued/running records become `interrupted`, applied promotions are
+    reconciled, and reviewable staging is preserved.
 - `ForgeProjectView.recovery` separates immutable startup counts, current job counts,
   unacknowledged historical incidents, acknowledged count, and project/store storage
   health. The Studio banner offers explicit **Acknowledge notices** and **Retry storage**
@@ -266,6 +270,128 @@ Local, Node **24.22.1**:
 - `verify:formsandbox` — **7 checks**, managed Chromium.
 - No system Chrome was launched; no paid inference was used.
 
+## Second re-review fixes (PR #1)
+
+Reviewed head: `9a0afc5`. The previous three fixes are preserved. Four additional
+findings were reproduced and fixed, plus a separate diagnostic-hygiene issue.
+
+### 1. P1 — Child-process completion errors are contained and terminalized
+
+The asynchronous body of the Muse child's `close` handler had no rejection handler. A
+modify job whose quota fallback reset staging could reject while reading a corrupted
+`state.json`; that rejection was unhandled and terminated the server before the job was
+recorded.
+
+- Completion processing now runs through one `completeChild()` path with a single
+  rejection boundary. Staging reset, fallback spawn, validation, staging reads, and
+  advisory evaluation all fail closed.
+- Failures terminalize the affected job with a bounded, secret-redacted diagnostic
+  (absolute workspace paths are replaced with `<workspace>`), issue the required write,
+  flush it, and resolve completion tracking.
+- Finalization is single-flight across `error` and `close`: a second path awaits the
+  first promise rather than writing a duplicate terminal record. Cancellation/shutdown
+  wins if it was observed before the failure.
+- A staging-reset failure never starts the quota fallback. Stdin/stdout/stderr stream
+  errors are observed rather than left unhandled.
+- Regression: a separate Node process corrupts `state.json` between a quota-failed
+  primary modify and its fallback. The API still answers health `200`, the job is
+  persisted `failed`, the wrapper records exactly one Muse invocation (no fallback), the
+  diagnostic is `<=300` characters, and shutdown completes in under two seconds.
+
+### 2. P2 — Startup storage recovery re-reads hidden job records
+
+`checkStorage()` retested the directory but did not re-read the records that the failed
+startup scan could not see. An unreadable project could be repaired and report healthy
+while its persisted job remained absent from the job list.
+
+- A successful root retest re-runs the store-wide read. A successful project retest
+  re-runs that project's read only, preserving scope isolation.
+- Newly discovered records are merged only when no in-memory job with that id exists:
+  an active/newer record is never replaced by a stale disk snapshot. Newly discovered
+  `queued`/`running` records become `interrupted`; they are never resumed. Applied
+  promotions are reconciled, and succeeded-unapplied records keep reviewable staging.
+- `startup` counts remain immutable. Additive `later_recovery` counts report records
+  first discovered by a retry, and the Studio banner displays them.
+- If the re-read still fails, the matching root/project error remains visible; a
+  directory check alone never claims complete recovery.
+- Regressions cover root and project repair, restored visibility, scope isolation,
+  repeated idempotent retries, promotion/staging reconciliation, a stale disk snapshot
+  racing a running job, and a continuing reload failure.
+
+### 3. P2 — The memory budget is enforced on rendered text
+
+Retrieval counted raw content, while rendering expanded ampersands/angle brackets and
+added provenance headers, block delimiters, safety wording, and a second block for
+constraints. A selection that fit the raw count could therefore produce a much larger
+prompt.
+
+- `max_characters` is now explicitly the **rendered** memory-context budget. The shared
+  renderer accounts for escaping, per-record headers, delimiters, the standing safety
+  wording, and both chat/Forge two-block layouts. Retrieval charges the largest
+  supported layout and excludes a record that would exceed the budget.
+- Rendering is never sliced after escaping, so an entity such as `&amp;` cannot be cut.
+  Per-memory truncation still happens on raw content before escaping, and avoids
+  splitting a surrogate pair. Safety wording is never removed.
+- `characters_used` is the exact canonical rendered block; chat's `memory_characters`
+  and per-record evidence counts are also rendered lengths. Memory IDs always match the
+  included records. Forge and chat use the same renderer as budget accounting.
+- Intentional behavior change: under a small rendered budget, fewer (or no) records may
+  be selected. Ordinary default-budget memories still work. Frozen evaluation inputs,
+  baselines, and recorded outputs were not changed.
+- Regressions use ampersands, angle brackets, long provenance, constraint/general and
+  goal blocks, small budgets, and exact ID/character assertions in the canonical, chat,
+  and Forge layouts.
+
+### 4. P2 — Recovery incidents have explicit scope
+
+Store-wide incidents used `project_id: 'forge'`, which collided with the valid project
+id `forge`. Opening project `demo` could acknowledge a real `forge` project's
+interruption notice.
+
+- Every recovery issue now carries an explicit `scope: 'store' | 'project'`. Store-wide
+  issues remain visible in every project view and may be acknowledged there; a project
+  issue is only visible/acknowledgeable from that project. The historical `project_id:
+  'forge'` sentinel is retained for compatibility, but it no longer determines scope.
+- Acknowledgement IDs are unchanged and existing persisted acknowledgement files remain
+  valid. The field is additive; old API consumers default it to `project`.
+- Regressions prove a real `forge` project's notice cannot be acknowledged from `demo`,
+  genuine store-wide notices remain visible from project views, scoped/global
+  acknowledgements survive restart, and active failures stay visible independently of
+  history.
+
+### 5. Job-load diagnostics are safe for the API
+
+- Filesystem failures from job loading/health checks now return a bounded operation name
+  plus errno code (for example `The job directory could not be read (EACCES).`) instead of
+  Node's absolute host path.
+- The API regression makes the workspace root unreadable before startup, then reads the
+  project view and asserts the issue is bounded, store-scoped, and contains no host path.
+
+The unreachable Forge Echo display branch and duplicated helpers were left alone; they
+are cleanup concerns, not release blockers, and no Echo execution path was added.
+
+### Second re-review validation
+
+Local, Node **24.22.1**:
+
+- Focused regressions (`memory-context`, `memory-engine-phase2`, `forge-prompt`,
+  `agent-core`, `forge-recovery`, separate-process `forge-completion-failure`) —
+  **146 passed**.
+- `pnpm verify` — **632 passed, 3 skipped** (635 total, 40 files); lint and typecheck
+  clean.
+- `pnpm build` — pass.
+- Managed-browser checks on this tree, all with `Chromium 156.0.8078.4 (managed)` and
+  no system Chrome:
+  - `verify:runtime` — pass (valid/broken scenes; blocked HTTP/WebSocket).
+  - `verify:studio-workflow` — **32 checks**.
+  - `verify:forge` — **14 checks**, isolated production API + Vite preview.
+  - `verify:browser` — pass, same isolated stack.
+  - `verify:security` — pass (foreign origin rejected, same origin allowed).
+  - `verify:formsandbox` — **7 checks**.
+- The default ports `5173`/`8787` were occupied by unrelated listeners, which were left
+  untouched. Forge/UI browser checks used isolated ports and disposable database,
+  workspace, and browser context.
+
 ## Integration preparation
 
 - **Implementation commit:** `9c76ae94284269ed69ba1406d392fd3528b588df`
@@ -346,9 +472,12 @@ Before integration:
 No database migration is required. Job/version JSON remains additive-compatible; the new
 `approval_verification`, `applicable_rules`, and recovery fields are optional on old
 records. The recovery report shape changed from flat `loaded_jobs`/`storage_ok` fields to
-`startup`, `current_jobs`, `issues`, `acknowledged_issues`, and `storage` (including
-independent `root_ok`/`project_ok` diagnostics); clients must use the new shape. Acknowledgement ids are stored in `<WORKSPACE_ROOT>/forge/.recovery-ack.json`;
-deleting that file only re-shows historical notices, never deletes job records.
+`startup`, `later_recovery`, `current_jobs`, `issues`, `acknowledged_issues`, and
+`storage` (including independent `root_ok`/`project_ok` diagnostics); clients must use
+the new shape. Recovery issues now carry an additive `scope` (`store` or `project`);
+older payloads default to `project`. Acknowledgement IDs are unchanged, so existing
+`<WORKSPACE_ROOT>/forge/.recovery-ack.json` files remain valid; deleting that file only
+re-shows historical notices, never deletes job records.
 
 - **Normal restart:** jobs reload automatically. A job that was queued/running is shown
   as `interrupted`; start a new job after reviewing any staged files.
@@ -374,8 +503,8 @@ deleting that file only re-shows historical notices, never deletes job records.
 Executed in the isolated worktree on Node **24.22.1** (the CI major) unless noted. Earlier
 validation used Node 26.8.1; the Node 24 run is the integration result.
 
-- `pnpm verify` — pass: lint and typecheck clean; 618 passed, 3 skipped (621 total,
-  39 files) on the post-review head. The pre-review head had 611/614.
+- `pnpm verify` — pass: lint and typecheck clean; **632 passed, 3 skipped** (635 total,
+  40 files) on the second-review tree. Earlier heads had 618/621 and 611/614.
 - `pnpm build` — pass.
 - `pnpm lint` / `pnpm typecheck` — pass after the final script change.
 - `git diff --check` — clean.
@@ -401,7 +530,10 @@ validation used Node 26.8.1; the Node 24 run is the integration result.
   dismissal, root/project storage isolation with real filesystem faults, job-store
   atomicity/order, malformed records, interrupted recovery, promotion reconciliation,
   persistence failure, malformed/null state, hostile memory escaping/identity, shared
-  child-env policy, managed script browser policy, and legacy block escaping.
+  child-env policy, managed script browser policy, and legacy block escaping. The second
+  re-review adds separate-process completion-failure containment, reload/reconciliation
+  after repaired root/project reads, scoped acknowledgement, API-safe filesystem
+  diagnostics, and exact rendered-memory accounting across canonical/chat/Forge layouts.
 - Shutdown regressions: a SIGTERM-ignoring fake child is SIGKILLed on `app.close()`;
   the job is persisted as cancelled; a reloaded manager does not mark it interrupted;
   new starts are refused; repeat shutdown calls share one promise. A separate test
@@ -410,8 +542,10 @@ validation used Node 26.8.1; the Node 24 run is the integration result.
   recovered change approved as v3 with `base_version: 1`) is covered by the existing
   workspace/API ancestry tests. The browser script's expectations were corrected to match.
 - Recovery/durability regressions cover explicit browser policy, project/store health
-  isolation, fixed startup counts, acknowledgement persistence, failed-start cleanup,
-  coalesced log bursts, and approval advisory/runtime/promotion persistence faults.
+  isolation, fixed startup counts, distinct later-recovery counts, later job
+  visibility/reconciliation, stale-disk races, acknowledgement persistence, failed-start
+  cleanup, coalesced log bursts, and approval advisory/runtime/promotion persistence
+  faults.
 - Managed Studio browser workflow: **PASS — 32 checks** with
   `pnpm verify:studio-workflow` on Playwright-managed Chromium, using only a disposable
   database/workspace, free ports, and its own browser context. It covered empty/neutral
@@ -476,6 +610,12 @@ historical research evidence.
   tested by spawning `node`; no Windows host was available, so Windows spawn behaviour
   remains unverified here.
 - A corrupt `state.json` blocks that project until repaired (explicit, not silent).
+- Rendered memory accounting makes selection more conservative than the old raw-count
+  budget. Very small budgets can select fewer records, or none when even the safety
+  wrapper/header cannot fit; a safely truncated highest-priority record is kept when
+  escaping alone would otherwise exclude all records.
+- Recovery re-reads only after a successful retest of the affected scope. If the read
+  fails again, the banner and `job_store_unreadable` incident remain until it succeeds.
 - The legacy raw memory input remains for the frozen Phase 15A protocol.
 
 ## Next recommended milestone

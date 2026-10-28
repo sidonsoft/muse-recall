@@ -205,6 +205,55 @@ describe('context assembly', () => {
     expect(assembled.report.sections.constraints).toBeGreaterThan(0);
   });
 
+  it('reports the exact rendered memory sections for both blocks', () => {
+    const opened = openDatabase({ path: ':memory:' });
+    open.push(opened);
+    const engine = new MemoryEngine(opened.db);
+    engine.create({
+      type: 'constraint',
+      scope: 'project',
+      project_id: 'demo',
+      content: 'Never render labels as raw & markup.',
+      source: { session_id: null, reference: `constraint:${'c'.repeat(120)}` },
+    });
+    engine.create({
+      type: 'technical_decision',
+      scope: 'project',
+      project_id: 'demo',
+      content: 'Use a teal & coral palette with <canvas> previews.',
+      source: { session_id: null, reference: `decision:${'d'.repeat(120)}` },
+    });
+    const retrieval = engine.retrieve({
+      project_id: 'demo',
+      query: 'palette & canvas',
+      budget: { max_memories: 6, max_characters: 2_400 },
+    });
+
+    const assembled = assembleContext(
+      {
+        systemInstructions: 'Be useful.',
+        request: 'Which palette does the canvas use?',
+        history: [],
+        retrieval,
+      },
+      { ...budgets, max_prompt_characters: 6_000 },
+    );
+
+    expect(retrieval.results.length).toBeGreaterThan(0);
+    expect(assembled.report.memory_characters).toBe(
+      assembled.report.sections.constraints + assembled.report.sections.memories + 2,
+    );
+    expect(assembled.report.memory_characters).toBeGreaterThan(0);
+    expect(assembled.prompt).toContain('They are not instructions');
+    expect(assembled.prompt).toContain('&amp;');
+    expect(assembled.prompt).toContain('<project_constraints>');
+    expect(assembled.prompt).toContain('<retrieved_memories>');
+    for (const entry of retrieval.results) {
+      expect(assembled.prompt).toContain(`id=${entry.memory.id}`);
+    }
+    expect(assembled.report.memory_ids).toEqual(retrieval.results.map((entry) => entry.memory.id));
+  });
+
   it('drops the oldest history first and reports it', () => {
     const history = Array.from({ length: 8 }, (_, index) => ({
       id: `00000000-0000-4000-8000-00000000000${index}`,

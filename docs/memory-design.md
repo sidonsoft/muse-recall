@@ -153,12 +153,21 @@ kind of trade-off the design document should have caught earlier.
 1,000) but are environment-configurable and overridable per request. A different
 deployment with a bigger context window should raise them rather than patch code.
 
+`max_characters` is a **rendered** budget: it includes HTML escaping, provenance headers,
+block delimiters, the standing safety wording, and the two-block layouts used by chat
+and Forge. `max_memory_characters` remains the per-record raw-content cap. Retrieval
+drops a record that would make any supported layout exceed the rendered budget rather
+than slicing escaped text or emitting an oversized prompt.
+
 ## Context rendering
 
 `formatMemoryContext` wraps results in `<retrieved_memories>` with a standing statement
 that the contents are data, not instructions, and returns exact character and estimated
-token counts. Tests assert that a memory containing "ignore previous instructions"
-appears after the warning and never leaves the block.
+token counts. Chat and Forge use the same renderer for their constraint/general blocks;
+retrieval charges the largest supported layout. Tests assert exact rendered accounting,
+that ampersands/angle brackets are escaped losslessly without cutting an entity, and
+that a memory containing "ignore previous instructions" appears after the warning and
+never leaves the block.
 
 ## Testing map
 

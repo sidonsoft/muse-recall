@@ -1,4 +1,4 @@
-import { renderMemoryBlock } from '@mml/memory-engine';
+import { renderMemoryBlock, renderMemoryLayout } from '@mml/memory-engine';
 import type { ContextReport, Message, RetrievalResult, RetrievedMemory } from '@mml/shared';
 import type { ContextBudgets } from './config.js';
 import { AgentError } from './errors.js';
@@ -154,9 +154,10 @@ export function assembleContext(input: AssembleInput, budgets: ContextBudgets): 
 
   const report: ContextReport = {
     prompt_characters: prompt.length,
-    memory_characters:
-      constraints.reduce((sum, entry) => sum + entry.injected_content.length, 0) +
-      otherMemories.reduce((sum, entry) => sum + entry.injected_content.length, 0),
+    // Count the rendered memory text, including escaping, provenance headers,
+    // delimiters, safety wording, and the blank line joining the two blocks —
+    // exactly what is put in the prompt.
+    memory_characters: renderMemoryLayout(input.retrieval.results, 'chat').length,
     history_messages: history.messages.length,
     history_messages_dropped: dropped,
     sections: {

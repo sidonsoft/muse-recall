@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  formatMemoryContext,
   MemoryConflictError,
   MemoryEngine,
   MemoryNotFoundError,
@@ -513,11 +514,9 @@ describe('retrieval budgets and evidence', () => {
 
       expect(result.metadata.characters_used).toBeLessThanOrEqual(500);
       expect(result.metadata.excluded_by.character_budget).toBeGreaterThan(0);
-      const totalChars = result.results.reduce(
-        (sum, entry) => sum + entry.injected_content.length,
-        0,
-      );
-      expect(totalChars).toBe(result.metadata.characters_used);
+      // `characters_used` is the exact rendered block, not the sum of raw
+      // contents. The safety wrapper alone can exceed a 500-char budget.
+      expect(result.metadata.characters_used).toBe(formatMemoryContext(result).characters);
     } finally {
       close();
     }

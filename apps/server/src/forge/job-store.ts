@@ -49,8 +49,12 @@ export interface ForgeJobPersistence {
   save(job: ForgeJob, options?: { required?: boolean }): Promise<void>;
   /** Wait for all queued writes for one job. */
   flush(jobId: string): Promise<void>;
-  /** Load every readable job, reporting unreadable records instead of hiding them. */
-  loadAll(): Promise<ForgeJobLoadResult>;
+  /**
+   * Load every readable job, reporting unreadable records instead of hiding
+   * them. Passing a project id scopes the read so a later retry can recover one
+   * project without treating another project's failure as resolved.
+   */
+  loadAll(options?: { projectId?: string }): Promise<ForgeJobLoadResult>;
   /** Explicit health check; writes and removes a temporary file. */
   healthCheck(projectId: string): Promise<ForgeStorageCheckResult>;
 }
@@ -151,9 +155,7 @@ export class ForgeJobStore implements ForgeJobPersistence {
         await rm(temp, { force: true }).catch(() => undefined);
         return {
           ok: false,
-          error: redactSecrets(error instanceof Error ? error.message : String(error), {
-            maxLength: 240,
-          }),
+          error: fsFailureMessage('Storage health check failed', error),
         };
       }
     };
@@ -165,38 +167,45 @@ export class ForgeJobStore implements ForgeJobPersistence {
     } catch (error) {
       project = {
         ok: false,
-        error: redactSecrets(error instanceof Error ? error.message : String(error), {
-          maxLength: 240,
-        }),
+        error: fsFailureMessage('Storage health check failed', error),
       };
     }
     return { root, project };
   }
 
-  async loadAll(): Promise<ForgeJobLoadResult> {
+  async loadAll(options: { projectId?: string } = {}): Promise<ForgeJobLoadResult> {
     const result: ForgeJobLoadResult = { jobs: [], issues: [] };
-    let projects: Dirent[];
-    try {
-      projects = await readdir(this.workspace.getRoot(), { withFileTypes: true });
-    } catch (error) {
-      if (isMissingFile(error)) return result;
-      result.issues.push(
-        issue({
-          code: 'job_store_unreadable',
-          file: '.',
-          message: `The Forge workspace could not be read: ${messageOf(error)}`,
-          project_id: 'forge',
-          job_id: null,
-        }),
-      );
-      return result;
+    const projectNames: string[] = [];
+    if (options.projectId !== undefined) {
+      if (!FORGE_PROJECT_ID_PATTERN.test(options.projectId)) return result;
+      projectNames.push(options.projectId);
+    } else {
+      let projects: Dirent[];
+      try {
+        projects = await readdir(this.workspace.getRoot(), { withFileTypes: true });
+      } catch (error) {
+        if (isMissingFile(error)) return result;
+        result.issues.push(
+          issue({
+            scope: 'store',
+            code: 'job_store_unreadable',
+            file: '.',
+            message: fsFailureMessage('The Forge workspace could not be read', error),
+            project_id: 'forge',
+            job_id: null,
+          }),
+        );
+        return result;
+      }
+      for (const project of projects.sort((a, b) => a.name.localeCompare(b.name))) {
+        if (!project.isDirectory() || !FORGE_PROJECT_ID_PATTERN.test(project.name)) continue;
+        projectNames.push(project.name);
+      }
     }
 
     const seen = new Set<string>();
-    for (const project of projects.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (!project.isDirectory() || !FORGE_PROJECT_ID_PATTERN.test(project.name)) continue;
-
-      const jobsDir = join(this.workspace.getRoot(), project.name, 'jobs');
+    for (const projectName of projectNames) {
+      const jobsDir = join(this.workspace.getRoot(), projectName, 'jobs');
       let entries: Dirent[];
       try {
         entries = await readdir(jobsDir, { withFileTypes: true });
@@ -205,9 +214,9 @@ export class ForgeJobStore implements ForgeJobPersistence {
         result.issues.push(
           issue({
             code: 'job_store_unreadable',
-            file: `${project.name}/jobs`,
-            message: `The job directory could not be read: ${messageOf(error)}`,
-            project_id: project.name,
+            file: `${projectName}/jobs`,
+            message: fsFailureMessage('The job directory could not be read', error),
+            project_id: projectName,
             job_id: null,
           }),
         );
@@ -216,14 +225,14 @@ export class ForgeJobStore implements ForgeJobPersistence {
 
       for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
         if (!entry.name.endsWith('.json') || entry.name.startsWith('.')) continue;
-        const relative = `${project.name}/jobs/${entry.name}`;
+        const relative = `${projectName}/jobs/${entry.name}`;
         if (!entry.isFile()) {
           result.issues.push(
             issue({
               code: 'job_unreadable',
               file: relative,
               message: 'Job record is not a regular file.',
-              project_id: project.name,
+              project_id: projectName,
               job_id: null,
             }),
           );
@@ -238,8 +247,8 @@ export class ForgeJobStore implements ForgeJobPersistence {
             issue({
               code: 'job_unreadable',
               file: relative,
-              message: `Job record could not be read: ${messageOf(error)}`,
-              project_id: project.name,
+              message: fsFailureMessage('Job record could not be read', error),
+              project_id: projectName,
               job_id: null,
             }),
           );
@@ -255,7 +264,7 @@ export class ForgeJobStore implements ForgeJobPersistence {
               code: 'job_unreadable',
               file: relative,
               message: 'Job record is not valid JSON.',
-              project_id: project.name,
+              project_id: projectName,
               job_id: null,
             }),
           );
@@ -269,7 +278,7 @@ export class ForgeJobStore implements ForgeJobPersistence {
               code: 'job_invalid',
               file: relative,
               message: `Job record does not match the job schema (${validated.error.issues[0]?.path.join('.') || 'root'}).`,
-              project_id: project.name,
+              project_id: projectName,
               job_id: null,
             }),
           );
@@ -282,19 +291,19 @@ export class ForgeJobStore implements ForgeJobPersistence {
               code: 'job_project_mismatch',
               file: relative,
               message: 'Job id does not match its file name.',
-              project_id: project.name,
+              project_id: projectName,
               job_id: job.id,
             }),
           );
           continue;
         }
-        if (job.project_id !== project.name) {
+        if (job.project_id !== projectName) {
           result.issues.push(
             issue({
               code: 'job_project_mismatch',
               file: relative,
               message: 'Job belongs to a different project.',
-              project_id: project.name,
+              project_id: projectName,
               job_id: job.id,
             }),
           );
@@ -306,7 +315,7 @@ export class ForgeJobStore implements ForgeJobPersistence {
               code: 'job_duplicate',
               file: relative,
               message: 'Another job record already uses this id.',
-              project_id: project.name,
+              project_id: projectName,
               job_id: job.id,
             }),
           );
@@ -341,12 +350,26 @@ export class ForgeJobStore implements ForgeJobPersistence {
   }
 }
 
-function messageOf(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.slice(0, 240);
+/**
+ * Filesystem errors routinely contain an absolute host path. Job-loading
+ * diagnostics are relayed to the browser, so describe the failed operation and
+ * an errno-style code without exposing the host layout or a transient path.
+ */
+function fsFailureMessage(action: string, error: unknown): string {
+  const rawCode =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+  const code = typeof rawCode === 'string' && /^[A-Z0-9_]+$/.test(rawCode) ? rawCode : null;
+  const message = `${action}${code ? ` (${code})` : ''}.`;
+  return redactSecrets(message, { maxLength: 240 }).slice(0, 300);
 }
 
-function issue(input: Omit<ForgeRecoveryIssue, 'id' | 'kind'>): ForgeRecoveryIssue {
+function issue(
+  input: Omit<ForgeRecoveryIssue, 'id' | 'kind' | 'scope'> & {
+    scope?: ForgeRecoveryIssue['scope'];
+  },
+): ForgeRecoveryIssue {
   const id = `${input.code}:${input.project_id}:${input.job_id ?? ''}:${input.file}`.slice(0, 400);
-  return { ...input, id, kind: 'startup' };
+  return { scope: 'project', ...input, id, kind: 'startup' };
 }

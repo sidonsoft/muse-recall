@@ -733,6 +733,9 @@ export function StudioView({
                 {project.recovery.startup.interrupted_jobs > 0
                   ? ` ${project.recovery.startup.interrupted_jobs} interrupted by a server restart and not resumed.`
                   : ''}
+                {project.recovery.later_recovery.loaded_jobs > 0
+                  ? ` ${project.recovery.later_recovery.loaded_jobs} additional job${project.recovery.later_recovery.loaded_jobs === 1 ? '' : 's'} recovered when storage was retested.`
+                  : ''}
                 {!project.recovery.storage.ok
                   ? project.recovery.storage.scope === 'store' ||
                     project.recovery.storage.scope === 'both'
@@ -758,8 +761,12 @@ export function StudioView({
                 <ul className="mt-1 list-inside list-disc space-y-0.5 font-mono text-[10px] text-warn/90">
                   {project.recovery.issues.slice(0, 4).map((issue) => (
                     <li key={issue.id}>
-                      {issue.kind === 'active' ? 'active storage' : 'history'} · {issue.file}:{' '}
-                      {issue.message}
+                      {issue.kind === 'active'
+                        ? 'active storage'
+                        : issue.scope === 'store'
+                          ? 'store-wide history'
+                          : 'project history'}{' '}
+                      · {issue.file}: {issue.message}
                     </li>
                   ))}
                 </ul>
