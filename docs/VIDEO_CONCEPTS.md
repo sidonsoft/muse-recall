@@ -1,5 +1,7 @@
 # Video concepts — two shortlisted products
 
+> **Historical document.** This is an early video concept. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+
 Both are 3:00, recorded with real Muse inference on a fresh database. Screen actions are exact;
 narration is a guide, not a word-for-word script. Nobody has recorded either video yet.
 

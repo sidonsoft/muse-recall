@@ -1,0 +1,257 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Aqua Arcade Memory Rush</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#0a1e33;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.35),0 0 0 3px rgba(78,168,222,.35),0 0 30px rgba(78,168,222,.25)}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F404}", name: "Cow" },
+    { emoji: "\u{1F437}", name: "Pig" },
+    { emoji: "\u{1F414}", name: "Hen" },
+    { emoji: "\u{1F40E}", name: "Horse" },
+    { emoji: "\u{1F411}", name: "Sheep" },
+    { emoji: "\u{1F988}", name: "Duck" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#0a1e33",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var hudMoves, hudScore, hudMsg, endOverlay, endTitle, endDetail, startOverlay;
+  var hudTime, hudPoints, hudCombo, timerBar, timerBarBg, comboText, focusRing;
+  var timeLeft = 60, score = 0, combo = 0, timerEvent = null, bubbles = [];
+  var TOTAL_TIME = 60, BONUS_TIME = 4, PENALTY_TIME = 3, BASE_SCORE = 500;
+  var focusIndex = 0;
+  var audioCtx = null;
+
+  function create() {
+    var s = this;
+    drawFarm(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    createBubbles(s);
+    setupKeyboard(s);
+    updateTimerBar(s);
+    updateFocusRing();
+  }
+
+  function drawFarm(scene) {
+    var g = scene.add.graphics();
+    g.fillGradientStyle(0x0a1e33, 0x0a1e33, 0x123a5a, 0x4EA8DE, 1);
+    g.fillRect(0, 0, W, H);
+    g.lineStyle(2, 0x4EA8DE, 0.18);
+    for (var wy = 210; wy < 520; wy += 26) {
+      g.beginPath();
+      g.moveTo(0, wy);
+      for (var x = 0; x <= W; x += 18) {
+        g.lineTo(x, wy + Math.sin(x * 0.015 + wy * 0.08) * 7);
+      }
+      g.strokePath();
+    }
+    g.lineStyle(1, 0xffffff, 0.06);
+    for (var gx = 0; gx < W; gx += 90) { g.lineBetween(gx, 170, gx, H); }
+    for (var gy = 170; gy < H; gy += 70) { g.lineBetween(0, gy, W, gy); }
+    g.fillStyle(0x102A43, 1); g.fillRect(0, 620, W, 80);
+    g.fillStyle(0x1a4a6e, 1); g.fillEllipse(W / 2, 620, 920, 44);
+    g.fillStyle(0x4EA8DE, 0.12); g.fillEllipse(W / 2, 620, 700, 18);
+    g.fillStyle(0xffffff, 0.10);
+    for (var i = 0; i < 28; i++) {
+      var bx = Phaser.Math.Between(20, W - 20), by = Phaser.Math.Between(180, 600), br = Phaser.Math.Between(3, 9);
+      g.fillCircle(bx, by, br);
+    }
+    var scan = scene.add.graphics();
+    scan.fillStyle(0x000000, 0.045);
+    for (var sy = 0; sy < H; sy += 4) { scan.fillRect(0, sy, W, 1); }
+    scan.setDepth(2);
+    var vig = scene.add.graphics();
+    vig.fillStyle(0x000000, 0.18); vig.fillRect(0, 0, W, 168);
+    vig.setDepth(2);
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    var hudBg = scene.add.graphics();
+    hudBg.fillStyle(0xffffff, 0.97); hudBg.fillRoundedRect(12, 8, W - 24, 148, 18);
+    hudBg.lineStyle(3, 0x4EA8DE, 1); hudBg.strokeRoundedRect(12, 8, W - 24, 148, 18);
+    hudBg.setDepth(3);
+    scene.add.text(24, 14, "\u{1F30A} AQUA ARCADE MATCH", textStyle(28, "#102A43")).setOrigin(0, 0).setDepth(4);
+    scene.add.text(24, 42, "BEAT THE CLOCK  \u2022  BUILD COMBOS!", textStyle(13, "#4EA8DE")).setOrigin(0, 0).setDepth(4);
+    hudMoves = scene.add.text(24, 66, "Moves: 0", textStyle(17, "#102A43")).setDepth(4);
+    hudScore = scene.add.text(24, 88, "Pairs: 0 / 6", textStyle(17, "#102A43")).setDepth(4);
+    hudPoints = scene.add.text(24, 110, "SCORE 0", textStyle(20, "#4EA8DE")).setDepth(4);
+    hudTime = scene.add.text(W - 24, 18, "TIME 60s", textStyle(26, "#102A43")).setOrigin(1, 0).setDepth(4);
+    timerBarBg = scene.add.graphics().setDepth(4);
+    timerBarBg.fillStyle(0xe6f0f7, 1); timerBarBg.fillRoundedRect(W - 284, 52, 260, 14, 7);
+    timerBarBg.lineStyle(2, 0x4EA8DE, 0.45); timerBarBg.strokeRoundedRect(W - 284, 52, 260, 14, 7);
+    timerBar = scene.add.graphics().setDepth(4);
+    hudCombo = scene.add.text(W - 24, 72, "COMBO x0", textStyle(18, "#ff7e5f")).setOrigin(1, 0).setDepth(4);
+    comboText = scene.add.text(W - 24, 94, "+4s MATCH  \u2022  -3s MISS", textStyle(11, "#5a7a9a")).setOrigin(1, 0).setDepth(4);
+    hudMsg = scene.add.text(W / 2, 136, "Tap a card or use ARROWS + ENTER!", textStyle(15, "#102A43")).setOrigin(0.5).setDepth(4);
+    var btn = scene.add.container(W - 110, 116).setDepth(4);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -22, 172, 44, 22);
+    bg.lineStyle(2, 0xffffff, 0.95); bg.strokeRoundedRect(-86, -22, 172, 44, 22);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(18, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -22, 172, 44), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); playTone(650, 0.12, "sine", 0.22); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    focusRing = scene.add.graphics().setDepth(3);
+    focusRing.lineStyle(4, 0x4EA8DE, 1); focusRing.strokeRoundedRect(-98, -74, 196, 148, 22);
+    focusRing.lineStyle(2, 0xffffff, 1); focusRing.strokeRoundedRect(-96, -72, 192, 144, 20);
+    focusRing.setVisible(false);
+    scene.add.text(W / 2, 168, "Find 6 pairs before time runs out!  \u25B6 60s RUSH", textStyle(12, "#e6f7ff")).setOrigin(0.5).setDepth(4);
+  }
+
+  function shuffledDeck() {
+    var deck = [];
+    ANIMALS.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.destroy(); });
+    cards = [];
+    var deck = shuffledDeck();
+    var cols = 4, rows = 3;
+    var cw = 185, ch = 140, gx = 62, gy = 195, padX = 22, padY = 16;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card));
+    });
+    focusIndex = 0;
+    updateFocusRing();
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 16);
+    back.lineStyle(2, 0xffffff, 0.32);
+    for (var wy = -h / 2 + 22; wy < h / 2 - 10; wy += 14) {
+      back.beginPath();
+      back.moveTo(-w / 2 + 18, wy);
+      for (var xx = -w / 2 + 18; xx < w / 2 - 18; xx += 12) {
+        back.lineTo(xx, wy + Math.sin(xx * 0.22) * 4);
+      }
+      back.strokePath();
+    }
+    back.fillStyle(0xffffff, 0.18); back.fillCircle(-w / 4, -h / 4, 10);
+    var paw = scene.add.text(0, -10, "\u{1F30A}", { fontSize: "44px" }).setOrigin(0.5);
+    var qm = scene.add.text(0, 30, "?", textStyle(26, "#ffffff")).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xe0f7fa, 0xb2ebf2, 0x80deea, 0x4dd0e1, 0x26c6da, 0x00acc1];
+    fg.fillStyle(0xffffff, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 16);
+    fg.lineStyle(3, 0x4EA8DE, 0.55); fg.strokeRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 16);
+    var emo = scene.add.text(0, -18, data.emoji, { fontSize: "58px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 42, data.name, textStyle(20, "#102A43")).setOrigin(0.5);
+    var pts = scene.add.text(0, 60, "+" + BASE_SCORE, textStyle(11, "#4EA8DE")).setOrigin(0.5);
+    face.add([fg, emo, nm, pts]);
+    var showBack = scene.add.container(0, 0, [back, paw, qm]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    cont.on("pointerover", function () { if (!card.matched && !card.faceUp) cont.setScale(1.03); });
+    cont.on("pointerout", function () { cont.setScale(1); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    playTone(820, 0.08, "sine", 0.18);
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more! Find the match \u{1F50D}"); updateFocusRing(); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      combo++;
+      var add = BASE_SCORE + (combo - 1) * 150 + Math.floor(timeLeft * 2);
+      score += add;
+      timeLeft = Math.min(TOTAL_TIME, timeLeft + BONUS_TIME);
+      updateTimerBar(scene);
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
+        for (var i = 0; i < 12; i++) {
+          var p = scene.add.text(card.view.x, card.view.y, ["\u2726", "\u2605", "\u25CF"][i % 3], { fontSize: "18px", color: "#4EA8DE" }).setOrigin(0.5).setDepth(25);
+          scene.tweens.add({ targets: p, y: p.y - 60 - Phaser.Math.Between(0, 40), x: p.x + Phaser.Math.Between(-60, 60), alpha: 0, scale: 1.5, duration: 600, onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+        }
+        showScorePopup(scene, card.view.x, card.view.y - 70, "+" + add, "#4EA8DE");
+        if (combo > 1) { showScorePopup(scene, W / 2, 210, "COMBO x" + combo + "!", "#ff7e5f"); }
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / 6");
+        hudPoints.setText("SCORE " + score);
+        hudCombo.setText("COMBO x" + combo);
+        scene.tweens.add({ targets: hudCombo, scale: 1.3, yoyo: true, duration: 150 });
+        hudMsg.setText(combo > 2 ? "\u{1F525} ON FIRE! x" + combo + "  +" + add : "Yay! +" + add + " \u2605");
+        lockBoard = false;
+        updateFocusRing();
+        if (matches === 6) { showWin(scene); }
+        playTone(900 + combo * 90, 0.18, "square", 0.22);
+      }, 350);
+    } else {
+      combo = 0;
+      hudCombo.setText("COMBO x0");
+      score = Math.max(0, score - 50);
+      hudPoints.setText("SCORE " + score);
+      timeLeft = Math.max(0, timeLeft - PENALTY_TIME);
+      updateTimerBar(scene);
+      hudMsg.setText("MISS! -" + PENALTY_TIME + "s \u{1F4A7}");
+      doShake(scene, 6);
+      showScorePopup(scene, card.view.x, card.view.y - 70, "-" + PENALTY_TIME + "s", "#ff4d6d");
+      playTone(220, 0

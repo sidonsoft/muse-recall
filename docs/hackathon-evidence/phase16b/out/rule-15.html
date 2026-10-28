@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Arcade</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#EAF6FF;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;outline:none}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,.18);display:block}
+  #live{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="game" role="application" aria-label="Ocean Memory Arcade matching game" tabindex="0"></div>
+<div id="live" aria-live="polite" aria-atomic="true"></div>
+<script>
+(function () {
+  var OCEAN_ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F40B}", name: "Whale" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F988}", name: "Shark" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F420}", name: "Fish" },
+    { emoji: "\u{1F421}", name: "Blowfish" },
+    { emoji: "\u{1F991}", name: "Squid" },
+    { emoji: "\u{2B50}", name: "Starfish" }
+  ];
+  var W = 900, H = 700;
+  var DIFFICULTY = {
+    easy: { pairs: 6, cols: 4, rows: 3, label: "Easy" },
+    medium: { pairs: 8, cols: 4, rows: 4, label: "Medium" },
+    hard: { pairs: 10, cols: 5, rows: 4, label: "Hard" }
+  };
+  var currentDiffKey = "easy";
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#EAF6FF",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0, combo = 0, bestCombo = 0, score = 0, level = 1;
+  var hudMoves, hudScore, hudMsg, hudCombo, hudLevel, endOverlay, endTitle, endDetail, startOverlay;
+  var focusedIndex = 0;
+  var focusRing = null;
+  var bubbles = [];
+
+  function announce(msg) {
+    var el = document.getElementById("live");
+    if (el) { el.textContent = msg; }
+  }
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupKeyboard(s);
+    createBubbles(s);
+    announce("Ocean Memory Arcade loaded. Choose difficulty and press Start.");
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xEAF6FF, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xD4EFFF, 1); g.fillRect(0, 0, W, 160);
+    g.fillStyle(0xBEE9FF, 1); g.fillRect(0, 140, W, 360);
+    g.fillStyle(0xA8D8F0, 1); g.fillRect(0, 500, W, 200);
+    // gentle waves
+    g.lineStyle(4, 0x4EA8DE, 0.35);
+    for (var wy = 150; wy < 500; wy += 28) {
+      for (var x = -20; x < W; x += 80) {
+        g.beginPath();
+        g.moveTo(x, wy + Math.sin(x * 0.02) * 6);
+        g.lineTo(x + 40, wy + Math.sin((x + 40) * 0.02) * 6);
+        g.strokePath();
+      }
+    }
+    // sun soft
+    g.fillStyle(0xFFF6B5, 0.9); g.fillCircle(780, 90, 38);
+    g.fillStyle(0xFFFFFF, 0.7); g.fillCircle(780, 90, 28);
+    // clouds soft
+    g.fillStyle(0xFFFFFF, 0.95);
+    g.fillEllipse(160, 85, 120, 36); g.fillEllipse(200, 75, 90, 32);
+    g.fillEllipse(520, 70, 110, 30); g.fillEllipse(560, 80, 80, 26);
+    // sea floor sand
+    g.fillStyle(0xD6EAF8, 1); g.fillEllipse(W / 2, 680, 900, 120);
+    g.fillStyle(0xB8E0E6, 1); g.fillEllipse(W / 2, 700, 700, 80);
+    // seaweed gentle
+    g.fillStyle(0x7FB8A0, 0.9);
+    for (var i = 0; i < 6; i++) {
+      var sx = 40 + i * 160;
+      g.fillEllipse(sx, 620, 18, 80);
+      g.fillEllipse(sx + 12, 600, 14, 60);
+    }
+    // coral
+    g.fillStyle(0xF4A9A8, 0.85); g.fillCircle(860, 620, 22); g.fillCircle(845, 605, 16);
+    g.fillStyle(0xFFD6A5, 0.85); g.fillCircle(30, 630, 18);
+  }
+
+  function createBubbles(scene) {
+    for (var i = 0; i < 12; i++) {
+      var b = scene.add.graphics();
+      var bx = Phaser.Math.Between(20, W - 20);
+      var by = Phaser.Math.Between(180, H - 20);
+      var r = Phaser.Math.Between(4, 10);
+      b.fillStyle(0xFFFFFF, 0.45); b.fillCircle(0, 0, r);
+      b.lineStyle(1, 0x4EA8DE, 0.25); b.strokeCircle(0, 0, r);
+      b.x = bx; b.y = by;
+      b.setDepth(1);
+      bubbles.push({ g: b, speed: Phaser.Math.FloatBetween(0.15, 0.45), drift: Phaser.Math.FloatBetween(-0.3, 0.3), r: r });
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} Ocean Arcade", textStyle(32, "#102A43")).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 52, "Moves: 0", textStyle(20, "#102A43"));
+    hudScore = scene.add.text(24, 78, "Pairs: 0 / 6", textStyle(20, "#102A43"));
+    hudCombo = scene.add.text(24, 104, "Combo: 0  Best: 0", textStyle(18, "#102A43"));
+    hudLevel = scene.add.text(24, 128, "Level 1  \u2022  Easy", textStyle(18, "#102A43"));
+    hudMsg = scene.add.text(W - 24, 56, "Choose level & Start!", textStyle(20, "#102A43")).setOrigin(1, 0.5);
+    var btn = scene.add.container(W - 110, 116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(20, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.04); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    // keyboard for restart
+    bg.setData("role", "restart");
+    scene.add.text(W / 2, 168, "Match ocean friends! Build a combo streak!", textStyle(18, "#102A43")).setOrigin(0.5);
+    focusRing = scene.add.graphics().setDepth(5).setVisible(false);
+  }
+
+  function shuffledDeck() {
+    var cfg = DIFFICULTY[currentDiffKey];
+    var needed = cfg.pairs;
+    var pool = OCEAN_ANIMALS.slice(0, needed);
+    var deck = [];
+    pool.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var deck = shuffledDeck();
+    var cfg = DIFFICULTY[currentDiffKey];
+    var cols = cfg.cols, rows = cfg.rows;
+    var total = deck.length;
+    // layout adapts to count
+    var cw, ch, gx, gy, padX, padY;
+    if (total <= 12) {
+      cw = 185; ch = 140; gx = 62; gy = 195; padX = 22; padY = 16;
+    } else if (total <= 16) {
+      cw = 185; ch = 110; gx = 62; gy = 190; padX = 22; padY = 12;
+    } else {
+      cw = 150; ch = 110; gx = 42; gy = 190; padX = 16; padY = 12;
+    }
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    focusedIndex = 0;
+    updateFocus();
+    hudScore.setText("Pairs: 0 / " + cfg.pairs);
+    hudLevel.setText("Level " + level + "  \u2022  " + cfg.label);
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xFFFFFF, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 14);
+    back.fillStyle(0xFFFFFF, 0.35);
+    back.fillCircle(-w / 4, -h / 5, 10); back.fillCircle(w / 5, h / 6, 7); back.fillCircle(0, h / 4, 11);
+    var icon = scene.add.text(0, -4, "\u{1F41A}", { fontSize: "44px" }).setOrigin(0.5);
+    icon.setAlpha(0.95);
+    var showBack = scene.add.container(0, 0, [back, icon]);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xE0F7FA, 0xB3E5FC, 0xBBDEFB, 0xE1F5FE, 0xD4EFFF, 0xE0F2FE, 0xB2EBF2, 0xC8E6FF, 0xD6EAF8, 0xEAF6FF];
+    fg.fillStyle(0xFFFFFF, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 14);
+    var emo = scene.add.text(0, -16, data.emoji, { fontSize: w > 160 ? "54px" : "46px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 38, data.name, textStyle(w > 160 ? 18 : 16, "#102A43")).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, idx: idx, w: w, h: h, x: x, y: y };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    return card;
+  }
+
+  function updateFocus() {
+    if (!focusRing || cards.length === 0) return;
+    if (!started) { focusRing.setVisible(false); return; }
+    var c = cards[focusedIndex];
+    if (!c || c.matched) { focusRing.setVisible(false); return; }
+    focusRing.clear();
+    focusRing.lineStyle(3, 0x4EA8DE, 1);
+    focusRing.strokeRoundedRect(c.x - c.w / 2 - 4, c.y - c.h / 2 - 4, c.w + 8, c.h + 8, 20);
+    focusRing.setVisible(true);
+  }
+
+  function moveFocus(dir) {
+    if (!started || cards.length === 0) return;
+    var cfg = DIFFICULTY[currentDiffKey];
+    var cols = cfg.cols;
+    var next = focusedIndex;
+    if (dir === "left") next = (focusedIndex - 1 + cards.length) % cards.length;
+    if (dir === "right") next = (focusedIndex + 1) % cards.length;
+    if (dir === "up") next = (focusedIndex - cols + cards.length) % cards.length;
+    if (dir === "down") next = (focusedIndex + cols) % cards.length;
+    focusedIndex = next;
+    // skip matched cards
+    var tries = 0;
+    while (cards[focusedIndex] && cards[focusedIndex].matched && tries < cards.length) {
+      if (dir === "left" || dir === "up") focusedIndex = (focusedIndex - 1 + cards.length) % cards.length;
+      else focusedIndex = (focusedIndex + 1) % cards.length;
+      tries++;
+    }
+    updateFocus();
+    var name = cards[focusedIndex] ? cards[focusedIndex].data.name : "";
+    announce("Focused card " + (focusedIndex + 1) + " of " + cards.length + (name ? ", " + name : ""));
+  }
+
+  function setupKeyboard(scene) {
+    var gameEl = document.getElementById("game");
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") { e.preventDefault(); moveFocus("left"); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); moveFocus("right"); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); moveFocus("up"); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); moveFocus("down"); }
+      else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (startOverlay && startOverlay.visible) {
+          // start via keyboard
+          started = true; lockBoard = false;
+          startOverlay.setVisible(false);
+          hudMsg.setText("Use arrows + Enter to flip!");
+          updateFocus();
+          announce("Game started. Level " + level + " " + DIFFICULTY[currentDiffKey].label);
+          return;
+        }
+        if (endOverlay && endOverlay.visible) {
+          restart(scene);
+          return;
+        }
+        if (cards[focusedIndex]) { onCard(scene, cards[focusedIndex]); }
+      } else if (e.key === "r" || e.key === "R") {
+        restart(scene);
+      } else if (e.key === "Tab") {
+        // allow tab to cycle focus
+        e.preventDefault();
+        if (e.shiftKey) moveFocus("left"); else moveFocus("right");
+      }
+    });
+    if (gameEl) {
+      gameEl.addEventListener("click", function () { gameEl.focus(); });
+    }
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 140, ease: "Sine.easeInOut", onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 140, ease: "Sine.easeInOut", onComplete: done || function () {} });
+    }});
+  }
+
+  function spawnScorePopup(scene, x, y, text) {
+    var t = scene.add.text(x, y, text, textStyle(22, "#102A43")).setOrigin(0.5).setDepth(15);
+    t.setStroke("#ffffff", 4);
+    scene.tweens.add({ targets: t, y: y - 40, alpha: 0, duration: 900, ease: "Sine.easeOut", onComplete: function () { t.destroy(); } });
+  }
+
+  function spawnBubblesOnMatch(scene, x, y) {
+    for (var i = 0; i < 6; i++) {
+      var b = scene.add.graphics();
+      b.fillStyle(0xFFFFFF, 0.85); b.fillCircle(0, 0, Phaser.Math.Between(4, 8));
+      b.lineStyle(1, 0x4EA8DE, 0.5); b.strokeCircle(0, 0, Phaser.Math.Between(4, 8));
+      b.x = x; b.y = y; b.setDepth(12);
+      scene.tweens.add({
+        targets: b,
+        y: y - Phaser.Math.Between(30, 70),
+        x: x + Phaser.Math.Between(-40, 40),
+        alpha: 0,
+        duration: Phaser.Math.Between(600, 900),
+        ease: "Sine.easeOut",
+        onComplete: (function (g) { return function () { g.destroy(); }; })(b)
+      });
+    }
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    focusedIndex = card.idx;
+    updateFocus();
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); announce("Flipped " + card.data.name + ". Choose another card."); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.06, yoyo: true, duration: 180, ease: "Sine.easeInOut" });
+        matches++;
+        combo++;
+        if (combo > bestCombo) bestCombo = combo;
+        var cfg = DIFFICULTY[currentDiffKey];
+        score += 100 + (combo > 1 ? (combo - 1) * 25 : 0);
+        hudScore.setText("Pairs: " + matches + " / " + cfg.pairs);
+        hudCombo.setText("Combo: " + combo + "  Best: " + bestCombo + "  Score: " + score);
+        hudLevel.setText("Level " + level + "  \u2022  " + cfg.label);
+        if (combo > 1) {
+          hudMsg.setText("Combo x" + combo + "! +" + (100 + (combo - 1) * 25) + " \u2728");
+          spawnScorePopup(scene, card.view.x, card.view.y - 50, "Combo x" + combo + "!");
+        } else {
+          hudMsg.setText("Great pair! \u{1F389}");
+          spawnScorePopup(scene, card.view.x, card.view.y - 50, "+100");
+        }
+        spawnBubblesOnMatch(scene, a.view.x, a.view.y);
+        spawnBubblesOnMatch(scene, card.view.x, card.view.y);
+        announce("Match! " + card.data.name + " pair found. Combo " + combo + ". " + matches + " of " + cfg.pairs + " pairs.");
+        lockBoard = false;
+        updateFocus();
+        if (matches === cfg.pairs) { showWin(scene); }
+      }, 320);
+    } else {
+      combo = 0;
+      hudCombo.setText("Combo: " + combo + "  Best: " + bestCombo + "  Score: " + score);
+      hudMsg.setText("Not a match, try again! \u{1F4A7}");
+      announce("Not a match. " + a.data.name + " and " + card.data.name + ". Try again.");
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; updateFocus(); });
+      }, 700);
+    }
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xFFFFFF, 1); panel.fillRoundedRect(-310, -210, 620, 420, 28);
+    panel.lineStyle(5, 0x4EA8DE, 1); panel.strokeRoundedRect(-310, -210, 620, 420, 28);
+    var title = scene.add.text(0, -150, "\u{1F30A} Ocean Arcade \u{1F419}", textStyle(38, "#102A43")).setOrigin(0.5);
+    var sub = scene.add.text(0, -95, "Match ocean friends and build a combo streak!\nNo rush, no penalties \u2014 just fun!", Object.assign(textStyle(18, "#102A43"), { align: "center" })).setOrigin(0.5);
+    var row = scene.add.text(0, -30, "\u{1F419} \u{1F40B} \u{1F42C} \u{1F422} \u{1F980} \u{1F420}", { fontSize: "38px" }).setOrigin(0.5);
+    var diffLabel = scene.add.text(0, 18, "Choose Challenge:", textStyle(18, "#102A43")).setOrigin(0.5);
+
+    // difficulty buttons
+    var btns = [];
+    var keys = ["easy", "medium", "hard"];
+    var labels = ["Easy  4\u00D73", "Medium  4\u00D74", "Hard  5\u00D74"];
+    for (var i = 0; i < 3; i++) {
+      var bx = -180 + i * 180;
+      var bbg = scene.add.graphics();
+      var isSel = currentDiffKey === keys[i];
+      bbg.fillStyle(isSel ? 0x4EA8DE : 0xEAF6FF, 1); bbg.fillRoundedRect(bx - 80, 40, 160, 44, 22);
+      bbg.lineStyle(3, 0x4EA8DE, 1); bbg.strokeRoundedRect(bx - 80, 40, 160, 44, 22);
+      var btx = scene.add.text(bx, 62, labels[i], textStyle(16, isSel ? "#ffffff" : "#102A43")).setOrigin(0.5);
+      (function (k, g, t) {
+        g.setInteractive(new Phaser.Geom.Rectangle(bx - 80, 40, 160, 44), Phaser.Geom.Rectangle.Contains);
+        g.on("pointerdown", function () {
+          currentDiffKey = k;
+          announce(k + " difficulty selected");
+          // update visuals
+          for (var j = 0; j < btns.length; j++) {
+            var sel = btns[j].k === currentDiffKey;
+            btns[j].g.clear();
+            btns[j].g.fillStyle(sel ? 0x4EA8DE : 0xEAF6FF, 1); btns[j].g.fillRoundedRect(btns[j].x - 80, 40, 160, 44, 22);
+            btns[j].g.lineStyle(3, 0x4EA8DE, 1); btns[j].g.strokeRoundedRect(btns[j].x - 80, 40, 160, 44, 22);
+            btns[j].t.setColor(sel ? "#ffffff" : "#102A43");
+          }
+          hudMsg.setText("Ready: " + DIFFICULTY[k].label + " \u2022 Press Start!");
+        });
+      })(keys[i], bbg, btx);
+      btns.push({ k: keys[i], g: bbg, t: btx, x: bx });
+    }
+
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-130, 110, 260, 62, 31);
+    var btnTx = scene.add.text(0, 141, "\u25B6  Start Dive", textStyle(26, "#ffffff")).setOrigin(0.5);
+    var hint = scene.add.text(0, 188, "Tip: Use mouse or arrow keys + Enter. Press R to restart.", textStyle(14, "#5A7A9A")).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, row, diffLabel, btnBg, btnTx, hint]);
+    // add diff buttons to overlay
+    btns.forEach(function (b) { startOverlay.add([b.g, b.t]); });
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 110, 260, 62), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () {
+      started = true; lockBoard = false;
+      startOverlay.setVisible(false);
+      hudMsg.setText("Find a pair! Arrows + Enter works too");
+      buildBoard(scene);
+      updateFocus();
+      announce("Game started. " + DIFFICULTY[currentDiffKey].label + " level. Find all pairs.");
+      var ge = document.getElementById("game");
+      if (ge) ge.focus();
+    });
+    // store for keyboard
+    startOverlay.btns = btns;
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xFFFFFF, 1); panel.fillRoundedRect(-300, -180, 600, 360, 28);
+    panel.lineStyle(5, 0x4EA8DE, 1); panel.strokeRoundedRect(-300, -180, 600, 360, 28);
+    endTitle = scene.add.text(0, -110, "\u{1F389} Level Clear! \u{1F389}", textStyle(36, "#102A43")).setOrigin(0.5);
+    endDetail = scene.add.text(0, -40, "", Object.assign(textStyle(20, "#102A43"), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-140, 70, 280, 62, 31);
+    var btnTx = scene.add.text(0, 101, "\u21BB Play Again", textStyle(24, "#ffffff")).setOrigin(0.5);
+    var nextBg = scene.add.graphics();
+    nextBg.fillStyle(0xEAF6FF, 1); nextBg.fillRoundedRect(-140, 145, 280, 48, 24);
+    nextBg.lineStyle(3, 0x4EA8DE, 1); nextBg.strokeRoundedRect(-140, 145, 280, 48, 24);
+    var nextTx = scene.add.text(0, 169, "Next Challenge \u2192", textStyle(18, "#102A43")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx, nextBg, nextTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-140, 70, 280, 62), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+    nextBg.setInteractive(new Phaser.Geom.Rectangle(-140, 145, 280, 48), Phaser.Geom.Rectangle.Contains);
+    nextBg.on("pointerdown", function () {
+      // advance difficulty for arcade progression
+      if (currentDiffKey === "easy") currentDiffKey = "medium";
+      else if (currentDiffKey === "medium") currentDiffKey = "hard";
+      else { currentDiffKey = "hard"; level++; }
+      if (currentDiffKey !== "hard" || level === 1) level++;
+      restart(scene);
+    });
+  }
+
+  function showWin(scene) {
+    var cfg = DIFFICULTY[currentDiffKey];
+    var stars = moves <= cfg.pairs + 4 ? 3 : (moves <= cfg.pairs + 8 ? 2 : 1);
+    var msg = "You found all " + cfg.pairs + " pairs!\nMoves: " + moves + "  Score: " + score + "  " + "\u2B50".repeat(stars);
+    msg += "\nBest Combo: x" + bestCombo + "  Level " + level + " \u2022 " + cfg.label;
+    if (currentDiffKey !== "hard") msg += "\nTry Next Challenge for a bigger board!";
+    endDetail.setText(msg);
+    endTitle.setText(level > 1 ? "\u2728 Arcade Champion! \u2728" : "\u{1F389} Level Clear! \u{1F389}");
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.9, to: 1 }, duration: 260, ease: "Back.easeOut" });
+    hudMsg.setText("Amazing! \u2728 Score " + score);
+    announce("Level clear! " + cfg.pairs + " pairs in " + moves + " moves. Score " + score + ". Best combo " + bestCombo);
+    for (var i = 0; i < 28; i++) {
+      var em = ["\u{1F4A7}", "\u2B50", "\u{1F389}", "\u{1F419}", "\u{1F420}"][i % 5];
+      var p = scene.add.text(Phaser.Math.Between(40, W - 40), -20, em, { fontSize: "26px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-60, 60), alpha: 0.9, duration: Phaser.Math.Between(1400, 2200), ease: "Sine.easeIn", onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+    combo = 0; // keep bestCombo and score? reset score for new run but keep level
+    score = 0;
+    var cfg = DIFFICULTY[currentDiffKey];
+    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / " + cfg.pairs); hudCombo.setText("Combo: 0  Best: " + bestCombo + "  Score: 0");
+    hudLevel.setText("Level " + level + "  \u2022  " + cfg.label);
+    hudMsg.setText("New board! Find a pair!");
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+    announce("New game started. " + cfg.label + " with " + cfg.pairs + " pairs. Level " + level);
+    var ge = document.getElementById("game");
+    if (ge) ge.focus();
+  }
+
+  function update() {
+    // gentle bubble drift
+    for (var i = 0; i < bubbles.length; i++) {
+      var b = bubbles[i];
+      b.g.y -= b.speed;
+      b.g.x += Math.sin(Date.now() * 0.001 + i) * 0.15 + b.drift * 0.05;
+      if (b.g.y < 170) { b.g.y = H - 10; b.g.x = Phaser.Math.Between(20, W - 20); }
+    }
+    if (focusRing && focusRing.visible) {
+      // subtle pulse without flashing
+      var s = 1 + Math.sin(Date.now() * 0.003) * 0.02;
+      focusRing.setScale(s);
+    }
+  }
+})();
+</script>
+</body>
+</html>

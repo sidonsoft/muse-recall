@@ -1,0 +1,176 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Arcade Memory Rush</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#071a2e;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;position:relative}
+  canvas{border-radius:18px;box-shadow:0 0 0 2px rgba(78,168,222,.45),0 12px 40px rgba(0,0,0,.5),0 0 32px rgba(78,168,222,.28);display:block}
+  .scanlines{position:absolute;inset:0;border-radius:18px;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px);opacity:.45}
+  #a11y{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="game"><div class="scanlines" aria-hidden="true"></div></div>
+<div id="a11y" aria-live="polite"></div>
+<script>
+(function () {
+  var OCEAN_ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octo" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F433}", name: "Whale" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F988}", name: "Shark" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F991}", name: "Squid" },
+    { emoji: "\u{1F421}", name: "Puffer" },
+    { emoji: "\u{1F99E}", name: "Lobster" },
+    { emoji: "\u{1F41A}", name: "Shell" }
+  ];
+  var W = 900, H = 700;
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#071a2e",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false, paused = false;
+  var moves = 0, matches = 0, score = 0, combo = 0, bestCombo = 0, level = 1, timeLeft = 60, timeMax = 60;
+  var hudMoves, hudScore, hudTime, hudCombo, hudLevel, hudMsg, timerBar, timerBg, endOverlay, endTitle, endDetail, startOverlay, pauseOverlay, comboText;
+  var selectedIndex = 0, shuffleTimer = 0, lowTimeFlash = 0;
+  var audioCtx = null;
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    makePauseOverlay(s);
+    s.input.keyboard.on("keydown", function (e) { handleKeydown(s, e); });
+    updateA11y("Ocean Arcade Memory Rush loaded. Press Start to play. Use arrow keys and Enter to flip cards. Build combos before time runs out.");
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0x071a2e, 1); g.fillRect(0, 0, W, H);
+    for (var i = 0; i < 8; i++) {
+      var a = 0.06 + i * 0.018;
+      g.fillStyle(0x4EA8DE, a); g.fillRect(0, 120 + i * 68, W, 56);
+    }
+    g.fillStyle(0x0f2f4d, 1); g.fillRect(0, 470, W, 230);
+    g.lineStyle(3, 0x4EA8DE, 0.32);
+    for (var wy = 482; wy < 560; wy += 18) {
+      g.beginPath(); g.moveTo(0, wy);
+      for (var x = 0; x <= W; x += 18) { g.lineTo(x, wy + Math.sin(x * 0.02 + wy * 0.1) * 6); }
+      g.strokePath();
+    }
+    g.fillStyle(0xffffff, 0.10);
+    for (var b = 0; b < 20; b++) {
+      var bx = Math.random() * W, by = 190 + Math.random() * 380, br = 2 + Math.random() * 7;
+      g.fillCircle(bx, by, br);
+      g.fillStyle(0x4EA8DE, 0.14); g.fillCircle(bx - 1.5, by - 1.5, br * 0.45);
+      g.fillStyle(0xffffff, 0.10);
+    }
+    g.lineStyle(1, 0x4EA8DE, 0.07);
+    for (var gx = 0; gx < W; gx += 45) { g.lineBetween(gx, 0, gx, H); }
+    for (var gy = 0; gy < H; gy += 45) { g.lineBetween(0, gy, W, gy); }
+    g.fillStyle(0x4EA8DE, 0.18); g.fillCircle(770, 110, 70);
+    g.fillStyle(0xffffff, 0.92); g.fillCircle(770, 110, 38);
+    g.fillStyle(0x4EA8DE, 0.22); g.fillCircle(770, 110, 52);
+  }
+
+  function makeHud(scene) {
+    var topBg = scene.add.graphics();
+    topBg.fillStyle(0x102A43, 1); topBg.fillRoundedRect(0, 0, W, 148, 18);
+    topBg.fillStyle(0x4EA8DE, 1); topBg.fillRect(0, 144, W, 4);
+    scene.add.text(18, 10, "\u25C9 OCEAN ARCADE RUSH", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "26px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0, 0);
+    scene.add.text(18, 38, "MEMORY MATCH // COMBO x SCORE // TIME ATTACK", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "11px", color: "#8ecae6", fontStyle: "bold" }).setOrigin(0, 0);
+    hudScore = scene.add.text(18, 62, "SCORE 0000", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "22px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0, 0);
+    hudLevel = scene.add.text(18, 88, "LVL 1 \u2022 PAIRS 0/6", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "16px", color: "#a8d8f0", fontStyle: "bold" }).setOrigin(0, 0);
+    hudMoves = scene.add.text(18, 110, "MOVES 0", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "14px", color: "#7fb8d6", fontStyle: "bold" }).setOrigin(0, 0);
+    hudTime = scene.add.text(W - 18, 62, "TIME 60.0", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "24px", color: "#ffd166", fontStyle: "bold" }).setOrigin(1, 0);
+    hudCombo = scene.add.text(W - 18, 90, "COMBO x0", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "16px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(1, 0);
+    hudMsg = scene.add.text(W - 18, 112, "READY?", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#102A43", fontStyle: "bold", backgroundColor: "#4EA8DE" }).setOrigin(1, 0).setPadding(6, 2, 6, 2);
+    timerBg = scene.add.graphics(); timerBg.fillStyle(0x1a3a5a, 1); timerBg.fillRoundedRect(18, 132, W - 36, 10, 5);
+    timerBar = scene.add.graphics();
+    var btn1 = scene.add.container(W - 110, 18);
+    var bg1 = scene.add.graphics(); bg1.fillStyle(0x4EA8DE, 1); bg1.fillRoundedRect(-52, -14, 104, 28, 14);
+    var lb1 = scene.add.text(0, 0, "\u21BB RESTART", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "13px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    btn1.add([bg1, lb1]);
+    bg1.setInteractive(new Phaser.Geom.Rectangle(-52, -14, 104, 28), Phaser.Geom.Rectangle.Contains);
+    bg1.on("pointerdown", function () { restart(scene); });
+    bg1.on("pointerover", function () { btn1.setScale(1.05); });
+    bg1.on("pointerout", function () { btn1.setScale(1); });
+    var btn2 = scene.add.container(W - 110, 48);
+    var bg2 = scene.add.graphics(); bg2.fillStyle(0x102A43, 1); bg2.lineStyle(2, 0x4EA8DE, 1); bg2.fillRoundedRect(-52, -10, 104, 22, 11); bg2.strokeRoundedRect(-52, -10, 104, 22, 11);
+    var lb2 = scene.add.text(0, 0, "\u23F8 PAUSE [P]", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "11px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    btn2.add([bg2, lb2]);
+    bg2.setInteractive(new Phaser.Geom.Rectangle(-52, -10, 104, 22), Phaser.Geom.Rectangle.Contains);
+    bg2.on("pointerdown", function () { togglePause(scene); });
+    comboText = scene.add.text(W / 2, 168, "", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "28px", color: "#ffd166", fontStyle: "bold", stroke: "#102A43", strokeThickness: 4 }).setOrigin(0.5).setVisible(false);
+    scene.add.text(W / 2, 168, "MATCH PAIRS \u2022 BUILD COMBO \u2022 BEAT THE CLOCK!", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "12px", color: "#8ecae6", fontStyle: "bold" }).setOrigin(0.5);
+    updateTimerBar();
+  }
+
+  function getDeckForLevel(lv) {
+    var count = lv === 1 ? 6 : (lv === 2 ? 8 : 10);
+    var chosen = OCEAN_ANIMALS.slice(0, count);
+    var deck = [];
+    chosen.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    var cols = lv === 1 ? 4 : (lv === 2 ? 4 : 5);
+    var rows = lv === 1 ? 3 : (lv === 2 ? 4 : 4);
+    return { deck: deck, cols: cols, rows: rows };
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var info = getDeckForLevel(level);
+    var deck = info.deck, cols = info.cols;
+    var cw, ch, gx, gy, padX, padY;
+    if (level === 1) { cw = 185; ch = 140; gx = 62; gy = 195; padX = 22; padY = 16; }
+    else if (level === 2) { cw = 155; ch = 118; gx = 48; gy = 190; padX = 16; padY = 12; }
+    else { cw = 148; ch = 112; gx = 32; gy = 188; padX = 14; padY = 10; }
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    selectedIndex = 0;
+    updateKeyboardSelection();
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0x102A43, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 12);
+    back.fillStyle(0xffffff, 0.16); back.fillRoundedRect(-w / 2 + 10, -h / 2 + 10, w - 20, 18, 8);
+    back.fillStyle(0xffffff, 0.12);
+    for (var i = 0; i < 3; i++) { back.fillCircle(-w / 4 + i * 18, -h / 6, 5); }
+    var paw = scene.add.text(0, -4, "\u25C9", { fontSize: "42px", color: "#102A43" }).setOrigin(0.5);
+    var q = scene.add.text(0, 18, "?", { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: "18px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var showBack = scene.add.container(0, 0, [back, paw, q]);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xe0f2fe, 0xcaf0f8, 0x90e

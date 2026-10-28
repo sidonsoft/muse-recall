@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animal Arcade Match</title>
+<style>
+  :root{
+    --bg:#0b1026;
+    --panel:#151b3d;
+    --neon-cyan:#00f5ff;
+    --neon-pink:#ff2fb3;
+    --neon-yellow:#ffe14d;
+    --text:#f4f6ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(1200px 600px at 50% -10%, #2a1a5e 0%, var(--bg) 55%, #05070f 100%);
+    color:var(--text);
+    font-family:"Segoe UI", Verdana, Geneva, Tahoma, sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:16px;
+  }
+  header{
+    width:100%;
+    max-width:780px;
+    text-align:center;
+    background:rgba(21,27,61,.9);
+    border:2px solid var(--neon-cyan);
+    border-radius:16px;
+    box-shadow:0 0 18px rgba(0,245,255,.45), 0 0 42px rgba(255,47,179,.25);
+    padding:14px 16px;
+  }
+  h1{
+    margin:0;
+    font-size:clamp(1.4rem, 4.5vw, 2.2rem);
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--neon-yellow);
+    text-shadow:0 0 8px rgba(255,225,77,.9), 0 0 22px rgba(255,47,179,.7);
+  }
+  .encourage{
+    margin:8px 0 12px;
+    font-size:clamp(.95rem, 3.5vw, 1.1rem);
+    color:#fff;
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    align-items:center;
+  }
+  .pill{
+    min-width:110px;
+    padding:8px 12px;
+    border-radius:999px;
+    background:#080c22;
+    border:2px solid var(--neon-pink);
+    font-weight:700;
+    font-size:1rem;
+    box-shadow:0 0 10px rgba(255,47,179,.5);
+  }
+  .pill span{color:var(--neon-cyan)}
+  #restartBtn{
+    cursor:pointer;
+    border:3px solid var(--neon-yellow);
+    background:linear-gradient(180deg,#ff2fb3,#7b1ff2);
+    color:#fff;
+    font-weight:800;
+    font-size:1.05rem;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    border-radius:999px;
+    padding:10px 22px;
+    box-shadow:0 0 14px rgba(255,47,179,.8);
+  }
+  #restartBtn:hover,#restartBtn:focus-visible{
+    outline:3px solid var(--neon-cyan);
+    outline-offset:2px;
+    transform:scale(1.04);
+  }
+  #restartBtn:active{transform:scale(.97)}
+  main{width:100%;max-width:780px}
+  #game-wrap{
+    position:relative;
+    margin-top:14px;
+    border:2px solid var(--neon-cyan);
+    border-radius:16px;
+    overflow:hidden;
+    background:#080c22;
+    box-shadow:0 0 18px rgba(0,245,255,.4);
+  }
+  #game-container{width:100%;aspect-ratio:4/3;max-height:62vh}
+  #game-container canvas{display:block;margin:0 auto}
+  #messageBar{
+    text-align:center;
+    min-height:1.8em;
+    font-weight:700;
+    padding:8px;
+    font-size:1.05rem;
+    color:var(--neon-cyan);
+  }
+  #winOverlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background:rgba(5,7,15,.82);
+    text-align:center;
+    padding:20px;
+  }
+  #winOverlay[hidden]{display:none}
+  #winOverlay h2{
+    margin:0;
+    color:var(--neon-yellow);
+    font-size:clamp(1.5rem,6vw,2.4rem);
+    text-shadow:0 0 12px rgba(255,225,77,.9);
+  }
+  #winOverlay p{margin:0;font-size:1.1rem}
+  .help{
+    width:100%;
+    max-width:780px;
+    margin-top:12px;
+    font-size:.95rem;
+    line-height:1.5;
+    background:rgba(21,27,61,.85);
+    border-radius:12px;
+    padding:10px 14px;
+    border:1px solid #334;
+  }
+  @media (max-width:480px){
+    .pill{min-width:88px;font-size:.9rem}
+    #restartBtn{width:100%}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Animal Arcade Match</h1>
+  <p class="encourage">You can do it — find all the animal friends!</p>
+  <div class="hud" role="status" aria-live="polite">
+    <div class="pill">Moves: <span id="moves">0</span></div>
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Pairs: <span id="pairs">0/6</span></div>
+    <button type="button" id="restartBtn" aria-label="Start or restart the memory game">Start Game</button>
+  </div>
+</header>
+<main>
+  <div id="game-wrap">
+    <div id="game-container" tabindex="0" role="application" aria-label="Animal memory board. Use arrow keys to choose a card and press Enter to flip it. You can also tap or click cards."></div>
+    <div id="winOverlay" hidden>
+      <h2>You finished all 6 pairs!</h2>
+      <p id="winStats">Moves: 0, Score: 0</p>
+      <p>Press Restart to play again.</p>
+    </div>
+  </div>
+  <div id="messageBar" role="status" aria-live="polite">Press Start Game to play!</div>
+  <div class="help">
+    <strong>How to play:</strong> Click or tap two cards to flip them. Match all 6 animal pairs.
+    Keyboard: focus the board, use arrow keys to move, press Enter to flip.
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var ANIMALS = [
+    { emoji: '🐶', name: 'Dog' },
+    { emoji: '🐱', name: 'Cat' },
+    { emoji: '🦁', name: 'Lion' },
+    { emoji: '🐸', name: 'Frog' },
+    { emoji: '🐵', name: 'Monkey' },
+    { emoji: '🐘', name: 'Elephant' }
+  ];
+  var GAME_W = 720;
+  var GAME_H = 540;
+  var COLS = 4;
+  var ROWS = 3;
+  var CARD_W = 150;
+  var CARD_H = 148;
+
+  var movesEl = document.getElementById('moves');
+  var scoreEl = document.getElementById('score');
+  var pairsEl = document.getElementById('pairs');
+  var restartBtn = document.getElementById('restartBtn');
+  var messageBar = document.getElementById('messageBar');
+  var winOverlay = document.getElementById('winOverlay');
+  var winStats = document.getElementById('winStats');
+  var boardEl = document.getElementById('game-container');
+
+  var moves = 0;
+  var score = 0;
+  var matchedPairs = 0;
+  var started = false;
+  var gameScene = null;
+
+  function beep(freq, dur, delay) {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { return; }
+      var ctx = beep.ctx;
+      if (!ctx) {
+        ctx = new AC();
+        beep.ctx = ctx;
+      }
+      var t = ctx.currentTime + (delay || 0);
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.08, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    } catch (e) { /* sound optional */ }
+  }
+
+  function updateHUD() {
+    movesEl.textContent = String(moves);
+    scoreEl.textContent = String(score);
+    pairsEl.textContent = String(matchedPairs) + '/6';
+  }
+
+  function setMessage(text) {
+    messageBar.textContent = text;
+  }
+
+  function shuffledDeck() {
+    var deck = ANIMALS.concat(ANIMALS).slice();
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = deck[i];
+      deck[i] = deck[j];
+      deck[j] = tmp;
+    }
+    return deck;
+  }
+
+  var MemoryScene = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function MemoryScene() {
+      Phaser.Scene.call(this, { key: 'Memory' });
+    },
+    create: function () {
+      gameScene = this;
+      this.cards = [];
+      this.firstPick = null;
+      this.locked = true;
+      this.cursor = 0;
+      this.buildBoard(shuffledDeck());
+      this.updateCursorHighlight();
+    },
+    buildBoard: function (deck) {
+      var self = this;
+      var gridW = COLS * CARD_W + (COLS - 1) * 20;
+      var gridH = ROWS * CARD_H + (ROWS - 1) * 18;
+      var startX = (GAME_W - gridW) / 2 + CARD_W / 2;
+      var startY = (GAME_H - gridH) / 2 + CARD_H / 2;
+      for (var i = 0; i < 12; i++) {
+        (function (index) {
+          var col = index % COLS;
+          var row = Math.floor(index / COLS);
+          var x = startX + col * (CARD_W + 20);
+          var y = startY + row * (CARD_H + 18);
+          var bg = self.add.rectangle(0, 0, CARD_W, CARD_H, 0x1c2456);
+          bg.setStrokeStyle(5, 0x00f5ff, 1);
+          var label = self.add.text(0, -6, '?', {
+            fontSize: '64px',
+            color: '#ffe14d',
+            fontStyle: 'bold'
+          }).setOrigin(0.5);
+          var sub = self.add.text(0, 48, 'ARCADE', {
+            fontSize: '16px',
+            color: '#00f5ff'
+          }).setOrigin(0.5);
+          var holder = self.add.container(x, y, [bg, label, sub]);
+          holder.setSize(CARD_W, CARD_H);
+          holder.setInteractive({ useHandCursor: true });
+          var card = {
+            index: index,
+            animal: deck[index],
+            bg: bg,
+            label: label,
+            sub: sub,
+            holder: holder,
+            faceUp: false,
+            matched: false
+          };
+          holder.on('pointerdown', function () {
+            self.selectAndFlip(index);
+          });
+          self.cards.push(card);
+        })(i);
+      }
+    },
+    setInputEnabled: function (enabled) {
+      this.locked = !enabled;
+    },
+    selectAndFlip: function (index) {
+      if (!started || this.locked) { return; }
+      this.cursor = index;
+      this.updateCursorHighlight();
+      this.flipCard(this.cards[index]);
+    },
+    moveCursor: function (dx, dy) {
+      if (!started) { return; }
+      var col = this.cursor % COLS;
+      var row = Math.floor(this.cursor / COLS);
+      col = (col + dx + COLS) % COLS;
+      row = (row + dy + ROWS) % ROWS;
+      this.cursor = row * COLS + col;
+      this.updateCursorHighlight();
+    },
+    updateCursorHighlight: function () {
+      for (var i = 0; i < this.cards.length; i++) {
+        var c = this.cards[i];
+        if (c.matched) {
+          c.bg.setStrokeStyle(5, 0x39ff88, 1);
+        } else if (i === this.cursor && started) {
+          c.bg.setStrokeStyle(7, 0xffe14d, 1);
+        } else {
+          c.bg.setStrokeStyle(5, 0x00f5ff, 1);
+        }
+      }
+    },
+    showFace: function (card, faceUp) {
+      card.faceUp = faceUp;
+      if (faceUp) {
+        card.bg.setFillStyle(0xffffff, 1);
+        card.label.setText(card.animal.emoji);
+        card.label.setFontSize(72);
+        card.sub.setText(card.animal.name);
+        card.sub.setColor('#7b1ff2');
+      } else if (!card.matched) {
+        card.bg.setFillStyle(0x1c2456, 1);
+        card.label.setText('?');
+        card.label.setFontSize(64);
+        card.sub.setText('ARCADE');
+        card.sub.setColor('#00f5ff');
+      }
+    },
+    flipCard: function (card) {
+      var self = this;
+      if (!card || card.matched || card.faceUp || this.locked) { return; }
+      beep(520, 0.08, 0);
+      this.tweens.add({
+        targets: card.holder,
+        scaleX: 0,
+        duration: 110,
+        onComplete: function () {
+          self.showFace(card, true);
+          self.tweens.add({ targets: card.holder, scaleX: 1, duration: 110 });
+          self.afterFlip(card);
+        }
+      });
+    },
+    flipBack: function (card, delay) {
+      var self = this;
+      this.time.delayedCall(delay, function () {
+        self.tweens.add({
+          targets: card.holder,
+          scaleX: 0,
+          duration: 120,
+          onComplete: function () {
+            self.showFace(card, false);
+            self.tweens.add({ targets: card.holder, scaleX: 1, duration: 120 });
+          }
+        });
+      });
+    },
+    afterFlip: function (card) {
+      if (!this.firstPick) {
+        this.firstPick = card;
+        setMessage(card.animal.name + ' — pick one more!');
+        return;
+      }
+      var first = this.firstPick;
+      if (first === card) { return; }
+      this.firstPick = null;
+      moves += 1;
+      if (first.animal.emoji === card.animal.emoji) {
+        first.matched = true;
+        card.matched = true;
+        matchedPairs += 1;
+        score += 100;
+        updateHUD();
+        this.updateCursorHighlight();
+        first.bg.setFillStyle(0xd8ffe6, 1);
+        card.bg.setFillStyle(0xd8ffe6, 1);
+        this.tweens.add({ targets: [first.holder, card.holder], scale: 1.06, duration: 130, yoyo: true });
+        beep(660, 0.1, 0);
+        beep(880, 0.14, 0.09);
+        if (matchedPairs >= 6) {
+          this.onWin();
+        } else {
+          setMessage('Pair found! +100 — ' + matchedPairs + ' of 6 done.');
+        }
+      } else {
+        updateHUD();
+        setMessage('No match — try again!');
+        beep(220, 0.12, 0);
+        this.locked = true;
+        this.flipBack(first, 550);
+        this.flipBack(card, 550);
+        this.time.delayedCall(820, function () {
+          gameScene.locked = false;
+        });
+      }
+    },
+    onWin: function () {
+      this.locked = true;
+      updateHUD();
+      setMessage('Finished! Score ' + score + ' in ' + moves + ' moves.');
+      winStats.textContent = 'Moves: ' + moves + ', Score: ' + score;
+      winOverlay.hidden = false;
+      restartBtn.textContent = 'Restart';
+      restartBtn.focus();
+      beep(523, 0.12, 0);
+      beep(659, 0.12, 0.12);
+      beep(784, 0.2, 0.24);
+    },
+    resetBoard: function () {
+      var deck = shuffledDeck();
+      for (var i = 0; i < this.cards.length; i++) {
+        var card = this.cards[i];
+        card.animal = deck[i];
+        card.matched = false;
+        card.faceUp = false;
+        card.holder.scaleX = 1;
+        card.holder.scaleY = 1;
+        this.showFace(card, false);
+      }
+      this.firstPick = null;
+      this.cursor = 0;
+      this.locked = false;
+      this.updateCursorHighlight();
+    }
+  });
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game-container',
+    transparent: true,
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: GAME_W,
+      height: GAME_H
+    },
+    scene: [MemoryScene]
+  };
+
+  var game = new Phaser.Game(config);
+
+  function startOrRestart() {
+    moves = 0;
+    score = 0;
+    matchedPairs = 0;
+    started = true;
+    winOverlay.hidden = true;
+    restartBtn.textContent = 'Restart';
+    updateHUD();
+    setMessage('Find the matching animals!');
+    if (gameScene) {
+      gameScene.resetBoard();
+    }
+    boardEl.focus();
+  }
+
+  restartBtn.addEventListener('click', startOrRestart);
+  restartBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      startOrRestart();
+    }
+  });
+
+  boardEl.addEventListener('keydown', function (e) {
+    if (!gameScene) { return; }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      gameScene.moveCursor(-1, 0);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      gameScene.moveCursor(1, 0);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      gameScene.moveCursor(0, -1);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      gameScene.moveCursor(0, 1);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      gameScene.selectAndFlip(gameScene.cursor);
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!gameScene) { return; }
+    if (document.activeElement === boardEl) { return; }
+    if (e.key === 'Enter' && document.activeElement !== restartBtn) {
+      var tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag !== 'BUTTON' && tag !== 'INPUT') {
+        boardEl.focus();
+      }
+    }
+  });
+
+  updateHUD();
+})();
+</script>
+</body>
+</html>

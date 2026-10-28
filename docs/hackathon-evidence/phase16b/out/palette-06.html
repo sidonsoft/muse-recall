@@ -1,0 +1,175 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Arcade Memory Frenzy</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#0B2A4A;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;position:relative}
+  canvas{border-radius:18px;box-shadow:0 12px 40px rgba(16,42,67,.35), 0 0 0 4px rgba(78,168,222,.28);border:2px solid #4EA8DE}
+</style>
+</head>
+<body>
+<div id="game" role="application" aria-label="Ocean Arcade Memory Game"></div>
+<div id="aria-live" aria-live="polite" aria-atomic="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F419}", name: "Octo" },
+    { emoji: "\u{1F42C}", name: "Dolphin" },
+    { emoji: "\u{1F433}", name: "Whale" },
+    { emoji: "\u{1F980}", name: "Crab" },
+    { emoji: "\u{1F422}", name: "Turtle" },
+    { emoji: "\u{1F420}", name: "Tropical" }
+  ];
+  var W = 900, H = 700;
+  var START_TIME = 60;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#EAF6FF",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var score = 0, combo = 0, maxCombo = 0, timeLeft = START_TIME, level = 1;
+  var hudMoves, hudScore, hudMsg, hudTime, hudCombo, hudLevel, hudScoreNum, timeBarBg, timeBarFill, endOverlay, endTitle, endDetail, endSub, startOverlay, endBtnBg, endBtnLabel, nextBtnBg, nextBtnLabel, arcadeFlash;
+  var timerEvent = null, tideEvent = null, bubbles = [];
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    createBubbles(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupKeyboard(s);
+    var scan = s.add.graphics().setDepth(5).setAlpha(0.06);
+    for (var y = 0; y < H; y += 4) { scan.fillStyle(0x102A43, 1); scan.fillRect(0, y, W, 1); }
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xEAF6FF, 1); g.fillRect(0, 0, W, 140);
+    g.fillStyle(0xD6EFFF, 1); g.fillRect(0, 140, W, 100);
+    g.fillStyle(0xB9E6FF, 1); g.fillRect(0, 240, W, 110);
+    g.fillStyle(0x8ECAE6, 1); g.fillRect(0, 350, W, 120);
+    g.fillStyle(0x4EA8DE, 1); g.fillRect(0, 470, W, 230);
+    g.fillStyle(0xE8DCC6, 1); g.fillRect(0, 620, W, 80);
+    g.fillStyle(0xD9C9A8, 1); g.fillEllipse(200, 640, 180, 30); g.fillEllipse(650, 650, 220, 36); g.fillEllipse(450, 670, 300, 24);
+    g.lineStyle(3, 0xFFFFFF, 0.9);
+    for (var i = 0; i < 3; i++) {
+      var wy = 150 + i * 18;
+      g.beginPath();
+      g.moveTo(0, wy);
+      for (var x = 0; x <= W; x += 20) { g.lineTo(x, wy + Math.sin(x * 0.02 + i) * 6); }
+      g.strokePath();
+    }
+    g.fillStyle(0xFFFFFF, 0.95);
+    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+    g.fillEllipse(560, 80, 140, 44);
+    g.fillStyle(0xFFFFFF, 1); g.fillRect(90, 340, 110, 130);
+    g.fillStyle(0xFF6B6B, 1); g.fillRect(90, 360, 110, 18); g.fillRect(90, 400, 110, 18); g.fillRect(90, 440, 110, 18);
+    g.fillStyle(0x102A43, 1); g.fillRect(115, 380, 60, 40); g.fillRect(125, 430, 40, 40);
+    g.fillStyle(0xFFD93D, 1); g.fillTriangle(80, 340, 145, 270, 210, 340);
+    g.fillStyle(0xFFE08A, 1); g.fillCircle(145, 285, 14);
+    g.fillStyle(0xFFF8B0, 0.18); g.fillTriangle(145, 285, 320, 320, 320, 250);
+    g.fillStyle(0xFF7E7E, 1); g.fillEllipse(320, 600, 40, 70); g.fillEllipse(340, 590, 30, 60);
+    g.fillStyle(0xFFB07E, 1); g.fillEllipse(780, 590, 50, 80); g.fillEllipse(800, 580, 36, 60);
+    g.fillStyle(0x7ED957, 1); g.fillEllipse(500, 610, 60, 50); g.fillEllipse(520, 600, 40, 40);
+    g.lineStyle(8, 0x8B5A2B, 1);
+    for (var x2 = 320; x2 <= 860; x2 += 60) { g.lineBetween(x2, 500, x2, 570); }
+    g.lineBetween(300, 515, 880, 515); g.lineBetween(300, 545, 880, 545);
+    g.fillStyle(0x4EA8DE, 0.12); g.fillRoundedRect(40, 180, 820, 430, 24);
+    g.lineStyle(2, 0x4EA8DE, 0.25); g.strokeRoundedRect(40, 180, 820, 430, 24);
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} OCEAN ARCADE", textStyle(30, "#102A43")).setOrigin(0, 0);
+    scene.add.text(24, 44, "MEMORY FRENZY", textStyle(16, "#4EA8DE")).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 72, "Moves: 0", textStyle(18, "#102A43"));
+    hudScore = scene.add.text(24, 94, "Pairs: 0 / 6", textStyle(18, "#102A43"));
+    hudLevel = scene.add.text(24, 116, "Wave: 1", textStyle(16, "#2A7CB8"));
+    hudScoreNum = scene.add.text(W - 24, 18, "SCORE 0", textStyle(28, "#102A43")).setOrigin(1, 0);
+    hudScoreNum.setStroke("#FFFFFF", 4);
+    var barX = W - 210, barY = 58, barW = 186, barH = 18;
+    timeBarBg = scene.add.graphics();
+    timeBarBg.fillStyle(0x102A43, 1); timeBarBg.fillRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, 9);
+    timeBarBg.fillStyle(0xFFFFFF, 1); timeBarBg.fillRoundedRect(barX, barY, barW, barH, 8);
+    timeBarFill = scene.add.graphics();
+    hudTime = scene.add.text(barX + barW / 2, barY + barH / 2, "60.0s", textStyle(14, "#FFFFFF")).setOrigin(0.5);
+    hudTime.setDepth(1);
+    hudCombo = scene.add.text(W - 24, 88, "", textStyle(20, "#FF6B35")).setOrigin(1, 0).setVisible(false);
+    hudCombo.setStroke("#FFFFFF", 4);
+    hudMsg = scene.add.text(W / 2, 168, "Find pairs fast! Build COMBO!", textStyle(18, "#102A43")).setOrigin(0.5);
+    hudMsg.setStroke("#FFFFFF", 3);
+    var btn = scene.add.container(W - 110, 122);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -22, 172, 44, 22);
+    bg.lineStyle(2, 0x102A43, 1); bg.strokeRoundedRect(-86, -22, 172, 44, 22);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(18, "#FFFFFF")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -22, 172, 44), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    arcadeFlash = scene.add.graphics().setDepth(4).setVisible(false);
+    arcadeFlash.fillStyle(0xFFFFFF, 1); arcadeFlash.fillRect(0, 0, W, H);
+    updateTimeBar(scene);
+  }
+
+  function shuffledDeck() {
+    var deck = [];
+    ANIMALS.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var deck = shuffledDeck();
+    var cols = 4, rows = 3;
+    var cw = 185, ch = 140, gx = 62, gy = 195, padX = 22, padY = 16;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card));
+    });
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xFFFFFF, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 16);
+    back.lineStyle(2, 0xFFFFFF, 0.9);
+    for (var i = -h / 2 + 30; i < h / 2 - 10; i += 14) {
+      back.beginPath();
+      back.moveTo(-w / 2 + 18, i);
+      for (var xx = -w / 2 + 18; xx < w / 2 - 18; xx += 12) { back.lineTo(xx + 6, i + 4); back.lineTo(xx + 12, i); }
+      back.strokePath();
+    }
+    back.fillStyle(0xFFFFFF

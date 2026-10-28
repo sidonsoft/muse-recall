@@ -248,6 +248,34 @@ demonstration and the integrated Phase 15B research; those claims are mapped her
 - **Limitations:** the v1 coder source is lost; v2 is post-hoc with narrow definitions; the memory
   arm carried the full decision set; no per-run model or memory ids.
 
+## V14 addendum — Ocean Pairs video and Phase 16 / 16B
+
+The V14 demonstration video (2:46, 1080p) replaces V2. Its live footage is Ocean Pairs (project
+`safegame6`) and its closing card reports Phase 16 / 16B. Those claims are mapped here.
+
+### C18 — A remembered rule eliminated rule violations on two Meta models; palette-only memory did not
+
+- **Evidence:** [`docs/hackathon-evidence/phase16/EVIDENCE_CARD.md`](../hackathon-evidence/phase16/EVIDENCE_CARD.md),
+  both protocols with locked hashes, 96 run records, every usable output, `SHA256SUMS`; re-derived by
+  `pnpm verify:research16`.
+- **Kind:** authentic model output. Muse Spark through the production HTML Studio path (48 runs);
+  Muse Spark Open on Baseten through a chat completion with the production prompt builder (48 runs).
+- **Confidence:** high for the stated counts: 28/28 no memory, 18/28 palette only, 0/29 rule.
+- **Limitations:** one baseline game, one request, one rule; code mechanics only; the rule arm also
+  carries the palette; 11/48 Muse Spark runs unusable (worst case still significant); Phase 16B is a
+  task replication, not a runtime replication; lock times are local file times.
+
+### C19 — The live Ocean Pairs workflow: stored rule, refusal, approval, rollback
+
+- **Evidence:** the V14 screen recording. It shows the decision with its source job, the retrieval
+  explainer (1 candidate, 1 selected), a countdown-and-penalty request returning no change (0 lines added), a
+  staged v2 approved after review, and v1 restored by rollback.
+- **Kind:** authentic model output, recorded on screen.
+- **Confidence:** medium: one live session.
+- **Limitations:** the `safegame6` job records and database are not exported to this repository; the
+  recording is the record. The refusal is one run and does not establish causation; Decision Guard
+  reported the palette rule as not verified and played no part in it.
+
 ## Claims we explicitly do NOT make (unsupported)
 
 | Tempting claim | Verdict | Why |
@@ -259,8 +287,9 @@ demonstration and the integrated Phase 15B research; those claims are mapped her
 | “There is a runtime-verification screenshot” | **Unsupported** | The UI exposes no such image; the browser preview capture is a different feature. |
 | “All remembered constraints are applied to output” | **Unsupported** | Phase 12A: accent tracked in all conditions, text colour ignored; retrieval uses a budget. |
 | “Guard catches every violation of remembered decisions” | **Unsupported** | 8-digit RGBA hexes and tween flashes are demonstrated gaps. |
-| “Statistically significant improvement across development tasks” | **Unsupported** | Phase 15B supports one narrow contrast only (one model, game, rule, request); 12A is n = 1 per condition and 11A is n = 5. |
-| “A demo video exists” | **Unsupported** | No video file was created in Phase 14A; screenshots and a runbook are the assets. |
+| “Statistically significant improvement across development tasks” | **Unsupported** | Phase 16 / 16B support one narrow contrast on two models (one game, rule, request); Phase 15B is one model; 12A is n = 1 per condition and 11A is n = 5. |
+| “Memory in general reduces violations” | **Unsupported** | Palette-only memory left 18 of 28 edits in violation; only the rule arm reached zero. |
+| “A demo video exists” | *Superseded* | True since the release: V14 (2:46) is the demonstration video. Phase 14A itself produced no video. |
 | Performance/memory-cost savings beyond those cited | **Unsupported** | No controlled benchmark of end-to-end savings. |
 
 ## Evidence gaps / open items for the director
