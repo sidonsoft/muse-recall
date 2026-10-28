@@ -664,6 +664,9 @@ describe('forge workflow', () => {
     expect(third.json().error.code).toBe('too_many_jobs');
     await h.app.inject({ method: 'POST', url: `/api/forge/jobs/${first}/cancel`, payload: {} });
     await h.app.inject({ method: 'POST', url: `/api/forge/jobs/${second}/cancel`, payload: {} });
+    // Let both jobs finish before teardown removes their workspace.
+    expect((await waitForFinish(h.app, first)).status).toBe('cancelled');
+    expect((await waitForFinish(h.app, second)).status).toBe('cancelled');
   });
 
   it('rejects an invalid project id before touching the filesystem', async () => {
