@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NEON ABYSS // Memory Strike - Arcade Edition</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#071422;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Consolas","Courier New",monospace;background:radial-gradient(ellipse at top,#0B2A4A 0%,#071422 60%,#050E1A 100%)}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;position:relative}
+  canvas{border-radius:12px;box-shadow:0 0 40px rgba(78,168,222,.35),0 8px 30px rgba(0,0,0,.6);border:1px solid rgba(78,168,222,.25)}
+  #aria-live{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="aria-live" aria-live="polite" aria-atomic="true"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F419}", name: "KRAKEN" },
+    { emoji: "\u{1F988}", name: "SHARK" },
+    { emoji: "\u{1F40B}", name: "WHALE" },
+    { emoji: "\u{1F991}", name: "SQUID" },
+    { emoji: "\u{1F420}", name: "TROPIC" },
+    { emoji: "\u{1F421}", name: "PUFFER" },
+    { emoji: "\u{1F980}", name: "CRAB" },
+    { emoji: "\u{1F422}", name: "TURTLE" },
+    { emoji: "\u{1F99E}", name: "LOBSTER" },
+    { emoji: "\u{1FABC}", name: "JELLY" },
+    { emoji: "\u{1F41A}", name: "SHELL" },
+    { emoji: "\u{2B50}", name: "STAR" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#071422",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false, paused = false;
+  var moves = 0, matches = 0, score = 0, combo = 0, maxCombo = 0, level = 1, timeLeft = 60, totalPairs = 6, highScore = 0;
+  var hudMoves, hudScore, hudMsg, hudTime, hudLevel, hudCombo, hudTimeBar, endOverlay, endTitle, endDetail, startOverlay, pauseOverlay, focusRect;
+  var selectedIndex = 0;
+  var timerEvent = null;
+
+  function announce(text) {
+    var el = document.getElementById("aria-live");
+    if (el) { el.textContent = text; }
+  }
+
+  function create() {
+    var s = this;
+    drawOcean(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    makePauseOverlay(s);
+    setupKeyboard(s);
+    var scan = s.add.graphics().setDepth(100).setAlpha(0.04);
+    for (var y = 0; y < H; y += 4) { scan.fillStyle(0x4EA8DE, 1); scan.fillRect(0, y, W, 1); }
+    if (s.game.canvas) {
+      s.game.canvas.setAttribute("tabindex", "0");
+      s.game.canvas.setAttribute("aria-label", "Neon Abyss Memory Strike arcade game board. Use arrow keys to move, Enter to flip, P to pause, R to reset.");
+      s.game.canvas.focus();
+    }
+    hudTimeBar.clear();
+    hudTimeBar.fillStyle(0x4EA8DE, 1);
+    hudTimeBar.fillRoundedRect(W / 2 - 90, 70, 180, 10, 5);
+  }
+
+  function drawOcean(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0x071422, 1); g.fillRect(0, 0, W, H);
+    for (var i = 0; i < 20; i++) {
+      var c = Phaser.Display.Color.GetColor(7 + i * 1, 26 + i * 2, 50 + i * 3);
+      g.fillStyle(c, 0.07); g.fillRect(0, i * 35, W, 35);
+    }
+    g.lineStyle(1, 0x4EA8DE, 0.07);
+    for (var x = 0; x < W; x += 45) { g.lineBetween(x, 0, x, H); }
+    for (var y = 0; y < H; y += 45) { g.lineBetween(0, y, W, y); }
+    g.lineStyle(2, 0x4EA8DE, 0.55); g.lineBetween(0, 470, W, 470);
+    g.fillStyle(0x102A43, 1); g.fillRect(0, 470, W, 230);
+    g.lineStyle(1, 0x4EA8DE, 0.14);
+    for (var r = 1; r < 5; r++) { g.strokeCircle(770, 110, r * 38); }
+    g.fillStyle(0x4EA8DE, 0.95); g.fillCircle(770, 110, 6);
+    g.fillStyle(0x00D9FF, 0.45); g.fillCircle(770, 110, 14);
+    g.fillStyle(0x4EA8DE, 0.12);
+    for (var b = 0; b < 14; b++) {
+      var bx = Phaser.Math.Between(20, W - 20), by = Phaser.Math.Between(485, 685), br = Phaser.Math.Between(2, 6);
+      g.fillCircle(bx, by, br);
+    }
+    g.fillStyle(0x000000, 0.22); g.fillRect(0, 0, W, 16); g.fillRect(0, H - 16, W, 16);
+  }
+
+  function makeHud(scene) {
+    var bar = scene.add.graphics();
+    bar.fillStyle(0x102A43, 0.98); bar.fillRect(0, 0, W, 92);
+    bar.lineStyle(2, 0x4EA8DE, 0.85); bar.lineBetween(0, 92, W, 92);
+    scene.add.text(18, 10, "\u25C9 NEON ABYSS // MEMORY STRIKE", { fontFamily: "Consolas,monospace", fontSize: "18px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0, 0);
+    scene.add.text(18, 32, "ARCADE PROTOCOL v2.1  // 13+  DEEP SEA DIVISION", { fontFamily: "Consolas,monospace", fontSize: "10px", color: "#7ED6FB" }).setOrigin(0, 0);
+    hudScore = scene.add.text(18, 52, "SCORE 00000", { fontFamily: "Consolas,monospace", fontSize: "20px", color: "#FFFFFF", fontStyle: "bold" }).setOrigin(0, 0);
+    hudLevel = scene.add.text(18, 74, "LVL 1  PAIRS 0/6", { fontFamily: "Consolas,monospace", fontSize: "13px", color: "#7ED6FB" }).setOrigin(0, 0);
+    hudTime = scene.add.text(W / 2, 26, "60.0", { fontFamily: "Consolas,monospace", fontSize: "36px", color: "#FFFFFF", fontStyle: "bold" }).setOrigin(0.5);
+    scene.add.text(W / 2, 56, "TIME", { fontFamily: "Consolas,monospace", fontSize: "10px", color: "#4EA8DE" }).setOrigin(0.5);
+    var bgBar = scene.add.graphics(); bgBar.fillStyle(0x0B2A4A, 1); bgBar.fillRoundedRect(W / 2 - 90, 70, 180, 10, 5);
+    hudTimeBar = scene.add.graphics();
+    hudMoves = scene.add.text(W - 18, 52, "MOVES 0", { fontFamily: "Consolas,monospace", fontSize: "13px", color: "#7ED6FB" }).setOrigin(1, 0);
+    hudCombo = scene.add.text(W - 18, 70, "COMBO x1", { fontFamily: "Consolas,monospace", fontSize: "13px", color: "#FFD700" }).setOrigin(1, 0);
+    hudMsg = scene.add.text(W / 2, 108, "\u25C6 INSERT COIN - PRESS START \u25C6", { fontFamily: "Consolas,monospace", fontSize: "12px", color: "#4EA8DE" }).setOrigin(0.5);
+    var btn = scene.add.container(W - 90, 28);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-52, -16, 104, 32, 8);
+    bg.lineStyle(2, 0x7ED6FB, 1); bg.strokeRoundedRect(-52, -16, 104, 32, 8);
+    var label = scene.add.text(0, 0, "\u21BB RESET", { fontFamily: "Consolas,monospace", fontSize: "12px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-52, -16, 104, 32), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.05); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    scene.add.text(W / 2, H - 10, "ARROWS:MOVE  ENTER/SPACE:FLIP  P:PAUSE  R:RESET", { fontFamily: "Consolas,monospace", fontSize: "10px", color: "#4EA8DE" }).setOrigin(0.5).setAlpha(0.7);
+  }
+
+  function shuffledDeck(count) {
+    var pool = ANIMALS.slice();
+    for (var i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    }
+    var chosen = pool.slice(0, count);
+    var deck = [];
+    chosen.forEach(function (a, idx) {
+      deck.push({ key: idx, emoji: a.emoji, name: a.name });
+      deck.push({ key: idx, emoji: a.emoji, name: a.name });
+    });
+    for (var k = deck.length - 1; k > 0; k--) {
+      var j2 = Math.floor(Math.random() * (k + 1));
+      var t2 = deck[k]; deck[k] = deck[j2]; deck[j2] = t2;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    if (level === 1) { totalPairs = 6; }
+    else if (level === 2) { totalPairs = 8; }
+    else if (level === 3) { totalPairs = 10; }
+    else { totalPairs = 12; }
+    var deck = shuffledDeck(totalPairs);
+    var cols, rows, cw, ch, gx, gy, padX, padY;
+    if (totalPairs <= 6) { cols = 4; rows = 3; cw = 185; ch = 130; gx = 62; gy = 125; padX = 22; padY = 14; }
+    else if (totalPairs === 8) { cols = 4; rows = 4; cw = 185; ch = 110; gx = 62; gy = 115; padX = 22; padY = 12; }
+    else { cols = 6; rows = 4; cw = 125; ch = 105; gx = 42; gy = 115; padX = 14; padY = 12; }
+    if (hudLevel) { hudLevel.setText("LVL " + level + "  PAIRS " + matches + "/" + totalPairs); }
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card, idx));
+    });
+    selectedIndex = 0;
+    updateFocus();
+  }
+
+  function makeCard(scene, x, y, w, h, data, idx) {
+    var cont = scene.add.container(x, y);
+    var shadow = scene.add.graphics(); shadow.fillStyle(0x000000, 0.32); shadow.fillRoundedRect(-w / 2 + 4, -h / 2 + 6, w, h, 14);
+    var back = scene.add.graphics();
+    back.fillStyle(0x102A43, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+    back.lineStyle(2, 0x4EA8DE, 1); back.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    back.fillStyle(0x4EA8DE, 0.14); back.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 10);
+    back.lineStyle(1, 0x4EA8DE, 0.35);
+    back.lineBetween(-w / 2 + 12, -h / 2 + 12, w / 2 - 12, h / 2 - 12);
+    back.lineBetween(w / 2 - 12, -h / 2 + 12, -w / 2 + 12, h / 2 - 12);
+    back.fillStyle(0x4EA8DE, 1); back.fillCircle(0, 0, 3);
+    var paw = scene.add.text(0, -6, "\u25C9", { fontFamily: "Consolas,monospace", fontSize: "28px", color: "#4EA8DE" }).setOrigin(0.5);
+    var idxLabel = scene.add.text(0, 18, String(idx + 1).padStart(2, "0"), { fontFamily: "Consolas,monospace", fontSize: "10px", color: "#7ED6FB" }).setOrigin(0.5).setAlpha(0.6);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    fg.fillStyle(0xE6F7FF, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+    fg.lineStyle(3, 0x4EA8DE, 1); fg.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    fg.fillStyle(0x4EA8DE, 0.08); fg.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 10);
+    var emo = scene.add.text(0, -14, data.emoji, { fontSize: w > 150 ? "48px" : "36px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 32, data.name, { fontFamily: "Consolas,monospace", fontSize: "11px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var stripe = scene.add.graphics(); stripe.fillStyle(0x4EA8DE, 1); stripe.fillRect(-w / 2 + 8, -h / 2 + 8, w - 16, 4);
+    face.add([fg, stripe, emo, nm]);
+    var showBack = scene.add.container(0, 0, [shadow, back, paw, idxLabel]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, idx: idx, x: x, y: y, w: w, h: h };
+    cont.on("pointerdown", function () {
+      if (!paused) { selectedIndex = idx; updateFocus(); onCard(scene, card); }
+    });
+    cont.on("pointerover", function () { if (!card.matched && !card.faceUp) { cont.setScale(1.03); } });
+    cont.on("pointerout", function () { cont.setScale(1); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 110, ease: "Power2", onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 110, ease: "Power2", onComplete: done || function () {} });
+    }});
+  }
+
+  function spawnParticles(scene, x, y, color) {
+    for (var i = 0; i < 8; i++) {
+      var p = scene.add.graphics(); p.fillStyle(color, 1); p.fillCircle(0, 0, 3);
+      p.x = x; p.y = y;
+      (function (g) {
+        scene.tweens.add({ targets: g, x: x + Phaser.Math.Between(-40, 40), y: y + Phaser.Math.Between(-40, 40), alpha: 0, scale: 0, duration: 400, onComplete: function () { g.destroy(); } });
+      })(p);
+    }
+  }
+
+  function screenShake(scene, intensity) {
+    scene.cameras.main.shake(120, intensity * 0.003);
+  }
+
+  function startTimer(scene) {
+    stopTimer();
+    timerEvent = scene.time.addEvent({ delay: 100, loop: true, callback: function () {
+      if (!started || paused) { return; }
+      timeLeft -= 0.1;
+      if (timeLeft < 0) { timeLeft = 0; }
+      hudTime.setText(timeLeft.toFixed(1));
+      if (timeLeft < 10) { hudTime.setColor("#FF6B6B"); }
+      else if (timeLeft < 20) { hudTime.setColor("#FFD700"); }
+      else { hudTime.setColor("#FFFFFF"); }
+      var pct = Phaser.Math.Clamp(timeLeft / 60, 0, 1);
+      hudTimeBar.clear();
+      var col = timeLeft < 10 ? 0xFF6B6B : timeLeft < 20 ? 0xFFD700 : 0x4EA8DE;
+      hudTimeBar.fillStyle(col, 1); hudTimeBar.fillRoundedRect(W / 2 - 90, 70, 180 * pct, 10, 5);
+      if (timeLeft <= 0) { stopTimer(); showGameOver(scene, "TIME EXPIRED"); }
+    }});
+  }
+
+  function stopTimer() {
+    if (timerEvent) { timerEvent.remove(); timerEvent = null; }
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || paused || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("\u25C6 SCAN IN PROGRESS... ONE MORE \u25C6"); hudMsg.setColor("#7ED6FB"); announce("Card flipped, one more to match"); return; }
+    moves++;
+    hudMoves.setText("MOVES " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 140, ease: "Back.easeOut" });
+        var glowA = scene.add.graphics(); glowA.lineStyle(4, 0x00FFB8, 0.9); glowA.strokeRoundedRect(a.x - a.w / 2 - 4, a.y - a.h / 2 - 4, a.w + 8, a.h + 8, 16);
+        var glowB = scene.add.graphics(); glowB.lineStyle(4, 0x00FFB8, 0.9); glowB.strokeRoundedRect(card.x - card.w / 2 - 4, card.y - card.h / 2 - 4, card.w + 8, card.h + 8, 16);
+        scene.tweens.add({ targets: [glowA, glowB], alpha: 0, duration: 400, onComplete: function () { glowA.destroy(); glowB.destroy(); } });
+        spawnParticles(scene, a.x, a.y, 0x00FFB8);
+        spawnParticles(scene, card.x, card.y, 0x4EA8DE);
+        matches++;
+        combo++;
+        if (combo > maxCombo) { maxCombo = combo; }
+        var base = 100 * level;
+        var comboBonus = (combo - 1) * 50;
+        var timeBonus = Math.floor(timeLeft * 2);
+        var points = base + comboBonus + timeBonus;
+        score += points;
+        timeLeft = Math.min(99.9, timeLeft + 1.5);
+        hudScore.setText("SCORE " + String(score).padStart(5, "0"));
+        hudCombo.setText("COMBO x" + combo);
+        if (combo >= 3) { hudCombo.setColor("#00FFB8"); scene.tweens.add({ targets: hudCombo, scale: 1.3, yoyo: true, duration: 150 }); }
+        else if (combo >= 2) { hudCombo.setColor("#FFD700"); }
+        else { hudCombo.setColor("#7ED6FB"); }
+        hudLevel.setText("LVL " + level + "  PAIRS " + matches + "/" + totalPairs);
+        hudMsg.setText("\u25C6 MATCH! +" + points + "  COMBO x" + combo + " \u25C6");
+        hudMsg.setColor("#00FFB8");
+        announce("Match! Plus " + points + " points, combo " + combo);
+        lockBoard = false;
+        updateFocus();
+        if (matches === totalPairs) {
+          if (level >= 4) { showWin(scene); }
+          else { setTimeout(function () { nextLevel(scene); }, 800); }
+        }
+      }, 280);
+    } else {
+      hudMsg.setText("\u25C6 MISMATCH! -2.0s \u25C6");
+      hudMsg.setColor("#FF6B6B");
+      combo = 0;
+      hudCombo.setText("COMBO x1");
+      hudCombo.setColor("#7ED6FB");
+      timeLeft = Math.max(0, timeLeft - 2);
+      score = Math.max(0, score - 10);
+      hudScore.setText("SCORE " + String(score).padStart(5, "0"));
+      screenShake(scene, 4);
+      var flashA = scene.add.graphics(); flashA.lineStyle(3, 0xFF6B6B, 0.9); flashA.strokeRoundedRect(a.x - a.w / 2 - 2, a.y - a.h / 2 - 2, a.w + 4, a.h + 4, 16);
+      var flashB = scene.add.graphics(); flashB.lineStyle(3, 0xFF6B6B, 0.9); flashB.strokeRoundedRect(card.x - card.w / 2 - 2, card.y - card.h / 2 - 2, card.w + 4, card.h + 4, 16);
+      scene.tweens.add({ targets: [flashA, flashB], alpha: 0, duration: 300, onComplete: function () { flashA.destroy(); flashB.destroy(); } });
+      announce("Mismatch, minus 2 seconds");
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; updateFocus(); if (timeLeft <= 0) { showGameOver(scene, "TIME EXPIRED"); } });
+      }, 650);
+    }
+  }
+
+  function nextLevel(scene) {
+    hudMsg.setText("\u25C6 LEVEL " + level + " CLEAR! \u25C6");
+    var bonus = Math.floor(timeLeft * 10);
+    score += bonus;
+    hudScore.setText("SCORE " + String(score).padStart(5, "0"));
+    var overlay = scene.add.container(W / 2, H / 2).setDepth(15);
+    var bg = scene.add.graphics(); bg.fillStyle(0x102A43, 0.96); bg.fillRoundedRect(-260, -120, 520, 240, 20); bg.lineStyle(3, 0x4EA8DE, 1); bg.strokeRoundedRect(-260, -120, 520, 240, 20);
+    var t1 = scene.add.text(0, -70, "LEVEL " + level + " CLEAR", { fontFamily: "Consolas,monospace", fontSize: "28px", color: "#00FFB8", fontStyle: "bold" }).setOrigin(0.5);
+    var t2 = scene.add.text(0, -20, "TIME BONUS +" + bonus, { fontFamily: "Consolas,monospace", fontSize: "16px", color: "#FFD700" }).setOrigin(0.5);
+    var t3 = scene.add.text(0, 20, "GET READY FOR LVL " + (level + 1), { fontFamily: "Consolas,monospace", fontSize: "14px", color: "#7ED6FB" }).setOrigin(0.5);
+    var t4 = scene.add.text(0, 60, "DEPTH INCREASING // MORE PAIRS", { fontFamily: "Consolas,monospace", fontSize: "11px", color: "#4EA8DE" }).setOrigin(0.5);
+    overlay.add([bg, t1, t2, t3, t4]);
+    scene.tweens.add({ targets: overlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    announce("Level " + level + " clear, bonus " + bonus);
+    setTimeout(function () {
+      overlay.destroy();
+      level++;
+      matches = 0; firstPick = null; lockBoard = false;
+      timeLeft = Math.min(60, 45 + level * 5);
+      hudLevel.setText("LVL " + level + "  PAIRS 0/" + (level === 2 ? 8 : level === 3 ? 10 : 12));
+      hudMsg.setText("\u25C6 LVL " + level + " // DEPTH INCREASING \u25C6");
+      hudMsg.setColor("#4EA8DE");
+      buildBoard(scene);
+    }, 1400);
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics(); bg.fillStyle(0x071422, 0.88); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics(); panel.fillStyle(0x102A43, 1); panel.fillRoundedRect(-320, -210, 640, 420, 20); panel.lineStyle(3, 0x4EA8DE, 1); panel.strokeRoundedRect(-320, -210, 640, 420, 20);
+    var line = scene.add.graphics(); line.fillStyle(0x4EA8DE, 1); line.fillRect(-320, -210, 640, 4);
+    var title = scene.add.text(0, -160, "NEON ABYSS", { fontFamily: "Consolas,monospace", fontSize: "42px", color: "#FFFFFF", fontStyle: "bold" }).setOrigin(0.5);
+    var sub = scene.add.text(0, -120, "MEMORY STRIKE // ARCADE EDITION", { fontFamily: "Consolas,monospace", fontSize: "14px", color: "#4EA8DE" }).setOrigin(0.5);
+    var desc = scene.add.text(0, -70, "Match pairs before time runs out!\nBuild combos \u2022 Clear levels \u2022 Beat the abyss", { fontFamily: "Consolas,monospace", fontSize: "13px", color: "#7ED6FB", align: "center" }).setOrigin(0.5);
+    var feats = scene.add.text(0, -10, "\u25C6 4 LEVELS  \u25C6 COMBO MULTIPLIER  \u25C6 TIME BONUS \u25C6\n\u25C6 ARCADE SCORING  \u25C6 KEYBOARD + TOUCH \u25C6", { fontFamily: "Consolas,monospace", fontSize: "11px", color: "#E0F2FF", align: "center" }).setOrigin(0.5);
+    var row = scene.add.text(0, 40, "\u{1F419}  \u{1F988}  \u{1F40B}  \u{1F991}  \u{1F420}  \u{1F421}  \u{1F980}  \u{1F422}", { fontSize: "32px" }).setOrigin(0.5);
+    var btnBg = scene.add.graphics(); btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-140, 80, 280, 64, 12); btnBg.lineStyle(2, 0x7ED6FB, 1); btnBg.strokeRoundedRect(-140, 80, 280, 64, 12);
+    var btnTx = scene.add.text(0, 112, "\u25B6  INSERT COIN / START", { fontFamily: "Consolas,monospace", fontSize: "16px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 170, "[ ENTER ]  or  TAP TO START  //  ARROWS + ENTER TO PLAY", { fontFamily: "Consolas,monospace", fontSize: "10px", color: "#4EA8DE" }).setOrigin(0.5);
+    startOverlay.add([bg, panel, line, title, sub, desc, feats, row, btnBg, btnTx, hint]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-140, 80, 280, 64), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () {
+      started = true; lockBoard = false;
+      startOverlay.setVisible(false);
+      hudMsg.setText("\u25C6 SCAN THE ABYSS - FIND PAIRS! \u25C6");
+      hudMsg.setColor("#4EA8DE");
+      announce("Game started, level 1");
+      startTimer(scene);
+      updateFocus();
+    });
+    bg.setInteractive(new Phaser.Geom.Rectangle(-W / 2, -H / 2, W, H), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () {
+      if (startOverlay.visible) {
+        started = true; lockBoard = false;
+        startOverlay.setVisible(false);
+        hudMsg.setText("\u25C6 SCAN THE ABYSS - FIND PAIRS! \u25C6");
+        hudMsg.setColor("#4EA8DE");
+        announce("Game started");
+        startTimer(scene);
+        updateFocus();
+      }
+    });
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics(); bg.fillStyle(0x000000, 0.6); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics(); panel.fillStyle(0x102A43, 1); panel.fillRoundedRect(-300, -190, 600, 380, 20); panel.lineStyle(3, 0x4EA8DE, 1); panel.strokeRoundedRect(-300, -190, 600, 380, 20);
+    var line = scene.add.graphics(); line.fillStyle(0x4EA8DE, 1); line.fillRect(-300, -190, 600, 4);
+    endTitle = scene.add.text(0, -120, "\u25C6 MISSION COMPLETE \u25C6", { fontFamily: "Consolas,monospace", fontSize: "22px", color: "#00FFB8", fontStyle: "bold" }).setOrigin(0.5);
+    endDetail = scene.add.text(0, -40, "", { fontFamily: "Consolas,monospace", fontSize: "14px", color: "#E0F2FF", align: "center" }).setOrigin(0.5);
+    var btnBg = scene.add.graphics(); btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-140, 90, 280, 60, 12); btnBg.lineStyle(2, 0x7ED6FB, 1); btnBg.strokeRoundedRect(-140, 90, 280, 60, 12);
+    var btnTx = scene.add.text(0, 120, "\u21BB PLAY AGAIN", { fontFamily: "Consolas,monospace", fontSize: "16px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 165, "[ R ] RESTART  [ ENTER ] CONTINUE", { fontFamily: "Consolas,monospace", fontSize: "10px", color: "#4EA8DE" }).setOrigin(0.5);
+    endOverlay.add([bg, panel, line, endTitle, endDetail, btnBg, btnTx, hint]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-140, 90, 280, 60), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+  }
+
+  function makePauseOverlay(scene) {
+    pauseOverlay = scene.add.container(W / 2, H / 2).setDepth(15).setVisible(false);
+    var bg = scene.add.graphics(); bg.fillStyle(0x071422, 0.85); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics(); panel.fillStyle(0x102A43, 1); panel.fillRoundedRect(-240, -140, 480, 280, 16); panel.lineStyle(2, 0x4EA8DE, 1); panel.strokeRoundedRect(-240, -140, 480, 280, 16);
+    var t1 = scene.add.text(0, -80, "\u25C6 PAUSED \u25C6", { fontFamily: "Consolas,monospace", fontSize: "28px", color: "#4EA8DE", fontStyle: "bold" }).setOrigin(0.5);
+    var t2 = scene.add.text(0, -30, "SCORE 0  LVL 1", { fontFamily: "Consolas,monospace", fontSize: "14px", color: "#FFFFFF" }).setOrigin(0.5);
+    var btnBg = scene.add.graphics(); btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-110, 30, 220, 50, 10);
+    var btnTx = scene.add.text(0, 55, "\u25B6 RESUME [P]", { fontFamily: "Consolas,monospace", fontSize: "14px", color: "#102A43", fontStyle: "bold" }).setOrigin(0.5);
+    pauseOverlay.add([bg, panel, t1, t2, btnBg, btnTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-110, 30, 220, 50), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { togglePause(scene); });
+    pauseOverlay._label = t2;
+  }
+
+  function togglePause(scene) {
+    if (!started || endOverlay.visible) { return; }
+    paused = !paused;
+    pauseOverlay.setVisible(paused);
+    if (pauseOverlay._label) { pauseOverlay._label.setText("SCORE " + score + "  LVL " + level + "  TIME " + timeLeft.toFixed(1)); }
+    if (paused) { hudMsg.setText("\u25C6 PAUSED - PRESS P TO RESUME \u25C6"); hudMsg.setColor("#FFD700"); announce("Paused"); }
+    else { hudMsg.setText("\u25C6 RESUMED! \u25C6"); hudMsg.setColor("#4EA8DE"); announce("Resumed"); }
+  }
+
+  function showWin(scene) {
+    stopTimer();
+    started = false; lockBoard = true;
+    if (score > highScore) { highScore = score; }
+    var rank = score > 3000 ? "S-RANK: ABYSS MASTER" : score > 2000 ? "A-RANK: DEEP DIVER" : score > 1200 ? "B-RANK: REEF RUNNER" : "C-RANK: TIDE POOL";
+    endTitle.setText("\u25C6 MISSION COMPLETE \u25C6");
+    endTitle.setColor("#00FFB8");
+    endDetail.setText("FINAL SCORE " + score + "\nLEVEL REACHED " + level + "  MAX COMBO x" + maxCombo + "\nMOVES " + moves + "  " + rank + "\nHIGH SCORE " + highScore);
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.85, to: 1 }, duration: 300, ease: "Back.easeOut" });
+    hudMsg.setText("\u25C6 ALL LEVELS CLEARED! \u25C6");
+    hudMsg.setColor("#00FFB8");
+    announce("Mission complete, final score " + score + " " + rank);
+    for (var i = 0; i < 50; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u25C9", "\u25C6", "\u2605", "\u2B22"][i % 4], { fontSize: "20px", color: "#4EA8DE" }).setDepth(30);
+      (function (t) { scene.tweens.add({ targets: t, y: H + 40, x: t.x + Phaser.Math.Between(-100, 100), duration: Phaser.Math.Between(1500, 2500), onComplete: function () { t.destroy(); } }); })(p);
+    }
+  }
+
+  function showGameOver(scene, reason) {
+    stopTimer();
+    started = false; lockBoard = true;
+    if (score > highScore) { highScore = score; }
+    endTitle.setText("\u25C6 SIGNAL LOST \u25C6");
+    endTitle.setColor("#FF6B6B");
+    endDetail.setText(reason + "\nSCORE " + score + "  LVL " + level + "  PAIRS " + matches + "/" + totalPairs + "\nMAX COMBO x" + maxCombo + "  MOVES " + moves + "\nHIGH SCORE " + highScore);
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.85, to: 1 }, duration: 300, ease: "Back.easeOut" });
+    hudMsg.setText("\u25C6 " + reason + " - PRESS RESET \u25C6");
+    hudMsg.setColor("#FF6B6B");
+    announce(reason + ", game over, score " + score);
+    screenShake(scene, 8);
+  }
+
+  function restart(scene) {
+    stopTimer();
+    moves = 0; matches = 0; score = 0; combo = 0; maxCombo = 0; level = 1; timeLeft = 60; firstPick = null; lockBoard = false; started = true; paused = false;
+    hudMoves.setText("MOVES 0"); hudScore.setText("SCORE 00000"); hudCombo.setText("COMBO x1"); hudCombo.setColor("#7ED6FB"); hudTime.setText("60.0"); hudTime.setColor("#FFFFFF"); hudMsg.setText("\u25C6 SCAN THE ABYSS - FIND PAIRS! \u25C6"); hudMsg.setColor("#4EA8DE");
+    hudTimeBar.clear(); hudTimeBar.fillStyle(0x4EA8DE, 1); hudTimeBar.fillRoundedRect(W / 2 - 90, 70, 180, 10, 5);
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    if (pauseOverlay) { pauseOverlay.setVisible(false); }
+    if (focusRect) { focusRect.destroy(); focusRect = null; }
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+    startTimer(scene);
+    selectedIndex = 0; updateFocus();
+    announce("Game restarted");
+  }
+
+  function updateFocus() {
+    if (focusRect) { focusRect.destroy(); focusRect = null; }
+    if (!cards.length || !started || paused) { return; }
+    var c = cards[selectedIndex];
+    if (!c || c.matched) {
+      for (var i = 0; i < cards.length; i++) {
+        var idx = (selectedIndex + i) % cards.length;
+        if (!cards[idx].matched) { selectedIndex = idx; c = cards[idx]; break; }
+      }
+    }
+    if (!c || c.matched) { return; }
+    focusRect = c.view.scene.add.graphics().setDepth(5);
+    focusRect.lineStyle(3, 0xFFD700, 1); focusRect.strokeRoundedRect(c.x - c.w / 2 - 6, c.y - c.h / 2 - 6, c.w + 12, c.h + 12, 16);
+    c.view.scene.tweens.add({ targets: focusRect, alpha: 0.35, yoyo: true, duration: 380, repeat: 1 });
+  }
+
+  function setupKeyboard(scene) {
+    scene.input.keyboard.on("keydown", function (e) {
+      if (e.key === "p" || e.key === "P") { togglePause(scene); return; }
+      if (e.key === "r" || e.key === "R") { restart(scene); return; }
+      if (startOverlay && startOverlay.visible) {
+        if (e.key === "Enter" || e.key === " ") {
+          started = true; lockBoard = false; startOverlay.setVisible(false);
+          hudMsg.setText("\u25C6 SCAN THE ABYSS - FIND PAIRS! \u25C6"); hudMsg.setColor("#4EA8DE");
+          startTimer(scene); updateFocus(); announce("Game started");
+        }
+        return;
+      }
+      if (endOverlay && endOverlay.visible) {
+        if (e.key === "Enter" || e.key === " " || e.key === "r" || e.key === "R") { restart(scene); }
+        return;
+      }
+      if (paused || !started) { return; }
+      if (e.key === "ArrowLeft") { selectedIndex = (selectedIndex - 1 + cards.length) % cards.length; updateFocus(); }
+      else if (e.key === "ArrowRight") { selectedIndex = (selectedIndex + 1) % cards.length; updateFocus(); }
+      else if (e.key === "ArrowUp") {
+        var cols = totalPairs <= 6 ? 4 : totalPairs === 8 ? 4 : 6;
+        selectedIndex = (selectedIndex - cols + cards.length) % cards.length; updateFocus();
+      }
+      else if (e.key === "ArrowDown") {
+        var cols2 = totalPairs <= 6 ? 4 : totalPairs === 8 ? 4 : 6;
+        selectedIndex = (selectedIndex + cols2) % cards.length; updateFocus();
+      }
+      else if (e.key === "Enter" || e.key === " ") {
+        if (cards[selectedIndex]) { onCard(scene, cards[selectedIndex]); }
+      }
+    });
+  }
+
+  function update() {}
+})();
+</script>
+</body>
+</html>

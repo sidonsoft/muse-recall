@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Farmyard Memory Match</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#fdf6ec;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="game" role="application" aria-label="Farmyard Match memory card game. Use arrow keys to move, Enter to flip a card, R to restart."></div>
+<div id="sr-status" class="vh" aria-live="polite"></div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F404}", name: "Cow" },
+    { emoji: "\u{1F437}", name: "Pig" },
+    { emoji: "\u{1F414}", name: "Hen" },
+    { emoji: "\u{1F40E}", name: "Horse" },
+    { emoji: "\u{1F411}", name: "Sheep" },
+    { emoji: "\u{1F988}", name: "Duck" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#fdeec9",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false, over = false;
+  var moves = 0, matches = 0;
+  var score = 0, combo = 0, bestCombo = 0, timeLeft = 60, timerEv = null;
+  var selIdx = 0, selRing = null;
+  var hudMoves, hudScore, hudMsg, hudTime, hudPts, timerBar, endOverlay, endTitle, endDetail, startOverlay;
+  var GAME_LEN = 60, MISS_PENALTY = 2;
+
+  function announce(msg) {
+    var el = document.getElementById("sr-status");
+    if (el) { el.textContent = msg; }
+  }
+
+  function create() {
+    var s = this;
+    drawFarm(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    setupKeyboard(s);
+    var cv = document.querySelector("#game canvas");
+    if (cv) { cv.setAttribute("tabindex", "0"); cv.setAttribute("aria-label", "Farmyard Match game board. Arrows move, Enter flips, R restarts."); }
+  }
+
+  function drawFarm(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xfdeec9, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xcdeeb0, 1); g.fillRect(0, 470, W, 230);
+    g.fillStyle(0xfff6dd, 1); g.fillCircle(770, 110, 55);
+    g.fillStyle(0xffe08a, 1); g.fillCircle(770, 110, 42);
+    g.fillStyle(0xffffff, 1);
+    g.fillEllipse(180, 110, 150, 48); g.fillEllipse(240, 100, 120, 44);
+    g.fillEllipse(560, 80, 140, 44);
+    // barn
+    g.fillStyle(0xe26d5a, 1); g.fillRect(80, 330, 150, 140);
+    g.fillStyle(0xb34a3e, 1); g.fillTriangle(60, 330, 155, 250, 250, 330);
+    g.fillStyle(0xfff3e0, 1); g.fillRect(135, 390, 40, 80);
+    g.lineStyle(4, 0xfff3e0, 1);
+    g.lineBetween(80, 330, 230, 330);
+    // fence
+    g.lineStyle(8, 0xb98850, 1);
+    for (var x = 320; x <= 860; x += 60) { g.lineBetween(x, 500, x, 570); }
+    g.lineBetween(300, 515, 880, 515); g.lineBetween(300, 545, 880, 545);
+    // flowers
+    var cols = [0xf49ac1, 0xff9d76, 0x9ad0f5, 0xc5a3ff];
+    for (var i = 0; i < 10; i++) {
+      var fx = 30 + i * 88, fy = 620 + (i % 2) * 30;
+      g.fillStyle(0x5da85f, 1); g.fillRect(fx - 2, fy, 5, 26);
+      g.fillStyle(cols[i % 4], 1);
+      g.fillCircle(fx, fy - 8, 9);
+      g.fillStyle(0xfff200, 1); g.fillCircle(fx, fy - 8, 4);
+    }
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Comic Sans MS",ChalkboardSE,"Segoe UI",sans-serif', fontSize: size + "px", color: color || "#5b3a29", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F33B} Farmyard Match", textStyle(34)).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(24));
+    hudScore = scene.add.text(24, 90, "Pairs: 0 / 6", textStyle(24));
+    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(24, "#7a4a2b")).setOrigin(1, 0.5);
+    var btn = scene.add.container(W - 110, 116);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x5da85f, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(24, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    hudTime = scene.add.text(W / 2, 22, "\u23F1 60", textStyle(30)).setOrigin(0.5, 0);
+    hudPts = scene.add.text(W / 2, 56, "Score: 0   Combo x0", textStyle(21, "#7a4a2b")).setOrigin(0.5, 0);
+    timerBar = scene.add.graphics();
+    drawTimerBar();
+    scene.add.text(W / 2, 168, "Match fast! Miss = -2s  Pair = +100!", textStyle(22, "#8a6a4a")).setOrigin(0.5);
+  }
+
+  function drawTimerBar() {
+    if (!timerBar) { return; }
+    timerBar.clear();
+    var bw = 300, frac = Math.max(0, timeLeft / GAME_LEN);
+    timerBar.fillStyle(0xe8dcc3, 1); timerBar.fillRoundedRect(W / 2 - bw / 2, 108, bw, 14, 7);
+    var col = timeLeft <= 10 ? 0xe63946 : (timeLeft <= 25 ? 0xffb703 : 0x5da85f);
+    if (frac > 0) { timerBar.fillStyle(col, 1); timerBar.fillRoundedRect(W / 2 - bw / 2, 108, Math.max(14, bw * frac), 14, 7); }
+    if (hudTime) {
+      hudTime.setText((timeLeft <= 10 ? "\u26A1 " : "\u23F1 ") + Math.ceil(timeLeft));
+      hudTime.setColor(timeLeft <= 10 ? "#c1121f" : "#5b3a29");
+    }
+  }
+
+  function refreshPts() {
+    if (hudPts) { hudPts.setText("Score: " + score + "   Combo x" + combo); }
+    drawTimerBar();
+  }
+
+  function shuffledDeck() {
+    var deck = [];
+    ANIMALS.forEach(function (a, i) {
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    });
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) { c.view.destroy(); });
+    cards = [];
+    var deck = shuffledDeck();
+    var cols = 4, rows = 3;
+    var cw = 185, ch = 140, gx = 62, gy = 195, padX = 22, padY = 16;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card));
+    });
+    selIdx = 0;
+    if (selRing) { selRing.destroy(); }
+    selRing = scene.add.graphics().setDepth(5);
+    drawSelRing();
+  }
+
+  function drawSelRing() {
+    if (!selRing || !cards.length) { return; }
+    selRing.clear();
+    if (!started || over) { return; }
+    var card = cards[selIdx];
+    if (!card || card.matched) { return; }
+    var w = 185, h = 140;
+    selRing.lineStyle(5, 0xffb703, 1);
+    selRing.strokeRoundedRect(card.view.x - w / 2 - 4, card.view.y - h / 2 - 4, w + 8, h + 8, 24);
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xffffff, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    back.fillStyle(0x8ecae6, 1); back.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+    back.fillStyle(0xffffff, 0.85);
+    back.fillCircle(-w / 4, -h / 4, 12); back.fillCircle(w / 4, 0, 9); back.fillCircle(0, h / 4, 14);
+    var paw = scene.add.text(0, -6, "\u{1F43E}", { fontSize: "56px" }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xfff1a8, 0xffc8dd, 0xc8e7ff, 0xd8f3b8, 0xffd6a5, 0xe4c1f9];
+    fg.fillStyle(0xffffff, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 22);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 16);
+    var emo = scene.add.text(0, -18, data.emoji, { fontSize: "62px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 44, data.name, textStyle(22)).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    cont.on("pointerover", function () {
+      for (var i = 0; i < cards.length; i++) { if (cards[i] === card) { selIdx = i; } }
+      // card is not in `cards` yet while the board is being built; fall back to position match
+      drawSelRing();
+    });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function floatText(scene, x, y, msg, color) {
+    var t = scene.add.text(x, y, msg, textStyle(28, color || "#c1121f")).setOrigin(0.5).setDepth(15);
+    scene.tweens.add({ targets: t, y: y - 60, alpha: 0, duration: 900, onComplete: function () { t.destroy(); } });
+  }
+
+  function onCard(scene, card) {
+    if (!started || over || lockBoard || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    if (!firstPick) { firstPick = card; hudMsg.setText("One more!"); drawSelRing(); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        combo++;
+        if (combo > bestCombo) { bestCombo = combo; }
+        var pts = 100 + (combo - 1) * 25 + Math.ceil(timeLeft / 10) * 5;
+        score += pts;
+        refreshPts();
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.12, yoyo: true, duration: 160 });
+        scene.tweens.add({ targets: [a.view, card.view], angle: { from: -3, to: 3 }, yoyo: true, duration: 120, onComplete: function () { a.view.setAngle(0); card.view.setAngle(0); } });
+        floatText(scene, card.view.x, card.view.y - 70, "+" + pts, "#2a9d3a");
+        if (combo >= 2) { floatText(scene, W / 2, 150, "COMBO x" + combo + "!", "#e09f00"); }
+        matches++;
+        hudScore.setText("Pairs: " + matches + " / 6");
+        hudMsg.setText(matches === 6 ? "You did it!" : "Yay! +" + pts + " \u{1F389}");
+        announce("Pair found! " + matches + " of 6. Score " + score + ", combo " + combo + ".");
+        lockBoard = false;
+        drawSelRing();
+        if (matches === 6) { showWin(scene); }
+      }, 350);
+    } else {
+      combo = 0;
+      score = Math.max(0, score - 15);
+      timeLeft = Math.max(0.5, timeLeft - MISS_PENALTY);
+      refreshPts();
+      hudMsg.setText("Miss! -" + MISS_PENALTY + "s \u{1F340}");
+      announce("No match. Minus " + MISS_PENALTY + " seconds. " + Math.ceil(timeLeft) + " seconds left.");
+      if (scene.cameras && scene.cameras.main) { scene.cameras.main.shake(150, 0.004); }
+      var peek = Math.max(350, 700 - matches * 50);
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; drawSelRing(); });
+      }, peek);
+    }
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-300, -190, 600, 380, 30);
+    panel.lineStyle(6, 0x5da85f, 1); panel.strokeRoundedRect(-300, -190, 600, 380, 30);
+    var title = scene.add.text(0, -128, "\u{1F33B} Farmyard Match \u{1F404}", textStyle(38)).setOrigin(0.5);
+    var sub = scene.add.text(0, -48, "Beat the 60-second clock!\nPairs +100, streaks = COMBO bonus.\nA miss costs 2 seconds!", Object.assign(textStyle(22), { align: "center" })).setOrigin(0.5);
+    var row = scene.add.text(0, 32, "\u{1F404} \u{1F437} \u{1F414} \u{1F40E} \u{1F411} \u{1F988}", { fontSize: "40px" }).setOrigin(0.5);
+    var hint = scene.add.text(0, 162, "Arrows + Enter play too  \u2022  R restarts", textStyle(16, "#8a6a4a")).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 80, 260, 70, 35);
+    var btnTx = scene.add.text(0, 115, "\u25B6  Start", textStyle(30, "#ffffff")).setOrigin(0.5);
+    startOverlay.add([bg, panel, title, sub, row, btnBg, btnTx, hint]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 80, 260, 70), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { startGame(scene); });
+    startOverlay.setData("btn", btnBg);
+  }
+
+  function startGame(scene) {
+    if (started && startOverlay && !startOverlay.visible) { return; }
+    started = true; over = false; lockBoard = false;
+    if (startOverlay) { startOverlay.setVisible(false); }
+    hudMsg.setText("Tap a card!");
+    announce("Game started. 60 seconds. Find all 6 pairs.");
+    startTimer(scene);
+    drawSelRing();
+  }
+
+  function startTimer(scene) {
+    stopTimer();
+    timeLeft = GAME_LEN;
+    refreshPts();
+    timerEv = scene.time.addEvent({ delay: 200, loop: true, callback: function () {
+      if (!started || over) { return; }
+      timeLeft -= 0.2;
+      if (timeLeft <= 0) {
+        timeLeft = 0; refreshPts();
+        gameOver(scene);
+      } else {
+        drawTimerBar();
+        if (Math.abs(timeLeft - Math.round(timeLeft)) < 0.11 && timeLeft <= 10) {
+          hudMsg.setText("\u26A1 Hurry! " + Math.ceil(timeLeft) + "s left!");
+        }
+      }
+    }});
+  }
+
+  function stopTimer() {
+    if (timerEv) { timerEv.remove(false); timerEv = null; }
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x000000, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xffffff, 1); panel.fillRoundedRect(-290, -170, 580, 340, 30);
+    panel.lineStyle(6, 0xffb703, 1); panel.strokeRoundedRect(-290, -170, 580, 340, 30);
+    endTitle = scene.add.text(0, -100, "\u{1F389} You Win! \u{1F389}", textStyle(42)).setOrigin(0.5);
+    endDetail = scene.add.text(0, -30, "", Object.assign(textStyle(25), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x5da85f, 1); btnBg.fillRoundedRect(-130, 50, 260, 70, 35);
+    var btnTx = scene.add.text(0, 85, "\u21BB Play Again", textStyle(28, "#ffffff")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx]);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 50, 260, 70), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+  }
+
+  function showWin(scene) {
+    stopTimer();
+    over = true;
+    var bonus = Math.ceil(timeLeft) * 10;
+    score += bonus;
+    refreshPts();
+    var stars = (moves <= 10 && timeLeft >= 20) ? 3 : ((moves <= 16 && timeLeft >= 8) ? 2 : 1);
+    endTitle.setText("\u{1F389} You Win! \u{1F389}");
+    endDetail.setText("All 6 pairs in " + moves + " moves!\nTime left: " + Math.ceil(timeLeft) + "s (+" + bonus + ")\nScore: " + score + "  Best combo x" + Math.max(1, bestCombo) + "\n" + "\u2B50".repeat(stars));
+    endOverlay.setVisible(true);
+    announce("You win! Score " + score + " in " + moves + " moves.");
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("You win! \u{1F389}");
+    if (selRing) { selRing.clear(); }
+    for (var i = 0; i < 80; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u{1F33B}", "\u2B50", "\u{1F389}", "\u{1F404}", "\u26A1"][i % 5], { fontSize: "28px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-80, 80), duration: Phaser.Math.Between(1200, 2200), onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function gameOver(scene) {
+    stopTimer();
+    over = true; lockBoard = true;
+    firstPick = null;
+    endTitle.setText("\u23F0 Time's Up! \u23F0");
+    endDetail.setText("You found " + matches + " / 6 pairs.\nScore: " + score + "  Best combo x" + bestCombo + "\nMoves: " + moves);
+    endOverlay.setVisible(true);
+    announce("Time is up. You found " + matches + " of 6 pairs. Score " + score + ".");
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("Time's up! Try again! \u{1F504}");
+    if (selRing) { selRing.clear(); }
+  }
+
+  function restart(scene) {
+    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true; over = false;
+    score = 0; combo = 0; bestCombo = 0; timeLeft = GAME_LEN;
+    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / 6"); hudMsg.setText("Tap a card!");
+    refreshPts();
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    cards.forEach(function (c) { c.view.destroy(); });
+    buildBoard(scene);
+    announce("New round. 60 seconds. Good luck!");
+    startTimer(scene);
+  }
+
+  function moveSel(dr, dc) {
+    var cols = 4;
+    var r = Math.floor(selIdx / cols), c = selIdx % cols;
+    r = (r + dr + 3) % 3; c = (c + dc + cols) % cols;
+    selIdx = r * cols + c;
+    drawSelRing();
+  }
+
+  function setupKeyboard(scene) {
+    function activateFocused() {
+      if (startOverlay && startOverlay.visible) { startGame(scene); return; }
+      if (endOverlay && endOverlay.visible) { restart(scene); return; }
+      var card = cards[selIdx];
+      if (card) { onCard(scene, card); }
+    }
+    scene.input.keyboard.on("keydown-ENTER", activateFocused);
+    scene.input.keyboard.on("keydown-SPACE", activateFocused);
+    scene.input.keyboard.on("keydown-R", function () { restart(scene); });
+    scene.input.keyboard.on("keydown-UP", function () { moveSel(-1, 0); });
+    scene.input.keyboard.on("keydown-DOWN", function () { moveSel(1, 0); });
+    scene.input.keyboard.on("keydown-LEFT", function () { moveSel(0, -1); });
+    scene.input.keyboard.on("keydown-RIGHT", function () { moveSel(0, 1); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") { return; }
+      var tag = (document.activeElement && document.activeElement.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA") { return; }
+      if (startOverlay && startOverlay.visible) { startGame(scene); }
+      else if (endOverlay && endOverlay.visible) { restart(scene); }
+    });
+  }
+
+  function update() {}
+})();
+</script>
+</body>
+</html>

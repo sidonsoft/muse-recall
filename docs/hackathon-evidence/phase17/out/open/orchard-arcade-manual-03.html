@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orchard Catch — A Gentle Fruit Game</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  :root{
+    --accent:#6BBF59;
+    --ink:#1F3A24;
+    --cream:#FAFDF3;
+    --meadow:#EAF4DC;
+    --card:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+    background:var(--meadow);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  header{
+    text-align:center;
+    padding:20px 16px 8px;
+    max-width:640px;
+  }
+  h1{margin:0 0 6px;font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:.5px}
+  .subtitle{margin:0;font-size:clamp(1rem,2.6vw,1.15rem);line-height:1.5}
+  main{
+    width:100%;
+    max-width:640px;
+    padding:12px 16px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:stretch;
+  }
+  .panel{
+    background:var(--card);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    padding:12px 14px;
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .progress-wrap{flex:1 1 220px;min-width:200px}
+  #catchLabel{font-weight:bold;font-size:1.05rem;margin:0 0 6px}
+  progress{
+    width:100%;
+    height:18px;
+    appearance:none;
+  }
+  progress::-webkit-progress-bar{background:#E3EDD4;border-radius:999px}
+  progress::-webkit-progress-value{background:var(--accent);border-radius:999px}
+  progress::-moz-progress-bar{background:var(--accent);border-radius:999px}
+  .stats{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+  }
+  .stat-pill{
+    background:#EAF4DC;
+    border:2px solid var(--accent);
+    border-radius:999px;
+    padding:5px 12px;
+    font-weight:bold;
+    font-size:.92rem;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .stat-pill.combo{
+    background:#FFF6CC;
+    border-color:#E8C84A;
+    transition:transform 0.2s ease;
+  }
+  .stat-pill.combo.hot{
+    background:#FFE9A8;
+    transform:scale(1.05);
+  }
+  .controls{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    font:inherit;
+    font-weight:bold;
+    color:var(--ink);
+    background:#DDF0CE;
+    border:3px solid var(--accent);
+    border-radius:999px;
+    padding:10px 20px;
+    cursor:pointer;
+    min-height:48px;
+    min-width:110px;
+  }
+  button:hover:not(:disabled){background:var(--accent);color:#fff}
+  button:focus-visible{outline:4px solid #1F3A24;outline-offset:2px}
+  button:disabled{opacity:.5;cursor:default}
+  button.primary{background:var(--accent);color:#fff}
+  button.primary:hover:not(:disabled){background:#57a847}
+  #statusMessage{
+    margin:8px 0 0;
+    min-height:1.6em;
+    font-weight:bold;
+    font-size:1.02rem;
+    line-height:1.4;
+  }
+  #gameWrap{
+    background:linear-gradient(#DFF0D2,#FAFDF3);
+    border:3px solid var(--accent);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  #game{display:flex;justify-content:center}
+  #game canvas{border-radius:14px;max-width:100%}
+  .help{font-size:.98rem;line-height:1.55;margin:0}
+  .help strong{color:var(--ink)}
+  footer{padding:0 16px 24px;text-align:center;font-size:.9rem;max-width:640px}
+  @media (max-width:480px){
+    .hud{flex-direction:column;align-items:stretch}
+    .controls{justify-content:stretch}
+    .controls button{flex:1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Orchard Catch</h1>
+  <p class="subtitle">Move the basket left and right to catch soft, ripe fruit falling from the trees. Fill the basket to finish picking!</p>
+</header>
+
+<main>
+  <section class="panel hud" aria-label="Game progress and controls">
+    <div class="progress-wrap">
+      <p id="catchLabel" aria-live="polite">Caught 0 of 12 fruit — Level 1</p>
+      <progress id="catchProgress" max="12" value="0" aria-label="Fruit caught progress"></progress>
+      <div class="stats" aria-label="Score and level">
+        <span class="stat-pill" id="scoreLabel" aria-live="polite">Score 0</span>
+        <span class="stat-pill" id="levelLabel">Level 1</span>
+        <span class="stat-pill combo" id="comboLabel" aria-live="polite">Combo x1</span>
+        <span class="stat-pill" id="highScoreLabel">Best 0</span>
+      </div>
+      <p id="statusMessage" aria-live="polite">Press Start to begin picking.</p>
+    </div>
+    <div class="controls" role="group" aria-label="Game actions">
+      <button type="button" id="startBtn" class="primary" aria-label="Start catching fruit">Start</button>
+      <button type="button" id="restartBtn" aria-label="Restart the game and empty the basket" disabled>Restart</button>
+    </div>
+  </section>
+
+  <div id="gameWrap">
+    <div id="game" aria-label="Orchard game canvas. Use left and right arrow keys, mouse, or touch to move the basket."></div>
+  </div>
+
+  <section class="panel" aria-label="How to play">
+    <p class="help"><strong>How to play:</strong> Move with your mouse, touch, or the left and right arrow keys (A/D also work). Catch falling fruit for points — plum and pear are worth more, golden star fruit is a rare bonus! Build a combo by catching quickly for extra points. Missed fruit lands softly on the grass — nothing bad happens. Each level needs a few more fruit and the orchard gets a little faster. No timers, no flashing, just cheerful arcade picking!</p>
+  </section>
+</main>
+
+<footer>
+  <p>A calm arcade harvest for young pickers. No timers, no flashing, no losing — just picking, scoring, and leveling up!</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var GOAL_BASE = 12;
+  var MAX_LEVEL = 5;
+  var caught = 0;
+  var totalScore = 0;
+  var level = 1;
+  var combo = 1;
+  var lastCatchTime = 0;
+  var highScore = 0;
+  var playing = false;
+  var won = false;
+  var sceneRef = null;
+
+  var startBtn = document.getElementById('startBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var catchLabel = document.getElementById('catchLabel');
+  var catchProgress = document.getElementById('catchProgress');
+  var statusMessage = document.getElementById('statusMessage');
+  var scoreLabel = document.getElementById('scoreLabel');
+  var levelLabel = document.getElementById('levelLabel');
+  var comboLabel = document.getElementById('comboLabel');
+  var highScoreLabel = document.getElementById('highScoreLabel');
+
+  function getGoalForLevel(lvl) {
+    return GOAL_BASE + (lvl - 1) * 3;
+  }
+
+  function updateHud(message) {
+    var goal = getGoalForLevel(level);
+    catchLabel.textContent = 'Caught ' + caught + ' of ' + goal + ' fruit — Level ' + level;
+    catchProgress.max = goal;
+    catchProgress.value = String(caught);
+    catchProgress.setAttribute('aria-valuenow', String(caught));
+    catchProgress.setAttribute('aria-valuemax', String(goal));
+    scoreLabel.textContent = 'Score ' + totalScore;
+    levelLabel.textContent = 'Level ' + level;
+    comboLabel.textContent = 'Combo x' + combo;
+    if (combo >= 3) {
+      comboLabel.classList.add('hot');
+    } else {
+      comboLabel.classList.remove('hot');
+    }
+    highScoreLabel.textContent = 'Best ' + highScore;
+    if (typeof message === 'string') {
+      statusMessage.textContent = message;
+    }
+  }
+
+  function setButtons() {
+    startBtn.disabled = playing && !won;
+    restartBtn.disabled = !playing && !won && caught === 0 && totalScore === 0;
+  }
+
+  function startGame() {
+    caught = 0;
+    totalScore = 0;
+    level = 1;
+    combo = 1;
+    lastCatchTime = 0;
+    playing = true;
+    won = false;
+    updateHud('Level 1 — gentle picking… guide the basket under the fruit!');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+
+  function restartGame() {
+    caught = 0;
+    totalScore = 0;
+    level = 1;
+    combo = 1;
+    lastCatchTime = 0;
+    playing = true;
+    won = false;
+    updateHud('A fresh empty basket. Happy picking!');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+
+  function onWin() {
+    won = true;
+    playing = false;
+    if (totalScore > highScore) {
+      highScore = totalScore;
+    }
+    updateHud('Harvest Champion! Final score ' + totalScore + ' — wonderful picking!');
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+  }
+
+  function onLevelUp(newLevel) {
+    level = newLevel;
+    caught = 0;
+    combo = 1;
+    updateHud('Level ' + level + '! The orchard is bustling — faster fruit ahead!');
+    setButtons();
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+
+  startBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+  restartBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!restartBtn.disabled) { restartGame(); }
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.activeElement === document.body) {
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+
+  function makeFruitTexture(scene, key, bodyColor, leafColor) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 0);
+    g.fillRect(0, 0, 44, 48);
+    g.fillStyle(bodyColor, 1);
+    g.fillCircle(22, 26, 15);
+    g.fillStyle(0xffffff, 0.35);
+    g.fillCircle(16, 20, 5);
+    g.fillStyle(0x8a5a2b, 1);
+    g.fillRect(20, 4, 4, 9);
+    g.fillStyle(leafColor, 1);
+    g.fillEllipse(30, 10, 12, 7);
+    g.generateTexture(key, 44, 48);
+    g.destroy();
+  }
+
+  function makeGoldenTexture(scene) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 0);
+    g.fillRect(0, 0, 48, 48);
+    g.fillStyle(0xffd54f, 1);
+    g.fillCircle(24, 26, 16);
+    g.fillStyle(0xfff8c4, 0.9);
+    g.fillCircle(18, 20, 5);
+    g.fillStyle(0x8a5a2b, 1);
+    g.fillRect(22, 4, 4, 9);
+    g.fillStyle(0x7cb342, 1);
+    g.fillEllipse(32, 10, 12, 7);
+    g.fillStyle(0xffffff, 1);
+    // soft star sparkle
+    g.fillStar(24, 26, 5, 3, 7, 0xffeb3b);
+    g.generateTexture('fruit-golden', 48, 48);
+    g.destroy();
+  }
+
+  var OrchardScene = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function OrchardScene() {
+      Phaser.Scene.call(this, { key: 'orchard' });
+      this.basket = null;
+      this.fruits = null;
+      this.cursors = null;
+      this.keysAD = null;
+      this.spawnTimer = null;
+      this.banner = null;
+      this.bannerSub = null;
+      this.levelBanner = null;
+      this.deco = null;
+      this.clouds = [];
+    },
+    create: function () {
+      sceneRef = this;
+      var W = this.scale.width;
+      var H = this.scale.height;
+
+      this.cameras.main.setBackgroundColor('#EAF4DC');
+
+      // Soft hills
+      var bg = this.add.graphics();
+      bg.fillStyle(0xcfe8b8, 1);
+      bg.fillEllipse(W / 2, H + 90, W + 160, 300);
+      bg.fillStyle(0xd8edc2, 1);
+      bg.fillEllipse(W * 0.15, H + 130, 320, 220);
+
+      // Drifting clouds (arcade sky, gentle)
+      this.clouds = [];
+      for (var ci = 0; ci < 3; ci++) {
+        var cx = 60 + ci * 160;
+        var cy = 38 + (ci % 2) * 22;
+        var cloud = this.add.graphics();
+        cloud.fillStyle(0xffffff, 0.95);
+        cloud.fillEllipse(cx, cy, 70, 28);
+        cloud.fillEllipse(cx - 18, cy + 6, 50, 22);
+        cloud.fillEllipse(cx + 18, cy + 6, 46, 20);
+        cloud.setDepth(1);
+        cloud.setData('baseX', cx);
+        cloud.setData('offset', ci * 70);
+        this.clouds.push(cloud);
+      }
+
+      // Tree canopies (decorative, gentle greens)
+      var trees = this.add.graphics();
+      var canopy = [0x9ed08a, 0x8ccb78, 0xaedba0];
+      var spots = [[70, 110, 62], [200, 80, 74], [340, 105, 66], [445, 150, 52]];
+      for (var i = 0; i < spots.length; i++) {
+        var sx = spots[i][0], sy = spots[i][1], sr = spots[i][2];
+        trees.fillStyle(0x8a5a2b, 1);
+        trees.fillRect(sx - 8, sy + 20, 16, 70);
+        trees.fillStyle(canopy[i % canopy.length], 1);
+        trees.fillCircle(sx, sy, sr);
+        trees.fillCircle(sx - sr * 0.55, sy + 14, sr * 0.6);
+        trees.fillCircle(sx + sr * 0.55, sy + 14, sr * 0.6);
+      }
+
+      // Grass strip
+      var grass = this.add.graphics();
+      grass.fillStyle(0x6BBF59, 1);
+      grass.fillRect(0, H - 56, W, 56);
+      grass.fillStyle(0x7fca70, 1);
+      for (var b = 0; b < 24; b++) {
+        grass.fillTriangle(b * 22, H - 56, b * 22 + 11, H - 70, b * 22 + 22, H - 56);
+      }
+
+      makeFruitTexture(this, 'fruit-red', 0xe46b5e, 0x5da24e);
+      makeFruitTexture(this, 'fruit-orange', 0xf0a14b, 0x5da24e);
+      makeFruitTexture(this, 'fruit-plum', 0x9b7bc4, 0x6BBF59);
+      makeFruitTexture(this, 'fruit-pear', 0xa8c256, 0x4d8f43);
+      makeGoldenTexture(this);
+
+      // Basket texture
+      var bk = this.make.graphics({ x: 0, y: 0, add: false });
+      bk.fillStyle(0xb07a3f, 1);
+      bk.fillRoundedRect(0, 10, 110, 44, 12);
+      bk.fillStyle(0x8a5a2b, 1);
+      for (var w = 0; w < 5; w++) {
+        bk.fillRect(12 + w * 20, 12, 5, 40);
+      }
+      bk.fillStyle(0x7a4f22, 1);
+      bk.fillRoundedRect(0, 0, 110, 16, 8);
+      // arcade rim highlight
+      bk.fillStyle(0xffffff, 0.18);
+      bk.fillRoundedRect(4, 12, 102, 8, 6);
+      bk.generateTexture('basket', 110, 54);
+      bk.destroy();
+
+      this.physics.world.setBounds(0, 0, W, H);
+
+      this.basket = this.physics.add.image(W / 2, H - 100, 'basket');
+      this.basket.setImmovable(true);
+      this.basket.body.allowGravity = false;
+      this.basket.setCollideWorldBounds(true);
+
+      var hint = this.add.text(W / 2, H - 200, 'Move me with mouse, touch,\nor arrow keys', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '18px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffcc',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5);
+      hint.setDepth(5);
+      this.hintText = hint;
+
+      this.fruits = this.physics.add.group();
+
+      this.physics.add.overlap(this.basket, this.fruits, this.catchFruit, null, this);
+
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.keysAD = this.input.keyboard.addKeys({ left: Phaser.Input.Keyboard.KeyCodes.A, right: Phaser.Input.Keyboard.KeyCodes.D });
+
+      this.scoreText = this.add.text(14, 12, 'Score 0', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '20px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffdd',
+        padding: { x: 10, y: 6 }
+      }).setDepth(10);
+
+      this.levelText = this.add.text(14, 46, 'Level 1  •  0 / 12', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '16px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffcc',
+        padding: { x: 10, y: 6 }
+      }).setDepth(10);
+
+      this.comboText = this.add.text(W - 14, 12, '', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '18px',
+        color: '#6A4E00',
+        backgroundColor: '#FFF6CC',
+        padding: { x: 10, y: 6 }
+      }).setOrigin(1, 0).setDepth(10).setVisible(false);
+
+      this.banner = this.add.text(W / 2, H / 2 - 30, 'Basket Full!\nWonderful picking!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '34px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffee',
+        padding: { x: 22, y: 18 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.bannerSub = this.add.text(W / 2, H / 2 + 80, 'Press Restart for another round', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '18px',
+        color: '#1F3A24',
+        backgroundColor: '#ffffffcc',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.levelBanner = this.add.text(W / 2, H / 2 - 10, '', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '32px',
+        color: '#1F3A24',
+        align: 'center',
+        backgroundColor: '#ffffffee',
+        padding: { x: 20, y: 14 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.input.on('pointermove', function (pointer) {
+        if (!playing || won) { return; }
+        var nx = Phaser.Math.Clamp(pointer.x, 60, W - 60);
+        this.basket.x = nx;
+      }, this);
+
+      this.scheduleSpawn();
+
+      this.resetRound();
+    },
+    getSpawnDelay: function () {
+      var base = 1050;
+      var levelReduction = (level - 1) * 140;
+      var scoreReduction = Math.min(220, Math.floor(totalScore / 60) * 12);
+      return Math.max(360, base - levelReduction - scoreReduction);
+    },
+    getFallSpeed: function () {
+      var baseMin = 110 + (level - 1) * 26;
+      var baseMax = 175 + (level - 1) * 36;
+      var bonus = Math.min(45, Math.floor(totalScore / 90) * 6);
+      return { min: baseMin + bonus, max: baseMax + bonus };
+    },
+    scheduleSpawn: function () {
+      var self = this;
+      if (self.spawnTimer) {
+        self.spawnTimer.remove(false);
+      }
+      var delay = self.getSpawnDelay();
+      self.spawnTimer = self.time.addEvent({
+        delay: delay,
+        loop: true,
+        callback: self.spawnFruit,
+        callbackScope: self
+      });
+    },
+    resetRound: function () {
+      if (!this.fruits) { return; }
+      this.fruits.clear(true, true);
+      caught = 0;
+      // keep totalScore and level if restarting via startGame already reset; if called from scene, preserve
+      // but for initial reset, ensure HUD reflects current level
+      this.refreshScore();
+      this.banner.setVisible(false);
+      this.bannerSub.setVisible(false);
+      this.levelBanner.setVisible(false);
+      if (this.hintText) { this.hintText.setVisible(true); }
+      if (this.basket) { this.basket.setPosition(this.scale.width / 2, this.scale.height - 100); }
+      this.scheduleSpawn();
+      updateHud();
+      setButtons();
+    },
+    refreshScore: function () {
+      var goal = getGoalForLevel(level);
+      this.scoreText.setText('Score ' + totalScore);
+      this.levelText.setText('Level ' + level + '  •  ' + caught + ' / ' + goal);
+      if (combo > 1) {
+        this.comboText.setText('Combo x' + combo + '!');
+        this.comboText.setVisible(true);
+        this.tweens.add({
+          targets: this.comboText,
+          scaleX: 1.08,
+          scaleY: 1.08,
+          duration: 140,
+          yoyo: true,
+          ease: 'Sine.easeOut'
+        });
+      } else {
+        this.comboText.setVisible(false);
+      }
+    },
+    spawnFruit: function () {
+      if (!playing || won) { return; }
+      var W = this.scale.width;
+      // weighted random
+      var roll = Phaser.Math.Between(1, 100);
+      var key = 'fruit-red';
+      var points = 10;
+      var isGolden = false;
+      if (roll <= 30) { key = 'fruit-red'; points = 10; }
+      else if (roll <= 60) { key = 'fruit-orange'; points = 10; }
+      else if (roll <= 78) { key = 'fruit-plum'; points = 15; }
+      else if (roll <= 92) { key = 'fruit-pear'; points = 15; }
+      else { key = 'fruit-golden'; points = 50; isGolden = true; }
+
+      var x = Phaser.Math.Between(40, W - 40);
+      var f = this.fruits.create(x, -30, key);
+      var speeds = this.getFallSpeed();
+      var vy = Phaser.Math.Between(speeds.min, speeds.max);
+      // golden falls a touch slower for fairness but worth more
+      if (isGolden) { vy = Math.max(90, vy - 18); }
+      f.setVelocityY(vy);
+      f.setMaxVelocity(320, 320);
+      f.body.allowGravity = false;
+      f.setData('landed', false);
+      f.setData('points', points);
+      f.setData('isGolden', isGolden);
+      f.setData('rotSpeed', Phaser.Math.Between(-90, 90) / 60);
+      // subtle shadow
+      var shadow = this.add.ellipse(x, -10, 22, 8, 0x000000, 0.12);
+      shadow.setDepth(2);
+      f.setData('shadow', shadow);
+
+      // Gentle sway, no flashing
+      this.tweens.add({
+        targets: f,
+        x: x + Phaser.Math.Between(-28, 28),
+        duration: Phaser.Math.Between(900, 1500),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+
+      // Golden soft pulse (scale only, no flashing color)
+      if (isGolden) {
+        this.tweens.add({
+          targets: f,
+          scaleX: 1.08,
+          scaleY: 1.08,
+          duration: 520,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+
+      // Occasionally spawn a second fruit for arcade rush at higher levels
+      if (level >= 3 && Phaser.Math.Between(1, 100) <= 18 + level * 4) {
+        var x2 = Phaser.Math.Clamp(x + Phaser.Math.Between(-90, 90), 40, W - 40);
+        var f2 = this.fruits.create(x2, -50, 'fruit-red');
+        f2.setVelocityY(Phaser.Math.Between(speeds.min, speeds.max));
+        f2.body.allowGravity = false;
+        f2.setData('landed', false);
+        f2.setData('points', 10);
+        f2.setData('isGolden', false);
+        f2.setData('rotSpeed', Phaser.Math.Between(-90, 90) / 60);
+        var shadow2 = this.add.ellipse(x2, -10, 22, 8, 0x000000, 0.12);
+        shadow2.setDepth(2);
+        f2.setData('shadow', shadow2);
+        this.tweens.add({
+          targets: f2,
+          x: x2 + Phaser.Math.Between(-24, 24),
+          duration: Phaser.Math.Between(900, 1400),
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+    },
+    showFloatingText: function (x, y, text, isGolden) {
+      var color = isGolden ? '#8A6D00' : '#1F3A24';
+      var bg = isGolden ? '#FFF6CC' : '#ffffffee';
+      var t = this.add.text(x, y, text, {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: isGolden ? '22px' : '20px',
+        color: color,
+        backgroundColor: bg,
+        padding: { x: 8, y: 4 }
+      }).setOrigin(0.5).setDepth(16);
+      this.tweens.add({
+        targets: t,
+        y: y - 46,
+        alpha: 0,
+        duration: 820,
+        ease: 'Sine.easeOut',
+        onComplete: function () { t.destroy(); }
+      });
+    },
+    burstParticles: function (x, y, isGolden) {
+      var colors = isGolden ? [0xffd54f, 0xfff8c4, 0xffec8b, 0xffffff] : [0xe46b5e, 0xf0a14b, 0xa8c256, 0xffffff, 0x9b7bc4];
+      for (var p = 0; p < 8; p++) {
+        var c = this.add.circle(x, y, Phaser.Math.Between(3, 6), colors[p % colors.length], 0.95);
+        c.setDepth(15);
+        var ang = (p / 8) * Math.PI * 2;
+        var dist = Phaser.Math.Between(22, 44);
+        var tx = x + Math.cos(ang) * dist;
+        var ty = y + Math.sin(ang) * dist * 0.7;
+        this.tweens.add({
+          targets: c,
+          x: tx,
+          y: ty,
+          alpha: 0,
+          scaleX: 0.4,
+          scaleY: 0.4,
+          duration: Phaser.Math.Between(420, 620),
+          ease: 'Sine.easeOut',
+          onComplete: (function (dot) {
+            return function () { dot.destroy(); };
+          })(c)
+        });
+      }
+    },
+    catchFruit: function (basket, fruit) {
+      if (!playing || won) { return; }
+      if (fruit.getData('landed')) { return; }
+      fruit.setData('landed', true);
+      this.tweens.killTweensOf(fruit);
+      var shadow = fruit.getData('shadow');
+      if (shadow) { shadow.destroy(); }
+
+      var now = this.time.now;
+      var isGolden = fruit.getData('isGolden');
+      var basePoints = fruit.getData('points') || 10;
+
+      // Combo: if caught within 1600ms, increase combo, else reset to 1
+      if (lastCatchTime && (now - lastCatchTime) < 1600) {
+        combo = Math.min(9, combo + 1);
+      } else {
+        // keep combo if first catch or long gap, reset to 1 but golden keeps momentum
+        if (combo > 1 && (now - lastCatchTime) >= 1600) {
+          combo = 1;
+        }
+        if (!lastCatchTime) { combo = 1; }
+      }
+      lastCatchTime = now;
+
+      var multiplier = 1 + (combo - 1) * 0.25;
+      if (multiplier > 3) { multiplier = 3; }
+      var earned = Math.round(basePoints * multiplier);
+      totalScore += earned;
+      caught += 1;
+
+      this.refreshScore();
+      updateHud();
+      if (this.hintText) { this.hintText.setVisible(false); }
+
+      // Floating score
+      var label = '+' + earned;
+      if (combo > 1) { label += '  Combo x' + combo; }
+      if (isGolden) { label = '★ +' + earned + ' ★'; }
+      this.showFloatingText(fruit.x, fruit.y - 18, label, isGolden);
+      this.burstParticles(fruit.x, fruit.y, isGolden);
+
+      // Soft pop into the basket (scale only, no flashing colors)
+      this.tweens.add({
+        targets: fruit,
+        x: basket.x,
+        y: basket.y - 10,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        alpha: 0.4,
+        angle: fruit.angle + 180,
+        duration: 220,
+        ease: 'Sine.easeIn',
+        onComplete: function () { fruit.destroy(); }
+      });
+      // Gentle basket squash — stronger for golden
+      this.tweens.add({
+        targets: basket,
+        scaleX: isGolden ? 1.14 : 1.08,
+        scaleY: isGolden ? 0.88 : 0.92,
+        duration: 120,
+        yoyo: true,
+        ease: 'Sine.easeOut'
+      });
+
+      // Reschedule spawn to reflect new score/level speed
+      this.scheduleSpawn();
+
+      var goal = getGoalForLevel(level);
+      if (caught >= goal) {
+        if (level >= MAX_LEVEL) {
+          this.celebrate();
+        } else {
+          this.levelUp();
+        }
+      }
+    },
+    levelUp: function () {
+      var nextLevel = level + 1;
+      // soft level-up banner, no flashing
+      this.levelBanner.setText('Level ' + nextLevel + '!\nFaster fruit — keep picking!');
+      this.levelBanner.setVisible(true).setScale(0.8).setAlpha(0);
+      this.tweens.add({
+        targets: this.levelBanner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 520,
+        ease: 'Back.easeOut'
+      });
+      var self = this;
+      this.time.delayedCall(1400, function () {
+        self.tweens.add({
+          targets: self.levelBanner,
+          alpha: 0,
+          scaleX: 0.9,
+          scaleY: 0.9,
+          duration: 400,
+          ease: 'Sine.easeIn',
+          onComplete: function () { self.levelBanner.setVisible(false); }
+        });
+      });
+
+      // gentle confetti burst for level up
+      for (var k = 0; k < 14; k++) {
+        var colors = [0xe46b5e, 0xf0a14b, 0x9b7bc4, 0xa8c256, 0xffd54f, 0xffffff];
+        var c = this.add.circle(
+          Phaser.Math.Between(30, this.scale.width - 30),
+          Phaser.Math.Between(-20, 80),
+          Phaser.Math.Between(4, 7),
+          colors[k % colors.length],
+          0.9
+        );
+        c.setDepth(15);
+        self.tweens.add({
+          targets: c,
+          y: self.scale.height - 60,
+          x: c.x + Phaser.Math.Between(-50, 50),
+          duration: Phaser.Math.Between(1800, 3200),
+          delay: k * 70,
+          ease: 'Sine.easeInOut',
+          onComplete: (function (dot) {
+            return function () {
+              self.tweens.add({ targets: dot, alpha: 0, duration: 600, onComplete: function () { dot.destroy(); } });
+            };
+          })(c)
+        });
+      }
+
+      onLevelUp(nextLevel);
+      this.refreshScore();
+      updateHud();
+      this.scheduleSpawn();
+    },
+    celebrate: function () {
+      won = true;
+      onWin();
+      var self = this;
+      this.fruits.clear(true, true);
+      // clear any shadows left
+      this.banner.setText('Harvest Champion!\nScore ' + totalScore + ' — Level ' + level + '!');
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setText('Press Restart for another arcade run');
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 700,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 900,
+        delay: 350
+      });
+      // Slow drifting petals: soft, slow, no blinking
+      for (var k = 0; k < 28; k++) {
+        var colors = [0xe46b5e, 0xf0a14b, 0x9b7bc4, 0xa8c256, 0xffd54f, 0xffffff];
+        var c = this.add.circle(
+          Phaser.Math.Between(20, this.scale.width - 20),
+          Phaser.Math.Between(-40, 120),
+          Phaser.Math.Between(4, 8),
+          colors[k % colors.length],
+          0.9
+        );
+        c.setDepth(15);
+        self.tweens.add({
+          targets: c,
+          y: self.scale.height - 60,
+          x: c.x + Phaser.Math.Between(-60, 60),
+          duration: Phaser.Math.Between(2200, 4200),
+          delay: k * 90,
+          ease: 'Sine.easeInOut',
+          onComplete: (function (dot) {
+            return function () {
+              self.tweens.add({ targets: dot, alpha: 0, duration: 900, onComplete: function () { dot.destroy(); } });
+            };
+          })(c)
+        });
+      }
+    },
+    update: function (time, delta) {
+      if (!this.basket || !this.cursors) { return; }
+      var dt = Math.min(delta, 50) / 1000;
+      var speed = 340 + (level - 1) * 18;
+      if (playing && !won) {
+        var leftDown = this.cursors.left.isDown || (this.keysAD && this.keysAD.left.isDown);
+        var rightDown = this.cursors.right.isDown || (this.keysAD && this.keysAD.right.isDown);
+        if (leftDown) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x - speed * dt, 60, this.scale.width - 60);
+          if (this.hintText) { this.hintText.setVisible(false); }
+        } else if (rightDown) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x + speed * dt, 60, this.scale.width - 60);
+          if (this.hintText) { this.hintText.setVisible(false); }
+        }
+        this.basket.body.updateFromGameObject();
+      }
+      // gentle cloud drift
+      for (var ci = 0; ci < this.clouds.length; ci++) {
+        var cl = this.clouds[ci];
+        var baseX = cl.getData('baseX');
+        var off = cl.getData('offset');
+        cl.x = baseX + Math.sin(time * 0.0003 + off) * 14;
+      }
+      // Missed fruit lands softly on the grass, no penalty — also update shadows and rotation
+      var kids = this.fruits.getChildren().slice();
+      for (var i = 0; i < kids.length; i++) {
+        var f = kids[i];
+        var sh = f.getData('shadow');
+        if (sh) {
+          sh.x = f.x;
+          sh.y = this.scale.height - 58;
+          var h = Phaser.Math.Clamp((this.scale.height - 56 - f.y) / 400, 0, 1);
+          sh.setScale(1 - h * 0.5);
+          sh.setAlpha(0.12 * (1 - h * 0.6));
+        }
+        var rs = f.getData('rotSpeed');
+        if (rs) { f.angle += rs; }
+        if (f.y > this.scale.height - 62 && !f.getData('landed')) {
+          f.setData('landed', true);
+          this.tweens.killTweensOf(f);
+          f.body.setVelocity(0, 0);
+          if (sh) { sh.destroy(); }
+          this.tweens.add({
+            targets: f,
+            alpha: 0,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            duration: 800,
+            ease: 'Sine.easeOut',
+            onComplete: (function (dot) {
+              return function () { dot.destroy(); };
+            })(f)
+          });
+        }
+      }
+      // combo timeout visual: fade combo if idle too long (no penalty, just visual)
+      if (playing && !won && combo > 1 && lastCatchTime) {
+        if (time - lastCatchTime > 1600) {
+          // gently reset combo display, no score loss
+          combo = 1;
+          this.refreshScore();
+          updateHud();
+        }
+      }
+    }
+  });
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: 480,
+    height: 640,
+    backgroundColor: '#EAF4DC',
+    physics: {
+      default: 'arcade',
+      arcade: { gravity: { x: 0, y: 0 }, debug: false }
+    },
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [OrchardScene]
+  };
+
+  // eslint-disable-next-line no-undef
+  var game = new Phaser.Game(config);
+
+  updateHud('Press Start to begin picking.');
+  setButtons();
+})();
+</script>
+</body>
+</html>

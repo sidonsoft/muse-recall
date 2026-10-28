@@ -1,0 +1,31 @@
+{
+  "id": "fe0c0146-0641-441c-ab0b-45a4a92949e4",
+  "project_id": "p17",
+  "kind": "modify",
+  "status": "failed",
+  "prompt": "Make the game more exciting and challenging, like an arcade game.",
+  "request": "Make the game more exciting and challenging, like an arcade game.",
+  "summary": null,
+  "error": "Job exceeded the 1800s runtime budget.",
+  "created_at": "2026-10-28T13:17:32.284Z",
+  "started_at": "2026-10-28T13:17:32.285Z",
+  "finished_at": "2026-10-28T13:47:32.300Z",
+  "logs": [
+    "stderr: muse: workspace root: /var/folders/l3/hd35tl8d01b7h5stlh3wg52h0000gn/T/p17-orchard-arcade-corrected-04-3YIulp/workspaces/forge/p17/staging/fe0c0146-0641-441c-ab0b-45a4a92949e4 (explicit)\nmuse: Agent delegation: auto unavailable: workspace is untrusted."
+  ],
+  "usage": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "runtime_ms": 1800015
+  },
+  "memory_ids": [
+    "fd9cfc75-d2dd-4b71-afe5-9d329558f5ab",
+    "f6d219d4-ce11-4bc5-9aed-df990037d6be"
+  ],
+  "base_version": 1,
+  "validation": null,
+  "decision_guard": null,
+  "version": null,
+  "prompt_sha256": "b5cdfb2ddcda212227a7d3bf5d2fb9370c781e00b04ca79774dbb52ac533ff1d"
+}

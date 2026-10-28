@@ -1,0 +1,119 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark Open",
+    "model": "meta-models/muse-spark-open-1026",
+    "endpoint": "https://inference.baseten.co/v1/chat/completions",
+    "path": "production buildForgePrompt with a memory block from production retrieval, baseline appended, one chat completion",
+    "temperature": 0,
+    "max_tokens": 32000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 0,
+  "shards": 1,
+  "results": [
+    {
+      "id": "pilot2-farm-challenge-memory",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "fed070f4-7728-4b34-ab07-e8be3e953a69",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "99181198-58f1-46ca-843d-191cae3d6713",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "memory_ids": [
+        "fed070f4-7728-4b34-ab07-e8be3e953a69",
+        "99181198-58f1-46ca-843d-191cae3d6713"
+      ],
+      "prompt_file_sha256": "c76c8a360373cbc0f8385ce383a3fe9cd2bc68b2bd23c65ce16a2819900f0083",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4485,
+        "completion_tokens": 17778,
+        "total_tokens": 22263,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 12872,
+          "audio_tokens": 0,
+          "reasoning_tokens": 10718,
+          "rejected_prediction_tokens": 21470
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 21008,
+      "output_sha256": "49cc4558b1afb56f5e4ca9ec14fb6b655b33dfaa4adc07c364b18abb23fe2a7c",
+      "seconds": 53.8
+    },
+    {
+      "id": "pilot2-farm-challenge-corrected",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "6f662845-cd1f-45aa-9c16-d363db522c6a",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "26043f6a-5475-47f0-af2e-cf05a2c40d78",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": {
+        "superseded_id": "6f662845-cd1f-45aa-9c16-d363db522c6a",
+        "replacement_id": "ab4bf26b-9817-4e39-a6a7-3f28933f34ac"
+      },
+      "memory_ids": [
+        "ab4bf26b-9817-4e39-a6a7-3f28933f34ac",
+        "26043f6a-5475-47f0-af2e-cf05a2c40d78"
+      ],
+      "prompt_file_sha256": "b9b38d658aa8acee5059d6b47e038ad9ef510b91db9b1895a2f28e9b8265c713",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4494,
+        "completion_tokens": 22747,
+        "total_tokens": 27241,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 17151,
+          "audio_tokens": 0,
+          "reasoning_tokens": 16079,
+          "rejected_prediction_tokens": 22021
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 19864,
+      "output_sha256": "72d6dc1e1b3f67104de89999dd5083ccfd31efec4574332c9c60c5c1ddc6f13b",
+      "seconds": 61.4
+    }
+  ]
+}

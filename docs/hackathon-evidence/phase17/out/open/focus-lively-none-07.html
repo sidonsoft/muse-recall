@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FocusFlow — Task Planner</title>
+<style>
+  :root {
+    --bg: #141311;
+    --surface: #1e1c18;
+    --surface-2: #262320;
+    --border: #38322a;
+    --text: #f2ede3;
+    --muted: #b3a898;
+    --accent: #e7c17c;
+    --accent-ink: #241b08;
+    --accent-soft: rgba(231, 193, 124, 0.14);
+    --danger: #e08f7e;
+    --radius: 14px;
+    --glow: rgba(231, 193, 124, 0.35);
+    --success: #a8d8a0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 48px;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* lively background orbs */
+  .bg-orbs {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(42px);
+    opacity: 0.55;
+  }
+  .orb-a {
+    width: 520px;
+    height: 520px;
+    background: radial-gradient(circle at 30% 30%, rgba(231,193,124,0.22), transparent 70%);
+    top: -120px;
+    left: -120px;
+    animation: floatA 14s ease-in-out infinite;
+  }
+  .orb-b {
+    width: 640px;
+    height: 640px;
+    background: radial-gradient(circle at 70% 40%, rgba(168,216,160,0.14), rgba(231,193,124,0.10) 60%, transparent 75%);
+    bottom: -180px;
+    right: -160px;
+    animation: floatB 18s ease-in-out infinite;
+  }
+  .app {
+    width: 100%;
+    max-width: 620px;
+    position: relative;
+    z-index: 1;
+    animation: appIn 0.7s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+    animation: headerIn 0.6s ease-out 0.1s both;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    font-weight: 700;
+    animation: markPulse 2.8s ease-in-out infinite;
+    box-shadow: 0 6px 18px rgba(231,193,124,0.35);
+  }
+  h1 {
+    margin: 0;
+    font-size: 1.7rem;
+    letter-spacing: 0.2px;
+  }
+  .subtitle {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.98rem;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+    animation: cardIn 0.6s cubic-bezier(0.16,1,0.3,1) 0.15s both;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(120deg, transparent 30%, rgba(231,193,124,0.08), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  .card:hover::before { opacity: 1; }
+  .add-row {
+    display: flex;
+    gap: 10px;
+  }
+  #taskInput {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  #taskInput::placeholder { color: #8d8375; }
+  #taskInput:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(231,193,124,0.15);
+  }
+  #taskInput.shake {
+    animation: shake 0.4s ease;
+    border-color: var(--danger);
+  }
+  #priorityInput {
+    padding: 12px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.15s ease;
+  }
+  #priorityInput:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  #priorityInput:hover { border-color: var(--accent); transform: translateY(-1px); }
+  #addBtn {
+    padding: 12px 18px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 1rem;
+    font-weight: 650;
+    cursor: pointer;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, filter 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 6px 16px rgba(231,193,124,0.25);
+  }
+  #addBtn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.5s ease;
+  }
+  #addBtn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 10px 22px rgba(231,193,124,0.32); }
+  #addBtn:hover::after { left: 120%; }
+  #addBtn:active { filter: brightness(0.96); transform: translateY(0px) scale(0.98); }
+  #addBtn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  .hint {
+    margin: 8px 2px 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0 12px;
+  }
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+  }
+  .filter-btn:hover {
+    color: var(--text);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    background: rgba(231,193,124,0.06);
+  }
+  .filter-btn:active { transform: scale(0.96); }
+  .filter-btn[aria-pressed="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 650;
+    box-shadow: 0 4px 12px rgba(231,193,124,0.18);
+    transform: translateY(-1px);
+  }
+  .filter-btn:focus-visible,
+  .icon-btn:focus-visible,
+  .check:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  #clearBtn {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s ease, transform 0.15s ease;
+  }
+  #clearBtn:hover { color: var(--text); transform: translateY(-1px); }
+  #clearBtn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    text-decoration: none;
+    transform: none;
+  }
+  .progress-wrap {
+    margin: 4px 0 12px;
+  }
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.92rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  #progressLabel { color: var(--text); font-weight: 600; }
+  #moodEmoji {
+    font-size: 1.1rem;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    display: inline-block;
+  }
+  #moodEmoji.pop { animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+  .progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: #322d25;
+    overflow: hidden;
+    position: relative;
+  }
+  #progressBar {
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), #f0d49a);
+    transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+    overflow: hidden;
+  }
+  #progressBar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+    opacity: 0.9;
+  }
+  #progressBar.celebrate {
+    animation: barPulse 0.6s ease;
+    box-shadow: 0 0 16px rgba(231,193,124,0.6);
+  }
+  ul#taskList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  }
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    animation: taskIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  .task:hover {
+    transform: translateY(-2px);
+    border-color: rgba(231,193,124,0.35);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    background: #2b2823;
+  }
+  .task.completed { opacity: 0.82; }
+  .task.completed:hover { transform: translateY(-1px); }
+  .task.just-added { animation: taskIn 0.45s cubic-bezier(0.16,1,0.3,1) both, taskHighlight 1.2s ease 0.3s; }
+  .check {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 2px solid var(--accent);
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .task.completed .check {
+    background: var(--accent);
+    color: var(--accent-ink);
+    animation: pop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 4px 10px rgba(231,193,124,0.35);
+  }
+  .check:hover { background: var(--accent-soft); transform: scale(1.08); }
+  .task.completed .check:hover { background: var(--accent); transform: scale(1.08); }
+  .check:active { transform: scale(0.92); }
+  .task-text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    transition: color 0.2s ease;
+  }
+  .task.completed .task-text {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+  .icon-btn {
+    flex: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 7px 9px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .icon-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: rgba(224, 143, 126, 0.10);
+    transform: translateY(-1px);
+  }
+  .icon-btn:active { transform: scale(0.96); }
+  .priority-btn {
+    flex: none;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 7px 9px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+  }
+  .priority-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    background: rgba(231,193,124,0.06);
+  }
+  .priority-btn:active { transform: scale(0.96); }
+  .priority-btn[aria-pressed="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 650;
+    box-shadow: 0 3px 10px rgba(231,193,124,0.18);
+  }
+  .priority-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .priority-line {
+    margin: 8px 0 0;
+    font-size: 0.84rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  #prioritySummary { color: var(--muted); }
+  .priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    animation: dotPulse 1.6s ease-in-out infinite;
+    flex: none;
+  }
+  .priority-dot.idle { background: var(--border); animation: none; opacity: 0.7; }
+  .encouragement {
+    margin: 8px 0 0;
+    font-size: 0.88rem;
+    color: var(--accent);
+    font-weight: 600;
+    min-height: 1.2em;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .encouragement.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .empty {
+    text-align: center;
+    padding: 28px 12px;
+    border: 1px dashed var(--border);
+    border-radius: 11px;
+    color: var(--muted);
+    animation: taskIn 0.4s ease both;
+  }
+  .empty strong {
+    display: block;
+    color: var(--text);
+    margin-bottom: 4px;
+    font-size: 1.02rem;
+  }
+  .empty-icon {
+    font-size: 1.8rem;
+    display: block;
+    margin-bottom: 8px;
+    animation: floatIcon 2.6s ease-in-out infinite;
+  }
+  footer {
+    margin-top: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.84rem;
+    opacity: 0.9;
+  }
+  /* toast stack */
+  #toastStack {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .toast {
+    background: #2a2722;
+    color: var(--text);
+    border: 1px solid rgba(231,193,124,0.35);
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35), 0 0 0 1px rgba(231,193,124,0.08);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    animation: toastIn 0.4s cubic-bezier(0.16,1,0.3,1) both, toastOut 0.35s ease 2.2s forwards;
+    white-space: nowrap;
+  }
+  .toast span.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    box-shadow: 0 0 10px rgba(231,193,124,0.6);
+  }
+  /* confetti */
+  #confettiLayer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 40;
+  }
+  .confetti {
+    position: absolute;
+    width: 8px;
+    height: 12px;
+    border-radius: 2px;
+    top: -12px;
+    animation: confettiFall 900ms cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+  }
+  @keyframes appIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes headerIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes taskIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes taskHighlight { 0% { border-color: var(--border); } 30% { border-color: rgba(231,193,124,0.55); box-shadow: 0 0 0 3px rgba(231,193,124,0.12); } 100% { border-color: var(--border); } }
+  @keyframes pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+  @keyframes barPulse { 0% { transform: scaleY(1); } 50% { transform: scaleY(1.35); } 100% { transform: scaleY(1); } }
+  @keyframes floatA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(18px,14px) scale(1.04); } }
+  @keyframes floatB { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-16px,-12px) scale(1.03); } }
+  @keyframes floatIcon { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes markPulse { 0%,100% { transform: scale(1); box-shadow: 0 6px 18px rgba(231,193,124,0.35); } 50% { transform: scale(1.05); box-shadow: 0 8px 22px rgba(231,193,124,0.45); } }
+  @keyframes dotPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.25); opacity: 0.85; } }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(-6px) scale(0.98); } }
+  @keyframes confettiFall {
+    0% { transform: translate3d(0,0,0) rotate(0deg); opacity: 1; }
+    100% { transform: translate3d(var(--dx, 40px), 420px, 0) rotate(720deg); opacity: 0; }
+  }
+  @media (max-width: 480px) {
+    body { padding: 20px 12px 36px; }
+    .card { padding: 14px; }
+    .add-row { flex-direction: column; }
+    #addBtn { width: 100%; }
+    #priorityInput { width: 100%; }
+    .toolbar { align-items: flex-start; }
+    .orb-a { width: 380px; height: 380px; }
+    .orb-b { width: 420px; height: 420px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-orbs" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span></div>
+<div id="confettiLayer" aria-hidden="true"></div>
+<div id="toastStack" aria-live="polite" aria-atomic="true"></div>
+<main class="app">
+  <header>
+    <div class="brand">
+      <span class="mark" aria-hidden="true">◐</span>
+      <h1>FocusFlow</h1>
+    </div>
+    <p class="subtitle">A calm place for today's tasks.</p>
+  </header>
+
+  <section class="card" aria-label="Task planner">
+    <div class="add-row">
+      <input
+        id="taskInput"
+        type="text"
+        maxlength="200"
+        placeholder="Add a new task…"
+        aria-label="New task"
+        autocomplete="off" />
+      <select id="priorityInput" aria-label="Task priority">
+        <option value="normal">Normal</option>
+        <option value="high">High</option>
+      </select>
+      <button id="addBtn" type="button">Add task</button>
+    </div>
+    <p class="hint">Press Enter or choose Add task. Tasks stay for this session only.</p>
+
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="Filter tasks">
+        <button class="filter-btn" type="button" data-filter="all" aria-pressed="true">All</button>
+        <button class="filter-btn" type="button" data-filter="active" aria-pressed="false">Active</button>
+        <button class="filter-btn" type="button" data-filter="completed" aria-pressed="false">Completed</button>
+      </div>
+      <button id="clearBtn" type="button">Clear completed</button>
+    </div>
+
+    <div class="progress-wrap" aria-live="polite">
+      <div class="progress-text">
+        <span><span id="progressLabel">0 of 0 completed</span> <span id="moodEmoji" aria-hidden="true">🌱</span></span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-track" role="progressbar" aria-label="Task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack">
+        <div id="progressBar"></div>
+      </div>
+      <p class="priority-line"><span class="priority-dot idle" id="priorityDot" aria-hidden="true"></span><span id="prioritySummary">No high-priority tasks remaining</span></p>
+      <p class="encouragement" id="encouragement" aria-live="polite"></p>
+    </div>
+
+    <ul id="taskList" aria-live="polite" aria-label="Tasks"></ul>
+  </section>
+
+  <footer>FocusFlow keeps tasks in memory for this session.</footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var tasks = [];
+  var nextId = 1;
+  var filter = "all";
+  var prevPct = 0;
+  var lastAddedId = null;
+
+  var input = document.getElementById("taskInput");
+  var priorityInput = document.getElementById("priorityInput");
+  var prioritySummary = document.getElementById("prioritySummary");
+  var priorityDot = document.getElementById("priorityDot");
+  var addBtn = document.getElementById("addBtn");
+  var list = document.getElementById("taskList");
+  var progressLabel = document.getElementById("progressLabel");
+  var progressPct = document.getElementById("progressPct");
+  var progressBar = document.getElementById("progressBar");
+  var progressTrack = document.getElementById("progressTrack");
+  var clearBtn = document.getElementById("clearBtn");
+  var filterBtns = Array.prototype.slice.call(document.querySelectorAll(".filter-btn"));
+  var toastStack = document.getElementById("toastStack");
+  var confettiLayer = document.getElementById("confettiLayer");
+  var encouragementEl = document.getElementById("encouragement");
+  var moodEmoji = document.getElementById("moodEmoji");
+
+  var encouragements = ["Nice one! ✨", "Keep flowing! 🌊", "Momentum! 🚀", "You're on fire! 🔥", "Crushed it! 💪", "Lovely progress! 🌿"];
+  var moodByPct = [
+    { max: 0, emoji: "🌱", text: "Let's get started — add your first task!" },
+    { max: 24, emoji: "🌤️", text: "Small steps, big calm." },
+    { max: 49, emoji: "🌊", text: "Nice rhythm — keep going!" },
+    { max: 74, emoji: "⚡", text: "You're in flow — almost there!" },
+    { max: 99, emoji: "🔥", text: "So close — finish strong!" },
+    { max: 100, emoji: "🎉", text: "All done! Take a breath and celebrate." }
+  ];
+
+  function showToast(message) {
+    if (!toastStack) return;
+    var toast = document.createElement("div");
+    toast.className = "toast";
+    var dot = document.createElement("span");
+    dot.className = "dot";
+    dot.setAttribute("aria-hidden", "true");
+    var text = document.createElement("span");
+    text.textContent = message;
+    toast.appendChild(dot);
+    toast.appendChild(text);
+    toastStack.appendChild(toast);
+    window.setTimeout(function () {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 2600);
+  }
+
+  function launchConfetti(count, burstX) {
+    if (!confettiLayer) return;
+    var colors = ["#e7c17c", "#f0d49a", "#a8d8a0", "#e08f7e", "#f2ede3", "#ffd166"];
+    var n = count || 14;
+    for (var i = 0; i < n; i++) {
+      var c = document.createElement("span");
+      c.className = "confetti";
+      c.style.left = (burstX != null ? burstX : (12 + Math.random() * 76)) + "%";
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.transform = "rotate(" + Math.floor(Math.random() * 360) + "deg)";
+      c.style.setProperty("--dx", (Math.random() * 160 - 80) + "px");
+      c.style.animationDelay = (Math.random() * 0.18) + "s";
+      c.style.animationDuration = (0.75 + Math.random() * 0.45) + "s";
+      c.style.opacity = "1";
+      if (Math.random() > 0.5) {
+        c.style.borderRadius = "50%";
+        c.style.width = "9px";
+        c.style.height = "9px";
+      }
+      confettiLayer.appendChild(c);
+      (function (el) {
+        window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1200);
+      })(c);
+    }
+  }
+
+  function shakeInput() {
+    input.classList.remove("shake");
+    void input.offsetWidth;
+    input.classList.add("shake");
+    window.setTimeout(function () { input.classList.remove("shake"); }, 500);
+  }
+
+  function updateMood(pct, total, done) {
+    var chosen = moodByPct[0];
+    for (var i = 0; i < moodByPct.length; i++) {
+      if (pct <= moodByPct[i].max) { chosen = moodByPct[i]; break; }
+    }
+    if (moodEmoji) {
+      moodEmoji.textContent = chosen.emoji;
+      moodEmoji.classList.remove("pop");
+      void moodEmoji.offsetWidth;
+      if (pct !== prevPct) moodEmoji.classList.add("pop");
+    }
+    if (encouragementEl) {
+      if (total === 0) {
+        encouragementEl.textContent = chosen.text;
+        encouragementEl.classList.add("show");
+      } else if (pct === 100) {
+        encouragementEl.textContent = chosen.text;
+        encouragementEl.classList.add("show");
+      } else if (pct !== prevPct) {
+        encouragementEl.textContent = chosen.text;
+        encouragementEl.classList.add("show");
+      }
+    }
+  }
+
+  function addTask() {
+    var text = input.value.trim();
+    if (!text) {
+      shakeInput();
+      input.focus();
+      return;
+    }
+    var priority = priorityInput.value === "high" ? "high" : "normal";
+    var newTask = { id: nextId++, text: text, completed: false, priority: priority };
+    tasks.push(newTask);
+    lastAddedId = newTask.id;
+    input.value = "";
+    priorityInput.value = "normal";
+    input.focus();
+    if (priority === "high") {
+      showToast("High priority added ⚡");
+      launchConfetti(10, 50);
+    } else {
+      showToast("Task added — let's go! 🌱");
+    }
+    render();
+  }
+
+  function toggleTask(id) {
+    var wasCompleted = false;
+    var taskText = "";
+    for (var i = 0; i < tasks.length; i++) {
+      if (tasks[i].id === id) {
+        wasCompleted = tasks[i].completed;
+        taskText = tasks[i].text;
+        tasks[i].completed = !tasks[i].completed;
+        break;
+      }
+    }
+    if (!wasCompleted) {
+      var msg = encouragements[Math.floor(Math.random() * encouragements.length)];
+      showToast(msg);
+      launchConfetti(16, 50);
+      // subtle bar celebrate
+      progressBar.classList.remove("celebrate");
+      void progressBar.offsetWidth;
+      progressBar.classList.add("celebrate");
+      window.setTimeout(function(){ progressBar.classList.remove("celebrate"); }, 700);
+    } else {
+      showToast("Moved back to active ↩");
+    }
+    render();
+  }
+
+  function togglePriority(id) {
+    for (var i = 0; i < tasks.length; i++) {
+      if (tasks[i].id === id) {
+        tasks[i].priority = tasks[i].priority === "high" ? "normal" : "high";
+        if (tasks[i].priority === "high") {
+          showToast("Marked as high priority ⭐");
+          launchConfetti(8, 50);
+        } else {
+          showToast("Priority cleared");
+        }
+        break;
+      }
+    }
+    render();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(function (t) { return t.id !== id; });
+    showToast("Task removed");
+    render();
+  }
+
+  function clearCompleted() {
+    var done = tasks.filter(function (t) { return t.completed; }).length;
+    if (done === 0) return;
+    tasks = tasks.filter(function (t) { return !t.completed; });
+    showToast("Cleared " + done + " completed task" + (done === 1 ? "" : "s") + " ✨");
+    launchConfetti(12, 50);
+    render();
+  }
+
+  function visibleTasks() {
+    if (filter === "active") {
+      return tasks.filter(function (t) { return !t.completed; });
+    }
+    if (filter === "completed") {
+      return tasks.filter(function (t) { return t.completed; });
+    }
+    return tasks;
+  }
+
+  function filterLabel() {
+    if (filter === "active") return "active";
+    if (filter === "completed") return "completed";
+    return "all";
+  }
+
+  function render() {
+    var total = tasks.length;
+    var done = tasks.filter(function (t) { return t.completed; }).length;
+    var pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+    progressLabel.textContent = done + " of " + total + " completed";
+    progressPct.textContent = pct + "%";
+    progressBar.style.width = pct + "%";
+    progressTrack.setAttribute("aria-valuenow", String(pct));
+
+    var highRemaining = tasks.filter(function (t) { return !t.completed && t.priority === "high"; }).length;
+    if (highRemaining === 0) {
+      prioritySummary.textContent = "No high-priority tasks remaining";
+      if (priorityDot) { priorityDot.className = "priority-dot idle"; }
+    } else if (highRemaining === 1) {
+      prioritySummary.textContent = "1 high-priority task remaining";
+      if (priorityDot) { priorityDot.className = "priority-dot"; }
+    } else {
+      prioritySummary.textContent = highRemaining + " high-priority tasks remaining";
+      if (priorityDot) { priorityDot.className = "priority-dot"; }
+    }
+
+    updateMood(pct, total, done);
+
+    if (pct === 100 && total > 0 && prevPct !== 100) {
+      showToast("All done! You're amazing 🎉");
+      launchConfetti(28, 50);
+      progressBar.classList.add("celebrate");
+      window.setTimeout(function(){ progressBar.classList.remove("celebrate"); }, 800);
+    }
+    prevPct = pct;
+
+    clearBtn.disabled = done === 0;
+
+    filterBtns.forEach(function (btn) {
+      var active = btn.getAttribute("data-filter") === filter;
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+
+    list.innerHTML = "";
+    var shown = visibleTasks();
+
+    if (shown.length === 0) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      var icon = document.createElement("span");
+      icon.className = "empty-icon";
+      icon.setAttribute("aria-hidden", "true");
+      if (total === 0) icon.textContent = "✨";
+      else if (filter === "active") icon.textContent = "🌿";
+      else if (filter === "completed") icon.textContent = "🎈";
+      else icon.textContent = "🔍";
+      var title = document.createElement("strong");
+      var body = document.createElement("span");
+      if (total === 0) {
+        title.textContent = "No tasks yet";
+        body.textContent = "Add your first task above to begin.";
+      } else if (filter === "active") {
+        title.textContent = "All clear";
+        body.textContent = "No active tasks. Enjoy the calm.";
+      } else if (filter === "completed") {
+        title.textContent = "Nothing completed yet";
+        body.textContent = "Completed tasks will appear here.";
+      } else {
+        title.textContent = "Nothing here";
+        body.textContent = "Try a different filter.";
+      }
+      empty.appendChild(icon);
+      empty.appendChild(title);
+      empty.appendChild(body);
+      list.appendChild(empty);
+      return;
+    }
+
+    shown.forEach(function (task, idx) {
+      var li = document.createElement("li");
+      li.className = "task" + (task.completed ? " completed" : "");
+      if (task.id === lastAddedId) li.classList.add("just-added");
+      li.style.animationDelay = (idx * 0.04) + "s";
+
+      var check = document.createElement("button");
+      check.type = "button";
+      check.className = "check";
+      check.setAttribute("aria-label", task.completed ? "Mark active: " + task.text : "Mark complete: " + task.text);
+      check.setAttribute("aria-pressed", task.completed ? "true" : "false");
+      check.textContent = task.completed ? "✓" : "";
+      check.addEventListener("click", function () { toggleTask(task.id); });
+
+      var span = document.createElement("span");
+      span.className = "task-text";
+      span.textContent = task.text;
+
+      var isHigh = task.priority === "high";
+      var prio = document.createElement("button");
+      prio.type = "button";
+      prio.className = "priority-btn";
+      prio.setAttribute("aria-pressed", isHigh ? "true" : "false");
+      prio.setAttribute("aria-label", (isHigh ? "Mark normal priority: " : "Mark high priority: ") + task.text);
+      prio.textContent = isHigh ? "High" : "Mark high";
+      prio.addEventListener("click", function () { togglePriority(task.id); });
+
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "icon-btn";
+      del.setAttribute("aria-label", "Delete task: " + task.text);
+      del.textContent = "Delete";
+      del.addEventListener("click", function () { deleteTask(task.id); });
+
+      li.appendChild(check);
+      li.appendChild(span);
+      li.appendChild(prio);
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+    if (lastAddedId) {
+      window.setTimeout(function(){ lastAddedId = null; }, 800);
+    }
+  }
+
+  addBtn.addEventListener("click", addTask);
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addTask();
+    }
+  });
+  clearBtn.addEventListener("click", clearCompleted);
+  filterBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      filter = btn.getAttribute("data-filter") || "all";
+      render();
+    });
+  });
+
+  // Seed with two gentle examples so progress text is visible on first load.
+  tasks.push({ id: nextId++, text: "Plan today's top three tasks", completed: true, priority: "normal" });
+  tasks.push({ id: nextId++, text: "Take a short focus break", completed: false, priority: "high" });
+  render();
+  input.focus();
+})();
+</script>
+</body>
+</html>

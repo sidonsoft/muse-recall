@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orchard Catch — Arcade Harvest Rush</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  :root{
+    --accent:#00FF88;
+    --accent2:#FF3B30;
+    --accent3:#FFD60A;
+    --ink:#E8FFF0;
+    --cream:#0A1A12;
+    --meadow:#0F2A1F;
+    --card:#132A1E;
+    --card2:#1A3A28;
+    --neon:#00FF88;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+    background:radial-gradient(ellipse at top,#1a4a2e 0%,#0a1a12 55%,#050d09 100%);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  header{
+    text-align:center;
+    padding:18px 16px 6px;
+    max-width:640px;
+    width:100%;
+  }
+  h1{
+    margin:0 0 6px;
+    font-size:clamp(1.7rem,5vw,2.6rem);
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#fff;
+    text-shadow:0 0 8px var(--neon),0 0 18px var(--neon),0 2px 0 #00331a;
+    line-height:1;
+  }
+  h1 span{color:var(--accent);font-size:0.9em}
+  .subtitle{
+    margin:0;
+    font-size:clamp(0.95rem,2.6vw,1.05rem);
+    line-height:1.45;
+    color:#b8ffda;
+    text-shadow:0 0 6px rgba(0,255,136,0.4);
+  }
+  .subtitle strong{color:var(--accent3)}
+  main{
+    width:100%;
+    max-width:640px;
+    padding:10px 16px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:stretch;
+  }
+  .panel{
+    background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+    border:2px solid var(--accent);
+    border-radius:18px;
+    padding:12px 14px;
+    box-shadow:0 0 12px rgba(0,255,136,0.35),inset 0 0 12px rgba(0,255,136,0.08);
+    position:relative;
+    overflow:hidden;
+  }
+  .panel::before{
+    content:"";
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,255,136,0.03) 2px 3px);
+    pointer-events:none;
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:stretch;
+    justify-content:space-between;
+  }
+  .progress-wrap{flex:1 1 220px;min-width:200px;position:relative;z-index:1}
+  #catchLabel{font-weight:bold;font-size:1.02rem;margin:0 0 6px;color:#fff;text-shadow:0 0 6px var(--accent)}
+  progress{
+    width:100%;
+    height:18px;
+    appearance:none;
+    border-radius:999px;
+    overflow:hidden;
+    border:1px solid var(--accent);
+    background:#0a1a12;
+  }
+  progress::-webkit-progress-bar{background:#0a1a12;border-radius:999px}
+  progress::-webkit-progress-value{background:linear-gradient(90deg,var(--accent),#7affbf);border-radius:999px;box-shadow:0 0 8px var(--accent)}
+  progress::-moz-progress-bar{background:linear-gradient(90deg,var(--accent),#7affbf);border-radius:999px}
+  .arcade-stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+  }
+  .stat{
+    background:rgba(0,0,0,0.35);
+    border:1px solid rgba(0,255,136,0.4);
+    border-radius:10px;
+    padding:6px 8px;
+    text-align:center;
+    line-height:1.1;
+  }
+  .stat-label{font-size:0.72rem;letter-spacing:0.8px;text-transform:uppercase;color:#7affbf;display:block}
+  .stat-value{font-size:1.15rem;font-weight:900;color:#fff;text-shadow:0 0 6px var(--accent);font-family:"Courier New",monospace}
+  .stat-value.lives{color:#ff6b6b;text-shadow:0 0 6px #ff3b30;letter-spacing:2px}
+  .stat-value.combo{color:var(--accent3);text-shadow:0 0 8px var(--accent3)}
+  .stat-value.timer{color:#fff}
+  .stat-value.timer.warn{color:var(--accent2);animation:blink 0.5s steps(2) infinite}
+  @keyframes blink{0%{opacity:1}50%{opacity:0.4}}
+  .stat.combo-stat{grid-column:span 2;background:linear-gradient(90deg,rgba(255,214,10,0.15),rgba(0,255,136,0.15));border-color:var(--accent3);display:none}
+  .stat.combo-stat.active{display:block;animation:pop 0.2s ease}
+  @keyframes pop{0%{transform:scale(0.9)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;position:relative;z-index:1}
+  button{
+    font:inherit;
+    font-weight:900;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:#001a0f;
+    background:linear-gradient(180deg,#7affbf 0%,var(--accent) 100%);
+    border:2px solid #b8ffda;
+    border-radius:999px;
+    padding:10px 20px;
+    cursor:pointer;
+    min-height:48px;
+    min-width:110px;
+    box-shadow:0 0 10px rgba(0,255,136,0.6),0 3px 0 #005a33;
+    text-shadow:0 1px 0 rgba(255,255,255,0.6);
+    transition:transform 0.08s,box-shadow 0.15s;
+  }
+  button:hover:not(:disabled){background:linear-gradient(180deg,#a0ffd1 0%,#00e67a 100%);box-shadow:0 0 16px rgba(0,255,136,0.9),0 3px 0 #005a33;transform:translateY(-1px)}
+  button:active:not(:disabled){transform:translateY(2px);box-shadow:0 0 8px rgba(0,255,136,0.5),0 1px 0 #005a33}
+  button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  button:disabled{opacity:.45;cursor:default;filter:grayscale(0.4)}
+  button.primary{background:linear-gradient(180deg,#ffe566 0%,var(--accent3) 100%);border-color:#fff8b0;box-shadow:0 0 12px rgba(255,214,10,0.7),0 3px 0 #8a7000;color:#1a1200}
+  button.primary:hover:not(:disabled){background:linear-gradient(180deg,#fff080 0%,#ffdf00 100%);box-shadow:0 0 18px rgba(255,214,10,0.9),0 3px 0 #8a7000}
+  #statusMessage{
+    margin:8px 0 0;
+    min-height:1.6em;
+    font-weight:900;
+    font-size:1.02rem;
+    color:#fff;
+    text-shadow:0 0 6px var(--accent);
+    text-align:center;
+    background:rgba(0,0,0,0.3);
+    border-radius:999px;
+    padding:6px 10px;
+    border:1px solid rgba(0,255,136,0.3);
+  }
+  #statusMessage.hit{color:#ff6b6b;text-shadow:0 0 8px #ff3b30;animation:shake 0.3s}
+  #statusMessage.combo{color:var(--accent3);text-shadow:0 0 8px var(--accent3)}
+  #statusMessage.level{color:var(--accent);text-shadow:0 0 10px var(--accent);font-size:1.1rem}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  #gameWrap{
+    background:linear-gradient(180deg,#0a1a12 0%,#0f2a1f 100%);
+    border:2px solid var(--accent);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 0 18px rgba(0,255,136,0.4),inset 0 0 20px rgba(0,0,0,0.5);
+    position:relative;
+  }
+  #gameWrap::after{
+    content:"";
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,255,136,0.04) 3px 4px);
+    pointer-events:none;
+    border-radius:18px;
+  }
+  #game{display:flex;justify-content:center;position:relative}
+  #game canvas{border-radius:14px;max-width:100%;display:block}
+  .help{font-size:.92rem;line-height:1.5;margin:0;color:#b8ffda;position:relative;z-index:1}
+  .help strong{color:var(--accent3)}
+  .help kbd{background:#001a0f;border:1px solid var(--accent);border-bottom-width:3px;border-radius:6px;padding:1px 6px;font-family:monospace;color:#fff;box-shadow:0 0 6px rgba(0,255,136,0.3)}
+  footer{padding:0 16px 24px;text-align:center;font-size:.85rem;max-width:640px;color:#7affbf;opacity:0.9}
+  @media (max-width:480px){
+    .hud{flex-direction:column;align-items:stretch}
+    .controls{justify-content:stretch}
+    .controls button{flex:1}
+    .arcade-stats{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Orchard <span>Catch</span> — Arcade Rush</h1>
+  <p class="subtitle"><strong>ARCADE MODE:</strong> Catch fruit for points! Avoid <strong style="color:#ff6b6b">BOMBS</strong>! Build combos! Survive 60 seconds!</p>
+</header>
+
+<main>
+  <section class="panel hud" aria-label="Game progress and controls">
+    <div class="progress-wrap">
+      <p id="catchLabel" aria-live="polite">Caught 0 of 12 fruit — Level 1</p>
+      <progress id="catchProgress" max="12" value="0" aria-label="Fruit caught progress"></progress>
+      <div class="arcade-stats" aria-label="Arcade stats">
+        <div class="stat"><span class="stat-label">Score</span><span class="stat-value" id="scoreDisplay" aria-live="polite">0000</span></div>
+        <div class="stat"><span class="stat-label">High Score</span><span class="stat-value" id="highScoreDisplay">0000</span></div>
+        <div class="stat"><span class="stat-label">Lives</span><span class="stat-value lives" id="livesDisplay" aria-live="polite">♥♥♥</span></div>
+        <div class="stat"><span class="stat-label">Time</span><span class="stat-value timer" id="timerDisplay" aria-live="polite">60s</span></div>
+        <div class="stat combo-stat" id="comboStat"><span class="stat-label">Combo</span><span class="stat-value combo" id="comboDisplay">x1</span></div>
+      </div>
+      <p id="statusMessage" aria-live="polite">Press Start to begin picking.</p>
+    </div>
+    <div class="controls" role="group" aria-label="Game actions">
+      <button type="button" id="startBtn" class="primary" aria-label="Start catching fruit">Start</button>
+      <button type="button" id="restartBtn" aria-label="Restart the game and empty the basket" disabled>Restart</button>
+    </div>
+  </section>
+
+  <div id="gameWrap">
+    <div id="game" aria-label="Orchard game canvas. Use left and right arrow keys, mouse, or touch to move the basket. Hold Shift to dash."></div>
+  </div>
+
+  <section class="panel" aria-label="How to play">
+    <p class="help"><strong>ARCADE RULES:</strong> Move with <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> + mouse/touch. Hold <kbd>Shift</kbd> to DASH! Catch fruit = +100pts &amp; combo. Miss = lose life &amp; combo. Hit <strong style="color:#ff6b6b">BOMB</strong> = -200 &amp; -1 life! Fill basket to LEVEL UP — speed increases! Survive 60s for max score!</p>
+  </section>
+</main>
+
+<footer>
+  <p>⚡ ARCADE HARVEST RUSH — No mercy, just fruit! Chain combos, dodge bombs, beat the clock! ⚡</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var GOAL = 12;
+  var caught = 0;
+  var playing = false;
+  var won = false;
+  var sceneRef = null;
+
+  var score = 0;
+  var lives = 3;
+  var level = 1;
+  var timeLeft = 60;
+  var combo = 0;
+  var bestCombo = 0;
+  var highScore = 0;
+  var timerEvent = null;
+
+  var startBtn = document.getElementById('startBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var catchLabel = document.getElementById('catchLabel');
+  var catchProgress = document.getElementById('catchProgress');
+  var statusMessage = document.getElementById('statusMessage');
+  var scoreDisplay = document.getElementById('scoreDisplay');
+  var highScoreDisplay = document.getElementById('highScoreDisplay');
+  var livesDisplay = document.getElementById('livesDisplay');
+  var timerDisplay = document.getElementById('timerDisplay');
+  var comboDisplay = document.getElementById('comboDisplay');
+  var comboStat = document.getElementById('comboStat');
+
+  var audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+  }
+  function beep(freq, dur, type, vol) {
+    if (!audioCtx) { return; }
+    try {
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = type || 'square';
+      o.frequency.value = freq;
+      g.gain.value = vol || 0.12;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      o.stop(audioCtx.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function formatScore(n) {
+    var s = String(n);
+    while (s.length < 4) { s = '0' + s; }
+    return s;
+  }
+
+  function updateHud(message, kind) {
+    catchLabel.textContent = 'Caught ' + caught + ' of ' + GOAL + ' fruit — Level ' + level;
+    catchProgress.max = String(GOAL);
+    catchProgress.value = String(caught);
+    catchProgress.setAttribute('aria-valuenow', String(caught));
+    scoreDisplay.textContent = formatScore(score);
+    highScoreDisplay.textContent = formatScore(highScore);
+    var hearts = '';
+    for (var i = 0; i < 3; i++) { hearts += i < lives ? '♥' : '♡'; }
+    livesDisplay.textContent = hearts;
+    timerDisplay.textContent = timeLeft + 's';
+    if (timeLeft <= 10 && playing) {
+      timerDisplay.classList.add('warn');
+    } else {
+      timerDisplay.classList.remove('warn');
+    }
+    if (combo >= 2) {
+      comboStat.classList.add('active');
+      comboDisplay.textContent = 'x' + combo + ' +' + (combo * 20) + ' BONUS';
+    } else {
+      comboStat.classList.remove('active');
+    }
+    if (typeof message === 'string') {
+      statusMessage.textContent = message;
+      statusMessage.className = '';
+      if (kind) { statusMessage.classList.add(kind); }
+    }
+  }
+
+  function setButtons() {
+    startBtn.disabled = playing && !won;
+    restartBtn.disabled = !playing && !won && caught === 0 && score === 0;
+  }
+
+  function clearTimer() {
+    if (timerEvent) {
+      timerEvent.remove(false);
+      timerEvent = null;
+    }
+  }
+
+  function startTimer() {
+    clearTimer();
+    if (!sceneRef) { return; }
+    timerEvent = sceneRef.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: function () {
+        if (!playing || won) { return; }
+        timeLeft -= 1;
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          updateHud();
+          if (score > highScore) { highScore = score; }
+          gameOver('TIME UP! Final Score: ' + score);
+          beep(180, 0.6, 'sawtooth', 0.2);
+          beep(120, 0.8, 'square', 0.2);
+        } else {
+          if (timeLeft <= 10) { beep(900, 0.08, 'square', 0.08); }
+          updateHud();
+        }
+      }
+    });
+  }
+
+  function startGame() {
+    ensureAudio();
+    caught = 0;
+    score = 0;
+    lives = 3;
+    level = 1;
+    timeLeft = 60;
+    combo = 0;
+    bestCombo = 0;
+    GOAL = 12;
+    playing = true;
+    won = false;
+    updateHud('ARCADE RUSH! Catch fruit, dodge bombs!', '');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+    startTimer();
+    beep(440, 0.12, 'square', 0.15);
+    setTimeout(function () { beep(660, 0.12, 'square', 0.15); }, 120);
+    setTimeout(function () { beep(880, 0.18, 'square', 0.15); }, 240);
+  }
+
+  function restartGame() {
+    ensureAudio();
+    caught = 0;
+    score = 0;
+    lives = 3;
+    level = 1;
+    timeLeft = 60;
+    combo = 0;
+    bestCombo = 0;
+    GOAL = 12;
+    playing = true;
+    won = false;
+    updateHud('Fresh run! GO GO GO!', '');
+    if (sceneRef) {
+      sceneRef.resetRound();
+    }
+    setButtons();
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+    startTimer();
+    beep(300, 0.1, 'square', 0.12);
+  }
+
+  function onWin() {
+    won = true;
+    playing = false;
+    clearTimer();
+    if (score > highScore) { highScore = score; }
+    updateHud('BASKET FULL! Level ' + level + ' cleared! Bonus +' + (level * 500) + '!', 'level');
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+  }
+
+  function gameOver(reason) {
+    won = true;
+    playing = false;
+    clearTimer();
+    if (score > highScore) { highScore = score; }
+    updateHud(reason + ' — Press Start for new run!', 'hit');
+    setButtons();
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+    if (sceneRef) { sceneRef.showGameOver(reason); }
+  }
+
+  function addScore(base) {
+    var bonus = combo >= 2 ? combo * 20 : 0;
+    var mult = 1 + Math.floor(combo / 3) * 0.5;
+    var pts = Math.floor((base + bonus) * mult);
+    score += pts;
+    if (score > highScore) { highScore = score; }
+    return pts;
+  }
+
+  function loseLife() {
+    lives -= 1;
+    combo = 0;
+    updateHud();
+    if (lives <= 0) {
+      gameOver('GAME OVER! No lives left');
+      beep(150, 0.5, 'sawtooth', 0.25);
+    }
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+
+  startBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+  restartBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!restartBtn.disabled) { restartGame(); }
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.activeElement === document.body) {
+      if (!startBtn.disabled) { startGame(); }
+    }
+  });
+
+  function makeFruitTexture(scene, key, bodyColor, leafColor) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 0);
+    g.fillRect(0, 0, 44, 48);
+    g.fillStyle(bodyColor, 1);
+    g.fillCircle(22, 26, 15);
+    g.fillStyle(0xffffff, 0.35);
+    g.fillCircle(16, 20, 5);
+    g.fillStyle(0x8a5a2b, 1);
+    g.fillRect(20, 4, 4, 9);
+    g.fillStyle(leafColor, 1);
+    g.fillEllipse(30, 10, 12, 7);
+    g.lineStyle(2, 0xffffff, 0.9);
+    g.strokeCircle(22, 26, 15);
+    g.generateTexture(key, 44, 48);
+    g.destroy();
+  }
+
+  function makeBombTexture(scene) {
+    var g = scene.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0x1a1a1a, 1);
+    g.fillCircle(22, 28, 16);
+    g.fillStyle(0x333333, 1);
+    g.fillCircle(17, 23, 4);
+    g.fillStyle(0xff3b30, 1);
+    g.fillCircle(22, 8, 3);
+    g.fillStyle(0xffd60a, 1);
+    g.fillCircle(22, 4, 2);
+    g.lineStyle(2, 0x555555, 1);
+    g.lineBetween(22, 12, 22, 18);
+    g.fillStyle(0xffffff, 0.15);
+    g.fillCircle(16, 22, 3);
+    g.generateTexture('bomb', 44, 48);
+    g.destroy();
+  }
+
+  var OrchardScene = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function OrchardScene() {
+      Phaser.Scene.call(this, { key: 'orchard' });
+      this.basket = null;
+      this.fruits = null;
+      this.cursors = null;
+      this.keys = null;
+      this.spawnTimer = null;
+      this.banner = null;
+      this.bannerSub = null;
+      this.deco = null;
+      this.difficulty = 1;
+    },
+    create: function () {
+      sceneRef = this;
+      var W = this.scale.width;
+      var H = this.scale.height;
+
+      this.cameras.main.setBackgroundColor('#0a1a12');
+
+      var bg = this.add.graphics();
+      bg.fillStyle(0x0f2a1f, 1);
+      bg.fillRect(0, 0, W, H);
+      bg.fillStyle(0x132a1e, 1);
+      for (var gy = 0; gy < H; gy += 32) {
+        bg.lineStyle(1, 0x00ff88, 0.07);
+        bg.lineBetween(0, gy, W, gy);
+      }
+      for (var gx = 0; gx < W; gx += 32) {
+        bg.lineStyle(1, 0x00ff88, 0.05);
+        bg.lineBetween(gx, 0, gx, H);
+      }
+      bg.fillStyle(0x1a4a2e, 0.6);
+      bg.fillEllipse(W / 2, H + 90, W + 160, 300);
+      bg.fillStyle(0x143a24, 0.5);
+      bg.fillEllipse(W * 0.15, H + 130, 320, 220);
+
+      var trees = this.add.graphics();
+      var canopy = [0x1a6b3a, 0x1e7a44, 0x145a32];
+      var spots = [[70, 110, 62], [200, 80, 74], [340, 105, 66], [445, 150, 52]];
+      for (var i = 0; i < spots.length; i++) {
+        var sx = spots[i][0], sy = spots[i][1], sr = spots[i][2];
+        trees.fillStyle(0x3d2817, 1);
+        trees.fillRect(sx - 8, sy + 20, 16, 70);
+        trees.fillStyle(canopy[i % canopy.length], 1);
+        trees.fillCircle(sx, sy, sr);
+        trees.fillCircle(sx - sr * 0.55, sy + 14, sr * 0.6);
+        trees.fillCircle(sx + sr * 0.55, sy + 14, sr * 0.6);
+        trees.lineStyle(2, 0x00ff88, 0.25);
+        trees.strokeCircle(sx, sy, sr);
+      }
+
+      var grass = this.add.graphics();
+      grass.fillStyle(0x00cc6a, 1);
+      grass.fillRect(0, H - 56, W, 56);
+      grass.fillStyle(0x00ff88, 1);
+      for (var b = 0; b < 24; b++) {
+        grass.fillTriangle(b * 22, H - 56, b * 22 + 11, H - 70, b * 22 + 22, H - 56);
+      }
+      grass.lineStyle(2, 0x7affbf, 0.8);
+      grass.lineBetween(0, H - 56, W, H - 56);
+
+      makeFruitTexture(this, 'fruit-red', 0xe46b5e, 0x5da24e);
+      makeFruitTexture(this, 'fruit-orange', 0xf0a14b, 0x5da24e);
+      makeFruitTexture(this, 'fruit-plum', 0x9b7bc4, 0x6BBF59);
+      makeFruitTexture(this, 'fruit-pear', 0xa8c256, 0x4d8f43);
+      makeBombTexture(this);
+
+      var bk = this.make.graphics({ x: 0, y: 0, add: false });
+      bk.fillStyle(0xb07a3f, 1);
+      bk.fillRoundedRect(0, 10, 110, 44, 12);
+      bk.fillStyle(0x8a5a2b, 1);
+      for (var w = 0; w < 5; w++) {
+        bk.fillRect(12 + w * 20, 12, 5, 40);
+      }
+      bk.fillStyle(0x7a4f22, 1);
+      bk.fillRoundedRect(0, 0, 110, 16, 8);
+      bk.lineStyle(3, 0x00ff88, 1);
+      bk.strokeRoundedRect(0, 10, 110, 44, 12);
+      bk.lineStyle(2, 0x7affbf, 0.9);
+      bk.strokeRoundedRect(0, 0, 110, 16, 8);
+      bk.generateTexture('basket', 110, 54);
+      bk.destroy();
+
+      this.physics.world.setBounds(0, 0, W, H);
+
+      this.basket = this.physics.add.image(W / 2, H - 100, 'basket');
+      this.basket.setImmovable(true);
+      this.basket.body.allowGravity = false;
+      this.basket.setCollideWorldBounds(true);
+
+      var hint = this.add.text(W / 2, H - 210, 'ARCADE RUSH!\nCatch fruit • Dodge BOMBS • Hold SHIFT to DASH!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '15px',
+        color: '#ffffff',
+        align: 'center',
+        backgroundColor: '#00ff88dd',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5);
+      hint.setDepth(5);
+      hint.setStyle({ color: '#001a0f', fontStyle: 'bold' });
+      this.hintText = hint;
+
+      this.fruits = this.physics.add.group();
+
+      this.physics.add.overlap(this.basket, this.fruits, this.catchFruit, null, this);
+
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.keys = this.input.keyboard.addKeys({
+        a: Phaser.Input.Keyboard.KeyCodes.A,
+        d: Phaser.Input.Keyboard.KeyCodes.D,
+        shift: Phaser.Input.Keyboard.KeyCodes.SHIFT
+      });
+
+      this.scoreText = this.add.text(14, 12, 'Score 0', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '20px',
+        color: '#ffffff',
+        backgroundColor: '#000000aa',
+        padding: { x: 10, y: 6 }
+      }).setDepth(10);
+      this.scoreText.setStroke('#00ff88', 2);
+
+      this.levelText = this.add.text(W - 14, 12, 'LVL 1', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '20px',
+        color: '#ffd60a',
+        backgroundColor: '#000000aa',
+        padding: { x: 10, y: 6 }
+      }).setOrigin(1, 0).setDepth(10);
+      this.levelText.setStroke('#ff8c00', 2);
+
+      this.banner = this.add.text(W / 2, H / 2 - 30, 'LEVEL UP!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '36px',
+        color: '#001a0f',
+        align: 'center',
+        backgroundColor: '#00ff88ee',
+        padding: { x: 22, y: 18 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+      this.banner.setStroke('#ffffff', 3);
+
+      this.bannerSub = this.add.text(W / 2, H / 2 + 80, 'Speed increased! Keep going!', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '16px',
+        color: '#ffffff',
+        backgroundColor: '#000000cc',
+        padding: { x: 12, y: 8 }
+      }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+      this.input.on('pointermove', function (pointer) {
+        if (!playing || won) { return; }
+        var nx = Phaser.Math.Clamp(pointer.x, 60, W - 60);
+        this.basket.x = nx;
+      }, this);
+
+      this.spawnTimer = this.time.addEvent({
+        delay: 900,
+        loop: true,
+        callback: this.spawnFruit,
+        callbackScope: this
+      });
+
+      this.resetRound();
+    },
+    resetRound: function () {
+      if (!this.fruits) { return; }
+      this.fruits.clear(true, true);
+      caught = 0;
+      this.difficulty = 1;
+      this.refreshScore();
+      this.banner.setVisible(false);
+      this.bannerSub.setVisible(false);
+      if (this.hintText) { this.hintText.setVisible(true); }
+      if (this.basket) { this.basket.setPosition(this.scale.width / 2, this.scale.height - 100); }
+      if (this.spawnTimer) {
+        this.spawnTimer.delay = 900;
+        this.spawnTimer.paused = false;
+      }
+      updateHud();
+      setButtons();
+    },
+    refreshScore: function () {
+      this.scoreText.setText('Score ' + formatScore(score));
+      this.levelText.setText('LVL ' + level);
+    },
+    getSpawnDelay: function () {
+      var base = 900 - (level - 1) * 90 - Math.floor((60 - timeLeft) / 5) * 20;
+      return Phaser.Math.Clamp(base, 320, 900);
+    },
+    getFallSpeed: function () {
+      var min = 140 + (level - 1) * 18 + Math.floor((60 - timeLeft) / 10) * 10;
+      var max = 200 + (level - 1) * 22 + Math.floor((60 - timeLeft) / 10) * 12;
+      return { min: min, max: max };
+    },
+    getBombChance: function () {
+      return Phaser.Math.Clamp(0.12 + level * 0.04 + (60 - timeLeft) * 0.002, 0.12, 0.38);
+    },
+    spawnFruit: function () {
+      if (!playing || won) { return; }
+      var W = this.scale.width;
+      var isBomb = Math.random() < this.getBombChance();
+      var key;
+      if (isBomb) {
+        key = 'bomb';
+      } else {
+        var keys = ['fruit-red', 'fruit-orange', 'fruit-plum', 'fruit-pear'];
+        key = keys[Phaser.Math.Between(0, keys.length - 1)];
+      }
+      var x = Phaser.Math.Between(40, W - 40);
+      var f = this.fruits.create(x, -30, key);
+      var spd = this.getFallSpeed();
+      f.setVelocityY(Phaser.Math.Between(spd.min, spd.max));
+      f.setMaxVelocity(400, 400);
+      f.body.allowGravity = false;
+      f.setData('landed', false);
+      f.setData('isBomb', isBomb);
+      if (isBomb) {
+        f.setScale(1.05);
+        f.setTint(0xffffff);
+        this.tweens.add({
+          targets: f,
+          angle: 15,
+          duration: 120,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      } else {
+        this.tweens.add({
+          targets: f,
+          x: x + Phaser.Math.Between(-26, 26),
+          duration: Phaser.Math.Between(700, 1100),
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+      if (this.spawnTimer) {
+        this.spawnTimer.delay = this.getSpawnDelay();
+      }
+    },
+    showScorePopup: function (x, y, text, color) {
+      var t = this.add.text(x, y, text, {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '22px',
+        color: color || '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4,
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(18);
+      this.tweens.add({
+        targets: t,
+        y: y - 50,
+        alpha: 0,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        duration: 700,
+        ease: 'Sine.easeOut',
+        onComplete: function () { t.destroy(); }
+      });
+    },
+    catchFruit: function (basket, fruit) {
+      if (!playing || won) { return; }
+      if (fruit.getData('landed')) { return; }
+      var isBomb = fruit.getData('isBomb');
+      fruit.setData('landed', true);
+      this.tweens.killTweensOf(fruit);
+
+      if (isBomb) {
+        var penalty = 200;
+        score = Math.max(0, score - penalty);
+        if (score > highScore) { highScore = score; }
+        this.refreshScore();
+        updateHud('BOMB! -200 & -1 LIFE!', 'hit');
+        loseLife();
+        this.cameras.main.shake(220, 0.012);
+        beep(120, 0.25, 'sawtooth', 0.25);
+        beep(80, 0.35, 'square', 0.2);
+        this.showScorePopup(fruit.x, fruit.y - 10, '-200', '#ff3b30');
+        for (var e = 0; e < 12; e++) {
+          var p = this.add.circle(fruit.x, fruit.y, Phaser.Math.Between(3, 6), 0xff3b30, 0.95);
+          p.setDepth(16);
+          this.tweens.add({
+            targets: p,
+            x: p.x + Phaser.Math.Between(-70, 70),
+            y: p.y + Phaser.Math.Between(-70, 30),
+            alpha: 0,
+            scale: 0.2,
+            duration: Phaser.Math.Between(300, 600),
+            onComplete: (function (dot) { return function () { dot.destroy(); }; })(p)
+          });
+        }
+        this.tweens.add({
+          targets: fruit,
+          scaleX: 1.6,
+          scaleY: 1.6,
+          alpha: 0,
+          angle: 180,
+          duration: 220,
+          onComplete: function () { fruit.destroy(); }
+        });
+        this.tweens.add({
+          targets: basket,
+          scaleX: 0.85,
+          scaleY: 1.15,
+          duration: 100,
+          yoyo: true,
+          ease: 'Sine.easeOut'
+        });
+        return;
+      }
+
+      caught += 1;
+      combo += 1;
+      if (combo > bestCombo) { bestCombo = combo; }
+      var pts = addScore(100);
+      this.refreshScore();
+      updateHud();
+      if (this.hintText) { this.hintText.setVisible(false); }
+
+      var comboText = combo >= 3 ? ' COMBO x' + combo + '!' : '';
+      var msg = '+' + pts + comboText;
+      var kind = combo >= 3 ? 'combo' : '';
+      if (combo >= 5) { msg = 'MEGA ' + msg; }
+      updateHud(msg, kind);
+      this.showScorePopup(fruit.x, fruit.y - 10, '+' + pts, combo >= 3 ? '#ffd60a' : '#00ff88');
+
+      if (combo >= 2) {
+        beep(500 + combo * 40, 0.08, 'square', 0.12);
+      } else {
+        beep(700, 0.07, 'square', 0.1);
+      }
+      if (combo >= 4) {
+        this.cameras.main.flash(80, 255, 214, 10, false);
+      }
+
+      this.tweens.add({
+        targets: fruit,
+        x: basket.x,
+        y: basket.y - 10,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        alpha: 0.4,
+        duration: 180,
+        ease: 'Sine.easeIn',
+        onComplete: function () { fruit.destroy(); }
+      });
+      this.tweens.add({
+        targets: basket,
+        scaleX: 1.12,
+        scaleY: 0.88,
+        duration: 90,
+        yoyo: true,
+        ease: 'Sine.easeOut'
+      });
+
+      for (var s = 0; s < 6; s++) {
+        var star = this.add.circle(fruit.x, fruit.y, 2, 0x7affbf, 0.9);
+        star.setDepth(15);
+        this.tweens.add({
+          targets: star,
+          x: star.x + Phaser.Math.Between(-40, 40),
+          y: star.y + Phaser.Math.Between(-40, 10),
+          alpha: 0,
+          duration: Phaser.Math.Between(250, 450),
+          onComplete: (function (d) { return function () { d.destroy(); }; })(star)
+        });
+      }
+
+      if (caught >= GOAL) {
+        this.levelUp();
+      }
+    },
+    levelUp: function () {
+      var bonus = level * 500;
+      score += bonus;
+      if (score > highScore) { highScore = score; }
+      this.refreshScore();
+      level += 1;
+      GOAL = 12 + (level - 1) * 4;
+      caught = 0;
+      updateHud('LEVEL ' + level + '! +' + bonus + ' BONUS! GO!', 'level');
+      beep(600, 0.12, 'square', 0.15);
+      setTimeout(function () { beep(800, 0.12, 'square', 0.15); }, 140);
+      setTimeout(function () { beep(1000, 0.2, 'square', 0.15); }, 280);
+      this.banner.setText('LEVEL ' + level + '!\n+' + bonus + ' BONUS');
+      this.bannerSub.setText('Faster! Bombs more frequent! Keep combo!');
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 500,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 600,
+        delay: 250
+      });
+      this.time.delayedCall(1400, function () {
+        this.tweens.add({ targets: this.banner, alpha: 0, duration: 400, onComplete: function () { this.setVisible(false); }.bind(this.banner) });
+        this.tweens.add({ targets: this.bannerSub, alpha: 0, duration: 400, onComplete: function () { this.setVisible(false); }.bind(this.bannerSub) });
+      }, [], this);
+      this.cameras.main.flash(180, 0, 255, 136, false);
+      for (var k = 0; k < 20; k++) {
+        var colors = [0x00ff88, 0xffd60a, 0x7affbf, 0xffffff];
+        var c = this.add.circle(
+          Phaser.Math.Between(20, this.scale.width - 20),
+          Phaser.Math.Between(-40, 120),
+          Phaser.Math.Between(4, 7),
+          colors[k % colors.length],
+          0.95
+        );
+        c.setDepth(15);
+        this.tweens.add({
+          targets: c,
+          y: this.scale.height - 60,
+          x: c.x + Phaser.Math.Between(-60, 60),
+          duration: Phaser.Math.Between(1200, 2200),
+          delay: k * 40,
+          ease: 'Sine.easeInOut',
+          onComplete: (function (dot) {
+            return function () {
+              this.tweens.add({ targets: dot, alpha: 0, duration: 400, onComplete: function () { dot.destroy(); } });
+            }.bind(this);
+          }.bind(this))(c)
+        });
+      }
+      updateHud();
+    },
+    celebrate: function () {
+      won = true;
+      onWin();
+      var self = this;
+      this.fruits.clear(true, true);
+      this.banner.setText('BASKET FULL!\nWonderful picking!');
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setText('Press Restart for another round');
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 700,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 900,
+        delay: 350
+      });
+      for (var k = 0; k < 26; k++) {
+        var colors = [0xe46b5e, 0xf0a14b, 0x9b7bc4, 0xa8c256, 0xffffff];
+        var c = this.add.circle(
+          Phaser.Math.Between(20, this.scale.width - 20),
+          Phaser.Math.Between(-40, 120),
+          Phaser.Math.Between(4, 8),
+          colors[k % colors.length],
+          0.9
+        );
+        c.setDepth(15);
+        self.tweens.add({
+          targets: c,
+          y: self.scale.height - 60,
+          x: c.x + Phaser.Math.Between(-60, 60),
+          duration: Phaser.Math.Between(2200, 4200),
+          delay: k * 90,
+          ease: 'Sine.easeInOut',
+          onComplete: (function (dot) {
+            return function () {
+              self.tweens.add({ targets: dot, alpha: 0, duration: 900, onComplete: function () { dot.destroy(); } });
+            };
+          })(c)
+        });
+      }
+    },
+    showGameOver: function (reason) {
+      this.fruits.clear(true, true);
+      this.banner.setText(reason + '\nScore ' + score + '  Best ' + highScore);
+      this.banner.setStyle({ fontSize: '26px', backgroundColor: '#ff3b30ee', color: '#ffffff' });
+      this.banner.setStroke('#000000', 3);
+      this.banner.setVisible(true).setScale(0.7).setAlpha(0);
+      this.bannerSub.setText('Press Start for new arcade run!');
+      this.bannerSub.setVisible(true).setAlpha(0);
+      this.tweens.add({
+        targets: this.banner,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 600,
+        ease: 'Back.easeOut'
+      });
+      this.tweens.add({
+        targets: this.bannerSub,
+        alpha: 1,
+        duration: 700,
+        delay: 300
+      });
+      this.cameras.main.shake(400, 0.01);
+      this.cameras.main.flash(300, 255, 59, 48, false);
+    },
+    update: function (time, delta) {
+      if (!this.basket || !this.cursors) { return; }
+      var dt = Math.min(delta, 50) / 1000;
+      var baseSpeed = 340;
+      var isDash = this.keys && this.keys.shift.isDown;
+      var speed = isDash ? 560 : baseSpeed;
+      if (playing && !won) {
+        var moved = false;
+        if (this.cursors.left.isDown || (this.keys && this.keys.a.isDown)) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x - speed * dt, 60, this.scale.width - 60);
+          moved = true;
+        } else if (this.cursors.right.isDown || (this.keys && this.keys.d.isDown)) {
+          this.basket.x = Phaser.Math.Clamp(this.basket.x + speed * dt, 60, this.scale.width - 60);
+          moved = true;
+        }
+        if (moved && this.hintText) { this.hintText.setVisible(false); }
+        if (isDash && moved) {
+          this.basket.setTint(0x7affbf);
+        } else {
+          this.basket.clearTint();
+        }
+        this.basket.body.updateFromGameObject();
+      }
+      var kids = this.fruits.getChildren().slice();
+      for (var i = 0; i < kids.length; i++) {
+        var f = kids[i];
+        if (f.y > this.scale.height - 62 && !f.getData('landed')) {
+          f.setData('landed', true);
+          this.tweens.killTweensOf(f);
+          f.body.setVelocity(0, 0);
+          if (f.getData('isBomb')) {
+            f.destroy();
+            continue;
+          }
+          combo = 0;
+          updateHud('MISS! -1 LIFE! Combo lost!', 'hit');
+          loseLife();
+          beep(200, 0.2, 'sawtooth', 0.18);
+          this.cameras.main.shake(140, 0.006);
+          this.showScorePopup(f.x, f.y - 20, 'MISS!', '#ff6b6b');
+          this.tweens.add({
+            targets: f,
+            alpha: 0,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            angle: 90,
+            duration: 400,
+            ease: 'Sine.easeOut',
+            onComplete: (function (dot) {
+              return function () { dot.destroy(); };
+            })(f)
+          });
+          if (won) { break; }
+        }
+      }
+    }
+  });
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: 480,
+    height: 640,
+    backgroundColor: '#0a1a12',
+    physics: {
+      default: 'arcade',
+      arcade: { gravity: { x: 0, y: 0 }, debug: false }
+    },
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [OrchardScene]
+  };
+
+  // eslint-disable-next-line no-undef
+  var game = new Phaser.Game(config);
+
+  updateHud('Press Start to begin picking.');
+  setButtons();
+})();
+</script>
+</body>
+</html>

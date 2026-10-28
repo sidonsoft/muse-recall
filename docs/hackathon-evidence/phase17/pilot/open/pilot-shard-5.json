@@ -1,0 +1,220 @@
+{
+  "protocol": "PROTOCOL.md",
+  "model": {
+    "label": "Muse Spark Open",
+    "model": "meta-models/muse-spark-open-1026",
+    "endpoint": "https://inference.baseten.co/v1/chat/completions",
+    "path": "production buildForgePrompt with a memory block from production retrieval, baseline appended, one chat completion",
+    "temperature": 0,
+    "max_tokens": 20000,
+    "shards": 6
+  },
+  "seed": 24780838,
+  "pilot": true,
+  "shard": 5,
+  "shards": 6,
+  "results": [
+    {
+      "id": "pilot-farm-challenge-memory",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "request": "Add a harder challenge mode for experienced players who find the game too easy.",
+      "seeded": [
+        {
+          "id": "12f48b79-8d5a-4cee-a640-4cd630b87f45",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "208a7c1a-69d3-48e6-a10e-cc01d952d8fc",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "correction": null,
+      "memory_ids": [
+        "12f48b79-8d5a-4cee-a640-4cd630b87f45",
+        "208a7c1a-69d3-48e6-a10e-cc01d952d8fc"
+      ],
+      "prompt_file_sha256": "c76c8a360373cbc0f8385ce383a3fe9cd2bc68b2bd23c65ce16a2819900f0083",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 2,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4485,
+        "completion_tokens": 20000,
+        "total_tokens": 24485,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 4480
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 13977,
+          "audio_tokens": 0,
+          "reasoning_tokens": 14881,
+          "rejected_prediction_tokens": 28191
+        }
+      },
+      "finish_reason": "length",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 15176,
+      "output_sha256": "050652db3c71efd92d43d29bdb9fa54171099c4b4c23613c4febe42817587c0d",
+      "seconds": 128.8
+    },
+    {
+      "id": "pilot-orchard-arcade-corrected",
+      "stratum": "orchard-arcade",
+      "arm": "corrected",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "request": "Make the game more exciting and challenging, like an arcade game.",
+      "seeded": [
+        {
+          "id": "51640a53-d591-46fc-aabb-39ae74a93d4d",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "1fcf80bd-ed39-4c33-959c-51b701f00882",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "correction": {
+        "superseded_id": "51640a53-d591-46fc-aabb-39ae74a93d4d",
+        "replacement_id": "0b43e2e7-a2fb-4f0a-8fc6-270f9932524d"
+      },
+      "memory_ids": [
+        "0b43e2e7-a2fb-4f0a-8fc6-270f9932524d",
+        "1fcf80bd-ed39-4c33-959c-51b701f00882"
+      ],
+      "prompt_file_sha256": "01c684b57c5718334c8572e48ca8e6135afc554e89522376d0b5f08027b5dfee",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 5630,
+        "completion_tokens": 16129,
+        "total_tokens": 21759,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 12089,
+          "audio_tokens": 0,
+          "reasoning_tokens": 5833,
+          "rejected_prediction_tokens": 16191
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 33989,
+      "output_sha256": "cb29cb964ca9cd309557a9f948c0144b7985e5b8caa5a18431b9d4865e990df7",
+      "seconds": 44.2
+    },
+    {
+      "id": "pilot-focus-reward-memory",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make completing a task feel more rewarding and celebratory.",
+      "seeded": [
+        {
+          "id": "9d52ac5c-3c1b-4335-881c-3b2ac07c9539",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "c12c5e0b-9159-47ba-946d-93a1d830b60b",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": null,
+      "memory_ids": [
+        "c12c5e0b-9159-47ba-946d-93a1d830b60b",
+        "9d52ac5c-3c1b-4335-881c-3b2ac07c9539"
+      ],
+      "prompt_file_sha256": "a8c1f96f4fb19340b91088fc79bd00d416f42cc0881cecec2d58890bdd0a1ae8",
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4947,
+        "completion_tokens": 10053,
+        "total_tokens": 15000,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 384
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 7739,
+          "audio_tokens": 0,
+          "reasoning_tokens": 4822,
+          "rejected_prediction_tokens": 8459
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 18650,
+      "output_sha256": "1ae00d1d0680a9651f82538c5ce798ce02c25be9fa908b321b7dd95103acf46e",
+      "seconds": 25.6
+    },
+    {
+      "id": "pilot-focus-lively-corrected",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "model": "meta-models/muse-spark-open-1026",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "request": "Make the planner feel more lively and engaging.",
+      "seeded": [
+        {
+          "id": "f7fe692e-98af-446d-9fc5-0b3061f050a7",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "7c6a65b5-18c1-4771-90d2-af6a937fa80f",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "correction": {
+        "superseded_id": "f7fe692e-98af-446d-9fc5-0b3061f050a7",
+        "replacement_id": "ebfddb5f-9640-4319-bcf8-4a247806a28a"
+      },
+      "memory_ids": [
+        "ebfddb5f-9640-4319-bcf8-4a247806a28a",
+        "7c6a65b5-18c1-4771-90d2-af6a937fa80f"
+      ],
+      "prompt_file_sha256": "6dcfbc1bf614eb41f03af1096efcdb24b4ff042503c952e03ddf7201a2aeceee",
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "attempts": 1,
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 4930,
+        "completion_tokens": 12212,
+        "total_tokens": 17142,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 9552,
+          "audio_tokens": 0,
+          "reasoning_tokens": 3366,
+          "rejected_prediction_tokens": 9068
+        }
+      },
+      "finish_reason": "stop",
+      "status": "succeeded",
+      "error": null,
+      "output_bytes": 29462,
+      "output_sha256": "903f42816929194b5b5c90246da67c00771a22439f19c1f7b20bac09b5b22c69",
+      "seconds": 29
+    }
+  ]
+}

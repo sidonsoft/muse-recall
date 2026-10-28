@@ -1,0 +1,266 @@
+{
+  "kind": "phase17-post-run-stats-correction",
+  "status": "corrects reported p-values only; the pre-registered tests, cells, detectors, exclusions and verdict rules are unchanged",
+  "method": "exact rational stratified test (Fraction arithmetic), Fisher's rule (two-sided: sum every outcome no more probable than the observed one, ties included), with Newcombe hybrid score intervals; no tolerance",
+  "supersedes_p_values_in": "phase17-analysis.json (preserved unchanged)",
+  "generated_by": "docs/hackathon-evidence/phase17/exact_stats.py",
+  "design_runs_per_cell": 10,
+  "models": {
+    "spark": {
+      "primary": {
+        "totals": {
+          "none": {
+            "violations": 37,
+            "usable": 57,
+            "unusable": 3
+          },
+          "memory": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "corrected": {
+            "violations": 41,
+            "usable": 59,
+            "unusable": 1
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "0/58",
+          "control": "37/57",
+          "risk_difference": -0.6491228070175439,
+          "ci95": [
+            -0.7599957799083991,
+            -0.5053114110496194
+          ],
+          "p": 6.522579599306022e-20,
+          "published_p": 2.0233041917047282e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "0/58",
+          "manual": "0/58",
+          "risk_difference": 0.0,
+          "ci90": [
+            -0.0445683095834782,
+            0.0445683095834782
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "41/59",
+          "control": "0/58",
+          "risk_difference": 0.6949152542372882,
+          "ci95": [
+            0.5540956596740562,
+            0.7974636801988394
+          ],
+          "p": 6.865873262427392e-21,
+          "published_p": 3.3516103624202434e-16,
+          "supported": true
+        },
+        "worst_case_H1": {
+          "p": 2.82105181287492e-17,
+          "published_p": 2.8210518128749196e-17
+        }
+      },
+      "sensitivity_detector": {
+        "totals": {
+          "none": {
+            "violations": 31,
+            "usable": 57,
+            "unusable": 3
+          },
+          "memory": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 58,
+            "unusable": 2
+          },
+          "corrected": {
+            "violations": 34,
+            "usable": 59,
+            "unusable": 1
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "0/58",
+          "control": "31/57",
+          "risk_difference": -0.543859649122807,
+          "ci95": [
+            -0.6662739441690716,
+            -0.40162553118572397
+          ],
+          "p": 7.461831061606089e-17,
+          "published_p": 8.208014167766698e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "0/58",
+          "manual": "0/58",
+          "risk_difference": 0.0,
+          "ci90": [
+            -0.0445683095834782,
+            0.0445683095834782
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "34/59",
+          "control": "0/58",
+          "risk_difference": 0.576271186440678,
+          "ci95": [
+            0.4349597273351824,
+            0.6938727256481132
+          ],
+          "p": 1.669093790096099e-17,
+          "published_p": 1.6690937900960992e-17,
+          "supported": true
+        },
+        "worst_case_H1": {
+          "p": 1.2627539403918104e-13,
+          "published_p": 1.2627539403918104e-13
+        }
+      }
+    },
+    "open": {
+      "primary": {
+        "totals": {
+          "none": {
+            "violations": 49,
+            "usable": 60,
+            "unusable": 0
+          },
+          "memory": {
+            "violations": 1,
+            "usable": 60,
+            "unusable": 0
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 60,
+            "unusable": 0
+          },
+          "corrected": {
+            "violations": 50,
+            "usable": 60,
+            "unusable": 0
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "1/60",
+          "control": "49/60",
+          "risk_difference": -0.7999999999999999,
+          "ci95": [
+            -0.8789562798655184,
+            -0.6636478312720456
+          ],
+          "p": 1.1241457175324677e-24,
+          "published_p": 4.724252673657283e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "1/60",
+          "manual": "0/60",
+          "risk_difference": 0.016666666666666666,
+          "ci90": [
+            -0.02837864910872032,
+            0.07131487713805204
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "50/60",
+          "control": "1/60",
+          "risk_difference": 0.8166666666666667,
+          "ci95": [
+            0.6821913863893057,
+            0.8914702661066285
+          ],
+          "p": 1.5974702301777172e-24,
+          "published_p": 5.434113128287434e-16,
+          "supported": true
+        },
+        "worst_case_H1": {
+          "p": 1.1241457175324677e-24,
+          "published_p": 4.724252673657283e-16
+        }
+      },
+      "sensitivity_detector": {
+        "totals": {
+          "none": {
+            "violations": 49,
+            "usable": 60,
+            "unusable": 0
+          },
+          "memory": {
+            "violations": 1,
+            "usable": 60,
+            "unusable": 0
+          },
+          "manual": {
+            "violations": 0,
+            "usable": 60,
+            "unusable": 0
+          },
+          "corrected": {
+            "violations": 49,
+            "usable": 60,
+            "unusable": 0
+          }
+        },
+        "H1_memory_vs_none": {
+          "arm": "1/60",
+          "control": "49/60",
+          "risk_difference": -0.7999999999999999,
+          "ci95": [
+            -0.8789562798655184,
+            -0.6636478312720456
+          ],
+          "p": 1.1241457175324677e-24,
+          "published_p": 4.724252673657283e-16,
+          "supported": true
+        },
+        "H2_memory_noninferior_to_manual": {
+          "memory": "1/60",
+          "manual": "0/60",
+          "risk_difference": 0.016666666666666666,
+          "ci90": [
+            -0.02837864910872032,
+            0.07131487713805204
+          ],
+          "margin": 0.15,
+          "supported": true
+        },
+        "H3_corrected_vs_memory": {
+          "arm": "49/60",
+          "control": "1/60",
+          "risk_difference": 0.7999999999999999,
+          "ci95": [
+            0.6636478312720456,
+            0.8789562798655184
+          ],
+          "p": 3.372437152597403e-24,
+          "published_p": 1.1242654379272392e-15,
+          "supported": true
+        },
+        "worst_case_H1": {
+          "p": 1.1241457175324677e-24,
+          "published_p": 4.724252673657283e-16
+        }
+      }
+    }
+  }
+}

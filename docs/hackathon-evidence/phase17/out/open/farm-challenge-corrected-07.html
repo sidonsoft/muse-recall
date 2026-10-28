@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ocean Memory Challenge</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#EAF6FB;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:"Inter","Segoe UI",system-ui,sans-serif;color:#102A43}
+  #game{width:100vw;height:100vh;max-width:900px;max-height:700px;position:relative}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(16,42,67,.18)}
+  #modeBar{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:10;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:24px;box-shadow:0 2px 12px rgba(16,42,67,.12);border:1px solid #D6EAF8}
+  .modeBtn{padding:7px 14px;border-radius:18px;font-weight:700;font-size:13px;cursor:pointer;user-select:none;border:2px solid #4EA8DE;background:#fff;color:#102A43;transition:all .15s}
+  .modeBtn.active{background:#4EA8DE;color:#fff;box-shadow:0 2px 8px rgba(78,168,222,.4)}
+  .modeBtn:focus{outline:3px solid #102A43;outline-offset:2px}
+  .modeBtn:hover{transform:translateY(-1px)}
+  #ariaLive{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="modeBar" role="group" aria-label="Difficulty selection">
+    <div id="btnNormal" role="button" tabindex="0" aria-label="Normal mode: 6 pairs, relaxed pace, no timer" aria-pressed="true" class="modeBtn active">Normal • 6 pairs</div>
+    <div id="btnHard" role="button" tabindex="0" aria-label="Hard challenge mode: 8 pairs, 75 second timer, faster card flip" aria-pressed="false" class="modeBtn">Hard • 8 pairs ⏱</div>
+  </div>
+  <div id="ariaLive" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>
+(function () {
+  var ANIMALS = [
+    { emoji: "\u{1F404}", name: "Cow" },
+    { emoji: "\u{1F437}", name: "Pig" },
+    { emoji: "\u{1F414}", name: "Hen" },
+    { emoji: "\u{1F40E}", name: "Horse" },
+    { emoji: "\u{1F411}", name: "Sheep" },
+    { emoji: "\u{1F988}", name: "Duck" },
+    { emoji: "\u{1F419}", name: "Octopus" },
+    { emoji: "\u{1F422}", name: "Turtle" }
+  ];
+  var W = 900, H = 700;
+
+  var config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: W,
+    height: H,
+    backgroundColor: "#EAF6FB",
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { create: create, update: update }
+  };
+  new Phaser.Game(config);
+
+  var cards = [], firstPick = null, lockBoard = true, started = false;
+  var moves = 0, matches = 0;
+  var hudMoves, hudScore, hudMsg, hudTimer, hudMode, endOverlay, endTitle, endDetail, startOverlay;
+  var difficulty = "normal", timeLeft = 75, timerEvent = null, focusedIndex = 0, gameScene = null;
+
+  function announce(msg) {
+    var el = document.getElementById("ariaLive");
+    if (el) el.textContent = msg;
+  }
+
+  function create() {
+    var s = this;
+    gameScene = s;
+    window.gameScene = s;
+    drawFarm(s);
+    makeHud(s);
+    buildBoard(s);
+    makeStartOverlay(s);
+    makeEndOverlay(s);
+    updateModeUI(s);
+    setFocusedCard(0);
+    s.input.keyboard.on("keydown", function (e) {
+      if (startOverlay && startOverlay.visible) {
+        if (e.key === "1" || e.key.toLowerCase() === "n") {
+          difficulty = "normal";
+          window.difficulty = difficulty;
+          updateModeUI(s);
+          if (s.startSelNormal) { s.startSelNormal.setVisible(true); s.startSelHard.setVisible(false); }
+          announce("Normal mode selected");
+        }
+        if (e.key === "2" || e.key.toLowerCase() === "h") {
+          difficulty = "hard";
+          window.difficulty = difficulty;
+          updateModeUI(s);
+          if (s.startSelNormal) { s.startSelNormal.setVisible(false); s.startSelHard.setVisible(true); }
+          announce("Hard challenge mode selected");
+        }
+        if (e.key === "Enter" || e.key === " ") {
+          started = true; lockBoard = false;
+          startOverlay.setVisible(false);
+          hudMsg.setText(difficulty === "hard" ? "Hard mode! Go!" : "Tap a card!");
+          updateModeUI(s);
+          if (difficulty === "hard") startTimer(s);
+          setFocusedCard(0);
+          announce("Game started in " + difficulty + " mode");
+        }
+        return;
+      }
+      if (endOverlay && endOverlay.visible) {
+        if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+          restart(s);
+        }
+        return;
+      }
+      if (!started || lockBoard) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        setFocusedCard(focusedIndex + 1);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        setFocusedCard(focusedIndex - 1);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        if (e.shiftKey) setFocusedCard(focusedIndex - 1);
+        else setFocusedCard(focusedIndex + 1);
+      } else if (e.key === "Enter" || e.key === " ") {
+        if (cards[focusedIndex]) onCard(s, cards[focusedIndex]);
+      }
+    });
+  }
+
+  function drawFarm(scene) {
+    var g = scene.add.graphics();
+    g.fillStyle(0xEAF6FB, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xD6EAF8, 1); g.fillRect(0, 470, W, 230);
+    g.fillStyle(0xB8DFF0, 1); g.fillRect(0, 520, W, 180);
+    g.fillStyle(0xFFFFFF, 0.95); g.fillEllipse(770, 110, 90, 40);
+    g.fillStyle(0xFFFFFF, 0.7); g.fillEllipse(740, 95, 60, 28);
+    g.lineStyle(3, 0x4EA8DE, 0.55);
+    g.strokeEllipse(200, 140, 180, 30); g.strokeEllipse(400, 120, 160, 28); g.strokeEllipse(600, 150, 200, 32);
+    g.lineStyle(2, 0x4EA8DE, 0.35);
+    g.strokeEllipse(220, 155, 120, 18); g.strokeEllipse(580, 135, 140, 20);
+    g.fillStyle(0xFFFFFF, 0.65);
+    for (var i = 0; i < 12; i++) {
+      var bx = 40 + i * 70, by = 580 + (i % 3) * 20;
+      g.fillCircle(bx, by, 6 + (i % 4) * 2);
+      g.fillCircle(bx + 10, by - 12, 3);
+      g.fillCircle(bx - 8, by - 18, 2);
+    }
+    g.fillStyle(0x4EA8DE, 0.12); g.fillEllipse(120, 640, 200, 60); g.fillEllipse(750, 650, 220, 70);
+    g.fillStyle(0x102A43, 0.06); g.fillEllipse(400, 660, 300, 40);
+  }
+
+  function textStyle(size, color) {
+    return { fontFamily: '"Inter","Segoe UI",system-ui,sans-serif', fontSize: size + "px", color: color || "#102A43", fontStyle: "bold" };
+  }
+
+  function makeHud(scene) {
+    scene.add.text(24, 14, "\u{1F30A} Ocean Memory", textStyle(32)).setOrigin(0, 0);
+    hudMoves = scene.add.text(24, 58, "Moves: 0", textStyle(20));
+    hudScore = scene.add.text(24, 84, "Pairs: 0 / 6", textStyle(20));
+    hudTimer = scene.add.text(24, 110, "Time: --", textStyle(20, "#4EA8DE")).setVisible(false);
+    hudMsg = scene.add.text(W - 24, 60, "Tap a card!", textStyle(20, "#4EA8DE")).setOrigin(1, 0.5);
+    hudMode = scene.add.text(W - 24, 88, "Mode: Normal", textStyle(14, "#102A43")).setOrigin(1, 0.5);
+    var btn = scene.add.container(W - 110, 126);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x4EA8DE, 1); bg.fillRoundedRect(-86, -26, 172, 52, 26);
+    var label = scene.add.text(0, 0, "\u21BB Restart", textStyle(20, "#ffffff")).setOrigin(0.5);
+    btn.add([bg, label]);
+    bg.setInteractive(new Phaser.Geom.Rectangle(-86, -26, 172, 52), Phaser.Geom.Rectangle.Contains);
+    bg.on("pointerdown", function () { restart(scene); });
+    bg.on("pointerover", function () { btn.setScale(1.06); });
+    bg.on("pointerout", function () { btn.setScale(1); });
+    scene.add.text(W / 2, 168, "Find all pairs — Hard adds timer & 8 pairs!", textStyle(16, "#5A7A8A")).setOrigin(0.5);
+    var modeBtn = scene.add.container(W - 110, 188);
+    var mBg = scene.add.graphics();
+    mBg.fillStyle(0xFFFFFF, 1); mBg.fillRoundedRect(-86, -18, 172, 36, 18);
+    mBg.lineStyle(2, 0x4EA8DE, 1); mBg.strokeRoundedRect(-86, -18, 172, 36, 18);
+    var mLabel = scene.add.text(0, 0, "Switch to Hard", textStyle(13, "#102A43")).setOrigin(0.5);
+    modeBtn.add([mBg, mLabel]);
+    mBg.setInteractive(new Phaser.Geom.Rectangle(-86, -18, 172, 36), Phaser.Geom.Rectangle.Contains);
+    mBg.on("pointerdown", function () { toggleDifficulty(scene); });
+    mBg.on("pointerover", function () { modeBtn.setScale(1.04); });
+    mBg.on("pointerout", function () { modeBtn.setScale(1); });
+    scene.modeToggleLabel = mLabel;
+    scene.modeToggleBg = mBg;
+  }
+
+  function shuffledDeck() {
+    var pairCount = difficulty === "hard" ? 8 : 6;
+    var deck = [];
+    for (var i = 0; i < pairCount; i++) {
+      var a = ANIMALS[i];
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+      deck.push({ key: i, emoji: a.emoji, name: a.name });
+    }
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function buildBoard(scene) {
+    cards.forEach(function (c) {
+      if (c.focusRing) c.focusRing.destroy();
+      c.view.destroy();
+    });
+    cards = [];
+    var deck = shuffledDeck();
+    var isHard = difficulty === "hard";
+    var cols = 4, rows = isHard ? 4 : 3;
+    var cw = isHard ? 155 : 185, ch = isHard ? 115 : 140;
+    var gx = 62, gy = isHard ? 182 : 195, padX = isHard ? 18 : 22, padY = isHard ? 14 : 16;
+    deck.forEach(function (card, idx) {
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var cx = gx + c * (cw + padX) + cw / 2;
+      var cy = gy + r * (ch + padY) + ch / 2;
+      cards.push(makeCard(scene, cx, cy, cw, ch, card));
+    });
+    focusedIndex = 0;
+    setTimeout(function () { setFocusedCard(0); }, 50);
+  }
+
+  function makeCard(scene, x, y, w, h, data) {
+    var cont = scene.add.container(x, y);
+    var back = scene.add.graphics();
+    back.fillStyle(0xFFFFFF, 1); back.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    back.fillStyle(0x4EA8DE, 1); back.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 14);
+    back.fillStyle(0xFFFFFF, 0.85);
+    back.fillCircle(-w / 4, -h / 4, 10); back.fillCircle(w / 4, 0, 7); back.fillCircle(0, h / 4, 11);
+    var paw = scene.add.text(0, -6, "\u{1F30A}", { fontSize: "42px" }).setOrigin(0.5);
+    var face = scene.add.container(0, 0).setVisible(false).setScale(0.1);
+    var fg = scene.add.graphics();
+    var palette = [0xEAF6FB, 0xD6EAF8, 0xB8DFF0, 0xA0D2EB, 0xE0F2FF, 0xC7E8F3, 0xD4EAF7, 0xB9E3FF];
+    fg.fillStyle(0xFFFFFF, 1); fg.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    fg.fillStyle(palette[data.key % palette.length], 1);
+    fg.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 14);
+    var isHard = difficulty === "hard";
+    var emo = scene.add.text(0, -14, data.emoji, { fontSize: isHard ? "48px" : "56px" }).setOrigin(0.5);
+    var nm = scene.add.text(0, 36, data.name, textStyle(isHard ? 16 : 18)).setOrigin(0.5);
+    face.add([fg, emo, nm]);
+    var showBack = scene.add.container(0, 0, [back, paw]);
+    cont.add([showBack, face]);
+    cont.setSize(w, h);
+    cont.setInteractive({ useHandCursor: true });
+    var card = { view: cont, back: showBack, face: face, data: data, matched: false, faceUp: false, cw: w, ch: h, focusRing: null };
+    cont.on("pointerdown", function () { onCard(scene, card); });
+    return card;
+  }
+
+  function flip(card, show, done) {
+    var s = card.view.scene;
+    s.tweens.add({ targets: card.view, scaleX: 0, duration: 130, onComplete: function () {
+      card.back.setVisible(!show); card.face.setVisible(show);
+      card.faceUp = show;
+      if (show) { card.face.setScale(1); }
+      s.tweens.add({ targets: card.view, scaleX: 1, duration: 130, onComplete: done || function () {} });
+    }});
+  }
+
+  function onCard(scene, card) {
+    if (!started || lockBoard || card.faceUp || card.matched) { return; }
+    flip(card, true);
+    if (card.focusRing) { card.focusRing.destroy(); card.focusRing = null; }
+    if (!firstPick) { firstPick = card; hudMsg.setText(difficulty === "hard" ? "Find its pair — fast!" : "One more!"); announce("Card flipped, one more to match"); return; }
+    moves++;
+    hudMoves.setText("Moves: " + moves);
+    announce("Moves " + moves);
+    var a = firstPick; firstPick = null; lockBoard = true;
+    if (a.data.key === card.data.key) {
+      setTimeout(function () {
+        a.matched = card.matched = true;
+        if (a.focusRing) { a.focusRing.destroy(); a.focusRing = null; }
+        if (card.focusRing) { card.focusRing.destroy(); card.focusRing = null; }
+        scene.tweens.add({ targets: [a.view, card.view], scale: 1.08, yoyo: true, duration: 160 });
+        matches++;
+        var total = difficulty === "hard" ? 8 : 6;
+        hudScore.setText("Pairs: " + matches + " / " + total);
+        hudMsg.setText(matches === total ? "You did it!" : "Match found! \u{2728}");
+        announce(matches === total ? "All pairs found" : "Match found, " + matches + " of " + total);
+        lockBoard = false;
+        if (matches === total) { showWin(scene); }
+        else { setFocusedCard(focusedIndex + 1); }
+      }, 350);
+    } else {
+      hudMsg.setText(difficulty === "hard" ? "No match! \u{1F30A}" : "No match — keep going");
+      announce("No match");
+      var delay = difficulty === "hard" ? 450 : 700;
+      setTimeout(function () {
+        flip(a, false); flip(card, false, function () { lockBoard = false; setFocusedCard(focusedIndex); });
+      }, delay);
+    }
+  }
+
+  function makeStartOverlay(scene) {
+    startOverlay = scene.add.container(W / 2, H / 2).setDepth(10);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.45); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xFFFFFF, 1); panel.fillRoundedRect(-320, -210, 640, 420, 30);
+    panel.lineStyle(6, 0x4EA8DE, 1); panel.strokeRoundedRect(-320, -210, 640, 420, 30);
+    var title = scene.add.text(0, -150, "\u{1F30A} Ocean Memory \u{1F30A}", textStyle(36)).setOrigin(0.5);
+    var sub = scene.add.text(0, -95, "Choose your challenge:", Object.assign(textStyle(20), { align: "center" })).setOrigin(0.5);
+    var nBg = scene.add.graphics();
+    nBg.fillStyle(0xFFFFFF, 1); nBg.fillRoundedRect(-280, -50, 260, 110, 20);
+    nBg.lineStyle(3, 0x4EA8DE, 1); nBg.strokeRoundedRect(-280, -50, 260, 110, 20);
+    var nIcon = scene.add.text(-150, -38, "\u{1F40B}", { fontSize: "28px" }).setOrigin(0.5);
+    var nTitle = scene.add.text(-150, -10, "Normal", textStyle(20, "#102A43")).setOrigin(0.5);
+    var nDesc = scene.add.text(-150, 14, "6 pairs • Relaxed", textStyle(13, "#5A7A8A")).setOrigin(0.5);
+    var nDesc2 = scene.add.text(-150, 32, "No timer", textStyle(12, "#5A7A8A")).setOrigin(0.5);
+    var hBg = scene.add.graphics();
+    hBg.fillStyle(0x4EA8DE, 1); hBg.fillRoundedRect(20, -50, 260, 110, 20);
+    var hIcon = scene.add.text(150, -38, "\u{26A1}", { fontSize: "28px" }).setOrigin(0.5);
+    var hTitle = scene.add.text(150, -10, "Hard Challenge", textStyle(20, "#FFFFFF")).setOrigin(0.5);
+    var hDesc = scene.add.text(150, 14, "8 pairs • 75s timer", textStyle(13, "#FFFFFF")).setOrigin(0.5);
+    var hDesc2 = scene.add.text(150, 32, "Faster flip • 0.45s", textStyle(12, "#EAF6FB")).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x102A43, 1); btnBg.fillRoundedRect(-130, 90, 260, 60, 30);
+    var btnTx = scene.add.text(0, 120, "\u25B6  Start Game", textStyle(24, "#ffffff")).setOrigin(0.5);
+    var hint = scene.add.text(0, 165, "Tip: Hard mode flips back in 0.45s!", textStyle(13, "#5A7A8A")).setOrigin(0.5);
+    var selNormal = scene.add.graphics();
+    selNormal.lineStyle(4, 0x102A43, 1); selNormal.strokeRoundedRect(-280, -50, 260, 110, 20);
+    selNormal.setVisible(difficulty === "normal");
+    var selHard = scene.add.graphics();
+    selHard.lineStyle(4, 0x102A43, 1); selHard.strokeRoundedRect(20, -50, 260, 110, 20);
+    selHard.setVisible(difficulty === "hard");
+    startOverlay.add([bg, panel, title, sub, nBg, nIcon, nTitle, nDesc, nDesc2, hBg, hIcon, hTitle, hDesc, hDesc2, btnBg, btnTx, hint, selNormal, selHard]);
+    scene.startSelNormal = selNormal;
+    scene.startSelHard = selHard;
+    nBg.setInteractive(new Phaser.Geom.Rectangle(-280, -50, 260, 110), Phaser.Geom.Rectangle.Contains);
+    hBg.setInteractive(new Phaser.Geom.Rectangle(20, -50, 260, 110), Phaser.Geom.Rectangle.Contains);
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-130, 90, 260, 60), Phaser.Geom.Rectangle.Contains);
+    function selectMode(m) {
+      difficulty = m;
+      window.difficulty = m;
+      selNormal.setVisible(m === "normal");
+      selHard.setVisible(m === "hard");
+      updateModeUI(scene);
+      hint.setText(m === "hard" ? "Hard: 8 pairs, 75s, fast flips — good luck!" : "Normal: 6 pairs, no timer — take your time");
+      announce(m === "hard" ? "Hard challenge selected" : "Normal mode selected");
+    }
+    scene.selectMode = selectMode;
+    nBg.on("pointerdown", function () { selectMode("normal"); });
+    hBg.on("pointerdown", function () { selectMode("hard"); });
+    btnBg.on("pointerdown", function () {
+      started = true; lockBoard = false;
+      startOverlay.setVisible(false);
+      hudMsg.setText(difficulty === "hard" ? "Hard mode! Go!" : "Tap a card!");
+      updateModeUI(scene);
+      if (difficulty === "hard") startTimer(scene);
+      setFocusedCard(0);
+      announce("Game started");
+    });
+  }
+
+  function makeEndOverlay(scene) {
+    endOverlay = scene.add.container(W / 2, H / 2).setDepth(20).setVisible(false);
+    var bg = scene.add.graphics();
+    bg.fillStyle(0x102A43, 0.5); bg.fillRect(-W / 2, -H / 2, W, H);
+    var panel = scene.add.graphics();
+    panel.fillStyle(0xFFFFFF, 1); panel.fillRoundedRect(-300, -180, 600, 360, 30);
+    panel.lineStyle(6, 0x4EA8DE, 1); panel.strokeRoundedRect(-300, -180, 600, 360, 30);
+    endTitle = scene.add.text(0, -110, "\u{1F389} You Win! \u{1F389}", textStyle(36)).setOrigin(0.5);
+    endDetail = scene.add.text(0, -40, "", Object.assign(textStyle(20), { align: "center" })).setOrigin(0.5);
+    var btnBg = scene.add.graphics();
+    btnBg.fillStyle(0x4EA8DE, 1); btnBg.fillRoundedRect(-140, 60, 280, 60, 30);
+    var btnTx = scene.add.text(0, 90, "\u21BB Play Again", textStyle(24, "#ffffff")).setOrigin(0.5);
+    var modeHint = scene.add.text(0, 135, "", textStyle(13, "#5A7A8A")).setOrigin(0.5);
+    endOverlay.add([bg, panel, endTitle, endDetail, btnBg, btnTx, modeHint]);
+    scene.endModeHint = modeHint;
+    btnBg.setInteractive(new Phaser.Geom.Rectangle(-140, 60, 280, 60), Phaser.Geom.Rectangle.Contains);
+    btnBg.on("pointerdown", function () { restart(scene); });
+  }
+
+  function showWin(scene) {
+    stopTimer();
+    var total = difficulty === "hard" ? 8 : 6;
+    var stars = moves <= (difficulty === "hard" ? 14 : 10) ? 3 : (moves <= (difficulty === "hard" ? 20 : 16) ? 2 : 1);
+    var timeBonus = "";
+    if (difficulty === "hard") timeBonus = "\nTime left: " + timeLeft + "s";
+    endTitle.setText(difficulty === "hard" ? "\u{1F30A} Abyss Conquered! \u{1F30A}" : "\u{1F389} You Win! \u{1F389}");
+    endDetail.setText("You found all " + total + " pairs!\nMoves: " + moves + "  " + "\u2B50".repeat(stars) + timeBonus);
+    if (scene.endModeHint) scene.endModeHint.setText(difficulty === "hard" ? "Try Normal for a chill dive, or Hard again!" : "Ready for Hard Challenge? 8 pairs + timer!");
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("You win! \u{1F389}");
+    announce("You win with " + moves + " moves");
+    for (var i = 0; i < 40; i++) {
+      var p = scene.add.text(Math.random() * W, -20, ["\u{1F30A}", "\u2B50", "\u{1F389}", "\u{1F419}"][i % 4], { fontSize: "28px" }).setDepth(30);
+      scene.tweens.add({ targets: p, y: H + 40, x: p.x + Phaser.Math.Between(-80, 80), duration: Phaser.Math.Between(1200, 2200), onComplete: (function (t) { return function () { t.destroy(); }; })(p) });
+    }
+  }
+
+  function showLose(scene) {
+    lockBoard = true;
+    started = false;
+    endTitle.setText("\u23F1 Time's Up!");
+    endDetail.setText("The tide ran out!\nPairs: " + matches + " / 8\nMoves: " + moves);
+    if (scene.endModeHint) scene.endModeHint.setText("Hard is brutal — try again or switch to Normal");
+    endOverlay.setVisible(true);
+    scene.tweens.add({ targets: endOverlay, scale: { from: 0.8, to: 1 }, duration: 250, ease: "Back.easeOut" });
+    hudMsg.setText("Time's up! \u{1F30A}");
+    announce("Time is up, game over");
+  }
+
+  function restart(scene) {
+    stopTimer();
+    moves = 0; matches = 0; firstPick = null; lockBoard = false; started = true;
+    var total = difficulty === "hard" ? 8 : 6;
+    hudMoves.setText("Moves: 0"); hudScore.setText("Pairs: 0 / " + total); hudMsg.setText(difficulty === "hard" ? "Hard mode! Go!" : "Tap a card!");
+    if (hudTimer) {
+      hudTimer.setVisible(difficulty === "hard");
+      if (difficulty === "hard") hudTimer.setText("Time: 75s");
+      hudTimer.setColor("#4EA8DE");
+      hudTimer.setScale(1);
+    }
+    updateModeUI(scene);
+    endOverlay.setVisible(false);
+    if (startOverlay) { startOverlay.setVisible(false); }
+    cards.forEach(function (c) { if (c.focusRing) c.focusRing.destroy(); c.view.destroy(); });
+    buildBoard(scene);
+    if (difficulty === "hard") startTimer(scene);
+    setFocusedCard(0);
+    announce("New game started in " + difficulty + " mode");
+  }
+
+  function updateModeUI(scene) {
+    var isHard = difficulty === "hard";
+    if (hudMode) hudMode.setText(isHard ? "Mode: Hard Challenge" : "Mode: Normal");
+    if (hudTimer) {
+      hudTimer.setVisible(isHard);
+      if (isHard && timeLeft) hudTimer.setText("Time: " + timeLeft + "s");
+      else if (isHard) hudTimer.setText("Time: 75s");
+    }
+    if (scene && scene.modeToggleLabel) scene.modeToggleLabel.setText(isHard ? "Switch to Normal" : "Switch to Hard");
+    var n = document.getElementById("btnNormal");
+    var h = document.getElementById("btnHard");
+    if (n && h) {
+      n.classList.toggle("active", !isHard);
+      h.classList.toggle("active", isHard);
+      n.setAttribute("aria-pressed", String(!isHard));
+      h.setAttribute("aria-pressed", String(isHard));
+    }
+    var total = isHard ? 8 : 6;
+    if (hudScore) hudScore.setText("Pairs: " + matches + " / " + total);
+    if (scene && scene.startSelNormal) {
+      scene.startSelNormal.setVisible(!isHard);
+      scene.startSelHard.setVisible(isHard);
+    }
+  }
+
+  function startTimer(scene) {
+    stopTimer();
+    if (difficulty !== "hard") return;
+    timeLeft = 75;
+    if (hudTimer) hudTimer.setText("Time: " + timeLeft + "s");
+    timerEvent = scene.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: function () {
+        timeLeft--;
+        if (hudTimer) hudTimer.setText("Time: " + timeLeft + "s");
+        if (timeLeft <= 10 && hudTimer) {
+          hudTimer.setColor("#E63946");
+          scene.tweens.add({ targets: hudTimer, scale: 1.1, yoyo: true, duration: 120 });
+        }
+        if (timeLeft <= 0) {
+          stopTimer();
+          showLose(scene);
+        }
+      }
+    });
+  }
+
+  function stopTimer() {
+    if (timerEvent) { timerEvent.remove(); timerEvent = null; }
+  }
+
+  function setFocusedCard(idx) {
+    if (!cards.length) return;
+    if (idx < 0) idx = cards.length - 1;
+    if (idx >= cards.length) idx = 0;
+    cards.forEach(function (c) { if (c.focusRing) { c.focusRing.destroy(); c.focusRing = null; } });
+    focusedIndex = idx;
+    var c = cards[focusedIndex];
+    if (c && c.matched) {
+      for (var i = 0; i < cards.length; i++) {
+        var cand = cards[(focusedIndex + i) % cards.length];
+        if (!cand.matched) { focusedIndex = (focusedIndex + i) % cards.length; c = cand; break; }
+      }
+    }
+    if (c && started && !c.matched && c.view && c.view.scene) {
+      var g = c.view.scene.add.graphics();
+      g.lineStyle(3, 0x102A43, 1);
+      g.strokeRoundedRect(c.view.x - c.cw / 2 - 4, c.view.y - c.ch / 2 - 4, c.cw + 8, c.ch + 8, 18);
+      g.setDepth(5);
+      c.focusRing = g;
+    }
+  }
+
+  function toggleDifficulty(scene) {
+    difficulty = difficulty === "normal" ? "hard" : "normal";
+    window.difficulty = difficulty;
+    updateModeUI(scene);
+    if (startOverlay && startOverlay.visible) {
+      return;
+    }
+    restart(scene);
+  }
+
+  window.difficulty = difficulty;
+  window.setDifficultyMode = function (m) {
+    difficulty = m;
+    window.difficulty = m;
+    updateModeUI(gameScene);
+    if (gameScene && gameScene.startSelNormal) {
+      gameScene.startSelNormal.setVisible(m === "normal");
+      gameScene.startSelHard.setVisible(m === "hard");
+    }
+    if (gameScene && started && gameScene.startOverlay && !gameScene.startOverlay.visible) {
+      restart(gameScene);
+    }
+    announce(m === "hard" ? "Hard challenge mode selected" : "Normal mode selected");
+  };
+
+  function setupHtmlModeBar() {
+    var n = document.getElementById("btnNormal");
+    var h = document.getElementById("btnHard");
+    if (!n || !h) return;
+    n.addEventListener("click", function () { window.setDifficultyMode("normal"); });
+    h.addEventListener("click", function () { window.setDifficultyMode("hard"); });
+    n.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); window.setDifficultyMode("normal"); } });
+    h.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); window.setDifficultyMode("hard"); } });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupHtmlModeBar);
+  } else {
+    setupHtmlModeBar();
+  }
+
+  function update() {}
+})();
+</script>
+</body>
+</html>
