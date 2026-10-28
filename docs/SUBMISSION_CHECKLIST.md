@@ -1,6 +1,6 @@
 # Submission checklist
 
-Status: **V14 video produced and QA'd; repository aligned with it; not yet submitted.** This file records requirements,
+Status: **V15 video produced and QA'd; repository aligned with it; not yet submitted.** This file records requirements,
 evidence, and the actions that still require the repository owner.
 
 ## Official requirements — what could and could not be verified
@@ -16,7 +16,7 @@ client-side; text not retrievable). `/rules`, `/official-rules`, `/terms` return
 | Required Meta Muse usage | Implied by event scope; our integration uses Muse Code CLI throughout |
 | Judging criteria | Track/theme descriptions only; no numeric rubric published |
 | Repository access | **Not stated.** We have not assumed public access is required |
-| Video requirements | **Not stated.** The V14 video is 2:46, 1920×1080, with an SRT caption file |
+| Video requirements | **Not stated.** The V15 video is 2:46, 1920×1080, with an SRT caption file |
 | Licensing / disclosures | **Not stated** |
 | Official Rules | Page says they "will be published"; not retrievable at review time |
 
@@ -37,12 +37,12 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] Documentation set (submission, evaluation, architecture, demo, canonical storyboard)
 - [x] Phase 15B research published and integrated with provenance and deviation disclosures
 - [x] Phase 16 / 16B research published with locked hashes, all outputs and `pnpm verify:research16`
-- [x] V14 demonstration video (Ocean Pairs, 2:46) produced and QA'd; README and submission copy match it
+- [x] V15 demonstration video (Ocean Pairs, 2:46, SHA-256 `2bf1a78e4800…`) produced and QA'd; README and submission copy match it
 - [x] Live FocusFlow generation, modification and refusal evidence preserved
 - [x] Cross-origin state-mutation guard with regression tests and browser reproduction
 - [x] No feature work beyond Phase 5 scope
 - [ ] Repository visibility confirmed against the rules **(owner)**
-- [ ] V14 video uploaded, and its link added to the README **(owner)**
+- [ ] V15 video uploaded, and its link added to the README **(owner)**
 - [ ] Submission form completed on the platform **(owner)**
 - [ ] Official Rules accepted if required **(owner)**
 
@@ -52,7 +52,7 @@ Because the Official Rules were unavailable, this checklist marks visibility and
    required disclosures.
 2. If judges must open the repository, make `sidonsoft/muse-recall` public or grant access.
    Nothing else in the project depends on visibility.
-3. Upload the V14 video (and its SRT captions, if the platform accepts them), then add the link
+3. Upload the V15 video (and its SRT captions, if the platform accepts them), then add the link
    where the README's opening section marks it.
 4. Submit the repository URL, video URL, and the description in
    `docs/submission/SUBMISSION_COPY.md`.
