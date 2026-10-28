@@ -260,9 +260,14 @@ The V14 demonstration video (2:46, 1080p) replaces V2. Its live footage is Ocean
   `pnpm verify:research16`.
 - **Kind:** authentic model output. Muse Spark through the production HTML Studio path (48 runs);
   Muse Spark Open on Baseten through a chat completion with the production prompt builder (48 runs).
-- **Confidence:** high for the stated counts: 28/28 no memory, 18/28 palette only, 0/29 rule.
+- **Confidence:** high for the stated counts over usable outputs: 28/28 no memory, 18/18 palette
+  only, 0/27 rule. These include Phase 16B correction 1
+  ([`CORRECTION_1.md`](../hackathon-evidence/phase16b/CORRECTION_1.md)): 12 open-model outputs cut
+  off at the token limit, first scored as clean, are unusable. The V14 results card shows the
+  figures from before the correction (6/16 palette only, 18/28 combined).
 - **Limitations:** one baseline game, one request, one rule; code mechanics only; the rule arm also
-  carries the palette; 11/48 Muse Spark runs unusable (worst case still significant); Phase 16B is a
+  carries the palette; 11/48 Muse Spark and 12/48 Muse Spark Open runs unusable (worst case still
+  significant); the 16B exclusion is post-hoc; Phase 16B is a
   task replication, not a runtime replication; lock times are local file times.
 
 ### C19 — The live Ocean Pairs workflow: stored rule, refusal, approval, rollback
@@ -288,7 +293,7 @@ The V14 demonstration video (2:46, 1080p) replaces V2. Its live footage is Ocean
 | “All remembered constraints are applied to output” | **Unsupported** | Phase 12A: accent tracked in all conditions, text colour ignored; retrieval uses a budget. |
 | “Guard catches every violation of remembered decisions” | **Unsupported** | 8-digit RGBA hexes and tween flashes are demonstrated gaps. |
 | “Statistically significant improvement across development tasks” | **Unsupported** | Phase 16 / 16B support one narrow contrast on two models (one game, rule, request); Phase 15B is one model; 12A is n = 1 per condition and 11A is n = 5. |
-| “Memory in general reduces violations” | **Unsupported** | Palette-only memory left 18 of 28 edits in violation; only the rule arm reached zero. |
+| “Memory in general reduces violations” | **Unsupported** | Palette-only memory left 18 of 18 usable edits in violation; only the rule arm reached zero. |
 | “A demo video exists” | *Superseded* | True since the release: V14 (2:46) is the demonstration video. Phase 14A itself produced no video. |
 | Performance/memory-cost savings beyond those cited | **Unsupported** | No controlled benchmark of end-to-end savings. |
 
