@@ -4,108 +4,114 @@
 no trial was rerun, no locked file was edited, no original output was changed, and history was not
 rewritten.
 
-This file records the verified disposition of the ten review findings, the trial-integrity audit,
-the lock/checksum results and the provenance reconciliation. Claims stay limited to the six
-tested strata and the two tested models.
+This file records the disposition of the reviewer's ten findings, the additional verification done
+alongside them, the trial-integrity audit, the lock/checksum results and the provenance
+reconciliation. Claims stay limited to the six tested strata and the two tested models.
 
-## 1. Findings
+## 1. The reviewer's ten findings
 
-Legend: **confirmed** — reproduced from code or evidence; **refuted** — the evidence contradicts
-the claim; **latent** — a real code defect that did not affect this experiment.
+The numbering below is the reviewer's. **R1–R4 are fixed in this PR; R5–R10 are real defects that
+did not occur in the 480 runs, and they live in locked files, so they are documented for future
+runners rather than patched.**
 
-### F1. Fisher exact test direction and two-sided definition
+### R1. Inflated p-values (fixed)
 
-**Refuted as a defect.** `stats17.stratified_exact` builds the null distribution of the total
-violations in arm 1 as the convolution of the per-stratum hypergeometrics, then sums every total
-whose probability is no greater than the observed one (Fisher's rule, two-sided, ties included).
-That is the definition pre-registered in `PROTOCOL.md` §4. The observed statistic is the arm-1
-total, so a low observed count (H1: `memory`) and a high one (H3: `corrected`) are both handled
-symmetrically. An independent rational implementation reproduces the same tail sets.
+**Confirmed.** The locked tail rule ends with `+ 1e-15`, an absolute floor, so nine of the twelve
+reported p-values were upper bounds rather than exact values (Muse Spark H1: exact 6.52 × 10⁻²⁰
+reported as 2.02 × 10⁻¹⁶; Muse Spark Open H1: exact 1.12 × 10⁻²⁴ reported as 4.72 × 10⁻¹⁶).
+`RESULTS.md` now reports the exact values as a dated post-run correction; the exact recomputation
+is in `exact_stats.py` and `phase17-analysis-corrected.json`; the as-run `phase17-analysis.json`
+is preserved unchanged. No verdict changes. Details and checksums: `STATS_CORRECTION.md`.
 
-### F2. Fixed numerical tolerance and tiny p-values
+### R2. The verifier passed with no lock manifest (fixed)
 
-**Confirmed.** The tail rule ends with `+ 1e-15`, an absolute floor. When the exact tail is below
-~1e-15 it also admits less probable outcomes, so nine of the twelve reported p-values were
-inflated upper bounds (Muse Spark H1: exact 6.52 × 10⁻²⁰ reported as 2.02 × 10⁻¹⁶; Muse Spark
-Open H1: exact 1.12 × 10⁻²⁴ reported as 4.72 × 10⁻¹⁶). See `STATS_CORRECTION.md` for the full
-table, the method and the checksums. The published values were conservative; no verdict changes.
-The reviewer's alternative p-values were not retrievable through the PR API (no review bodies),
-so they are assessed against the exact table rather than quoted.
-
-### F3. Risk differences, intervals, H2 direction/margin, sensitivity detectors, worst case
-
-**Verified, no change.** Recomputed from the records: every risk difference and 95% Newcombe
-interval matches the published value to the printed precision; H2 uses the upper 90% bound with
-the pre-registered +15 pp margin in the correct direction (`memory − manual`), +4.5 pp
-(Muse Spark) and +7.1 pp (Muse Spark Open); the sensitivity-detector tables re-derive; the
-worst-case treatment adds each unusable run to both the numerator and the denominator of its arm.
-Worst-case p-values were affected by F2 in the same way and are corrected in the same file.
-
-### F4. The locked verifier accepts a missing `protocol.sha256`
-
-**Confirmed.** `scripts/verify-phase17.ts` prints “protocol is a DRAFT” and continues when the
-manifest is absent, then prints PASS if the other checks pass. The locked file was not edited.
-`scripts/verify-phase17-strict.ts` now fails when the manifest is absent, and
+**Confirmed.** `scripts/verify-phase17.ts` treated an absent `protocol.sha256` as a draft and
+still printed PASS. The locked file is unchanged; `scripts/verify-phase17-strict.ts` now fails
+when the manifest or the lock metadata (`LOCK.md`, the locked status line) is missing, and
 `pnpm verify:research17` runs it after the legacy verifier.
 
-### F5. Overly permissive p-value comparison in the locked verifier
+### R3. The p-value comparison accepted almost any tiny number (fixed)
 
-**Confirmed.** `close()` uses `Math.max(|expected| * 1e-9, 1e-15)`, so for any expected p below
-1e-15 a reported value of 0 is accepted, and the verifier cannot distinguish the inflated values
-from the exact ones. The strict validator uses a relative-only comparison (no absolute floor) for
-the pinned original values and re-derives the corrected values exactly.
+**Confirmed.** The legacy `close()` used `Math.max(|expected| × 1e-9, 1e-15)`, so for any expected
+p below 1e-15 a reported 0 compared equal. The strict validator uses a relative-only comparison
+with no absolute floor, and the regression suite asserts that 0 and 1e-30 do **not** match
+2.02 × 10⁻¹⁶.
 
-### F6. A succeeded Muse Spark record could lack its output because copying failed
+### R4. A stray `.DS_Store` broke the checksum check (fixed)
 
-**Latent, not manifested.** In `run_spark.mjs` the job status is assigned before the staging
-`index.html` is copied, and the `catch` block cannot downgrade an already-`succeeded` record. A
-missing staging file would therefore leave `status = "succeeded"` with no output. Audit of all 232
-succeeded Muse Spark records: **0 lacked an output file, 0 had a hash or byte-count mismatch**
-(see §2). The defect is recorded for future runners and not patched here.
+**Confirmed.** `scripts/verify-phase17-sums.ts` walked every file under `out/`, so OS metadata
+either failed the run or had to be added to the manifest. The rewritten inventory policy ignores
+explicitly named OS metadata (`.DS_Store`, AppleDouble `._*`, `Thumbs.db`, `desktop.ini`,
+`.localized`) and refuses to let the manifest list it. Required evidence stays mandatory: every
+documented artefact must be present and listed, and unlisted or undocumented substantive files
+are rejected. Regressions cover all three behaviours.
 
-### F7. The eight excluded Muse Spark runs may not be genuine budget failures
+### R5. Port-release race (not patched)
 
-**Refuted.** Each of the eight has a copied Forge job record whose `created_at` → `finished_at`
-interval is exactly 1800 s (range 1802.6–1803.2 s wall including teardown), `status = "failed"`
-and `error = "Job exceeded the 1800s runtime budget."`. The exclusion rule was pre-registered
-(§5 of the protocol). The eight are spread over arms (3 none, 2 memory, 2 manual, 1 corrected), so
-the per-protocol comparison is not biased toward an arm.
+**Latent, did not occur.** `stopServer` signals the process group and waits 600 ms; the next run
+in the shard reuses the same port, so a slow shutdown could serve the next run from the old
+process. No occurrence in this experiment: zero `harness_error` records, no
+“server did not start”/`EADDRINUSE` in any shard log. Future runners should wait for the old
+process to exit (or allocate a fresh port). Recorded, not patched: `harness.mjs` is locked.
 
-### F8. Transport failures, retries, truncation or server lifecycle altered inclusion
+### R6. No request timeout (not patched)
 
-**Partly confirmed as latent, not as an inclusion effect.**
+**Latent, did not occur.** The `fetch` calls in `harness.mjs` and `run_open.mjs` carry no
+`AbortSignal`, so a stalled connection would hang a shard. No occurrence: all 240 Open runs
+completed (mean 52 s, max 177 s) and every Muse Spark run is bounded by the job runtime cap plus
+the harness poll limit. Future runners should add an abort timeout to every request.
 
-- 240/240 Muse Spark Open runs returned HTTP 200 with `finish_reason = "stop"` and a complete
-  HTML document under the 32 000-token cap; **0 truncations**, so no truncated output was scored.
-- **6 of 240** Open runs carry `attempts = 2`. The retry rule was pre-registered, but the runner
-  overwrites the first attempt's error on success, so the cause of those six retries is **not
-  retained** in the record. They are not exclusions and their final outputs meet the usability
-  criteria; this is a traceability gap, recorded for future runners.
-- No run in either model has `harness_error`, and the shard logs contain no
-  “server did not start”/`EADDRINUSE` event, so the port-release race (F10a) did not strike.
+### R7. Crash when an arm has no usable runs (not patched)
 
-### F9. `verify-phase17-sums.ts` was incomplete and not portable
+**Latent, did not occur.** `newcombe()` divides by `n`; `contrast()` guards for `None` but the H2
+call is unguarded, and `h1['risk_difference'] < 0` would raise on `None`. No occurrence: the
+smallest arm has 57 usable runs. Future runners should fail with a clear message (or switch to an
+exact interval) when an arm has zero usable runs.
 
-**Confirmed.** The previous script compared only the files it found with the manifest, so it
-could not detect a missing artefact that had also been removed from the manifest, it treated any
-added file as valid if listed, and an OS metadata file such as `.DS_Store` would have failed the
-run. Rewritten with an explicit inventory policy (documented shapes, mandatory manifest coverage,
-unexpected-artefact detection, named OS metadata ignored) and negative regressions; see §4.
+### R8. A succeeded run recorded with no output (not patched)
 
-### F10. Remaining runner and documentation findings
+**Latent, did not occur.** In `run_spark.mjs` the job status is assigned before the staging
+`index.html` is copied, and the `catch` block cannot downgrade an already-`succeeded` record, so a
+missing staging file would leave `status = "succeeded"` with no output. Audit: **0 of 232**
+succeeded Muse Spark records lacked an output, and none had a hash or byte-count mismatch. Future
+runners should copy first and only then set the status, downgrading on failure.
 
-| Item | Verdict | Evidence and observed impact |
-|---|---|---|
-| a. Port-release race | **latent** | `stopServer` sends SIGTERM to the group and waits 600 ms; the next run reuses the same port. A slow shutdown could serve the next run from the old process. No occurrence: 0 `harness_error`, no bind errors in any shard log. |
-| b. No request timeout | **latent** | `fetch` calls in `harness.mjs`/`run_open.mjs` have no `AbortSignal`. A stalled connection would hang a shard. No occurrence: all Open runs completed (mean 52 s, max 177 s); Muse Spark is bounded by the job runtime cap plus the harness poll limit. |
-| c. Zero-usable-arm crash | **latent** | `newcombe()` divides by `n`; `contrast()` guards for `None` but the H2 call is unguarded, and `h1['risk_difference'] < 0` would raise on `None`. No occurrence: the smallest arm has 57 usable runs. |
-| d. Detector docstring mismatch | **confirmed, cosmetic** | `detectors.py` labels `child_safety_broad` a “sensitivity reading”, but `design.json` uses it as the primary game detector and `child_safety` as the sensitivity detector. The mapping in `DETECTORS` is correct, so no result is affected. Locked file, not edited. |
-| e. Deterministic retry of truncated output | **latent** | `run_open.mjs` retries on `finish_reason = "length"` with the same prompt at temperature 0, so the retry cannot repair a deterministic truncation and costs a second call. No occurrence: 0 truncations in 240 runs. |
+### R9. Wrong detector description (not patched)
 
-## 2. Trial-integrity audit
+**Confirmed, cosmetic.** `detectors.py` calls `child_safety_broad` a “sensitivity reading”, but
+`design.json` uses it as the primary game detector and `child_safety` as the sensitivity detector.
+The `DETECTORS` mapping is correct, so no result is affected. Locked file; the discrepancy is
+recorded here and in `STATS_CORRECTION.md`’s detector references rather than edited.
 
-An independent read-only audit (`/tmp` scratch, not committed) rebuilt the expected cell list from
-`design.json` and checked every record and artefact:
+### R10. Retry repeats a truncated reply (not patched)
+
+**Latent, did not occur.** `run_open.mjs` retries on `finish_reason = "length"` with the same
+prompt at temperature 0, so the retry cannot repair a deterministic truncation and costs a second
+call. No occurrence: 0 truncations in 240 Open runs (all final `finish_reason = "stop"`). Future
+runners should treat truncation as terminal or change the request (length or continuation) rather
+than repeat it, and record the first-attempt cause.
+
+## 2. Additional verification performed
+
+These were not reviewer findings; they were checked so the frozen result could be relied on.
+
+- **Fisher direction and two-sided definition.** The null distribution of the arm-1 total is the
+  convolution of the per-stratum hypergeometrics and the tail sums every outcome no more probable
+  than the observed one (Fisher's rule, ties included) — the pre-registered definition. Low
+  observed counts (H1 `memory`) and high ones (H3 `corrected`) are handled symmetrically.
+- **Risk differences, intervals, H2, sensitivity, worst case.** All recomputed from the records and
+  unchanged. H2 uses the upper 90% Newcombe bound in the direction `memory − manual`: +4.5 pp
+  (Muse Spark) and +7.1 pp (Muse Spark Open), both below the +15 pp margin.
+- **The eight excluded Muse Spark runs.** Each has a Forge job record whose `created_at` →
+  `finished_at` interval is exactly 1800 s, `status = "failed"` and the runtime-budget error.
+- **Transport, retries, truncation, server lifecycle.** 240/240 Open runs returned HTTP 200 with
+  `finish_reason = "stop"`; 6 runs used the pre-registered second attempt, and the runner does not
+  retain the first-attempt cause (a traceability gap, not an inclusion change).
+
+## 3. Trial-integrity audit
+
+An independent read-only audit rebuilt the expected cell list from `design.json` and checked every
+record and artefact:
 
 | Check | Result |
 |---|---|
@@ -123,35 +129,35 @@ An independent read-only audit (`/tmp` scratch, not committed) rebuilt the expec
 | Muse Spark Open attempts | 234 at attempt 1, 6 at attempt 2 |
 | Exclusions | 8, all Muse Spark, all 1800 s runtime budget, all with job records |
 
-No discrepancy was found. Nothing was repaired and no exclusion was changed; the audit is
-read-only and the records are untouched.
+No discrepancy was found. Nothing was repaired and no exclusion was changed.
 
-## 3. Lock and checksum results
+## 4. Lock and checksum results
 
 | Check | Result |
 |---|---|
 | `protocol.sha256` inventory | 17/17 expected paths, in the locked order |
 | Locked files vs manifest | **17/17 match** |
-| `protocol.sha256` SHA-256 | `2f1f76668d31ebfa171ff042e2509493e329f72d20a18bce1f57a3c866d58767` (pinned in the strict validator) |
+| `protocol.sha256` SHA-256 | `2f1f76668d31ebfa171ff042e2509493e329f72d20a18bce1f57a3c866d58767` (pinned) |
 | Lock metadata | `LOCK.md` names commit `6640e83…` and tag `phase17-preregistration`; `PROTOCOL.md` carries the locked status line |
 | Original analysis | `phase17-analysis.json` pinned by hash **and** by relative-value comparison for every p-value |
 | Evidence inventory | 1205 files (1204 under `out/` + the analysis), all listed and matched; OS metadata ignored, not required |
 | Corrected reporting | `phase17-analysis-corrected.json` reproduces exactly from the raw records on every run |
 | Distinct labelling | original = hash-pinned `phase17-analysis.json`; corrected = `phase17-analysis-corrected.json` + `CORRECTIONS.sha256` |
 
-`pnpm verify:research17` now runs the locked verifier, then the inventory check, then the strict
+`pnpm verify:research17` runs the locked verifier, then the inventory check, then the strict
 lock/statistics validator, and exits nonzero if any of them fails.
 
-## 4. Regressions
+## 5. Regressions
 
 `tests/research/phase17-evidence.test.ts` builds disposable copies of the evidence tree and
-asserts that verification fails for: a missing manifest, a modified locked file, a manifest with a
-missing entry, and a tampered statistical value. For the inventory check it asserts that
-`.DS_Store` does not invalidate a correct tree, that missing or changed evidence fails, and that an
-unexpected substantive file fails under the documented inventory policy. Mutations are made only
-in temporary directories.
+asserts that verification fails for: a missing manifest, missing lock metadata, a modified locked
+file, a manifest with a missing entry, and a tampered statistical value. For the inventory check
+it asserts that `.DS_Store` does not invalidate a correct tree, that missing or changed evidence
+fails, and that unlisted and undocumented substantive files fail. It also proves the comparison
+itself: 0 and 1e-30 never match a tiny expected p, and a 0.3% change is rejected. Mutations are
+made only in temporary directories.
 
-## 5. Provenance
+## 6. Provenance
 
 - The protocol was locked by commit `6640e83f3c999cd1349420ad5e95bc329fff7d36`, pushed
   2026-10-28 11:18:28 UTC, before the first run. An annotated tag
@@ -170,16 +176,16 @@ in temporary directories.
   differs between the public tag (`6640e83`) and this branch (`da821d7`). The tag and the
   empty-tree diff are the bridge; the SHA-256 of the manifest is the content identity.
 
-## 6. Categorisation
+## 7. Categorisation
 
 | Category | Items |
 |---|---|
 | **Experimental protocol deviations** | none |
 | **Execution incidents** | 8 Muse Spark runs hit the pre-registered 1800 s runtime budget and were excluded as written; 6 Muse Spark Open runs used the pre-registered second attempt without the first-attempt cause being retained; the owner rewrote branch history during the run (version control only, identical trees) |
-| **Post-run analysis/reporting corrections** | the exact p-values (F2), recorded in `STATS_CORRECTION.md`; no verdict changes |
-| **Future tooling improvements** | port release (wait for the old server to exit or use a fresh port), request timeouts, a zero-usable-arm guard, retry only on transport/no-HTML errors and record the first-attempt cause, correct the detector docstring, downgrade a record when output staging fails |
+| **Post-run analysis/reporting corrections** | the exact p-values (R1), recorded in `STATS_CORRECTION.md`; no verdict changes |
+| **Future tooling improvements** | R5 port release, R6 request timeouts, R7 zero-usable-arm guard, R8 copy-then-status, R10 retry policy and first-attempt logging, R9 docstring |
 
-## 7. What H3 shows
+## 8. What H3 shows
 
 H3's outcome is measured with the detector for the **original** rule. The `corrected` arm has a
 higher original-rule rate than `memory` because the correction tells the model that the earlier
