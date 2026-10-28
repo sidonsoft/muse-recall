@@ -3,7 +3,7 @@
 This directory records how the Phase 1 and Phase 2 milestones were verified against the
 committed history. It exists so a reviewer can check claims instead of trusting a summary.
 
-## Research evidence added for the V2 release
+## Research evidence added for the release
 
 | Phase | Where | What it is |
 | --- | --- | --- |

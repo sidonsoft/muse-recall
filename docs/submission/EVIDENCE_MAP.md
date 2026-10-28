@@ -30,7 +30,7 @@ git show <commit>:<path>                              # read it without checking
 | 14A demo production + release blockers | `agent/phase14a-demo-production` | branched from `156c65c`; evidence in `docs/hackathon-evidence/phase14a/` |
 | 15A child-safety pilot (6 runs) | `agent/phase15a-pilot` | `e62b5bc` → `9d91865`; pilot only, not pooled |
 | 15B child-safety trial (32 runs) | `agent/phase15b` | protocol `d84d8a1`, results `2857159`, correction `9f5eaa1`; integrated on the release candidate |
-| V2 live FocusFlow demo | `agent/muse-recall-live-demo` | `2ba4ba2`; evidence in `docs/demo/` |
+| Live FocusFlow demo | `agent/muse-recall-live-demo` | `2ba4ba2`; evidence in `docs/demo/` |
 
 ## Claim-by-claim map
 
@@ -205,7 +205,7 @@ git show <commit>:<path>                              # read it without checking
 - **Confidence:** high.
 - **Limitations:** these are narrow hardening measures, not a security architecture review.
 
-## V2 release addendum — FocusFlow and Phase 15B
+## Release addendum — FocusFlow and Phase 15B
 
 This map was written for Phase 14A. The final release candidate adds the live FocusFlow
 demonstration and the integrated Phase 15B research; those claims are mapped here.
@@ -248,11 +248,10 @@ demonstration and the integrated Phase 15B research; those claims are mapped her
 - **Limitations:** the v1 coder source is lost; v2 is post-hoc with narrow definitions; the memory
   arm carried the full decision set; no per-run model or memory ids.
 
-## Video addendum — Ocean Pairs and Phase 16 / 16B
+## Demo video addendum — Ocean Pairs and Phase 16 / 16B
 
-The demonstration video, V15 (2:46, 1080p), replaces V2. V15 is V14 with the Phase 16B figures
-corrected in the results scene. Its live footage is Ocean Pairs (project
-`safegame6`) and its closing card reports Phase 16 / 16B. Those claims are mapped here.
+The demo video's live footage is Ocean Pairs (project `safegame6`), and its closing card reports
+Phase 16 / 16B. Those claims are mapped here.
 
 ### C18 — A remembered rule eliminated rule violations on two Meta models; palette-only memory did not
 
@@ -264,8 +263,8 @@ corrected in the results scene. Its live footage is Ocean Pairs (project
 - **Confidence:** high for the stated counts over usable outputs: 28/28 no memory, 18/18 palette
   only, 0/27 rule. These include Phase 16B correction 1
   ([`CORRECTION_1.md`](../hackathon-evidence/phase16b/CORRECTION_1.md)): 12 open-model outputs cut
-  off at the token limit, first scored as clean, are unusable. V14's results card showed the
-  figures from before the correction (6/16 palette only, 18/28 combined); V15 corrects them.
+  off at the token limit, first scored as clean, are unusable. The demo video shows the corrected
+  figures.
 - **Limitations:** one baseline game, one request, one rule; code mechanics only; the rule arm also
   carries the palette; 11/48 Muse Spark and 12/48 Muse Spark Open runs unusable (worst case still
   significant); the 16B exclusion is post-hoc; Phase 16B is a
@@ -273,7 +272,7 @@ corrected in the results scene. Its live footage is Ocean Pairs (project
 
 ### C19 — The live Ocean Pairs workflow: stored rule, refusal, approval, rollback
 
-- **Evidence:** the screen recording in the video (unchanged from V14 to V15). It shows the
+- **Evidence:** the screen recording in the demo video. It shows the
   decision with its source job, the retrieval explainer (1 candidate, 1 selected), a
   countdown-and-penalty request returning no change (0 lines added), a staged v2 approved after
   review, and v1 restored by rollback.
@@ -296,7 +295,7 @@ corrected in the results scene. Its live footage is Ocean Pairs (project
 | “Guard catches every violation of remembered decisions” | **Unsupported** | 8-digit RGBA hexes and tween flashes are demonstrated gaps. |
 | “Statistically significant improvement across development tasks” | **Unsupported** | Phase 16 / 16B support one narrow contrast on two models (one game, rule, request); Phase 15B is one model; 12A is n = 1 per condition and 11A is n = 5. |
 | “Memory in general reduces violations” | **Unsupported** | Palette-only memory left 18 of 18 usable edits in violation; only the rule arm reached zero. |
-| “A demo video exists” | *Superseded* | True since the release: V15 (2:46) is the demonstration video. Phase 14A itself produced no video. |
+| “A demo video exists” | *Superseded* | True since the release: the Ocean Pairs demo video (2:46). Phase 14A itself produced no video. |
 | Performance/memory-cost savings beyond those cited | **Unsupported** | No controlled benchmark of end-to-end savings. |
 
 ## Evidence gaps / open items for the director

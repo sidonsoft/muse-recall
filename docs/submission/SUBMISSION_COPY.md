@@ -1,6 +1,6 @@
 # Muse Recall — submission copy
 
-Copy for the submission form, written to match the V15 demonstration video (Ocean Pairs, 2:46).
+Copy for the submission form, written to match the demo video (Ocean Pairs, 2:46).
 Quantitative claims come from the Phase 16 / 16B trials, the Phase 11A reliability trials, the
 Phase 12A memory-influence trial, the Phase 12D Guard accuracy audit, the Phase 14A verification
 record, the live FocusFlow and Ocean Pairs demonstrations (2026-10-28), and the Phase 15B trial
@@ -138,12 +138,6 @@ Vitest, and reproducible evidence scripts.
 - The app is a single-user, loopback-only development build: no authentication, no multi-tenant
   hosting. Host-header validation raises the cost of DNS rebinding, and the origin guard blocks
   cross-site mutations; neither is a substitute for authentication in a multi-user deployment.
-- The demonstration video is V15 (2:46, 1920×1080, SHA-256
-  `2bf1a78e4800bae35d4bf0b14b7a6a6be3aad3ca552e4b15b17a35e0740a08d6`), delivered separately
-  from the repository. V15 is V14 with the Phase 16B figures corrected in the results scene. It
-  replaces the V2 video described in
-  [V2_VIDEO_PRODUCTION_MANIFEST.md](V2_VIDEO_PRODUCTION_MANIFEST.md) and
-  [V2_VIDEO_QA_REPORT.md](V2_VIDEO_QA_REPORT.md), which are kept as historical records.
 
 ## Future roadmap
 
