@@ -5,11 +5,10 @@
 hackathon submission, no paid model calls, no research-protocol/baseline/tag changes.
 
 Phase 17 remains active on its own branch (`claude/admiring-kilby-7f7211`, lock commit
-`219b73f`). At integration preparation, all six open-model shards and four of six Spark
-shards were complete; Spark shards 3 and 4 were still running (watcher 463/480 at the last
-check). This branch does not claim any Phase 17 result. Its checkout, files, servers,
-evidence, and tags were not touched. Integration remains gated on Phase 17 completion and
-reconciliation.
+`219b73f`). At the final check it was still running (an owned Spark watcher/process
+remained active). This branch does not claim any Phase 17 result. Its checkout, files,
+servers, evidence, and tags were not touched. Integration remains gated on Phase 17
+completion and reconciliation.
 
 ## What changed
 
@@ -273,7 +272,16 @@ Local, Node **24.22.1**:
   (`harden: durable Forge recovery and managed browser checks`).
 - **Draft PR:** [sidonsoft/muse-recall#1](https://github.com/sidonsoft/muse-recall/pull/1)
   against `main`. Draft only; not merged, tagged, deployed, or published.
-- **CI:** [run 40706723095](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095)
+- **Post-review fix commit:** `878ce8f057dc1fb6116e2ea32aa9f0e7158df9a0`
+  (`fix: close Forge recovery and browser diagnostic gaps`).
+- **CI on `878ce8f`:** [run 40711026738](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738)
+  passed both jobs:
+  - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020114):
+    Node `24.21.0`; lint, typecheck, **618 passed / 3 skipped**, build — success.
+  - [browser job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020628):
+    Node `24.22.1`; installed Playwright Chromium `156.0.8078.4` and passed all
+    32 Studio workflow checks with `Browser: Chromium 156.0.8078.4 (managed)`.
+- **Pre-review CI:** [run 40706723095](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095)
   passed on the implementation commit under **Node 24.21.0**:
   - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524):
     lint, typecheck, 611 passed / 3 skipped, build — success (pre-review run).
@@ -283,6 +291,8 @@ Local, Node **24.22.1**:
 - **Local integration validation:** the pre-review head used Node 24.22.1, 611 passed /
   3 skipped, build and all applicable managed-browser checks passed. The post-review run
   uses 618 passed / 3 skipped; CI is reported separately, not inferred from local runs.
+- **Final pushed commit:** the docs-only handoff commit that follows `878ce8f`; its CI run
+  is recorded in the PR checks. It changes no code.
 
 ## Pre-integration gates
 
@@ -299,11 +309,13 @@ Status at handoff:
 | Local managed security check (Node 24.22.1) | **Pass** |
 | Local managed form/sandbox check (Node 24.22.1) | **Pass** — 7 checks |
 | Local production shutdown smoke | **Pass** (earlier isolated run) |
-| GitHub Actions `verify` job on `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524), Node 24.21.0 |
-| GitHub Actions `browser` job with pinned Chromium on `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063), Chromium 156.0.8078.4 |
+| GitHub Actions `verify` job on post-review `878ce8f` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020114), Node 24.21.0, 618 passed / 3 skipped |
+| GitHub Actions `browser` job with pinned Chromium on `878ce8f` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40711026738/job/122896020628), Chromium 156.0.8078.4, 32 checks |
+| GitHub Actions `verify` job on pre-review `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524), Node 24.21.0, 611 passed / 3 skipped |
+| GitHub Actions `browser` job on pre-review `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063), Chromium 156.0.8078.4 |
 | Node 24 compatibility (CI runtime) | **Pass** — local 24.22.1 and CI 24.21.0 |
 | Protected paths and tags unchanged | **Pass** — audit completed |
-| Phase 17 completed and reconciled | **Gated** — 4/6 Spark shards and 6/6 open shards complete; Spark shards 3/4 running |
+| Phase 17 completed and reconciled | **Gated** — still running at the final check; no Phase 17 result claimed |
 | Draft PR / final review | **Draft** — [PR #1](https://github.com/sidonsoft/muse-recall/pull/1); no merge |
 
 Before integration:
