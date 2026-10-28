@@ -9,6 +9,7 @@ committed history. It exists so a reviewer can check claims instead of trusting 
 | --- | --- | --- |
 | 15A child-safety pilot | [`phase15a/`](phase15a/) and [`../PHASE15A_CHILD_SAFETY_TRIAL_RESULTS.md`](../PHASE15A_CHILD_SAFETY_TRIAL_RESULTS.md) | Six-run **pilot**; not pooled with 15B |
 | 15B child-safety trial | [`phase15b/EVIDENCE_CARD.md`](phase15b/EVIDENCE_CARD.md) | 32-run trial: evidence card, [provenance](phase15b/PROVENANCE_MANIFEST.md), [deviations](phase15b/DEVIATIONS.md), [human-coding disclosure](phase15b/HUMAN_CODING.md) and [recovered tooling](phase15b/recovered/) |
+| 17 four-arm trial | [`phase17/RESULTS.md`](phase17/RESULTS.md) | 480-run pre-registered trial (4 arms × 6 strata × 2 models): lock, exact-p [correction](phase17/STATS_CORRECTION.md), [review disposition](phase17/REVIEW_DISPOSITION.md) and strict verifier |
 
 Phase 15B is published unchanged from `agent/phase15b` (`d84d8a1 → 2857159 → 9f5eaa1`) and integrated
 with a merge commit. The original v1 scoring source was not preserved; only its per-run output is
