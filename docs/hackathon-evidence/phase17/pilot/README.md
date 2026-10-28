@@ -22,7 +22,7 @@ checks) and prints the pilot counts.
 - **Truncation (Muse Spark Open).** Two round-1 replies stopped at 20 000 tokens and were still scored
   under the 16B rule. Fixed: the cap is now 32 000 and a `length` stop counts as a failure. Round 2
   re-ran both cells: one needed 22 747 tokens and both completed. The same defect affects 12 of 48
-  Phase 16B outputs (see the session report).
+  Phase 16B outputs, corrected on main in `bbff8a9`.
 - **Budgets (Muse Spark).** Two of 12 round-1 runs exceeded the 40-call budget (43 and 49 calls), both
   on `farm-challenge`. With the live-demo maxima, both cells completed in round 2 (32 and 35 calls).
 - **Detector.** One `orchard-arcade` no-memory edit added "3 misses and the run is over" (`lives -=`),
