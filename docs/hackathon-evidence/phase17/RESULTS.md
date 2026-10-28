@@ -14,7 +14,18 @@ pushed 2026-10-28 21:19 AEST —
 https://github.com/sidonsoft/muse-recall/commit/6640e83f3c999cd1349420ad5e95bc329fff7d36
 
 **Trial run:** 2026-10-28 21:19 → 2026-10-29 01:06 AEST (3 h 47 min wall clock, 12 shards).
-No locked file changed during the run; there is no `DEVIATIONS.md`.
+No locked file changed during the run. There is no protocol deviation; the post-run review
+correction is described below.
+
+> **Post-run reporting correction (2026-10-29).** The p-values in the first version of this file
+> were produced by the locked analysis, whose tail rule contains an absolute `+ 1e-15` floor.
+> For exact tails below that floor it also admits less probable outcomes, so nine of the twelve
+> reported p-values were inflated upper bounds. The values below are the exact two-sided
+> stratified p-values, recomputed in rational arithmetic from the same records and tables by
+> `exact_stats.py` (`phase17-analysis-corrected.json`). The original as-run values are preserved
+> unchanged in `phase17-analysis.json`; both are listed in `STATS_CORRECTION.md`. No test,
+> stratum, arm, detector, exclusion or verdict rule changed, and **no verdict changes**: every
+> corrected value is smaller.
 
 ---
 
@@ -70,16 +81,16 @@ below **+15 pp**.
 
 | Contrast | Risk difference | 95% CI (Newcombe) | p |
 |---|---:|---|---:|
-| H1 `memory` vs `none` | −64.9 pp | −76.0 to −50.5 | **2.0 × 10⁻¹⁶** |
-| H3 `corrected` vs `memory` | +69.5 pp | +55.4 to +79.8 | **3.4 × 10⁻¹⁶** |
+| H1 `memory` vs `none` | −64.9 pp | −76.0 to −50.5 | **6.5 × 10⁻²⁰** |
+| H3 `corrected` vs `memory` | +69.5 pp | +55.4 to +79.8 | **6.9 × 10⁻²¹** |
 | H2 `memory` − `manual` | +0.0 pp | 90% CI −4.5 to **+4.5** | — |
 
 ### Muse Spark Open
 
 | Contrast | Risk difference | 95% CI (Newcombe) | p |
 |---|---:|---|---:|
-| H1 `memory` vs `none` | −80.0 pp | −87.9 to −66.4 | **4.7 × 10⁻¹⁶** |
-| H3 `corrected` vs `memory` | +81.7 pp | +68.2 to +89.2 | **5.4 × 10⁻¹⁶** |
+| H1 `memory` vs `none` | −80.0 pp | −87.9 to −66.4 | **1.1 × 10⁻²⁴** |
+| H3 `corrected` vs `memory` | +81.7 pp | +68.2 to +89.2 | **1.6 × 10⁻²⁴** |
 | H2 `memory` − `manual` | +1.7 pp | 90% CI −2.8 to **+7.1** | — |
 
 ### Per stratum, `memory` vs `none` (primary detectors)
@@ -113,12 +124,17 @@ Two strata had no violations in the `none` arm at all (`farm-challenge` for Muse
 
 | Hypothesis | Muse Spark | Muse Spark Open | Replicated |
 |---|---|---|---|
-| **H1** — `memory` has fewer violations than `none` | **supported** (p = 2.0 × 10⁻¹⁶) | **supported** (p = 4.7 × 10⁻¹⁶) | **yes** |
+| **H1** — `memory` has fewer violations than `none` | **supported** (p = 6.5 × 10⁻²⁰) | **supported** (p = 1.1 × 10⁻²⁴) | **yes** |
 | **H2** — `memory` is not worse than retyping the rule | **supported** (upper bound +4.5 pp < +15 pp) | **supported** (upper bound +7.1 pp < +15 pp) | **yes** |
-| **H3** — `corrected` has more violations than `memory` | **supported** (p = 3.4 × 10⁻¹⁶) | **supported** (p = 5.4 × 10⁻¹⁶) | **yes** |
+| **H3** — `corrected` has more violations than `memory` | **supported** (p = 6.9 × 10⁻²¹) | **supported** (p = 1.6 × 10⁻²⁴) | **yes** |
 
 All three pre-registered hypotheses are supported on both models. In the memory arm, the rule was
 violated in one Open run (`focus-reward`, 0/10 → 1/10 under retrieval) and in no Muse Spark run.
+
+H3's increase is measured with the detector for the **original** rule. The `corrected` arm has more
+original-rule violations because the correction tells the model that the earlier restriction no
+longer applies: the output is following the corrected decision, not regressing on safety. The
+analysis does not claim the corrected output is safer or less safe under the original rule.
 
 ### Pre-registered secondary (descriptive only)
 
@@ -166,9 +182,9 @@ move elements.
 
 | Contrast (sensitivity) | Muse Spark | Muse Spark Open |
 |---|---|---|
-| H1 `memory` vs `none` | RD −54.4 pp [−66.6, −40.2], p = 8.2 × 10⁻¹⁶ | RD −80.0 pp [−87.9, −66.4], p = 4.7 × 10⁻¹⁶ |
+| H1 `memory` vs `none` | RD −54.4 pp [−66.6, −40.2], p = 7.5 × 10⁻¹⁷ | RD −80.0 pp [−87.9, −66.4], p = 1.1 × 10⁻²⁴ |
 | H2 `memory` − `manual` | 0/58 vs 0/58; 90% CI −4.5 to +4.5 | 1/60 vs 0/60; 90% CI −2.8 to +7.1 |
-| H3 `corrected` vs `memory` | RD +57.6 pp [+43.5, +69.4], p = 1.7 × 10⁻¹⁷ | RD +80.0 pp [+66.4, +87.9], p = 1.1 × 10⁻¹⁵ |
+| H3 `corrected` vs `memory` | RD +57.6 pp [+43.5, +69.4], p = 1.7 × 10⁻¹⁷ | RD +80.0 pp [+66.4, +87.9], p = 3.4 × 10⁻²⁴ |
 
 All three verdicts are unchanged: supported on both models under both detector readings. The
 detector choice matters for the size of the game baseline rate (Muse Spark `none`: 64.9% primary
@@ -180,8 +196,8 @@ vs 54.4% sensitivity), not for the direction or the verdicts.
 |---|---|---:|---:|---:|---:|---:|
 | Muse Spark | primary | 40/60 (66.7%) | 2/60 (3.3%) | 2/60 (3.3%) | 42/60 (70.0%) | 2.8 × 10⁻¹⁷ |
 | Muse Spark | sensitivity | 34/60 (56.7%) | 2/60 (3.3%) | 2/60 (3.3%) | 35/60 (58.3%) | 1.3 × 10⁻¹³ |
-| Muse Spark Open | primary | 49/60 (81.7%) | 1/60 (1.7%) | 0/60 (0%) | 50/60 (83.3%) | 4.7 × 10⁻¹⁶ |
-| Muse Spark Open | sensitivity | 49/60 (81.7%) | 1/60 (1.7%) | 0/60 (0%) | 49/60 (81.7%) | 4.7 × 10⁻¹⁶ |
+| Muse Spark Open | primary | 49/60 (81.7%) | 1/60 (1.7%) | 0/60 (0%) | 50/60 (83.3%) | 1.1 × 10⁻²⁴ |
+| Muse Spark Open | sensitivity | 49/60 (81.7%) | 1/60 (1.7%) | 0/60 (0%) | 49/60 (81.7%) | 1.1 × 10⁻²⁴ |
 
 The direction and the verdict survive the most conservative treatment of unusable runs.
 
@@ -242,7 +258,10 @@ intention-to-treat fallback.
   every `SHA256SUMS` line, and the counts and verdicts re-derived).
 
 `scripts/verify-phase17.ts` is itself one of the 17 files locked in `protocol.sha256`, so it was
-not edited after the lock. The `SHA256SUMS` check therefore lives in
+not edited after the lock; a strict companion (`verify-phase17-strict.ts`) enforces the manifest
+identity, the locked inventory, the preserved as-run values and the corrected reporting, and the
+evidence-inventory check is `verify-phase17-sums.ts`. The full review disposition is in
+`REVIEW_DISPOSITION.md` and the statistics correction in `STATS_CORRECTION.md`. The `SHA256SUMS` check therefore lives in
 `scripts/verify-phase17-sums.ts` (the same check `verify-phase16.ts` performs) and
 `verify:research17` runs both scripts. No locked file changed during the trial; the lock still
 reports 17/17.
