@@ -49,7 +49,7 @@ limit. Counting every unusable run as a violation, rule vs no memory is still 3/
 
 > **Correction (2026-10-28).** The Muse Spark Open figures were first published as 6/16
 > (palette only) and 0/16 (rule), because 12 truncated outputs had been scored as clean. The
-> V14 video's results card shows the earlier figures. See
+> V15 video carries the corrected figures. See
 > [the correction](docs/hackathon-evidence/phase16b/CORRECTION_1.md).
 
 ### Try it
@@ -252,8 +252,8 @@ default.
 | Cross-origin state-mutation guard + regression tests | security | **Complete** |
 | Final release integration and verification | release | **Complete**; released to `main` by fast-forward (`328092c`) |
 | Phase 16 three-arm trial (Muse Spark) and 16B replication (Muse Spark Open) | 16 / 16B | **Complete**; evidence and verifier published |
-| V2 demonstration production | release | Superseded by V14 |
-| V14 demonstration (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
+| V2 demonstration production | release | Superseded by the Ocean Pairs video |
+| V15 demonstration (Ocean Pairs, 2:46, 1080p; V14 with corrected Phase 16B figures) | release | **Complete**, QA'd |
 | Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
@@ -526,7 +526,7 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 - [Product positioning](docs/PRODUCT_POSITIONING.md) — identity, claims register, honesty boundaries
 - [HTML Studio assessment](docs/HTML_STUDIO_ASSESSMENT.md) — capability, security, export, scope
 - [UX audit](docs/UX_AUDIT.md) and [design system](docs/DESIGN_SYSTEM.md)
-- Historical storyboards and the V2 video records (superseded by V14): [V2_DEMO_RECORDING_PLAN.md](docs/submission/V2_DEMO_RECORDING_PLAN.md), [REVISED_DEMO_STORYBOARD.md](docs/submission/REVISED_DEMO_STORYBOARD.md), [DEMO_SCRIPT_3MIN.md](docs/submission/DEMO_SCRIPT_3MIN.md), [VIDEO_STORYBOARD.md](docs/VIDEO_STORYBOARD.md), [RECUT_BRIEF_PHASE15A.md](docs/submission/RECUT_BRIEF_PHASE15A.md)
+- Historical storyboards and the V2 video records (superseded by the Ocean Pairs video): [V2_DEMO_RECORDING_PLAN.md](docs/submission/V2_DEMO_RECORDING_PLAN.md), [REVISED_DEMO_STORYBOARD.md](docs/submission/REVISED_DEMO_STORYBOARD.md), [DEMO_SCRIPT_3MIN.md](docs/submission/DEMO_SCRIPT_3MIN.md), [VIDEO_STORYBOARD.md](docs/VIDEO_STORYBOARD.md), [RECUT_BRIEF_PHASE15A.md](docs/submission/RECUT_BRIEF_PHASE15A.md)
 - [Phase 14C recording clearance](docs/PHASE14C_RECORDING_CLEARANCE.md) and [demo runbook](docs/submission/DEMO_RUNBOOK.md)
 - [Evidence map](docs/submission/EVIDENCE_MAP.md) and [project story](docs/submission/PROJECT_STORY.md)
 - [Evaluation report](docs/EVALUATION_REPORT.md) and [architecture overview](docs/ARCHITECTURE_OVERVIEW.md)
@@ -583,7 +583,7 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 ## Roadmap
 
-1. **Hackathon submission.** Upload the V14 video, make the repository public for judging,
+1. **Hackathon submission.** Upload the V15 video, make the repository public for judging,
    and complete the submission form (owner actions; nothing is submitted automatically).
 2. **Post-event hardening.** Additional Decision Guard rule families, interaction and
    pixel verification, verified self-contained export, and multi-user authentication

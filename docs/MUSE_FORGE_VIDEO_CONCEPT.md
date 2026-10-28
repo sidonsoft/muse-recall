@@ -1,6 +1,6 @@
 # Muse Forge — three-minute video concept
 
-> **Historical document.** This is an early video concept. The submission now uses the V14 video (Ocean Pairs) and the Phase 16 / 16B research; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+> **Historical document.** This is an early video concept. The submission now uses the Ocean Pairs demo video and the Phase 16 / 16B research; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
 
 **Only shots backed by verified capability are included.** Today the generation and
 screenshot-edit steps run through `muse exec` + a browser; the in-app preview/approval loop is
