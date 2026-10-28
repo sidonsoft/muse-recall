@@ -20,10 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The version comes from `packageManager` in package.json.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Set up Node
         uses: actions/setup-node@v4
