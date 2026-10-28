@@ -6,9 +6,10 @@ hackathon submission, no paid model calls, no research-protocol/baseline/tag cha
 
 Phase 17 remains active on its own branch (`claude/admiring-kilby-7f7211`, lock commit
 `219b73f`). At integration preparation, all six open-model shards and four of six Spark
-shards were complete; Spark shards 3 and 4 were still running (watcher 461/480). This branch
-does not claim any Phase 17 result. Its checkout, files, servers, evidence, and tags were not
-touched. Integration remains gated on Phase 17 completion and reconciliation.
+shards were complete; Spark shards 3 and 4 were still running (watcher 463/480 at the last
+check). This branch does not claim any Phase 17 result. Its checkout, files, servers,
+evidence, and tags were not touched. Integration remains gated on Phase 17 completion and
+reconciliation.
 
 ## What changed
 
@@ -187,6 +188,23 @@ phase/evidence script changed. The three submission/preregistration tags were un
   also checks that memory is labelled untrusted data rather than authoritative. No
   evaluation input, detector, baseline, or recorded output changed.
 
+## Integration preparation
+
+- **Implementation commit:** `9c76ae94284269ed69ba1406d392fd3528b588df`
+  (`harden: durable Forge recovery and managed browser checks`).
+- **Draft PR:** [sidonsoft/muse-recall#1](https://github.com/sidonsoft/muse-recall/pull/1)
+  against `main`. Draft only; not merged, tagged, deployed, or published.
+- **CI:** [run 40706723095](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095)
+  passed on the implementation commit under **Node 24.21.0**:
+  - [verify job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524):
+    lint, typecheck, 611 passed / 3 skipped, build — success.
+  - [browser job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063):
+    installed Chromium `156.0.8078.4` (Playwright revision `1248`) and passed all
+    32 Studio workflow checks with `Browser: Chromium 156.0.8078.4 (managed)`.
+- **Local integration validation:** Node 24.22.1, 611 passed / 3 skipped, build and all
+  applicable managed-browser checks passed. CI is reported separately, not inferred from
+  the local run.
+
 ## Pre-integration gates
 
 Status at handoff:
@@ -202,24 +220,23 @@ Status at handoff:
 | Local managed security check (Node 24.22.1) | **Pass** |
 | Local managed form/sandbox check (Node 24.22.1) | **Pass** — 7 checks |
 | Local production shutdown smoke | **Pass** (earlier isolated run) |
-| GitHub Actions `verify` job on branch | **Pending** — run after push |
-| GitHub Actions `browser` job with pinned Chromium | **Pending** — run after push |
-| Node 24 compatibility (CI runtime) | **Pass locally** — CI runner still to observe |
+| GitHub Actions `verify` job on `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717524), Node 24.21.0 |
+| GitHub Actions `browser` job with pinned Chromium on `9c76ae9` | **Pass** — [job](https://github.com/sidonsoft/muse-recall/actions/runs/40706723095/job/122880717063), Chromium 156.0.8078.4 |
+| Node 24 compatibility (CI runtime) | **Pass** — local 24.22.1 and CI 24.21.0 |
 | Protected paths and tags unchanged | **Pass** — audit completed |
 | Phase 17 completed and reconciled | **Gated** — 4/6 Spark shards and 6/6 open shards complete; Spark shards 3/4 running |
-| Draft PR / final review | **Pending** — no merge |
+| Draft PR / final review | **Draft** — [PR #1](https://github.com/sidonsoft/muse-recall/pull/1); no merge |
 
 Before integration:
 
 1. Wait for Phase 17 to finish; review its completed results and deviations without
    modifying its branch, evidence, or tags. Reconcile only findings that affect this
    hardening work. Integration remains gated until then.
-2. Push the hardening branch and let both CI jobs run: `verify` and `browser` (pinned
-   Playwright Chromium, fake provider). Do not treat local results as CI results.
+2. CI has passed for the implementation commit; re-run it if any branch content changes.
 3. Node 24 behaviour for `node:sqlite`, signal handling, and the browser preview proxy
-   passed locally on 24.22.1; confirm the same on the GitHub runner.
-4. Confirm the `browser` job installs and selects the lockfile-pinned Playwright Chromium;
-   the script prints the selected browser and version.
+   passed locally on 24.22.1 and on the GitHub runner at 24.21.0.
+4. The `browser` job installed and selected the lockfile-pinned Playwright Chromium
+   (`156.0.8078.4`, revision `1248`), as recorded in the job log.
 5. Protected-path and tag audit is complete. Reconfirm on the final pushed commit.
 6. Keep this branch distinct from the experiment release. Do not tag it until review
    approves a release name; never reuse a submission or Phase 17 tag.
@@ -342,8 +359,8 @@ historical research evidence.
 - Shutdown relies on SIGKILL after the grace period; an unkillable process is outside the
   application's control.
 - Browser coverage is representative, not visual/gameplay/accessibility exhaustive. The
-  local run used Playwright-managed Chromium; CI is configured to install the
-  lockfile-pinned Playwright Chromium, and the browser job is still pending.
+  local run and CI both used Playwright-managed Chromium; CI installed and selected the
+  lockfile-pinned Chromium 156.0.8078.4.
 - Managed-browser adoption removes the known automatic system-Chrome launch paths in
   active verification and runtime-check code. It does **not** establish that every macOS
   Chrome crash is resolved: the historical phase/evidence scripts still launch system
@@ -354,10 +371,9 @@ historical research evidence.
   telemetry, so the UI does not claim verification.
 - The recovery acknowledgement file is local, unauthenticated workspace state; it is not
   a signed audit ledger. Deleting it re-surfaces historical notices.
-- The active script browser policy is managed, but Windows executable lookup and the CI
-  runner's pinned browser image remain unverified until the push is observed. Historical
-  phase/evidence scripts still launch system Chrome by design and must not be treated as
-  current verification.
+- The active script browser policy is managed and the CI job confirmed it. Windows
+  executable lookup remains unverified. Historical phase/evidence scripts still launch
+  system Chrome by design and must not be treated as current verification.
 - Intermediate coalescing bounds disk churn but does not provide `fsync`/power-loss
   durability. A failed intermediate write is recorded; required writes still gate
   creation/terminal/approval/rejection.
