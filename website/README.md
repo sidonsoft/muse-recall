@@ -62,10 +62,11 @@ Verified state of this repo at the product-repo commit the footer cites:
 
 ## Deploy
 
-Deliberately **not deployed yet** — iteration is active. The branch
-`deploy-ready` carries a GitHub Pages workflow (`npm run site` → static
-`dist/`, portable `base: './'` so any subpath works); merging it turns on
-hosting without touching this branch's behavior.
+Deliberately **not deployed yet** — iteration is active. [PR #1](https://github.com/sidonsoft/muse-recall-website/pull/1)
+carries a GitHub Pages workflow (`npm run site` → static `dist/`, portable
+`base: './'` so any subpath works), triggered only by `workflow_dispatch`.
+Publishing = enable Pages (source: GitHub Actions) in repo settings, then merge
+the PR or run the workflow once.
 
 ## Structure
 
