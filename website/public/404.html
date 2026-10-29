@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Muse Recall — redirecting</title>
+    <script>
+      // GitHub Pages project-site 404 fallback: send visitors back to the app
+      // root, whether hosted at a domain root or under /muse-recall-website/.
+      var p = location.pathname;
+      var root = p.indexOf('/muse-recall-website/') === 0 ? '/muse-recall-website/' : '/';
+      location.replace(root + location.search);
+    </script>
+    <meta http-equiv="refresh" content="0; url=/" />
+  </head>
+  <body style="font-family: system-ui; background: #0b0b13; color: #e6e6f0; padding: 8vh 6vw">
+    <p>Redirecting to <a href="/" style="color: #a78bfa">Muse Recall — correctable project memory</a>…</p>
+  </body>
+</html>

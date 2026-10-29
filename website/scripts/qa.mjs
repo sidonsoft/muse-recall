@@ -261,6 +261,9 @@ try {
     ['apple-touch-icon', 'apple-touch-icon'],
   ].filter(([, probe]) => !html.includes(probe));
   check('static HTML pre-rendered (works without JS)', missing.length === 0, missing.map(([n]) => n + ' missing').join(', ') || `len=${html.length}`);
+  const r404 = await fetch(URL_ + '404.html');
+  const body404 = await r404.text();
+  check('404 fallback redirects to app root', r404.status === 200 && body404.includes('Redirecting') && body404.includes('muse-recall-website'), `status=${r404.status}`);
   const manifest = await (await fetch(URL_ + 'site.webmanifest')).json();
   const iconOk = await Promise.all(
     manifest.icons.map(async (i) => (await fetch(new URL(i.src, URL_))).ok)
