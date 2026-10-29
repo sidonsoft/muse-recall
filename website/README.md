@@ -32,6 +32,10 @@ QA mirrors the product's own stance — `scripts/qa.mjs` is dependency-free
 (CDP over Node's global WebSocket) and also runs on CI (`.github/workflows/site-qa.yml`,
 test-only, not a deploy).
 
+Every upstream link used on the site is audited against the real repo tree with
+`npm run links` (expects the `muse-recall` checkout as `../muse-recall-src`,
+override with `UPSTREAM=...`).
+
 ## Structure
 
 ```
