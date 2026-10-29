@@ -49,6 +49,15 @@ await page.evaluate(async () => {
   await new Promise((r) => setTimeout(r, 900));
   window.scrollTo(0, 0);
 });
+// Lazy images can still be decoding after the scroll pass on a slow runner;
+// wait for them (up to 10s) so the count below measures support, not timing.
+await page
+  .waitForFunction(
+    () => [...document.images].filter((i) => (i.currentSrc || '').endsWith('.webp') && i.naturalWidth > 0).length >= 3,
+    null,
+    { timeout: 10000 },
+  )
+  .catch(() => {});
 const d = await report('desktop');
 await page.screenshot({ path: '/tmp/ff-desktop.png', fullPage: false });
 
