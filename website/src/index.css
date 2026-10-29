@@ -2304,3 +2304,26 @@ pre.code .hl {
   margin-bottom: 4px;
   font-size: 14.5px;
 }
+
+/* ---------- Demo video ---------- */
+.video-figure {
+  margin-top: 8px;
+}
+
+.video-figure video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.video-figure figcaption a {
+  color: var(--text);
+}
+
+@media print {
+  .video-figure video {
+    display: none;
+  }
+}

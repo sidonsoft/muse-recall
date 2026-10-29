@@ -24,6 +24,9 @@ export default function Hero() {
           <a className="btn btn-primary" href={REPO} target="_blank" rel="noreferrer">
             View on GitHub
           </a>
+          <a className="btn btn-ghost" href="#watch">
+            Watch the demo
+          </a>
           <a className="btn btn-ghost" href="#loop">
             Try the loop
           </a>
@@ -75,7 +78,7 @@ export default function Hero() {
             <span>pre-registered runs · exact p &lt; 10⁻¹⁹</span>
           </div>
           <div>
-            <b>721</b>
+            <b>728</b>
             <span>passing tests · pnpm verify</span>
           </div>
         </div>

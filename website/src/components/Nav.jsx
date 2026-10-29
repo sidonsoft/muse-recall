@@ -13,6 +13,7 @@ export default function Nav() {
         <details className="nav-menu">
           <summary>Menu</summary>
           <div className="nav-menu-panel" onClick={(e) => { if (e.target.tagName === 'A') e.currentTarget.closest('details').removeAttribute('open'); }}>
+            <a href="#watch">Demo video</a>
             <a href="#loop">The loop</a>
             <a href="#timeline">Timeline</a>
             <a href="#how">How it works</a>
@@ -28,6 +29,7 @@ export default function Nav() {
           </div>
         </details>
         <nav className="nav-links" aria-label="Primary">
+          <a href="#watch">Demo</a>
           <a href="#loop">The loop</a>
           <a href="#timeline">Timeline</a>
           <a href="#how">How it works</a>

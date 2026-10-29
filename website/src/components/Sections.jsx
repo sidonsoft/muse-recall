@@ -281,24 +281,24 @@ export function Gallery() {
   const [lb, setLb] = React.useState(-1);
   const shots = [
     {
-      src: './assets/phase2-ui-memory-detail.png',
+      src: './assets/studio-review.png',
+      t: 'Staged for review',
+      c: 'v2 waits with its live preview, the project decisions supplied to the change and the Decision Guard advisory — nothing is current until you approve it.',
+    },
+    {
+      src: './assets/memory-detail.png',
       t: 'Memory detail',
-      c: 'A decision with provenance, correction history and the supersession chain.',
+      c: 'The superseded sunset decision, its active ocean replacement, provenance and correction history.',
     },
     {
-      src: './assets/phase2-ui-memory-retrieval.png',
+      src: './assets/memory-retrieval.png',
       t: 'Retrieval explainer',
-      c: 'Every retrieval shows its score components and an evidence sentence — no black box.',
+      c: 'Pinned records, score components, the exact rendered context cost and what was excluded — no black box.',
     },
     {
-      src: './assets/phase10-final-diff.png',
-      t: 'Staged diff',
-      c: 'A generated change waits as preview, exact source and a line diff before anyone approves it.',
-    },
-    {
-      src: './assets/phase6-showcase.png',
-      t: 'End-to-end showcase',
-      c: 'Conversations, memory, retrieval evidence and tool approvals in one local loop.',
+      src: './assets/conversation.png',
+      t: 'Answers from memory',
+      c: 'A conversation answered from the retrieved project memory, with its evidence expanded.',
     },
   ];
   return (
@@ -326,8 +326,8 @@ export function Gallery() {
                   alt={s.c}
                   loading="lazy"
                   decoding="async"
-                  width="1440"
-                  height="960"
+                  width="1600"
+                  height="1000"
                   onClick={() => setLb(i)}
                 />
               </picture>
@@ -365,7 +365,7 @@ export function Stack() {
             'Muse Code CLI (Muse Spark)',
             'Muse Spark Open on Baseten (research)',
             'Playwright-managed Chromium gate',
-            'Biome · Vitest · 721 tests',
+            'Biome · Vitest · 728 tests',
             'Offline echo provider (no account needed)',
           ].map((t) => (
             <span key={t}>{t}</span>
@@ -430,7 +430,7 @@ export function Quickstart() {
             pnpm dev{'\n\n'}
             <span className="cmt"># verify, don't trust:</span>{'\n'}
             pnpm verify{'               '}
-            <span className="cmt"># lint + typecheck + 721 tests</span>
+            <span className="cmt"># lint + typecheck + 728 tests</span>
           </pre>
         </div>
       </div>
@@ -527,6 +527,45 @@ export function Guard() {
   );
 }
 
+export function Watch() {
+  return (
+    <section className="block" id="watch">
+      <div className="container">
+        <div className="section-head center">
+          <p className="kicker">Watch the demo · 2:50</p>
+          <h2>Remember, correct, review — in one live session</h2>
+          <p>
+            One continuous Muse Spark session, recorded 29 October 2026: save a sunset constraint
+            and approve v1; correct the decision to ocean; watch the Guard flag the reintroduced
+            sunset palette; approve v2 built from the <em>current</em> art direction. The honest
+            failure beat is left in.
+          </p>
+        </div>
+        <figure className="figure video-figure reveal">
+          <video
+            controls
+            playsInline
+            preload="none"
+            poster="./video/muse-recall-demo-poster.jpg"
+            width="1920"
+            height="1080"
+            aria-label="Muse Recall demo video, 2 minutes 50 seconds, with burned-in captions"
+          >
+            <source src="./video/muse-recall-demo.mp4" type="video/mp4" />
+            <track kind="captions" srcLang="en" label="English" src="./video/muse-recall-demo.en.vtt" />
+            <a href="./video/muse-recall-demo.mp4">Download the demo video (mp4, 12.7 MB)</a>
+          </video>
+          <figcaption>
+            1080p · captions burned in ·{' '}
+            <a href="./video/muse-recall-demo.mp4" download>download mp4 (12.7 MB)</a> ·{' '}
+            <a href="./video/muse-recall-demo-transcript.txt">transcript</a>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  );
+}
+
 export function ForJudges() {
   const DOCS = `${REPO}/blob/main/docs`;
   const cards = [
@@ -535,11 +574,11 @@ export function ForJudges() {
       h: 'Demo video — 2:50, recorded',
       p: (
         <>
-          One continuous live Muse Spark session: save a sunset constraint, approve v1; correct
-          the decision to ocean; watch the Guard flag the reintroduced sunset palette; approve
-          v2 built from the <em>current</em> art direction. Includes the honest failure beat.
-          The cut is recorded and QA&apos;d (29 Oct 2026); its public link lands here as soon
-          as the upload completes. The earlier 2:46 cut is the fallback.
+          One continuous live Muse Spark session, recorded and QA&apos;d on 29 October 2026,
+          with the honest failure beat left in.{' '}
+          <a href="#watch">Watch it on this page</a> or{' '}
+          <a href="./video/muse-recall-demo.mp4" download>download the mp4</a> ·{' '}
+          <a href="./video/muse-recall-demo-transcript.txt">transcript</a>.
         </>
       ),
     },
@@ -563,7 +602,7 @@ export function ForJudges() {
       h: 'Engineering — verify, don’t trust',
       p: (
         <>
-          <code>pnpm verify</code> runs lint, typecheck and 721 passing tests. A staged change
+          <code>pnpm verify</code> runs lint, typecheck and 728 passing tests. A staged change
           loads in managed Chromium before it can be approved, and approval publishes exactly
           the checked bytes. Rollback follows recorded ancestry; cross-origin requests cannot
           change state.
@@ -839,7 +878,7 @@ export function SiteVerified() {
             </p>
           </div>
           <div className="stats" role="list">
-            <div role="listitem"><b>25/25</b><span>headless QA checks · local + CI</span></div>
+            <div role="listitem"><b>26/26</b><span>headless QA checks · local + CI</span></div>
             <div role="listitem"><b>100×4</b><span>Lighthouse, mobile and desktop presets</span></div>
             <div role="listitem"><b>12/12</b><span>upstream links audited against the repo tree</span></div>
             <div role="listitem"><b>0</b><span>claims not traceable to evidence docs</span></div>
@@ -883,8 +922,8 @@ export function Footer() {
         </span>
         <span className="footnote">
           This page mirrors the product repository at{' '}
-          <a href={`${REPO}/commit/442d100`} target="_blank" rel="noreferrer">
-            <code>442d100</code>
+          <a href={`${REPO}/commit/aaa70ca`} target="_blank" rel="noreferrer">
+            <code>aaa70ca</code>
           </a>{' '}
           — every figure and quote traces to that tree.
         </span>

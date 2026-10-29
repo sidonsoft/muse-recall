@@ -54,7 +54,7 @@ Verified state of this repo at the product-repo commit the footer cites:
 
 | Check | Result |
 | --- | --- |
-| `npm run qa` (local + CI) | 25/25 — self-referential count gate, a11y audit, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
+| `npm run qa` (local + CI) | 26/26 — self-referential count gate, a11y audit, demo video + captions, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
 | `npm run links` | 12/12 paths + commit resolve against the upstream repo |
 | `gecko` CI job (Playwright/Firefox) | full flow green on a second engine (Chromium flow also green locally via Playwright's driver) |
 | Lighthouse (mobile preset) | Perf 100 · A11y 100 · Best-Practices 100 · SEO 100 |
@@ -63,12 +63,18 @@ Verified state of this repo at the product-repo commit the footer cites:
 
 ## Deploy
 
-Deliberately **not deployed yet** — iteration is active. [PR #1](https://github.com/sidonsoft/muse-recall-website/pull/1)
-carries a GitHub Pages workflow (`npm run site` → static `dist/`, portable
-`base: './'` so any subpath works), triggered only by `workflow_dispatch`.
-Publishing: enable Pages (source: GitHub Actions) in repo settings, then run
-the "Pages (static deploy)" workflow once. (Add a `push` trigger later if
-auto-publish is wanted.)
+`.github/workflows/pages.yml` builds with `npm run site` and publishes the static
+`dist/` to GitHub Pages on every push to `main` (and on demand from the Actions
+tab). `base: './'` keeps it portable, so it works at
+`https://sidonsoft.github.io/muse-recall-website/`.
+
+One-time switch: repo **Settings → Pages → Build and deployment → Source:
+GitHub Actions**, then re-run the latest "Pages (static deploy)" workflow (or
+push to `main`).
+
+The demo video is served from `public/video/` (copied from
+`muse-recall/docs/demo/video/`, SHA-256 `4020c0c6…b308`, re-muxed with
+`-movflags +faststart` so playback starts before the whole file downloads).
 
 ## Structure
 
