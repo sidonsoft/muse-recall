@@ -2,7 +2,7 @@
 
 **Recorded:** 2026-10-28 05:35–05:40 Australia/Brisbane (2026-10-27 19:35–19:40 UTC)
 **Repository:** `sidonsoft/muse-recall`
-**Worktree:** `/Users/burnz/projects/muse-recall-positioning`
+**Worktree:** `~/projects/muse-recall-positioning`
 **Branch:** `agent/muse-recall-live-demo` (created from `agent/muse-recall-product-positioning` at `41b1684`)
 **Server:** `node apps/server/dist/index.js`, isolated demo database and workspace
 **Status:** server started, configured provider initialised, live Muse Spark round-trip passed
@@ -43,8 +43,8 @@ Captured from the exact process environment used to launch the server
 | `NODE_ENV` | `production` | |
 | `LOG_LEVEL` | `info` | |
 | `CORS_ORIGINS` | `http://127.0.0.1:5199,http://localhost:5199` | demo client only |
-| `DATABASE_PATH` | `/Users/burnz/muse-demo-live/demo.db` | isolated |
-| `WORKSPACE_ROOT` | `/Users/burnz/muse-demo-live/ws` | isolated |
+| `DATABASE_PATH` | `~/muse-demo-live/demo.db` | isolated |
+| `WORKSPACE_ROOT` | `~/muse-demo-live/ws` | isolated |
 | `SQLITE_WAL` | `true` | |
 | `MODEL_PROVIDER` | `muse-cli` | live provider, not `echo` |
 | `MUSE_MODEL` | `muse-spark-1.3` | chat/agent path |
@@ -94,7 +94,7 @@ papered over here.
 Muse Recall API ready
 provider=muse-cli
 model=muse-spark-1.3
-database=/Users/burnz/muse-demo-live/demo.db
+database=~/muse-demo-live/demo.db
 environment=production
 ```
 
@@ -213,7 +213,7 @@ job's usage reports 9 completed calls and 0 failed calls.
 
 | Proposed | Actual | Reason |
 |---|---|---|
-| `cd /Users/burnz/projects/muse-recall-positioning` | same | correct worktree |
+| `cd ~/projects/muse-recall-positioning` | same | correct worktree |
 | no `PORT` | `PORT=8799` | `8787` was already occupied by an unrelated dev server; no process was killed |
 | `MUSE_FALLBACK_API_KEY="$FORGE_MUSE_API_KEY"` etc. | same values, sourced from a mode-0600 env file | avoid putting the key in shell history/argv |
 | `FORGE_MUSE_MODEL=muse-spark-1.3-contributor` | same | verified valid |
