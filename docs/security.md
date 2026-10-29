@@ -15,7 +15,7 @@ product.
 | T3 | Generated UI executes model-authored JavaScript | Full client compromise | **Split**: declarative UI never executes model code; HTML Studio JavaScript runs only in a sandboxed opaque-origin iframe |
 | T4 | API key leaks to the browser | Credential theft | **Prevented**: keys stay in the server/CLI environment and travel to the CLI over stdin |
 | T5 | Malformed or hostile HTTP input crashes the server | Denial of service | **Handled**: Zod validation + envelope + safe error mapping |
-| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: binds `127.0.0.1`; host/origin guards; no authentication (single-user local app) |
+| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app) |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
 | T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; no OS-level sandbox owned by this app |
 | T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job writes, schema validation, explicit recovery issues, no silent state reset |
@@ -139,6 +139,11 @@ paths, not absolute host paths.
 
 **Envelope discipline.** Clients get exactly one response shape, so a failure is never
 silently treated as an empty success.
+
+**Loopback bind.** `HOST` must be `127.0.0.1`, `::1`, or `localhost`; any other value (including
+`0.0.0.0`) stops startup. After `listen`, every bound socket is checked again so a `localhost`
+that resolves off-loopback is also refused. This is the network boundary: the Host-header check
+below is not, because a client that reaches a non-loopback socket can send any `Host` it likes.
 
 **Host/origin guards.** Requests must name a loopback host. State-changing requests with a
 foreign or `null` Origin are rejected; CORS only allows configured local origins.

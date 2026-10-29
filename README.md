@@ -444,7 +444,7 @@ the process working directory (`apps/server` when run via the pnpm scripts).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address |
+| `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address; must be loopback (`127.0.0.1`, `::1`, `localhost`) or startup fails |
 | `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file |
 | `MODEL_PROVIDER` | `muse-cli` | `muse-cli` or `echo` (offline) |
 | `MUSE_MODEL` | `muse-wonder-1.0` | Any model the CLI offers |

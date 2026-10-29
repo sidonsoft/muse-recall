@@ -16,13 +16,18 @@ import {
 } from '@mml/muse-provider';
 import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
 import { z } from 'zod';
+import { isLoopbackBindHost } from './host-guard.js';
 
 export const SERVICE_NAME = 'muse-memory-lab' as const;
 export const SERVICE_VERSION = '0.1.0';
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  HOST: z.string().min(1).default('127.0.0.1'),
+  // No authentication exists, so the bind address is the network boundary.
+  HOST: z.string().min(1).default('127.0.0.1').refine(isLoopbackBindHost, {
+    message:
+      'must be a loopback address (127.0.0.1, ::1 or localhost); the API has no authentication and must not be exposed to a network',
+  }),
   PORT: z.coerce.number().int().min(1).max(65_535).default(8787),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   CORS_ORIGINS: z.string().default('http://127.0.0.1:5173,http://localhost:5173'),

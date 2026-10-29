@@ -49,6 +49,17 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ PORT: '0' }, '/repo')).toThrow(/PORT/);
   });
 
+  it('accepts loopback bind addresses', () => {
+    expect(loadConfig({ HOST: 'localhost' }, '/repo').host).toBe('localhost');
+    expect(loadConfig({ HOST: '::1' }, '/repo').host).toBe('::1');
+  });
+
+  it('refuses a non-loopback HOST because the API has no authentication', () => {
+    for (const host of ['0.0.0.0', '::', '192.168.1.20', 'muse.example.com']) {
+      expect(() => loadConfig({ HOST: host }, '/repo')).toThrow(/HOST: must be a loopback address/);
+    }
+  });
+
   it('exposes a version that matches the package manifest', async () => {
     const manifest = (await import('../../package.json', { with: { type: 'json' } })).default as {
       version: string;

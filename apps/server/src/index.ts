@@ -4,6 +4,7 @@ import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { createModelProvider } from '@mml/muse-provider';
 import { buildApp } from './app.js';
 import { loadConfig, loadDotEnv } from './config.js';
+import { isLoopbackSocketAddress } from './host-guard.js';
 
 /**
  * Server entrypoint: load config, open the database, build the app, listen.
@@ -59,6 +60,17 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
   await app.listen({ host: config.host, port: config.port });
+
+  // `localhost` is resolved at bind time; confirm every bound socket is
+  // actually loopback rather than trusting the configured name.
+  const exposed = app.addresses().filter((bound) => !isLoopbackSocketAddress(bound.address));
+  if (exposed.length > 0) {
+    await app.close();
+    database.close();
+    throw new Error(
+      `Refusing to serve on non-loopback address ${exposed.map((bound) => bound.address).join(', ')} — HOST=${config.host} did not resolve to loopback`,
+    );
+  }
 
   app.log.info(
     {

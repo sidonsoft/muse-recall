@@ -14,6 +14,27 @@
  */
 const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 
+/**
+ * Bind addresses the server may listen on.
+ *
+ * The Host-header check is not a network boundary: a request that reaches a
+ * non-loopback socket can simply send `Host: 127.0.0.1`. With no
+ * authentication, the bind address is the only thing keeping the API off the
+ * network, so anything other than loopback is refused at startup.
+ */
+const LOOPBACK_BIND_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
+/** True when `host` is an accepted loopback bind address for `listen`. */
+export function isLoopbackBindHost(host: string): boolean {
+  return LOOPBACK_BIND_HOSTS.has(host.trim().toLowerCase());
+}
+
+/** True when a socket's bound IP address is loopback (IPv4 127/8 or IPv6 ::1). */
+export function isLoopbackSocketAddress(address: string): boolean {
+  const normalized = address.toLowerCase().replace(/^::ffff:/, '');
+  return normalized === '::1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized);
+}
+
 export interface HostGuardOptions {
   /** Configured API port; `0` disables port comparison. */
   port: number;
