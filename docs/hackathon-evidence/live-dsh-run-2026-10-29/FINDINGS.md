@@ -3,6 +3,10 @@
 **Run:** 2026-10-29, 02:05–02:22 UTC. **Status:** one exploratory live run, not a trial. Nothing
 here is pre-registered, and no number below should be pooled with Phase 15–17.
 
+> **Update (2026-10-29, 03:20 UTC).** F1–F5 have fixes on separate branches, **not yet merged into
+> `main`**. The same run was repeated on code combining them: see
+> [`after/AFTER_FIXES.md`](after/AFTER_FIXES.md). This file records the original run as it happened.
+
 A DeepSeek Harness (`dsh`) headless worker acted as the human operator of Muse Recall. It created
 a project, saved six decisions, asked live Muse Spark for a single-file app, reviewed every staged
 change against the source and approved or rejected it, corrected one decision, and kept a log.
