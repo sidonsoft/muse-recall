@@ -252,6 +252,16 @@ try {
   })`);
   check('prefers-reduced-motion: reduce honored', rm.scroll === 'auto' && rm.aurora === 'none' && rm.why === 'none', JSON.stringify(rm));
   await send('Emulation.setEmulatedMedia', { features: [] });
+
+  // 8. quickstart copy button
+  try { await send('Browser.grantPermissions', { origin: new URL(URL_).origin, permissions: ['clipboard-read', 'clipboard-write'] }); } catch {}
+  await evalJS(`document.querySelector(".copy-btn")?.click()`);
+  await sleep(500);
+  const copyLabel = await evalJS(`document.querySelector(".copy-btn")?.textContent?.trim()`);
+  check('quickstart copy button confirms', /copied/.test(copyLabel || ''), `label="${copyLabel}"`);
+  const payload = await evalJS(`document.querySelector(".code-shell pre")?.innerText || ""`);
+  const cmds = ['git clone', 'pnpm demo:seed', 'MODEL_PROVIDER=echo pnpm dev', 'pnpm verify'];
+  check('copy payload carries the right commands', cmds.every((c) => payload.includes(c)), cmds.filter((c) => !payload.includes(c)).join(', ') || 'all present');
 } catch (e) {
   check('script completed', false, e.message);
 } finally {

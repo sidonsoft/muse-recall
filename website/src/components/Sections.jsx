@@ -352,6 +352,31 @@ export function Stack() {
 }
 
 export function Quickstart() {
+  const [copied, setCopied] = React.useState(false);
+  const copy = (e) => {
+    const pre = e.currentTarget.closest('.code-shell').querySelector('pre');
+    const text = pre.innerText;
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done, () => fallback());
+    } else fallback();
+    function fallback() {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        done();
+      } catch {}
+      document.body.removeChild(ta);
+    }
+  };
   return (
     <section className="block" id="quickstart" style={{ paddingTop: 20 }}>
       <div className="container">
@@ -364,20 +389,25 @@ export function Quickstart() {
             workflow, memory and provenance, without any inference.
           </p>
         </div>
-        <pre className="code reveal">
-          <span className="cmt"># Node ≥ 24 · pnpm 10</span>{'\n'}
-          git clone {REPO} muse-recall && cd muse-recall{'\n'}
-          pnpm install && cp .env.example .env{'\n'}
-          <span className="hl">pnpm demo:seed</span>{'        '}
-          <span className="cmt"># seeded game, three decisions, v1 approved</span>{'\n'}
-          <span className="hl">MODEL_PROVIDER=echo pnpm dev</span>{'  '}
-          <span className="cmt"># open http://127.0.0.1:5173</span>{'\n\n'}
-          <span className="cmt"># with Muse Spark on your Meta login:</span>{'\n'}
-          pnpm dev{'\n\n'}
-          <span className="cmt"># verify, don't trust:</span>{'\n'}
-          pnpm verify{'               '}
-          <span className="cmt"># lint + typecheck + 721 tests</span>
-        </pre>
+        <div className="code-shell reveal">
+          <button className={`copy-btn${copied ? ' copied' : ''}`} onClick={copy} aria-label="Copy setup commands">
+            {copied ? '✓ copied' : '⧉ copy'}
+          </button>
+          <pre className="code">
+            <span className="cmt"># Node ≥ 24 · pnpm 10</span>{'\n'}
+            git clone {REPO} muse-recall && cd muse-recall{'\n'}
+            pnpm install && cp .env.example .env{'\n'}
+            <span className="hl">pnpm demo:seed</span>{'        '}
+            <span className="cmt"># seeded game, three decisions, v1 approved</span>{'\n'}
+            <span className="hl">MODEL_PROVIDER=echo pnpm dev</span>{'  '}
+            <span className="cmt"># open http://127.0.0.1:5173</span>{'\n\n'}
+            <span className="cmt"># with Muse Spark on your Meta login:</span>{'\n'}
+            pnpm dev{'\n\n'}
+            <span className="cmt"># verify, don't trust:</span>{'\n'}
+            pnpm verify{'               '}
+            <span className="cmt"># lint + typecheck + 721 tests</span>
+          </pre>
+        </div>
       </div>
     </section>
   );
