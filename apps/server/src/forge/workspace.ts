@@ -23,7 +23,7 @@ import {
   type ForgeVersion,
   ForgeVersionSchema,
 } from '@mml/shared';
-import { isMissingFile } from './fs-utils.js';
+import { ensurePrivateDirectory, isMissingFile } from './fs-utils.js';
 
 /**
  * The only code allowed to touch generated application files.
@@ -159,9 +159,11 @@ export class ForgeWorkspace {
   }
 
   private async createProjectDirs(dir: string): Promise<void> {
-    await mkdir(join(dir, 'versions'), { recursive: true });
-    await mkdir(join(dir, 'staging'), { recursive: true });
-    await mkdir(join(dir, 'jobs'), { recursive: true });
+    await ensurePrivateDirectory(this.root);
+    await ensurePrivateDirectory(dir);
+    await ensurePrivateDirectory(join(dir, 'versions'));
+    await ensurePrivateDirectory(join(dir, 'staging'));
+    await ensurePrivateDirectory(join(dir, 'jobs'));
   }
 
   /**
@@ -312,7 +314,7 @@ export class ForgeWorkspace {
     this.assertJobId(jobId);
     const dir = this.within(join(this.projectDir(projectId), 'staging'), jobId);
     await rm(dir, { recursive: true, force: true });
-    await mkdir(dir, { recursive: true });
+    await ensurePrivateDirectory(dir);
     return dir;
   }
 
@@ -538,14 +540,15 @@ export class ForgeWorkspace {
     const versionsDir = this.within(this.projectDir(projectId), 'versions');
     const dir = this.within(versionsDir, String(next));
     const temp = this.within(versionsDir, `.promote-${process.pid}-${randomUUID()}`);
-    await mkdir(versionsDir, { recursive: true });
+    await ensurePrivateDirectory(versionsDir);
     let note: string | null = null;
     // Stage the immutable copy in a temporary directory and rename it into
     // place. A crash before the rename leaves no version directory. A crash
     // after it leaves a directory state never referenced, which the next retry
     // moves aside instead of failing on COPYFILE_EXCL forever.
     try {
-      await mkdir(temp);
+      // Owner-only from creation; the rename keeps the mode on the version dir.
+      await mkdir(temp, { mode: 0o700 });
       await copyFile(
         this.stagingFile(projectId, jobId),
         join(temp, 'index.html'),
@@ -646,7 +649,7 @@ export class ForgeWorkspace {
     input: { current: number | null; versions: unknown[] },
   ): Promise<void> {
     const dir = this.projectDir(projectId);
-    await mkdir(dir, { recursive: true });
+    await ensurePrivateDirectory(dir);
     const parsed = ForgeStateSchema.parse({
       project_id: projectId,
       current_version: input.current,

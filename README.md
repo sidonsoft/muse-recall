@@ -24,7 +24,7 @@ those decisions and cites them. Nothing goes live until you approve it.
 | **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
 | **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27, and palette-only memory changed nothing (18 of 18). Phase 17 replicated it across two games and a non-game app, two rules and two requests: 37/57 → **0/58** on Muse Spark and 49/60 → **1/60** on Muse Spark Open, while retyping the rule by hand gave **0/58** and **0/60** — no practical difference under the pre-registered +15 pp non-inferiority margin. A correction then released the stale rule. [Phase 16 card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md) · [Phase 17 results](docs/hackathon-evidence/phase17/RESULTS.md); re-derive with `pnpm verify:research16` and `pnpm verify:research17`. |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 644 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 648 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers two games, one task planner, two rules and two models, and measures generated code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Results: a remembered rule on two models
@@ -178,7 +178,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (644 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (648 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -236,6 +236,37 @@ provider bench). Forge generation always spawns the real Muse CLI, even when
 `MODEL_PROVIDER=echo`. To run Forge without Muse, point `FORGE_MUSE_BIN` at a fake
 binary such as `tests/fixtures/fake-muse.mjs`; the echo provider is never used by
 Forge.
+
+---
+
+## Running on real data
+
+The quickstart is enough for a demo, but real memories and generated projects are
+private, durable data. Treat them that way.
+
+- **Lock down the environment file.** `chmod 600 .env`; it can hold API keys. It is
+  already gitignored, so keep it out of commits and chat logs too.
+- **Keep local data out of synced folders.** `data/` holds SQLite plus its
+  `-wal`/`-shm` sidecars; `workspaces/` holds Forge staging, job records, and approved
+  versions. The application creates the database, its sidecars, staging files, and
+  workspace directories owner-only (0600 files, 0700 directories), but the parent
+  location must also be private: not iCloud, Dropbox, a shared volume, or the
+  repository. Set absolute `DATABASE_PATH` and `WORKSPACE_ROOT` paths if you want them
+  outside the checkout; with the defaults and the pnpm scripts they live under
+  `apps/server/`, because that is the server's working directory.
+- **Back up before the first real run, and before upgrades.**
+  `pnpm db:backup` uses SQLite's online backup API to write a timestamped 0600 copy
+  next to the database, including committed rows still in the WAL. Pass a directory
+  to put it elsewhere: `pnpm db:backup /path/to/private/backups/`. The plain
+  `pnpm db:migrate` command remains the schema migration, not a backup.
+  To restore: stop the server, move the current database and its `-wal`/`-shm`
+  sidecars aside, copy the backup to `DATABASE_PATH`, then start the server. Never
+  restore a `-wal` file without the database it belongs to.
+- **Deletion is not erasure.** `DELETE /api/memories/:id` soft-deletes: content stays
+  in the database row for audit and is hidden from every read. To remove those bytes,
+  run `pnpm db:purge --yes`. It hard-deletes every `deleted` or `expired` memory and
+  prints each purged record and the total. There is deliberately no HTTP route for
+  this.
 
 ---
 

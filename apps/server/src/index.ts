@@ -1,5 +1,3 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { createModelProvider } from '@mml/muse-provider';
 import { buildApp } from './app.js';
@@ -15,7 +13,6 @@ async function main(): Promise<void> {
   const envFile = loadDotEnv();
   const config = loadConfig();
 
-  mkdirSync(dirname(config.databasePath), { recursive: true });
   const database = openDatabase({ path: config.databasePath, wal: config.wal });
 
   const provider = createModelProvider(config.provider);

@@ -9,7 +9,7 @@ import {
   type ForgeRecoveryIssue,
   redactSecrets,
 } from '@mml/shared';
-import { isMissingFile } from './fs-utils.js';
+import { ensurePrivateDirectory, isMissingFile } from './fs-utils.js';
 import type { ForgeWorkspace } from './workspace.js';
 
 /**
@@ -330,7 +330,7 @@ export class ForgeJobStore implements ForgeJobPersistence {
 
   protected async write(job: ForgeJob): Promise<void> {
     const dir = join(this.workspace.projectDir(job.project_id), 'jobs');
-    await mkdir(dir, { recursive: true });
+    await ensurePrivateDirectory(dir);
     const target = join(dir, `${job.id}.json`);
     const temp = join(dir, `.${job.id}-${process.pid}-${randomUUID()}.tmp`);
     try {

@@ -1,5 +1,3 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 import { currentSchemaVersion, latestVersion, openDatabase } from '@mml/memory-engine';
 import { loadConfig, loadDotEnv } from '../config.js';
 
@@ -13,7 +11,6 @@ function main(): void {
   const envFile = loadDotEnv();
   const config = loadConfig();
 
-  mkdirSync(dirname(config.databasePath), { recursive: true });
   const database = openDatabase({ path: config.databasePath, wal: config.wal });
 
   try {
