@@ -2,6 +2,7 @@ import React from 'react';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
+const DOCS16 = `${REPO}/blob/main/docs/hackathon-evidence/phase16/EVIDENCE_CARD.md`;
 
 export function Problem() {
   const pains = [
@@ -210,6 +211,63 @@ export function Evidence() {
           correction.{' '}
           <a href={RESULTS} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>
             Full results &amp; verifier →
+          </a>
+        </p>
+
+        <div className="section-head" style={{ marginTop: 72 }}>
+          <p className="kicker">Phase 16 / 16B — the sharper question</p>
+          <h2>Does the rule help — or does any memory help?</h2>
+          <p>
+            A palette-only arm separates the two on both models. 48 fresh edits per run set,
+            through the production Studio path; violations are original-rule patterns in the
+            generated source.
+          </p>
+        </div>
+        <div className="evidence-wrap reveal">
+          <table className="evidence">
+            <thead>
+              <tr>
+                <th scope="col">Project memory supplied</th>
+                <th scope="col">Muse Spark</th>
+                <th scope="col">Muse Spark Open</th>
+                <th scope="col">Combined</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>None</td>
+                <td className="bad">12/12</td>
+                <td className="bad">16/16</td>
+                <td className="bad">28/28</td>
+              </tr>
+              <tr>
+                <td>Palette decisions only</td>
+                <td className="bad">12/12</td>
+                <td className="bad">6/6</td>
+                <td className="bad">18/18</td>
+              </tr>
+              <tr>
+                <td>Child-safety rule + palette</td>
+                <td className="good">0/13</td>
+                <td className="good">0/14</td>
+                <td className="good">0/27</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="footnote reveal">
+          All four pre-registered contrasts (rule vs none, rule vs palette, per model; Holm,
+          α&nbsp;=&nbsp;.025) are significant — largest p = 2.6 × 10⁻⁵. So it is the{' '}
+          <em>rule</em>, not mere context volume, that changes generated code. Disclosed
+          correction: 12 open-model outputs truncated at the token limit had been scored as
+          clean; they are now unusable. Bounded: one baseline game, one request, one rule.{' '}
+          <a
+            href={`${DOCS16}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--cyan)' }}
+          >
+            Evidence card &amp; correction →
           </a>
         </p>
       </div>
