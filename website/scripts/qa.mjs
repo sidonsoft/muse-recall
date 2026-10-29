@@ -281,6 +281,23 @@ try {
     lbOpen.exists && lbOpen.img?.endsWith('.webp') && lbOpen.count === '1 / 4' && lbMoved === '2 / 4' && lbClosed,
     JSON.stringify({ ...lbOpen, moved: lbMoved, closed: lbClosed })
   );
+
+  // 10. no-JS fallback
+  await send('Emulation.setScriptExecutionDisabled', { value: true });
+  await send('Page.navigate', { url: `${URL_}?nojs=${Date.now()}` });
+  await sleep(1200);
+  const nojs = await evalJS(`({
+    cls: document.documentElement.className,
+    reveal: getComputedStyle(document.querySelector("#engine .reveal")).opacity,
+    copyHidden: getComputedStyle(document.querySelector(".copy-btn")).display === "none",
+    tlFull: [...document.querySelectorAll(".tl-printonly")].slice(0,1).map(e=>getComputedStyle(e).display)[0],
+  })`);
+  check(
+    'JS-disabled: content visible, dead controls hidden',
+    nojs.cls === 'no-js' && nojs.reveal === '1' && nojs.copyHidden && nojs.tlFull === 'block',
+    JSON.stringify(nojs)
+  );
+  await send('Emulation.setScriptExecutionDisabled', { value: false });
 } catch (e) {
   check('script completed', false, e.message);
 } finally {

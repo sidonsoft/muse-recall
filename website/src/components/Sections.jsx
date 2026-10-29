@@ -851,7 +851,16 @@ export function Footer() {
   return (
     <footer>
       <div className="container footer-inner">
-        <span>© 2026 Muse Memory Lab contributors · MIT · built for the Meta Muse hackathon</span>
+        <span>
+          © 2026 Muse Memory Lab contributors · MIT · built for the Meta Muse hackathon
+        </span>
+        <span className="footnote">
+          This page mirrors the product repository at{' '}
+          <a href={`${REPO}/commit/442d100`} target="_blank" rel="noreferrer">
+            <code>442d100</code>
+          </a>{' '}
+          — every figure and quote traces to that tree.
+        </span>
         <div className="footer-links">
           <a href={REPO} target="_blank" rel="noreferrer">
             muse-recall

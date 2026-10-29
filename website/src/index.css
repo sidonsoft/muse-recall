@@ -2161,6 +2161,29 @@ pre.code .hl {
   }
 }
 
+/* ---------- No-JS fallback: content visible, dead controls hidden ---------- */
+.no-js .reveal {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.no-js .copy-btn,
+.no-js .lb-open,
+.no-js .hero-note kbd,
+.no-js .guide,
+.no-js .why {
+  display: none;
+}
+
+.no-js .tl-card {
+  cursor: default;
+}
+
+.no-js .tl-printonly {
+  display: block;
+}
+
 /* ---------- Honesty list ---------- */
 .honesty {
   display: grid;
