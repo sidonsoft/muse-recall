@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
-import { Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, Honesty, CTA, Footer } from './components/Sections.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
+import { Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, CTA, Footer } from './components/Sections.jsx';
 
 const WATCH = ['loop', 'how', 'evidence', 'quickstart'];
 
@@ -69,6 +70,7 @@ export default function App() {
             <StudioLoop />
           </div>
         </section>
+        <MemoryTimeline />
         <Problem />
         <How />
         <Features />
@@ -85,6 +87,7 @@ export default function App() {
         <CTA />
       </main>
       <Footer />
+      <CommandPalette />
     </>
   );
 }

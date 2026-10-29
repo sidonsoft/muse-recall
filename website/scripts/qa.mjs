@@ -149,6 +149,43 @@ try {
   const sw = await evalJS('document.scrollingElement.scrollWidth');
   check('mobile 390px: no horizontal overflow', sw === 390, `scrollWidth=${sw}`);
 
+  // 5. command palette + timeline interactions
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(500);
+  await evalJS(`window.dispatchEvent(new KeyboardEvent("keydown", {key:"k", metaKey:true, bubbles:true}))`);
+  await sleep(400);
+  const paletteOpen = await evalJS(`!!document.querySelector(".palette")`);
+  const paletteFilter = await evalJS(`(() => {
+    const i = document.querySelector(".palette input");
+    if (!i) return "no-input";
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    setter.call(i, "judges");
+    i.dispatchEvent(new Event("input", { bubbles: true }));
+    return [...document.querySelectorAll(".palette li button")].map(b => b.textContent.trim());
+  })()`);
+  check('command palette opens via ⌘K and filters', paletteOpen && Array.isArray(paletteFilter) && paletteFilter.some((t) => t.includes('judges') || t.includes('judges'.toUpperCase()) || /judge/i.test(t)), JSON.stringify(paletteFilter));
+  await evalJS(`window.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", bubbles:true}))`);
+  await sleep(300);
+  check('palette closes on Escape', (await evalJS(`!!document.querySelector(".palette")`)) === false);
+  await evalJS(`document.querySelector("#timeline")?.scrollIntoView({behavior:"instant",block:"center"})`);
+  await sleep(600);
+  const tl = await evalJS(`(() => {
+    const cards = [...document.querySelectorAll(".tl-card")];
+    const c = cards.find((c) => c.getAttribute("aria-expanded") === "false");
+    const title = c?.querySelector("b")?.textContent?.slice(0, 30);
+    c?.click();
+    return { total: cards.length, title, wasExpanded: "false" };
+  })()`);
+  await sleep(500);
+  const expandedTitles = await evalJS(`[...document.querySelectorAll(".tl-card")]
+    .filter((c) => c.getAttribute("aria-expanded") === "true")
+    .map((c) => c.querySelector("b")?.textContent?.slice(0, 30))`);
+  check(
+    'memory timeline cards expand on click',
+    tl.total === 5 && expandedTitles.includes(tl.title),
+    `clicked "${tl.title}" → expanded [${expandedTitles.join(' | ')}]`
+  );
+
   // 4. vitals
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
   await send('Page.navigate', { url: `${URL_}?vitals=${Date.now()}` });

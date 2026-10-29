@@ -32,7 +32,8 @@ export default function Hero() {
           </a>
         </div>
         <p className="hero-note">
-          AI builders are fast at the first draft and slow at the second week.
+          AI builders are fast at the first draft and slow at the second week. ·{' '}
+          <kbd>⌘</kbd> <kbd>K</kbd> to jump around this page
         </p>
 
         <figure className="figure reveal visible" style={{ textAlign: 'left' }}>

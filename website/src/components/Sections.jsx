@@ -1,4 +1,5 @@
 import React from 'react';
+import TimelineWidget from './Timeline.jsx';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
@@ -739,6 +740,26 @@ export function ProofVsRoadmap() {
             </ul>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function MemoryTimeline() {
+  return (
+    <section className="block" id="timeline">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">Memory, made visible</p>
+          <h2>Muse Recall remembers <em>why</em> the project evolved</h2>
+          <p>
+            Every record below is real: this is the seeded demo project
+            (<code>pnpm demo:seed</code>), decision texts from the Phase 12A trial verbatim,
+            created through the production memory engine — never edited into a database.
+            Expand any card.
+          </p>
+        </div>
+        <TimelineWidget />
       </div>
     </section>
   );
