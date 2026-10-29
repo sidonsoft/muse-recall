@@ -23,13 +23,17 @@
  * by HSL hue family, so a family-word correction can still BLOCK when the
  * superseded decision names no hexes but the source is visibly warm/cool.
  *
+ * v1.4.0 (hidden time pressure): rule A resolves constant timer delays. A
+ * setTimeout/setInterval of a minute or more is potential time pressure even
+ * when no countdown is visible, so it abstains instead of passing.
+ *
  * A decision is NEVER marked compliant merely because no rule applies:
  * unsupported decisions produce UNVERIFIED, never PASS.
  */
 
 import type { Memory } from '@mml/shared';
 
-export const GUARD_VERSION = '1.3.0';
+export const GUARD_VERSION = '1.4.0';
 
 /** Structural subset of a memory record — no runtime coupling. */
 export type GuardDecision = Pick<Memory, 'id' | 'content' | 'status' | 'supersedes'>;
@@ -132,6 +136,238 @@ const DECISION_MATCHERS: Record<Exclude<GuardRuleId, 'none-applicable'>, RegExp>
 
 const COUNTDOWN_SOURCE =
   /\bcountdown\b|timeLeft|secondsLeft|timeRemaining|time_remaining\b|\b(?:time|timer|clock)\s*(?:--|-=\s*\d)/i;
+
+/**
+ * A timer of a minute or more can bound an activity even when no countdown is
+ * visible. Treat that as potential time pressure and abstain; shorter delays
+ * are ordinary scheduling, effects, animation, and cleanup.
+ */
+const TIME_PRESSURE_THRESHOLD_MS = 60_000;
+
+/** Bounds for the pure delay parser; larger expressions fall back to unresolved. */
+const MAX_TIMER_EXPRESSION_CHARS = 400;
+const MAX_TIMER_EXPRESSION_DEPTH = 32;
+
+const TIMER_CALL_RE = /(?<![\w$.])(?:window\s*\.\s*)?(setTimeout|setInterval)\s*\(/g;
+const IDENTIFIER_RE = /^[A-Za-z_$][\w$]*$/;
+const MAX_TIMER_REASON_SOURCE_CHARS = 80;
+
+interface TimerCall {
+  index: number;
+  name: string;
+}
+
+interface ResolvedDelay {
+  delayMs: number;
+  delayText: string;
+  boundExpression: string | null;
+}
+
+interface TimerDelay extends ResolvedDelay {
+  /** Absolute index of the call in the length-preserving executable view. */
+  index: number;
+  callName: string;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Recursive-descent arithmetic over non-negative integer literals, `+ - * /`,
+ * unary signs, and parentheses. Returns null for anything else. This is a
+ * parser, not evaluation: identifiers, calls, properties, and code never run.
+ */
+function parseIntegerArithmetic(expression: string): number | null {
+  if (expression.length === 0 || expression.length > MAX_TIMER_EXPRESSION_CHARS) return null;
+  let index = 0;
+  let depth = 0;
+
+  function skipWhitespace(): void {
+    while (index < expression.length && /\s/.test(expression[index] ?? '')) index += 1;
+  }
+
+  function parseInteger(): number | null {
+    skipWhitespace();
+    const start = index;
+    while (index < expression.length) {
+      const code = expression.charCodeAt(index);
+      if (code < 48 || code > 57) break;
+      index += 1;
+    }
+    if (index === start) return null;
+    const value = Number(expression.slice(start, index));
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function parseFactor(): number | null {
+    skipWhitespace();
+    const sign = expression[index];
+    if (sign === '+' || sign === '-') {
+      index += 1;
+      const value = parseFactor();
+      if (value === null) return null;
+      return sign === '-' ? -value : value;
+    }
+    if (sign === '(') {
+      if (depth >= MAX_TIMER_EXPRESSION_DEPTH) return null;
+      depth += 1;
+      index += 1;
+      const value = parseExpression();
+      if (value === null) return null;
+      skipWhitespace();
+      if (expression[index] !== ')') return null;
+      index += 1;
+      depth -= 1;
+      return value;
+    }
+    return parseInteger();
+  }
+
+  function parseTerm(): number | null {
+    let value = parseFactor();
+    if (value === null) return null;
+    while (true) {
+      skipWhitespace();
+      const operator = expression[index];
+      if (operator !== '*' && operator !== '/') return value;
+      index += 1;
+      const right = parseFactor();
+      if (right === null) return null;
+      if (operator === '/' && right === 0) return null;
+      value = operator === '*' ? value * right : value / right;
+    }
+  }
+
+  function parseExpression(): number | null {
+    let value = parseTerm();
+    if (value === null) return null;
+    while (true) {
+      skipWhitespace();
+      const operator = expression[index];
+      if (operator !== '+' && operator !== '-') return value;
+      index += 1;
+      const right = parseTerm();
+      if (right === null) return null;
+      value = operator === '+' ? value + right : value - right;
+    }
+  }
+
+  const value = parseExpression();
+  skipWhitespace();
+  if (value === null || index !== expression.length) return null;
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Resolve an identifier only when the source declares it exactly once with an
+ * initializer and never assigns it again. `var|let|const NAME = expr;` is the
+ * narrow supported form; aliases and reassignments stay unresolved.
+ */
+function resolveIdentifierDelay(
+  name: string,
+  source: string,
+): { delayMs: number; boundExpression: string } | null {
+  const escaped = escapeRegExp(name);
+  const declaration = new RegExp(
+    `(?<![\\w$.])(?:var|let|const)\\s+${escaped}\\s*=\\s*([^;]*);`,
+    'g',
+  );
+  const declarations = [...source.matchAll(declaration)];
+  if (declarations.length !== 1) return null;
+  const mutation = new RegExp(
+    `(?<![\\w$.])${escaped}\\s*(?:=(?!=)|\\+=|-=|\\*=|/=|%=|\\+\\+|--)`,
+    'g',
+  );
+  if ([...source.matchAll(mutation)].length !== 1) return null;
+  const boundExpression = declarations[0]?.[1]?.trim() ?? '';
+  const delayMs = parseIntegerArithmetic(boundExpression);
+  return delayMs === null ? null : { delayMs, boundExpression };
+}
+
+function resolveTimerDelay(expression: string, source: string): ResolvedDelay | null {
+  const direct = parseIntegerArithmetic(expression);
+  if (direct !== null) {
+    return { delayMs: direct, delayText: expression, boundExpression: null };
+  }
+  if (!IDENTIFIER_RE.test(expression)) return null;
+  const bound = resolveIdentifierDelay(expression, source);
+  if (bound === null) return null;
+  return { delayMs: bound.delayMs, delayText: expression, boundExpression: bound.boundExpression };
+}
+
+interface DelimiterFrame {
+  closing: ')' | ']' | '}';
+  /** Timer call when this delimiter is its opening parenthesis. */
+  call: TimerCall | null;
+  firstComma: number;
+  secondComma: number;
+}
+
+/** First setTimeout/setInterval whose delay resolves to the pressure threshold. */
+function findLongTimerDelay(source: string): TimerDelay | null {
+  const timerCalls = new Map<number, TimerCall>();
+  for (const match of source.matchAll(TIMER_CALL_RE)) {
+    const callIndex = match.index;
+    const callName = match[1];
+    if (callIndex === undefined || callName === undefined) continue;
+    timerCalls.set(callIndex + match[0].length - 1, { index: callIndex, name: callName });
+  }
+  if (timerCalls.size === 0) return null;
+
+  // One linear pass matches delimiters, records the top-level argument commas,
+  // and resolves the delay when each timer call closes.
+  const stack: DelimiterFrame[] = [];
+  let found: TimerDelay | null = null;
+  for (let position = 0; position < source.length; position += 1) {
+    const char = source[position];
+    if (char === '(' || char === '[' || char === '{') {
+      stack.push({
+        closing: char === '(' ? ')' : char === '[' ? ']' : '}',
+        call: char === '(' ? (timerCalls.get(position) ?? null) : null,
+        firstComma: -1,
+        secondComma: -1,
+      });
+      continue;
+    }
+    if (char === ')' || char === ']' || char === '}') {
+      const frame = stack.pop();
+      if (!frame || frame.closing !== char || frame.call === null) continue;
+      if (frame.firstComma === -1) continue;
+      const delayEnd = frame.secondComma === -1 ? position : frame.secondComma;
+      const expression = source.slice(frame.firstComma + 1, delayEnd).trim();
+      const resolved = resolveTimerDelay(expression, source);
+      if (
+        resolved !== null &&
+        resolved.delayMs >= TIME_PRESSURE_THRESHOLD_MS &&
+        (found === null || frame.call.index < found.index)
+      ) {
+        found = { ...resolved, index: frame.call.index, callName: frame.call.name };
+      }
+      continue;
+    }
+    if (char !== ',') continue;
+    const frame = stack[stack.length - 1];
+    if (!frame || frame.call === null) continue;
+    if (frame.firstComma === -1) frame.firstComma = position;
+    else if (frame.secondComma === -1) frame.secondComma = position;
+  }
+  return found;
+}
+
+function formatMinutes(delayMs: number): string {
+  const minutes = delayMs / 60_000;
+  const value = Number.isInteger(minutes) ? minutes : Number(minutes.toFixed(2));
+  return `${value}-minute`;
+}
+
+function timerReason(timer: TimerDelay): string {
+  const written = timer.boundExpression
+    ? `${timer.delayText} = ${timer.boundExpression}`
+    : timer.delayText;
+  const sourceNote = excerpt(written, MAX_TIMER_REASON_SOURCE_CHARS);
+  return `a ${formatMinutes(timer.delayMs)} timer bounds an activity (${timer.callName} delay ${sourceNote}); time pressure cannot be ruled out`;
+}
 
 // ---------------------------------------------------------------------------
 // Rule B — flashing effects.
@@ -405,6 +641,18 @@ function readHtmlTag(source: string, start: number): HtmlTag | null {
 }
 
 /**
+ * Raw-text elements (script/style) only leave their mode on the matching HTML
+ * closing tag. `<` in executable script code (`a<b`, `guard<3660`) is ordinary
+ * code, not an HTML tag start.
+ */
+function isRawTextClosingTag(source: string, start: number, name: 'script' | 'style'): boolean {
+  const prefix = `</${name}`;
+  if (source.slice(start, start + prefix.length).toLowerCase() !== prefix) return false;
+  const next = source[start + prefix.length];
+  return next === undefined || /[\s/>]/.test(next);
+}
+
+/**
  * Blank inert attribute values (`id`, `class`, `data-*`, `aria-*`, `title`, …)
  * in the countdown executable view. Event-handler attributes (`on*`) may carry
  * executable code and stay visible. Without this, `<div id="countdown">` reads
@@ -528,7 +776,12 @@ function maskCountdownNonExecutable(source: string): string {
   let mode: 'html' | 'script' | 'style' = 'html';
   let i = 0;
   while (i < n) {
-    if (source[i] === '<') {
+    if (
+      source[i] === '<' &&
+      (mode === 'html' ||
+        (mode === 'script' && isRawTextClosingTag(source, i, 'script')) ||
+        (mode === 'style' && isRawTextClosingTag(source, i, 'style')))
+    ) {
       const tag = readHtmlTag(source, i);
       if (tag) {
         if (!tag.closing) maskInertAttributes(source, out, tag);
@@ -649,6 +902,18 @@ function evaluateCountdown({ source, original, decision }: RuleContext): Decisio
       verdict: 'BLOCK',
       reason: 'countdown implementation detected',
       findings: [finding],
+    };
+  }
+  // A hidden timer of a minute or more can bound an activity without ever
+  // showing a countdown. No BLOCK applies, but claiming PASS would overclaim.
+  const longTimer = findLongTimerDelay(executable);
+  if (longTimer) {
+    return {
+      decision_id: decision.id,
+      rule: 'countdown-mechanics',
+      verdict: 'UNVERIFIED',
+      reason: timerReason(longTimer),
+      findings: [],
     };
   }
   // A token that exists only in a comment-masked but otherwise textual location

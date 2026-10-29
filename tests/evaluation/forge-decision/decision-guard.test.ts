@@ -527,6 +527,155 @@ describe('v1.2.0 countdown executable-vs-prose evidence', () => {
   });
 });
 
+describe('v1.4.0 hidden time pressure', () => {
+  const SPRINT = `var SPRINT_LEN = 15*60*1000;
+var sprintTimer = null;
+function startSprint(){
+  if(sprintTimer) window.clearTimeout(sprintTimer);
+  sprintTimer = window.setTimeout(function(){
+    sprintTimer = null;
+    setSprintMsg('Reading time finished — great cozy reading!');
+  }, SPRINT_LEN);
+}`;
+
+  const evaluate = (source: string) => evaluateDecisions([CHILD_DECISION], source);
+  const countdown = (source: string) =>
+    evaluate(source).evaluations.find((entry) => entry.rule === 'countdown-mechanics');
+
+  it('abstains on a hidden 15-minute sprint timer', () => {
+    const result = evaluate(SPRINT);
+    const evaluation = countdown(SPRINT);
+    expect(evaluation?.verdict).toBe('UNVERIFIED');
+    expect(evaluation?.reason).toBe(
+      'a 15-minute timer bounds an activity (setTimeout delay SPRINT_LEN = 15*60*1000); time pressure cannot be ruled out',
+    );
+    expect(evaluation?.findings).toEqual([]);
+    expect(result.findings).toEqual([]);
+    expect(result.verdict).toBe('UNVERIFIED');
+  });
+
+  it('passes a 0 ms cleanup timer', () => {
+    const result = evaluate(
+      'setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);',
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('passes a one-second interval', () => {
+    const result = evaluate('let tick = 0; setInterval(tick, 1000);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+  });
+
+  it('abstains on a literal 120000 ms timeout', () => {
+    const result = evaluate('setTimeout(done, 120000);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown('setTimeout(done, 120000);')?.reason).toContain(
+      'a 2-minute timer bounds an activity (setTimeout delay 120000)',
+    );
+    expect(result.findings).toEqual([]);
+  });
+
+  it('resolves parenthesised constant arithmetic', () => {
+    const result = evaluate('setTimeout(done, (2 + 0) * 60 * 1000);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+  });
+
+  it('leaves a doubly assigned identifier unresolved', () => {
+    const reassigned = 'var delay = 15*60*1000; delay = 0; setTimeout(done, delay);';
+    const redeclared = 'var delay = 15*60*1000; var delay = 0; setTimeout(done, delay);';
+    expect(verdictFor(evaluate(reassigned), 'countdown-mechanics')).toBe('PASS');
+    expect(verdictFor(evaluate(redeclared), 'countdown-mechanics')).toBe('PASS');
+  });
+
+  it('reads nested timer calls without confusing their arguments', () => {
+    const result = evaluate('setTimeout(() => setTimeout(done, 120000), 0);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown('setTimeout(() => setTimeout(done, 120000), 0);')?.reason).toContain(
+      'setTimeout delay 120000',
+    );
+    expect(result.findings).toEqual([]);
+  });
+
+  it('ignores timer text inside strings and comments', () => {
+    const result = evaluate("const note = 'setTimeout(done, 120000)'; // setTimeout(done, 120000)");
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+    expect(result.findings).toEqual([]);
+  });
+
+  it.each([
+    ['a method call', 'setTimeout(done, 60 * 1000 + Math.random())'],
+    ['a decimal literal', 'setTimeout(done, 1.5 * 60000)'],
+    ['a string literal', "setTimeout(done, '120000')"],
+    ['a hexadecimal literal', 'setTimeout(done, 0xEA60)'],
+    ['an identifier alias', 'var base = 120000; var delay = base; setTimeout(done, delay)'],
+  ])('rejects %s instead of treating it as arithmetic', (_label, source) => {
+    expect(verdictFor(evaluate(source), 'countdown-mechanics')).toBe('PASS');
+  });
+});
+
+describe('v1.4.0 script-mode raw-text masking', () => {
+  const evaluate = (source: string) => evaluateDecisions([CHILD_DECISION], source);
+  const countdown = (source: string) =>
+    evaluate(source).evaluations.find((entry) => entry.rule === 'countdown-mechanics');
+
+  it('resolves a delay declared after a < comparison', () => {
+    const source = `<script>
+if(a<b){}
+var L = 15*60*1000;
+setTimeout(done, L);
+</script>`;
+    const result = evaluate(source);
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown(source)?.reason).toContain('15-minute');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('resolves a delay declared after a for-loop comparison', () => {
+    const source = '<script>for(var i=0;i<n;i++){} setTimeout(done, 120000);</script>';
+    const result = evaluate(source);
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown(source)?.reason).toContain('2-minute');
+  });
+
+  it('resolves the live sprint excerpt with its streak-loop comparisons', () => {
+    const source = `<script>
+function streakCount(){
+  var c = 0, d = new Date(), guard = 0;
+  if(!(state.logs[todayStr(d)]>0)) d.setDate(d.getDate()-1);
+  while(((state.logs[todayStr(d)]||0)>0) && guard<3660){ c++; d.setDate(d.getDate()-1); guard++; }
+  return c;
+}
+var SPRINT_LEN = 15*60*1000;
+var sprintTimer = null;
+function startSprint(){
+  if(sprintTimer) window.clearTimeout(sprintTimer);
+  sprintTimer = window.setTimeout(function(){ sprintTimer = null; }, SPRINT_LEN);
+}
+</script>`;
+    const result = evaluate(source);
+    const evaluation = countdown(source);
+    expect(evaluation?.verdict).toBe('UNVERIFIED');
+    expect(evaluation?.reason).toContain('15-minute');
+    expect(evaluation?.reason).toContain('SPRINT_LEN = 15*60*1000');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('still blocks a countdown declared after a < comparison', () => {
+    const result = evaluate(
+      '<script>if(a<b){} var timeLeft = 30; setInterval(function(){ timeLeft--; }, 1000);</script>',
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+  });
+
+  it('still treats </script> inside a JS string as string data', () => {
+    const result = evaluate(
+      `<script>var markup = '</script>'; var timeLeft = 30; timeLeft--;</script>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+  });
+});
+
 describe('integration adapter', () => {
   it('projects blocking findings into validation-issue strings and separates UNVERIFIED notes', () => {
     const result = evaluateDecisions(
