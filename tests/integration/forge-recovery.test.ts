@@ -115,18 +115,48 @@ class PredicateStore implements ForgeJobPersistence {
   readonly snapshots: Array<{ status: string; version: number | null }> = [];
   failWhen: (job: ForgeJob) => boolean = () => false;
   beforeSave: ((job: ForgeJob) => Promise<void>) | null = null;
+  private readonly activeSaves = new Set<Promise<void>>();
+  private notifyFailure: (() => void) | null = null;
+  readonly storageFailure: Promise<void> = new Promise((resolve) => {
+    this.notifyFailure = resolve;
+  });
 
   constructor(workspace: ForgeWorkspace) {
     this.inner = new ForgeJobStore(workspace);
   }
 
+  /** Wait for every save admitted so far to settle. */
+  async settled(): Promise<void> {
+    while (this.activeSaves.size > 0) {
+      await Promise.allSettled([...this.activeSaves]);
+    }
+  }
+
   async save(job: ForgeJob, options: { required?: boolean } = {}): Promise<void> {
     this.snapshots.push({ status: job.status, version: job.version });
     if (this.failWhen(job)) {
+      // A real store reports a failed write from inside its serialized queue,
+      // after every earlier snapshot has completed. Surface the injected
+      // failure in the same order. Otherwise an in-flight `running`/log write
+      // can finish after this rejection and clear the incident that
+      // retryProjectPersistence depends on, so the retry never runs.
+      await this.settled();
+      this.notifyFailure?.();
+      this.notifyFailure = null;
       throw Object.assign(new Error('injected conditional storage failure'), { code: 'ENOSPC' });
     }
-    if (this.beforeSave) await this.beforeSave(job);
-    await this.inner.save(job, options);
+    let settle!: () => void;
+    const active = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    this.activeSaves.add(active);
+    try {
+      if (this.beforeSave) await this.beforeSave(job);
+      await this.inner.save(job, options);
+    } finally {
+      this.activeSaves.delete(active);
+      settle();
+    }
   }
 
   async flush(jobId: string): Promise<void> {
@@ -211,6 +241,43 @@ function processAlive(pid: number): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function waitUntil(
+  check: () => boolean,
+  description: string,
+  state: () => unknown = () => null,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (check()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(
+    `Timed out after ${timeoutMs}ms waiting for ${description}. Current state: ${JSON.stringify(state())}`,
+  );
+}
+
+async function withDeadline<T>(
+  promise: Promise<T>,
+  description: string,
+  timeoutMs = 5_000,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Timed out after ${timeoutMs}ms waiting for ${description}.`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -733,14 +800,23 @@ describe('Forge restart recovery', () => {
         kind: 'generate',
         prompt: 'A completed job approved while its storage retry is in flight.',
       });
-      for (let attempt = 0; attempt < 200; attempt += 1) {
-        const active = manager
-          .recovery('demo')
-          .issues.some((issue) => issue.code === 'job_persist_failed' && issue.kind === 'active');
-        if (manager.get(created.id)?.status === 'succeeded' && active) break;
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
+
+      // Synchronize on the injected terminal failure itself, rather than a
+      // polled snapshot. The failure resolves only after all earlier lifecycle
+      // writes have settled, so none of them can consume the retry gate or
+      // clear the incident this regression needs.
+      await withDeadline(store.storageFailure, 'the initial terminal storage failure');
+      await waitUntil(
+        () =>
+          manager
+            .recovery('demo')
+            .issues.some((issue) => issue.code === 'job_persist_failed' && issue.kind === 'active'),
+        'the active persistence incident',
+        () => manager.recovery('demo'),
+      );
+      await store.settled();
       expect(manager.get(created.id)?.status).toBe('succeeded');
+      expect(manager.recovery('demo').storage).toMatchObject({ ok: false, scope: 'project' });
 
       store.failWhen = () => false;
       store.snapshots.length = 0;
@@ -760,12 +836,12 @@ describe('Forge restart recovery', () => {
       };
 
       const retry = manager.checkStorage('demo');
-      await reached;
+      await withDeadline(reached, 'the storage retry to reach its write gate');
       const approved = await manager.approve(created.id, { captureMemory: false });
       expect(approved.job.version).toBe(1);
       releaseRetry?.();
       releaseRetry = null;
-      await retry;
+      await withDeadline(retry, 'the storage retry to finish');
 
       // The retry's stale version-less snapshot was attempted, then the
       // manager wrote the approval's newest revision again.
