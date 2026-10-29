@@ -1,0 +1,104 @@
+# Muse Recall — marketing site
+
+The landing page for **[Muse Recall](https://github.com/sidonsoft/muse-recall)**, kept in the
+`website/` folder of the product repo —
+correctable project memory for AI-built software. A local-first HTML Studio for
+Meta's Muse Spark, built for the Meta Muse hackathon ("Push the Frontier").
+
+All product copy, stats and screenshots come from the rest of this
+repository (README, `docs/submission/SUBMISSION_COPY.md`, `docs/assets/`), so the
+site states exactly what the evidence supports.
+
+## Stack
+
+- Vite + React 18, hand-written CSS design system (no UI framework)
+- Interactive "one request, three memory states" widget with a guided tour and
+  per-state explanation panel, reconstructing the recorded demo / Phase 16–17
+  arms (memory supplied · not supplied · corrected) plus the advisory Decision
+  Guard
+- **Memory timeline** of expandable decision cards built from the real seeded
+  demo records (`scripts/lib/demo-seed.ts` in the product repo) — texts verbatim
+- ⌘K command palette, screenshot lightbox, copy-to-clipboard quickstart,
+  printable judge one-pager (`@media print`), `prefers-reduced-motion` and
+  JS-disabled fallbacks
+- Pre-rendered static HTML (`npm run site`), WebP imagery with srcset, JSON-LD
+  and PWA manifest; the footer names the product-repo commit the copy mirrors
+- Real product screenshots in `public/assets/` (MIT, from the source repo)
+
+## Run
+
+The site is a standalone npm project, separate from the pnpm workspace:
+
+```bash
+cd website
+npm install
+npm run dev      # → http://localhost:5173
+npm run build    # production build in dist/
+npm run preview  # serve the production build
+npm run qa       # build, then verify against the preview: a11y audit,
+                 # widget state machine, mobile overflow, LCP/CLS (needs Chrome)
+```
+
+QA mirrors the product's own stance — `scripts/qa.mjs` is dependency-free
+(CDP over Node's global WebSocket) and also runs on CI (the `qa` and `gecko` jobs in
+`.github/workflows/website.yml`, on any PR that touches `website/`).
+
+`npm run site` builds and then **pre-renders the app into `dist/index.html`**
+(`scripts/prerender.mjs`) — the built output is a portable, static page that
+serves full content to crawlers, link-preview bots, and JS-disabled readers;
+the client bundle still loads and takes over interactions.
+
+Every upstream link used on the site is audited against the real repo tree with
+`npm run links` (checks the parent repo this folder lives in, override with
+`UPSTREAM=...`).
+
+## Scoreboard
+
+Verified state of this repo at the product-repo commit the footer cites:
+
+| Check | Result |
+| --- | --- |
+| `npm run qa` (local + CI) | 26/26 — self-referential count gate, a11y audit, demo video + captions, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
+| `npm run links` | 12/12 paths + commit resolve against the upstream repo |
+| `gecko` CI job (Playwright/Firefox) | full flow green on a second engine (Chromium flow also green locally via Playwright's driver) |
+| Lighthouse (mobile preset) | Perf 100 · A11y 100 · Best-Practices 100 · SEO 100 |
+| Lighthouse (desktop preset) | 100 · 100 · 100 · 100 |
+| Content parity | every quantitative claim re-grepped verbatim against `docs/hackathon-evidence/` |
+
+## Deploy
+
+The `deploy` job in `.github/workflows/website.yml` builds with `npm run site` and
+publishes the static `dist/` to GitHub Pages on every push to `main` that touches
+`website/` (and on demand from the Actions tab). `base: './'` keeps it portable, so it works at
+`https://sidonsoft.github.io/muse-recall/`.
+
+One-time switch: repo **Settings → Pages → Build and deployment → Source:
+GitHub Actions**, then re-run the latest "Website" workflow from the Actions tab.
+
+The site used to live in `sidonsoft/muse-recall-website` (published at
+`sidonsoft.github.io/muse-recall-website/`); its full history was imported here.
+
+The demo video is served from `public/video/` (copied from
+`muse-recall/docs/demo/video/`, SHA-256 `4020c0c6…b308`, re-muxed with
+`-movflags +faststart` so playback starts before the whole file downloads).
+
+## Structure
+
+```
+index.html
+vite.config.js
+public/assets/        real screenshots (from muse-recall/docs/assets)
+src/
+  main.jsx            entry
+  App.jsx             page composition + reveal effect
+  index.css           design tokens + all styles
+  loopData.js         data for the interactive loop widget
+  components/
+    Nav.jsx  Hero.jsx  StudioLoop.jsx  Sections.jsx
+```
+
+## Editing copy
+
+Keep numbers in sync with the evidence docs in the source repo — the site's
+credibility is its honesty: Phase 17 counts and p-values, the advisory nature of
+the Decision Guard, and the stated trial bounds.

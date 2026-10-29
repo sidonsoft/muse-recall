@@ -409,7 +409,7 @@ Phase 16 / 16B. Those claims are mapped here.
 3. **The submission cut is committed, but the repository is private.** `Muse_Recall_Demo_V21_1080p.mp4`
    (2:50.47) and its QA are in `docs/demo/video/` and linked from the README. Judges can open it only
    once the repository is public or they are granted access; that remains an owner action. The
-   same cut also plays on the public [project website](https://sidonsoft.github.io/muse-recall-website/).
+   same cut also plays on the public [project website](https://sidonsoft.github.io/muse-recall/).
 4. **The 2:46 video predates the correction cut.** It is a valid fallback for the review loop and
    the Phase 16 result; it does not show the explicit correction beat, and should not be described
    as if it did (C22 covers the 2:50 cut).

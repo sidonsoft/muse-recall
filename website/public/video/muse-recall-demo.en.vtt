@@ -1,0 +1,109 @@
+WEBVTT
+
+00:08.058 --> 00:11.110
+Most AI coding tools can generate a first draft.
+
+00:11.483 --> 00:20.096
+The hard part is the second week: remembering the decisions, noticing when a change breaks one, and letting you correct the direction without losing the history.
+
+00:20.736 --> 00:23.092
+Muse Recall is built for that second week.
+
+00:23.348 --> 00:24.705
+This is a live run.
+
+00:24.904 --> 00:33.019
+I start a fresh project and save one constraint: a warm sunset palette, with a soft coral accent and dark text, no neon.
+
+00:33.565 --> 00:35.538
+Spark writes a small memory game.
+
+00:35.713 --> 00:39.079
+I read the source, check the preview, and approve v1.
+
+00:39.452 --> 00:43.340
+The decision is stored with its project, its source and its history.
+
+00:43.538 --> 00:46.091
+Now a new session, with no request history.
+
+00:46.266 --> 00:48.239
+I ask only for a Next Level button.
+
+00:48.449 --> 00:51.466
+The staged source still uses the sunset accent.
+
+00:51.839 --> 00:55.507
+Guard has no correction to compare, so it reports not verified.
+
+00:55.879 --> 00:56.842
+Nothing ships.
+
+00:56.913 --> 00:58.200
+I reject the change.
+
+00:58.387 --> 00:59.547
+I change my mind.
+
+00:59.920 --> 01:06.188
+In Memory, I correct the decision to a cool ocean palette, with a clear blue accent and deep navy text.
+
+01:06.561 --> 01:10.263
+The sunset record stays auditable but becomes superseded.
+
+01:10.706 --> 01:13.351
+The ocean decision is now the only active one.
+
+01:13.562 --> 01:15.418
+I ask for the same button again.
+
+01:15.675 --> 01:18.042
+The model keeps the old sunset colors.
+
+01:18.682 --> 01:23.998
+This time Guard has the correction to compare, and it flags the reintroduced sunset palette.
+
+01:24.545 --> 01:29.733
+That is the point of an advisory check: it shows the evidence, but it does not block me.
+
+01:30.106 --> 01:31.510
+I reject it myself.
+
+01:31.697 --> 01:35.039
+Then I ask for the project's current art direction from memory.
+
+01:35.354 --> 01:38.546
+The source flips to ocean, and the sunset color is gone.
+
+01:39.093 --> 01:42.679
+Guard reports no violation detected by its supported checks.
+
+01:43.121 --> 01:44.444
+I approve v2.
+
+01:44.619 --> 01:49.505
+v1 stays recoverable in version history, and rollback follows the recorded parent.
+
+01:49.681 --> 01:58.027
+The contribution is the integration: memory you can correct, a change you can review, and evidence that memory changes generated code.
+
+01:58.400 --> 02:08.244
+In the pre-registered Phase 17 trial, a remembered rule cut original-rule violations from thirty-seven of fifty-seven to zero of fifty-eight on Muse Spark,
+
+02:08.384 --> 02:12.203
+and forty-nine of sixty to one of sixty on Muse Spark Open.
+
+02:12.576 --> 02:15.001
+Retyping the rule by hand matched it.
+
+02:15.443 --> 02:23.325
+Phase 17's correction only released restrictions; the sunset-to-ocean replacement is Phase 12A, one run per condition.
+
+02:23.698 --> 02:26.495
+Six fixed tasks, not general correctness.
+
+02:26.937 --> 02:28.817
+Persistent memory is not new.
+
+02:28.958 --> 02:32.300
+Making it correctable, reviewable and measurable is the point.
