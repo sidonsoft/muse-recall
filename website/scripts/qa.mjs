@@ -12,6 +12,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const PREVIEW_PORT = 4173;
@@ -53,31 +54,44 @@ process.on('exit', cleanup);
 
 const preview = spawn('npx', ['vite', 'preview', '--port', String(PREVIEW_PORT), '--strictPort'], { stdio: 'pipe' });
 children.push(preview);
-const browser = spawn(
-  chrome,
-  [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--disable-dev-shm-usage',
-    `--remote-debugging-port=${CDP_PORT}`,
-    'about:blank',
-  ],
-  { stdio: 'ignore' }
-);
-children.push(browser);
-
-// Wait for the CDP endpoint to come up (CI runners can be slow), then open a target.
+let browser = null;
 let target = null;
-for (let i = 0; i < 30 && !target; i++) {
-  await sleep(500);
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: 'PUT' });
-    if (res.ok) target = await res.json();
-  } catch {}
+let chromeErr = '';
+for (let attempt = 1; attempt <= 3 && !target; attempt++) {
+  const profile = fs.mkdtempSync(os.tmpdir() + '/qa-chrome-');
+  browser = spawn(
+    chrome,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      `--user-data-dir=${profile}`,
+      `--remote-debugging-port=${CDP_PORT}`,
+      'about:blank',
+    ],
+    { stdio: ['ignore', 'ignore', 'pipe'] }
+  );
+  children.push(browser);
+  browser.stderr.on('data', (d) => {
+    chromeErr = (chromeErr + d.toString()).slice(-4000);
+  });
+  for (let i = 0; i < 20 && !target; i++) {
+    await sleep(500);
+    try {
+      const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: 'PUT' });
+      if (res.ok) target = await res.json();
+    } catch {}
+  }
+  if (!target) {
+    console.error(`qa: Chrome attempt ${attempt} failed to expose CDP; retrying…`);
+    browser.kill('SIGKILL');
+    fs.rmSync(profile, { recursive: true, force: true });
+  }
 }
 if (!target) {
   console.error('qa: Chrome DevTools endpoint never came up on port ' + CDP_PORT);
+  console.error('chrome stderr:\n' + chromeErr);
   cleanup();
   process.exit(1);
 }
