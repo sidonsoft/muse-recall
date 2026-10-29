@@ -7,6 +7,10 @@ export type PromptMode = 'change' | 'new';
  * Starting points that show the range of the artifact contract. A game is one
  * example, not the category: the same pipeline builds tools and small apps.
  */
+/** The recorded live session, for anyone running without the Muse CLI. */
+const DEMO_VIDEO_URL =
+  'https://github.com/sidonsoft/muse-recall/blob/main/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4';
+
 const EXAMPLES = [
   {
     label: 'Memory game',
@@ -56,6 +60,7 @@ export function PromptPanel({
   diff,
   onCancel,
   engineLabel,
+  cliMissing = false,
 }: {
   mode: PromptMode;
   onMode: (mode: PromptMode) => void;
@@ -76,11 +81,13 @@ export function PromptPanel({
   diff: ForgeDiff | null;
   onCancel: () => void;
   engineLabel: string;
+  /** The generation CLI is not installed here, so generating cannot start. */
+  cliMissing?: boolean;
 }) {
   const effectiveMode: PromptMode = hasGame ? mode : 'new';
 
   const submit = () => {
-    if (running || busy) return;
+    if (running || busy || cliMissing) return;
     if (effectiveMode === 'new' && prompt.trim().length >= 10) onGenerate();
     if (effectiveMode === 'change' && change.trim().length >= 3) onModify();
   };
@@ -184,7 +191,7 @@ export function PromptPanel({
             <button
               type="button"
               onClick={onModify}
-              disabled={busy || running || change.trim().length < 3}
+              disabled={busy || running || cliMissing || change.trim().length < 3}
               className="btn btn-primary flex-1"
             >
               {running && job?.kind === 'modify' ? (
@@ -205,9 +212,13 @@ export function PromptPanel({
               </button>
             ) : null}
           </div>
-          <p className="text-[10px] leading-relaxed text-muted">
-            Staged until you approve it; the current version stays live.
-          </p>
+          {cliMissing ? (
+            <OfflineGenerationNote />
+          ) : (
+            <p className="text-[10px] leading-relaxed text-muted">
+              Staged until you approve it; the current version stays live.
+            </p>
+          )}
         </div>
       ) : (
         <div
@@ -255,7 +266,7 @@ export function PromptPanel({
           <button
             type="button"
             onClick={onGenerate}
-            disabled={busy || running || prompt.trim().length < 10}
+            disabled={busy || running || cliMissing || prompt.trim().length < 10}
             className="btn btn-primary w-full"
           >
             {running ? (
@@ -275,6 +286,7 @@ export function PromptPanel({
               Cancel generation
             </button>
           ) : null}
+          {cliMissing ? <OfflineGenerationNote /> : null}
           <p className="text-[10.5px] leading-relaxed text-muted">
             The generator writes <span className="font-mono text-ink-dim">index.html</span> into a
             staging copy.
@@ -287,6 +299,26 @@ export function PromptPanel({
 
       <GenerationStrip job={job} diff={diff} running={running} />
     </section>
+  );
+}
+
+/**
+ * Shown beside the generate buttons when the Muse CLI is missing (offline
+ * mode, e.g. GitHub Codespaces), so the limit is explained where it bites.
+ */
+function OfflineGenerationNote() {
+  return (
+    <p
+      className="rounded border border-warn/40 bg-warn/5 px-2 py-1.5 text-[10.5px] leading-relaxed text-ink-dim"
+      data-testid="offline-generation-note"
+    >
+      Generating needs the Meta Muse Code CLI, which is not installed here. Memory, corrections,
+      retrieval and version history all work offline.{' '}
+      <a href={DEMO_VIDEO_URL} target="_blank" rel="noreferrer" className="text-accent underline">
+        Watch the recorded live session
+      </a>{' '}
+      for the full generate, review and approve loop.
+    </p>
   );
 }
 

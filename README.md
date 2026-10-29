@@ -70,9 +70,11 @@ the rule was broken in 0 of 58 Muse Spark runs, against 37 of 57 without memory.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/sidonsoft/muse-recall?quickstart=1)
 
-**In the browser, no install:** click the badge above. The codespace installs, seeds the
-demo project and opens the app on the offline provider in a few minutes; no Muse account
-or key is needed ([what to expect](.devcontainer/README.md)).
+**In the browser, no install:** click the badge above. You need a GitHub account; the first
+start takes about three minutes, and VS Code asks you to trust the workspace (accept it so
+setup can continue). The codespace seeds the demo project and opens the app on the offline
+provider; no Muse account or key is needed. Generating new code needs the Muse CLI, so
+follow the [five-minute offline walkthrough](.devcontainer/README.md#a-five-minute-walkthrough-offline).
 
 **Locally:**
 

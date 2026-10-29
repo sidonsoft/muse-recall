@@ -408,7 +408,7 @@ export function Quickstart() {
     <section className="block" id="quickstart" style={{ paddingTop: 20 }}>
       <div className="container">
         <div className="section-head">
-          <p className="kicker">Try it in 60 seconds</p>
+          <p className="kicker">Try it locally or in Codespaces</p>
           <h2>No Muse account? No problem.</h2>
           <p>
             The seeded demo project carries three decisions — one already superseded — with v1
@@ -420,7 +420,10 @@ export function Quickstart() {
             <a href={CODESPACES} target="_blank" rel="noreferrer">
               open it in GitHub Codespaces
             </a>
-            , which sets up the same seeded project in your browser. The{' '}
+            , which sets up the same seeded project in your browser. You need a GitHub account;
+            the first start takes about three minutes, and VS Code asks whether to trust the
+            workspace (choose to trust it so setup can continue). Generating new code needs the
+            Muse CLI, so the codespace is for exploring memory, corrections and history. The{' '}
             <a href={GUIDE} target="_blank" rel="noreferrer">
               user guide
             </a>{' '}

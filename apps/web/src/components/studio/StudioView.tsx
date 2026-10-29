@@ -884,6 +884,7 @@ export function StudioView({
             diff={diff}
             onCancel={() => void cancel()}
             engineLabel={engineLabel}
+            cliMissing={forge?.cli_available === false}
           />
           <StudioMemory
             key={projectId}

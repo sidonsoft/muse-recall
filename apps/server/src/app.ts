@@ -187,6 +187,9 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       secFetchSite: request.headers['sec-fetch-site'],
     });
     if (verdict.allowed) return;
+    // Name the refused origin so a misconfigured CORS_ORIGINS is diagnosable
+    // from the server log alone.
+    request.log.warn({ origin: request.headers.origin, reason: verdict.reason }, 'origin refused');
     return reply
       .status(403)
       .send(
@@ -422,6 +425,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       forge: {
         provider: 'muse-cli',
         configured_model: config.forge?.model ?? null,
+        cli_available: forgeManager.cliAvailable(),
         // Forge does not currently persist an independently observed model id.
         observed_model: null,
       },
