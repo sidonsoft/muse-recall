@@ -21,7 +21,7 @@ Muse Recall closes that loop. It stores project decisions as structured records,
 the active ones to later generations, supersedes them when you correct them, and keeps the
 change itself reviewable. The **Decision Guard** is an advisory source check, not a gate.
 
-![HTML Studio after approving v2 of Ocean Pairs: the live preview, the remembered rule supplied to the change, the Decision Guard panel, and version history](docs/assets/html-studio-approved-v2.jpg)
+![Current HTML Studio showing approved v2 of Farmyard Memory Match, project decisions and version history](docs/assets/readme-2026-10-29/studio-approved.png)
 
 <!-- Demo video: paste the published URL in place of the pending note when the 2:50 cut is uploaded. -->
 **Demo video** — 2:50, recorded 29 October 2026 from a live Muse Spark session. [What the cut
@@ -36,7 +36,7 @@ pending._
 | **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat**; it is the fallback if the 2:50 cut is not published. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 676 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 683 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. Phase 17 covers six fixed strata, two rules and two models, and measures source code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Why this fits “Push the Frontier”
@@ -86,7 +86,7 @@ detector fixed before the runs. Counts are violations over usable runs.
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
 pnpm install
-cp .env.example .env
+cp .env.example apps/server/.env
 pnpm demo:seed                  # seeded game, three decisions (one superseded), v1 approved
 MODEL_PROVIDER=echo pnpm dev    # no Muse account needed; open http://127.0.0.1:5173
 ```
@@ -202,7 +202,7 @@ Verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.13, SQLite 3.53.4.
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
 pnpm install
-cp .env.example .env          # defaults are already local-first
+cp .env.example apps/server/.env          # defaults are already local-first
 
 pnpm dev                      # API on :8787 and web on :5173
 ```
@@ -216,7 +216,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (676 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (683 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -365,15 +365,26 @@ retrieve ─► SQL hard filters (status, scope, expiry, type)
 Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 `MEMORY_MAX_CHARACTERS`, `MEMORY_MAX_MEMORY_CHARACTERS`.
 
-![A new conversation answering from project memory](docs/assets/phase3-ui-conversations.png)
+![A conversation answering from active project memory](docs/assets/readme-2026-10-29/conversation.png)
 
-![A Muse-generated planning form](docs/assets/phase4-ui-generative-ui.png)
+![A declarative planning form in the current conversation interface](docs/assets/readme-2026-10-29/planning-form.png)
 
-![A pending tool call awaiting approval](docs/assets/phase5-ui-tools.png)
+![A pending tool call awaiting explicit approval](docs/assets/readme-2026-10-29/tool-approval.png)
 
-![Memory detail with correction history](docs/assets/phase2-ui-memory-detail.png)
+![Current memory detail showing provenance and correction history](docs/assets/readme-2026-10-29/memory-detail.png)
 
-![Retrieval explanation with score components](docs/assets/phase2-ui-memory-retrieval.png)
+![Forge retrieval explanation showing active decisions, score components and rendered context cost](docs/assets/readme-2026-10-29/memory-retrieval.png)
+
+Interface screenshots were refreshed on 29 October 2026 using the current application and
+disposable demo data. The Studio capture replays recorded Muse-generated application bytes;
+the supporting captures use deterministic offline fixtures. They show current UI behavior,
+not new live-model results. Historical screenshots and trial evidence remain unchanged.
+
+The retrieval screenshot uses the visible two-memory override to show a budget exclusion;
+Forge defaults to six. [Capture provenance and reproduction](docs/assets/readme-2026-10-29/README.md).
+
+See the [user guide](docs/guide/README.md) for setup, project memory, HTML Studio, architecture
+and limitations.
 
 ---
 
@@ -684,9 +695,10 @@ The [29 October live run](docs/hackathon-evidence/live-dsh-run-2026-10-29/FINDIN
 found five issues now fixed on `main` in PRs #5–#8: missing Forge decisions, conflicting
 storage instructions, preview storage errors, missed retired palettes, and hidden long timers
 incorrectly passing the Guard. The [repeat run](docs/hackathon-evidence/live-dsh-run-2026-10-29/after/AFTER_FIXES.md)
-is exploratory evidence, not a trial. Corrections still require an explicit application request;
-the retrieval preview can understate Forge context, approval/rejection can rewrite job finish
-times, and correction responses can return stale superseded-record fields (N1–N3).
+is exploratory evidence, not a trial. Follow-up findings N1–N3 are now fixed on `main` in
+[PR #10](https://github.com/sidonsoft/muse-recall/pull/10): Forge preview matches the injected
+memory block and its cost, review preserves generation finish times, and corrections return
+fresh superseded records. Corrections still require an explicit application-change request (F6).
 
 - **Memory does not automatically save tokens.** Measured: the Muse CLI has a ~16,630
   token baseline, and a ~4k-character memory block adds ~877 tokens. Whether memory is
