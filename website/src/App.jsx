@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
-import { Problem, Features, How, Evidence, Gallery, Stack, Quickstart, Honesty, CTA, Footer } from './components/Sections.jsx';
+import { Problem, Features, How, Evidence, ForJudges, Gallery, Stack, Quickstart, Honesty, CTA, Footer } from './components/Sections.jsx';
 
 export default function App() {
   useEffect(() => {
@@ -26,6 +26,9 @@ export default function App() {
       <div className="aurora" aria-hidden="true">
         <span />
       </div>
+      <a className="skip-link" href="#top">
+        Skip to content
+      </a>
       <Nav />
       <main>
         <Hero />
@@ -46,6 +49,7 @@ export default function App() {
         <How />
         <Features />
         <Evidence />
+        <ForJudges />
         <Gallery />
         <Stack />
         <Quickstart />

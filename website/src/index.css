@@ -795,8 +795,19 @@ section.block {
   counter-reset: step;
 }
 
+.steps.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .steps.four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 860px) {
-  .steps {
+  .steps,
+  .steps.four {
     grid-template-columns: 1fr;
   }
 }
@@ -947,6 +958,51 @@ footer {
   color: var(--text);
 }
 
+/* ---------- Accessibility & anchors ---------- */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 100;
+  background: var(--violet);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: top 0.15s;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+section[id] {
+  scroll-margin-top: 76px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+.feature a,
+.footnote a,
+.cta-band a:not(.btn),
+.section-head a {
+  color: var(--cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--surface-strong);
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
 /* ---------- Figures & gallery ---------- */
 .figure {
   border: 1px solid var(--line);
@@ -1066,6 +1122,10 @@ table.evidence .bad {
   grid-template-columns: 1fr 1.3fr;
   gap: 22px;
   padding: 26px;
+}
+
+.loop-grid > * {
+  min-width: 0;
 }
 
 @media (max-width: 900px) {

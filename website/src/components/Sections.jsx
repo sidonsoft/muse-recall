@@ -85,7 +85,7 @@ export function How() {
             correctable memory wired into a reviewable change loop is.
           </p>
         </div>
-        <div className="steps" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="steps four">
           {steps.map((s) => (
             <div className="step reveal" key={s.n}>
               <span className="num">{s.n}</span>
@@ -350,6 +350,102 @@ export function Honesty() {
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+export function ForJudges() {
+  const DOCS = `${REPO}/blob/main/docs`;
+  const cards = [
+    {
+      icon: '🎬',
+      h: 'Demo video — 2:50, recorded',
+      p: (
+        <>
+          One continuous live Muse Spark session: save a sunset constraint, approve v1; correct
+          the decision to ocean; watch the Guard flag the reintroduced sunset palette; approve
+          v2 built from the <em>current</em> art direction. Includes the honest failure beat.
+          The cut is recorded and QA&apos;d (29 Oct 2026); its public link lands here as soon
+          as the upload completes. The earlier 2:46 cut is the fallback.
+        </>
+      ),
+    },
+    {
+      icon: '📊',
+      h: 'Behavioural evidence — pre-registered',
+      p: (
+        <>
+          Phase 17: 480 runs, four arms × six strata × two models, detector and protocol locked
+          and pushed before the first run.{' '}
+          <a href={`${DOCS}/hackathon-evidence/phase17/RESULTS.md`} target="_blank" rel="noreferrer">Results</a> ·{' '}
+          <a href={`${DOCS}/hackathon-evidence/phase17/STATS_CORRECTION.md`} target="_blank" rel="noreferrer">stats correction</a> ·{' '}
+          <a href={`${DOCS}/hackathon-evidence/phase17/REVIEW_DISPOSITION.md`} target="_blank" rel="noreferrer">review disposition</a>.{' '}
+          <code>pnpm verify:research17</code> re-derives every count and p-value from retained
+          records.
+        </>
+      ),
+    },
+    {
+      icon: '🔧',
+      h: 'Engineering — verify, don’t trust',
+      p: (
+        <>
+          <code>pnpm verify</code> runs lint, typecheck and 721 passing tests. A staged change
+          loads in managed Chromium before it can be approved, and approval publishes exactly
+          the checked bytes. Rollback follows recorded ancestry; cross-origin requests cannot
+          change state.
+        </>
+      ),
+    },
+    {
+      icon: '🧠',
+      h: 'How Muse is used',
+      p: (
+        <>
+          Muse Spark (via the Muse Code CLI) generates the original app and performs every
+          modification. The memory layer, retrieval, prompt construction, the browser gate and
+          the Decision Guard are deterministic infrastructure around it. Muse Spark Open
+          (Baseten) replicated the research — the application itself never calls it.
+        </>
+      ),
+    },
+    {
+      icon: '⚖️',
+      h: 'Limits, stated up front',
+      p: (
+        <>
+          Single-user and loopback-only. The Decision Guard is advisory and never blocks
+          approval. Phase 17 covers six fixed strata, two rules and two models, and measures
+          source code rather than runtime safety.{' '}
+          <a href={`${DOCS}/KNOWN_ISSUES.md`} target="_blank" rel="noreferrer">Known issues</a>.
+        </>
+      ),
+    },
+  ];
+  return (
+    <section className="block" id="judges">
+      <div className="container">
+        <div className="section-head center">
+          <p className="kicker">For judges</p>
+          <h2>Everything you need, one click away</h2>
+          <p>
+            The repository labels every claim by evidence class — authentic Muse output,
+            synthetic fixtures, deterministic replay, independent audit — in the{' '}
+            <a href={`${DOCS}/submission/EVIDENCE_MAP.md`} target="_blank" rel="noreferrer">evidence map</a>.
+          </p>
+        </div>
+        <div className="features-grid">
+          {cards.map((c) => (
+            <div className="feature reveal" key={c.h}>
+              <div className="icon" aria-hidden="true">
+                {c.icon}
+              </div>
+              <h3>{c.h}</h3>
+              <p>{c.p}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
