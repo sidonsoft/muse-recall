@@ -634,6 +634,58 @@ export function BeyondGames() {
   );
 }
 
+export function ProofVsRoadmap() {
+  const done = [
+    'Muse Spark generation and live modification of working HTML apps (Ocean Pairs; FocusFlow after a disclosed retake)',
+    'Sandboxed preview, source inspection, staged diffs',
+    'Persistent decisions with identity, provenance, corrections and recorded retrieval',
+    'Live memory-conflict refusals on both applications',
+    'A Phase 12A correction (sunset → ocean palette) with the old decision superseded and excluded from retrieval',
+    'Approval, and rollback to the recorded parent — executed live on Ocean Pairs',
+    'Pre-registered Phase 17 trial on two Meta models, with a published strict verifier',
+  ];
+  const later = [
+    'Automatic enforcement — the Guard stays advisory',
+    'Gameplay, interaction or pixel verification beyond the load-time gate',
+    'Verified self-contained export (asset inlining) before using that label',
+    'Multi-user deployment — needs auth, CSRF and isolation first',
+    'Arbitrary-provider or production open-model support (research only today)',
+    'Evaluation across many tasks, games or models',
+  ];
+  return (
+    <section className="block" id="proof">
+      <div className="container">
+        <div className="section-head center">
+          <p className="kicker">Say it plainly, again</p>
+          <h2>Demonstrated — and what is not</h2>
+          <p>
+            Straight from the submission copy: what has live evidence, and what must not be
+            read as demonstrated.
+          </p>
+        </div>
+        <div className="two-col">
+          <div className="col-card reveal">
+            <h3 className="done-h">✓ Demonstrated, with evidence</h3>
+            <ul className="proof">
+              {done.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="col-card reveal">
+            <h3 className="future-h">○ Future work — not claimed</h3>
+            <ul className="future">
+              {later.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function CTA() {
   return (
     <section className="block" id="cta">

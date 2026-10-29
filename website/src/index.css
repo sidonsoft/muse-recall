@@ -1516,6 +1516,63 @@ pre.code .hl {
   font-size: 13.5px;
 }
 
+/* ---------- Proof vs roadmap ---------- */
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.col-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 26px;
+  background: var(--surface);
+}
+
+.col-card h3 {
+  font-size: 15px;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+
+.done-h {
+  color: var(--green);
+}
+
+.future-h {
+  color: var(--amber);
+}
+
+.col-card ul {
+  display: grid;
+  gap: 11px;
+}
+
+.col-card li {
+  list-style: none;
+  font-size: 14px;
+  color: var(--muted);
+  padding-left: 22px;
+  position: relative;
+}
+
+.col-card .proof li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.col-card .future li::before {
+  content: '○';
+  position: absolute;
+  left: 0;
+  color: var(--amber);
+}
+
 /* ---------- Honesty list ---------- */
 .honesty {
   display: grid;
