@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Nook — My Reading Log</title>
+<style>
+  :root{
+    --bg:#fdf6ec; --card:#ffffff; --ink:#3a2e22; --soft:#6b5d4f;
+    --accent:#2f7d5b; --accent-dark:#225c43; --warm:#e8a838;
+    --line:#e7d9c3; --goal-track:#eee2cc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",Verdana,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;font-size:18px}
+  header{background:#2f7d5b;color:#fff;padding:1.2rem 1rem;text-align:center}
+  header h1{margin:0;font-size:1.8rem}
+  header p{margin:.3rem 0 0;font-size:1rem}
+  main{max-width:900px;margin:0 auto;padding:1rem;display:grid;gap:1rem;grid-template-columns:1fr}
+  @media(min-width:760px){main{grid-template-columns:1fr 1fr}.wide{grid-column:1 / -1}}
+  section.card{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:1rem}
+  h2{margin:.2rem 0 .7rem;font-size:1.3rem}
+  label{display:block;font-weight:600;margin:.6rem 0 .25rem}
+  input{width:100%;min-height:48px;font-size:1.05rem;padding:.6rem .7rem;border:2px solid var(--line);border-radius:10px}
+  input:focus,button:focus{outline:3px solid #1b5fc1;outline-offset:2px}
+  button{font-size:1.05rem;min-height:48px;min-width:48px;padding:.65rem 1.1rem;border-radius:12px;border:2px solid var(--accent-dark);background:var(--accent);color:#fff;cursor:pointer;margin-top:.7rem}
+  button:hover{background:var(--accent-dark)}
+  button:active{transform:scale(.98)}
+  button.secondary{background:#fff;color:var(--accent-dark)}
+  .hint{color:var(--soft);font-size:.95rem}
+  .status{margin-top:.6rem;padding:.6rem .8rem;border-radius:10px;background:#f3efe4;border:1px solid var(--line);min-height:1.5em}
+  .book{border:2px solid var(--line);border-radius:12px;padding:.8rem;margin:.7rem 0}
+  .book.done{border-color:var(--accent)}
+  .tag{display:inline-block;padding:.15rem .6rem;border-radius:999px;border:2px solid var(--accent-dark);font-size:.9rem;font-weight:700;margin-left:.4rem;vertical-align:middle}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end}
+  .row > div{flex:1 1 140px}
+  .progress{height:26px;background:var(--goal-track);border-radius:999px;border:2px solid var(--line);overflow:hidden;margin-top:.5rem}
+  .progress > div{height:100%;background:var(--accent);width:0%;transition:width .3s ease}
+  .chart{display:flex;gap:.5rem;align-items:end;min-height:170px;margin-top:.6rem}
+  .bar-col{flex:1;text-align:center}
+  .bar-wrap{height:120px;display:flex;align-items:end;justify-content:center;background:#faf6ec;border:1px solid var(--line);border-radius:8px;padding:4px}
+  .bar{width:70%;background:var(--accent);border-radius:6px 6px 0 0;min-height:6px}
+  .bar.zero{background:#cbbfa8}
+  .day-label{font-size:.85rem;margin-top:.25rem}
+  .day-num{font-size:.85rem;color:var(--soft)}
+  .celebrate{background:#eef7f0;border:2px solid var(--accent);border-radius:12px;padding:.7rem;margin-top:.6rem}
+  ul.shelf{list-style:none;padding:0;margin:.5rem 0}
+  ul.shelf li{padding:.6rem .7rem;border:2px solid var(--line);border-radius:10px;margin:.4rem 0;background:#fffdf6}
+  .icon{margin-right:.3rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Reading Nook</h1>
+  <p>A cozy place to track your reading. Great job reading!</p>
+</header>
+<main>
+  <section class="card" aria-labelledby="add-h">
+    <h2 id="add-h">Add a new book</h2>
+    <form id="addForm" aria-label="Add a new book">
+      <label for="title">Book title</label>
+      <input id="title" name="title" type="text" placeholder="e.g. Matilda" autocomplete="off">
+      <label for="author">Author (who wrote it?)</label>
+      <input id="author" name="author" type="text" placeholder="e.g. Roald Dahl" autocomplete="off">
+      <label for="pages">Total pages in the book</label>
+      <input id="pages" name="pages" type="number" min="1" max="5000" step="1" placeholder="e.g. 240">
+      <button type="button" id="addBtn" aria-label="Add this book to my reading list">Add book</button>
+    </form>
+    <div class="status" id="addMsg" role="status" aria-live="polite">Tip: ask a grown-up if you need help spelling a title.</div>
+  </section>
+
+  <section class="card" aria-labelledby="goal-h">
+    <h2 id="goal-h">My weekly page goal</h2>
+    <label for="goalInput">Pages I want to read this week</label>
+    <input id="goalInput" type="number" min="1" max="5000" step="1" value="50">
+    <button type="button" id="goalBtn" aria-label="Save my weekly page goal">Save goal</button>
+    <div class="status" id="goalMsg" role="status" aria-live="polite"><span class="icon" aria-hidden="true">🌱</span><span id="goalText">Goal: 50 pages — Status: just starting. You can do it!</span></div>
+    <div class="progress" role="progressbar" id="goalBar" aria-label="Weekly goal progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="goalFill"></div>
+    </div>
+  </section>
+
+  <section class="card wide" aria-labelledby="read-h">
+    <h2 id="read-h">Books I am reading</h2>
+    <p class="hint">Type pages you read today, then press the “Log pages” button. Press Enter in the box works too.</p>
+    <div id="bookList"></div>
+  </section>
+
+  <section class="card" aria-labelledby="week-h">
+    <h2 id="week-h">This week: pages I read</h2>
+    <p class="hint">Each bar is one day. Numbers are under each bar so you do not need colours.</p>
+    <div class="chart" id="chart" aria-label="Bar chart of pages read each day this week"></div>
+    <div class="status" id="weekMsg" role="status" aria-live="polite">No pages logged yet. Every reader starts somewhere!</div>
+  </section>
+
+  <section class="card" aria-labelledby="shelf-h">
+    <h2 id="shelf-h">My Shelf — finished books</h2>
+    <div id="cheer"></div>
+    <ul class="shelf" id="shelfList"></ul>
+    <div class="status" id="shelfMsg" role="status" aria-live="polite">Your shelf is empty for now. Finished books will rest here.</div>
+  </section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var books = [];
+  var logs = {}; // "YYYY-MM-DD" -> pages
+  var goal = 50;
+  var nextId = 1;
+
+  function $(id){ return document.getElementById(id); }
+  function todayKey(d){
+    var y = d.getFullYear();
+    var m = String(d.getMonth()+1).padStart(2,"0");
+    var day = String(d.getDate()).padStart(2,"0");
+    return y+"-"+m+"-"+day;
+  }
+  function esc(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function setGoal(){
+    var v = parseInt($("goalInput").value, 10);
+    if(!v || v < 1){ $("goalText").textContent = "Please pick 1 or more pages for your goal."; return; }
+    if(v > 5000){ $("goalText").textContent = "That goal is very big! Please pick 5000 or fewer."; return; }
+    goal = v;
+    $("goalText").textContent = "Goal: " + goal + " pages — " + goalStatusText();
+    updateGoalBar();
+  }
+
+  function goalStatusText(){
+    var total = weekTotal();
+    if(total <= 0) return "Status: just starting. You can do it!";
+    if(total >= goal) return "Status: goal met! Hooray, amazing reading! Total: " + total + " pages.";
+    return "Status: in progress. " + total + " of " + goal + " pages so far. Keep going!";
+  }
+
+  function weekTotal(){
+    var total = 0, d = new Date();
+    for(var i=0;i<7;i++){
+      var k = todayKey(d);
+      total += (logs[k] || 0);
+      d.setDate(d.getDate()-1);
+    }
+    return total;
+  }
+
+  function updateGoalBar(){
+    var total = weekTotal();
+    var pct = goal > 0 ? Math.min(100, Math.round(total/goal*100)) : 0;
+    $("goalFill").style.width = pct + "%";
+    $("goalBar").setAttribute("aria-valuenow", String(pct));
+    var done = total >= goal && total > 0;
+    $("goalText").textContent = "Goal: " + goal + " pages — " + goalStatusText();
+    $("goalBar").setAttribute("aria-label", "Weekly goal progress: " + total + " of " + goal + " pages, " + (done ? "goal met" : "in progress"));
+  }
+
+  function renderChart(){
+    var chart = $("chart");
+    chart.innerHTML = "";
+    var names = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    var today = new Date();
+    var vals = [];
+    var max = 1;
+    for(var i=6;i>=0;i--){
+      var d = new Date(today.getFullYear(), today.getMonth(), today.getDate()-i);
+      var k = todayKey(d);
+      var v = logs[k] || 0;
+      vals.push({d:d, v:v});
+      if(v > max) max = v;
+    }
+    vals.forEach(function(item, idx){
+      var isToday = idx === 6;
+      var col = document.createElement("div");
+      col.className = "bar-col";
+      var h = item.v <= 0 ? 6 : Math.max(10, Math.round(item.v/max*110));
+      var wrap = document.createElement("div");
+      wrap.className = "bar-wrap";
+      var bar = document.createElement("div");
+      bar.className = "bar" + (item.v <= 0 ? " zero" : "");
+      bar.style.height = h + "px";
+      bar.setAttribute("role","img");
+      bar.setAttribute("aria-label", names[item.d.getDay()] + " " + item.d.getDate() + ": " + item.v + " pages");
+      wrap.appendChild(bar);
+      var lab = document.createElement("div");
+      lab.className = "day-label";
+      lab.textContent = (isToday ? "Today" : names[item.d.getDay()]);
+      var num = document.createElement("div");
+      num.className = "day-num";
+      num.textContent = item.v + " pgs";
+      col.appendChild(wrap); col.appendChild(lab); col.appendChild(num);
+      chart.appendChild(col);
+    });
+    var t = weekTotal();
+    $("weekMsg").textContent = t > 0
+      ? "You read " + t + " pages in the last 7 days. Nice work!"
+      : "No pages logged yet. Every reader starts somewhere!";
+  }
+
+  function addBook(){
+    var t = $("title").value.trim();
+    var a = $("author").value.trim();
+    var p = parseInt($("pages").value, 10);
+    var msg = $("addMsg");
+    if(!t){ msg.textContent = "Please write the book title first."; $("title").focus(); return; }
+    if(!a){ a = "Unknown author"; }
+    if(!p || p < 1){ msg.textContent = "Please write how many pages the book has (1 or more)."; $("pages").focus(); return; }
+    books.push({id: nextId++, title: t, author: a, total: p, read: 0, finished: false});
+    $("title").value = ""; $("author").value = ""; $("pages").value = "";
+    msg.textContent = "Added “" + t + "”. Happy reading!";
+    renderBooks();
+  }
+
+  function logPages(id){
+    var b = null;
+    for(var i=0;i<books.length;i++){ if(books[i].id === id) b = books[i]; }
+    if(!b || b.finished) return;
+    var input = $("log-" + id);
+    var msg = $("addMsg");
+    var v = parseInt(input.value, 10);
+    if(!v || v < 1){ msg.textContent = "Please write 1 or more pages read."; input.focus(); return; }
+    var room = b.total - b.read;
+    if(v > room){ msg.textContent = "That is more than is left (" + room + " pages left). Logging " + room + " to finish the book!"; v = room; }
+    else { msg.textContent = "Logged " + v + " pages for “" + b.title + "”. Well done!"; }
+    b.read += v;
+    var k = todayKey(new Date());
+    logs[k] = (logs[k] || 0) + v;
+    input.value = "";
+    if(b.read >= b.total){
+      b.finished = true;
+      showCheer(b);
+    }
+    renderBooks(); renderChart(); updateGoalBar(); renderShelf();
+  }
+
+  function showCheer(b){
+    var box = $("cheer");
+    var div = document.createElement("div");
+    div.className = "celebrate";
+    div.setAttribute("role","status");
+    div.textContent = "🎉 Hooray! You finished “" + b.title + "” (" + b.total + " pages). It is now on your shelf. You are a star reader!";
+    box.innerHTML = "";
+    box.appendChild(div);
+  }
+
+  function renderBooks(){
+    var list = $("bookList");
+    list.innerHTML = "";
+    var active = books.filter(function(b){ return !b.finished; });
+    if(active.length === 0){
+      var p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = "No books in progress. Add your first book above!";
+      list.appendChild(p);
+      return;
+    }
+    active.forEach(function(b){
+      var left = b.total - b.read;
+      var card = document.createElement("div");
+      card.className = "book";
+      var h = document.createElement("h3");
+      h.style.margin = "0 0 .3rem";
+      h.textContent = b.title;
+      var tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "In progress";
+      h.appendChild(tag);
+      card.appendChild(h);
+      var info = document.createElement("p");
+      info.style.margin = ".2rem 0";
+      info.textContent = "By " + b.author + " — page " + b.read + " of " + b.total + " (" + left + " pages left).";
+      card.appendChild(info);
+      var row = document.createElement("div");
+      row.className = "row";
+      var wrap = document.createElement("div");
+      var lab = document.createElement("label");
+      lab.setAttribute("for", "log-" + b.id);
+      lab.textContent = "Pages read today";
+      var inp = document.createElement("input");
+      inp.id = "log-" + b.id;
+      inp.type = "number"; inp.min = "1"; inp.step = "1";
+      inp.placeholder = "e.g. 10";
+      inp.setAttribute("aria-label", "Pages read today for " + b.title);
+      inp.addEventListener("keydown", function(ev){
+        if(ev.key === "Enter"){ ev.preventDefault(); logPages(b.id); }
+      });
+      wrap.appendChild(lab); wrap.appendChild(inp);
+      row.appendChild(wrap);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Log pages";
+      btn.setAttribute("aria-label", "Log pages for " + b.title);
+      btn.addEventListener("click", function(){ logPages(b.id); });
+      row.appendChild(btn);
+      card.appendChild(row);
+      list.appendChild(card);
+    });
+  }
+
+  function renderShelf(){
+    var ul = $("shelfList");
+    ul.innerHTML = "";
+    var done = books.filter(function(b){ return b.finished; });
+    if(done.length === 0){
+      $("shelfMsg").textContent = "Your shelf is empty for now. Finished books will rest here.";
+      return;
+    }
+    done.forEach(function(b){
+      var li = document.createElement("li");
+      var star = document.createElement("span");
+      star.className = "icon"; star.setAttribute("aria-hidden","true"); star.textContent = "⭐";
+      li.appendChild(star);
+      var t = document.createElement("strong");
+      t.textContent = b.title;
+      li.appendChild(t);
+      li.appendChild(document.createTextNode(" by " + b.author + " — " + b.total + " pages. Status: finished."));
+      ul.appendChild(li);
+    });
+    $("shelfMsg").textContent = "You finished " + done.length + (done.length === 1 ? " book." : " books.") + " Well done, reader!";
+  }
+
+  $("addBtn").addEventListener("click", addBook);
+  $("goalBtn").addEventListener("click", setGoal);
+  ["title","author","pages"].forEach(function(id){
+    $(id).addEventListener("keydown", function(ev){
+      if(ev.key === "Enter"){ ev.preventDefault(); addBook(); }
+    });
+  });
+  $("goalInput").addEventListener("keydown", function(ev){
+    if(ev.key === "Enter"){ ev.preventDefault(); setGoal(); }
+  });
+
+  renderBooks(); renderChart(); updateGoalBar(); renderShelf();
+})();
+</script>
+</body>
+</html>

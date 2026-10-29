@@ -1,0 +1,225 @@
+[
+  {
+    "job": "7713abca",
+    "kind": "generate",
+    "status": "rejected",
+    "base": null,
+    "version": null,
+    "secs": null,
+    "started": "2026-10-29T02:06:12.040Z",
+    "finished": "2026-10-29T02:07:30.673Z",
+    "usage": {
+      "calls": 3,
+      "input_tokens": 93109,
+      "output_tokens": 4547,
+      "runtime_ms": 44690
+    },
+    "memory_ids": [
+      "0432b4b9",
+      "0398cbf1",
+      "14d8a1be",
+      "ac94ae63"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Build Reading Nook, a reading log for children aged 7 to 10. A child can add books (title, author, total pages), log pag"
+  },
+  {
+    "job": "b245b932",
+    "kind": "generate",
+    "status": "rejected",
+    "base": null,
+    "version": null,
+    "secs": null,
+    "started": "2026-10-29T02:08:57.641Z",
+    "finished": "2026-10-29T02:10:11.584Z",
+    "usage": {
+      "calls": 3,
+      "input_tokens": 94332,
+      "output_tokens": 5166,
+      "runtime_ms": 48314
+    },
+    "memory_ids": [
+      "0432b4b9",
+      "0398cbf1",
+      "14d8a1be",
+      "ac94ae63"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Build Reading Nook, a reading log for children aged 7 to 10. A child can add books (title, author, total pages), log pag"
+  },
+  {
+    "job": "454add49",
+    "kind": "generate",
+    "status": "succeeded",
+    "base": null,
+    "version": 1,
+    "secs": null,
+    "started": "2026-10-29T02:10:45.426Z",
+    "finished": "2026-10-29T02:12:14.714Z",
+    "usage": {
+      "calls": 3,
+      "input_tokens": 94975,
+      "output_tokens": 5140,
+      "runtime_ms": 52711
+    },
+    "memory_ids": [
+      "ea63df00",
+      "0432b4b9",
+      "14d8a1be",
+      "ac94ae63",
+      "0398cbf1"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Build Reading Nook in one self-contained index.html: a reading log for children aged 7 to 10. A child can add books (tit"
+  },
+  {
+    "job": "7e4955e7",
+    "kind": "modify",
+    "status": "rejected",
+    "base": 1,
+    "version": null,
+    "secs": null,
+    "started": "2026-10-29T02:12:39.957Z",
+    "finished": "2026-10-29T02:14:36.104Z",
+    "usage": {
+      "calls": 11,
+      "input_tokens": 395247,
+      "output_tokens": 4332,
+      "runtime_ms": 84059
+    },
+    "memory_ids": [
+      "ea63df00",
+      "0432b4b9",
+      "14d8a1be",
+      "ac94ae63",
+      "0398cbf1"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Add a reading streak that counts days in a row with at least one page logged, and a 15-minute focus sprint that helps a "
+  },
+  {
+    "job": "6abd42ee",
+    "kind": "modify",
+    "status": "rejected",
+    "base": 1,
+    "version": null,
+    "secs": null,
+    "started": "2026-10-29T02:15:46.138Z",
+    "finished": "2026-10-29T02:18:58.622Z",
+    "usage": {
+      "calls": 6,
+      "input_tokens": 201612,
+      "output_tokens": 2068,
+      "runtime_ms": 19585
+    },
+    "memory_ids": [
+      "14d8a1be",
+      "dc9b6be4",
+      "0432b4b9",
+      "ac94ae63",
+      "0398cbf1"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Add a Book notes box so a child can write one sentence about each finished book on My Shelf."
+  },
+  {
+    "job": "4f1b44c8",
+    "kind": "modify",
+    "status": "succeeded",
+    "base": 1,
+    "version": 2,
+    "secs": null,
+    "started": "2026-10-29T02:16:41.622Z",
+    "finished": "2026-10-29T02:17:43.115Z",
+    "usage": {
+      "calls": 9,
+      "input_tokens": 314882,
+      "output_tokens": 3262,
+      "runtime_ms": 24589
+    },
+    "memory_ids": [
+      "0398cbf1",
+      "dc9b6be4",
+      "0432b4b9",
+      "14d8a1be",
+      "ac94ae63"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Apply the current palette decision from memory to the whole app."
+  },
+  {
+    "job": "4506a841",
+    "kind": "modify",
+    "status": "succeeded",
+    "base": 2,
+    "version": 3,
+    "secs": null,
+    "started": "2026-10-29T02:19:19.785Z",
+    "finished": "2026-10-29T02:20:16.793Z",
+    "usage": {
+      "calls": 11,
+      "input_tokens": 389417,
+      "output_tokens": 3527,
+      "runtime_ms": 33093
+    },
+    "memory_ids": [
+      "14d8a1be",
+      "dc9b6be4",
+      "0432b4b9",
+      "ac94ae63",
+      "0398cbf1"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Add a Book notes box so a child can write one sentence about each finished book on My Shelf."
+  },
+  {
+    "job": "a7e23ab8",
+    "kind": "modify",
+    "status": "succeeded",
+    "base": 3,
+    "version": 4,
+    "secs": null,
+    "started": "2026-10-29T02:20:32.714Z",
+    "finished": "2026-10-29T02:21:44.756Z",
+    "usage": {
+      "calls": 6,
+      "input_tokens": 206956,
+      "output_tokens": 2080,
+      "runtime_ms": 30360
+    },
+    "memory_ids": [
+      "0432b4b9",
+      "14d8a1be",
+      "ac94ae63",
+      "0398cbf1",
+      "266a5fbd",
+      "dc9b6be4"
+    ],
+    "guard_overall": null,
+    "guard": [],
+    "validation_ok": true,
+    "staged": "-",
+    "request": "Add Export and Import buttons so a parent can save the whole reading log to a JSON file and load it back later."
+  }
+]
