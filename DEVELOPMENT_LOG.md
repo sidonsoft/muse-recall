@@ -61,7 +61,7 @@ MML_LIVE_MUSE=1 pnpm test
 
 The live run exercises the installed Muse Code 1.4.13 binary and performs real inference.
 The Muse integration facts (models, flags, frame types, measured overhead) are recorded in
-[`docs/muse-integration.md`](../muse-integration.md) at this commit.
+[`docs/muse-integration.md`](docs/muse-integration.md) at this commit.
 
 **Historical note:** the original 72-test run happened before this checkpoint. The figures
 above are from a re-run at the exact commit, which is stronger evidence than a transcribed
@@ -118,7 +118,7 @@ instructions) is covered by tests in `tests/unit/memory-context.test.ts` at this
 | 2 | `8579c26` | 2026-10-27 08:09:38 | 2026-10-27 08:09:38 | Persistent memory engine | Re-run: 164 tests pass with live Muse; benchmark reproduced |
 
 Full metadata, refs, and the tracked file list at this checkpoint are captured in
-[`git-history.txt`](git-history.txt), which was written **before** the documentation commit
+[`git-history.txt`](docs/hackathon-evidence/git-history.txt), which was written **before** the documentation commit
 so it reflects the pre-checkpoint history.
 
 ### What the timestamps do and do not prove

@@ -1,5 +1,7 @@
 # Muse Recall — UX and product positioning report
 
+> **Historical document.** This is the UX and product positioning report from the HTML Studio repositioning. The submission now uses the 2:50 correctable-memory cut and the Phase 17 trial; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+
 **Working branch:** `agent/muse-recall-product-positioning`
 **Implementation commit:** `1413c398068e5e359f5b42733f822802a42ba8b5`
 **Report/evidence commit:** the final docs commit on this branch (see `git log -1 -- docs/UX_PRODUCT_POLISH_REPORT.md`).
@@ -383,4 +385,4 @@ The branch is not merged, not force-pushed, and the submission has not been made
 | Before/after frames, three viewports | [ux-evidence/README.md](ux-evidence/README.md) |
 | Capture script | `pnpm evidence:ux` (`scripts/ux-evidence.ts`) |
 | Audit comparison set | [assets/ux-audit/](assets/ux-audit/) |
-| Revised storyboard (not recorded) | `submission/REVISED_DEMO_STORYBOARD.md` |
+| Recorded demo cut (V21, 2:50; upload pending) | [demo/CORRECTABLE_MEMORY_DEMO.md](demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026) |
