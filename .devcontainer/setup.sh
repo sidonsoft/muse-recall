@@ -21,13 +21,8 @@ if [ ! -f .env ]; then
   # provider, which never impersonates a model.
   sed -i 's/^MODEL_PROVIDER=.*/MODEL_PROVIDER=echo/' .env
 
-  # Codespaces serves the web app from https://<name>-5173.<domain>. The API's
-  # origin guard rejects state-changing requests from origins it does not know,
-  # so trust exactly this codespace's forwarded web origin, nothing wider.
-  if [ -n "${CODESPACE_NAME:-}" ] && [ -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]; then
-    origin="https://${CODESPACE_NAME}-5173.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
-    sed -i "s#^CORS_ORIGINS=.*#&,${origin}#" .env
-  fi
+  # The forwarded web origin is trusted at server start from the codespace's
+  # own environment (apps/server/src/codespaces.ts), so nothing is written here.
 fi
 
 pnpm demo:seed

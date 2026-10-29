@@ -33,6 +33,8 @@ export const ServiceMetaSchema = z.object({
     provider: z.string(),
     configured_model: z.string().nullable(),
     observed_model: z.string().nullable(),
+    /** False when the generation CLI is not installed, so generation cannot start. */
+    cli_available: z.boolean().optional(),
   }),
   modules: z.object({
     memory_engine: ModuleStatusSchema,

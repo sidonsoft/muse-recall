@@ -23,6 +23,7 @@ import {
   redactSecrets,
 } from '@mml/shared';
 import { forgeChildEnv } from './child-env.js';
+import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
 import { ensurePrivateDirectory, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
@@ -143,6 +144,11 @@ export class ForgeJobManager {
   private readonly state = new Map<string, ExecuteState>();
   private readonly cancelled = new Set<string>();
   private readonly locks = new Map<string, Promise<unknown>>();
+
+  /** True when the generation CLI can be found; see `isCliAvailable`. */
+  cliAvailable(): boolean {
+    return isCliAvailable(this.museBin);
+  }
 
   constructor(options: ForgeManagerOptions) {
     this.workspace = options.workspace;

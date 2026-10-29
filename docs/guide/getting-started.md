@@ -23,12 +23,16 @@ login. `MODEL_PROVIDER=echo` removes even that dependency for browsing and chat;
 ## Run in GitHub Codespaces
 
 To try the app without installing anything, open
-[a new codespace](https://codespaces.new/sidonsoft/muse-recall?quickstart=1). Setup installs
+[a new codespace](https://codespaces.new/sidonsoft/muse-recall?quickstart=1). You need a GitHub
+account; the first start takes about three minutes, and VS Code asks you to trust the workspace
+(accept it so setup can continue). Setup installs
 dependencies, writes `.env` with `MODEL_PROVIDER=echo`, seeds the `forge-demo` project and starts
 `pnpm dev`; the web app opens on the forwarded port 5173. Browsing the project, its memory,
 corrections, retrieval explanation, Decision Guard and version history all work there.
-Generating or changing an app needs the Muse Code CLI, which the codespace does not include. See
-[`.devcontainer/README.md`](../../.devcontainer/README.md) for details.
+Generating or changing an app needs the Muse Code CLI, which the codespace does not include, so
+the generate buttons are disabled there with a note explaining why. Follow the
+[five-minute offline walkthrough](../../.devcontainer/README.md#a-five-minute-walkthrough-offline)
+for what to look at and what each screen should show.
 
 ## Install and run
 

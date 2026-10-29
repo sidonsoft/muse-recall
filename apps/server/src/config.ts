@@ -16,6 +16,7 @@ import {
 } from '@mml/muse-provider';
 import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
 import { z } from 'zod';
+import { codespacesWebOrigins } from './codespaces.js';
 import { isLoopbackBindHost } from './host-guard.js';
 
 export const SERVICE_NAME = 'muse-memory-lab' as const;
@@ -183,14 +184,19 @@ export function loadConfig(
   // relative paths there so the seed, the migrator and the server agree.
   const projectRoot = resolveProjectRoot(cwd, env);
 
+  const configuredOrigins = value.CORS_ORIGINS.split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+  // Inside a GitHub codespace, also trust the forwarded form of the local web
+  // origins (see codespaces.ts); a no-op everywhere else.
+  const corsOrigins = [...configuredOrigins, ...codespacesWebOrigins(configuredOrigins, env)];
+
   return {
     environment: value.NODE_ENV,
     host: value.HOST,
     port: value.PORT,
     logLevel: value.LOG_LEVEL,
-    corsOrigins: value.CORS_ORIGINS.split(',')
-      .map((origin) => origin.trim())
-      .filter((origin) => origin.length > 0),
+    corsOrigins,
     databasePath: resolve(projectRoot, value.DATABASE_PATH),
     wal: value.SQLITE_WAL,
     workspaceRoot: resolve(projectRoot, value.WORKSPACE_ROOT),

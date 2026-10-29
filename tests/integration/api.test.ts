@@ -239,6 +239,8 @@ describe('GET /api/meta', () => {
       provider: 'muse-cli',
       configured_model: null,
       observed_model: null,
+      // Depends on whether `muse` is on this machine's PATH.
+      cli_available: expect.any(Boolean),
     });
     expect(data.modules.memory_engine).toBe('complete');
     expect(data.modules.ui_protocol).toBe('complete');
