@@ -5,6 +5,8 @@ import Lightbox from './Lightbox.jsx';
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
 const DOCS16 = `${REPO}/blob/main/docs/hackathon-evidence/phase16/EVIDENCE_CARD.md`;
+const GUIDE = `${REPO}/blob/main/docs/guide/README.md`;
+const CODESPACES = 'https://codespaces.new/sidonsoft/muse-recall?quickstart=1';
 
 export function Problem() {
   const pains = [
@@ -412,6 +414,17 @@ export function Quickstart() {
             The seeded demo project carries three decisions — one already superseded — with v1
             approved. The offline <code>echo</code> provider means you can inspect the whole
             workflow, memory and provenance, without any inference.
+          </p>
+          <p>
+            Or skip the install:{' '}
+            <a href={CODESPACES} target="_blank" rel="noreferrer">
+              open it in GitHub Codespaces
+            </a>
+            , which sets up the same seeded project in your browser. The{' '}
+            <a href={GUIDE} target="_blank" rel="noreferrer">
+              user guide
+            </a>{' '}
+            walks through setup, project memory and HTML Studio.
           </p>
         </div>
         <div className="code-shell reveal">
