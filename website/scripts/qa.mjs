@@ -229,8 +229,15 @@ try {
     ['evidence table', 'Phase 17'],
     ['timeline records', 'Sunset → ocean'],
     ['JSON-LD', 'SoftwareSourceCode'],
+    ['manifest link', 'rel="manifest"'],
+    ['apple-touch-icon', 'apple-touch-icon'],
   ].filter(([, probe]) => !html.includes(probe));
   check('static HTML pre-rendered (works without JS)', missing.length === 0, missing.map(([n]) => n + ' missing').join(', ') || `len=${html.length}`);
+  const manifest = await (await fetch(URL_ + 'site.webmanifest')).json();
+  const iconOk = await Promise.all(
+    manifest.icons.map(async (i) => (await fetch(new URL(i.src, URL_))).ok)
+  );
+  check('PWA manifest valid, icons reachable', manifest.name.includes('Muse Recall') && iconOk.every(Boolean), JSON.stringify({ name: manifest.name, icons: iconOk }));
 
   // 6. WebP sources serve every image
   await send('Page.navigate', { url: `${URL_}?imgs=${Date.now()}` });
