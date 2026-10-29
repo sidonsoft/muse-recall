@@ -251,7 +251,7 @@ export function Gallery() {
         <div className="gallery">
           {shots.map((s) => (
             <figure className="reveal" key={s.src}>
-              <img src={s.src} alt={s.c} loading="lazy" />
+              <img src={s.src} alt={s.c} loading="lazy" decoding="async" width="1440" height="960" />
               <figcaption>
                 <b>{s.t}</b>
                 {s.c}
