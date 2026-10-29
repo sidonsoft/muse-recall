@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import {
   buildChildEnv,
+  type ModelCallOptions,
   type ModelCapabilities,
   type ModelEvent,
   type ModelMessage,
@@ -24,6 +25,9 @@ import { ProviderError } from './errors.js';
 export const MUSE_MODELS = ['muse-wonder-1.0', 'muse-spark-1.3', 'muse-spark-1.2'] as const;
 export const MUSE_DEFAULT_MODEL = 'muse-wonder-1.0';
 export const MUSE_DEFAULT_REASONING_EFFORT = 'medium';
+
+/** The Muse CLI exposes no output-token flag; bound its stream by characters. */
+const OUTPUT_CHARS_PER_TOKEN = 4;
 
 export const MUSE_REASONING_EFFORTS = [
   'none',
@@ -126,12 +130,13 @@ export class MuseCliProvider implements ModelProvider {
         'Temperature is not settable through the CLI and is ignored.',
         'Unknown model ids are accepted by the CLI and fall back to its default model.',
         'Usage is reported per run, but may be empty when allowance refresh fails.',
+        'max_output_tokens is enforced by this adapter as a character budget (~4 chars/token); the CLI has no output-token flag.',
       ],
     };
   }
 
   /** Convenience wrapper used by the health check to prove a live round-trip. */
-  async generate(request: ModelRequest): Promise<ModelResponse> {
+  async generate(request: ModelRequest, options: ModelCallOptions = {}): Promise<ModelResponse> {
     let text = '';
     let model = this.model;
     let stopReason: StopReason = 'completed';
@@ -144,7 +149,7 @@ export class MuseCliProvider implements ModelProvider {
     let latencyMs = 0;
     let completed = false;
 
-    for await (const event of this.stream(request)) {
+    for await (const event of this.stream(request, options)) {
       switch (event.type) {
         case 'text_delta':
           text += event.text;
@@ -184,12 +189,12 @@ export class MuseCliProvider implements ModelProvider {
     });
   }
 
-  async *stream(request: ModelRequest): AsyncIterable<ModelEvent> {
+  async *stream(request: ModelRequest, options: ModelCallOptions = {}): AsyncIterable<ModelEvent> {
     // Quota failover: stream the primary attempt; if it fails before producing
     // any text because the subscription window is exhausted, retry once with
     // the API key. Events are not buffered, so streaming is unchanged.
     let emittedText = false;
-    for await (const event of this.streamAttempt(request, false)) {
+    for await (const event of this.streamAttempt(request, false, options)) {
       if (event.type === 'text_delta' && event.text.trim().length > 0) emittedText = true;
       if (
         event.type === 'error' &&
@@ -197,7 +202,7 @@ export class MuseCliProvider implements ModelProvider {
         this.fallbackApiKey &&
         /quota|429|rate.?limit|usage window/i.test(`${event.code} ${event.message}`)
       ) {
-        yield* this.streamAttempt(request, true);
+        yield* this.streamAttempt(request, true, options);
         return;
       }
       yield event;
@@ -207,6 +212,7 @@ export class MuseCliProvider implements ModelProvider {
   private async *streamAttempt(
     request: ModelRequest,
     fallback: boolean,
+    options: ModelCallOptions,
   ): AsyncIterable<ModelEvent> {
     const parsed = ModelRequestSchema.safeParse(request);
     if (!parsed.success) {
@@ -218,11 +224,26 @@ export class MuseCliProvider implements ModelProvider {
       return;
     }
 
+    if (options.signal?.aborted) {
+      yield {
+        type: 'error',
+        code: 'provider_cancelled',
+        message: 'The Muse run was cancelled.',
+      };
+      return;
+    }
+
     const startedAt = performance.now();
+    const charBudget = parsed.data.max_output_tokens
+      ? parsed.data.max_output_tokens * OUTPUT_CHARS_PER_TOKEN
+      : undefined;
     let child: ChildProcess | undefined;
     let timedOut = false;
+    let aborted = false;
+    let truncated = false;
     let timer: NodeJS.Timeout | undefined;
     let tmpDir: string | undefined;
+    let removeAbortListener: (() => void) | undefined;
 
     try {
       tmpDir = await mkdtemp(join(tmpdir(), 'mml-muse-'));
@@ -264,16 +285,29 @@ export class MuseCliProvider implements ModelProvider {
         env: buildChildEnv({ overrides: this.env }),
         stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       });
-      if (apiKey && child.stdin) {
-        child.stdin.write(apiKey);
-        child.stdin.end();
-      }
 
       const proc = child;
       let spawnError: Error | null = null;
       proc.on('error', (error) => {
         spawnError = error;
       });
+
+      // Abort is a hard stop: the caller is waiting for cancellation, so do not
+      // let a wedged child keep the request (and its quota) alive.
+      const onAbort = () => {
+        aborted = true;
+        proc.kill('SIGKILL');
+      };
+      if (options.signal) {
+        options.signal.addEventListener('abort', onAbort, { once: true });
+        removeAbortListener = () => options.signal?.removeEventListener('abort', onAbort);
+        if (options.signal.aborted) onAbort();
+      }
+
+      if (apiKey && proc.stdin && !aborted) {
+        proc.stdin.write(apiKey);
+        proc.stdin.end();
+      }
 
       let stderrTail = '';
       proc.stderr?.on('data', (chunk: Buffer) => {
@@ -315,8 +349,27 @@ export class MuseCliProvider implements ModelProvider {
           case 'run.output.delta': {
             const delta = RunOutputDelta.safeParse(frame.payload);
             if (!delta.success) break;
-            assembled += delta.data.text;
-            yield { type: 'text_delta', text: delta.data.text };
+
+            const remaining =
+              charBudget === undefined ? delta.data.text.length : charBudget - assembled.length;
+            const accepted =
+              remaining >= delta.data.text.length
+                ? delta.data.text
+                : delta.data.text.slice(0, Math.max(0, remaining));
+
+            if (accepted.length > 0) {
+              assembled += accepted;
+              yield { type: 'text_delta', text: accepted };
+            }
+
+            if (accepted.length < delta.data.text.length) {
+              // The CLI cannot be asked to stop at a token count, so enforce
+              // the budget on the byte stream: stop reading and kill the child.
+              truncated = true;
+              proc.kill('SIGKILL');
+              lines.close();
+              break;
+            }
             break;
           }
           case 'run.model.configured': {
@@ -347,10 +400,21 @@ export class MuseCliProvider implements ModelProvider {
           default:
             break;
         }
+
+        if (truncated) break;
       }
 
       const exit = await exited;
       const latencyMs = Math.round(performance.now() - startedAt);
+
+      if (aborted) {
+        yield {
+          type: 'error',
+          code: 'provider_cancelled',
+          message: 'The Muse run was cancelled.',
+        };
+        return;
+      }
 
       if (timedOut) {
         yield {
@@ -365,7 +429,20 @@ export class MuseCliProvider implements ModelProvider {
         yield {
           type: 'error',
           code: 'provider_unavailable',
-          message: `Could not start the Muse CLI ("${this.bin}"): ${(spawnError as Error).message}`,
+          message: this.redact(
+            `Could not start the Muse CLI ("${this.bin}"): ${(spawnError as Error).message}`,
+          ),
+        };
+        return;
+      }
+
+      if (truncated) {
+        yield {
+          type: 'completed',
+          text: assembled,
+          model: observedModel,
+          stop_reason: 'max_tokens',
+          latency_ms: latencyMs,
         };
         return;
       }
@@ -374,11 +451,10 @@ export class MuseCliProvider implements ModelProvider {
         yield {
           type: 'error',
           code: 'provider_crashed',
-          message: redactSecrets(
+          message: this.redact(
             `Muse exited (code ${exit.code ?? 'null'}, signal ${
               exit.signal ?? 'none'
             }) without a terminal event. Stderr: ${stderrTail.trim().slice(-800)}`,
-            { secrets: [this.fallbackApiKey] },
           ),
         };
         return;
@@ -389,39 +465,45 @@ export class MuseCliProvider implements ModelProvider {
         yield {
           type: 'error',
           code: authHint ? 'provider_auth_failed' : 'provider_crashed',
-          message: redactSecrets(
+          message: this.redact(
             `Muse run ended as "${terminal.terminal}"${
               terminal.reason ? `: ${terminal.reason}` : ''
             }.${stderrTail.trim() ? ` Stderr: ${stderrTail.trim().slice(-800)}` : ''}`,
-            { secrets: [this.fallbackApiKey] },
           ),
         };
         return;
       }
 
       // Prefer the terminal text (authoritative) but fall back to deltas.
-      const text = terminal.text.length > 0 ? terminal.text : assembled;
+      const rawText = terminal.text.length > 0 ? terminal.text : assembled;
+      const text =
+        charBudget !== undefined && rawText.length > charBudget
+          ? rawText.slice(0, charBudget)
+          : rawText;
 
       yield {
         type: 'completed',
         text,
         model: observedModel,
-        stop_reason: 'completed',
+        stop_reason: text.length < rawText.length ? 'max_tokens' : 'completed',
         latency_ms: latencyMs,
       };
     } catch (error) {
       if (ProviderError.isProviderError(error)) {
-        yield { type: 'error', code: error.code, message: error.message };
+        yield { type: 'error', code: error.code, message: this.redact(error.message) };
         return;
       }
       yield {
         type: 'error',
         code: 'provider_crashed',
-        message: `Unexpected Muse adapter failure: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        message: this.redact(
+          `Unexpected Muse adapter failure: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        ),
       };
     } finally {
+      removeAbortListener?.();
       if (timer) clearTimeout(timer);
       if (child && child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
@@ -430,6 +512,11 @@ export class MuseCliProvider implements ModelProvider {
         await rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
       }
     }
+  }
+
+  /** Redact both credentials from every diagnostic this adapter emits. */
+  private redact(text: string): string {
+    return redactSecrets(text, { secrets: [this.apiKey, this.fallbackApiKey] });
   }
 }
 

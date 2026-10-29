@@ -113,8 +113,13 @@ scope for the single-user local beta.
 
 **Input validation.** Every route validates its body/query with a Zod schema from
 `@mml/shared` (shared with the client). Oversized input is rejected before it can cost
-tokens: prompts ≤ 4,000 chars, output ≤ 1,024 tokens, screenshot data URLs size-checked
-and PNG-validated, page sizes bounded.
+tokens: test-bench prompts ≤ 4,000 chars, screenshot data URLs size-checked and
+PNG-validated, page sizes bounded. The test bench accepts at most 1,024 requested output
+tokens (384 by default) and chat uses `AGENT_MAX_OUTPUT_TOKENS` (default 1,200). The Muse
+CLI exposes no output-token flag, so `MuseCliProvider` enforces the requested budget on
+the stream at ~4 chars/token: it stops reading and terminates the child when the budget
+is exceeded, then reports `stop_reason: "max_tokens"` with text cut at the budget.
+Truncation is explicit rather than silently delivered.
 
 **Secrets never reach the browser.** The API key lives in the server environment or the
 Muse CLI's credential store. The client has no code path to a provider endpoint;

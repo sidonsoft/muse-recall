@@ -1,6 +1,13 @@
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
-import type { ModelCapabilities, ModelEvent, ModelProvider, ModelResponse } from '@mml/shared';
+import type {
+  ModelCallOptions,
+  ModelCapabilities,
+  ModelEvent,
+  ModelProvider,
+  ModelRequest,
+  ModelResponse,
+} from '@mml/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentError,
@@ -741,6 +748,32 @@ describe('streaming failures and cancellation', () => {
     }
   }
 
+  class SignalAwareProvider implements ModelProvider {
+    readonly id = 'signal-aware';
+    readonly name = 'Signal-aware test provider';
+    signalWasAborted = false;
+    capabilities(): ModelCapabilities {
+      return {
+        streaming: true,
+        tool_calling: false,
+        structured_output: false,
+        provider_sessions: false,
+        max_context_tokens: 1_000,
+        models: ['signal-1'],
+        notes: [],
+      };
+    }
+    async generate(): Promise<ModelResponse> {
+      throw new Error('not used');
+    }
+    async *stream(_request: ModelRequest, options?: ModelCallOptions): AsyncIterable<ModelEvent> {
+      yield { type: 'text_delta', text: 'partial answer ' };
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      this.signalWasAborted = options?.signal?.aborted ?? false;
+      yield { type: 'error', code: 'provider_cancelled', message: 'cancelled' };
+    }
+  }
+
   class FailingProvider implements ModelProvider {
     readonly id = 'failing';
     readonly name = 'Failing test provider';
@@ -792,6 +825,34 @@ describe('streaming failures and cancellation', () => {
     const assistant = detail.messages.find((message) => message.role === 'assistant');
     expect(assistant?.status).toBe('interrupted');
     expect(assistant?.content.length).toBeGreaterThan(0);
+  });
+
+  it('forwards the turn abort signal to the provider call', async () => {
+    const provider = new SignalAwareProvider();
+    const { runtime } = createRuntime({ provider });
+    const session = runtime.createSession({ project_id: null });
+    const controller = new AbortController();
+
+    const handler: Parameters<typeof runtime.runTurn>[2] = {
+      retrieval() {},
+      memoryCaptured() {},
+      delta() {
+        controller.abort();
+      },
+      usage() {},
+      completed() {
+        throw new Error('a cancelled turn must not emit completed');
+      },
+      error() {},
+    };
+
+    await expect(
+      runtime.runTurn(session.id, { content: 'Tell me a long story' }, handler, {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ code: 'turn_cancelled' });
+
+    expect(provider.signalWasAborted).toBe(true);
   });
 
   it('persists a provider failure as failed, not complete', async () => {

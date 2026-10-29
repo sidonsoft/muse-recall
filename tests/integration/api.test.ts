@@ -207,10 +207,10 @@ describe('POST /api/health/muse', () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it('reports a provider failure instead of crashing', async () => {
+  it('reports a provider failure without leaking its detail', async () => {
     const failing = new EchoProvider({
       respond: () => {
-        throw new Error('upstream exploded');
+        throw new Error('upstream exploded primary-secret-value-123 fallback-secret-value-456');
       },
     });
     const app = await createTestApp({ provider: failing });
@@ -218,7 +218,10 @@ describe('POST /api/health/muse', () => {
     expect(response.statusCode).toBe(200);
     const { data } = response.json();
     expect(data.ok).toBe(false);
-    expect(data.message).toMatch(/upstream exploded/);
+    expect(data.message).toBe('The provider is currently unavailable.');
+    expect(response.body).not.toContain('upstream exploded');
+    expect(response.body).not.toContain('primary-secret-value-123');
+    expect(response.body).not.toContain('fallback-secret-value-456');
   });
 });
 
@@ -287,10 +290,10 @@ describe('POST /api/provider/generate', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('maps a provider failure to 503 with a stable code', async () => {
+  it('maps a provider failure to a generic 503 and never returns credentials', async () => {
     const failing = new EchoProvider({
       respond: () => {
-        throw new Error('no capacity');
+        throw new Error('no capacity primary-secret-value-123 fallback-secret-value-456');
       },
     });
     const app = await createTestApp({ provider: failing });
@@ -301,6 +304,10 @@ describe('POST /api/provider/generate', () => {
     });
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe('provider_unavailable');
+    expect(response.json().error.message).toBe('The provider is currently unavailable.');
+    expect(response.body).not.toContain('no capacity');
+    expect(response.body).not.toContain('primary-secret-value-123');
+    expect(response.body).not.toContain('fallback-secret-value-456');
   });
 });
 

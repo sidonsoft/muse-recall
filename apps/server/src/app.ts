@@ -10,6 +10,7 @@ import {
   HealthResponseSchema,
   LivenessResponseSchema,
   type ModelProvider,
+  redactSecrets,
   ServiceMetaSchema,
   type ServiceStatus,
 } from '@mml/shared';
@@ -122,7 +123,6 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           }
         : {}),
     });
-  const providerHealth = dependencies.providerHealth ?? new ProviderHealthTracker(provider, 60_000);
   const startedAt = dependencies.startedAt ?? Date.now();
 
   const app = Fastify({
@@ -135,6 +135,11 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     trustProxy: false,
     bodyLimit: 1_048_576,
   });
+
+  // Constructed after Fastify so a failed probe can log its detail server-side
+  // while the API returns generic text.
+  const providerHealth =
+    dependencies.providerHealth ?? new ProviderHealthTracker(provider, 60_000, app.log);
 
   // Stop Forge before the rest of the app closes: reject new jobs, terminate
   // owned children with bounded escalation, await terminal persistence, then
@@ -396,14 +401,15 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     } catch (error) {
       // Any failure while producing a completion is a provider-side problem:
       // surface it as 503 so the client can distinguish "the model is
-      // unavailable" from "this server is broken".
+      // unavailable" from "this server is broken". The detail is logged (and
+      // redacted) server-side; the response carries only generic text so a
+      // credential embedded in an upstream error can never reach the browser.
       const code = ProviderError.isProviderError(error)
         ? error.code
         : API_ERROR_CODES.providerUnavailable;
-      request.log.warn({ code, err: error }, 'provider bench call failed');
-      return reply
-        .status(503)
-        .send(apiFailure(code, error instanceof Error ? error.message : String(error)));
+      const detail = error instanceof Error ? error.message : String(error);
+      request.log.warn({ code, detail: redactSecrets(detail) }, 'provider bench call failed');
+      return reply.status(503).send(apiFailure(code, 'The provider is currently unavailable.'));
     }
   });
 

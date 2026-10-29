@@ -64,10 +64,13 @@ model call returns in this process.
 
 ### `POST /api/provider/generate`
 
-A bounded test bench, not a chat: prompt ≤ 4,000 chars, output ≤ 1,024 tokens, no
-memory, no tools. It proves browser → API → Muse in one request. Any failure maps to
-`503` with a stable error code so "model unavailable" is distinguishable from "server
-bug".
+A bounded test bench, not a chat: prompt ≤ 4,000 chars, requested output ≤ 1,024 tokens,
+no memory, no tools. Because the Muse CLI has no output-token flag, the adapter enforces
+the requested budget on the stream (~4 chars/token), terminates the child when the budget
+is exceeded, and returns truncated text with `stop_reason: "max_tokens"`. It proves
+browser → API → Muse in one request. Any failure maps to `503` with a stable error code
+and generic text so "model unavailable" is distinguishable from "server bug" without
+echoing provider internals or credentials.
 
 ### Errors
 
