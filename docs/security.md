@@ -78,9 +78,9 @@ scope for the single-user local beta.
   `interrupted` with an explicit error; they are never resumed automatically.
 - A malformed job record produces a recovery issue and is left in place. Other jobs in
   the project still load. A malformed `state.json` raises `state_corrupt`; it is not
-  replaced with an empty project. A missing `state.json` is only initialised for an empty
-  project: existing `versions/` or `jobs/` records raise an explicit error instead of
-  being orphaned by empty state.
+  replaced with an empty project. A missing `state.json` is only initialised when no
+  numeric version directory exists: approved version data blocks initialisation, while
+  job records alone stay on disk and are recovered normally after state is initialised.
 - Project reads are side-effect free. `GET` never creates directories or initialises
   `state.json`; only project creation and generation paths do.
 - The approved file is verified against its recorded SHA-256 whenever it is read for

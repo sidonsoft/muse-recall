@@ -154,33 +154,29 @@ export class ForgeWorkspace {
   }
 
   /**
-   * A missing state file is only a new project when no earlier workspace
-   * content survives. Existing version or job records are explicit evidence
-   * that empty state would overwrite history, so report them instead.
+   * A missing state file is only a new project when no approved version data
+   * survives. Version directories are the only data empty state would orphan;
+   * job records stay on disk and are recovered normally after initialisation.
    */
   private async assertNoOrphanedContent(projectId: string): Promise<void> {
-    const dir = this.projectDir(projectId);
-    const found: string[] = [];
-    for (const name of ['versions', 'jobs']) {
-      let entries: string[];
-      try {
-        entries = await readdir(join(dir, name));
-      } catch (error) {
-        if (isMissingFile(error)) continue;
-        throw new ForgeError(
-          'state_corrupt',
-          `The Forge ${name} directory could not be read. Restore it before continuing.`,
-        );
-      }
-      // Temporary promotion copies and moved-aside interrupted promotions are
-      // non-numeric, dot-prefixed entries; they are not approved version data.
-      if (entries.some((entry) => !entry.startsWith('.'))) found.push(`${name}/`);
+    let entries: string[];
+    try {
+      entries = await readdir(join(this.projectDir(projectId), 'versions'));
+    } catch (error) {
+      if (isMissingFile(error)) return;
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge versions directory could not be read. Restore it before continuing.',
+      );
     }
-    if (found.length === 0) return;
+    // Temporary promotion copies and moved-aside interrupted promotions are
+    // non-numeric, dot-prefixed entries; they are not approved version data.
+    const versions = entries.filter((entry) => /^\d+$/.test(entry));
+    if (versions.length === 0) return;
     throw new ForgeError(
       'state_corrupt',
-      'The Forge state file is missing while existing project data remains. Restore or repair state.json before continuing.',
-      [`Found ${found.join(' and ')} without state.json.`],
+      'The Forge state file is missing while approved version data remains. Restore or repair state.json before continuing.',
+      [`Found versions/${versions.sort().join(', versions/')} without state.json.`],
     );
   }
 

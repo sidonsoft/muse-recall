@@ -81,9 +81,15 @@ async function harness(
     errors: [],
   }),
   fallback = false,
-  extra: { env?: Record<string, string>; fallbackKey?: string; apiKey?: string } = {},
+  extra: {
+    env?: Record<string, string>;
+    fallbackKey?: string;
+    apiKey?: string;
+    seed?: (root: string) => Promise<void>;
+  } = {},
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-api-'));
+  if (extra.seed) await extra.seed(root);
   const database = openDatabase({ path: ':memory:', wal: false });
   const engine = new MemoryEngine(database.db);
   const workspace = new ForgeWorkspace(root);
@@ -1234,7 +1240,7 @@ describe('forge workflow', () => {
     expect(await readdir(join(h.root, 'forge'))).toContain('never-created');
   });
 
-  it('refuses to initialise state over existing version or job data', async () => {
+  it('refuses to initialise state over existing approved version data', async () => {
     const h = await harness();
     await createProject(h.app);
     const projectDir = join(h.root, 'forge', 'demo-game');
@@ -1260,18 +1266,63 @@ describe('forge workflow', () => {
     expect(h.manager.list('demo-game')).toEqual([]);
     await expect(readFile(statePath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
     expect(await readFile(versionFile, 'utf8')).toBe('orphaned version bytes');
+  });
 
-    await rm(join(projectDir, 'versions'), { recursive: true, force: true });
-    await writeFile(join(projectDir, 'jobs', '11111111-1111-4111-8111-111111111111.json'), '{}');
+  it('initialises state for a project that only has job records', async () => {
+    const interruptedJobId = '11111111-1111-4111-8111-111111111111';
+    const h = await harness('auto', {}, undefined, false, {
+      seed: async (root) => {
+        const jobsDir = join(root, 'forge', 'demo-game', 'jobs');
+        await mkdir(jobsDir, { recursive: true });
+        await writeFile(
+          join(jobsDir, `${interruptedJobId}.json`),
+          `${JSON.stringify(
+            {
+              id: interruptedJobId,
+              project_id: 'demo-game',
+              kind: 'generate',
+              status: 'running',
+              prompt: 'A recovered interrupted job used for the jobs-only state test.',
+              request: null,
+              summary: null,
+              error: null,
+              created_at: '2026-10-01T00:00:00.000Z',
+              started_at: '2026-10-01T00:00:00.000Z',
+              finished_at: null,
+              logs: ['interrupted regression fixture'],
+              usage: null,
+              memory_ids: [],
+              base_version: null,
+              validation: null,
+              decision_guard: null,
+              version: null,
+            },
+            null,
+            2,
+          )}\n`,
+          'utf8',
+        );
+      },
+    });
+
     const created = await h.app.inject({
       method: 'POST',
       url: '/api/forge/projects',
       payload: { project_id: 'demo-game', name: 'Demo Game' },
     });
-    expect(created.statusCode).toBe(500);
-    expect(created.json().error.code).toBe('state_corrupt');
-    expect(created.json().error.issues.join(' ')).toMatch(/jobs\//);
-    await expect(readFile(statePath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(created.statusCode).toBe(200);
+    expect(created.json().data.state).toMatchObject({
+      current_version: null,
+      versions: [],
+    });
+    const jobs = created.json().data.jobs as Array<{ id: string; status: string }>;
+    expect(jobs.find((entry) => entry.id === interruptedJobId)?.status).toBe('interrupted');
+    expect(
+      JSON.parse(await readFile(join(h.root, 'forge', 'demo-game', 'state.json'), 'utf8')) as {
+        current_version: number | null;
+        versions: unknown[];
+      },
+    ).toMatchObject({ current_version: null, versions: [] });
   });
 
   it('refuses to serve or build on an approved version whose hash no longer matches', async () => {
