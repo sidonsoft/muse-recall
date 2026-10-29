@@ -55,12 +55,32 @@ const preview = spawn('npx', ['vite', 'preview', '--port', String(PREVIEW_PORT),
 children.push(preview);
 const browser = spawn(
   chrome,
-  ['--headless=new', '--disable-gpu', '--no-sandbox', `--remote-debugging-port=${CDP_PORT}`, 'about:blank'],
+  [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    `--remote-debugging-port=${CDP_PORT}`,
+    'about:blank',
+  ],
   { stdio: 'ignore' }
 );
 children.push(browser);
 
-await sleep(2500);
+// Wait for the CDP endpoint to come up (CI runners can be slow), then open a target.
+let target = null;
+for (let i = 0; i < 30 && !target; i++) {
+  await sleep(500);
+  try {
+    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: 'PUT' });
+    if (res.ok) target = await res.json();
+  } catch {}
+}
+if (!target) {
+  console.error('qa: Chrome DevTools endpoint never came up on port ' + CDP_PORT);
+  cleanup();
+  process.exit(1);
+}
 
 let ws;
 let id = 0;
@@ -80,9 +100,6 @@ const send = (method, params = {}) =>
 const evalJS = async (expression, awaitPromise = false) =>
   (await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise })).result?.value;
 
-const target = await (
-  await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: 'PUT' })
-).json();
 ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener('open', r));
 
