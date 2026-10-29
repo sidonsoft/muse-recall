@@ -72,8 +72,9 @@ is reachable. It does mean the seeded game needs internet access to render.
 3. **Seeded game depends on a public CDN** for Phaser. Low on any normal network.
 4. **Running `verify:browser` against the demo DB adds test memories to the demo project.**
    Re-seed on a fresh `data/` before recording.
-5. **Website moving into this repo** (separate thread). Its Pages URL must keep working or the
-   README link must change with it.
+5. **Website moved into `website/`** (PR #19, merged). The README now points at
+   `sidonsoft.github.io/muse-recall/`; Pages must be enabled on this repo (Source: GitHub Actions)
+   and the new URL confirmed before the old site switches to a redirect.
 6. **Official Rules** not yet confirmed against visibility, video length and disclosures (owner).
 
 ## Comparison with the approved release candidate

@@ -55,7 +55,7 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] User guide published under [`docs/guide/`](guide/README.md) and linked from the README
 - [x] One-click Codespaces environment for judges (offline provider, seeded demo) under
       [`.devcontainer/`](../.devcontainer/README.md), with a README badge
-- [x] Project website published at [sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/): a
+- [x] Project website published at [sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/): a
       static landing page with the 2:50 video, not a hosted copy of the app
 - [ ] Submission form completed on the platform **(owner)**
 - [ ] Official Rules accepted if required **(owner)**
@@ -70,7 +70,7 @@ Because the Official Rules were unavailable, this checklist marks visibility and
    `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`, 36-cue SRT sidecar) is
    committed under `docs/demo/video/` and linked from the README's opening section. If the form
    needs a video URL, use its GitHub link (the repository is public), the
-   [project website](https://sidonsoft.github.io/muse-recall-website/) (which plays the same cut and is reachable now), or upload it to a
+   [project website](https://sidonsoft.github.io/muse-recall/) (which plays the same cut and is reachable now), or upload it to a
    video host. If that cut is not approved, upload
    the 2:46 video instead and keep the README's fallback wording. Describe whichever cut is
    uploaded accurately: the 2:50 cut includes the correction and its failure beat; the 2:46 cut

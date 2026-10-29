@@ -2,7 +2,7 @@
 
 ### Correctable project memory for AI-built software.
 
-_Interactive landing page: **[sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/)** ([source](https://github.com/sidonsoft/muse-recall-website))._
+_Interactive landing page: **[sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/)** (source in [`website/`](website/))._
 
 AI app builders forget. A new session starts from zero, a change quietly drops an earlier
 decision, and an old preference keeps coming back after you change your mind.
@@ -20,7 +20,7 @@ project's decisions, lets you correct them, and makes every change wait for your
 [transcript](docs/demo/video/Muse_Recall_Demo_V21_Transcript.txt) ·
 [what the cut shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026)
 
-**Project website:** [sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/), a one-page
+**Project website:** [sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/), a one-page
 overview with the video, the loop and the evidence. It is a static landing page, not a hosted copy
 of the app.
 
@@ -297,7 +297,7 @@ default.
 > refreshed README, screenshots and user guide (PRs #11, #12 and #14), the committed 2:50 demo
 > video (PR #15) and a one-click Codespaces environment (PR #17). The tags `submission-v14`,
 > `submission-v15` and `phase17-preregistration` remain frozen. The application is local-only
-> and not deployed; the [project website](https://sidonsoft.github.io/muse-recall-website/) is a static landing page. The repository
+> and not deployed; the [project website](https://sidonsoft.github.io/muse-recall/) is a static landing page. The repository
 > is public (29 October 2026). The hackathon submission has not been sent: completing the form is
 > the remaining owner action. See the [submission checklist](docs/SUBMISSION_CHECKLIST.md) and the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
@@ -346,7 +346,7 @@ default.
 | Submission demo cut (correctable memory, 2:50, 1080p) | demo | **Recorded and QA'd** 2026-10-29; committed under `docs/demo/video/` |
 | User guide (`docs/guide/`) and refreshed README captures | docs | **Merged to `main`** via PRs #11, #12 and #14 |
 | One-click Codespaces environment for judges (offline provider) | docs | **Merged to `main` via PR #17**; generation still needs the Muse CLI |
-| Project website (static landing page with the 2:50 video) | website | **Published** at [sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/) |
+| Project website (static landing page with the 2:50 video) | website | **Published** at [sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/) |
 | Make the repository public | — | **Done** 29 October 2026 |
 | Submit the hackathon form | — | **Owner action pending**; not performed |
 | Post-hackathon local-beta hardening | hardening | **Merged to `main` via PR #1** (branch tip `5bd287a`; merge `12918fd`) |
@@ -718,7 +718,7 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 ## Submission materials
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
-- [Project website](https://sidonsoft.github.io/muse-recall-website/) — the one-page overview with the 2:50 video
+- [Project website](https://sidonsoft.github.io/muse-recall/) — the one-page overview with the 2:50 video
 - [User guide](docs/guide/README.md) and [Codespaces notes](.devcontainer/README.md)
 - [Submission copy](docs/submission/SUBMISSION_COPY.md) — current short and long descriptions
 - [Submission demo cut](docs/demo/CORRECTABLE_MEMORY_DEMO.md) — the 2:50 recorded correction sequence, its beats, narration and honest failure note ([watch](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true))
@@ -842,7 +842,7 @@ fresh superseded records. Corrections still require an explicit application-chan
 
 1. **Hackathon submission.** The focused correction cut (2:50) is recorded, QA'd, committed
    under `docs/demo/video/`, linked from the opening section and shown on the
-   [project website](https://sidonsoft.github.io/muse-recall-website/). Making the repository public and completing the submission form
+   [project website](https://sidonsoft.github.io/muse-recall/). Making the repository public and completing the submission form
    are owner actions; nothing is submitted automatically.
 2. **Local beta hardening (merged).** Durable Forge jobs and restart recovery, bounded
    memory rendering, a scrubbed child environment, and managed browser coverage are on

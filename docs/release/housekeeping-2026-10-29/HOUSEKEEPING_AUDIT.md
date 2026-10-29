@@ -50,7 +50,7 @@ None open. (H-1 below was High at audit time and is fixed.)
 | L-7 | Bundle | Web app ships one 495 KB (141 KB gzip) JS chunk with a 2.1 MB source map. Fine for a local app. | **Deferred** |
 | L-8 | Code | `knip` lists 17 unused exports (constants exported for tests/diagnostics) and 7 scripts not wired to `package.json` (`capture-readme-*`, `phase12c-*`, `phase15a-*`). The scripts are how published evidence was produced. | **Keep** — reproducibility |
 | L-9 | Website | `npm audit`: esbuild ≤ 0.24.2 via vite 5 (dev-server only advisory GHSA-67mh-4wv8-2f99). The deployed site is static and unaffected. Fix needs vite 6+ (breaking). | **Deferred** (website is being moved into this repo) |
-| L-10 | Website | `pages.yml` comment says the deploy "fails harmlessly" until Pages is enabled; Pages is enabled. | **Deferred** to the website-move thread |
+| L-10 | Website | `pages.yml` comment says the deploy "fails harmlessly" until Pages is enabled; Pages is enabled. | **Resolved** — PR #19 replaced it with `.github/workflows/website.yml` |
 | L-11 | Evidence | `phase16/protocol.sha256` and `phase16b/protocol-open.sha256` mix paths relative to their folder with one absolute `/Users/burnz/...` path. Every file verifies when checked from the right base; the files are protected and were not edited. | **Documented** |
 | L-12 | Video | The website's `muse-recall-demo.mp4` and the project-files copy are byte-different from the repo copy, but stream hashes are identical (container remux only). The repo copy matches `V21_QA.md` (SHA-256 `4020c0c6…`). | **Info** |
 | L-13 | Tests | 4 `forge-recovery` tests fail when the suite runs as root (they rely on `chmod` denying access). All 728 pass as a normal user, which is what CI and Codespaces use. | **Info** |
@@ -70,7 +70,7 @@ None open. (H-1 below was High at audit time and is fixed.)
 
 ## Proposed cleanup (needs approval)
 
-Nothing here has been done. Branch deletion is reversible only if someone still has the ref.
+Russell approved deleting the 11 branches below on 29 October 2026. This environment can only push to its own branch, so the deletion is done from GitHub's Branches page or a local clone. Branch deletion is reversible only if someone still has the ref.
 
 **Delete (merged into `main`, referenced by no document):**
 `claude/muse-recall-production-readiness-1a4837`, `claude/project-thread-58amcc`,

@@ -7,7 +7,7 @@ install anything.
 
 | Surface | What a judge learns in 30 s | Verdict |
 | --- | --- | --- |
-| **Website** (sidonsoft.github.io/muse-recall-website) | Headline, the problem, the loop, an interactive memory on/off/corrected widget, and the video above the fold. Lighthouse-grade performance (LCP 488 ms), works on phones and without JS. | **Pass** |
+| **Website** (audited at sidonsoft.github.io/muse-recall-website; PR #19 moves it to sidonsoft.github.io/muse-recall/) | Headline, the problem, the loop, an interactive memory on/off/corrected widget, and the video above the fold. Lighthouse-grade performance (LCP 488 ms), works on phones and without JS. | **Pass** |
 | **GitHub README** | Title, one-line promise, a three-sentence problem statement, the Studio screenshot and the video poster, then "For judges" with the three ideas and the headline 37/57 → 0/58 result. | **Pass** — after this cleanup the first line no longer carries a stale "goes live with one Pages toggle". |
 | **Demo video** (2:50) | Memory saved, change rejected, decision corrected, Guard flags the reintroduced palette, v2 approved. Captions and transcript provided. | **Pass** |
 

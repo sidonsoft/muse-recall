@@ -16,7 +16,7 @@ start with these:
 | [security.md](security.md) | Threat model and the loopback-only boundary |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Open limitations |
 
-The [project website](https://sidonsoft.github.io/muse-recall-website/) is a one-page overview with the 2:50 video.
+The [project website](https://sidonsoft.github.io/muse-recall/) is a one-page overview with the 2:50 video.
 
 Earlier evidence, still valid within its stated limits:
 [Phase 15B](hackathon-evidence/phase15b/EVIDENCE_CARD.md) (the trial Phase 16 builds on),
