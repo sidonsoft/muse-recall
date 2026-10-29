@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Fastify API for Muse Memory Lab.",
+  "description": "Fastify API for Muse Recall.",
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
     "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --packages=external --alias:@mml/shared=../../packages/shared/src/index.ts --alias:@mml/memory-engine=../../packages/memory-engine/src/index.ts --alias:@mml/muse-provider=../../packages/muse-provider/src/index.ts --alias:@mml/agent-core=../../packages/agent-core/src/index.ts --alias:@mml/tool-runtime=../../packages/tool-runtime/src/index.ts --alias:@mml/ui-protocol=../../packages/ui-protocol/src/index.ts --alias:@mml/decision-guard=../../packages/decision-guard/src/index.ts --outfile=dist/index.js --sourcemap",

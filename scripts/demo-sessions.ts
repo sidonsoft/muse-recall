@@ -110,7 +110,7 @@ async function sendTurn(sessionId: string, content: string): Promise<TurnRecord>
 }
 
 async function main() {
-  console.log('Muse Memory Lab — session demonstrations (real Muse)\n');
+  console.log('Muse Recall — session demonstrations (real Muse)\n');
 
   // --- Demo A -----------------------------------------------------------
   console.log('DEMO A — cross-session memory');

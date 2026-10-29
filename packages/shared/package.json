@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared Zod schemas and domain types for Muse Memory Lab.",
+  "description": "Shared Zod schemas and domain types for Muse Recall.",
   "exports": {
     ".": "./src/index.ts"
   },

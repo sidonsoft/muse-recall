@@ -440,7 +440,7 @@ async function askMuse(
 }
 
 async function main() {
-  console.log(`Muse Memory Lab — retrieval evaluation (run ${RUN})`);
+  console.log(`Muse Recall — retrieval evaluation (run ${RUN})`);
   console.log(`seeding corpus in ${GAME}, ${API}, ${GARDEN}\n`);
   const ids = await seedCorpus();
 
