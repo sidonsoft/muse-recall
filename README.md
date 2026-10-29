@@ -496,28 +496,31 @@ the repository-root `.env` (falling back to `apps/server/.env`; `MML_ENV_FILE` n
 file), and relative paths resolve against the repository root even though the pnpm scripts start
 the server in `apps/server`. Builds before 29 October kept data in `apps/server/data` and
 `apps/server/workspaces`; move those to `data/` and `workspaces/` at the root, or set absolute
-paths, to keep using it.
+paths, to keep using it. Startup logs the loaded `.env`, database and workspace paths.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address |
-| `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file |
+| `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address; must be loopback (`127.0.0.1`, `::1`, `localhost`) or startup fails |
+| `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file, relative to the repository root |
 | `MODEL_PROVIDER` | `muse-cli` | `muse-cli` or `echo` (offline) |
 | `MUSE_MODEL` | `muse-wonder-1.0` | Any model the CLI offers |
 | `MUSE_REASONING_EFFORT` | `medium` | `none`…`ultra` |
 | `MUSE_TIMEOUT_MS` | `120000` | Hard per-call budget |
 | `META_API_KEY` | unset | Optional chat key, delivered to the CLI over stdin |
+| `MUSE_FALLBACK_API_KEY` | unset | Optional quota-failover key for chat, delivered over stdin |
+| `MUSE_FALLBACK_MODEL` | `muse-spark-1.3-contributor` | Model used only for the chat fallback attempt |
 | `MEMORY_MAX_MEMORIES` | `8` | Retrieval count budget |
 | `MEMORY_MAX_CHARACTERS` | `4000` | Rendered memory-context characters (escaping, provenance, delimiters) |
 | `MEMORY_MAX_MEMORY_CHARACTERS` | `1000` | Per-memory cap (truncates, never drops) |
 | `MEMORY_SWEEP_ON_START` | `true` | Expire stale memories at startup |
 | `TOOL_APPROVAL_POLICY` | `always` | Approval mode for agent tool calls |
-| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions |
+| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions, relative to the repository root |
 | `FORGE_MUSE_BIN` | unset | Override the Muse CLI binary used only by Forge |
 | `FORGE_MUSE_MODEL` | unset | Forge model id (for example `muse-spark-1.3-contributor`) |
 | `FORGE_REASONING_EFFORT` | `low` | Forge reasoning tier |
 | `FORGE_MAX_RUNTIME_MS` | `600000` | Hard wall-clock budget per Forge job |
 | `FORGE_RUNTIME_BROWSER` | `managed` | Runtime verification browser: `managed` or explicit `chrome` |
+| `MML_ENV_FILE` | unset | Read this `.env` file instead of the repository-root or `apps/server` one; it must exist |
 
 The API key never reaches the browser: the server shells out to the Muse CLI, which
 uses its own stored login (or a `META_API_KEY` delivered over stdin).
