@@ -54,7 +54,7 @@ Verified state of this repo at the product-repo commit the footer cites:
 
 | Check | Result |
 | --- | --- |
-| `npm run qa` (local + CI) | 22/22 — self-referential count gate, a11y audit, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
+| `npm run qa` (local + CI) | 24/24 — self-referential count gate, a11y audit, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
 | `npm run links` | 12/12 paths + commit resolve against the upstream repo |
 | Lighthouse (mobile preset) | Perf 100 · A11y 100 · Best-Practices 100 · SEO 100 |
 | Lighthouse (desktop preset) | 100 · 100 · 100 · 100 |

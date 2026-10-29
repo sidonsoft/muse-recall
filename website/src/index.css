@@ -119,6 +119,68 @@ img {
   }
 }
 
+/* ---------- Mobile menu (no-JS details/summary) ---------- */
+.nav-menu {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  .nav-menu {
+    display: block;
+    position: relative;
+  }
+
+  .nav-menu summary {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .nav-menu summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .nav-menu[open] summary {
+    border-color: rgba(139, 92, 246, 0.55);
+    background: rgba(139, 92, 246, 0.18);
+  }
+
+  .nav-menu-panel {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    width: min(76vw, 340px);
+    max-height: 62vh;
+    overflow-y: auto;
+    display: grid;
+    gap: 2px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #12121e;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  }
+
+  .nav-menu-panel a {
+    padding: 10px 12px;
+    border-radius: 9px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .nav-menu-panel a:hover {
+    background: rgba(139, 92, 246, 0.16);
+  }
+}
+
 /* ---------- Nav ---------- */
 .nav {
   position: sticky;
@@ -2172,9 +2234,16 @@ pre.code .hl {
 .no-js .copy-btn,
 .no-js .lb-open,
 .no-js .hero-note kbd,
+.no-js .kbd-hint,
 .no-js .guide,
 .no-js .why {
   display: none;
+}
+
+@media (hover: none) {
+  .kbd-hint {
+    display: none;
+  }
 }
 
 .no-js .tl-card {

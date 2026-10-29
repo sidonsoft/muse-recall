@@ -10,6 +10,23 @@ export default function Nav() {
           <span className="brand-mark" aria-hidden="true" />
           Muse&nbsp;<em>Recall</em>
         </a>
+        <details className="nav-menu">
+          <summary>Menu</summary>
+          <div className="nav-menu-panel" onClick={(e) => { if (e.target.tagName === 'A') e.currentTarget.closest('details').removeAttribute('open'); }}>
+            <a href="#loop">The loop</a>
+            <a href="#timeline">Timeline</a>
+            <a href="#how">How it works</a>
+            <a href="#engine">Retrieval engine</a>
+            <a href="#guard">Decision Guard</a>
+            <a href="#evidence">Evidence</a>
+            <a href="#judges">For judges</a>
+            <a href="#beyond">Beyond games</a>
+            <a href="#gallery">Screenshots</a>
+            <a href="#quickstart">Run it</a>
+            <a href="#proof">Demonstrated vs future</a>
+            <a href="#honesty">Known limitations</a>
+          </div>
+        </details>
         <nav className="nav-links" aria-label="Primary">
           <a href="#loop">The loop</a>
           <a href="#timeline">Timeline</a>

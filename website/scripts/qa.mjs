@@ -183,6 +183,17 @@ try {
   await sleep(900);
   const sw = await evalJS('document.scrollingElement.scrollWidth');
   check('mobile 390px: no horizontal overflow', sw === 390, `scrollWidth=${sw}`);
+  const menu = await evalJS(`(() => {
+    const d = document.querySelector(".nav-menu");
+    d.open = true;
+    return { links: d.querySelectorAll("a").length, panelShown: getComputedStyle(d.querySelector(".nav-menu-panel")).display !== "none" };
+  })()`);
+  check('mobile nav menu opens with section links', menu.panelShown && menu.links >= 10, JSON.stringify(menu));
+  await evalJS(`document.querySelector(".nav-menu a[href='#timeline']").click()`);
+  await sleep(400);
+  const menuClosed = await evalJS(`!document.querySelector(".nav-menu").open`);
+  const atTimeline = await evalJS(`location.hash === "#timeline"`);
+  check('menu closes on pick and jumps to section', menuClosed && atTimeline, `closed=${menuClosed} hash=${atTimeline}`);
 
   // 5. command palette + timeline interactions
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });

@@ -839,7 +839,7 @@ export function SiteVerified() {
             </p>
           </div>
           <div className="stats" role="list">
-            <div role="listitem"><b>22/22</b><span>headless QA checks · local + CI</span></div>
+            <div role="listitem"><b>24/24</b><span>headless QA checks · local + CI</span></div>
             <div role="listitem"><b>100×4</b><span>Lighthouse, mobile and desktop presets</span></div>
             <div role="listitem"><b>12/12</b><span>upstream links audited against the repo tree</span></div>
             <div role="listitem"><b>0</b><span>claims not traceable to evidence docs</span></div>
