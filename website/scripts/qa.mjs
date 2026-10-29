@@ -189,6 +189,7 @@ try {
   await evalJS(`window.dispatchEvent(new KeyboardEvent("keydown", {key:"k", metaKey:true, bubbles:true}))`);
   await sleep(400);
   const paletteOpen = await evalJS(`!!document.querySelector(".palette")`);
+  const paletteFocus = await evalJS(`document.activeElement === document.querySelector(".palette input")`);
   const paletteFilter = await evalJS(`(() => {
     const i = document.querySelector(".palette input");
     if (!i) return "no-input";
@@ -197,7 +198,7 @@ try {
     i.dispatchEvent(new Event("input", { bubbles: true }));
     return [...document.querySelectorAll(".palette li button")].map(b => b.textContent.trim());
   })()`);
-  check('command palette opens via ⌘K and filters', paletteOpen && Array.isArray(paletteFilter) && paletteFilter.some((t) => t.includes('judges') || t.includes('judges'.toUpperCase()) || /judge/i.test(t)), JSON.stringify(paletteFilter));
+  check('command palette opens via ⌘K and filters (focus in input)', paletteOpen && paletteFocus && Array.isArray(paletteFilter) && paletteFilter.some((t) => t.includes('judges') || t.includes('judges'.toUpperCase()) || /judge/i.test(t)), JSON.stringify({ paletteFocus, paletteFilter }));
   await evalJS(`window.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", bubbles:true}))`);
   await sleep(300);
   check('palette closes on Escape', (await evalJS(`!!document.querySelector(".palette")`)) === false);
@@ -323,6 +324,21 @@ try {
     JSON.stringify(nojs)
   );
   await send('Emulation.setScriptExecutionDisabled', { value: false });
+
+  // 11. keyboard path: skip link first in tab order, all controls named
+  await send('Page.navigate', { url: `${URL_}?kb=${Date.now()}` });
+  await sleep(1200);
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  await sleep(200);
+  const firstTab = await evalJS(`(document.activeElement.getAttribute("aria-label") || document.activeElement.textContent || "").trim()`);
+  const skipTarget = await evalJS(`(() => { const s = document.querySelector(".skip-link"); return !!s && !!document.querySelector(s.getAttribute("href")); })()`);
+  const unnamed = await evalJS(`[...document.querySelectorAll("a,button,input")].filter((e) => !(e.getAttribute("aria-label") || e.textContent.trim() || e.getAttribute("title"))).length`);
+  check(
+    'keyboard: skip link first, target exists, no unnamed controls',
+    /Skip to content/.test(firstTab) && skipTarget && unnamed === 0,
+    `firstTab="${firstTab}" skipTarget=${skipTarget} unnamed=${unnamed}`
+  );
 } catch (e) {
   check('script completed', false, e.message);
 } finally {
