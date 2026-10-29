@@ -2,24 +2,11 @@
 
 ### Correctable project memory for AI-built software.
 
-**Muse Recall** is a local-first **HTML Studio** for Meta's Muse Spark. Describe a browser
-application and Spark writes one `index.html`; ask for a change and it edits the approved
-source. Project decisions persist with identity and provenance, and you can correct them.
-Every change waits as a staged preview, source and diff — nothing becomes the approved
-version until you review and approve it.
+AI app builders forget. A new session starts from zero, a change quietly drops an earlier
+decision, and an old preference keeps coming back after you change your mind.
 
-AI builders are fast at the first draft and slow at the second week:
-
-- **Requirements get restated.** A new session starts from zero, so the user explains the
-  same constraint again.
-- **Changes forget.** A generated edit can drop an earlier decision; the regression appears
-  later, when it is expensive to find.
-- **Stale preferences persist.** When the user changes their mind, the old preference can
-  keep coming back, because a transcript does not say which decision is current.
-
-Muse Recall closes that loop. It stores project decisions as structured records, supplies
-the active ones to later generations, supersedes them when you correct them, and keeps the
-change itself reviewable. The **Decision Guard** is an advisory source check, not a gate.
+**Muse Recall** is a local-first HTML Studio for Meta's Muse Spark that remembers your
+project's decisions, lets you correct them, and makes every change wait for your review.
 
 ![HTML Studio after approving v2 of Ocean Pairs: the live preview, the remembered rule supplied to the change, the Decision Guard panel, and version history](docs/assets/html-studio-approved-v2.jpg)
 
@@ -30,13 +17,49 @@ pending._
 
 ## For judges
 
+Describe a browser app and Muse Spark writes one `index.html`; ask for a change and it edits
+the approved source. Around that loop, Muse Recall does three things:
+
+1. **It remembers.** Project decisions are stored as records with provenance, and the
+   most relevant active ones are supplied to each later generation.
+2. **You can correct it.** A correction supersedes the old decision instead of overwriting
+   it, so stale guidance stops coming back and the history stays auditable.
+3. **Nothing changes until you approve it.** Each change waits as a preview, its source and
+   a diff. Approval publishes exactly the bytes that were checked, and you can roll back.
+
+**Does the memory change the code?** In a pre-registered trial of 480 runs on two Meta
+models, the original rule appeared in generated source in **37 of 57** runs without memory
+and **0 of 58** with retrieved project memory on Muse Spark (**49/60 → 1/60** on Muse Spark
+Open) — about as well as retyping the rule by hand, without the retyping.
+[What the evidence shows](#what-the-evidence-shows)
+
+### Try it
+
+```bash
+git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
+pnpm install
+cp .env.example .env
+pnpm demo:seed                  # seeded game, three decisions (one superseded), v1 approved
+MODEL_PROVIDER=echo pnpm dev    # no Muse account needed; open http://127.0.0.1:5173
+```
+
+Without Muse, the offline provider lets you browse the seeded project: the app, its
+memory and provenance, the retrieval explanation, Decision Guard and version history.
+Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickstart).
+
+---
+
+## Evidence and details
+
+### At a glance
+
 | | |
 | --- | --- |
 | **Demo video** (2:50, 1080p, recorded 29 October 2026) | One continuous live Muse Spark session (with insert cards for evidence and limits), a visible cursor and speed-ramped generation waits. Save a sunset constraint, generate and approve v1; request a change in a new session and reject it; correct the decision to ocean; request the same change again and reject it when Guard flags the reintroduced sunset palette; then ask for the project's current art direction from memory and approve v2. Guard is advisory throughout and never blocks approval. The file is kept out of git by policy and its upload is pending; the storyboard, live outcomes, limits and honest failure beat are in [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md). |
 | **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat**; it is the fallback if the 2:50 cut is not published. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 721 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 728 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. Phase 17 covers six fixed strata, two rules and two models, and measures source code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Why this fits “Push the Frontier”
@@ -80,29 +103,6 @@ detector fixed before the runs. Counts are violations over usable runs.
   changed. See [STATS_CORRECTION.md](docs/hackathon-evidence/phase17/STATS_CORRECTION.md).
 - **Scope:** six fixed strata, source code only. This does not establish general application
   correctness, runtime safety, Decision Guard effectiveness or transfer to other tasks.
-
-### Try it
-
-```bash
-git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
-pnpm install
-cp .env.example .env
-pnpm demo:seed                  # seeded game, three decisions (one superseded), v1 approved
-MODEL_PROVIDER=echo pnpm dev    # no Muse account needed; open http://127.0.0.1:5173
-```
-
-Without Muse, the offline provider lets you browse the seeded project: the app, its
-memory and provenance, the retrieval explanation, Decision Guard and version history.
-Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickstart).
-
-> **Release state (2026-10-29).** `main` now includes the local-beta hardening merge from
-> PR #1 (branch tip `5bd287a`, merge `12918fd`) and the Phase 17 results/evidence from PR #2
-> and #3. The tags `submission-v14`, `submission-v15` and `phase17-preregistration` remain
-> frozen. The application is local-only and not deployed; the hackathon submission has not
-> been sent. The 2:50 submission cut is recorded and QA'd outside git; uploading it and
-> completing the form are the remaining owner actions. See
-> [Project status](#project-status) and the
-> [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 ---
 
@@ -216,7 +216,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (721 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (728 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -272,6 +272,14 @@ default.
 ---
 
 ## Project status
+
+> **Release state (2026-10-29).** `main` now includes the local-beta hardening merge from
+> PR #1 (branch tip `5bd287a`, merge `12918fd`) and the Phase 17 results/evidence from PR #2
+> and #3. The tags `submission-v14`, `submission-v15` and `phase17-preregistration` remain
+> frozen. The application is local-only and not deployed; the hackathon submission has not
+> been sent. The 2:50 submission cut is recorded and QA'd outside git; uploading it and
+> completing the form are the remaining owner actions. See the
+> [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 | Area | Phase | State |
 | --- | --- | --- |
