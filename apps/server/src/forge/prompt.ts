@@ -96,9 +96,13 @@ function renderForgeMemory(input: ForgePromptInput): string {
 }
 
 /**
- * Retrieval query for a job. The project id scopes retrieval; the task text is
- * the request, not a duplicated copy of it. Shared with the evaluation harness
- * so retrieval cannot drift from production.
+ * Retrieval query for a job.
+ *
+ * Retrieval is already scoped by `project_id`, so the query carries only the
+ * task text. Including the id would spend the tokenizer's fixed budget on a
+ * term that cannot match a memory, evicting words that could. `projectId`
+ * remains in the input so every call site shares one signature. Shared with
+ * the evaluation harness so retrieval cannot drift from production.
  */
 export function buildRetrievalQuery(input: {
   projectId: string;
@@ -106,6 +110,5 @@ export function buildRetrievalQuery(input: {
   prompt: string;
   request?: string | null;
 }): string {
-  const task = input.kind === 'modify' ? (input.request ?? input.prompt) : input.prompt;
-  return `${input.projectId}\n${task}`;
+  return input.kind === 'modify' ? (input.request ?? input.prompt) : input.prompt;
 }

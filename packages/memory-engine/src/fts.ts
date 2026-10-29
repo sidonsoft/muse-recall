@@ -145,7 +145,10 @@ const STOPWORDS = new Set([
 export function tokenizeSearchText(text: string): string[] {
   const matches = text.toLowerCase().match(/[\p{L}\p{N}_]+/gu);
   if (!matches) return [];
-  return matches.filter((token) => !STOPWORDS.has(token)).slice(0, MAX_TOKENS);
+  // Repeats add no retrieval signal, and counting them against the cap would
+  // evict later words that could match a memory.
+  const unique = new Set(matches.filter((token) => !STOPWORDS.has(token)));
+  return [...unique].slice(0, MAX_TOKENS);
 }
 
 /**
