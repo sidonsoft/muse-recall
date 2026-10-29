@@ -110,6 +110,45 @@ describe('formatMemoryContext', () => {
     }
   });
 
+  it('renders the requested consumer layout with exact accounting', () => {
+    const { engine, close } = engineWithMemories();
+    try {
+      engine.create({
+        type: 'constraint',
+        scope: 'project',
+        project_id: 'demo',
+        content: 'Must run offline',
+      });
+      engine.create({
+        type: 'technical_decision',
+        scope: 'project',
+        project_id: 'demo',
+        content: 'Use SQLite for persistence',
+      });
+
+      const retrieval = engine.retrieve({
+        project_id: 'demo',
+        query: 'offline sqlite',
+        budget: { max_memories: 6, max_characters: 3_000, max_memory_characters: 1_000 },
+      });
+      const forge = formatMemoryContext(retrieval, 'forge');
+
+      expect(forge.text).toBe(renderMemoryLayout(retrieval.results, 'forge'));
+      expect(forge.text.startsWith('\n<project_constraints>')).toBe(true);
+      expect(forge.text.endsWith('</project_memory_data>\n')).toBe(true);
+      expect(forge.characters).toBe(forge.text.length);
+      expect(forge.estimated_tokens).toBe(Math.ceil(forge.text.length / 4));
+      expect(forge.memory_ids).toEqual(retrieval.results.map((entry) => entry.memory.id));
+
+      // Omitting the layout preserves the canonical preview/export block.
+      const canonical = formatMemoryContext(retrieval);
+      expect(canonical.text).toBe(renderMemoryLayout(retrieval.results, 'canonical'));
+      expect(canonical.text.startsWith('<retrieved_memories>')).toBe(true);
+    } finally {
+      close();
+    }
+  });
+
   it('keeps injection attempts inside the data block', () => {
     const { engine, close } = engineWithMemories();
     try {

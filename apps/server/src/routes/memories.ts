@@ -1,4 +1,4 @@
-import type { MemoryEngine } from '@mml/memory-engine';
+import { formatMemoryContext, type MemoryEngine } from '@mml/memory-engine';
 import {
   apiSuccess,
   DEFAULT_RETRIEVAL_WEIGHTS,
@@ -195,7 +195,15 @@ export function registerMemoryRoutes(
       ...(body.budget ?? {}),
     };
     const retrieval = engine.retrieve({ ...body, budget });
-    const context = engine.renderContext({ ...body, budget });
+
+    // Preview the block the selected consumer actually injects. Forge uses its
+    // own two-section layout, while default preview callers keep the canonical
+    // `<retrieved_memories>` block. Format the selection we already made rather
+    // than retrieving a second time, so ids and text cannot drift.
+    const context = formatMemoryContext(
+      retrieval,
+      retrieval.metadata.mode === 'forge' ? 'forge' : 'canonical',
+    );
 
     return apiSuccess(RetrievalPreviewSchema.parse({ retrieval, context }));
   });

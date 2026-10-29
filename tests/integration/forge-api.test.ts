@@ -3,13 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
-import { MemoryEngine, openDatabase } from '@mml/memory-engine';
+import { MemoryEngine, openDatabase, renderMemoryLayout } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
-import type { ForgeRuntimeBrowserSelection } from '@mml/shared';
+import type { ForgeRuntimeBrowserSelection, MemoryContext, RetrievalResult } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
+import { buildForgePrompt } from '../../apps/server/src/forge/prompt.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
@@ -362,6 +363,87 @@ describe('forge workflow', () => {
     const boundedDefaultPreview = await previewFor('default', { max_memories: 2 });
     expect(boundedDefaultPreview.metadata.memory_budget).toBe(2);
     expect(boundedDefaultPreview.metadata.character_budget).toBe(4_000);
+  });
+
+  it('returns the exact memory block buildForgePrompt injects', async () => {
+    const h = await harness();
+    await createProject(h.app, READING_NOOK_PROJECT_ID);
+    for (const input of READING_NOOK_MEMORIES) h.engine.create(input);
+
+    const preview = async (mode: 'default' | 'forge') => {
+      const response = await h.app.inject({
+        method: 'POST',
+        url: '/api/retrieval/preview',
+        payload: { project_id: READING_NOOK_PROJECT_ID, query: READING_NOOK_PROMPT, mode },
+      });
+      expect(response.statusCode).toBe(200);
+      return response.json().data as { retrieval: RetrievalResult; context: MemoryContext };
+    };
+
+    const forge = await preview('forge');
+    const forgeBlock = renderMemoryLayout(forge.retrieval.results, 'forge');
+
+    expect(forge.context.text).toBe(forgeBlock);
+    expect(forge.context.characters).toBe(forgeBlock.length);
+    expect(forge.retrieval.metadata.characters_used).toBe(forge.context.characters);
+    expect(forge.retrieval.metadata.characters_used).toBe(forgeBlock.length);
+    expect(forge.context.estimated_tokens).toBe(Math.ceil(forgeBlock.length / 4));
+    expect(forge.context.memory_ids).toEqual(
+      forge.retrieval.results.map((entry) => entry.memory.id),
+    );
+    expect(forgeBlock).toContain('<project_constraints>');
+    expect(forgeBlock).toContain('<project_memory_data>');
+    expect(forgeBlock).not.toContain('<retrieved_memories>');
+
+    // The production Forge prompt consumes exactly the previewed text.
+    const prompt = buildForgePrompt({
+      kind: 'generate',
+      prompt: READING_NOOK_PROMPT,
+      memories: forge.retrieval.results,
+    });
+    expect(prompt).toContain(forge.context.text);
+    expect(prompt.split(forge.context.text)).toHaveLength(2);
+
+    // Default previews keep the canonical block and its exact accounting.
+    const canonical = await preview('default');
+    const canonicalBlock = renderMemoryLayout(canonical.retrieval.results, 'canonical');
+
+    expect(canonical.context.text).toBe(canonicalBlock);
+    expect(canonical.context.characters).toBe(canonicalBlock.length);
+    expect(canonical.retrieval.metadata.characters_used).toBe(canonical.context.characters);
+    expect(canonical.retrieval.metadata.characters_used).toBe(canonicalBlock.length);
+    expect(canonical.context.estimated_tokens).toBe(Math.ceil(canonicalBlock.length / 4));
+    expect(canonical.context.memory_ids).toEqual(
+      canonical.retrieval.results.map((entry) => entry.memory.id),
+    );
+    expect(canonicalBlock.startsWith('<retrieved_memories>')).toBe(true);
+    expect(canonicalBlock).not.toContain('<project_memory_data>');
+  });
+
+  it('returns an empty context when Forge selects no memories', async () => {
+    const h = await harness();
+    const emptyContext = { text: '', characters: 0, estimated_tokens: 0, memory_ids: [] };
+
+    for (const mode of ['forge', 'default'] as const) {
+      const response = await h.app.inject({
+        method: 'POST',
+        url: '/api/retrieval/preview',
+        payload: { project_id: 'empty-project', query: 'nothing stored', mode },
+      });
+      expect(response.statusCode).toBe(200);
+      const { data } = response.json();
+      expect(data.retrieval.results).toEqual([]);
+      expect(data.retrieval.metadata.characters_used).toBe(0);
+      expect(data.context).toEqual(emptyContext);
+    }
+
+    const prompt = buildForgePrompt({
+      kind: 'generate',
+      prompt: 'Build a page.',
+      memories: [],
+    });
+    expect(prompt).not.toContain('<project_constraints>');
+    expect(prompt).not.toContain('<project_memory_data>');
   });
 
   it('starts a modification from the approved source, preserving unrelated code', async () => {

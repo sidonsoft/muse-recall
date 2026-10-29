@@ -335,10 +335,13 @@ export function retrieveMemories(
     return a.memory.id.localeCompare(b.memory.id);
   });
 
-  // Report the exact canonical block the preview injects. The selection above
-  // used the larger upper bound across supported layouts, so this can never
-  // exceed the configured budget.
-  const charactersUsed = renderMemoryLayout(selected, 'canonical').length;
+  // Report the exact block the selected mode's layout injects. The selection
+  // above used the larger upper bound across supported layouts, so this can
+  // never exceed the configured budget.
+  const charactersUsed = renderMemoryLayout(
+    selected,
+    parsed.mode === 'forge' ? 'forge' : 'canonical',
+  ).length;
 
   const metadata: RetrievalMetadata = {
     query: parsed.query,

@@ -115,8 +115,9 @@ export function RetrievalExplainer({
             <select
               value={mode}
               onChange={(event) => selectMode(event.target.value as RetrievalMode)}
+              disabled={loading}
               aria-label="Retrieval mode"
-              className="w-full rounded-md border border-line bg-base/70 px-1.5 py-1 text-[11px] text-ink focus:outline-none"
+              className="w-full rounded-md border border-line bg-base/70 px-1.5 py-1 text-[11px] text-ink focus:outline-none disabled:opacity-50"
             >
               <option value="forge">Forge (Studio)</option>
               <option value="default">Default</option>
