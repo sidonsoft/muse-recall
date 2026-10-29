@@ -4,7 +4,7 @@
 rewrite.**
 **Date:** 2026-10-28 (AEST) / 2026-10-27 (UTC)
 **Repository:** `sidonsoft/muse-recall`
-**Worktree:** `/Users/burnz/projects/muse-recall-positioning`
+**Worktree:** `~/projects/muse-recall-positioning`
 **Branch:** `agent/muse-recall-live-demo` (created from `agent/muse-recall-product-positioning`
 at `41b1684`)
 **Evidence commit:** `26e0aba` — `docs(demo): live Muse Spark FocusFlow evidence and V2 recording
@@ -53,10 +53,10 @@ production Forge prompt should encode the constraint or the sandbox policy shoul
 
 | Worktree | Branch / HEAD | Role |
 |---|---|---|
-| `/Users/burnz/projects/muse-recall-positioning` | `agent/muse-recall-live-demo` (`26e0aba` + report commit) | this work |
-| `/Users/burnz/projects/muse-memory-lab` | `agent/phase15b` (`9f5eaa1`) | Phase 15B; untouched, clean |
-| `/Users/burnz/projects/muse-recall-review` | detached `e6e2f86` | independent review; untouched |
-| `/Users/burnz/projects/muse-memory-lab-local` | `agent/strata-phase14b-submission-audit` (`e8fe9df`) | untouched |
+| `~/projects/muse-recall-positioning` | `agent/muse-recall-live-demo` (`26e0aba` + report commit) | this work |
+| `~/projects/muse-memory-lab` | `agent/phase15b` (`9f5eaa1`) | Phase 15B; untouched, clean |
+| `~/projects/muse-recall-review` | detached `e6e2f86` | independent review; untouched |
+| `~/projects/muse-memory-lab-local` | `agent/strata-phase14b-submission-audit` (`e8fe9df`) | untouched |
 | `.claude/worktrees/muse-recall-demo-review-…` | `claude/muse-recall-demo-review-ec4fbf` (`4f53361`) | untouched |
 
 No branch was merged, deleted, force-pushed, or history-rewritten. The new branch was pushed
@@ -68,9 +68,9 @@ agent/muse-recall-live-demo -> origin/agent/muse-recall-live-demo
 
 ### 2.2 Isolation
 
-- Database: `/Users/burnz/muse-demo-live/demo.db` (not Phase 15B's database).
-- Workspace: `/Users/burnz/muse-demo-live/ws`.
-- Logs, runs, screenshots, recordings: `/Users/burnz/muse-demo-live/`.
+- Database: `~/muse-demo-live/demo.db` (not Phase 15B's database).
+- Workspace: `~/muse-demo-live/ws`.
+- Logs, runs, screenshots, recordings: `~/muse-demo-live/`.
 - The pre-existing dev server on `8787` and web server on `5173` were left running. The demo used
   ports `8799` (API) and `5199` (web) to avoid interference.
 

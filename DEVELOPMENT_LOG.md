@@ -3,7 +3,7 @@
 **Project:** Muse Recall — a local-first memory companion for Meta Muse
 **Event:** Meta Global AI Developer Hackathon (remote, Oct 26 – Nov 4, 2026 ET)
 **Repository:** https://github.com/sidonsoft/muse-recall (branch `main`)
-**Local working copy:** `/Users/burnz/projects/muse-memory-lab`
+**Local working copy:** `~/projects/muse-memory-lab`
 **Checkpoint scope:** Phase 1 and Phase 2 are committed. Phase 3 is **not** part of this
 checkpoint.
 

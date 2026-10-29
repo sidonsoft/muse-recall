@@ -14,7 +14,7 @@
 |---|---|
 | Branch | `agent/muse-recall-release-candidate` |
 | Base | `agent/muse-recall-final-p1-fixes` @ `62ff522ec7b802d87a4981b8fe8fa410fdea7324` |
-| Working copy | `/Users/burnz/projects/muse-recall-rc` (dedicated worktree) |
+| Working copy | `~/projects/muse-recall-rc` (dedicated worktree) |
 | Integration head before this report | `2d79eec2a066ac7d3f4e976a3f973fa0dae6e5b2` (see commit table) |
 | Remote | `origin` = `https://github.com/sidonsoft/muse-recall.git` |
 | Report commit | this commit; the branch tip after the report is pushed |
@@ -71,7 +71,7 @@ name (`agent/muse-recall-release-candidate`) was used instead.
 
 ### 3.2 Recovered tooling
 
-Recovered on 2026-10-28 from `/Users/burnz/projects/muse-memory-lab/video/`, which was untracked and
+Recovered on 2026-10-28 from `~/projects/muse-memory-lab/video/`, which was untracked and
 excluded by a **local-only** `.git/info/exclude` entry (not by the repository's `.gitignore`).
 
 | Group | Files | Key hashes |
