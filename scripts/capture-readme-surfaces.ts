@@ -2,7 +2,7 @@
  * Capture the five current README surfaces.
  *
  * 1. conversation.png      — a useful answer grounded in project memory
- * 2. planning-form.png     — a Muse-generated declarative planning form
+ * 2. planning-form.png     — a schema-validated declarative planning form (fixture)
  * 3. tool-approval.png     — a write tool pending explicit approval
  * 4. memory-detail.png     — a corrected decision with its audit history
  * 5. memory-retrieval.png  — Forge-mode retrieval with scores and budget
@@ -27,12 +27,11 @@
  *   CAPTURE_TIMEOUT_MS   override the per-wait timeout (default 30s)
  *
  * The script allocates free ports, starts no shared service, and always closes
- * the browser, the Vite dev server, the Fastify app, and the database.
+ * the browser, the Vite dev server, the Fastify app, and the database, also on
+ * Ctrl-C. Captures are written to the disposable directory and copied over the
+ * committed assets, with `SHA256SUMS` rewritten, only after every check passes.
  */
-import { type ChildProcess, spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
-import { createServer } from 'node:net';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -43,12 +42,31 @@ import { MemoryEngine, openDatabase } from '../packages/memory-engine/src/index.
 import { EchoProvider } from '../packages/muse-provider/src/index.js';
 import type { Memory, MemoryCreateInput, ModelRequest } from '../packages/shared/src/index.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
+import {
+  type ChildHandle,
+  captureEnv,
+  disposeOnInterrupt,
+  freePort,
+  once,
+  onInterrupt,
+  publishCaptures,
+  startChild,
+  stopChild,
+  waitForHttp,
+} from './lib/capture.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const OUTPUT_DIR = join(ROOT, 'docs/assets/readme-2026-10-29');
 const WEB_DIR = join(ROOT, 'apps/web');
 const TIMEOUT_MS = Number(process.env.CAPTURE_TIMEOUT_MS ?? 30_000);
 const VIEWPORT = { width: 1600, height: 1000 } as const;
+const CAPTURES = [
+  'conversation.png',
+  'planning-form.png',
+  'tool-approval.png',
+  'memory-detail.png',
+  'memory-retrieval.png',
+];
 const PROJECT_ID = 'reading-nook';
 const PROJECT_NAME = 'Reading Nook';
 
@@ -110,64 +128,6 @@ function note(message: string): void {
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
-}
-
-function tail(text: string, lines = 12): string {
-  return text.trim().split('\n').slice(-lines).join('\n');
-}
-
-async function freePort(): Promise<number> {
-  return await new Promise<number>((resolvePort, reject) => {
-    const server = createServer();
-    server.unref();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (address === null || typeof address === 'string') {
-        server.close();
-        reject(new Error('Could not allocate a local port.'));
-        return;
-      }
-      const { port } = address;
-      server.close(() => resolvePort(port));
-    });
-  });
-}
-
-async function waitForHttp(url: string, timeoutMs = TIMEOUT_MS): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastError = 'no response yet';
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    await sleep(150);
-  }
-  throw new Error(`Timed out waiting for ${url}: ${lastError}`);
-}
-
-async function stopChild(child: ChildProcess): Promise<void> {
-  if (child.exitCode !== null) return;
-  const pid = child.pid;
-  if (pid === undefined) return;
-  try {
-    process.kill(-pid, 'SIGTERM');
-  } catch {
-    child.kill('SIGTERM');
-  }
-  const exited = new Promise<void>((resolveExit) => child.once('exit', () => resolveExit()));
-  const timedOut = await Promise.race([exited.then(() => false), sleep(4_000).then(() => true)]);
-  if (!timedOut) return;
-  try {
-    process.kill(-pid, 'SIGKILL');
-  } catch {
-    child.kill('SIGKILL');
-  }
-  await Promise.race([exited, sleep(2_000)]);
 }
 
 function decisionInput(
@@ -386,22 +346,19 @@ async function waitForLocatorCount(
   throw new Error(`Timed out waiting for ${minimum} ${label}.`);
 }
 
-function pngInfo(buffer: Buffer): { width: number; height: number } {
-  const signature = buffer.subarray(0, 8).toString('hex');
-  assert(signature === '89504e470d0a1a0a', 'output is not a PNG');
-  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
-}
-
 async function main(): Promise<void> {
   await mkdir(OUTPUT_DIR, { recursive: true });
   const tempDir = await mkdtemp(join(tmpdir(), 'mml-readme-capture-'));
+  if (process.env.KEEP_CAPTURE_DATA !== '1') disposeOnInterrupt(tempDir);
+  const stagingDir = join(tempDir, 'captures');
+  await mkdir(stagingDir);
   const databasePath = join(tempDir, 'data', 'capture.db');
   const workspaceRoot = join(tempDir, 'workspaces');
   await mkdir(dirname(databasePath), { recursive: true });
   await mkdir(workspaceRoot, { recursive: true });
 
   const apiPort = await freePort();
-  const webPort = await freePort();
+  const webPort = await freePort([apiPort]);
   const webOrigin = `http://127.0.0.1:${webPort}`;
   const apiOrigin = `http://127.0.0.1:${apiPort}`;
 
@@ -431,9 +388,39 @@ async function main(): Promise<void> {
   const engine = new MemoryEngine(database.db);
   const provider = new EchoProvider({ respond: scriptedResponder });
   let app: FastifyInstance | null = null;
-  let vite: ChildProcess | null = null;
+  let vite: ChildHandle | null = null;
   let browser: Awaited<ReturnType<typeof launchVerificationBrowser>>['browser'] | null = null;
-  let viteLog = '';
+
+  // Each teardown is independent: one failure must not strand a server, the
+  // database, or the disposable workspace.
+  const cleanup = once(async (): Promise<void> => {
+    if (browser) {
+      await browser.close().catch((error: unknown) => {
+        console.error(`Browser close failed: ${String(error)}`);
+      });
+    }
+    if (vite) {
+      await stopChild(vite).catch((error: unknown) => {
+        console.error(`Vite stop failed: ${String(error)}`);
+      });
+    }
+    if (app) {
+      await app.close().catch((error: unknown) => {
+        console.error(`API close failed: ${String(error)}`);
+      });
+    }
+    try {
+      database.close();
+    } catch (error) {
+      console.error(`Database close failed: ${String(error)}`);
+    }
+    if (process.env.KEEP_CAPTURE_DATA !== '1') {
+      await rm(tempDir, { recursive: true, force: true }).catch((error: unknown) => {
+        console.error(`Disposable data cleanup failed: ${String(error)}`);
+      });
+    }
+  });
+  const removeInterruptHandler = onInterrupt(cleanup);
 
   try {
     seedReadingNook(engine);
@@ -448,7 +435,7 @@ async function main(): Promise<void> {
       startedAt: Date.now(),
     });
     await app.listen({ host: config.host, port: config.port });
-    await waitForHttp(`${apiOrigin}/api/live`);
+    await waitForHttp(`${apiOrigin}/api/live`, { timeoutMs: TIMEOUT_MS });
     note(`production API listening on ${apiOrigin}`);
 
     // Stage all three journeys through the production HTTP API before the
@@ -471,27 +458,20 @@ async function main(): Promise<void> {
     );
     note('staged three conversations through the production API');
 
-    vite = spawn(
-      'pnpm',
-      ['exec', 'vite', '--host', '127.0.0.1', '--port', String(webPort), '--strictPort'],
-      {
-        cwd: WEB_DIR,
-        env: { ...process.env, VITE_PROXY_TARGET: apiOrigin },
-        stdio: ['ignore', 'pipe', 'pipe'],
-        detached: true,
-      },
+    vite = startChild(
+      'vite',
+      process.execPath,
+      [
+        join(WEB_DIR, 'node_modules/vite/bin/vite.js'),
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(webPort),
+        '--strictPort',
+      ],
+      { cwd: WEB_DIR, env: captureEnv({ VITE_PROXY_TARGET: apiOrigin }) },
     );
-    vite.stdout?.on('data', (chunk: Buffer) => {
-      viteLog += chunk.toString();
-    });
-    vite.stderr?.on('data', (chunk: Buffer) => {
-      viteLog += chunk.toString();
-    });
-    await waitForHttp(webOrigin, 45_000).catch((error) => {
-      throw new Error(
-        `${error instanceof Error ? error.message : String(error)}\nVite log:\n${tail(viteLog)}`,
-      );
-    });
+    await waitForHttp(webOrigin, { timeoutMs: 45_000, children: [vite] });
     note(`Vite client listening on ${webOrigin}`);
 
     const launched = await launchVerificationBrowser();
@@ -557,9 +537,19 @@ async function main(): Promise<void> {
     await sleep(250);
 
     const conversationText = (await conversationSection.textContent()) ?? '';
-    assert(conversationText.includes('#4EA8DE'), 'answer did not use the ocean palette');
+    // Check the assistant's own words, not the expanded evidence, which
+    // quotes the memory contents and would satisfy these checks by itself.
+    const answerText =
+      (await conversationSection
+        .locator('article')
+        .filter({ has: page.locator('span', { hasText: /^muse$/ }) })
+        .last()
+        .locator('p.break-words')
+        .first()
+        .textContent()) ?? '';
+    assert(answerText.includes('#4EA8DE'), 'answer did not use the ocean palette');
     assert(
-      conversationText.includes('flashing effects'),
+      answerText.includes('flashing effects'),
       'answer did not use the child-safety constraint',
     );
     assert(/score \d/.test(conversationText), 'memory evidence did not show scores');
@@ -573,7 +563,7 @@ async function main(): Promise<void> {
       'the offline provider is still credited with a Muse model id',
     );
     await page.screenshot({
-      path: join(OUTPUT_DIR, 'conversation.png'),
+      path: join(stagingDir, 'conversation.png'),
       animations: 'disabled',
     });
     note('conversation.png — grounded answer + expanded Memory used evidence');
@@ -613,7 +603,7 @@ async function main(): Promise<void> {
     assert(surfaceText.includes('Save plan'), 'planning form submit control is missing');
     assert(surfaceText.includes('Desktop browser'), 'planning form platform choice is missing');
     await page.screenshot({
-      path: join(OUTPUT_DIR, 'planning-form.png'),
+      path: join(stagingDir, 'planning-form.png'),
       animations: 'disabled',
     });
     note('planning-form.png — generated form with filled plan choices');
@@ -649,7 +639,7 @@ async function main(): Promise<void> {
       'pending tool does not state approval is required',
     );
     await page.screenshot({
-      path: join(OUTPUT_DIR, 'tool-approval.png'),
+      path: join(stagingDir, 'tool-approval.png'),
       animations: 'disabled',
     });
     note('tool-approval.png — pending task.create with Approve/Deny controls');
@@ -673,9 +663,18 @@ async function main(): Promise<void> {
     const detailText = (await detail.textContent()) ?? '';
     assert(detailText.includes('superseded'), 'detail is not the corrected record');
     assert(detailText.includes('Ocean palette'), 'replacement link is missing');
-    assert(detailText.includes('superseded'), 'history does not record the supersession');
+    const historyText =
+      (await detail
+        .locator('h3', { hasText: 'History' })
+        .locator('xpath=following-sibling::ol[1]')
+        .textContent()) ?? '';
+    assert(historyText.includes('superseded'), 'history does not record the supersession');
+    assert(
+      historyText.includes(CORRECTION_REASON),
+      'history does not record the correction reason',
+    );
     await page.screenshot({
-      path: join(OUTPUT_DIR, 'memory-detail.png'),
+      path: join(stagingDir, 'memory-detail.png'),
       animations: 'disabled',
     });
     note('memory-detail.png — superseded record, replacement link, and reason');
@@ -712,7 +711,7 @@ async function main(): Promise<void> {
     });
     await sleep(250);
     await page.screenshot({
-      path: join(OUTPUT_DIR, 'memory-retrieval.png'),
+      path: join(stagingDir, 'memory-retrieval.png'),
       animations: 'disabled',
     });
     note('memory-retrieval.png — Forge mode, pinned decisions, component scores');
@@ -720,36 +719,6 @@ async function main(): Promise<void> {
     if (problems.length > 0) {
       throw new Error(`browser reported problems:\n${problems.join('\n')}`);
     }
-
-    // ---------------------------------------------------------------------
-    // Artifact checks
-    // ---------------------------------------------------------------------
-    const artifacts = [
-      'conversation.png',
-      'planning-form.png',
-      'tool-approval.png',
-      'memory-detail.png',
-      'memory-retrieval.png',
-    ];
-    const hashes = new Map<string, string>();
-    for (const name of artifacts) {
-      const path = join(OUTPUT_DIR, name);
-      const buffer = await readFile(path);
-      const file = await stat(path);
-      const info = pngInfo(buffer);
-      assert(
-        info.width === VIEWPORT.width && info.height === VIEWPORT.height,
-        `${name} is ${info.width}x${info.height}, expected ${VIEWPORT.width}x${VIEWPORT.height}`,
-      );
-      assert(file.size > 25_000, `${name} is suspiciously small (${file.size} bytes)`);
-      const hash = createHash('sha256').update(buffer).digest('hex');
-      assert(!hashes.has(hash), `${name} is identical to ${hashes.get(hash)}`);
-      hashes.set(hash, name);
-      console.log(
-        `  ${name} · ${info.width}x${info.height} · ${(file.size / 1024).toFixed(0)} KiB · ${hash.slice(0, 12)}`,
-      );
-    }
-    note('all five captures are distinct, 1600x1000 PNGs');
 
     // The corrected decision remains the only active palette in retrieval.
     const palette = engine.retrieve({ project_id: PROJECT_ID, query: 'palette', mode: 'forge' });
@@ -759,41 +728,26 @@ async function main(): Promise<void> {
     );
     note('superseded palette is absent from active retrieval');
 
+    const hashes = await publishCaptures({
+      stagingDir,
+      outputDir: OUTPUT_DIR,
+      names: CAPTURES,
+      viewport: VIEWPORT,
+      minBytes: 25_000,
+    });
+    for (const [name, hash] of hashes) console.log(`  ${name} · ${hash.slice(0, 12)}`);
+    note('all five captures are distinct 1600x1000 PNGs; SHA256SUMS rewritten');
+
     console.log('\nCaptured:');
-    for (const name of artifacts) console.log(`  ${join(OUTPUT_DIR, name)}`);
+    for (const name of CAPTURES) console.log(`  ${join(OUTPUT_DIR, name)}`);
     console.log('\nProvider provenance: echo (deterministic offline provider, scripted responder)');
     console.log(`Database/workspace: ${tempDir} (disposable)`);
     if (process.env.KEEP_CAPTURE_DATA === '1') {
       console.log('KEEP_CAPTURE_DATA=1 — leaving the disposable run data in place.');
     }
   } finally {
-    // Each teardown is independent: one failure must not strand a server, the
-    // database, or the disposable workspace.
-    if (browser) {
-      await browser.close().catch((error: unknown) => {
-        console.error(`Browser close failed: ${String(error)}`);
-      });
-    }
-    if (vite) {
-      await stopChild(vite).catch((error: unknown) => {
-        console.error(`Vite stop failed: ${String(error)}`);
-      });
-    }
-    if (app) {
-      await app.close().catch((error: unknown) => {
-        console.error(`API close failed: ${String(error)}`);
-      });
-    }
-    try {
-      database.close();
-    } catch (error) {
-      console.error(`Database close failed: ${String(error)}`);
-    }
-    if (process.env.KEEP_CAPTURE_DATA !== '1') {
-      await rm(tempDir, { recursive: true, force: true }).catch((error: unknown) => {
-        console.error(`Disposable data cleanup failed: ${String(error)}`);
-      });
-    }
+    removeInterruptHandler();
+    await cleanup();
   }
 }
 

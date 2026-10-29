@@ -21,7 +21,7 @@ Muse Recall closes that loop. It stores project decisions as structured records,
 the active ones to later generations, supersedes them when you correct them, and keeps the
 change itself reviewable. The **Decision Guard** is an advisory source check, not a gate.
 
-![Current HTML Studio showing approved v2 of Farmyard Memory Match, project decisions and version history](docs/assets/readme-2026-10-29/studio-approved.png)
+![Current HTML Studio reviewing staged v2 of Farmyard Memory Match: the live preview, the project decisions supplied to the change, the Decision Guard advisory and the approve/reject controls](docs/assets/readme-2026-10-29/studio-review.png)
 
 <!-- Demo video: paste the published URL in place of the pending note when the 2:50 cut is uploaded. -->
 **Demo video** — 2:50, recorded 29 October 2026 from a live Muse Spark session. [What the cut

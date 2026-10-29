@@ -5,7 +5,7 @@ using real API and React UI flows in managed Chromium. All six PNGs are 1600 × 
 
 | Capture | Content | Reproduce |
 | --- | --- | --- |
-| `studio-approved.png` | Farmyard Memory Match v2, current project decisions and version history. | `pnpm exec tsx scripts/capture-readme-studio.ts` |
+| `studio-review.png` | Farmyard Memory Match v2 staged for review: preview, supplied project decisions, Decision Guard advisory, approve/reject. | `pnpm exec tsx scripts/capture-readme-studio.ts` |
 | `conversation.png` | A response built from the actual retrieved project memory, with evidence expanded. | `pnpm exec tsx scripts/capture-readme-surfaces.ts` |
 | `planning-form.png` | A schema-validated declarative planning form. | same |
 | `tool-approval.png` | A real pending `task.create` call awaiting approval. | same |
@@ -13,9 +13,13 @@ using real API and React UI flows in managed Chromium. All six PNGs are 1600 × 
 | `memory-retrieval.png` | Forge retrieval mode, pinned records, scores, exact rendered cost and exclusions. | same |
 
 The Studio script transports the recorded Phase 12 C-v2 application bytes through the fake-Muse
-fixture, then uses the production validation, runtime check and approval paths. The current Guard
-abstains on that recorded mixed palette; the approved-state panel reports `NOT EVALUATED`.
-The capture does not imply a new live model run or a clean Guard pass.
+fixture and captures the review state while v2 is staged, so the Decision Guard panel shows the
+advisory recorded for that change. The current Guard reports `NOT VERIFIED` on the recorded
+mixed palette (superseded warm and active cool colours both appear). After the capture the script
+approves v2 through the UI, with the managed-Chromium runtime check, and confirms the published
+bytes match the recorded source. The chat provider is the offline echo provider, so the header
+does not credit a Muse model. The capture does not imply a new live model run or a clean Guard
+pass.
 
 The supporting script uses an offline scripted EchoProvider through the production server.
 Its responses, declarative form and tool proposal are deterministic fixtures; memory retrieval,
@@ -25,6 +29,8 @@ The header identifies the provider as offline. No paid or live inference is perf
 The retrieval capture deliberately sets the visible **Max memories** control to **2** so the full
 explanation and one exclusion fit. Forge's default remains **6 memories / 3,000 characters**.
 
-Both scripts allocate free ports, clean up their own servers/browser and temporary state, and
-fail on browser or API errors. Earlier screenshots and historical evidence are preserved.
-`SHA256SUMS` records the final captured bytes.
+Both scripts allocate free ports, start their servers with explicit settings and a minimal
+environment (no local `.env` or exported Muse Recall settings), clean up their servers, browser and temporary
+state, also on Ctrl-C, and fail on browser or API errors. Captures are written to the disposable
+directory first and copied here only after every check passes; each successful run rewrites
+`SHA256SUMS` from the published bytes. Earlier screenshots and historical evidence are preserved.
