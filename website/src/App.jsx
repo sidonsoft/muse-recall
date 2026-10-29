@@ -5,7 +5,7 @@ import StudioLoop from './components/StudioLoop.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import { Watch, Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, SiteVerified, CTA, Footer } from './components/Sections.jsx';
 
-const WATCH = ['watch', 'loop', 'timeline', 'how', 'evidence', 'quickstart'];
+const WATCH = ['watch', 'loop', 'timeline', 'how', 'evidence', 'judges', 'quickstart'];
 
 export default function App() {
   useEffect(() => {

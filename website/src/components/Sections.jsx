@@ -529,7 +529,7 @@ export function Guard() {
             is exactly why enforcement stays human.
           </p>
         </div>
-        <div className="rulefams">
+        <div className="rulefams grid-5">
           {families.map(([icon, name, ex]) => (
             <div className="rulefam reveal" key={name}>
               <span className="icon" aria-hidden="true">
@@ -679,7 +679,7 @@ export function ForJudges() {
             <a href={`${DOCS}/submission/EVIDENCE_MAP.md`} target="_blank" rel="noreferrer">evidence map</a>.
           </p>
         </div>
-        <div className="features-grid">
+        <div className="features-grid grid-5">
           {cards.map((c) => (
             <div className="feature reveal" key={c.h}>
               <div className="icon" aria-hidden="true">
