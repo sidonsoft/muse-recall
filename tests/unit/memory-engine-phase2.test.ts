@@ -243,6 +243,60 @@ describe('corrections', () => {
     }
   });
 
+  it('rejects a replacement from a different project and keeps the target active', () => {
+    const { engine, db, close } = seeded();
+    try {
+      const original = engine.create(
+        baseInput({ project_id: 'project-b', content: 'Project-b uses SQLite' }),
+      );
+
+      expect(() =>
+        engine.correct({
+          supersedes: [original.memory.id],
+          type: 'technical_decision',
+          scope: 'project',
+          project_id: 'project-a',
+          content: 'Project-a uses Postgres',
+        }),
+      ).toThrow(MemoryConflictError);
+
+      expect(engine.get(original.memory.id)?.status).toBe('active');
+      expect(engine.list({ project_id: 'project-a' }).total).toBe(0);
+
+      const result = retrieveMemories(db, { project_id: 'project-b', query: 'sqlite' });
+      expect(result.results.map((entry) => entry.memory.id)).toContain(original.memory.id);
+    } finally {
+      close();
+    }
+  });
+
+  it('rejects a correction whose targets span projects', () => {
+    const { engine, close } = seeded();
+    try {
+      const a = engine.create(
+        baseInput({ project_id: 'project-a', content: 'Project-a uses SQLite' }),
+      );
+      const b = engine.create(
+        baseInput({ project_id: 'project-b', content: 'Project-b uses SQLite' }),
+      );
+
+      expect(() =>
+        engine.correct({
+          supersedes: [a.memory.id, b.memory.id],
+          type: 'technical_decision',
+          scope: 'project',
+          project_id: 'project-a',
+          content: 'Both projects use Postgres',
+        }),
+      ).toThrow(MemoryConflictError);
+
+      expect(engine.get(a.memory.id)?.status).toBe('active');
+      expect(engine.get(b.memory.id)?.status).toBe('active');
+    } finally {
+      close();
+    }
+  });
+
   it('rejects a correction whose target does not exist', () => {
     const { engine, close } = seeded();
     try {

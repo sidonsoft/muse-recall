@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
@@ -24,6 +24,7 @@ import {
 } from '@mml/shared';
 import { forgeChildEnv } from './child-env.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
+import { ensurePrivateDirectory, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
@@ -32,9 +33,10 @@ import { ForgeError, type ForgeWorkspace } from './workspace.js';
 /**
  * Runs one Muse job against a staging copy.
  *
- * Budgets are enforced on what is measurable: wall-clock runtime and observed
- * model calls are hard stops; tokens are reported but cannot be capped inside
- * the CLI, so they are labelled observational.
+ * Budgets are enforced on what is measurable: wall-clock runtime is a hard
+ * stop; the call cap is passed to `muse exec --max-model-steps` and re-checked
+ * on completion; tokens are reported but cannot be capped inside the CLI, so
+ * they are labelled observational.
  */
 
 export interface ForgeManagerOptions {
@@ -574,7 +576,7 @@ export class ForgeJobManager {
 
   private async saveAcknowledgements(ids: Set<string>): Promise<void> {
     const root = this.workspace.getRoot();
-    await mkdir(root, { recursive: true });
+    await ensurePrivateDirectory(root);
     const target = this.acknowledgementPath();
     const temp = join(root, `.recovery-ack-${process.pid}-${randomUUID()}.tmp`);
     try {
@@ -805,7 +807,7 @@ export class ForgeJobManager {
           throw new ForgeError('no_current_version', 'The approved application could not be read.');
         }
         baseVersion = state.current_version;
-        await writeFile(join(staging, 'index.html'), current, 'utf8');
+        await writePrivateFile(join(staging, 'index.html'), current);
       }
 
       const query = buildRetrievalQuery({
@@ -880,7 +882,7 @@ export class ForgeJobManager {
       const images: string[] = [];
       if (input.screenshot && input.kind === 'modify') {
         const imagePath = join(staging, 'preview.png');
-        await writeFile(imagePath, input.screenshot);
+        await writePrivateFile(imagePath, input.screenshot);
         images.push(imagePath);
       }
 
@@ -1037,6 +1039,7 @@ export class ForgeJobManager {
         ...(staged ? { expectedSha256: staged.sha256 } : {}),
         verification: approvalVerification,
       });
+      if (promoted.note) this.log(current, promoted.note);
 
       const approved = ForgeJobSchema.parse({
         ...current,
@@ -1162,7 +1165,7 @@ export class ForgeJobManager {
     });
     this.update(job, { prompt_sha256: createHash('sha256').update(prompt).digest('hex') });
     const promptPath = join(staging, 'prompt.txt');
-    await writeFile(promptPath, prompt, 'utf8');
+    await writePrivateFile(promptPath, prompt);
     // Shutdown may begin while the prompt is being written; do not spawn a
     // child after the manager has promised to stop.
     if (this.shuttingDown || this.cancelled.has(job.id)) {
@@ -1189,6 +1192,10 @@ export class ForgeJobManager {
       staging,
       '--prompt-file',
       promptPath,
+      // Enforce the call budget before the CLI starts another model step. The
+      // reported usage is still re-checked on completion.
+      '--max-model-steps',
+      String(this.maxCalls),
       '--reasoning-effort',
       this.effort,
     ];
@@ -1489,10 +1496,10 @@ export class ForgeJobManager {
   private async resetStaging(job: ForgeJob, staging: string): Promise<void> {
     if (job.kind === 'modify') {
       const current = await this.workspace.currentHtml(job.project_id);
-      if (current !== null) await writeFile(join(staging, 'index.html'), current, 'utf8');
+      if (current !== null) await writePrivateFile(join(staging, 'index.html'), current);
     } else {
       const file = join(staging, 'index.html');
-      await writeFile(file, '', 'utf8');
+      await writePrivateFile(file, '');
     }
   }
 

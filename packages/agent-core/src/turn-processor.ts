@@ -190,14 +190,17 @@ export class TurnProcessor {
       this.config.budgets,
     );
 
-    // 5. Call the provider and stream the answer.
+    // 5. Call the provider and stream the answer. The signal is forwarded so a
+    //    Stop button or a dropped SSE connection terminates the child promptly
+    //    instead of merely ignoring its output.
     const startedAt = performance.now();
     let text = '';
     let usage = { ...EMPTY_USAGE };
     let providerCompleted = false;
 
+    this.assertNotAborted(options.signal);
     try {
-      for await (const event of this.streamProvider(assembled.prompt)) {
+      for await (const event of this.streamProvider(assembled.prompt, options.signal)) {
         this.assertNotAborted(options.signal);
 
         switch (event.type) {
@@ -306,20 +309,23 @@ export class TurnProcessor {
   // Provider
   // -------------------------------------------------------------------------
 
-  private async *streamProvider(prompt: string): AsyncGenerator<ModelEvent> {
+  private async *streamProvider(
+    prompt: string,
+    signal: AbortSignal | undefined,
+  ): AsyncGenerator<ModelEvent> {
     const request = {
       messages: [{ role: 'user' as const, content: prompt }],
       max_output_tokens: this.config.maxOutputTokens,
     };
 
     if (this.provider.stream) {
-      yield* this.provider.stream(request);
+      yield* this.provider.stream(request, { signal });
       return;
     }
 
     // A provider without streaming still produces a valid turn; it simply
     // arrives as one event.
-    const response = await this.provider.generate(request);
+    const response = await this.provider.generate(request, { signal });
     yield { type: 'text_delta', text: response.text };
     yield { type: 'usage', usage: response.usage };
     yield {
@@ -374,11 +380,13 @@ export class TurnProcessor {
         : null;
 
       if (candidate) {
+        // A correction inherits the boundary of the record it replaces: in a
+        // project session the best candidate may be a global memory.
         const result = this.engine.correct({
           supersedes: [candidate.id],
           type,
-          scope,
-          project_id: session.project_id,
+          scope: candidate.scope,
+          project_id: candidate.project_id,
           content: fact,
           source,
           confidence: 0.9,
@@ -483,10 +491,15 @@ export class TurnProcessor {
     );
   }
 
-  private async decideTools(content: string, session: Session): Promise<RequestedCall[]> {
+  private async decideTools(
+    content: string,
+    session: Session,
+    signal: AbortSignal | undefined,
+  ): Promise<RequestedCall[]> {
     if (!this.tools) return [];
     const catalog = this.tools.registry.list();
     if (catalog.length === 0) return [];
+    this.assertNotAborted(signal);
 
     const recent = this.store
       .recentMessages(session.id, 8)
@@ -508,11 +521,14 @@ export class TurnProcessor {
     ].join('\n\n');
 
     try {
-      const response = await this.provider.generate({
-        messages: [{ role: 'user', content: prompt }],
-        response_schema: TOOL_DECISION_JSON_SCHEMA as unknown as Record<string, unknown>,
-        max_output_tokens: 600,
-      });
+      const response = await this.provider.generate(
+        {
+          messages: [{ role: 'user', content: prompt }],
+          response_schema: TOOL_DECISION_JSON_SCHEMA as unknown as Record<string, unknown>,
+          max_output_tokens: 600,
+        },
+        { signal },
+      );
       const parsed = ToolDecisionSchema.safeParse(JSON.parse(response.text));
       if (!parsed.success) return [];
 
@@ -534,6 +550,10 @@ export class TurnProcessor {
       }
       return requests.slice(0, this.config.tools.maxCallsPerTurn);
     } catch {
+      // Cancellation is a real outcome, not a provider hiccup to paper over.
+      if (signal?.aborted) {
+        throw new AgentError('turn_cancelled', 'The turn was cancelled.', { aborted: true });
+      }
       // Tool planning is best-effort: a provider hiccup must not fail the turn.
       return [];
     }
@@ -559,7 +579,7 @@ export class TurnProcessor {
       return { calls: [], promptSection: '' };
     }
 
-    const requests = await this.decideTools(args.content, args.session);
+    const requests = await this.decideTools(args.content, args.session, args.options.signal);
     if (requests.length === 0) return { calls: [], promptSection: '' };
 
     const { registry, store } = this.tools;

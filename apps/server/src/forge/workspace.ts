@@ -1,10 +1,11 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
 import {
   copyFile,
   lstat,
   mkdir,
+  readdir,
   readFile,
   realpath,
   rename,
@@ -22,7 +23,7 @@ import {
   type ForgeVersion,
   ForgeVersionSchema,
 } from '@mml/shared';
-import { isMissingFile } from './fs-utils.js';
+import { ensurePrivateDirectory, isMissingFile } from './fs-utils.js';
 
 /**
  * The only code allowed to touch generated application files.
@@ -38,6 +39,7 @@ export type ForgeErrorCode =
   | 'invalid_job_id'
   | 'path_escape'
   | 'invalid_staged'
+  | 'invalid_screenshot'
   | 'invalid_job_state'
   | 'version_conflict'
   | 'version_corrupt'
@@ -64,6 +66,16 @@ export class ForgeError extends Error {
 
 const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_BYTES = 1_500_000;
+/**
+ * Bound the work a generated document can request from `node --check`.
+ *
+ * Each inline script costs one child process. Generated applications need a
+ * handful; these caps stop a hostile or runaway document from spawning an
+ * unbounded number of syntax checks while the server awaits them.
+ */
+export const MAX_INLINE_SCRIPTS = 32;
+export const MAX_INLINE_SCRIPT_BYTES = 500_000;
+const INLINE_SCRIPT_CHECK_TIMEOUT_MS = 10_000;
 
 /**
  * Resolve the version a rollback should restore.
@@ -118,26 +130,67 @@ export class ForgeWorkspace {
 
   async ensureProject(projectId: string): Promise<void> {
     const dir = this.projectDir(projectId);
-    await mkdir(join(dir, 'versions'), { recursive: true });
-    await mkdir(join(dir, 'staging'), { recursive: true });
-    await mkdir(join(dir, 'jobs'), { recursive: true });
     // Only a genuinely missing state file is initialised. A present file is
     // validated through the same path used by `state()`; malformed content is
     // left byte-for-byte intact so it can be repaired or inspected.
     const found = await this.readStateFile(projectId);
     if (found.kind === 'missing') {
+      // Version and job records without their state file mean a previous
+      // write was lost. Writing empty state would orphan those records and
+      // present a false empty project, so refuse until it is restored.
+      await this.assertNoOrphanedContent(projectId);
+      await this.createProjectDirs(dir);
       await this.writeState(projectId, { current: null, versions: [] });
       return;
     }
+    await this.createProjectDirs(dir);
     this.parseState(projectId, found.raw);
   }
 
   async state(projectId: string): Promise<ForgeState> {
     const found = await this.readStateFile(projectId);
     if (found.kind === 'missing') {
+      // Reads are side-effect free, but they must not hide records that a
+      // missing state file no longer points at.
+      await this.assertNoOrphanedContent(projectId);
       return { project_id: projectId, current_version: null, versions: [], can_rollback: false };
     }
     return this.parseState(projectId, found.raw);
+  }
+
+  private async createProjectDirs(dir: string): Promise<void> {
+    await ensurePrivateDirectory(this.root);
+    await ensurePrivateDirectory(dir);
+    await ensurePrivateDirectory(join(dir, 'versions'));
+    await ensurePrivateDirectory(join(dir, 'staging'));
+    await ensurePrivateDirectory(join(dir, 'jobs'));
+  }
+
+  /**
+   * A missing state file is only a new project when no approved version data
+   * survives. Version directories are the only data empty state would orphan;
+   * job records stay on disk and are recovered normally after initialisation.
+   */
+  private async assertNoOrphanedContent(projectId: string): Promise<void> {
+    let entries: string[];
+    try {
+      entries = await readdir(join(this.projectDir(projectId), 'versions'));
+    } catch (error) {
+      if (isMissingFile(error)) return;
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge versions directory could not be read. Restore it before continuing.',
+      );
+    }
+    // Temporary promotion copies and moved-aside interrupted promotions are
+    // non-numeric, dot-prefixed entries; they are not approved version data.
+    const versions = entries.filter((entry) => /^\d+$/.test(entry));
+    if (versions.length === 0) return;
+    throw new ForgeError(
+      'state_corrupt',
+      'The Forge state file is missing while approved version data remains. Restore or repair state.json before continuing.',
+      [`Found versions/${versions.sort().join(', versions/')} without state.json.`],
+    );
   }
 
   /**
@@ -217,20 +270,51 @@ export class ForgeWorkspace {
   async currentHtml(projectId: string): Promise<string | null> {
     const state = await this.state(projectId);
     if (state.current_version === null) return null;
+    const entry = state.versions.find((version) => version.version === state.current_version);
     const file = this.versionFile(projectId, state.current_version);
     try {
       await lstat(file);
     } catch {
       return null;
     }
-    return this.readContained(projectId, file);
+    const bytes = await this.readContainedBuffer(projectId, file);
+    if (entry) this.assertVersionHash(entry, bytes);
+    return bytes.toString('utf8');
+  }
+
+  /** Refuse a version file whose bytes no longer match its recorded hash. */
+  private assertVersionHash(entry: ForgeVersion, bytes: Buffer): void {
+    if (!entry.sha256) return;
+    const actual = createHash('sha256').update(bytes).digest('hex');
+    if (actual !== entry.sha256) {
+      throw new ForgeError(
+        'version_corrupt',
+        `v${entry.version} no longer matches its recorded hash.`,
+      );
+    }
+  }
+
+  /** Read a recorded version and verify it before using it as a base. */
+  private async requireVersionIntegrity(projectId: string, entry: ForgeVersion): Promise<void> {
+    if (!entry.sha256) return;
+    let bytes: Buffer;
+    try {
+      bytes = await this.readContainedBuffer(projectId, this.versionFile(projectId, entry.version));
+    } catch (error) {
+      if (error instanceof ForgeError) throw error;
+      if (isMissingFile(error)) {
+        throw new ForgeError('version_corrupt', `v${entry.version} is missing from the workspace.`);
+      }
+      throw error;
+    }
+    this.assertVersionHash(entry, bytes);
   }
 
   async createStaging(projectId: string, jobId: string): Promise<string> {
     this.assertJobId(jobId);
     const dir = this.within(join(this.projectDir(projectId), 'staging'), jobId);
     await rm(dir, { recursive: true, force: true });
-    await mkdir(dir, { recursive: true });
+    await ensurePrivateDirectory(dir);
     return dir;
   }
 
@@ -348,14 +432,30 @@ export class ForgeWorkspace {
       }
     }
 
-    for (const script of extractInlineScripts(html)) {
-      const check = spawnSync(process.execPath, ['--check', '-'], {
-        input: script,
-        encoding: 'utf8',
-        timeout: 10_000,
-      });
-      if (check.status !== 0) {
-        issues.push(`Inline script failed syntax check: ${String(check.stderr).slice(0, 300)}`);
+    const scripts = extractInlineScripts(html);
+    const scriptBytes = scripts.reduce((total, script) => total + Buffer.byteLength(script), 0);
+    if (scripts.length > MAX_INLINE_SCRIPTS) {
+      issues.push(
+        `Too many inline scripts: ${String(scripts.length)} exceeds the limit of ${String(
+          MAX_INLINE_SCRIPTS,
+        )}.`,
+      );
+    }
+    if (scriptBytes > MAX_INLINE_SCRIPT_BYTES) {
+      issues.push(
+        `Inline script source is ${String(scriptBytes)} bytes, above the ${String(
+          MAX_INLINE_SCRIPT_BYTES,
+        )}-byte limit.`,
+      );
+    }
+    // Skip the syntax checks when a cap already failed: running them would
+    // defeat the bound the cap exists to enforce.
+    if (scripts.length <= MAX_INLINE_SCRIPTS && scriptBytes <= MAX_INLINE_SCRIPT_BYTES) {
+      for (const script of scripts) {
+        const check = await checkInlineScript(script);
+        if (!check.ok) {
+          issues.push(`Inline script failed syntax check: ${check.stderr.slice(0, 300)}`);
+        }
       }
     }
 
@@ -395,7 +495,12 @@ export class ForgeWorkspace {
       /** Approval-time checks to record with this immutable version. */
       verification?: ForgeApprovalVerification;
     },
-  ): Promise<{ version: number; previous: number | null; sha256: string }> {
+  ): Promise<{
+    version: number;
+    previous: number | null;
+    sha256: string;
+    note: string | null;
+  }> {
     const validation = await this.validateStaged(projectId, jobId);
     if (!validation.ok) {
       throw new ForgeError(
@@ -413,6 +518,12 @@ export class ForgeWorkspace {
         `The approved application moved to v${String(previous)} while this change was staged.`,
       );
     }
+    if (previous !== null) {
+      // A promotion builds on the approved file. Never promote over a version
+      // whose bytes no longer match its recorded hash.
+      const current = state.versions.find((entry) => entry.version === previous);
+      if (current) await this.requireVersionIntegrity(projectId, current);
+    }
 
     const staged = await this.readContainedBuffer(projectId, this.stagingFile(projectId, jobId));
     const sha256 = createHash('sha256').update(staged).digest('hex');
@@ -426,17 +537,52 @@ export class ForgeWorkspace {
       );
     }
     const next = state.versions.reduce((max, entry) => Math.max(max, entry.version), 0) + 1;
-    const dir = this.within(join(this.projectDir(projectId), 'versions'), String(next));
-    await mkdir(dir, { recursive: true });
-    await copyFile(
-      this.stagingFile(projectId, jobId),
-      join(dir, 'index.html'),
-      fsConstants.COPYFILE_EXCL,
-    );
+    const versionsDir = this.within(this.projectDir(projectId), 'versions');
+    const dir = this.within(versionsDir, String(next));
+    const temp = this.within(versionsDir, `.promote-${process.pid}-${randomUUID()}`);
+    await ensurePrivateDirectory(versionsDir);
+    let note: string | null = null;
+    // Stage the immutable copy in a temporary directory and rename it into
+    // place. A crash before the rename leaves no version directory. A crash
+    // after it leaves a directory state never referenced, which the next retry
+    // moves aside instead of failing on COPYFILE_EXCL forever.
+    try {
+      // Owner-only from creation; the rename keeps the mode on the version dir.
+      await mkdir(temp, { mode: 0o700 });
+      await copyFile(
+        this.stagingFile(projectId, jobId),
+        join(temp, 'index.html'),
+        fsConstants.COPYFILE_EXCL,
+      );
 
-    const written = await readFile(join(dir, 'index.html'));
-    if (createHash('sha256').update(written).digest('hex') !== sha256) {
-      throw new ForgeError('version_corrupt', 'The promoted file did not match the staged bytes.');
+      const written = await readFile(join(temp, 'index.html'));
+      if (createHash('sha256').update(written).digest('hex') !== sha256) {
+        throw new ForgeError(
+          'version_corrupt',
+          'The promoted file did not match the staged bytes.',
+        );
+      }
+
+      // State is not proof that older version bytes are absent, so never delete
+      // a version directory. Only the destination can block this rename; move
+      // an existing one to a non-numeric name so the bytes remain recoverable.
+      let destinationExists = false;
+      try {
+        await lstat(dir);
+        destinationExists = true;
+      } catch (error) {
+        if (!isMissingFile(error)) throw error;
+      }
+      if (destinationExists) {
+        const stamp = new Date().toISOString().replaceAll(':', '-');
+        const asideName = `.orphaned-${next}-${stamp}-${randomUUID().slice(0, 8)}`;
+        await rename(dir, this.within(versionsDir, asideName));
+        note = `Moved an interrupted promotion directory for v${next} aside to versions/${asideName}; no version data was deleted.`;
+      }
+      await rename(temp, dir);
+    } catch (error) {
+      await rm(temp, { recursive: true, force: true }).catch(() => undefined);
+      throw error;
     }
 
     const version = ForgeVersionSchema.parse({
@@ -457,7 +603,7 @@ export class ForgeWorkspace {
       recursive: true,
       force: true,
     });
-    return { version: next, previous, sha256 };
+    return { version: next, previous, sha256, note };
   }
 
   async rollback(projectId: string): Promise<{ version: number; previous: number }> {
@@ -470,18 +616,7 @@ export class ForgeWorkspace {
       throw new ForgeError('nothing_to_rollback', 'There is no earlier version to restore.');
 
     // Never restore bytes that no longer match the recorded hash.
-    if (target.sha256) {
-      const bytes = await this.readContainedBuffer(
-        projectId,
-        this.versionFile(projectId, target.version),
-      );
-      if (createHash('sha256').update(bytes).digest('hex') !== target.sha256) {
-        throw new ForgeError(
-          'version_corrupt',
-          `v${target.version} no longer matches its recorded hash.`,
-        );
-      }
-    }
+    await this.requireVersionIntegrity(projectId, target);
 
     await this.writeState(projectId, { current: target.version, versions: state.versions });
     return { version: target.version, previous: state.current_version };
@@ -514,7 +649,7 @@ export class ForgeWorkspace {
     input: { current: number | null; versions: unknown[] },
   ): Promise<void> {
     const dir = this.projectDir(projectId);
-    await mkdir(dir, { recursive: true });
+    await ensurePrivateDirectory(dir);
     const parsed = ForgeStateSchema.parse({
       project_id: projectId,
       current_version: input.current,
@@ -554,6 +689,54 @@ export function extractInlineScripts(html: string): string[] {
     match = pattern.exec(html);
   }
   return scripts;
+}
+
+/**
+ * Syntax-check one inline script without blocking the event loop.
+ *
+ * Same pass/fail contract as `spawnSync`: exit status 0 passes, anything else
+ * reports stderr. A timeout or spawn failure is a failed check, never a throw.
+ */
+function checkInlineScript(script: string): Promise<{ ok: boolean; stderr: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, ['--check', '-'], {
+      stdio: ['pipe', 'ignore', 'pipe'],
+      windowsHide: true,
+    });
+    let stderr = '';
+    let timedOut = false;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (result: { ok: boolean; stderr: string }) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      resolve(result);
+    };
+
+    timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, INLINE_SCRIPT_CHECK_TIMEOUT_MS);
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk: string) => {
+      if (stderr.length < 4_000) stderr += chunk;
+    });
+    child.on('error', (error) => {
+      finish({ ok: false, stderr: error.message });
+    });
+    child.on('close', (code) => {
+      finish({
+        ok: code === 0 && !timedOut,
+        stderr: timedOut
+          ? `syntax check timed out after ${String(INLINE_SCRIPT_CHECK_TIMEOUT_MS)} ms`
+          : stderr,
+      });
+    });
+    // A timed-out child closes stdin before it is killed; that is expected.
+    child.stdin?.on('error', () => undefined);
+    child.stdin?.end(script);
+  });
 }
 
 /**

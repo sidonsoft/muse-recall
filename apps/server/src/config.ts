@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, parse, resolve } from 'node:path';
 import {
   type AutoCaptureMode,
   type ContextBudgets,
@@ -16,13 +16,18 @@ import {
 } from '@mml/muse-provider';
 import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
 import { z } from 'zod';
+import { isLoopbackBindHost } from './host-guard.js';
 
 export const SERVICE_NAME = 'muse-memory-lab' as const;
 export const SERVICE_VERSION = '0.1.0';
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  HOST: z.string().min(1).default('127.0.0.1'),
+  // No authentication exists, so the bind address is the network boundary.
+  HOST: z.string().min(1).default('127.0.0.1').refine(isLoopbackBindHost, {
+    message:
+      'must be a loopback address (127.0.0.1, ::1 or localhost); the API has no authentication and must not be exposed to a network',
+  }),
   PORT: z.coerce.number().int().min(1).max(65_535).default(8787),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   CORS_ORIGINS: z.string().default('http://127.0.0.1:5173,http://localhost:5173'),
@@ -173,6 +178,11 @@ export function loadConfig(
   }
   const value = parsed.data;
 
+  // The pnpm scripts start the server from `apps/server`, but the documented
+  // `.env` and the data/workspace directories live at the checkout root. Anchor
+  // relative paths there so the seed, the migrator and the server agree.
+  const projectRoot = resolveProjectRoot(cwd, env);
+
   return {
     environment: value.NODE_ENV,
     host: value.HOST,
@@ -181,9 +191,9 @@ export function loadConfig(
     corsOrigins: value.CORS_ORIGINS.split(',')
       .map((origin) => origin.trim())
       .filter((origin) => origin.length > 0),
-    databasePath: resolve(cwd, value.DATABASE_PATH),
+    databasePath: resolve(projectRoot, value.DATABASE_PATH),
     wal: value.SQLITE_WAL,
-    workspaceRoot: resolve(cwd, value.WORKSPACE_ROOT),
+    workspaceRoot: resolve(projectRoot, value.WORKSPACE_ROOT),
     toolApprovalPolicy: value.TOOL_APPROVAL_POLICY,
     forge: {
       maxRuntimeMs: value.FORGE_MAX_RUNTIME_MS,
@@ -229,9 +239,85 @@ export function loadConfig(
       museTimeoutMs: value.MUSE_TIMEOUT_MS,
       cwd,
       ...(value.META_API_KEY ? { apiKey: value.META_API_KEY } : {}),
+      ...(value.MUSE_FALLBACK_API_KEY
+        ? {
+            museFallbackApiKey: value.MUSE_FALLBACK_API_KEY,
+            museFallbackModel: value.MUSE_FALLBACK_MODEL,
+          }
+        : {}),
     },
     serviceVersion: SERVICE_VERSION,
   };
+}
+
+/**
+ * Locate the `.env` file this checkout should read.
+ *
+ * The documented setup copies `.env.example` to the repository root, but the
+ * pnpm scripts run the server from `apps/server`. Resolving only against the
+ * process working directory therefore ignored the documented file entirely and
+ * silently fell back to defaults. Candidate order:
+ *
+ * 1. `MML_ENV_FILE`, an explicit path (relative to `cwd`); it must exist.
+ * 2. `<checkout root>/.env` — the repository root, found by walking up from
+ *    `cwd` (or pnpm's `INIT_CWD`) to the nearest directory containing
+ *    `pnpm-workspace.yaml`.
+ * 3. `<cwd>/.env` — a deliberately scoped `apps/server/.env`, kept as the
+ *    fallback for anyone who prefers it.
+ *
+ * The walk stops at the filesystem root, so a stray `$HOME/.env` is never
+ * picked up: only a directory that is actually this workspace qualifies.
+ */
+export function findEnvFile(
+  cwd: string = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const explicit = env.MML_ENV_FILE?.trim();
+  if (explicit !== undefined && explicit.length > 0) {
+    const candidate = resolve(cwd, explicit);
+    if (!existsSync(candidate)) {
+      throw new Error(`MML_ENV_FILE points at a file that does not exist: ${candidate}`);
+    }
+    return candidate;
+  }
+
+  const root = findWorkspaceRoot(cwd, env);
+  const candidates = root === null ? [] : [resolve(root, '.env')];
+  candidates.push(resolve(cwd, '.env'));
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Nearest ancestor (inclusive) containing `pnpm-workspace.yaml`, if any. */
+export function findWorkspaceRoot(
+  cwd: string = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const starts = [cwd];
+  const initCwd = env.INIT_CWD?.trim();
+  if (initCwd !== undefined && initCwd.length > 0) starts.push(initCwd);
+
+  for (const start of starts) {
+    let current = resolve(start);
+    for (;;) {
+      if (existsSync(resolve(current, 'pnpm-workspace.yaml'))) return current;
+      const parent = dirname(current);
+      if (parent === current || current === parse(current).root) break;
+      current = parent;
+    }
+  }
+  return null;
+}
+
+/** Checkout root; falls back to `cwd` when no workspace marker is found. */
+export function resolveProjectRoot(
+  cwd: string = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return findWorkspaceRoot(cwd, env) ?? resolve(cwd);
 }
 
 /**
@@ -239,10 +325,15 @@ export function loadConfig(
  *
  * Uses Node's built-in loader (>= 20.12) so the project needs no dotenv
  * dependency. Absent files are not an error: the environment may already be
- * fully populated (CI, containers).
+ * fully populated (CI, containers). Returns the path that was loaded so the
+ * startup log can name it.
  */
-export function loadDotEnv(cwd: string = process.cwd()): void {
-  const candidate = resolve(cwd, '.env');
-  if (!existsSync(candidate)) return;
+export function loadDotEnv(
+  cwd: string = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const candidate = findEnvFile(cwd, env);
+  if (candidate === null) return null;
   process.loadEnvFile(candidate);
+  return candidate;
 }

@@ -74,6 +74,11 @@ import { z } from 'zod';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
+/** Prefix an API path with the configured base URL (empty for same-origin). */
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
@@ -100,7 +105,7 @@ async function request<T>(
       headers['content-type'] = 'application/json';
     }
 
-    response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    response = await fetch(apiUrl(path), { ...init, headers });
   } catch (cause) {
     throw new ApiError(
       'network_unreachable',
@@ -183,11 +188,9 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
 }
 
 export const api = {
-  health: (options: { live?: boolean } = {}) =>
-    request<HealthResponse>(
-      `/api/health${options.live ? '?probe=live' : ''}`,
-      { method: 'GET' },
-      (data) => HealthResponseSchema.parse(data),
+  health: () =>
+    request<HealthResponse>('/api/health', { method: 'GET' }, (data) =>
+      HealthResponseSchema.parse(data),
     ),
 
   meta: () =>
@@ -427,7 +430,7 @@ export const api = {
     ),
 
   forgePreviewUrl: (projectId: string, jobId?: string) =>
-    `${API_BASE_URL}/api/forge/projects/${projectId}/preview${jobId ? `?job=${jobId}` : ''}`,
+    apiUrl(`/api/forge/projects/${projectId}/preview${jobId ? `?job=${jobId}` : ''}`),
 
   // --- Tools --------------------------------------------------------------
 

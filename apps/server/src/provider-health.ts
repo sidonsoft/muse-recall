@@ -1,5 +1,5 @@
 import { ProviderError } from '@mml/muse-provider';
-import type { ModelProvider } from '@mml/shared';
+import { type ModelProvider, redactSecrets } from '@mml/shared';
 
 export interface ProviderHealthState {
   checked_at: string | null;
@@ -10,6 +10,12 @@ export interface ProviderHealthState {
   /** True only when a real model call succeeded in this process. */
   verified_with_live_call: boolean;
 }
+
+interface ProviderHealthLogger {
+  error(context: Record<string, unknown>, message: string): void;
+}
+
+const GENERIC_PROVIDER_FAILURE = 'The provider is currently unavailable.';
 
 const UNCHECKED: ProviderHealthState = {
   checked_at: null,
@@ -37,6 +43,7 @@ export class ProviderHealthTracker {
   constructor(
     private readonly provider: ModelProvider,
     private readonly ttlMs = 60_000,
+    private readonly logger?: ProviderHealthLogger,
   ) {}
 
   current(): ProviderHealthState {
@@ -82,12 +89,16 @@ export class ProviderHealthTracker {
       };
     } catch (error) {
       const code = ProviderError.isProviderError(error) ? error.code : 'provider_crashed';
+      const detail = error instanceof Error ? error.message : String(error);
+      // The exact upstream error can carry credentials or provider internals;
+      // keep it in the server log and expose only a generic state to clients.
+      this.logger?.error({ code, detail: redactSecrets(detail) }, 'provider health probe failed');
       this.state = {
         checked_at: new Date().toISOString(),
         ok: false,
         latency_ms: null,
         model: null,
-        message: `${code}: ${error instanceof Error ? error.message : String(error)}`,
+        message: GENERIC_PROVIDER_FAILURE,
         verified_with_live_call: true,
       };
     }

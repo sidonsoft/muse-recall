@@ -6,6 +6,8 @@ import {
   extractInlineScripts,
   ForgeError,
   ForgeWorkspace,
+  MAX_INLINE_SCRIPT_BYTES,
+  MAX_INLINE_SCRIPTS,
   unifiedDiff,
 } from '../../apps/server/src/forge/workspace.js';
 
@@ -141,6 +143,44 @@ describe('versioning', () => {
     const validation = await workspace.validateStaged('demo-game', JOB);
     expect(validation.ok).toBe(false);
     expect(validation.issues.join(' ')).toMatch(/renderable|body/i);
+  });
+
+  it('caps the number of inline scripts before syntax checking', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    const scripts = Array.from(
+      { length: MAX_INLINE_SCRIPTS + 1 },
+      (_, index) => `<script>const value${String(index)} = ${String(index)};</script>`,
+    ).join('');
+    await writeFile(
+      join(staging, 'index.html'),
+      `<!doctype html><html><body><main>Many scripts</main>${scripts}</body></html>`,
+    );
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toMatch(/too many inline scripts/i);
+  });
+
+  it('caps total inline-script bytes before syntax checking', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    const script = `<script>const payload = '${'x'.repeat(MAX_INLINE_SCRIPT_BYTES)}';</script>`;
+    await writeFile(
+      join(staging, 'index.html'),
+      `<!doctype html><html><body><main>Large script</main>${script}</body></html>`,
+    );
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toMatch(/inline script source.*byte limit/i);
+  });
+
+  it('still rejects an inline script with a syntax error', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(staging, 'index.html'),
+      '<!doctype html><html><body><main>Broken</main><script>const = ;</script></body></html>',
+    );
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toMatch(/failed syntax check/i);
   });
 });
 

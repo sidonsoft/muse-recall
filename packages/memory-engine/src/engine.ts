@@ -495,6 +495,28 @@ export class MemoryEngine {
         targets.push(rowToMemory(row));
       }
 
+      // A correction replaces facts inside one visibility boundary. Without
+      // this guard a replacement in project-a could supersede project-b's
+      // memory and silently remove project-b's active rule from retrieval.
+      const consistentScope = targets.every(
+        (target) => target.scope === parsed.scope && target.project_id === parsed.project_id,
+      );
+      if (!consistentScope) {
+        throw new MemoryConflictError(
+          'A correction must stay within one scope: every target and the replacement must share the same scope and project_id.',
+          {
+            supersedes: targetIds,
+            scope: parsed.scope,
+            project_id: parsed.project_id,
+            targets: targets.map((target) => ({
+              id: target.id,
+              scope: target.scope,
+              project_id: target.project_id,
+            })),
+          },
+        );
+      }
+
       const activeTargets = targets.filter((target) => target.status === 'active');
       const hash = memoryContentHash(parsed);
 

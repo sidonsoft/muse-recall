@@ -80,18 +80,31 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
     let model = provider.capabilities().models[0] ?? 'unknown';
     let lastError = '';
 
-    for (let attempt = 0; attempt < 2 && !surface; attempt += 1) {
-      const response = await provider.generate({
-        messages: [{ role: 'user', content: prompt }],
-        response_schema: PLANNING_FORM_JSON_SCHEMA as unknown as Record<string, unknown>,
-        max_output_tokens: 1_500,
-      });
-      model = response.model;
-      try {
-        surface = planningFormToSurface(JSON.parse(response.text));
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error);
+    // A disconnected browser must cancel the model run, not leave it spending
+    // quota after the surface can no longer be delivered.
+    const controller = new AbortController();
+    const onDisconnect = () => controller.abort();
+    reply.raw.once('close', onDisconnect);
+
+    try {
+      for (let attempt = 0; attempt < 2 && !surface; attempt += 1) {
+        const response = await provider.generate(
+          {
+            messages: [{ role: 'user', content: prompt }],
+            response_schema: PLANNING_FORM_JSON_SCHEMA as unknown as Record<string, unknown>,
+            max_output_tokens: 1_500,
+          },
+          { signal: controller.signal },
+        );
+        model = response.model;
+        try {
+          surface = planningFormToSurface(JSON.parse(response.text));
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : String(error);
+        }
       }
+    } finally {
+      reply.raw.off('close', onDisconnect);
     }
 
     if (!surface) {
@@ -181,6 +194,20 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
       throw error;
     }
 
+    // A submitted plan is an explicit request to act: let the agent use
+    // project tools (writes still require a separate approval). Run the
+    // follow-up turn before recording the submission so a provider failure
+    // leaves the surface active and the form resubmittable.
+    const turn = await runtime.runTurn(
+      id,
+      {
+        content: `${normalised.summary}\n\nUse the available project tools to record follow-up work such as tasks.`,
+        capture_memories: false,
+      },
+      new CollectingHandler(),
+      { tools: 'force' },
+    );
+
     store.recordEvent(surfaceId, normalised.form.id, normalised.values);
     store.markSubmitted(surfaceId);
 
@@ -200,18 +227,6 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
       });
       memory = created.memory;
     }
-
-    // A submitted plan is an explicit request to act: let the agent use
-    // project tools (writes still require a separate approval).
-    const turn = await runtime.runTurn(
-      id,
-      {
-        content: `${normalised.summary}\n\nUse the available project tools to record follow-up work such as tasks.`,
-        capture_memories: false,
-      },
-      new CollectingHandler(),
-      { tools: 'force' },
-    );
 
     const updated = store.get(surfaceId);
     if (!updated) throw new Error('interface disappeared after submission');

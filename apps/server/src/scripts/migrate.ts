@@ -1,5 +1,3 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 import { currentSchemaVersion, latestVersion, openDatabase } from '@mml/memory-engine';
 import { loadConfig, loadDotEnv } from '../config.js';
 
@@ -10,16 +8,17 @@ import { loadConfig, loadDotEnv } from '../config.js';
  * the schema state instead of scraping prose.
  */
 function main(): void {
-  loadDotEnv();
+  const envFile = loadDotEnv();
   const config = loadConfig();
 
-  mkdirSync(dirname(config.databasePath), { recursive: true });
   const database = openDatabase({ path: config.databasePath, wal: config.wal });
 
   try {
     const version = currentSchemaVersion(database.db);
     const expected = latestVersion();
+    console.log(`env_file: ${envFile ?? '(none)'}`);
     console.log(`database: ${config.databasePath}`);
+    console.log(`workspace_root: ${config.workspaceRoot}`);
     console.log(`schema_version: ${version}`);
     console.log(`expected_version: ${expected}`);
     console.log(version === expected ? 'migrations: up to date' : 'migrations: DRIFT DETECTED');

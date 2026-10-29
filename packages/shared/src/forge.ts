@@ -288,6 +288,21 @@ export const ForgeGenerateSchema = z.object({
   prompt: z.string().min(10).max(4_000),
 });
 
+/**
+ * Decoded byte ceiling for an optional preview screenshot.
+ *
+ * The modify route decodes the PNG in memory, so this is the authoritative
+ * limit. The data URL schema maximum and the route body limit are derived from
+ * it so a request that passes validation can always be decoded.
+ */
+export const FORGE_SCREENSHOT_MAX_BYTES = 6_000_000;
+const PNG_DATA_URL_PREFIX = 'data:image/png;base64,';
+/** Base64 expands three bytes to four characters; the prefix is ASCII. */
+export const FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH =
+  PNG_DATA_URL_PREFIX.length + Math.ceil(FORGE_SCREENSHOT_MAX_BYTES / 3) * 4;
+/** Body limit for the modify route: the largest data URL plus JSON headroom. */
+export const FORGE_MODIFY_BODY_LIMIT_BYTES = FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH + 16_384;
+
 export const ForgeModifySchema = z.object({
   request: z.string().min(3).max(2_000),
   /**
@@ -295,7 +310,7 @@ export const ForgeModifySchema = z.object({
    * visual change; when absent the request is applied from the approved source.
    * Decoded and size-capped server-side when supplied.
    */
-  screenshot_data_url: z.string().min(100).max(8_000_000).optional(),
+  screenshot_data_url: z.string().min(100).max(FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH).optional(),
   capture_memory: z.boolean().default(false),
 });
 

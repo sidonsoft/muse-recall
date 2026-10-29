@@ -6,6 +6,7 @@ import type {
   ToolCall,
   TurnResult,
 } from '@mml/shared';
+import { apiUrl } from './api.ts';
 
 /**
  * SSE client for a conversation turn.
@@ -57,7 +58,7 @@ export async function streamTurn(
   handlers: TurnStreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
-  const response = await fetch(`/api/sessions/${sessionId}/messages`, {
+  const response = await fetch(apiUrl(`/api/sessions/${sessionId}/messages`), {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
     body: JSON.stringify(input),
