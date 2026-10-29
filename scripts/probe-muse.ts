@@ -17,7 +17,7 @@ import { createModelProvider } from '../packages/muse-provider/src/index.js';
 
 const model = process.argv[2] ?? process.env.MUSE_MODEL ?? 'muse-wonder-1.0';
 
-console.log('Muse Memory Lab — provider probe');
+console.log('Muse Recall — provider probe');
 console.log('--------------------------------');
 
 const provider = createModelProvider({

@@ -78,7 +78,7 @@ const outDir = argString('out', 'docs/benchmarks');
 const queryCount = arg('queries', 30);
 const repeats = arg('repeats', 10);
 
-console.log('Muse Memory Lab — retrieval benchmark');
+console.log('Muse Recall — retrieval benchmark');
 console.log('=====================================');
 
 const directory = await mkdtemp(join(tmpdir(), 'mml-bench-'));

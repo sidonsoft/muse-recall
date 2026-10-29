@@ -87,7 +87,7 @@ async function runBatch(label: string, prompt: string, repeats: number): Promise
   return samples;
 }
 
-console.log('Muse Memory Lab — Muse input-token overhead benchmark');
+console.log('Muse Recall — Muse input-token overhead benchmark');
 console.log('=====================================================');
 console.log(`model=${MODEL} effort=low short=${SHORT_REPEATS} long=${LONG_REPEATS}`);
 

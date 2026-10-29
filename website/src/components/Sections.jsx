@@ -954,7 +954,7 @@ export function Footer() {
     <footer>
       <div className="container footer-inner">
         <span>
-          © 2026 Muse Memory Lab contributors · MIT · built for the Meta Muse hackathon
+          © 2026 Muse Recall contributors · MIT · built for the Meta Muse hackathon
         </span>
         <span className="footnote">
           This page is built from the{' '}
