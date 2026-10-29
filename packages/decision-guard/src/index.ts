@@ -19,13 +19,17 @@
  * distinguishes executable countdown code from documentation, comments, and
  * inert strings (prose-only hits abstain instead of blocking).
  *
+ * v1.3.0 (palette family accuracy): rule D classifies saturated source hexes
+ * by HSL hue family, so a family-word correction can still BLOCK when the
+ * superseded decision names no hexes but the source is visibly warm/cool.
+ *
  * A decision is NEVER marked compliant merely because no rule applies:
  * unsupported decisions produce UNVERIFIED, never PASS.
  */
 
 import type { Memory } from '@mml/shared';
 
-export const GUARD_VERSION = '1.2.0';
+export const GUARD_VERSION = '1.3.0';
 
 /** Structural subset of a memory record — no runtime coupling. */
 export type GuardDecision = Pick<Memory, 'id' | 'content' | 'status' | 'supersedes'>;
@@ -162,6 +166,17 @@ function familyForText(text: string): 'warm' | 'cool' | null {
   return null;
 }
 
+// Palette-family thresholds (HSL). Only saturated, mid-lightness colours carry
+// palette meaning; near-greys, very dark inks and very pale backgrounds do not.
+const PALETTE_MIN_SATURATION = 0.35;
+const PALETTE_MIN_LIGHTNESS = 0.15;
+const PALETTE_MAX_LIGHTNESS = 0.9;
+const WARM_HUE_MIN = 0;
+const WARM_HUE_MAX = 70;
+const WARM_HUE_WRAP_MIN = 330;
+const COOL_HUE_MIN = 160;
+const COOL_HUE_MAX = 260;
+
 /**
  * Normalise a supported 6-digit RGB token to bare uppercase hex digits.
  * `#RRGGBB` and `0xRRGGBB` are the same colour; only the notation differs.
@@ -174,6 +189,74 @@ function canonicalHex(token: string): string {
 function hexesIn(text: string): string[] {
   const found = text.match(HEX_RE);
   return found ? [...new Set(found.map(canonicalHex))].sort() : [];
+}
+
+interface HslColour {
+  hue: number;
+  saturation: number;
+  lightness: number;
+}
+
+function hslForHex(hex: string): HslColour {
+  const red = Number.parseInt(hex.slice(0, 2), 16) / 255;
+  const green = Number.parseInt(hex.slice(2, 4), 16) / 255;
+  const blue = Number.parseInt(hex.slice(4, 6), 16) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const lightness = (max + min) / 2;
+  const delta = max - min;
+  if (delta === 0) return { hue: 0, saturation: 0, lightness };
+  let hue: number;
+  if (max === red) hue = ((green - blue) / delta) % 6;
+  else if (max === green) hue = (blue - red) / delta + 2;
+  else hue = (red - green) / delta + 4;
+  hue *= 60;
+  if (hue < 0) hue += 360;
+  return {
+    hue,
+    saturation: delta / (1 - Math.abs(2 * lightness - 1)),
+    lightness,
+  };
+}
+
+function familyForHex(hex: string): 'warm' | 'cool' | null {
+  const { hue, saturation, lightness } = hslForHex(hex);
+  if (
+    saturation < PALETTE_MIN_SATURATION ||
+    lightness < PALETTE_MIN_LIGHTNESS ||
+    lightness > PALETTE_MAX_LIGHTNESS
+  ) {
+    return null;
+  }
+  if ((hue >= WARM_HUE_MIN && hue < WARM_HUE_MAX) || (hue >= WARM_HUE_WRAP_MIN && hue < 360)) {
+    return 'warm';
+  }
+  if (hue >= COOL_HUE_MIN && hue <= COOL_HUE_MAX) return 'cool';
+  return null;
+}
+
+interface PaletteColour {
+  hex: string;
+  family: 'warm' | 'cool';
+  index: number;
+  matchLength: number;
+}
+
+/** Saturated warm/cool colours in source order; neutral hexes are omitted. */
+function paletteColoursIn(text: string): PaletteColour[] {
+  const colours: PaletteColour[] = [];
+  for (const match of text.matchAll(HEX_RE)) {
+    const hex = canonicalHex(match[0]);
+    const family = familyForHex(hex);
+    if (family === null) continue;
+    colours.push({
+      hex,
+      family,
+      index: match.index ?? 0,
+      matchLength: match[0].length,
+    });
+  }
+  return colours;
 }
 
 // ---------------------------------------------------------------------------
@@ -699,16 +782,78 @@ function evaluatePalette(context: RuleContext): DecisionEvaluation {
       findings: [finding],
     };
   }
+  const sourceColours = paletteColoursIn(source);
+  const forbiddenColours =
+    forbiddenFamily !== null
+      ? sourceColours.filter((colour) => colour.family === forbiddenFamily)
+      : [];
+  if (requiredFamily !== null && forbiddenFamily !== null && requiredFamily !== forbiddenFamily) {
+    const activeColours = sourceColours.filter((colour) => colour.family === requiredFamily);
+    const supersededColours = sourceColours.filter((colour) => colour.family === forbiddenFamily);
+    const activeHexes = new Set(activeColours.map((colour) => colour.hex));
+    const supersededHexes = new Set(supersededColours.map((colour) => colour.hex));
+    const firstSuperseded = supersededColours[0];
+    if (supersededHexes.size >= 2 && activeHexes.size === 0 && firstSuperseded) {
+      const hexList = [...supersededHexes]
+        .sort()
+        .map((hex) => `#${hex}`)
+        .join(', ');
+      const finding = makeFinding(
+        decision,
+        'superseded-palette',
+        evidenceAt(original, firstSuperseded.index, firstSuperseded.matchLength),
+        `superseded ${forbiddenFamily} palette reintroduced as active styling: ${hexList} (replaced by ${requiredFamily} palette)`,
+        [
+          {
+            start: firstSuperseded.index,
+            end: firstSuperseded.index + firstSuperseded.matchLength,
+          },
+        ],
+        true,
+        'high',
+      );
+      return {
+        ...base,
+        verdict: 'BLOCK',
+        reason: `superseded ${forbiddenFamily} palette colours ${hexList} present; active ${requiredFamily} palette absent`,
+        findings: [finding],
+      };
+    }
+    if (activeHexes.size > 0 && supersededHexes.size === 0) {
+      return {
+        ...base,
+        verdict: 'PASS',
+        reason: `active ${requiredFamily} palette present; superseded ${forbiddenFamily} palette absent from styling`,
+        findings: [],
+      };
+    }
+    if (activeHexes.size > 0 && supersededHexes.size > 0) {
+      return {
+        ...base,
+        ...unverified(
+          `mixed palette families in source: both superseded ${forbiddenFamily} and active ${requiredFamily} colours appear`,
+        ),
+      };
+    }
+  }
   const forbiddenWordHit =
     forbiddenFamily !== null ? source.match(PALETTE_FAMILIES[forbiddenFamily]) : null;
   const requiredPresent =
     requiredHexes.some((hex) => sourceHexes.has(hex)) ||
     (requiredFamily !== null && PALETTE_FAMILIES[requiredFamily].test(source));
   if (forbiddenWordHit && !requiredPresent) {
+    if (forbiddenColours.length === 0) {
+      return {
+        ...base,
+        ...unverified(
+          'superseded palette term appears, but only as prose/comment without styling evidence',
+        ),
+      };
+    }
     return {
       ...base,
       ...unverified(
-        'superseded palette term appears, but only as prose/comment without styling evidence',
+        `superseded ${forbiddenFamily} palette styling appears, but the active corrected palette is not confirmed`,
       ),
     };
   }
@@ -718,6 +863,14 @@ function evaluatePalette(context: RuleContext): DecisionEvaluation {
       verdict: 'PASS',
       reason: 'corrected palette present; superseded palette absent from styling',
       findings: [],
+    };
+  }
+  if (forbiddenColours.length > 0) {
+    return {
+      ...base,
+      ...unverified(
+        `superseded ${forbiddenFamily} palette colours appear, but the active corrected palette is not confirmed`,
+      ),
     };
   }
   return { ...base, ...unverified('neither corrected nor superseded palette present in source') };

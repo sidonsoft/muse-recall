@@ -42,6 +42,38 @@ const SUNSET_SUPERSEDED: GuardDecision = {
   supersedes: [],
 };
 
+const WARM_WORDS_SUPERSEDED: GuardDecision = {
+  id: 'dec-warm-words',
+  content: 'Palette: warm — orange, gold and peach on a cream background.',
+  status: 'superseded',
+  supersedes: [],
+};
+
+const COOL_WORDS_ACTIVE: GuardDecision = {
+  id: 'dec-cool-words',
+  content:
+    'Palette: cool — teal and navy on a soft white background. The warm orange palette is retired.',
+  status: 'active',
+  supersedes: ['dec-warm-words'],
+};
+
+const WARM_STYLESHEET = `:root{
+  --orange:#e8862e; --gold:#e8a838; --peach:#f6c9a0;
+  --cream:#fdf6ec; --ink:#4a3421; --soft:#fffdf8;
+  --border:#e5cfae;
+}
+header{background:var(--orange);color:#fff}
+.badge{background:var(--gold);color:#4a2c00}
+.card h2{color:#8a4d12}
+.btn-quiet{background:var(--peach);color:#4a2c00}
+.book{border:2px solid var(--gold);background:#fff8ee}`;
+
+const COOL_STYLESHEET = `:root{
+  --teal:#0f766e; --aqua:#2aa198; --mist:#cde8e5;
+  --paper:#f4f8fa; --navy:#1e3a5f; --white:#ffffff;
+  --border:#b8d4d8;
+}`;
+
 const PHASER =
   '<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>';
 
@@ -393,6 +425,54 @@ describe('v1.2.0 palette notation equivalence', () => {
   it('still requires superseded history: no history supplied means UNVERIFIED', () => {
     const result = evaluateDecisions([OCEAN_DECISION], sourceFor('0xff7e5f'));
     expect(verdictFor(result, 'superseded-palette')).toBe('UNVERIFIED');
+  });
+});
+
+describe('v1.3.0 palette family classification', () => {
+  const paletteVerdict = (source: string) => {
+    const result = evaluateDecisions([COOL_WORDS_ACTIVE], source, {
+      supersededDecisions: [WARM_WORDS_SUPERSEDED],
+    });
+    return {
+      result,
+      evaluation: result.evaluations.find((entry) => entry.rule === 'superseded-palette'),
+    };
+  };
+
+  it('blocks a warm stylesheet even though the superseded decision names no hexes', () => {
+    const { evaluation } = paletteVerdict(WARM_STYLESHEET);
+    expect(evaluation?.verdict).toBe('BLOCK');
+    expect(evaluation?.reason).toContain('warm');
+    expect(evaluation?.reason).toContain('cool');
+    expect(evaluation?.reason.toUpperCase()).toContain('#E8862E');
+    expect(evaluation?.reason.toUpperCase()).toContain('#E8A838');
+    expect(evaluation?.findings[0]?.evidence).toContain('--orange');
+    const span = evaluation?.findings[0]?.match_spans[0];
+    expect(span).toBeDefined();
+    expect(WARM_STYLESHEET.slice(span?.start, span?.end).toUpperCase()).toBe('#E8862E');
+  });
+
+  it('passes a cool stylesheet against the retired warm palette', () => {
+    const { result, evaluation } = paletteVerdict(COOL_STYLESHEET);
+    expect(evaluation?.verdict).toBe('PASS');
+    expect(result.verdict).toBe('PASS');
+  });
+
+  it('abstains when both warm and cool saturated colours appear', () => {
+    const { evaluation } = paletteVerdict(
+      `<style>:root{--orange:#e8862e;--gold:#e8a838;--teal:#0f766e;--navy:#1e3a5f}</style>`,
+    );
+    expect(evaluation?.verdict).toBe('UNVERIFIED');
+    expect(evaluation?.reason).toContain('mixed');
+  });
+
+  it('does not block on neutral colours alone', () => {
+    const { result, evaluation } = paletteVerdict(
+      `<style>:root{--cream:#fdf6ec;--white:#ffffff;--ink:#4a3421}</style>`,
+    );
+    expect(evaluation?.verdict).not.toBe('BLOCK');
+    expect(evaluation?.reason).not.toContain('prose/comment');
+    expect(result.findings).toEqual([]);
   });
 });
 
