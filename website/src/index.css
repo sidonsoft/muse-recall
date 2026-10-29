@@ -2185,6 +2185,33 @@ pre.code .hl {
   display: block;
 }
 
+/* ---------- Site self-verification band ---------- */
+.sitecheck {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 34px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 34px;
+}
+
+.sitecheck h2 {
+  margin: 8px 0 12px;
+}
+
+.sitecheck .stats {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .sitecheck {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+}
+
 /* ---------- Honesty list ---------- */
 .honesty {
   display: grid;

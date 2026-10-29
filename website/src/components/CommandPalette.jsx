@@ -15,6 +15,7 @@ const COMMANDS = [
   ['Run it locally', '#quickstart'],
   ['Demonstrated vs future work', '#proof'],
   ['Known limitations', '#honesty'],
+  ['This page, verified', '#sitecheck'],
   ['Source code on GitHub', REPO],
   ['Phase 17 results', `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`],
 ];

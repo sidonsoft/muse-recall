@@ -3,7 +3,7 @@ import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
-import { Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, CTA, Footer } from './components/Sections.jsx';
+import { Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, SiteVerified, CTA, Footer } from './components/Sections.jsx';
 
 const WATCH = ['loop', 'timeline', 'how', 'evidence', 'quickstart'];
 
@@ -84,6 +84,7 @@ export default function App() {
         <Quickstart />
         <ProofVsRoadmap />
         <Honesty />
+        <SiteVerified />
         <CTA />
       </main>
       <Footer />

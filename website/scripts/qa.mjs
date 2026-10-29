@@ -118,6 +118,7 @@ ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener('open', r));
 
 const results = [];
+let gateBadge;
 const check = (name, ok, detail = '') => {
   results.push({ name, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
@@ -244,6 +245,7 @@ try {
     ['evidence table', 'Phase 17'],
     ['timeline records', 'Sunset → ocean'],
     ['JSON-LD', 'SoftwareSourceCode'],
+    ['site self-verification', 'held to the same bar'],
     ['manifest link', 'rel="manifest"'],
     ['apple-touch-icon', 'apple-touch-icon'],
   ].filter(([, probe]) => !html.includes(probe));
@@ -339,6 +341,14 @@ try {
     /Skip to content/.test(firstTab) && skipTarget && unnamed === 0,
     `firstTab="${firstTab}" skipTarget=${skipTarget} unnamed=${unnamed}`
   );
+
+  // Drift gate data: the "N/N headless QA checks" badge on the site must equal
+  // the suite's real total (this gate included) — enforced in the summary below.
+  try {
+    gateBadge = await evalJS(`document.querySelector("#sitecheck .stats b")?.textContent?.trim() ?? null`);
+  } catch {
+    gateBadge = null;
+  }
 } catch (e) {
   check('script completed', false, e.message);
 } finally {
@@ -346,6 +356,16 @@ try {
   cleanup();
 }
 
-const failed = results.filter((r) => !r.ok);
-console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
-process.exit(failed.length ? 1 : 0);
+// Drift gate: the "N/N headless QA checks" badge printed on the site must equal
+// the suite's real total — adding a check without updating the copy fails CI.
+let gateOk = null;
+if (results.every((r) => r.ok)) {
+  const expected = `${results.length + 1}/${results.length + 1}`;
+  gateOk = gateBadge === expected;
+  console.log(gateOk ? `PASS  site badge matches suite total — ${expected} (self-referential gate)` : `FAIL  site badge matches suite total — badge="${gateBadge}" expected="${expected}"`);
+}
+
+const passed = results.filter((r) => r.ok).length + (gateOk === true ? 1 : 0);
+const total = results.length + (gateOk === null ? 0 : 1);
+console.log(`\n${passed}/${total} checks passed`);
+process.exit(passed === total ? 0 : 1);

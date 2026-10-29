@@ -823,6 +823,33 @@ export function MemoryTimeline() {
   );
 }
 
+export function SiteVerified() {
+  return (
+    <section className="block" id="sitecheck" style={{ paddingTop: 0 }}>
+      <div className="container">
+        <div className="sitecheck reveal">
+          <div>
+            <p className="kicker">Meta, but honest</p>
+            <h2>This page is held to the same bar</h2>
+            <p>
+              The landing page runs its own test suite, same spirit as{' '}
+              <code>pnpm verify</code> upstream. Reproduce it in three commands:{' '}
+              <code>npm run site</code> · <code>npm run qa</code> · <code>npm run links</code> —
+              every claim on this site is re-checked against the product repo on every push.
+            </p>
+          </div>
+          <div className="stats" role="list">
+            <div role="listitem"><b>22/22</b><span>headless QA checks · local + CI</span></div>
+            <div role="listitem"><b>100×4</b><span>Lighthouse, mobile and desktop presets</span></div>
+            <div role="listitem"><b>12/12</b><span>upstream links audited against the repo tree</span></div>
+            <div role="listitem"><b>0</b><span>claims not traceable to evidence docs</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function CTA() {
   return (
     <section className="block" id="cta">
