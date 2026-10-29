@@ -374,11 +374,13 @@ export class TurnProcessor {
         : null;
 
       if (candidate) {
+        // A correction inherits the boundary of the record it replaces: in a
+        // project session the best candidate may be a global memory.
         const result = this.engine.correct({
           supersedes: [candidate.id],
           type,
-          scope,
-          project_id: session.project_id,
+          scope: candidate.scope,
+          project_id: candidate.project_id,
           content: fact,
           source,
           confidence: 0.9,

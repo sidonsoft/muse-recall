@@ -637,6 +637,38 @@ describe('agent runtime turns', () => {
     }
   });
 
+  it('keeps a global memory global when correcting it from a project session', async () => {
+    const { runtime, engine } = createRuntime();
+    const original = engine.create({
+      type: 'technical_decision',
+      scope: 'global',
+      project_id: null,
+      content: 'The target platform is mobile web',
+    });
+    const session = runtime.createSession({ project_id: 'demo-game' });
+
+    const turn = await runtime.runTurn(
+      session.id,
+      {
+        content:
+          "We've changed the target platform. It will now prioritize desktop browsers instead of mobile web. Remember this correction.",
+        capture_memories: true,
+      },
+      new CollectingHandler(),
+    );
+
+    expect(turn.captures).toHaveLength(1);
+    const replacementId = turn.captures[0]?.memory_id;
+    expect(replacementId).toBeDefined();
+    expect(engine.get(replacementId ?? '')).toMatchObject({
+      scope: 'global',
+      project_id: null,
+      status: 'active',
+    });
+    expect(engine.get(original.memory.id)?.status).toBe('superseded');
+    expect(engine.get(original.memory.id)?.superseded_by).toBe(replacementId);
+  });
+
   it('rejects a second concurrent turn on the same session', async () => {
     const { runtime } = createRuntime();
     const session = runtime.createSession({ project_id: null });
