@@ -10,10 +10,13 @@ project's decisions, lets you correct them, and makes every change wait for your
 
 ![Current HTML Studio reviewing staged v2 of Farmyard Memory Match: the live preview, the project decisions supplied to the change, the Decision Guard advisory and the approve/reject controls](docs/assets/readme-2026-10-29/studio-review.png)
 
-<!-- Demo video: paste the published URL in place of the pending note when the 2:50 cut is uploaded. -->
-**Demo video** — 2:50, recorded 29 October 2026 from a live Muse Spark session. [What the cut
-shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026) · _published link
-pending._
+[![Muse Recall demo video poster: Muse Spark builds it, Recall remembers why, you decide](docs/demo/video/Muse_Recall_Demo_V21_Poster.jpg)](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
+
+**Demo video** — 2:50, recorded 29 October 2026 from a live Muse Spark session.
+[**Watch (mp4, 1080p, 12.7 MB)**](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true) ·
+[captions (SRT)](docs/demo/video/Muse_Recall_Demo_V21.srt) ·
+[transcript](docs/demo/video/Muse_Recall_Demo_V21_Transcript.txt) ·
+[what the cut shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026)
 
 ## For judges
 
@@ -57,7 +60,7 @@ architecture and limitations.
 
 | | |
 | --- | --- |
-| **Demo video** (2:50, 1080p, recorded 29 October 2026) | One continuous live Muse Spark session (with insert cards for evidence and limits), a visible cursor and speed-ramped generation waits. Save a sunset constraint, generate and approve v1; request a change in a new session and reject it; correct the decision to ocean; request the same change again and reject it when Guard flags the reintroduced sunset palette; then ask for the project's current art direction from memory and approve v2. Guard is advisory throughout and never blocks approval. The file is kept out of git by policy and its upload is pending; the storyboard, live outcomes, limits and honest failure beat are in [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md). |
+| **Demo video** (2:50, 1080p, recorded 29 October 2026) | One continuous live Muse Spark session (with insert cards for evidence and limits), a visible cursor and speed-ramped generation waits. Save a sunset constraint, generate and approve v1; request a change in a new session and reject it; correct the decision to ocean; request the same change again and reject it when Guard flags the reintroduced sunset palette; then ask for the project's current art direction from memory and approve v2. Guard is advisory throughout and never blocks approval. The video, captions, transcript and QA are in [`docs/demo/video/`](docs/demo/video/); the storyboard, live outcomes, limits and honest failure beat are in [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md). |
 | **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat**; it is the fallback if the 2:50 cut is not published. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
@@ -279,8 +282,8 @@ default.
 > PR #1 (branch tip `5bd287a`, merge `12918fd`) and the Phase 17 results/evidence from PR #2
 > and #3. The tags `submission-v14`, `submission-v15` and `phase17-preregistration` remain
 > frozen. The application is local-only and not deployed; the hackathon submission has not
-> been sent. The 2:50 submission cut is recorded and QA'd outside git; uploading it and
-> completing the form are the remaining owner actions. See the
+> been sent. The 2:50 submission cut is recorded, QA'd and committed under `docs/demo/video/`;
+> making the repository public and completing the form are the remaining owner actions. See the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 | Area | Phase | State |
@@ -324,8 +327,8 @@ default.
 | Phase 16 three-arm trial (Muse Spark) and 16B replication (Muse Spark Open) | 16 / 16B | **Complete**; evidence and verifier published |
 | Phase 17 four-arm trial across two games and one app, two models | 17 | **Complete**; evidence, exact-p correction and strict verifier published |
 | Earlier demo cut (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd; predates the explicit-correction cut |
-| Submission demo cut (correctable memory, 2:50, 1080p) | demo | **Recorded and QA'd** 2026-10-29; kept out of git by policy; upload pending |
-| Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
+| Submission demo cut (correctable memory, 2:50, 1080p) | demo | **Recorded and QA'd** 2026-10-29; committed under `docs/demo/video/` |
+| Make the repository public and submit the form | — | **Owner action pending**; not performed |
 | Post-hackathon local-beta hardening | hardening | **Merged to `main` via PR #1** (branch tip `5bd287a`; merge `12918fd`) |
 | Phase 17 results and review disposition | 17 | **Merged to `main` via PR #2** (`53389a7`) |
 | Phase 17 documentation citations | 17 | **Merged to `main` via PR #3** (`36fe700`) |
@@ -692,7 +695,7 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
 - [Submission copy](docs/submission/SUBMISSION_COPY.md) — current short and long descriptions
-- [Submission demo cut](docs/demo/CORRECTABLE_MEMORY_DEMO.md) — the 2:50 recorded correction sequence, its beats, narration and honest failure note (upload pending)
+- [Submission demo cut](docs/demo/CORRECTABLE_MEMORY_DEMO.md) — the 2:50 recorded correction sequence, its beats, narration and honest failure note ([watch](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true))
 - [Phase 17 results](docs/hackathon-evidence/phase17/RESULTS.md), [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) and [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md)
 - [Phase 16 / 16B evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md) — the earlier two-model research shown in the 2:46 fallback video
 - [Live FocusFlow validation](docs/demo/NON_GAME_HTML_VALIDATION.md) and [live configuration](docs/demo/LIVE_MUSE_CONFIGURATION.md)
@@ -765,11 +768,11 @@ fresh superseded records. Corrections still require an explicit application-chan
   executed on FocusFlow.
 - **Exported HTML runs unsandboxed.** The Studio preview is sandboxed; a downloaded file opened
   from disk is not, and it still needs network access for approved CDN dependencies.
-- **The submission cut is recorded but not yet uploaded.** The 2:50 cut (recorded 29 October
+- **The submission cut is one live run.** The 2:50 cut (recorded 29 October
   2026) shows the correction sequence, including the honest failure beat: the repeat request
   kept the old sunset palette and Guard flagged it, and only the explicit request for the
-  current art direction produced the ocean version. It is kept out of git by policy and is not
-  linked yet. The earlier 2:46 video remains the fallback; it does not show an explicit
+  current art direction produced the ocean version. It is committed under
+  [`docs/demo/video/`](docs/demo/video/). The earlier 2:46 video remains the fallback; it does not show an explicit
   correction. See [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md).
 - **Provider independence is an architectural direction, not a shipped capability.** The
   server has a `ModelProvider` boundary, but the shipped providers are the Muse Code CLI and
