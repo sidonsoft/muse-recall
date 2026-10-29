@@ -11,9 +11,9 @@ export default function StudioLoop() {
   return (
     <div className="demo-shell reveal">
       <div className="demo-top">
-        <span className="lamp on" />
-        <span className="lamp" />
-        <span className="lamp" />
+        <span className="lamp on" aria-hidden="true" />
+        <span className="lamp" aria-hidden="true" />
+        <span className="lamp" aria-hidden="true" />
         <span className="title">html studio — one change request, three memory states</span>
       </div>
       <div className="loop-grid">
@@ -22,7 +22,9 @@ export default function StudioLoop() {
           <div className="loop-toggle">
             <button
               className="switch"
-              aria-pressed={memoryOn}
+              role="switch"
+              aria-checked={memoryOn}
+              aria-label="Supply the project's remembered decisions to this generation"
               onClick={() => setMemoryOn((v) => !v)}
             >
               Supply decisions to this generation
@@ -30,8 +32,10 @@ export default function StudioLoop() {
             </button>
             <button
               className="switch"
-              aria-pressed={corrected}
+              role="switch"
+              aria-checked={corrected}
               disabled={!memoryOn}
+              aria-label="Correct the rule by superseding it"
               onClick={() => setCorrected((v) => !v)}
             >
               Correct the rule (supersede)
@@ -63,7 +67,7 @@ export default function StudioLoop() {
           </div>
         </div>
 
-        <div className="loop-main">
+        <div className="loop-main" aria-live="polite">
           <h3>Staged change — preview · source · diff</h3>
           <div className="request-line">
             you: <b>“{REQUEST}”</b> → Muse Spark edits the approved v2 source
@@ -77,7 +81,7 @@ export default function StudioLoop() {
           </div>
           <div className="guard-panel">
             <div className="head">
-              🛡 Decision Guard — {guard.status}
+              <span aria-hidden="true">🛡</span> Decision Guard — {guard.status}
             </div>
             {guard.findings.map(([f, cite]) => (
               <div className="finding" key={f}>

@@ -1245,15 +1245,15 @@ table.evidence .bad {
   transition: transform 0.2s;
 }
 
-.switch[aria-pressed='true'] {
+.switch[aria-checked='true'] {
   border-color: var(--violet);
 }
 
-.switch[aria-pressed='true'] .track {
+.switch[aria-checked='true'] .track {
   background: linear-gradient(90deg, var(--violet), var(--pink));
 }
 
-.switch[aria-pressed='true'] .track::after {
+.switch[aria-checked='true'] .track::after {
   transform: translateX(20px);
 }
 

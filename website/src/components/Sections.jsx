@@ -183,9 +183,9 @@ export function Evidence() {
           <table className="evidence">
             <thead>
               <tr>
-                <th>Arm</th>
-                <th>Muse Spark</th>
-                <th>Muse Spark Open</th>
+                <th scope="col">Arm</th>
+                <th scope="col">Muse Spark</th>
+                <th scope="col">Muse Spark Open</th>
               </tr>
             </thead>
             <tbody>
