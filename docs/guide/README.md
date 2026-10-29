@@ -64,9 +64,10 @@ review the resulting job. This residual behavior is recorded as F6 in the
 - **Provider support is narrow.** The shipped providers are the Meta Muse Code CLI (`muse-cli`) and
   a deterministic offline `echo` provider. Muse Spark Open on Baseten was used for research; the
   application does not call it, and arbitrary provider support is not implemented.
-- **No hosted URL is maintained here.** The application is not deployed. The recorded submission
-  cut is committed under
-  [`docs/demo/video/`](../demo/video/).
+- **The application is not hosted.** It runs locally, or in your own GitHub Codespace on the
+  offline provider (see [Getting started](getting-started.md#run-in-github-codespaces)). The
+  [project website](https://sidonsoft.github.io/muse-recall-website/) is a static landing page, not a copy of the app. The recorded
+  submission cut is committed under [`docs/demo/video/`](../demo/video/).
 
 ## Related references
 

@@ -1,7 +1,8 @@
 # Next steps
 
-**Current milestone:** post-hackathon local-beta hardening on an isolated branch.
-The application remains local, single-user, and loopback-only. This list is the
+**Current milestone:** hackathon submission (owner actions in
+[SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md)), then local-beta hardening. The hardening
+branch merged to `main` in PR #1. The application remains local, single-user, and loopback-only. This list is the
 repository's working backlog; completed items stay for the audit trail.
 
 ## P0 — before calling the beta reliable

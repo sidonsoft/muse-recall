@@ -18,6 +18,10 @@ project's decisions, lets you correct them, and makes every change wait for your
 [transcript](docs/demo/video/Muse_Recall_Demo_V21_Transcript.txt) ·
 [what the cut shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026)
 
+**Project website:** [sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/), a one-page
+overview with the video, the loop and the evidence. It is a static landing page, not a hosted copy
+of the app.
+
 ## For judges
 
 Describe a browser app and Muse Spark writes one `index.html`; ask for a change and it edits
@@ -286,12 +290,14 @@ default.
 
 ## Project status
 
-> **Release state (2026-10-29).** `main` now includes the local-beta hardening merge from
-> PR #1 (branch tip `5bd287a`, merge `12918fd`) and the Phase 17 results/evidence from PR #2
-> and #3. The tags `submission-v14`, `submission-v15` and `phase17-preregistration` remain
-> frozen. The application is local-only and not deployed; the hackathon submission has not
-> been sent. The 2:50 submission cut is recorded, QA'd and committed under `docs/demo/video/`;
-> making the repository public and completing the form are the remaining owner actions. See the
+> **Release state (2026-10-29).** `main` includes the local-beta hardening merge (PR #1), the
+> Phase 17 results and citations (PRs #2 and #3), the live-run fixes (PRs #5–#8 and #10), the
+> refreshed README, screenshots and user guide (PRs #11, #12 and #14), the committed 2:50 demo
+> video (PR #15) and a one-click Codespaces environment (PR #17). The tags `submission-v14`,
+> `submission-v15` and `phase17-preregistration` remain frozen. The application is local-only
+> and not deployed; the [project website](https://sidonsoft.github.io/muse-recall-website/) is a static landing page. The hackathon
+> submission has not been sent: making the repository public and completing the form are the
+> remaining owner actions. See the [submission checklist](docs/SUBMISSION_CHECKLIST.md) and the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 | Area | Phase | State |
@@ -336,6 +342,9 @@ default.
 | Phase 17 four-arm trial across two games and one app, two models | 17 | **Complete**; evidence, exact-p correction and strict verifier published |
 | Earlier demo cut (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd; predates the explicit-correction cut |
 | Submission demo cut (correctable memory, 2:50, 1080p) | demo | **Recorded and QA'd** 2026-10-29; committed under `docs/demo/video/` |
+| User guide (`docs/guide/`) and refreshed README captures | docs | **Merged to `main`** via PRs #11, #12 and #14 |
+| One-click Codespaces environment for judges (offline provider) | docs | **Merged to `main` via PR #17**; generation still needs the Muse CLI |
+| Project website (static landing page with the 2:50 video) | website | **Published** at [sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/) |
 | Make the repository public and submit the form | — | **Owner action pending**; not performed |
 | Post-hackathon local-beta hardening | hardening | **Merged to `main` via PR #1** (branch tip `5bd287a`; merge `12918fd`) |
 | Phase 17 results and review disposition | 17 | **Merged to `main` via PR #2** (`53389a7`) |
@@ -551,6 +560,7 @@ uses its own stored login (or a `META_API_KEY` delivered over stdin).
 ## Repository layout
 
 ```
+.devcontainer/     Codespaces setup: Node 24, offline provider, seeded demo project
 apps/
   server/          Fastify API, config, routes (health, provider, memories, retrieval)
   web/             React shell, typed client, memory inspector
@@ -564,6 +574,9 @@ tests/
   integration/     HTTP contract tests + opt-in live Muse tests
   evaluation/      baseline vs memory-enabled harness
 docs/              architecture, memory design, evaluation, Muse findings, status
+  guide/           user guide: setup, project memory, HTML Studio, architecture, limits
+  demo/video/      the 2:50 submission video, captions, transcript and QA
+  hackathon-evidence/  locked research records (checksummed; do not edit)
 scripts/           benchmarks, Muse probe, browser verification
 ```
 
@@ -702,6 +715,8 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 ## Submission materials
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
+- [Project website](https://sidonsoft.github.io/muse-recall-website/) — the one-page overview with the 2:50 video
+- [User guide](docs/guide/README.md) and [Codespaces notes](.devcontainer/README.md)
 - [Submission copy](docs/submission/SUBMISSION_COPY.md) — current short and long descriptions
 - [Submission demo cut](docs/demo/CORRECTABLE_MEMORY_DEMO.md) — the 2:50 recorded correction sequence, its beats, narration and honest failure note ([watch](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true))
 - [Phase 17 results](docs/hackathon-evidence/phase17/RESULTS.md), [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) and [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md)
@@ -822,10 +837,10 @@ fresh superseded records. Corrections still require an explicit application-chan
 
 ## Roadmap
 
-1. **Hackathon submission.** The focused correction cut (2:50) is recorded and QA'd. Upload it
-   (or use the earlier 2:46 video as the fallback), add the link where the opening section marks
-   it, and complete the submission form. These are owner actions; nothing is submitted
-   automatically.
+1. **Hackathon submission.** The focused correction cut (2:50) is recorded, QA'd, committed
+   under `docs/demo/video/`, linked from the opening section and shown on the
+   [project website](https://sidonsoft.github.io/muse-recall-website/). Making the repository public and completing the submission form
+   are owner actions; nothing is submitted automatically.
 2. **Local beta hardening (merged).** Durable Forge jobs and restart recovery, bounded
    memory rendering, a scrubbed child environment, and managed browser coverage are on
    `main`. Remaining work is tracked in [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).

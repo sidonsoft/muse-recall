@@ -20,6 +20,16 @@ The app is local-first. It needs no hosted service, database server or account b
 login. `MODEL_PROVIDER=echo` removes even that dependency for browsing and chat; see
 [Offline mode](#offline-mode).
 
+## Run in GitHub Codespaces
+
+To try the app without installing anything, open
+[a new codespace](https://codespaces.new/sidonsoft/muse-recall?quickstart=1). Setup installs
+dependencies, writes `.env` with `MODEL_PROVIDER=echo`, seeds the `forge-demo` project and starts
+`pnpm dev`; the web app opens on the forwarded port 5173. Browsing the project, its memory,
+corrections, retrieval explanation, Decision Guard and version history all work there.
+Generating or changing an app needs the Muse Code CLI, which the codespace does not include. See
+[`.devcontainer/README.md`](../../.devcontainer/README.md) for details.
+
 ## Install and run
 
 ```bash

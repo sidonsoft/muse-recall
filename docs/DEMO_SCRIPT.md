@@ -91,6 +91,14 @@ memory and tasks both retrieved.
 
 ## Screenshots
 
-`docs/assets/phase6-showcase.png` (conversation list), `phase5-ui-tools.png` (approval),
+Current captures of these surfaces, refreshed on 29 October 2026, are in
+[`assets/readme-2026-10-29/`](assets/readme-2026-10-29/README.md): `conversation.png`
+(Demos A–B, an answer built from retrieved memory), `memory-detail.png` (correction history),
+`memory-retrieval.png` (retrieval evidence), `planning-form.png` (Demo D) and
+`tool-approval.png` (Demo E). They use deterministic offline fixtures, so they show the current
+UI rather than these recorded runs.
+
+The captures taken at the time of the recorded runs are kept for the record:
+`assets/phase6-showcase.png` (conversation list), `phase5-ui-tools.png` (approval),
 `phase4-ui-generative-ui.png` (generated form), `phase2-ui-memory-detail.png` (correction
-history), `phase2-ui-memory-retrieval.png` (retrieval evidence).
+history) and `phase2-ui-memory-retrieval.png` (retrieval evidence).
