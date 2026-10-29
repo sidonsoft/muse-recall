@@ -1,4 +1,10 @@
-import type { Project, RetrievalPreview } from '@mml/shared';
+import {
+  DEFAULT_RETRIEVAL_BUDGET,
+  FORGE_RETRIEVAL_BUDGET,
+  type Project,
+  type RetrievalMode,
+  type RetrievalPreview,
+} from '@mml/shared';
 import { type FormEvent, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
 import { formatLatency } from '../../lib/format.ts';
@@ -23,12 +29,21 @@ export function RetrievalExplainer({
 }) {
   const [projectId, setProjectId] = useState<string>(defaultProject ?? '');
   const [query, setQuery] = useState('storage decision');
-  const [maxMemories, setMaxMemories] = useState(meta?.max_memories ?? 8);
-  const [maxCharacters, setMaxCharacters] = useState(meta?.max_characters ?? 4_000);
+  const [mode, setMode] = useState<RetrievalMode>('forge');
+  const [maxMemories, setMaxMemories] = useState(FORGE_RETRIEVAL_BUDGET.max_memories);
+  const [maxCharacters, setMaxCharacters] = useState(FORGE_RETRIEVAL_BUDGET.max_characters);
   const [result, setResult] = useState<RetrievalPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showContext, setShowContext] = useState(false);
+
+  function selectMode(next: RetrievalMode): void {
+    setMode(next);
+    const defaults = next === 'forge' ? FORGE_RETRIEVAL_BUDGET : (meta ?? DEFAULT_RETRIEVAL_BUDGET);
+    setMaxMemories(defaults.max_memories);
+    setMaxCharacters(defaults.max_characters);
+    setResult(null);
+  }
 
   async function run(event: FormEvent) {
     event.preventDefault();
@@ -41,6 +56,7 @@ export function RetrievalExplainer({
         await api.retrievalPreview({
           project_id: projectId || null,
           query,
+          mode,
           budget: { max_memories: maxMemories, max_characters: maxCharacters },
         }),
       );
@@ -78,7 +94,7 @@ export function RetrievalExplainer({
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <label className="space-y-1">
             <span className="block text-[10px] text-muted">Project</span>
             <select
@@ -92,6 +108,19 @@ export function RetrievalExplainer({
                   {project.id}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="block text-[10px] text-muted">Mode</span>
+            <select
+              value={mode}
+              onChange={(event) => selectMode(event.target.value as RetrievalMode)}
+              disabled={loading}
+              aria-label="Retrieval mode"
+              className="w-full rounded-md border border-line bg-base/70 px-1.5 py-1 text-[11px] text-ink focus:outline-none disabled:opacity-50"
+            >
+              <option value="forge">Forge (Studio)</option>
+              <option value="default">Default</option>
             </select>
           </label>
           <label className="space-y-1">
@@ -118,6 +147,11 @@ export function RetrievalExplainer({
             />
           </label>
         </div>
+        <p className="text-[10px] leading-relaxed text-muted">
+          {mode === 'forge'
+            ? 'Forge mode starts from the same pinned decision types and count/character budget as HTML Studio generation; edits above override it for this preview.'
+            : 'Default mode uses the installation retrieval budget and pins only constraints and goals.'}
+        </p>
       </form>
 
       {error ? <p className="font-mono text-[11px] leading-relaxed text-err">{error}</p> : null}

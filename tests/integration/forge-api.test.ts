@@ -3,16 +3,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
-import { MemoryEngine, openDatabase } from '@mml/memory-engine';
+import { MemoryEngine, openDatabase, renderMemoryLayout } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
-import type { ForgeRuntimeBrowserSelection } from '@mml/shared';
+import type { ForgeRuntimeBrowserSelection, MemoryContext, RetrievalResult } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
+import { buildForgePrompt } from '../../apps/server/src/forge/prompt.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
+import {
+  READING_NOOK_MEMORIES,
+  READING_NOOK_PROJECT_ID,
+  READING_NOOK_PROMPT,
+  READING_NOOK_TECHNICAL_DECISION,
+} from '../fixtures/reading-nook.js';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/fake-muse.mjs', import.meta.url));
 const GENERAL_APP = fileURLToPath(new URL('../fixtures/general-app.html', import.meta.url));
@@ -175,6 +182,7 @@ async function job(app: FastifyInstance, jobId: string) {
     version: number | null;
     validation: { ok: boolean; issues: string[] } | null;
     usage: { calls: number } | null;
+    memory_ids: string[];
   };
 }
 
@@ -288,6 +296,154 @@ describe('forge workflow', () => {
     expect(rollback.statusCode).toBe(200);
     expect(rollback.json().data.current_version).toBe(1);
     expect((await preview(h.app)).body).toContain("MARKER = 'v1'");
+  });
+
+  it('preview agrees with Forge retrieval for the six Reading Nook decisions', async () => {
+    const h = await harness();
+    await createProject(h.app, READING_NOOK_PROJECT_ID);
+    const ids = READING_NOOK_MEMORIES.map((input) => h.engine.create(input).memory.id);
+
+    const generated = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${READING_NOOK_PROJECT_ID}/generate`,
+      payload: { prompt: READING_NOOK_PROMPT },
+    });
+    expect(generated.statusCode).toBe(202);
+    const finished = await waitForFinish(h.app, generated.json().data.id as string);
+    expect(finished.status).toBe('succeeded');
+
+    const previewFor = async (mode?: 'default' | 'forge', budget?: { max_memories: number }) => {
+      const response = await h.app.inject({
+        method: 'POST',
+        url: '/api/retrieval/preview',
+        payload: {
+          project_id: READING_NOOK_PROJECT_ID,
+          query: READING_NOOK_PROMPT,
+          ...(mode ? { mode } : {}),
+          ...(budget ? { budget } : {}),
+        },
+      });
+      expect(response.statusCode).toBe(200);
+      return response.json().data.retrieval as {
+        metadata: {
+          mode: string;
+          memory_budget: number;
+          character_budget: number;
+          memory_ids: string[];
+          selected_count: number;
+        };
+        results: Array<{ pinned: boolean; injected_content: string }>;
+      };
+    };
+
+    const defaultPreview = await previewFor();
+    expect(defaultPreview.metadata.mode).toBe('default');
+    expect(defaultPreview.metadata.memory_budget).toBe(8);
+    expect(defaultPreview.metadata.memory_ids).not.toContain(ids[4]);
+    expect(defaultPreview.metadata.memory_ids).not.toContain(ids[5]);
+
+    const forgePreview = await previewFor('forge');
+    expect(forgePreview.metadata.mode).toBe('forge');
+    expect(forgePreview.metadata.memory_budget).toBe(6);
+    expect(forgePreview.metadata.character_budget).toBe(3_000);
+    expect(forgePreview.metadata.selected_count).toBe(6);
+    expect(forgePreview.results.every((entry) => entry.pinned)).toBe(true);
+    expect(new Set(forgePreview.metadata.memory_ids)).toEqual(new Set(ids));
+    // The job records exactly the ids the Forge retrieval supplied to its prompt.
+    expect(new Set(forgePreview.metadata.memory_ids)).toEqual(new Set(finished.memory_ids));
+    expect(forgePreview.results.map((entry) => entry.injected_content)).toContain(
+      READING_NOOK_TECHNICAL_DECISION,
+    );
+
+    // A partial override must retain the selected mode's omitted defaults.
+    const boundedForgePreview = await previewFor('forge', { max_memories: 2 });
+    expect(boundedForgePreview.metadata.memory_budget).toBe(2);
+    expect(boundedForgePreview.metadata.character_budget).toBe(3_000);
+    expect(boundedForgePreview.metadata.selected_count).toBe(2);
+    const boundedDefaultPreview = await previewFor('default', { max_memories: 2 });
+    expect(boundedDefaultPreview.metadata.memory_budget).toBe(2);
+    expect(boundedDefaultPreview.metadata.character_budget).toBe(4_000);
+  });
+
+  it('returns the exact memory block buildForgePrompt injects', async () => {
+    const h = await harness();
+    await createProject(h.app, READING_NOOK_PROJECT_ID);
+    for (const input of READING_NOOK_MEMORIES) h.engine.create(input);
+
+    const preview = async (mode: 'default' | 'forge') => {
+      const response = await h.app.inject({
+        method: 'POST',
+        url: '/api/retrieval/preview',
+        payload: { project_id: READING_NOOK_PROJECT_ID, query: READING_NOOK_PROMPT, mode },
+      });
+      expect(response.statusCode).toBe(200);
+      return response.json().data as { retrieval: RetrievalResult; context: MemoryContext };
+    };
+
+    const forge = await preview('forge');
+    const forgeBlock = renderMemoryLayout(forge.retrieval.results, 'forge');
+
+    expect(forge.context.text).toBe(forgeBlock);
+    expect(forge.context.characters).toBe(forgeBlock.length);
+    expect(forge.retrieval.metadata.characters_used).toBe(forge.context.characters);
+    expect(forge.retrieval.metadata.characters_used).toBe(forgeBlock.length);
+    expect(forge.context.estimated_tokens).toBe(Math.ceil(forgeBlock.length / 4));
+    expect(forge.context.memory_ids).toEqual(
+      forge.retrieval.results.map((entry) => entry.memory.id),
+    );
+    expect(forgeBlock).toContain('<project_constraints>');
+    expect(forgeBlock).toContain('<project_memory_data>');
+    expect(forgeBlock).not.toContain('<retrieved_memories>');
+
+    // The production Forge prompt consumes exactly the previewed text.
+    const prompt = buildForgePrompt({
+      kind: 'generate',
+      prompt: READING_NOOK_PROMPT,
+      memories: forge.retrieval.results,
+    });
+    expect(prompt).toContain(forge.context.text);
+    expect(prompt.split(forge.context.text)).toHaveLength(2);
+
+    // Default previews keep the canonical block and its exact accounting.
+    const canonical = await preview('default');
+    const canonicalBlock = renderMemoryLayout(canonical.retrieval.results, 'canonical');
+
+    expect(canonical.context.text).toBe(canonicalBlock);
+    expect(canonical.context.characters).toBe(canonicalBlock.length);
+    expect(canonical.retrieval.metadata.characters_used).toBe(canonical.context.characters);
+    expect(canonical.retrieval.metadata.characters_used).toBe(canonicalBlock.length);
+    expect(canonical.context.estimated_tokens).toBe(Math.ceil(canonicalBlock.length / 4));
+    expect(canonical.context.memory_ids).toEqual(
+      canonical.retrieval.results.map((entry) => entry.memory.id),
+    );
+    expect(canonicalBlock.startsWith('<retrieved_memories>')).toBe(true);
+    expect(canonicalBlock).not.toContain('<project_memory_data>');
+  });
+
+  it('returns an empty context when Forge selects no memories', async () => {
+    const h = await harness();
+    const emptyContext = { text: '', characters: 0, estimated_tokens: 0, memory_ids: [] };
+
+    for (const mode of ['forge', 'default'] as const) {
+      const response = await h.app.inject({
+        method: 'POST',
+        url: '/api/retrieval/preview',
+        payload: { project_id: 'empty-project', query: 'nothing stored', mode },
+      });
+      expect(response.statusCode).toBe(200);
+      const { data } = response.json();
+      expect(data.retrieval.results).toEqual([]);
+      expect(data.retrieval.metadata.characters_used).toBe(0);
+      expect(data.context).toEqual(emptyContext);
+    }
+
+    const prompt = buildForgePrompt({
+      kind: 'generate',
+      prompt: 'Build a page.',
+      memories: [],
+    });
+    expect(prompt).not.toContain('<project_constraints>');
+    expect(prompt).not.toContain('<project_memory_data>');
   });
 
   it('starts a modification from the approved source, preserving unrelated code', async () => {

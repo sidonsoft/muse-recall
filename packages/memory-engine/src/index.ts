@@ -9,6 +9,7 @@
  *   migrations.ts versioned schema
  */
 
+export { DEFAULT_PINNED_TYPES, FORGE_PINNED_TYPES } from '@mml/shared';
 export { memoryContentHash, normaliseContent } from './content-hash.js';
 export type { MemoryBlockLayout } from './context.js';
 export {
@@ -36,9 +37,4 @@ export {
   runMigrations,
 } from './migrations.js';
 export type { RetrievalOptions } from './retrieval.js';
-export {
-  DEFAULT_PINNED_TYPES,
-  RECENCY_HALF_LIFE_DAYS,
-  retrieveMemories,
-  TYPE_PRIORITY,
-} from './retrieval.js';
+export { RECENCY_HALF_LIFE_DAYS, retrieveMemories, TYPE_PRIORITY } from './retrieval.js';

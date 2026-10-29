@@ -34,6 +34,7 @@ import {
   ModelResponseSchema,
   type Project,
   type RetrievalBudget,
+  type RetrievalMode,
   type RetrievalPreview,
   RetrievalPreviewSchema,
   type ServiceMeta,
@@ -450,6 +451,7 @@ export const api = {
   retrievalPreview: (input: {
     project_id: string | null;
     query: string;
+    mode?: RetrievalMode;
     budget?: Partial<RetrievalBudget>;
   }) =>
     request<RetrievalPreview>(

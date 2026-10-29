@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { MemoryType } from './memory.js';
 import { MemorySchema, MemoryTypeSchema } from './memory.js';
 
 /**
@@ -31,11 +32,77 @@ export const RetrievalBudgetSchema = z.object({
 });
 export type RetrievalBudget = z.infer<typeof RetrievalBudgetSchema>;
 
+/**
+ * Partial budget override that does not inject the schema defaults.
+ *
+ * `RetrievalBudgetSchema.partial()` would still fill missing fields with the
+ * global defaults, which is wrong when a profile (such as Forge) supplies its
+ * own baseline: `{ max_memories: 2 }` must inherit the profile's character
+ * budget, not reset it to the global default.
+ */
+export const RetrievalBudgetOverridesSchema = z.object({
+  max_memories: RetrievalBudgetSchema.shape.max_memories.unwrap().optional(),
+  max_characters: RetrievalBudgetSchema.shape.max_characters.unwrap().optional(),
+  max_memory_characters: RetrievalBudgetSchema.shape.max_memory_characters.unwrap().optional(),
+});
+export type RetrievalBudgetOverrides = z.infer<typeof RetrievalBudgetOverridesSchema>;
+
 /** Defaults as constants so the UI and docs can quote the same numbers. */
 export const DEFAULT_RETRIEVAL_BUDGET: RetrievalBudget = {
   max_memories: 8,
   max_characters: 4_000,
   max_memory_characters: 1_000,
+};
+
+/**
+ * Named retrieval profiles.
+ *
+ * A profile pins one set of types and one budget so configuration cannot drift
+ * between the preview UI and the production caller it claims to explain. The
+ * default profile preserves the historical chat/agent behaviour; Forge uses a
+ * larger pinned set and a tighter context budget because its prompts depend on
+ * saved design decisions as well as constraints and goals.
+ */
+export const RETRIEVAL_MODES = ['default', 'forge'] as const;
+export const RetrievalModeSchema = z.enum(RETRIEVAL_MODES);
+export type RetrievalMode = z.infer<typeof RetrievalModeSchema>;
+
+/** Types force-included by default when active in scope. */
+export const DEFAULT_PINNED_TYPES: readonly MemoryType[] = ['constraint', 'goal'];
+
+/**
+ * Forge prompts depend on project decisions, not just constraints and goals.
+ * Pinning these types keeps a saved palette or storage decision available even
+ * when the task wording shares no keywords with it.
+ */
+export const FORGE_PINNED_TYPES: readonly MemoryType[] = [
+  'constraint',
+  'goal',
+  'preference',
+  'technical_decision',
+];
+
+/** Budget actually used by HTML Studio generation and modification jobs. */
+export const FORGE_RETRIEVAL_BUDGET: RetrievalBudget = {
+  ...DEFAULT_RETRIEVAL_BUDGET,
+  max_memories: 6,
+  max_characters: 3_000,
+};
+
+export interface RetrievalProfile {
+  pinned_types: readonly MemoryType[];
+  budget: RetrievalBudget;
+}
+
+export const RETRIEVAL_PROFILES: Record<RetrievalMode, RetrievalProfile> = {
+  default: {
+    pinned_types: DEFAULT_PINNED_TYPES,
+    budget: DEFAULT_RETRIEVAL_BUDGET,
+  },
+  forge: {
+    pinned_types: FORGE_PINNED_TYPES,
+    budget: FORGE_RETRIEVAL_BUDGET,
+  },
 };
 
 /**
@@ -105,6 +172,8 @@ export type RetrievalExclusions = z.infer<typeof RetrievalExclusionsSchema>;
 export const RetrievalMetadataSchema = z.object({
   query: z.string(),
   project_id: z.string().nullable(),
+  /** Named profile whose pinned types and budget defaults produced this result. */
+  mode: RetrievalModeSchema.default('default'),
   /** Memories that passed the hard scope/status filters. */
   candidate_count: z.number().int().min(0),
   selected_count: z.number().int().min(0),
@@ -146,9 +215,14 @@ export const RetrievalRequestSchema = z.object({
    * limit rather than the shape of a search box.
    */
   query: z.string().max(16_000).default(''),
+  /**
+   * Named retrieval profile. `forge` is the exact pinned-type and budget
+   * configuration HTML Studio uses; `default` preserves chat/agent behaviour.
+   */
+  mode: RetrievalModeSchema.default('default'),
   types: z.array(MemoryTypeSchema).max(10).optional(),
   include_global: z.boolean().default(true),
-  budget: RetrievalBudgetSchema.partial().optional(),
+  budget: RetrievalBudgetOverridesSchema.optional(),
   weights: RetrievalWeightsSchema.partial().optional(),
 });
 export type RetrievalRequest = z.input<typeof RetrievalRequestSchema>;

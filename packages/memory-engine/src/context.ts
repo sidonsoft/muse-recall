@@ -16,16 +16,24 @@ import type { MemoryContext, RetrievalResult, RetrievedMemory } from '@mml/share
  *    including escaping, provenance headers, delimiters, and the safety
  *    wording. `formatMemoryContext` reports the exact rendered length.
  *
+ * The optional layout selects the block a consumer actually injects. The
+ * default remains the canonical `<retrieved_memories>` block used by preview
+ * and export; Forge callers pass `forge` so the reported text is byte-for-byte
+ * the block `buildForgePrompt` injects.
+ *
  * Character estimation is deliberately conservative: ~4 characters per token is
  * a rough guide, always labelled as an estimate. Real token counts come from
  * the provider.
  */
-export function formatMemoryContext(result: RetrievalResult): MemoryContext {
+export function formatMemoryContext(
+  result: RetrievalResult,
+  layout: MemoryBlockLayout = 'canonical',
+): MemoryContext {
   if (result.results.length === 0) {
     return { text: '', characters: 0, estimated_tokens: 0, memory_ids: [] };
   }
 
-  const text = renderMemoryBlock(result.results);
+  const text = renderMemoryLayout(result.results, layout);
 
   return {
     text,

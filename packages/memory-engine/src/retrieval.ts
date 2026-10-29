@@ -1,10 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {
-  DEFAULT_RETRIEVAL_BUDGET,
   DEFAULT_RETRIEVAL_WEIGHTS,
   type Memory,
   type MemoryType,
   type RankComponents,
+  RETRIEVAL_PROFILES,
   type RetrievalBudget,
   RetrievalBudgetSchema,
   type RetrievalExclusions,
@@ -43,8 +43,9 @@ export interface RetrievalOptions {
   weights?: Partial<RetrievalWeights>;
   /**
    * Memory types force-included when active in scope, regardless of keyword
-   * match. Defaults to constraints and goals; callers such as Forge may add
-   * decision-like types their prompts depend on.
+   * match. Defaults to the selected request profile (constraints and goals for
+   * `default`, plus preferences and technical decisions for `forge`). Pass an
+   * explicit list only for experiments that deliberately diverge.
    */
   pinnedTypes?: readonly MemoryType[];
 }
@@ -100,9 +101,6 @@ export const TYPE_PRIORITY: Record<MemoryType, number> = {
   contextual_fact: 0.4,
 };
 
-/** Default types force-included when active in scope, regardless of keyword match. */
-export const DEFAULT_PINNED_TYPES: readonly MemoryType[] = ['constraint', 'goal'];
-
 /**
  * How many slots are reserved for pinned memories.
  *
@@ -147,8 +145,9 @@ export function retrieveMemories(
 ): RetrievalResult {
   const startedAt = performance.now();
   const parsed = RetrievalRequestSchema.parse(request);
+  const profile = RETRIEVAL_PROFILES[parsed.mode];
   const budget: RetrievalBudget = RetrievalBudgetSchema.parse({
-    ...DEFAULT_RETRIEVAL_BUDGET,
+    ...profile.budget,
     ...(parsed.budget ?? {}),
   });
   const requestedWeights: RetrievalWeights = RetrievalWeightsSchema.parse({
@@ -158,7 +157,7 @@ export function retrieveMemories(
   });
   const now = options.now ?? new Date();
   const nowIso = now.toISOString();
-  const pinnedTypes = options.pinnedTypes ?? DEFAULT_PINNED_TYPES;
+  const pinnedTypes = options.pinnedTypes ?? profile.pinned_types;
   const pinnedTypeSet = new Set(pinnedTypes);
   const preciseQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query, 'and') : null;
   const broadQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query, 'or') : null;
@@ -336,14 +335,18 @@ export function retrieveMemories(
     return a.memory.id.localeCompare(b.memory.id);
   });
 
-  // Report the exact canonical block the preview injects. The selection above
-  // used the larger upper bound across supported layouts, so this can never
-  // exceed the configured budget.
-  const charactersUsed = renderMemoryLayout(selected, 'canonical').length;
+  // Report the exact block the selected mode's layout injects. The selection
+  // above used the larger upper bound across supported layouts, so this can
+  // never exceed the configured budget.
+  const charactersUsed = renderMemoryLayout(
+    selected,
+    parsed.mode === 'forge' ? 'forge' : 'canonical',
+  ).length;
 
   const metadata: RetrievalMetadata = {
     query: parsed.query,
     project_id: parsed.project_id,
+    mode: parsed.mode,
     candidate_count: candidateCount,
     selected_count: selected.length,
     excluded_count: Math.max(0, candidateCount - selected.length),
