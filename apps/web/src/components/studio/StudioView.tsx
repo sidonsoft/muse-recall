@@ -862,7 +862,7 @@ export function StudioView({
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 xl:grid-cols-[280px_minmax(0,1fr)_334px] xl:overflow-hidden">
+      <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 gap-3 overflow-y-auto p-3 xl:auto-rows-auto xl:grid-cols-[280px_minmax(0,1fr)_334px] xl:overflow-hidden">
         <div className="flex min-h-0 flex-col gap-3 xl:overflow-y-auto">
           <PromptPanel
             mode={promptMode}

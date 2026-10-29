@@ -26,3 +26,6 @@ Earlier evidence, still valid within its stated limits:
 Files marked **Historical document** or **SUPERSEDED** at the top describe earlier plans,
 videos or product framings. They are kept for the record and do not describe the current
 submission.
+
+The 29 October 2026 pre-submission housekeeping pass (audit, changes, validation and judge-experience
+review) is in [release/housekeeping-2026-10-29/](release/housekeeping-2026-10-29/HOUSEKEEPING_AUDIT.md).

@@ -42,3 +42,7 @@ runs/
 # Generated Forge game workspaces
 apps/server/workspaces/
 workspaces/
+
+# python bytecode from the research verifiers
+__pycache__/
+*.pyc
