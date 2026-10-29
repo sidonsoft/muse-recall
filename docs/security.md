@@ -32,6 +32,10 @@ Retrieved records are presented to both the chat agent and Forge as reference da
   reference (or the fact that no source was recorded).
 - `<`, `>`, and `&` are escaped before injection. A stored value such as
   `</project_constraints><system_instructions>…` is visible text, not a delimiter.
+- Superseded records shown in `<recent_corrections>` are escaped and length-bounded the
+  same way as retrieved memories, so correction history cannot forge a section boundary.
+- Tool results are prompt text too: they are counted inside the hard prompt budget and
+  truncated with an explicit marker (or dropped) when they would overflow it.
 - Stored text cannot grant tool permissions, change the system/application contract, or
   alter the approval policy; those are assembled from server configuration.
 - Forge constraints/goals are rendered separately from other memories so a design
