@@ -77,7 +77,14 @@ async function waitForFinish(manager: ForgeJobManager, jobId: string): Promise<F
   throw new Error('job did not finish');
 }
 
-async function persistedJob(root: string, jobId: string): Promise<ForgeJob> {
+async function persistedJob(
+  manager: ForgeJobManager,
+  root: string,
+  jobId: string,
+): Promise<ForgeJob> {
+  // The in-memory record can lead its durable write; read the file only after
+  // queued writes settle, or a loaded run sees the previous revision.
+  await manager.flush();
   return JSON.parse(
     await readFile(join(root, 'forge', 'demo', 'jobs', `${jobId}.json`), 'utf8'),
   ) as ForgeJob;
@@ -102,7 +109,7 @@ describe('Forge job completion timestamps', () => {
     const finished = await startGenerated(manager);
     const generationFinishedAt = finished.finished_at;
 
-    expect((await persistedJob(root, finished.id)).finished_at).toBe(generationFinishedAt);
+    expect((await persistedJob(manager, root, finished.id)).finished_at).toBe(generationFinishedAt);
 
     clock.advance('2026-11-02T09:30:00.000Z');
     const approved = await manager.approve(finished.id, { captureMemory: false });
@@ -110,7 +117,7 @@ describe('Forge job completion timestamps', () => {
     expect(approved.job.finished_at).toBe(generationFinishedAt);
     // Approval time is still observable where it belongs.
     expect(approved.job.approval_verification?.recorded_at).toBe('2026-11-02T09:30:00.000Z');
-    expect((await persistedJob(root, finished.id)).finished_at).toBe(generationFinishedAt);
+    expect((await persistedJob(manager, root, finished.id)).finished_at).toBe(generationFinishedAt);
 
     const reloaded = createManager();
     await reloaded.recover();
@@ -131,7 +138,7 @@ describe('Forge job completion timestamps', () => {
 
     expect(rejected.status).toBe('rejected');
     expect(rejected.finished_at).toBe(generationFinishedAt);
-    expect((await persistedJob(root, finished.id)).finished_at).toBe(generationFinishedAt);
+    expect((await persistedJob(manager, root, finished.id)).finished_at).toBe(generationFinishedAt);
 
     const reloaded = createManager();
     await reloaded.recover();
@@ -154,7 +161,7 @@ describe('Forge job completion timestamps', () => {
       code: 'runtime_failed',
     });
 
-    const failed = await persistedJob(root, finished.id);
+    const failed = await persistedJob(manager, root, finished.id);
     expect(failed.status).toBe('failed');
     expect(failed.finished_at).toBe('2026-11-04T12:00:00.000Z');
     expect(failed.finished_at).not.toBe(generationFinishedAt);
