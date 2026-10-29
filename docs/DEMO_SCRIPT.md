@@ -13,7 +13,7 @@ on a fresh database. Nothing is mocked; the deterministic provider is used only 
 git clone https://github.com/sidonsoft/muse-recall.git && cd muse-recall
 pnpm install
 cp .env.example .env
-rm -f apps/server/data/demo.db*
+rm -f data/demo.db*
 DATABASE_PATH=./data/demo.db pnpm dev
 ```
 

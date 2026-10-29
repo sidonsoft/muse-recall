@@ -73,10 +73,13 @@ safe, but throughput is single-writer.
 ### KI-1 — Relative paths resolve against the package directory
 
 **Severity:** Low (documentation/UX)
-**Detail:** `DATABASE_PATH=./data/…` resolves against the process working directory.
-`pnpm dev` starts the server with `apps/server` as cwd, so the database lands in
-`apps/server/data/`. `.gitignore` covers `data/` at any depth.
-**Fix:** Use an absolute path in `.env` when the location matters.
+**Status:** Fixed on `main` in [PR #4](https://github.com/sidonsoft/muse-recall/pull/4).
+**Detail:** `DATABASE_PATH=./data/…` used to resolve against the process working directory.
+`pnpm dev` starts the server with `apps/server` as cwd, so the database landed in
+`apps/server/data/`. Relative paths and `.env` now resolve from the repository root.
+**Upgrade:** data created by earlier builds stays in `apps/server/data/` and
+`apps/server/workspaces/`. Move it to `data/` and `workspaces/` at the root, or set absolute
+paths. `.gitignore` covers both locations.
 
 ### KI-2 — Per-run token usage can be empty
 

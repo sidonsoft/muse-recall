@@ -8,7 +8,7 @@ decision, and an old preference keeps coming back after you change your mind.
 **Muse Recall** is a local-first HTML Studio for Meta's Muse Spark that remembers your
 project's decisions, lets you correct them, and makes every change wait for your review.
 
-![HTML Studio after approving v2 of Ocean Pairs: the live preview, the remembered rule supplied to the change, the Decision Guard panel, and version history](docs/assets/html-studio-approved-v2.jpg)
+![Current HTML Studio reviewing staged v2 of Farmyard Memory Match: the live preview, the project decisions supplied to the change, the Decision Guard advisory and the approve/reject controls](docs/assets/readme-2026-10-29/studio-review.png)
 
 <!-- Demo video: paste the published URL in place of the pending note when the 2:50 cut is uploaded. -->
 **Demo video** — 2:50, recorded 29 October 2026 from a live Muse Spark session. [What the cut
@@ -373,15 +373,26 @@ retrieve ─► SQL hard filters (status, scope, expiry, type)
 Budgets are configuration, not architecture: `MEMORY_MAX_MEMORIES`,
 `MEMORY_MAX_CHARACTERS`, `MEMORY_MAX_MEMORY_CHARACTERS`.
 
-![A new conversation answering from project memory](docs/assets/phase3-ui-conversations.png)
+![A conversation answering from active project memory](docs/assets/readme-2026-10-29/conversation.png)
 
-![A Muse-generated planning form](docs/assets/phase4-ui-generative-ui.png)
+![A declarative planning form in the current conversation interface](docs/assets/readme-2026-10-29/planning-form.png)
 
-![A pending tool call awaiting approval](docs/assets/phase5-ui-tools.png)
+![A pending tool call awaiting explicit approval](docs/assets/readme-2026-10-29/tool-approval.png)
 
-![Memory detail with correction history](docs/assets/phase2-ui-memory-detail.png)
+![Current memory detail showing provenance and correction history](docs/assets/readme-2026-10-29/memory-detail.png)
 
-![Retrieval explanation with score components](docs/assets/phase2-ui-memory-retrieval.png)
+![Forge retrieval explanation showing active decisions, score components and rendered context cost](docs/assets/readme-2026-10-29/memory-retrieval.png)
+
+Interface screenshots were refreshed on 29 October 2026 using the current application and
+disposable demo data. The Studio capture replays recorded Muse-generated application bytes;
+the supporting captures use deterministic offline fixtures. They show current UI behavior,
+not new live-model results. Historical screenshots and trial evidence remain unchanged.
+
+The retrieval screenshot uses the visible two-memory override to show a budget exclusion;
+Forge defaults to six. [Capture provenance and reproduction](docs/assets/readme-2026-10-29/README.md).
+
+See the [user guide](docs/guide/README.md) for setup, project memory, HTML Studio, architecture
+and limitations.
 
 ---
 
@@ -488,29 +499,36 @@ More: [architecture](docs/architecture.md) · [memory design](docs/memory-design
 
 ## Configuration
 
-Environment-based; see [`.env.example`](.env.example). Relative paths resolve against
-the process working directory (`apps/server` when run via the pnpm scripts).
+Environment-based; see [`.env.example`](.env.example). The server, migrator and demo seed read
+the repository-root `.env` (falling back to `apps/server/.env`; `MML_ENV_FILE` names another
+file), and relative paths resolve against the repository root even though the pnpm scripts start
+the server in `apps/server`. Builds before 29 October kept data in `apps/server/data` and
+`apps/server/workspaces`; move those to `data/` and `workspaces/` at the root, or set absolute
+paths, to keep using it. Startup logs the loaded `.env`, database and workspace paths.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address |
-| `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file |
+| `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address; must be loopback (`127.0.0.1`, `::1`, `localhost`) or startup fails |
+| `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file, relative to the repository root |
 | `MODEL_PROVIDER` | `muse-cli` | `muse-cli` or `echo` (offline) |
 | `MUSE_MODEL` | `muse-wonder-1.0` | Any model the CLI offers |
 | `MUSE_REASONING_EFFORT` | `medium` | `none`…`ultra` |
 | `MUSE_TIMEOUT_MS` | `120000` | Hard per-call budget |
 | `META_API_KEY` | unset | Optional chat key, delivered to the CLI over stdin |
+| `MUSE_FALLBACK_API_KEY` | unset | Optional quota-failover key for chat, delivered over stdin |
+| `MUSE_FALLBACK_MODEL` | `muse-spark-1.3-contributor` | Model used only for the chat fallback attempt |
 | `MEMORY_MAX_MEMORIES` | `8` | Retrieval count budget |
 | `MEMORY_MAX_CHARACTERS` | `4000` | Rendered memory-context characters (escaping, provenance, delimiters) |
 | `MEMORY_MAX_MEMORY_CHARACTERS` | `1000` | Per-memory cap (truncates, never drops) |
 | `MEMORY_SWEEP_ON_START` | `true` | Expire stale memories at startup |
 | `TOOL_APPROVAL_POLICY` | `always` | Approval mode for agent tool calls |
-| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions |
+| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions, relative to the repository root |
 | `FORGE_MUSE_BIN` | unset | Override the Muse CLI binary used only by Forge |
 | `FORGE_MUSE_MODEL` | unset | Forge model id (for example `muse-spark-1.3-contributor`) |
 | `FORGE_REASONING_EFFORT` | `low` | Forge reasoning tier |
 | `FORGE_MAX_RUNTIME_MS` | `600000` | Hard wall-clock budget per Forge job |
 | `FORGE_RUNTIME_BROWSER` | `managed` | Runtime verification browser: `managed` or explicit `chrome` |
+| `MML_ENV_FILE` | unset | Read this `.env` file instead of the repository-root or `apps/server` one; it must exist |
 
 The API key never reaches the browser: the server shells out to the Muse CLI, which
 uses its own stored login (or a `META_API_KEY` delivered over stdin).
@@ -692,9 +710,10 @@ The [29 October live run](docs/hackathon-evidence/live-dsh-run-2026-10-29/FINDIN
 found five issues now fixed on `main` in PRs #5–#8: missing Forge decisions, conflicting
 storage instructions, preview storage errors, missed retired palettes, and hidden long timers
 incorrectly passing the Guard. The [repeat run](docs/hackathon-evidence/live-dsh-run-2026-10-29/after/AFTER_FIXES.md)
-is exploratory evidence, not a trial. Corrections still require an explicit application request;
-the retrieval preview can understate Forge context, approval/rejection can rewrite job finish
-times, and correction responses can return stale superseded-record fields (N1–N3).
+is exploratory evidence, not a trial. Follow-up findings N1–N3 are now fixed on `main` in
+[PR #10](https://github.com/sidonsoft/muse-recall/pull/10): Forge preview matches the injected
+memory block and its cost, review preserves generation finish times, and corrections return
+fresh superseded records. Corrections still require an explicit application-change request (F6).
 
 - **Memory does not automatically save tokens.** Measured: the Muse CLI has a ~16,630
   token baseline, and a ~4k-character memory block adds ~877 tokens. Whether memory is
