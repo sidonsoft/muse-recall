@@ -56,6 +56,7 @@ Verified state of this repo at the product-repo commit the footer cites:
 | --- | --- |
 | `npm run qa` (local + CI) | 24/24 — self-referential count gate, a11y audit, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
 | `npm run links` | 12/12 paths + commit resolve against the upstream repo |
+| `gecko` CI job (Playwright/Firefox) | full flow green on a second engine (Chromium flow also green locally via Playwright's driver) |
 | Lighthouse (mobile preset) | Perf 100 · A11y 100 · Best-Practices 100 · SEO 100 |
 | Lighthouse (desktop preset) | 100 · 100 · 100 · 100 |
 | Content parity | every quantitative claim re-grepped verbatim against `docs/hackathon-evidence/` |
@@ -65,8 +66,9 @@ Verified state of this repo at the product-repo commit the footer cites:
 Deliberately **not deployed yet** — iteration is active. [PR #1](https://github.com/sidonsoft/muse-recall-website/pull/1)
 carries a GitHub Pages workflow (`npm run site` → static `dist/`, portable
 `base: './'` so any subpath works), triggered only by `workflow_dispatch`.
-Publishing = enable Pages (source: GitHub Actions) in repo settings, then merge
-the PR or run the workflow once.
+Publishing: enable Pages (source: GitHub Actions) in repo settings, then run
+the "Pages (static deploy)" workflow once. (Add a `push` trigger later if
+auto-publish is wanted.)
 
 ## Structure
 
