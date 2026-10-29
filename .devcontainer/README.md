@@ -73,5 +73,18 @@ pnpm build     # production web + server build
   `Origin: https://localhost:5173`. Only when it runs inside a codespace, the server also
   trusts that origin and the codespace's own forwarded address
   (`apps/server/src/codespaces.ts`). Other sites, ports and codespaces are still rejected.
+- **Launch count.** When the codespace is created, setup makes one anonymous request
+  that adds 1 to a public counter, so the author can see how many codespaces were
+  started. It is a plain `GET` to
+  `https://abacus.jasoncameron.dev/hit/sidonsoft-muse-recall/codespaces-launches`, a free
+  counting service with no account. Nothing is sent except the counter name: no
+  username, repository contents, environment or machine details. Like any web request,
+  it reveals your IP address to that service, whose logging this project does not
+  control. It runs only in Codespaces (not in a local dev container), waits at most
+  3 seconds and cannot make setup fail. To opt out, set `DO_NOT_TRACK=1` or
+  `MUSE_RECALL_NO_COUNT=1` as a
+  [Codespaces secret](https://github.com/settings/codespaces) before you create the
+  codespace. Anyone can read the total at
+  `https://abacus.jasoncameron.dev/get/sidonsoft-muse-recall/codespaces-launches`.
 - To start over, stop `pnpm dev`, delete `data/` and `workspaces/`, then run
   `pnpm demo:seed` and `pnpm dev` again.

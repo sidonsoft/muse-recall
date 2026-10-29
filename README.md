@@ -75,6 +75,8 @@ start takes about three minutes, and VS Code asks you to trust the workspace (ac
 setup can continue). The codespace seeds the demo project and opens the app on the offline
 provider; no Muse account or key is needed. Generating new code needs the Muse CLI, so
 follow the [five-minute offline walkthrough](.devcontainer/README.md#a-five-minute-walkthrough-offline).
+Setup sends one anonymous request to count codespace launches; what it sends and how to
+opt out are in the [Codespaces notes](.devcontainer/README.md#notes).
 
 **Locally:**
 

@@ -7,6 +7,19 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Anonymous launch count (see "Launch count" in .devcontainer/README.md). Only in a
+# real codespace, one plain GET that sends nothing but the counter name, gives up after
+# 3 seconds and never fails setup. Opt out with DO_NOT_TRACK=1 or MUSE_RECALL_NO_COUNT=1.
+if [ "${CODESPACES:-}" = "true" ] && [ -z "${DO_NOT_TRACK:-}" ] && [ -z "${MUSE_RECALL_NO_COUNT:-}" ] \
+  && command -v curl >/dev/null 2>&1; then
+  # The owner's own test launches go to a separate counter. The username is compared
+  # here and never sent.
+  COUNTER="codespaces-launches"
+  [ "${GITHUB_USER:-}" = "sidonsoft" ] && COUNTER="codespaces-launches-owner"
+  curl -fsS --max-time 3 -o /dev/null \
+    "https://abacus.jasoncameron.dev/hit/sidonsoft-muse-recall/${COUNTER}" || true
+fi
+
 # Node 25+ no longer bundles corepack, so install the pinned pnpm directly.
 PNPM_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")"
 if ! command -v pnpm >/dev/null 2>&1 || [ "$(pnpm -v)" != "$PNPM_VERSION" ]; then
