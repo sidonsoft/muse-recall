@@ -1,0 +1,401 @@
+import React from 'react';
+
+const REPO = 'https://github.com/sidonsoft/muse-recall';
+const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
+
+export function Problem() {
+  const pains = [
+    {
+      emoji: '🔁',
+      q: 'Requirements get restated.',
+      a: 'A new session starts from zero, so the user explains the same constraint again.',
+    },
+    {
+      emoji: '🧠',
+      q: 'Changes forget.',
+      a: 'A generated edit can drop an earlier decision; the regression appears later, when it is expensive to find.',
+    },
+    {
+      emoji: '🕰️',
+      q: 'Stale preferences persist.',
+      a: 'When you change your mind, the old preference keeps coming back — a transcript does not say which decision is current.',
+    },
+  ];
+  return (
+    <section className="block" id="problem">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">The problem</p>
+          <h2>AI builders are fast at the first draft and slow at the second week.</h2>
+          <p>
+            Every session starts from zero. Decisions made last week quietly stop constraining
+            this week&apos;s code — and regressions resurface exactly where they cost the most.
+          </p>
+        </div>
+        <div className="problem-grid">
+          {pains.map((p) => (
+            <div className="problem-card reveal" key={p.q}>
+              <span className="emoji" aria-hidden="true">
+                {p.emoji}
+              </span>
+              <div className="q">{p.q}</div>
+              <p>{p.a}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function How() {
+  const steps = [
+    {
+      n: '01 · store',
+      h: 'Decisions, not chat logs',
+      p: 'Each project decision gets a stable UUID, type and scope, its source session, confidence, validation status and an append-only history. Identity and provenance from day one.',
+      arrow: true,
+    },
+    {
+      n: '02 · supply',
+      h: 'Memory feeds the next generation',
+      p: 'Before a generate or modify job, Recall retrieves the active decisions and renders them into the prompt as bounded, escaped reference data. The job records the decision ids it received and the SHA-256 of the exact prompt.',
+      arrow: true,
+    },
+    {
+      n: '03 · review',
+      h: 'Changes are staged, never applied',
+      p: 'Preview, exact source and a line diff. A load-time browser gate runs before approval is even possible; the advisory Decision Guard checks the staged source against the remembered decisions. You approve, reject — or roll back to the recorded parent.',
+      arrow: true,
+    },
+    {
+      n: '04 · correct',
+      h: 'Change your mind, keep the audit',
+      p: 'A correction is one transaction: insert the replacement, record the supersession edge, mark the old decision superseded. It stays auditable but stops constraining new work — and replays idempotently.',
+    },
+  ];
+  return (
+    <section className="block" id="how">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">How it works</p>
+          <h2>Store → supply → review → correct</h2>
+          <p>
+            One workflow with five implemented capabilities. Persistent memory is not new —
+            correctable memory wired into a reviewable change loop is.
+          </p>
+        </div>
+        <div className="steps" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {steps.map((s) => (
+            <div className="step reveal" key={s.n}>
+              <span className="num">{s.n}</span>
+              <h3>{s.h}</h3>
+              <p>{s.p}</p>
+              {s.arrow && <span className="arrow" aria-hidden="true">→</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Features() {
+  const feats = [
+    {
+      icon: '🪪',
+      h: 'Identity & provenance',
+      p: 'UUIDs, scope, source reference, confidence, validation status and append-only history for every decision — so “which fact is current” is a query, not a guess.',
+    },
+    {
+      icon: '🔀',
+      h: 'Transactional supersession',
+      p: 'Correction replaces and edges, never erases. The superseded record stays auditable, is excluded from active retrieval, and the same correction replays idempotently.',
+    },
+    {
+      icon: '🧾',
+      h: 'Provable context',
+      p: 'One prompt builder; every job records the decision ids it received and the SHA-256 of the exact prompt. Reconstruction reproduces the bytes.',
+    },
+    {
+      icon: '🗂️',
+      h: 'Immutable versions & rollback',
+      p: 'Approval binds promotion to the exact verified bytes. Every approved version is immutable; rollback follows the recorded parent, even after a non-linear history.',
+    },
+    {
+      icon: '🛡️',
+      h: 'Advisory Decision Guard',
+      p: 'A deterministic, dependency-free source check over five rule families. It cites the decision and a bounded evidence excerpt — and never blocks approval.',
+    },
+    {
+      icon: '🔒',
+      h: 'Local-first & sandboxed',
+      p: 'Loopback only, no accounts. Previews run in an opaque-origin iframe with a restrictive CSP; cross-origin state changes are rejected before any handler runs.',
+    },
+  ];
+  return (
+    <section className="block" id="features">
+      <div className="container">
+        <div className="section-head center">
+          <p className="kicker">Capabilities</p>
+          <h2>Deterministic infrastructure around the model</h2>
+          <p>
+            Muse Spark does the building. Recall makes its output reviewable without replacing
+            its work.
+          </p>
+        </div>
+        <div className="features-grid">
+          {feats.map((f) => (
+            <div className="feature reveal" key={f.h}>
+              <div className="icon" aria-hidden="true">
+                {f.icon}
+              </div>
+              <h3>{f.h}</h3>
+              <p>{f.p}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Evidence() {
+  const rows = [
+    ['No memory (none)', '37/57', '49/60'],
+    ['Retrieved project memory (memory)', '0/58', '1/60'],
+    ['Rule retyped by hand (manual)', '0/58', '0/60'],
+    ['Rule corrected first (corrected)', '41/59', '50/60'],
+  ];
+  return (
+    <section className="block" id="evidence">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">Evidence, honestly labelled</p>
+          <h2>A pre-registered behavioural trial, not a vibe check</h2>
+          <p>
+            Phase 17: 480 runs — four arms × six strata (two games and a task planner) × two
+            models, detector fixed and pushed before the first run. A violation is the original
+            rule appearing in generated source.
+          </p>
+        </div>
+        <div className="evidence-wrap reveal">
+          <table className="evidence">
+            <thead>
+              <tr>
+                <th>Arm</th>
+                <th>Muse Spark</th>
+                <th>Muse Spark Open</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([arm, a, b], i) => (
+                <tr key={arm}>
+                  <td>{arm}</td>
+                  <td className={i === 1 ? 'good' : i === 0 ? 'bad' : undefined}>{a}</td>
+                  <td className={i === 1 ? 'good' : i === 0 ? 'bad' : undefined}>{b}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="footnote reveal">
+          Memory vs no memory: exact two-sided p = 6.5 × 10⁻²⁰ and 1.1 × 10⁻²⁴. Memory is
+          non-inferior to retyping the same rule by hand (+4.5 pp and +7.1 pp upper 90% bounds,
+          inside the +15 pp margin) — the point is that <em>Recall assembles the context for
+          you</em>. After a permissive correction, the original-rule detector rises as expected:
+          the old restriction stops constraining output. Scope is bounded: six fixed strata,
+          source code rather than runtime behaviour; 8 of 240 Muse Spark runs hit the
+          pre-registered time cap (0 on Open); exact p-values are a disclosed post-run
+          correction.{' '}
+          <a href={RESULTS} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>
+            Full results &amp; verifier →
+          </a>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+export function Gallery() {
+  const shots = [
+    {
+      src: '/assets/phase2-ui-memory-detail.png',
+      t: 'Memory detail',
+      c: 'A decision with provenance, correction history and the supersession chain.',
+    },
+    {
+      src: '/assets/phase2-ui-memory-retrieval.png',
+      t: 'Retrieval explainer',
+      c: 'Every retrieval shows its score components and an evidence sentence — no black box.',
+    },
+    {
+      src: '/assets/phase10-final-diff.png',
+      t: 'Staged diff',
+      c: 'A generated change waits as preview, exact source and a line diff before anyone approves it.',
+    },
+    {
+      src: '/assets/phase6-showcase.png',
+      t: 'End-to-end showcase',
+      c: 'Conversations, memory, retrieval evidence and tool approvals in one local loop.',
+    },
+  ];
+  return (
+    <section className="block" id="gallery">
+      <div className="container">
+        <div className="section-head center">
+          <p className="kicker">The product</p>
+          <h2>Auditable at every step</h2>
+          <p>Real screens from the local-first Studio.</p>
+        </div>
+        <div className="gallery">
+          {shots.map((s) => (
+            <figure className="reveal" key={s.src}>
+              <img src={s.src} alt={s.c} loading="lazy" />
+              <figcaption>
+                <b>{s.t}</b>
+                {s.c}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Stack() {
+  return (
+    <section className="block" id="stack" style={{ paddingTop: 0 }}>
+      <div className="container">
+        <div className="tech reveal">
+          {[
+            'TypeScript pnpm workspaces',
+            'Fastify 5 API',
+            'React 19 · Vite 7 · Tailwind 4',
+            'node:sqlite + FTS5',
+            'Zod contracts',
+            'Muse Code CLI (Muse Spark)',
+            'Muse Spark Open on Baseten (research)',
+            'Playwright-managed Chromium gate',
+            'Biome · Vitest · 721 tests',
+            'Offline echo provider (no account needed)',
+          ].map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Quickstart() {
+  return (
+    <section className="block" id="quickstart" style={{ paddingTop: 20 }}>
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">Try it in 60 seconds</p>
+          <h2>No Muse account? No problem.</h2>
+          <p>
+            The seeded demo project carries three decisions — one already superseded — with v1
+            approved. The offline <code>echo</code> provider means you can inspect the whole
+            workflow, memory and provenance, without any inference.
+          </p>
+        </div>
+        <pre className="code reveal">
+          <span className="cmt"># Node ≥ 24 · pnpm 10</span>{'\n'}
+          git clone {REPO} muse-recall && cd muse-recall{'\n'}
+          pnpm install && cp .env.example .env{'\n'}
+          <span className="hl">pnpm demo:seed</span>{'        '}
+          <span className="cmt"># seeded game, three decisions, v1 approved</span>{'\n'}
+          <span className="hl">MODEL_PROVIDER=echo pnpm dev</span>{'  '}
+          <span className="cmt"># open http://127.0.0.1:5173</span>{'\n\n'}
+          <span className="cmt"># with Muse Spark on your Meta login:</span>{'\n'}
+          pnpm dev{'\n\n'}
+          <span className="cmt"># verify, don't trust:</span>{'\n'}
+          pnpm verify{'               '}
+          <span className="cmt"># lint + typecheck + 721 tests</span>
+        </pre>
+      </div>
+    </section>
+  );
+}
+
+export function Honesty() {
+  const items = [
+    ['The Guard is advisory', 'It never blocks approval, checks source patterns — not rendered behaviour — and its false positives, misses and abstentions are measured and published.'],
+    ['The browser gate is load-time', 'Approval loads the staged page once in managed Chromium. It does not play the game, inspect pixels or prove correctness.'],
+    ['Trials are bounded', 'Six fixed strata, two rules, two models, source code measured. No general application-correctness or transfer claim.'],
+    ['Corrections need an explicit request', 'The honest failure beat from the demo: the model kept the old palette until asked for the project’s current art direction.'],
+    ['Single-user, loopback-only', 'No auth, no multi-tenant hosting. An origin guard blocks cross-site mutations; it is not an authentication story.'],
+    ['Exports run unsandboxed', 'The Studio preview is sandboxed. A downloaded file opened from disk is an ordinary local file — and the UI says so.'],
+  ];
+  return (
+    <section className="block" id="honesty">
+      <div className="container">
+        <div className="section-head center">
+          <p className="kicker">Say it plainly</p>
+          <h2>Every claim carries its limits</h2>
+          <p>
+            The repository ships an evidence map, known-issues list and strict verifiers
+            (<code>pnpm verify:research17</code>) that re-derive every count and p-value from
+            the retained records.
+          </p>
+        </div>
+        <ul className="honesty">
+          {items.map(([b, p]) => (
+            <li className="reveal" key={b}>
+              <b>{b}</b>
+              {p}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+export function CTA() {
+  return (
+    <section className="block" id="cta">
+      <div className="container">
+        <div className="cta-band reveal">
+          <h2>Correctable, reviewable memory — not a bigger context window.</h2>
+          <p>
+            The bet: the next step for AI-built software is project memory you can correct and a
+            change you can review before it becomes current.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a className="btn btn-primary" href={REPO} target="_blank" rel="noreferrer">
+              View the source
+            </a>
+            <a className="btn btn-ghost" href={RESULTS} target="_blank" rel="noreferrer">
+              Read the evidence
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Footer() {
+  return (
+    <footer>
+      <div className="container footer-inner">
+        <span>© 2026 Muse Memory Lab contributors · MIT · built for the Meta Muse hackathon</span>
+        <div className="footer-links">
+          <a href={REPO} target="_blank" rel="noreferrer">
+            muse-recall
+          </a>
+          <a href={`${REPO}/blob/main/docs/submission/SUBMISSION_COPY.md`} target="_blank" rel="noreferrer">
+            Submission copy
+          </a>
+          <a href={`${REPO}/blob/main/docs/submission/EVIDENCE_MAP.md`} target="_blank" rel="noreferrer">
+            Evidence map
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
