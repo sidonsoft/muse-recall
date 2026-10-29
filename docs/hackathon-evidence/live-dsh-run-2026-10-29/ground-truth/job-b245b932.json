@@ -1,0 +1,122 @@
+{
+  "id": "b245b932-1c23-4fc4-9e0c-e43257791140",
+  "project_id": "reading-nook",
+  "kind": "generate",
+  "status": "rejected",
+  "prompt": "Build Reading Nook, a reading log for children aged 7 to 10. A child can add books (title, author, total pages), log pages read each day, and see a weekly summary of pages read with a simple bar chart. Finished books move to a 'My Shelf' section with a small celebration message. Set a weekly page goal and show progress towards it. Everything works in one index.html. Follow the saved project decisions, including the colour palette and offline storage in localStorage so nothing is lost on reload.",
+  "request": null,
+  "summary": "Application updated.",
+  "error": null,
+  "created_at": "2026-10-29T02:08:57.641Z",
+  "started_at": "2026-10-29T02:08:57.641Z",
+  "finished_at": "2026-10-29T02:10:11.584Z",
+  "logs": [
+    "stderr: muse: local session messaging disabled: session logging is required",
+    "stderr: muse: workspace root: /Users/burnz/projects/muse-memory-lab/.claude/worktrees/submission-docs-v21-ac1165/runs/live-dsh-20261029/workspaces/forge/reading-nook/staging/b245b932-1c23-4fc4-9e0c-e43257791140 (explicit)",
+    "stderr: muse: Agent delegation: auto unavailable: workspace is untrusted.",
+    "Done",
+    ". Created",
+    "[index.html](/Users/burnz",
+    "/projects/muse-memory-lab/.claude",
+    "/worktrees/submission-docs-v21-ac",
+    "1165/runs/live-dsh-",
+    "20261029/workspaces/forge/",
+    "reading-nook/staging/b245b",
+    "932-1c23-4fc",
+    "4-9e0c-e432",
+    "57791140/index.html)",
+    "\u2014 a self",
+    "-contained Reading Nook with add-book",
+    ", log-pages,",
+    "weekly goal bar,",
+    "7-day bar chart with numeric",
+    "labels, and a",
+    "My Shelf section",
+    "with a celebration message",
+    ".\n\nChecks",
+    ": `",
+    "node --check` on the inline script",
+    "passes.",
+    "Buttons",
+    "are `type=\"button\"` with click",
+    "handlers, Enter handled",
+    "via",
+    "`keydown`, tap",
+    "targets \u2265",
+    "48px, no timers, no flashing",
+    ", and every status has",
+    "a",
+    "text label plus icon.\n\nOne",
+    "conflict",
+    ": the request asked for local",
+    "Storage,",
+    "but this",
+    "task forbids browser storage,",
+    "so data lives",
+    "in memory only",
+    "and resets",
+    "on reload."
+  ],
+  "usage": {
+    "calls": 3,
+    "input_tokens": 94332,
+    "output_tokens": 5166,
+    "runtime_ms": 48314
+  },
+  "memory_ids": [
+    "0432b4b9-3305-4e64-b355-15ed682ecbdf",
+    "0398cbf1-e060-4ea3-8c9c-1d3256d7e554",
+    "14d8a1be-992a-44f8-8d98-aad26bd9f0b6",
+    "ac94ae63-4b94-4f28-954c-909edfbf2ebd"
+  ],
+  "base_version": null,
+  "prompt_sha256": "b1c80eec16026208dd8995c249eac003c0fc74cdc5530b7bd0c5dd5599114d70",
+  "validation": {
+    "ok": true,
+    "issues": []
+  },
+  "decision_guard": {
+    "mode": "advisory",
+    "engine_version": "1.2.0",
+    "engine_verdict": "UNVERIFIED",
+    "assessment": "not_verified",
+    "assessment_reason": "At least one remembered decision or constraint could not be checked, so no compliance is claimed.",
+    "findings": [],
+    "unverified": [
+      {
+        "kind": "unverified",
+        "decision_id": "0432b4b9-3305-4e64-b355-15ed682ecbdf",
+        "decision_ref": "Audience is children aged 7\u201310: tap targets at least 44px, plain words, an encouraging tone, and no scores or rankings that compare children.",
+        "rule": "none-applicable",
+        "severity": null,
+        "code": "unsupported_decision",
+        "reason": "no supported rule matches this decision; compliance cannot be claimed"
+      },
+      {
+        "kind": "unverified",
+        "decision_id": "14d8a1be-992a-44f8-8d98-aad26bd9f0b6",
+        "decision_ref": "Never use colour-only cues: every status (goal met, in progress, finished) must also have a text label or icon, so it works without colour.",
+        "rule": "colour-only-cue",
+        "severity": null,
+        "code": "rule_unverified",
+        "reason": "no evaluable red/green pair found; broad accessibility cannot be claimed"
+      }
+    ],
+    "evaluated_memory_ids": [
+      "0398cbf1-e060-4ea3-8c9c-1d3256d7e554",
+      "0432b4b9-3305-4e64-b355-15ed682ecbdf",
+      "14d8a1be-992a-44f8-8d98-aad26bd9f0b6",
+      "ac94ae63-4b94-4f28-954c-909edfbf2ebd"
+    ],
+    "applicable_rules": [
+      "countdown-mechanics",
+      "colour-only-cue",
+      "flashing-effects"
+    ],
+    "superseded_memory_ids": [],
+    "source_sha256": "8d9a8a394feb91963c4956218db199a883472f88ae093e143aed7e8e7619a95e",
+    "runtime_verified": false,
+    "evaluated_at": "2026-10-29T02:09:45.993Z"
+  },
+  "version": null
+}

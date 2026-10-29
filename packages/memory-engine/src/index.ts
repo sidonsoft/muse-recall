@@ -36,4 +36,9 @@ export {
   runMigrations,
 } from './migrations.js';
 export type { RetrievalOptions } from './retrieval.js';
-export { RECENCY_HALF_LIFE_DAYS, retrieveMemories, TYPE_PRIORITY } from './retrieval.js';
+export {
+  DEFAULT_PINNED_TYPES,
+  RECENCY_HALF_LIFE_DAYS,
+  retrieveMemories,
+  TYPE_PRIORITY,
+} from './retrieval.js';

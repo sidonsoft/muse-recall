@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
 import type { ForgeRuntimeBrowserSelection } from '@mml/shared';
@@ -30,6 +31,15 @@ interface Harness {
   manager: ForgeJobManager;
   root: string;
   close: () => Promise<void>;
+}
+
+interface MemoryStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+  clear(): void;
+  key(index: number): string | null;
+  readonly length: number;
 }
 
 const open: Harness[] = [];
@@ -197,6 +207,12 @@ async function waitForFinish(app: FastifyInstance, jobId: string) {
 async function preview(app: FastifyInstance, id = 'demo-game', jobId?: string) {
   const suffix = jobId ? `?job=${jobId}` : '';
   return app.inject({ method: 'GET', url: `/api/forge/projects/${id}/preview${suffix}` });
+}
+
+function previewStorageShim(html: string): string {
+  const match = /<script data-forge-preview-storage>([\s\S]*?)<\/script>/.exec(html);
+  if (!match?.[1]) throw new Error('preview storage shim is missing');
+  return match[1];
 }
 
 describe('forge workflow', () => {
@@ -1096,6 +1112,141 @@ describe('forge workflow', () => {
     });
     expect(approve.statusCode).toBe(200);
     expect(approve.json().data.state.current_version).toBe(1);
+  });
+
+  it('injects the storage shim only into previews, ahead of application scripts', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+
+    const stagedPreview = await preview(h.app, 'demo-game', generated);
+    expect(stagedPreview.statusCode).toBe(200);
+    const shimAt = stagedPreview.body.indexOf('data-forge-preview-storage');
+    const appScriptAt = stagedPreview.body.indexOf(
+      '<script src="https://cdn.jsdelivr.net/npm/phaser',
+    );
+    expect(shimAt).toBeGreaterThanOrEqual(0);
+    expect(appScriptAt).toBeGreaterThan(shimAt);
+
+    const csp = String(stagedPreview.headers['content-security-policy']);
+    for (const directive of [
+      'sandbox allow-scripts',
+      "default-src 'none'",
+      "script-src 'unsafe-inline' https://cdn.jsdelivr.net",
+      "style-src 'unsafe-inline'",
+      'img-src data: blob:',
+      'connect-src https://cdn.jsdelivr.net',
+      "frame-ancestors 'self'",
+      "base-uri 'none'",
+      "form-action 'none'",
+      "object-src 'none'",
+    ]) {
+      expect(csp).toContain(directive);
+    }
+    expect(csp).not.toContain('allow-same-origin');
+
+    const stagedArtifact = await h.app.inject({
+      method: 'GET',
+      url: `/api/forge/projects/demo-game/artifact?job=${generated}`,
+    });
+    expect(stagedArtifact.statusCode).toBe(200);
+    expect(stagedArtifact.json().data.html).not.toContain('data-forge-preview-storage');
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(200);
+    const approvedArtifact = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/demo-game/artifact',
+    });
+    expect(approvedArtifact.statusCode).toBe(200);
+    expect(approvedArtifact.json().data.html).not.toContain('data-forge-preview-storage');
+    const approvedVersion = approve
+      .json()
+      .data.state.versions.find((entry: { version: number }) => entry.version === 1);
+    expect(approvedArtifact.json().data.sha256).toBe(approvedVersion.sha256);
+    expect(
+      await readFile(join(h.root, 'forge', 'demo-game', 'versions', '1', 'index.html'), 'utf8'),
+    ).not.toContain('data-forge-preview-storage');
+  });
+
+  it('runs the preview storage shim when real storage access throws', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+
+    const staged = await preview(h.app, 'demo-game', generated);
+    const shim = previewStorageShim(staged.body);
+
+    const windowObject: Record<string, unknown> = {};
+    for (const name of ['localStorage', 'sessionStorage']) {
+      Object.defineProperty(windowObject, name, {
+        configurable: true,
+        get() {
+          throw new Error('SecurityError');
+        },
+      });
+    }
+    const storages = runInNewContext(
+      `${shim};({ local: window.localStorage, session: window.sessionStorage })`,
+      { window: windowObject },
+    ) as { local: MemoryStorage; session: MemoryStorage };
+    const local = storages.local;
+    const session = storages.session;
+
+    expect(local.getItem('missing')).toBeNull();
+    const callSetItem = local.setItem as (key: unknown, value: unknown) => void;
+    callSetItem('count', 7);
+    expect(local.getItem('count')).toBe('7');
+    callSetItem(42, true);
+    expect(local.getItem('42')).toBe('true');
+    expect(local.length).toBe(2);
+
+    local.clear();
+    expect(local.length).toBe(0);
+    expect(local.key(0)).toBeNull();
+    expect(local.getItem('count')).toBeNull();
+
+    local.setItem('first', '1');
+    local.setItem('second', '2');
+    local.setItem('first', 'updated');
+    expect(local.length).toBe(2);
+    expect(local.getItem('first')).toBe('updated');
+    expect(local.key(0)).toBe('first');
+    expect(local.key(1)).toBe('second');
+    expect(local.key(2)).toBeNull();
+
+    local.removeItem('first');
+    expect(local.length).toBe(1);
+    expect(local.getItem('first')).toBeNull();
+    expect(local.key(0)).toBe('second');
+    local.removeItem('missing');
+
+    local.setItem('first', 'again');
+    expect(local.key(1)).toBe('first');
+
+    session.setItem('draft', 'yes');
+    expect(session.getItem('draft')).toBe('yes');
+    expect(local.getItem('draft')).toBeNull();
+    expect(session.length).toBe(1);
+
+    local.clear();
+    expect(local.length).toBe(0);
+    expect(session.getItem('draft')).toBe('yes');
+
+    // A working real Storage implementation is left untouched.
+    const real = { real: true };
+    const kept = runInNewContext(
+      `${shim};({ local: window.localStorage, session: window.sessionStorage })`,
+      { window: { localStorage: real, sessionStorage: real } },
+    ) as { local: unknown; session: unknown };
+    expect(kept.local).toBe(real);
+    expect(kept.session).toBe(real);
   });
 
   it('accepts a modification without a screenshot and does not claim one was attached', async () => {

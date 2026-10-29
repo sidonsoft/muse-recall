@@ -42,6 +42,38 @@ const SUNSET_SUPERSEDED: GuardDecision = {
   supersedes: [],
 };
 
+const WARM_WORDS_SUPERSEDED: GuardDecision = {
+  id: 'dec-warm-words',
+  content: 'Palette: warm — orange, gold and peach on a cream background.',
+  status: 'superseded',
+  supersedes: [],
+};
+
+const COOL_WORDS_ACTIVE: GuardDecision = {
+  id: 'dec-cool-words',
+  content:
+    'Palette: cool — teal and navy on a soft white background. The warm orange palette is retired.',
+  status: 'active',
+  supersedes: ['dec-warm-words'],
+};
+
+const WARM_STYLESHEET = `:root{
+  --orange:#e8862e; --gold:#e8a838; --peach:#f6c9a0;
+  --cream:#fdf6ec; --ink:#4a3421; --soft:#fffdf8;
+  --border:#e5cfae;
+}
+header{background:var(--orange);color:#fff}
+.badge{background:var(--gold);color:#4a2c00}
+.card h2{color:#8a4d12}
+.btn-quiet{background:var(--peach);color:#4a2c00}
+.book{border:2px solid var(--gold);background:#fff8ee}`;
+
+const COOL_STYLESHEET = `:root{
+  --teal:#0f766e; --aqua:#2aa198; --mist:#cde8e5;
+  --paper:#f4f8fa; --navy:#1e3a5f; --white:#ffffff;
+  --border:#b8d4d8;
+}`;
+
 const PHASER =
   '<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>';
 
@@ -396,6 +428,54 @@ describe('v1.2.0 palette notation equivalence', () => {
   });
 });
 
+describe('v1.3.0 palette family classification', () => {
+  const paletteVerdict = (source: string) => {
+    const result = evaluateDecisions([COOL_WORDS_ACTIVE], source, {
+      supersededDecisions: [WARM_WORDS_SUPERSEDED],
+    });
+    return {
+      result,
+      evaluation: result.evaluations.find((entry) => entry.rule === 'superseded-palette'),
+    };
+  };
+
+  it('blocks a warm stylesheet even though the superseded decision names no hexes', () => {
+    const { evaluation } = paletteVerdict(WARM_STYLESHEET);
+    expect(evaluation?.verdict).toBe('BLOCK');
+    expect(evaluation?.reason).toContain('warm');
+    expect(evaluation?.reason).toContain('cool');
+    expect(evaluation?.reason.toUpperCase()).toContain('#E8862E');
+    expect(evaluation?.reason.toUpperCase()).toContain('#E8A838');
+    expect(evaluation?.findings[0]?.evidence).toContain('--orange');
+    const span = evaluation?.findings[0]?.match_spans[0];
+    expect(span).toBeDefined();
+    expect(WARM_STYLESHEET.slice(span?.start, span?.end).toUpperCase()).toBe('#E8862E');
+  });
+
+  it('passes a cool stylesheet against the retired warm palette', () => {
+    const { result, evaluation } = paletteVerdict(COOL_STYLESHEET);
+    expect(evaluation?.verdict).toBe('PASS');
+    expect(result.verdict).toBe('PASS');
+  });
+
+  it('abstains when both warm and cool saturated colours appear', () => {
+    const { evaluation } = paletteVerdict(
+      `<style>:root{--orange:#e8862e;--gold:#e8a838;--teal:#0f766e;--navy:#1e3a5f}</style>`,
+    );
+    expect(evaluation?.verdict).toBe('UNVERIFIED');
+    expect(evaluation?.reason).toContain('mixed');
+  });
+
+  it('does not block on neutral colours alone', () => {
+    const { result, evaluation } = paletteVerdict(
+      `<style>:root{--cream:#fdf6ec;--white:#ffffff;--ink:#4a3421}</style>`,
+    );
+    expect(evaluation?.verdict).not.toBe('BLOCK');
+    expect(evaluation?.reason).not.toContain('prose/comment');
+    expect(result.findings).toEqual([]);
+  });
+});
+
 describe('v1.2.0 countdown executable-vs-prose evidence', () => {
   it('abstains on HTML documentation instead of blocking it', () => {
     const result = evaluateDecisions(
@@ -442,6 +522,155 @@ describe('v1.2.0 countdown executable-vs-prose evidence', () => {
     const result = evaluateDecisions(
       [CHILD_DECISION],
       `${PHASER}<button onclick="timeLeft -= 1">tick</button>`,
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+  });
+});
+
+describe('v1.4.0 hidden time pressure', () => {
+  const SPRINT = `var SPRINT_LEN = 15*60*1000;
+var sprintTimer = null;
+function startSprint(){
+  if(sprintTimer) window.clearTimeout(sprintTimer);
+  sprintTimer = window.setTimeout(function(){
+    sprintTimer = null;
+    setSprintMsg('Reading time finished — great cozy reading!');
+  }, SPRINT_LEN);
+}`;
+
+  const evaluate = (source: string) => evaluateDecisions([CHILD_DECISION], source);
+  const countdown = (source: string) =>
+    evaluate(source).evaluations.find((entry) => entry.rule === 'countdown-mechanics');
+
+  it('abstains on a hidden 15-minute sprint timer', () => {
+    const result = evaluate(SPRINT);
+    const evaluation = countdown(SPRINT);
+    expect(evaluation?.verdict).toBe('UNVERIFIED');
+    expect(evaluation?.reason).toBe(
+      'a 15-minute timer bounds an activity (setTimeout delay SPRINT_LEN = 15*60*1000); time pressure cannot be ruled out',
+    );
+    expect(evaluation?.findings).toEqual([]);
+    expect(result.findings).toEqual([]);
+    expect(result.verdict).toBe('UNVERIFIED');
+  });
+
+  it('passes a 0 ms cleanup timer', () => {
+    const result = evaluate(
+      'setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);',
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('passes a one-second interval', () => {
+    const result = evaluate('let tick = 0; setInterval(tick, 1000);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+  });
+
+  it('abstains on a literal 120000 ms timeout', () => {
+    const result = evaluate('setTimeout(done, 120000);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown('setTimeout(done, 120000);')?.reason).toContain(
+      'a 2-minute timer bounds an activity (setTimeout delay 120000)',
+    );
+    expect(result.findings).toEqual([]);
+  });
+
+  it('resolves parenthesised constant arithmetic', () => {
+    const result = evaluate('setTimeout(done, (2 + 0) * 60 * 1000);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+  });
+
+  it('leaves a doubly assigned identifier unresolved', () => {
+    const reassigned = 'var delay = 15*60*1000; delay = 0; setTimeout(done, delay);';
+    const redeclared = 'var delay = 15*60*1000; var delay = 0; setTimeout(done, delay);';
+    expect(verdictFor(evaluate(reassigned), 'countdown-mechanics')).toBe('PASS');
+    expect(verdictFor(evaluate(redeclared), 'countdown-mechanics')).toBe('PASS');
+  });
+
+  it('reads nested timer calls without confusing their arguments', () => {
+    const result = evaluate('setTimeout(() => setTimeout(done, 120000), 0);');
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown('setTimeout(() => setTimeout(done, 120000), 0);')?.reason).toContain(
+      'setTimeout delay 120000',
+    );
+    expect(result.findings).toEqual([]);
+  });
+
+  it('ignores timer text inside strings and comments', () => {
+    const result = evaluate("const note = 'setTimeout(done, 120000)'; // setTimeout(done, 120000)");
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('PASS');
+    expect(result.findings).toEqual([]);
+  });
+
+  it.each([
+    ['a method call', 'setTimeout(done, 60 * 1000 + Math.random())'],
+    ['a decimal literal', 'setTimeout(done, 1.5 * 60000)'],
+    ['a string literal', "setTimeout(done, '120000')"],
+    ['a hexadecimal literal', 'setTimeout(done, 0xEA60)'],
+    ['an identifier alias', 'var base = 120000; var delay = base; setTimeout(done, delay)'],
+  ])('rejects %s instead of treating it as arithmetic', (_label, source) => {
+    expect(verdictFor(evaluate(source), 'countdown-mechanics')).toBe('PASS');
+  });
+});
+
+describe('v1.4.0 script-mode raw-text masking', () => {
+  const evaluate = (source: string) => evaluateDecisions([CHILD_DECISION], source);
+  const countdown = (source: string) =>
+    evaluate(source).evaluations.find((entry) => entry.rule === 'countdown-mechanics');
+
+  it('resolves a delay declared after a < comparison', () => {
+    const source = `<script>
+if(a<b){}
+var L = 15*60*1000;
+setTimeout(done, L);
+</script>`;
+    const result = evaluate(source);
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown(source)?.reason).toContain('15-minute');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('resolves a delay declared after a for-loop comparison', () => {
+    const source = '<script>for(var i=0;i<n;i++){} setTimeout(done, 120000);</script>';
+    const result = evaluate(source);
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('UNVERIFIED');
+    expect(countdown(source)?.reason).toContain('2-minute');
+  });
+
+  it('resolves the live sprint excerpt with its streak-loop comparisons', () => {
+    const source = `<script>
+function streakCount(){
+  var c = 0, d = new Date(), guard = 0;
+  if(!(state.logs[todayStr(d)]>0)) d.setDate(d.getDate()-1);
+  while(((state.logs[todayStr(d)]||0)>0) && guard<3660){ c++; d.setDate(d.getDate()-1); guard++; }
+  return c;
+}
+var SPRINT_LEN = 15*60*1000;
+var sprintTimer = null;
+function startSprint(){
+  if(sprintTimer) window.clearTimeout(sprintTimer);
+  sprintTimer = window.setTimeout(function(){ sprintTimer = null; }, SPRINT_LEN);
+}
+</script>`;
+    const result = evaluate(source);
+    const evaluation = countdown(source);
+    expect(evaluation?.verdict).toBe('UNVERIFIED');
+    expect(evaluation?.reason).toContain('15-minute');
+    expect(evaluation?.reason).toContain('SPRINT_LEN = 15*60*1000');
+    expect(result.findings).toEqual([]);
+  });
+
+  it('still blocks a countdown declared after a < comparison', () => {
+    const result = evaluate(
+      '<script>if(a<b){} var timeLeft = 30; setInterval(function(){ timeLeft--; }, 1000);</script>',
+    );
+    expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
+  });
+
+  it('still treats </script> inside a JS string as string data', () => {
+    const result = evaluate(
+      `<script>var markup = '</script>'; var timeLeft = 30; timeLeft--;</script>`,
     );
     expect(verdictFor(result, 'countdown-mechanics')).toBe('BLOCK');
   });

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Nook — My Reading Log</title>
+<style>
+  :root{
+    --cream:#f4f8fb;
+    --peach:#d9ebef;
+    --orange:#0e7c86;
+    --orange-dark:#16395f;
+    --gold:#2a7f9e;
+    --gold-soft:#d9ebef;
+    --ink:#19324a;
+    --ink-soft:#4d6b82;
+    --card:#ffffff;
+    --good:#2e7d4f;
+    --line:#c3d9e0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Comic Sans MS",Verdana,sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    font-size:18px;
+    line-height:1.5;
+  }
+  header{
+    background:linear-gradient(180deg,#0e7c86,#16395f);
+    color:#ffffff;
+    padding:20px 16px;
+    text-align:center;
+  }
+  header h1{margin:0;font-size:2rem}
+  header p{margin:6px 0 0;font-size:1.05rem}
+  main{
+    max-width:900px;
+    margin:0 auto;
+    padding:16px;
+    display:grid;
+    gap:16px;
+    grid-template-columns:1fr;
+  }
+  @media (min-width:760px){
+    main{grid-template-columns:1fr 1fr}
+    .wide{grid-column:1 / -1}
+  }
+  section.card{
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:18px;
+    padding:16px;
+  }
+  h2{margin:0 0 10px;font-size:1.4rem}
+  label{display:block;margin:10px 0 4px;font-weight:bold}
+  textarea{
+    width:100%;
+    min-height:48px;
+    font-size:1.05rem;
+    padding:10px 12px;
+    border:2px solid var(--gold);
+    border-radius:12px;
+    font-family:inherit;
+    color:var(--ink);
+    resize:vertical;
+  }
+  textarea:focus{outline:3px solid var(--orange);outline-offset:2px}
+  input{
+    width:100%;
+    min-height:48px;
+    font-size:1.05rem;
+    padding:10px 12px;
+    border:2px solid var(--gold);
+    border-radius:12px;
+    font-family:inherit;
+    color:var(--ink);
+  }
+  input:focus{outline:3px solid var(--orange);outline-offset:2px}
+  button{
+    min-height:48px;
+    min-width:48px;
+    font-size:1.05rem;
+    font-family:inherit;
+    font-weight:bold;
+    border-radius:14px;
+    border:2px solid var(--orange-dark);
+    background:var(--orange);
+    color:#fff;
+    padding:12px 18px;
+    margin-top:12px;
+    cursor:pointer;
+  }
+  button:hover{background:var(--orange-dark)}
+  button:focus{outline:3px solid #16395f;outline-offset:2px}
+  button.secondary{background:#fff;color:var(--orange-dark);border-color:var(--orange)}
+  button.secondary:hover{background:var(--peach)}
+  .hint{color:var(--ink-soft);font-size:0.95rem}
+  .book{
+    border:2px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    margin-top:10px;
+    background:#fbfeff;
+  }
+  .book h3{margin:0 0 4px;font-size:1.15rem}
+  .status{
+    display:inline-block;
+    font-weight:bold;
+    border-radius:999px;
+    padding:4px 12px;
+    margin:4px 0;
+    border:2px solid;
+  }
+  .status.reading{background:#e8f5ec;border-color:var(--good);color:var(--good)}
+  .status.done{background:var(--gold-soft);border-color:var(--gold);color:#16395f}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+  .bar-day{width:52px;font-weight:bold;flex-shrink:0}
+  .bar-track{flex:1;background:var(--peach);border-radius:10px;height:30px;position:relative;overflow:hidden;border:1px solid var(--line)}
+  .bar-fill{background:var(--orange);height:100%;border-radius:10px;min-width:0}
+  .bar-num{width:70px;text-align:right;font-size:0.95rem;flex-shrink:0}
+  .goal-wrap{background:var(--peach);border-radius:12px;height:34px;border:2px solid var(--gold);overflow:hidden}
+  .goal-fill{background:linear-gradient(90deg,var(--gold),var(--orange));height:100%;width:0%}
+  .party{
+    background:var(--gold-soft);
+    border:3px dashed var(--gold);
+    border-radius:14px;
+    padding:12px;
+    margin-top:10px;
+    font-size:1.1rem;
+    text-align:center;
+  }
+  .empty{color:var(--ink-soft)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row button{flex:1 1 160px}
+  footer{text-align:center;color:var(--ink-soft);padding:8px 16px 24px;font-size:0.95rem}
+  [aria-live]{min-height:1.2em}
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Reading Nook</h1>
+  <p>My own cosy reading log. Great job reading today!</p>
+</header>
+
+<main>
+  <section class="card" aria-labelledby="add-h">
+    <h2 id="add-h">Add a Book</h2>
+    <p class="hint">Type the book name, who wrote it, and how many pages it has.</p>
+    <form id="addForm" aria-label="Add a book">
+      <label for="title">Book title</label>
+      <input id="title" name="title" type="text" autocomplete="off" maxlength="120" placeholder="e.g. Matilda">
+      <label for="author">Author</label>
+      <input id="author" name="author" type="text" autocomplete="off" maxlength="120" placeholder="e.g. Roald Dahl">
+      <label for="pages">Total pages</label>
+      <input id="pages" name="pages" type="number" min="1" max="5000" inputmode="numeric" placeholder="e.g. 240">
+      <button type="button" id="addBtn" aria-label="Add this book to my reading list">Add My Book</button>
+    </form>
+    <p id="addMsg" aria-live="polite" role="status"></p>
+  </section>
+
+  <section class="card" aria-labelledby="goal-h">
+    <h2 id="goal-h">My Weekly Page Goal</h2>
+    <p class="hint">Pick how many pages you want to read this week. No rush — just for fun!</p>
+    <label for="goalInput">Pages I want to read this week</label>
+    <input id="goalInput" type="number" min="1" max="5000" inputmode="numeric">
+    <button type="button" id="goalBtn" aria-label="Save my weekly page goal">Save My Goal</button>
+    <div style="margin-top:12px" role="img" id="goalBarLabel" aria-label="Goal progress">
+      <div class="goal-wrap"><div class="goal-fill" id="goalFill"></div></div>
+    </div>
+    <p id="goalMsg" aria-live="polite" role="status"></p>
+  </section>
+
+  <section class="card wide" aria-labelledby="now-h">
+    <h2 id="now-h">Books I Am Reading</h2>
+    <p class="hint">Tap “Log pages” when you read. Finished books move to your shelf!</p>
+    <div id="readingList"></div>
+  </section>
+
+  <section class="card" aria-labelledby="week-h">
+    <h2 id="week-h">This Week's Reading</h2>
+    <p class="hint">Pages you read each day this week (Monday to Sunday).</p>
+    <div id="chart" role="img" aria-label="Bar chart of pages read each day this week"></div>
+    <p id="weekTotal" aria-live="polite"></p>
+    <div class="row">
+      <button type="button" class="secondary" id="prevWeek" aria-label="Show last week">← Last week</button>
+      <button type="button" class="secondary" id="thisWeek" aria-label="Show this week">This week</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="shelf-h">
+    <h2 id="shelf-h">My Shelf — Finished Books</h2>
+    <p class="hint">Finished books live here. Write one sentence about each book so you remember it!</p>
+    <div id="party" class="party" hidden></div>
+    <div id="shelfList"></div>
+    <p id="shelfMsg" class="hint" aria-live="polite" role="status"></p>
+  </section>
+</main>
+
+<footer>Your reading log is saved on this device only. Keep reading — you are doing great!</footer>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "reading-nook-v1";
+  var state = { books: [], logs: {}, goal: 100, weekOffset: 0 };
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){
+        var d = JSON.parse(raw);
+        if(d && typeof d === "object"){
+          if(Array.isArray(d.books)) state.books = d.books;
+          if(d.logs && typeof d.logs === "object") state.logs = d.logs;
+          if(typeof d.goal === "number" && d.goal > 0) state.goal = d.goal;
+        }
+      }
+    }catch(e){ /* storage unavailable: keep in-memory state */ }
+  }
+  function save(){
+    try{
+      localStorage.setItem(KEY, JSON.stringify({ books: state.books, logs: state.logs, goal: state.goal }));
+    }catch(e){ /* keep working in memory */ }
+  }
+
+  function $(id){ return document.getElementById(id); }
+  var titleEl=$("title"), authorEl=$("author"), pagesEl=$("pages"),
+      addBtn=$("addBtn"), addMsg=$("addMsg"),
+      goalInput=$("goalInput"), goalBtn=$("goalBtn"), goalMsg=$("goalMsg"),
+      goalFill=$("goalFill"), readingList=$("readingList"),
+      shelfList=$("shelfList"), party=$("party"), shelfMsg=$("shelfMsg"),
+      chart=$("chart"), weekTotal=$("weekTotal");
+
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function dayKey(d){
+    var m = d.getMonth()+1, day = d.getDate();
+    return d.getFullYear()+"-"+(m<10?"0"+m:m)+"-"+(day<10?"0"+day:day);
+  }
+  function mondayOf(offset){
+    var now = new Date();
+    var dow = (now.getDay()+6)%7; // Monday = 0
+    var m = new Date(now.getFullYear(), now.getMonth(), now.getDate()-dow+offset*7);
+    return m;
+  }
+  var DAYNAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  function bookPagesRead(id){
+    var total = 0;
+    for(var k in state.logs){
+      var arr = state.logs[k] || [];
+      for(var i=0;i<arr.length;i++){
+        if(arr[i] && arr[i].bookId === id){
+          var n = Number(arr[i].pages);
+          if(isFinite(n) && n > 0) total += n;
+        }
+      }
+    }
+    return Math.round(total);
+  }
+
+  function addBook(){
+    var t = titleEl.value.trim();
+    var a = authorEl.value.trim();
+    var p = Math.floor(Number(pagesEl.value));
+    if(!t){ addMsg.textContent = "Please write the book title first."; titleEl.focus(); return; }
+    if(!isFinite(p) || p < 1){ addMsg.textContent = "Please write how many pages the book has (1 or more)."; pagesEl.focus(); return; }
+    if(!a) a = "Unknown author";
+    state.books.push({ id: "b"+Date.now()+Math.floor(Math.random()*1000), title: t, author: a, total: p, finished: false });
+    save(); render();
+    titleEl.value=""; authorEl.value=""; pagesEl.value="";
+    addMsg.textContent = "Well done! “" + t + "” is on your reading list.";
+    titleEl.focus();
+  }
+
+  function logPages(id){
+    var b = null;
+    for(var i=0;i<state.books.length;i++){ if(state.books[i].id===id) b = state.books[i]; }
+    if(!b || b.finished) return;
+    var already = bookPagesRead(id);
+    var left = b.total - already;
+    var msg = "How many pages did you read in “" + b.title + "”? (" + left + " pages left)";
+    var val = window.prompt(msg, "10");
+    if(val === null) return;
+    var n = Math.floor(Number(String(val).trim()));
+    if(!isFinite(n) || n < 1){ window.alert("Please type a number that is 1 or more."); return; }
+    if(n > left) n = left;
+    var k = dayKey(new Date());
+    if(!state.logs[k]) state.logs[k] = [];
+    state.logs[k].push({ bookId: id, pages: n });
+    var now = bookPagesRead(id);
+    var justFinished = now >= b.total;
+    if(justFinished && !b.finished){
+      b.finished = true;
+      party.hidden = false;
+      party.textContent = "🎉 Hooray! You finished “" + b.title + "”! It is now on your shelf. You are a star reader!";
+    }
+    save(); render();
+  }
+
+  function removeBook(id){
+    if(!window.confirm("Remove this book from your list?")) return;
+    state.books = state.books.filter(function(b){ return b.id !== id; });
+    shelfMsg.textContent = "";
+    save(); render();
+  }
+
+  function saveNote(id){
+    var b = null;
+    for(var i=0;i<state.books.length;i++){ if(state.books[i].id===id) b = state.books[i]; }
+    if(!b || !b.finished) return;
+    var field = shelfList.querySelector('[data-noteinput="' + id + '"]');
+    var note = field ? String(field.value || "").trim() : "";
+    if(note.length > 140) note = note.slice(0, 140);
+    b.note = note;
+    save(); render();
+    shelfMsg.textContent = note
+      ? "Lovely note saved for “" + b.title + "”! Thank you for sharing."
+      : "Note cleared for “" + b.title + "”. You can write a new one any time!";
+    var back = document.getElementById("note-" + id);
+    if(back) back.focus();
+  }
+
+  function saveGoal(){
+    var g = Math.floor(Number(goalInput.value));
+    if(!isFinite(g) || g < 1){ goalMsg.textContent = "Please pick a goal of 1 page or more."; goalInput.focus(); return; }
+    state.goal = g;
+    save(); render();
+    goalMsg.textContent = "Great goal! You want to read " + g + " pages this week.";
+  }
+
+  function weekTotals(offset){
+    var mon = mondayOf(offset), out = [0,0,0,0,0,0,0];
+    for(var i=0;i<7;i++){
+      var d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+i);
+      var arr = state.logs[dayKey(d)] || [];
+      var s = 0;
+      for(var j=0;j<arr.length;j++){ var n=Number(arr[j].pages); if(isFinite(n)&&n>0) s+=n; }
+      out[i] = Math.round(s);
+    }
+    return out;
+  }
+
+  function render(){
+    // reading list
+    var reading = state.books.filter(function(b){ return !b.finished; });
+    if(!reading.length){
+      readingList.innerHTML = '<p class="empty">No books yet. Add your first book above to begin!</p>';
+    }else{
+      var html = "";
+      reading.forEach(function(b){
+        var read = bookPagesRead(b.id);
+        var left = Math.max(0, b.total - read);
+        html += '<div class="book"><h3>' + esc(b.title) + '</h3>' +
+          '<div>by ' + esc(b.author) + ' · ' + read + ' of ' + b.total + ' pages read</div>' +
+          '<span class="status reading">● In progress — ' + left + ' pages left</span><br>' +
+          '<div class="row"><button type="button" data-log="' + esc(b.id) + '" aria-label="Log pages read in ' + esc(b.title) + '">Log Pages I Read</button>' +
+          '<button type="button" class="secondary" data-del="' + esc(b.id) + '" aria-label="Remove ' + esc(b.title) + '">Remove</button></div></div>';
+      });
+      readingList.innerHTML = html;
+    }
+    // shelf
+    var done = state.books.filter(function(b){ return b.finished; });
+    if(!done.length){
+      shelfList.innerHTML = '<p class="empty">Your shelf is empty. Finished books will shine here!</p>';
+    }else{
+      var sh = "";
+      done.forEach(function(b){
+        var note = typeof b.note === "string" ? b.note : "";
+        sh += '<div class="book"><h3>⭐ ' + esc(b.title) + '</h3>' +
+          '<div>by ' + esc(b.author) + ' · ' + b.total + ' pages</div>' +
+          '<span class="status done">★ Finished — well done!</span>' +
+          '<label for="note-' + esc(b.id) + '">Book notes — write one sentence</label>' +
+          '<textarea id="note-' + esc(b.id) + '" data-noteinput="' + esc(b.id) + '" rows="2" maxlength="140" placeholder="e.g. I loved the funny school part!">' + esc(note) + '</textarea>' +
+          '<div class="row"><button type="button" data-note="' + esc(b.id) + '" aria-label="Save my note for ' + esc(b.title) + '">Save My Note</button>' +
+          '<button type="button" class="secondary" data-del="' + esc(b.id) + '" aria-label="Remove ' + esc(b.title) + ' from shelf">Remove</button></div></div>';
+      });
+      shelfList.innerHTML = sh;
+    }
+    // chart
+    var totals = weekTotals(state.weekOffset);
+    var max = Math.max.apply(null, totals.concat([1]));
+    var ch = "";
+    for(var i=0;i<7;i++){
+      var pct = Math.round(totals[i]/max*100);
+      ch += '<div class="bar-row"><span class="bar-day">' + DAYNAMES[i] + '</span>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<span class="bar-num">' + totals[i] + ' pages</span></div>';
+    }
+    chart.innerHTML = ch;
+    chart.setAttribute("aria-label", "Pages read: " + DAYNAMES.map(function(d,i){ return d + " " + totals[i]; }).join(", "));
+    var sum = totals.reduce(function(a,b){ return a+b; }, 0);
+    var label = state.weekOffset === 0 ? "This week you read " + sum + " pages. Keep it up!" :
+      "That week you read " + sum + " pages. Great remembering!";
+    weekTotal.textContent = label;
+    // goal (current week only)
+    var cur = weekTotals(0).reduce(function(a,b){ return a+b; }, 0);
+    var gpct = state.goal > 0 ? Math.min(100, Math.round(cur/state.goal*100)) : 0;
+    goalFill.style.width = gpct + "%";
+    $("goalBarLabel").setAttribute("aria-label", "Goal progress: " + cur + " of " + state.goal + " pages, " + gpct + " percent");
+    if(state.weekOffset === 0){
+      if(cur >= state.goal && state.goal > 0){
+        goalMsg.textContent = "🎉 Goal met! You read " + cur + " of " + state.goal + " pages. Amazing!";
+      }else{
+        goalMsg.textContent = "You read " + cur + " of " + state.goal + " pages so far (" + gpct + "%). You can do it!";
+      }
+    }
+    if(document.activeElement !== goalInput) goalInput.value = state.goal;
+  }
+
+  readingList.addEventListener("click", function(e){
+    var t = e.target;
+    if(t && t.getAttribute){
+      var l = t.getAttribute("data-log"), d = t.getAttribute("data-del");
+      if(l) logPages(l); else if(d) removeBook(d);
+    }
+  });
+  shelfList.addEventListener("click", function(e){
+    var t = e.target;
+    if(t && t.getAttribute){
+      var n = t.getAttribute("data-note"), d = t.getAttribute("data-del");
+      if(n) saveNote(n); else if(d) removeBook(d);
+    }
+  });
+  shelfList.addEventListener("keydown", function(e){
+    var t = e.target;
+    if(t && t.getAttribute && e.key === "Enter"){
+      var id = t.getAttribute("data-noteinput");
+      if(id){ e.preventDefault(); saveNote(id); }
+    }
+  });
+  addBtn.addEventListener("click", addBook);
+  goalBtn.addEventListener("click", saveGoal);
+  $("prevWeek").addEventListener("click", function(){ state.weekOffset--; render(); });
+  $("thisWeek").addEventListener("click", function(){ state.weekOffset = 0; render(); });
+
+  [titleEl, authorEl, pagesEl].forEach(function(el){
+    el.addEventListener("keydown", function(e){
+      if(e.key === "Enter"){ e.preventDefault(); addBook(); }
+    });
+  });
+  goalInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); saveGoal(); }
+  });
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>

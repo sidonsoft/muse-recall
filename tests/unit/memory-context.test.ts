@@ -5,6 +5,7 @@ import {
   renderedMemoryCharacters,
   renderMemoryLayout,
   toFtsQuery,
+  tokenizeSearchText,
 } from '@mml/memory-engine';
 import { describe, expect, it } from 'vitest';
 
@@ -18,8 +19,16 @@ describe('toFtsQuery', () => {
   it('quotes every token so operators become literal text', () => {
     expect(toFtsQuery('sqlite storage')).toBe('"sqlite" AND "storage"');
     // Stopwords and operators are stripped or quoted, never interpreted.
-    expect(toFtsQuery('" OR 1=1 --')).toBe('"1" AND "1"');
+    expect(toFtsQuery('" OR 1=1 --')).toBe('"1"');
     expect(toFtsQuery('NEAR(a b)')).toBe('"near" AND "b"');
+  });
+
+  it('de-duplicates before applying the cap, so repeats do not consume slots', () => {
+    expect(tokenizeSearchText('reading reading nook nook reading')).toEqual(['reading', 'nook']);
+
+    const unique = Array.from({ length: 20 }, (_, index) => `word${index}`);
+    const repeated = unique.flatMap((token) => [token, token]).join(' ');
+    expect(tokenizeSearchText(repeated)).toEqual(unique.slice(0, 12));
   });
 
   it('returns null when there is nothing searchable', () => {
@@ -28,7 +37,7 @@ describe('toFtsQuery', () => {
   });
 
   it('caps the token count', () => {
-    const query = toFtsQuery(Array.from({ length: 40 }, () => 'word').join(' '));
+    const query = toFtsQuery(Array.from({ length: 40 }, (_, index) => `unique${index}`).join(' '));
     expect(query?.split(' AND ')).toHaveLength(12);
   });
 

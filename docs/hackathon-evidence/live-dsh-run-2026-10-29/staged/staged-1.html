@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Nook — My Reading Log</title>
+<style>
+  :root { --bg:#fdf8ef; --card:#fff; --ink:#2b2b2b; --accent:#2f6f4e; --accent2:#8a5a2b; --line:#e5d9c3; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: Verdana, Geneva, Tahoma, sans-serif; background:var(--bg); color:var(--ink); font-size:18px; line-height:1.6; }
+  header { background:#2f6f4e; color:#fff; padding:1.2rem 1rem; text-align:center; }
+  header h1 { margin:0; font-size:1.8rem; }
+  header p { margin:.3rem 0 0; font-size:1rem; }
+  main { max-width:900px; margin:0 auto; padding:1rem; display:grid; gap:1rem; }
+  section { background:var(--card); border:2px solid var(--line); border-radius:14px; padding:1rem 1.1rem; }
+  h2 { margin-top:0; font-size:1.3rem; }
+  label { display:block; margin:.6rem 0 .2rem; font-weight:bold; }
+  input { width:100%; font-size:1.05rem; padding:.7rem; border:2px solid #999; border-radius:10px; min-height:44px; }
+  input:focus, button:focus { outline:4px solid #1a4d8f; outline-offset:2px; }
+  .row { display:flex; flex-wrap:wrap; gap:.6rem; }
+  button { font-size:1.05rem; min-height:44px; min-width:44px; padding:.65rem 1.1rem; border-radius:12px; border:2px solid #1e4d34; background:#2f6f4e; color:#fff; cursor:pointer; }
+  button.secondary { background:#fff; color:#1e4d34; }
+  button:hover { filter:brightness(1.08); }
+  .book { border:2px solid var(--line); border-radius:12px; padding:.8rem; margin:.6rem 0; }
+  .badge { display:inline-block; padding:.15rem .7rem; border-radius:999px; border:2px solid #555; font-weight:bold; font-size:.95rem; margin-left:.4rem; }
+  .badge.doing { background:#fff7d6; }
+  .badge.done { background:#dff5e3; }
+  .bar-chart { display:flex; align-items:flex-end; gap:.5rem; height:180px; padding:.5rem; border:2px solid var(--line); border-radius:10px; background:#fafafa; margin-top:.5rem; }
+  .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; min-width:44px; }
+  .bar { width:70%; background:#2f6f4e; border-radius:8px 8px 0 0; min-height:6px; }
+  .bar.today { background:#8a5a2b; }
+  .day-label { font-size:.9rem; margin-top:.2rem; text-align:center; }
+  .goal-wrap { background:#f4f4f4; border:2px solid var(--line); border-radius:10px; height:34px; position:relative; overflow:hidden; }
+  .goal-fill { background:#2f6f4e; height:100%; width:0%; }
+  .celebrate { background:#e9f9ee; border:3px dashed #2f6f4e; border-radius:12px; padding:.8rem; margin-top:.6rem; font-weight:bold; }
+  .hint { font-size:.95rem; color:#444; }
+  ul.shelf { list-style:none; padding:0; margin:.5rem 0 0; }
+  ul.shelf li { border:2px solid var(--line); border-radius:10px; padding:.6rem .8rem; margin:.4rem 0; background:#fffdf4; }
+  @media (max-width:600px){ body{font-size:17px;} .row{flex-direction:column;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Reading Nook</h1>
+  <p>A cozy place to track your reading. You are doing great!</p>
+</header>
+<main>
+  <section aria-labelledby="h-goal">
+    <h2 id="h-goal">My Weekly Page Goal</h2>
+    <p class="hint">Pick a goal for this week. Every page counts!</p>
+    <label for="goalInput">Goal pages this week</label>
+    <div class="row">
+      <input id="goalInput" type="number" min="1" max="5000" value="50" aria-describedby="goalHint">
+      <button type="button" id="goalBtn" aria-label="Save my weekly page goal">Save goal</button>
+    </div>
+    <p id="goalHint" class="hint">Example: 50 pages means about 7 pages each day.</p>
+    <p><strong id="goalStatus">Goal: 50 pages. Read so far: 0 pages. Status: just starting 🌱</strong></p>
+    <div class="goal-wrap" role="img" aria-label="Weekly goal progress bar" id="goalBarWrap">
+      <div class="goal-fill" id="goalFill"></div>
+    </div>
+    <p class="hint" id="goalText">0 of 50 pages (0%). Keep going!</p>
+  </section>
+
+  <section aria-labelledby="h-add">
+    <h2 id="h-add">Add a Book</h2>
+    <form id="addForm" aria-label="Add a book form">
+      <label for="titleInput">Book title</label>
+      <input id="titleInput" type="text" placeholder="Example: Matilda" autocomplete="off">
+      <label for="authorInput">Author (who wrote it?)</label>
+      <input id="authorInput" type="text" placeholder="Example: Roald Dahl" autocomplete="off">
+      <label for="pagesInput">How many pages in total?</label>
+      <input id="pagesInput" type="number" min="1" max="5000" value="100">
+      <div class="row" style="margin-top:.6rem">
+        <button type="button" id="addBtn" aria-label="Add this book to my reading list">Add book</button>
+      </div>
+    </form>
+    <p class="hint" id="addMsg" role="status"></p>
+  </section>
+
+  <section aria-labelledby="h-now">
+    <h2 id="h-now">My Books Right Now</h2>
+    <p class="hint">Log pages you read. When you reach the last page, the book moves to My Shelf. 🎉</p>
+    <div id="bookList"></div>
+  </section>
+
+  <section aria-labelledby="h-week">
+    <h2 id="h-week">This Week's Reading (bar chart)</h2>
+    <p class="hint">Each bar shows pages read on that day. Today is marked with ★ and a darker bar with a label.</p>
+    <div class="bar-chart" id="chart" role="img" aria-label="Bar chart of pages read each day this week"></div>
+    <p><strong id="weekTotal">This week: 0 pages read.</strong></p>
+  </section>
+
+  <section aria-labelledby="h-shelf">
+    <h2 id="h-shelf">My Shelf — Finished Books ⭐</h2>
+    <div id="cheer" class="celebrate" hidden>🎉 Hooray! You finished a book! You are a star reader! ⭐</div>
+    <ul class="shelf" id="shelfList"></ul>
+    <p class="hint" id="shelfEmpty">No finished books yet. Your finished books will shine here.</p>
+  </section>
+</main>
+<script>
+(function(){
+  "use strict";
+  var books = [];
+  var shelf = [];
+  var week = [0,0,0,0,0,0,0]; // Mon..Sun
+  var goal = 50;
+  var nextId = 1;
+  var cheerCount = 0;
+
+  var dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  // JS getDay: 0=Sun..6=Sat -> index Mon..Sun
+  function todayIndex(){ var d = new Date().getDay(); return (d + 6) % 7; }
+
+  var goalInput = document.getElementById("goalInput");
+  var goalBtn = document.getElementById("goalBtn");
+  var goalStatus = document.getElementById("goalStatus");
+  var goalFill = document.getElementById("goalFill");
+  var goalText = document.getElementById("goalText");
+  var titleInput = document.getElementById("titleInput");
+  var authorInput = document.getElementById("authorInput");
+  var pagesInput = document.getElementById("pagesInput");
+  var addBtn = document.getElementById("addBtn");
+  var addMsg = document.getElementById("addMsg");
+  var bookList = document.getElementById("bookList");
+  var chart = document.getElementById("chart");
+  var weekTotal = document.getElementById("weekTotal");
+  var shelfList = document.getElementById("shelfList");
+  var shelfEmpty = document.getElementById("shelfEmpty");
+  var cheer = document.getElementById("cheer");
+
+  function weekSum(){ var s=0; for(var i=0;i<7;i++){ s+=week[i]; } return s; }
+
+  function renderGoal(){
+    var read = weekSum();
+    var pct = goal > 0 ? Math.min(100, Math.round(read/goal*100)) : 0;
+    goalFill.style.width = pct + "%";
+    var status = "just starting 🌱";
+    if (read >= goal && goal > 0) status = "goal met! Great work! ⭐";
+    else if (read >= goal/2) status = "halfway there! Nice! 🌟";
+    else if (read > 0) status = "in progress — keep going! 📖";
+    goalStatus.textContent = "Goal: " + goal + " pages. Read so far: " + read + " pages. Status: " + status;
+    goalText.textContent = read + " of " + goal + " pages (" + pct + "%). Keep going!";
+    document.getElementById("goalBarWrap").setAttribute("aria-label",
+      "Weekly goal progress: " + read + " of " + goal + " pages, " + pct + " percent, " + status);
+  }
+
+  function renderBooks(){
+    bookList.innerHTML = "";
+    if (books.length === 0){
+      var p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = "No books yet. Add your first book above!";
+      bookList.appendChild(p);
+      return;
+    }
+    books.forEach(function(b){
+      var div = document.createElement("div");
+      div.className = "book";
+      var left = Math.max(0, b.total - b.read);
+      var h = document.createElement("h3");
+      h.style.margin = "0";
+      h.textContent = b.title + " ";
+      var badge = document.createElement("span");
+      badge.className = "badge doing";
+      badge.textContent = left === 0 ? "✓ Finished" : "● In progress";
+      h.appendChild(badge);
+      div.appendChild(h);
+      var info = document.createElement("p");
+      info.textContent = "By " + b.author + " — page " + b.read + " of " + b.total + " (" + left + " pages left).";
+      div.appendChild(info);
+      var lbl = document.createElement("label");
+      lbl.textContent = "Pages I read today for this book:";
+      lbl.setAttribute("for", "log-" + b.id);
+      div.appendChild(lbl);
+      var row = document.createElement("div");
+      row.className = "row";
+      var inp = document.createElement("input");
+      inp.type = "number"; inp.min = "1"; inp.max = "500"; inp.value = "10";
+      inp.id = "log-" + b.id;
+      inp.setAttribute("aria-label", "Pages read today for " + b.title);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Log pages";
+      btn.setAttribute("aria-label", "Log pages for " + b.title);
+      btn.addEventListener("click", function(){ logPages(b.id); });
+      inp.addEventListener("keydown", function(e){
+        if (e.key === "Enter"){ e.preventDefault(); logPages(b.id); }
+      });
+      row.appendChild(inp);
+      row.appendChild(btn);
+      div.appendChild(row);
+      bookList.appendChild(div);
+    });
+  }
+
+  function renderChart(){
+    chart.innerHTML = "";
+    var max = 1; for (var i=0;i<7;i++){ if (week[i] > max) max = week[i]; }
+    var ti = todayIndex();
+    for (var j=0;j<7;j++){
+      (function(j){
+        var col = document.createElement("div");
+        col.className = "bar-col";
+        var bar = document.createElement("div");
+        bar.className = "bar" + (j === ti ? " today" : "");
+        bar.style.height = Math.max(4, Math.round(week[j]/max*130)) + "px";
+        bar.title = dayNames[j] + ": " + week[j] + " pages";
+        var num = document.createElement("span");
+        num.style.fontSize = ".85rem"; num.style.fontWeight = "bold";
+        num.textContent = String(week[j]);
+        var lab = document.createElement("span");
+        lab.className = "day-label";
+        lab.textContent = dayNames[j] + (j === ti ? " ★ today" : "");
+        col.appendChild(num); col.appendChild(bar); col.appendChild(lab);
+        col.setAttribute("aria-label", dayNames[j] + ": " + week[j] + " pages");
+        chart.appendChild(col);
+      })(j);
+    }
+    weekTotal.textContent = "This week: " + weekSum() + " pages read. " +
+      (weekSum() >= goal ? "You met your goal! ⭐" : "Every page makes you stronger! 💪");
+  }
+
+  function renderShelf(){
+    shelfList.innerHTML = "";
+    shelfEmpty.style.display = shelf.length === 0 ? "block" : "none";
+    shelf.forEach(function(b){
+      var li = document.createElement("li");
+      li.textContent = "⭐ " + b.title + " by " + b.author + " — " + b.total + " pages. Finished! Great job!";
+      shelfList.appendChild(li);
+    });
+  }
+
+  function renderAll(){ renderGoal(); renderBooks(); renderChart(); renderShelf(); }
+
+  function logPages(id){
+    var inp = document.getElementById("log-" + id);
+    var n = parseInt(inp.value, 10);
+    if (isNaN(n) || n < 1){ inp.focus(); return; }
+    if (n > 500) n = 500;
+    var idx = -1;
+    for (var i=0;i<books.length;i++){ if (books[i].id === id) idx = i; }
+    if (idx < 0) return;
+    var b = books[idx];
+    b.read = Math.min(b.total, b.read + n);
+    week[todayIndex()] += n;
+    if (b.read >= b.total){
+      books.splice(idx, 1);
+      shelf.push(b);
+      cheerCount++;
+      cheer.hidden = false;
+      cheer.textContent = "🎉 Hooray! You finished \"" + b.title + "\"! You are a star reader! ⭐ (Finished books: " + cheerCount + ")";
+    }
+    renderAll();
+  }
+
+  function addBook(){
+    var t = titleInput.value.trim();
+    var a = authorInput.value.trim();
+    var tot = parseInt(pagesInput.value, 10);
+    if (!t){ addMsg.textContent = "Please type a book title first."; titleInput.focus(); return; }
+    if (!a) a = "Unknown author";
+    if (isNaN(tot) || tot < 1){ addMsg.textContent = "Please type how many pages (at least 1)."; pagesInput.focus(); return; }
+    if (tot > 5000) tot = 5000;
+    books.push({ id: nextId++, title: t, author: a, total: tot, read: 0 });
+    addMsg.textContent = "Nice choice! \"" + t + "\" is on your list. Happy reading! 📖";
+    titleInput.value = ""; authorInput.value = "";
+    titleInput.focus();
+    renderAll();
+  }
+
+  goalBtn.addEventListener("click", function(){
+    var g = parseInt(goalInput.value, 10);
+    if (isNaN(g) || g < 1){ goalInput.focus(); return; }
+    goal = Math.min(5000, g);
+    renderAll();
+  });
+  goalInput.addEventListener("keydown", function(e){
+    if (e.key === "Enter"){ e.preventDefault(); goalBtn.click(); }
+  });
+  addBtn.addEventListener("click", addBook);
+  [titleInput, authorInput, pagesInput].forEach(function(el){
+    el.addEventListener("keydown", function(e){
+      if (e.key === "Enter"){ e.preventDefault(); addBook(); }
+    });
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

@@ -621,6 +621,68 @@ describe('retrieval budgets and evidence', () => {
     }
   });
 
+  it('keeps preference and technical_decision unpinned for default callers', () => {
+    const { engine, db, close } = seeded();
+    try {
+      engine.create(baseInput({ type: 'contextual_fact', content: 'Storage uses SQLite' }));
+      engine.create(
+        baseInput({
+          type: 'preference',
+          content: 'Palette: warm orange, gold and peach on a cream background.',
+        }),
+      );
+      engine.create(
+        baseInput({
+          type: 'technical_decision',
+          content: 'Offline only: store data in localStorage with no network requests.',
+        }),
+      );
+
+      const result = retrieveMemories(db, { project_id: 'demo-game', query: 'storage' });
+      const types = result.results.map((entry) => entry.memory.type);
+
+      expect(types).toContain('contextual_fact');
+      expect(types).not.toContain('preference');
+      expect(types).not.toContain('technical_decision');
+    } finally {
+      close();
+    }
+  });
+
+  it('pins caller-selected types without bypassing the selection budget', () => {
+    const { engine, db, close } = seeded();
+    try {
+      engine.create(baseInput({ type: 'contextual_fact', content: 'Storage uses SQLite' }));
+      engine.create(
+        baseInput({
+          type: 'preference',
+          content: 'Palette: warm orange, gold and peach on a cream background.',
+        }),
+      );
+      engine.create(
+        baseInput({
+          type: 'technical_decision',
+          content: 'Offline only: store data in localStorage with no network requests.',
+        }),
+      );
+
+      const result = retrieveMemories(
+        db,
+        { project_id: 'demo-game', query: 'storage', budget: { max_memories: 2 } },
+        {
+          pinnedTypes: ['constraint', 'goal', 'preference', 'technical_decision'],
+        },
+      );
+
+      expect(result.metadata.candidate_count).toBe(3);
+      expect(result.results).toHaveLength(2);
+      expect(result.metadata.excluded_by.count_budget).toBe(1);
+      expect(result.results.every((entry) => entry.pinned)).toBe(true);
+    } finally {
+      close();
+    }
+  });
+
   it('produces components whose weighted sum equals the score', () => {
     const { engine, db, close } = seeded();
     try {

@@ -1,5 +1,9 @@
 # Demo script
 
+> This is the earlier conversational demo record (Demos A–E). For the focused hackathon demo
+> built around correctable memory and reviewable changes, see
+> [demo/CORRECTABLE_MEMORY_DEMO.md](demo/CORRECTABLE_MEMORY_DEMO.md).
+
 All results below were produced with real Muse inference (`muse-wonder-1.0`, Muse Code 1.4.13)
 on a fresh database. Nothing is mocked; the deterministic provider is used only by tests.
 

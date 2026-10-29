@@ -50,9 +50,10 @@ compliance with any of the points above. The following decisions were made conse
 1. **Visibility.** If the submission requires judges to read the repository, it must be made
    public or shared with the judging accounts. Confirm from the Official Rules or the
    submission form before Nov 4.
-2. **Repository naming.** The submission is named `muse-recall`; internal identifiers still
-   use the working name “Muse Memory Lab”. Confirm which name should appear in the
-   submission.
+2. **Repository naming.** The submission is named **Muse Recall** and the repository is
+   `sidonsoft/muse-recall`; internal identifiers (`@mml/*`, the `muse-memory-lab` default
+   database filename) keep the working name. The README states both, so no further action is
+   needed unless the form demands a different name.
 3. **Pre-existing code.** If development must be entirely within the event window, confirm
    that a project started at kickoff (Oct 26) and committed on Oct 27 is acceptable — the
    history shows all commits dated within the event window.

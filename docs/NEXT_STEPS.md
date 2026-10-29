@@ -6,16 +6,13 @@ repository's working backlog; completed items stay for the audit trail.
 
 ## P0 — before calling the beta reliable
 
-1. **Reconcile Phase 17 when it finishes.**
-   Phase 17 is running on its own branch. Review the completed results, locked hashes,
-   detector output and any deviations before integration. Do not merge the branch or
-   treat unfinished runs as findings. If a result changes retrieval or prompt guidance,
-   open a focused change with the evidence attached.
-2. **Run both CI gates before integrating the hardening branch.**
-   Push it and let the `verify` and `browser` jobs run, including the pinned Playwright
-   Chromium install. Confirm Node 24 compatibility and that submission snapshots,
-   research evidence and tags are unchanged. Keep the hardening release distinct from
-   the Phase 17 experiment version.
+1. **Reconcile Phase 17 when it finishes.** — **Done (2026-10-29).** Phase 17 is merged
+   (`53389a7`, `36fe700`): 480 runs, locked protocol, exact-p correction and review
+   disposition published, `pnpm verify:research17` retained. No unfinished run was treated
+   as a finding.
+2. **Run both CI gates before integrating the hardening branch.** — **Done (2026-10-29).**
+   The `verify` and `browser` gates ran before PR #1 merged (`12918fd`); submission
+   snapshots, research evidence and tags are unchanged.
 3. **Add a repair/restore path for `state_corrupt`.**
    The server now refuses to present a malformed `state.json` as an empty project, which
    is correct but leaves the Studio unable to open that project until the file is fixed.
