@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -20,6 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  */
 
 const FAKE_BIN = `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
 const mode = process.env.MML_FAKE_MODE || 'ok';
 const emit = (payload_type, payload) =>
   process.stdout.write(JSON.stringify({ payload_type, payload }) + '\\n');
@@ -48,7 +49,41 @@ if (mode === 'env') {
     });
   });
 } else if (mode === 'hang') {
+  if (process.env.MML_FAKE_READY_FILE) {
+    writeFileSync(process.env.MML_FAKE_READY_FILE, String(process.pid));
+  }
   setInterval(() => {}, 1000);
+} else if (mode === 'long-hang') {
+  emit('run.output.delta', { text: 'abcdefghijklmnopqrst' });
+  setInterval(() => {}, 1000);
+} else if (mode === 'long-terminal') {
+  emit('run.terminal.completed', {
+    terminal: 'completed',
+    text: 'abcdefghijklmnopqrst',
+    reason: null,
+  });
+} else if (mode === 'leak-stdin') {
+  let input = '';
+  process.stdin.on('data', (chunk) => {
+    input += chunk.toString();
+  });
+  process.stdin.on('end', () => {
+    process.stderr.write('credential: ' + input + '\\n');
+    process.exit(1);
+  });
+} else if (mode === 'quota-leak') {
+  if (!process.argv.includes('--api-key-stdin')) {
+    process.stderr.write('API error 429: Subscription quota exhausted.\\n');
+    process.exit(1);
+  }
+  let input = '';
+  process.stdin.on('data', (chunk) => {
+    input += chunk.toString();
+  });
+  process.stdin.on('end', () => {
+    process.stderr.write('credential: ' + input + '\\n');
+    process.exit(1);
+  });
 } else if (mode === 'fail') {
   emit('run.terminal.failed', { terminal: 'failed', text: '', reason: 'model refused' });
 } else if (mode === 'noterminal') {
@@ -95,6 +130,19 @@ afterAll(async () => {
 
 function provider(options: Partial<MuseCliProviderOptions> = {}) {
   return new MuseCliProvider({ bin: fakeBin, timeoutMs: 10_000, ...options });
+}
+
+async function waitForFile(path: string, timeoutMs = 5_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await access(path);
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+  throw new Error(`fixture did not create ${path}`);
 }
 
 describe('formatPrompt', () => {
@@ -186,6 +234,76 @@ describe('MuseCliProvider', () => {
       provider({ timeoutMs: 400 }).generate({ messages: [{ role: 'user', content: 'hi' }] }),
     ).rejects.toMatchObject({ code: 'provider_timeout' });
     expect(Date.now() - startedAt).toBeLessThan(5_000);
+  });
+
+  it('kills a silent child promptly when the call is aborted', async () => {
+    process.env.MML_FAKE_MODE = 'hang';
+    const marker = join(fakeDirectory, `ready-${Date.now()}-${Math.random()}.txt`);
+    const controller = new AbortController();
+    const pending = provider({
+      timeoutMs: 30_000,
+      env: { MML_FAKE_READY_FILE: marker },
+    }).generate({ messages: [{ role: 'user', content: 'hi' }] }, { signal: controller.signal });
+
+    // Abort only once the child is actually running, so this proves the kill
+    // rather than an early return before spawn.
+    await waitForFile(marker);
+    const abortedAt = Date.now();
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ code: 'provider_cancelled' });
+    expect(Date.now() - abortedAt).toBeLessThan(2_000);
+  });
+
+  it('truncates streamed output at max_output_tokens and reports max_tokens', async () => {
+    process.env.MML_FAKE_MODE = 'long-hang';
+    const startedAt = Date.now();
+    const response = await provider({ timeoutMs: 30_000 }).generate({
+      messages: [{ role: 'user', content: 'hi' }],
+      max_output_tokens: 2,
+    });
+
+    expect(response.text).toBe('abcdefgh');
+    expect(response.stop_reason).toBe('max_tokens');
+    expect(Date.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  it('truncates a terminal frame that exceeds the output budget', async () => {
+    process.env.MML_FAKE_MODE = 'long-terminal';
+    const response = await provider().generate({
+      messages: [{ role: 'user', content: 'hi' }],
+      max_output_tokens: 2,
+    });
+
+    expect(response.text).toBe('abcdefgh');
+    expect(response.stop_reason).toBe('max_tokens');
+  });
+
+  it('redacts the primary API key from adapter errors', async () => {
+    process.env.MML_FAKE_MODE = 'leak-stdin';
+    const primary = 'primary-secret-value-123456';
+    const fallback = 'fallback-secret-value-654321';
+    const error = await provider({ apiKey: primary, fallbackApiKey: fallback })
+      .generate({ messages: [{ role: 'user', content: 'hi' }] })
+      .catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(ProviderError);
+    const message = (error as ProviderError).message;
+    expect(message).not.toContain(primary);
+    expect(message).not.toContain(fallback);
+    expect(message).toContain('[REDACTED');
+  });
+
+  it('redacts the fallback API key from a failed failover', async () => {
+    process.env.MML_FAKE_MODE = 'quota-leak';
+    const fallback = 'fallback-secret-value-654321';
+    const error = await provider({ fallbackApiKey: fallback })
+      .generate({ messages: [{ role: 'user', content: 'hi' }] })
+      .catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(ProviderError);
+    expect((error as ProviderError).message).not.toContain(fallback);
+    expect((error as ProviderError).message).toContain('[REDACTED');
   });
 
   it('reports a missing binary as provider_unavailable', async () => {

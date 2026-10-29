@@ -50,16 +50,11 @@ the database path and the decision ids.
 
 ## Environment configuration
 
-The defaults are local-first and require no `.env`. If you want to change server settings, note
-where the file is read:
-
-> The API loads `.env` from **its own working directory**. Under the pnpm scripts that directory is
-> `apps/server`, not the repository root.
-
-So the effective command is:
+The defaults are local-first and require no `.env`. To change server settings, copy the example
+to the repository root:
 
 ```bash
-cp .env.example apps/server/.env
+cp .env.example .env
 ```
 
 or pass the variable for one command:
@@ -68,15 +63,23 @@ or pass the variable for one command:
 MODEL_PROVIDER=echo pnpm dev
 ```
 
-`pnpm demo:seed` resolves relative `DATABASE_PATH` and `WORKSPACE_ROOT` values against
-`apps/server` too, so the seed and server agree on the default locations. The seed reads only the
-process environment, not `apps/server/.env`. If you move the database or workspace, give the same
-value to both commands, for example:
+The server, `pnpm db:migrate` and `pnpm demo:seed` all read the same file, even though the pnpm
+scripts start the server in `apps/server`. They look for it in this order:
 
-```bash
-DATABASE_PATH=/absolute/path/muse.db WORKSPACE_ROOT=/absolute/path/workspaces pnpm demo:seed
-DATABASE_PATH=/absolute/path/muse.db WORKSPACE_ROOT=/absolute/path/workspaces pnpm dev
-```
+1. `MML_ENV_FILE`, an explicit path, which must exist.
+2. `.env` at the repository root (the directory containing `pnpm-workspace.yaml`).
+3. `apps/server/.env`, for anyone who prefers a server-scoped file.
+
+Only the first file found is read, and variables already set in the shell win over the file.
+Relative `DATABASE_PATH` and `WORKSPACE_ROOT` values resolve against the repository root, so the
+seed and the server agree on the default locations. The server's startup log names the `.env`
+file it loaded.
+
+> **Upgrading from a build before 29 October 2026:** those builds resolved relative paths against
+> `apps/server`, so existing data is in `apps/server/data/` and `apps/server/workspaces/`. A newer
+> server starts with an empty database at the root instead. Stop the server and move both
+> directories to the repository root (`data/`, `workspaces/`), or point `DATABASE_PATH` and
+> `WORKSPACE_ROOT` at the old locations with absolute paths.
 
 The main settings are documented in [`.env.example`](../../.env.example) and summarized in the
 [README configuration table](../../README.md#configuration). The defaults that matter most:
@@ -84,8 +87,8 @@ The main settings are documented in [`.env.example`](../../.env.example) and sum
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `HOST` / `PORT` | `127.0.0.1` / `8787` | Keep the API on loopback. |
-| `DATABASE_PATH` | `./data/muse-memory-lab.db` | Relative to the server working directory (`apps/server`), unless absolute. |
-| `WORKSPACE_ROOT` | `./workspaces` | Forge jobs, staging and approved versions; also relative to `apps/server`. |
+| `DATABASE_PATH` | `./data/muse-memory-lab.db` | Relative to the repository root, unless absolute. |
+| `WORKSPACE_ROOT` | `./workspaces` | Forge jobs, staging and approved versions; also relative to the repository root. |
 | `MODEL_PROVIDER` | `muse-cli` | `muse-cli` for real inference, `echo` for the deterministic offline provider. |
 | `MUSE_MODEL` | `muse-wonder-1.0` | Chat/provider default, not the Studio default. Set the Studio model with `FORGE_MUSE_MODEL`. |
 | `MEMORY_MAX_MEMORIES` / `MEMORY_MAX_CHARACTERS` | `8` / `4000` | Default-profile retrieval budget. |
@@ -154,10 +157,10 @@ review prove different things.
 
 | State | Default location |
 | --- | --- |
-| Memories, history, sessions, tool audit | `apps/server/data/muse-memory-lab.db` (SQLite, WAL enabled) |
-| Forge project state and versions | `apps/server/workspaces/forge/<project-id>/` |
-| Staged jobs | `apps/server/workspaces/forge/<project-id>/staging/<job-id>/` |
-| Job records | `apps/server/workspaces/forge/<project-id>/jobs/<job-id>.json` |
+| Memories, history, sessions, tool audit | `data/muse-memory-lab.db` (SQLite, WAL enabled, owner-only permissions) |
+| Forge project state and versions | `workspaces/forge/<project-id>/` |
+| Staged jobs | `workspaces/forge/<project-id>/staging/<job-id>/` |
+| Job records | `workspaces/forge/<project-id>/jobs/<job-id>.json` |
 | Browser drafts and selected project | The browser's `localStorage`; not server state |
 
 To start from a clean slate, stop the server and remove the database and workspace directories.
@@ -170,7 +173,8 @@ That deletes memories and approved versions permanently; there is no restore end
 | `muse` not found or generation fails immediately | `muse --version`, `muse login`, and `pnpm muse:probe`. If the binary is not on `PATH`, set `MUSE_BIN` (chat) or `FORGE_MUSE_BIN` (Studio) to an absolute path. |
 | Chat works offline but Studio generation fails | `MODEL_PROVIDER=echo` does not power Forge. Point the Studio at a working Muse CLI or set `FORGE_MUSE_BIN`. |
 | Approval fails with a browser-launch message | Install managed Chromium with `pnpm exec playwright-core install chromium`, or deliberately set `FORGE_RUNTIME_BROWSER=chrome`. There is no silent fallback. |
-| Settings in `.env` appear ignored | The server reads `apps/server/.env`, not the repository-root `.env`. For `demo:seed`, pass the same variables inline or export them. |
+| Settings in `.env` appear ignored | Check which file the startup log names. A root `.env` wins over `apps/server/.env`, only one file is read, and shell variables override both. |
+| Projects or memories are missing after an upgrade | Builds before 29 October 2026 stored data under `apps/server/`. Stop the server and move `apps/server/data/` and `apps/server/workspaces/` to the repository root, or set absolute paths. |
 | `EADDRINUSE` on 5173 or 8787 | Stop the other process. Vite uses a strict port. If you move the API port, also set `VITE_PROXY_TARGET` for the web dev server. |
 | `403 forbidden_origin` from a script | State-changing requests with a foreign or `null` `Origin` are rejected. Call from the app origin, add the origin to `CORS_ORIGINS`, or use a non-browser client with no `Origin`. This guard is not authentication. |
 | `no_current_version` when modifying | Generate and approve a first version before requesting a modification. |

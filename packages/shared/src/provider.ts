@@ -83,6 +83,8 @@ export const PROVIDER_ERROR_CODES = [
   'provider_auth_failed',
   /** Exceeded the configured wall-clock budget. */
   'provider_timeout',
+  /** Cancelled by the caller through an AbortSignal. */
+  'provider_cancelled',
   /** Exited non-zero without a usable terminal event. */
   'provider_crashed',
   /** Non-empty output that failed schema validation. */
@@ -114,6 +116,15 @@ export const ModelEventSchema = z.discriminatedUnion('type', [
 export type ModelEvent = z.infer<typeof ModelEventSchema>;
 
 /**
+ * Per-call options. Kept outside `ModelRequest` because a signal is runtime
+ * state, not part of the serialisable request a provider may log or replay.
+ */
+export interface ModelCallOptions {
+  /** Cooperative cancellation. Providers must stop work and return promptly. */
+  signal?: AbortSignal;
+}
+
+/**
  * The contract each provider implements.
  *
  * `stream` is optional: a provider that cannot stream may still be usable.
@@ -127,7 +138,7 @@ export interface ModelProvider {
 
   capabilities(): ModelCapabilities;
 
-  generate(request: ModelRequest): Promise<ModelResponse>;
+  generate(request: ModelRequest, options?: ModelCallOptions): Promise<ModelResponse>;
 
-  stream?(request: ModelRequest): AsyncIterable<ModelEvent>;
+  stream?(request: ModelRequest, options?: ModelCallOptions): AsyncIterable<ModelEvent>;
 }

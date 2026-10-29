@@ -93,11 +93,11 @@ try {
   notes.push('overview rendered');
 
   const databaseCard = page.locator('section', { hasText: 'Memory database' }).first();
-  const writeCheck = (await databaseCard.textContent()) ?? '';
-  if (!/round-trip verified/.test(writeCheck)) {
-    problems.push(`database write check not verified: ${writeCheck.replace(/\s+/g, ' ')}`);
+  const databaseCheck = (await databaseCard.textContent()) ?? '';
+  if (!/read verified|round-trip verified/.test(databaseCheck)) {
+    problems.push(`database read check not verified: ${databaseCheck.replace(/\s+/g, ' ')}`);
   } else {
-    notes.push('database write round-trip verified in the UI');
+    notes.push('database read check verified in the UI');
   }
 
   // ---- Live Muse probe ---------------------------------------------------

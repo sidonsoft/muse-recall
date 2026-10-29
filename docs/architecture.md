@@ -51,23 +51,31 @@ packages/shared — Zod schemas consumed by all of the above and by the browser.
 
 ### `GET /api/health`
 
-1. Optionally trigger a provider probe (`?probe=live`), which is cached for 60 s in
-   `ProviderHealthTracker` so a page refresh cannot burn quota.
-2. `probeDatabase` opens a transaction, inserts a probe project, reads it back, and
-   rolls back. A connection that opened but cannot write therefore reports
-   `error` instead of `ok`.
-3. Compose a `HealthResponse`, validate it against `HealthResponseSchema`, and send
+1. `probeDatabase(..., { readOnly: true })` checks the schema version and reads from the
+   projects table. It never writes, so a health poll cannot mutate state or fail on a
+   read-only filesystem.
+2. Compose a `HealthResponse`, validate it against `HealthResponseSchema`, and send
    it inside the standard envelope.
 
 Health is deliberately *observational*: the provider is only `verified` after a real
 model call returns in this process.
 
+### `POST /api/health/muse`
+
+`ProviderHealthTracker.check({ force: true })` performs one real model round-trip. The
+result is cached for 60 s and concurrent checks share the in-flight call, so a repeated
+click cannot fan out into parallel quota spend. Because it is a POST, the origin guard
+covers it.
+
 ### `POST /api/provider/generate`
 
-A bounded test bench, not a chat: prompt ≤ 4,000 chars, output ≤ 1,024 tokens, no
-memory, no tools. It proves browser → API → Muse in one request. Any failure maps to
-`503` with a stable error code so "model unavailable" is distinguishable from "server
-bug".
+A bounded test bench, not a chat: prompt ≤ 4,000 chars, requested output ≤ 1,024 tokens,
+no memory, no tools. Because the Muse CLI has no output-token flag, the adapter enforces
+the requested budget on the stream (~4 chars/token), terminates the child when the budget
+is exceeded, and returns truncated text with `stop_reason: "max_tokens"`. It proves
+browser → API → Muse in one request. Any failure maps to `503` with a stable error code
+and generic text so "model unavailable" is distinguishable from "server bug" without
+echoing provider internals or credentials.
 
 ### Errors
 

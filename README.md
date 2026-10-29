@@ -36,7 +36,7 @@ pending._
 | **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat**; it is the fallback if the 2:50 cut is not published. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 683 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 728 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. Phase 17 covers six fixed strata, two rules and two models, and measures source code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Why this fits “Push the Frontier”
@@ -86,7 +86,7 @@ detector fixed before the runs. Counts are violations over usable runs.
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
 pnpm install
-cp .env.example apps/server/.env
+cp .env.example .env
 pnpm demo:seed                  # seeded game, three decisions (one superseded), v1 approved
 MODEL_PROVIDER=echo pnpm dev    # no Muse account needed; open http://127.0.0.1:5173
 ```
@@ -202,7 +202,7 @@ Verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.13, SQLite 3.53.4.
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
 pnpm install
-cp .env.example apps/server/.env          # defaults are already local-first
+cp .env.example .env          # defaults are already local-first
 
 pnpm dev                      # API on :8787 and web on :5173
 ```
@@ -216,7 +216,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (683 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (728 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -491,8 +491,12 @@ More: [architecture](docs/architecture.md) · [memory design](docs/memory-design
 
 ## Configuration
 
-Environment-based; see [`.env.example`](.env.example). Relative paths resolve against
-the process working directory (`apps/server` when run via the pnpm scripts).
+Environment-based; see [`.env.example`](.env.example). The server, migrator and demo seed read
+the repository-root `.env` (falling back to `apps/server/.env`; `MML_ENV_FILE` names another
+file), and relative paths resolve against the repository root even though the pnpm scripts start
+the server in `apps/server`. Builds before 29 October kept data in `apps/server/data` and
+`apps/server/workspaces`; move those to `data/` and `workspaces/` at the root, or set absolute
+paths, to keep using it.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |

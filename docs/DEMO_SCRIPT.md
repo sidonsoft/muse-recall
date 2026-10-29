@@ -12,8 +12,8 @@ on a fresh database. Nothing is mocked; the deterministic provider is used only 
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git && cd muse-recall
 pnpm install
-cp .env.example apps/server/.env
-rm -f apps/server/data/demo.db*
+cp .env.example .env
+rm -f data/demo.db*
 DATABASE_PATH=./data/demo.db pnpm dev
 ```
 

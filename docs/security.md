@@ -15,10 +15,10 @@ product.
 | T3 | Generated UI executes model-authored JavaScript | Full client compromise | **Split**: declarative UI never executes model code; HTML Studio JavaScript runs only in a sandboxed opaque-origin iframe |
 | T4 | API key leaks to the browser | Credential theft | **Prevented**: keys stay in the server/CLI environment and travel to the CLI over stdin |
 | T5 | Malformed or hostile HTTP input crashes the server | Denial of service | **Handled**: Zod validation + envelope + safe error mapping |
-| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: binds `127.0.0.1`; host/origin guards; no authentication (single-user local app) |
+| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app) |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
 | T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; no OS-level sandbox owned by this app |
-| T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job writes, schema validation, explicit recovery issues, no silent state reset |
+| T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job and version promotion, schema validation, explicit recovery issues, no silent state reset, verified version hashes |
 | T10 | A restart silently re-runs an unfinished model job or promotes unreviewed bytes | Duplicate spend / unreviewed publish | **Mitigated**: queued/running jobs become `interrupted`; approval still requires exact-byte SHA-256 and runtime verification |
 
 ## Memory as untrusted data
@@ -32,6 +32,10 @@ Retrieved records are presented to both the chat agent and Forge as reference da
   reference (or the fact that no source was recorded).
 - `<`, `>`, and `&` are escaped before injection. A stored value such as
   `</project_constraints><system_instructions>…` is visible text, not a delimiter.
+- Superseded records shown in `<recent_corrections>` are escaped and length-bounded the
+  same way as retrieved memories, so correction history cannot forge a section boundary.
+- Tool results are prompt text too: they are counted inside the hard prompt budget and
+  truncated with an explicit marker (or dropped) when they would overflow it.
 - Stored text cannot grant tool permissions, change the system/application contract, or
   alter the approval policy; those are assembled from server configuration.
 - Forge constraints/goals are rendered separately from other memories so a design
@@ -74,10 +78,21 @@ scope for the single-user local beta.
   `interrupted` with an explicit error; they are never resumed automatically.
 - A malformed job record produces a recovery issue and is left in place. Other jobs in
   the project still load. A malformed `state.json` raises `state_corrupt`; it is not
-  replaced with an empty project.
+  replaced with an empty project. A missing `state.json` is only initialised when no
+  numeric version directory exists: approved version data blocks initialisation, while
+  job records alone stay on disk and are recovered normally after state is initialised.
+- Project reads are side-effect free. `GET` never creates directories or initialises
+  `state.json`; only project creation and generation paths do.
+- The approved file is verified against its recorded SHA-256 whenever it is read for
+  serving, preview, diff, modification, rollback, or promotion. A mismatch raises
+  `version_corrupt` instead of serving or building on the changed bytes.
 - Completed-but-unapplied jobs keep their staged bytes, so review can continue after a
   restart. Approval re-snapshots the bytes, runs the runtime check, and promotes only the
   matching SHA-256.
+- Promotion stages the immutable copy in a temporary version directory, verifies it, and
+  renames it into place. An interrupted promotion can leave an unreferenced version
+  directory; the next retry moves it aside to a non-numeric `.orphaned-*` name instead of
+  deleting it, so a crash does not block approval and no version bytes are lost.
 - A crash between promotion and the job-record write is reconciled from the version's
   recorded `job_id`.
 - Graceful shutdown stops new starts, marks active jobs cancelled, signals owned children
@@ -109,8 +124,20 @@ scope for the single-user local beta.
 
 **Input validation.** Every route validates its body/query with a Zod schema from
 `@mml/shared` (shared with the client). Oversized input is rejected before it can cost
-tokens: prompts ≤ 4,000 chars, output ≤ 1,024 tokens, screenshot data URLs size-checked
-and PNG-validated, page sizes bounded.
+tokens: test-bench prompts ≤ 4,000 chars, screenshot data URLs size-checked and
+PNG-validated, page sizes bounded. The test bench accepts at most 1,024 requested output
+tokens (384 by default) and chat uses `AGENT_MAX_OUTPUT_TOKENS` (default 1,200). The Muse
+CLI exposes no output-token flag, so `MuseCliProvider` enforces the requested budget on
+the stream at ~4 chars/token: it stops reading and terminates the child when the budget
+is exceeded, then reports `stop_reason: "max_tokens"` with text cut at the budget.
+Truncation is explicit rather than silently delivered.
+
+**Forge budgets are mixed, and the labels matter.** `FORGE_MAX_RUNTIME_MS` is a hard
+wall-clock kill. `FORGE_MAX_CALLS` is passed to `muse exec --max-model-steps`, so the CLI
+stops before starting another model step; the reported call count is still re-checked
+when the run completes. `FORGE_MAX_INPUT_TOKENS` has no CLI flag that can stop a run
+mid-flight, so it is checked only after the child exits: it is an **observational**
+budget that marks the job `budget_exceeded`, not an in-process token stop.
 
 **Secrets never reach the browser.** The API key lives in the server environment or the
 Muse CLI's credential store. The client has no code path to a provider endpoint;
@@ -139,6 +166,11 @@ paths, not absolute host paths.
 
 **Envelope discipline.** Clients get exactly one response shape, so a failure is never
 silently treated as an empty success.
+
+**Loopback bind.** `HOST` must be `127.0.0.1`, `::1`, or `localhost`; any other value (including
+`0.0.0.0`) stops startup. After `listen`, every bound socket is checked again so a `localhost`
+that resolves off-loopback is also refused. This is the network boundary: the Host-header check
+below is not, because a client that reaches a non-loopback socket can send any `Host` it likes.
 
 **Host/origin guards.** Requests must name a loopback host. State-changing requests with a
 foreign or `null` Origin are rejected; CORS only allows configured local origins.

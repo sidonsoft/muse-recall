@@ -1,6 +1,6 @@
 # Current README interface captures — 29 October 2026
 
-Captured from the merged application at `4b56851`, with disposable databases and workspaces,
+Captured from the merged application at `442d100` (`main` after PR #4), with disposable databases and workspaces,
 using real API and React UI flows in managed Chromium. All six PNGs are 1600 × 1000.
 
 | Capture | Content | Reproduce |

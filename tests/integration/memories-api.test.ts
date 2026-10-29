@@ -380,6 +380,50 @@ describe('POST /api/memories/:id/correct', () => {
     expect(response.json().data.superseded).toHaveLength(2);
   });
 
+  it('409s when a correction would cross project boundaries', async () => {
+    const app = await createTestApp();
+    const original = await createMemory(app, {
+      project_id: 'project-b',
+      content: 'Project-b uses SQLite',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${original.id}/correct`,
+      payload: {
+        type: 'technical_decision',
+        scope: 'project',
+        project_id: 'project-a',
+        content: 'Project-a uses Postgres',
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('memory_conflict');
+
+    // The rejected correction must not have touched project-b's active rule.
+    const detail = await app.inject({ method: 'GET', url: `/api/memories/${original.id}` });
+    expect(detail.json().data.memory.status).toBe('active');
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/memories?project_id=project-b',
+    });
+    expect(list.json().data.total).toBe(1);
+    expect(list.json().data.items[0].id).toBe(original.id);
+
+    const retrieval = await app.inject({
+      method: 'POST',
+      url: '/api/retrieval/preview',
+      payload: { project_id: 'project-b', query: 'sqlite' },
+    });
+    expect(retrieval.statusCode).toBe(200);
+    const retrievedIds = retrieval
+      .json()
+      .data.retrieval.results.map((entry: { memory: { id: string } }) => entry.memory.id);
+    expect(retrievedIds).toContain(original.id);
+  });
+
   it('is idempotent when replayed', async () => {
     const app = await createTestApp();
     const original = await createMemory(app, { content: 'Use SQLite for storage' });

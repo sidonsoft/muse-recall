@@ -80,13 +80,18 @@ function config(): AppConfig {
   };
 }
 
-async function harness(options: { generation?: string } = {}) {
+async function harness(options: { generation?: string; failFirstFollowUp?: boolean } = {}) {
   const database = openDatabase({ path: ':memory:', wal: false });
+  let followUps = 0;
   const provider = new EchoProvider({
     respond: (request: ModelRequest) => {
       const content = request.messages[0]?.content ?? '';
       if (content.startsWith('Design a short interactive planning form')) {
         return options.generation ?? JSON.stringify(GENERATED_FORM);
+      }
+      followUps += 1;
+      if (options.failFirstFollowUp && followUps === 1) {
+        throw new Error('provider failed');
       }
       return 'Continuing with the plan you submitted.';
     },
@@ -186,8 +191,8 @@ describe('POST /api/sessions/:id/ui', () => {
 });
 
 describe('POST /api/sessions/:id/ui/:surfaceId/events', () => {
-  async function setup() {
-    const { app, engine } = await harness();
+  async function setup(options: { generation?: string; failFirstFollowUp?: boolean } = {}) {
+    const { app, engine } = await harness(options);
     const session = await newSession(app);
     const generated = await generate(app, session.id);
     return { app, engine, session, surface: generated.json().data.surface };
@@ -247,6 +252,38 @@ describe('POST /api/sessions/:id/ui/:surfaceId/events', () => {
 
     expect(second.statusCode).toBe(409);
     expect(second.json().error.code).toBe('surface_already_submitted');
+  });
+
+  it('allows resubmission after the follow-up turn fails once', async () => {
+    const { app, session, surface } = await setup({ failFirstFollowUp: true });
+    const payload = submission({ goal: 'Retry the plan', platforms: ['desktop'] });
+
+    const failed = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${session.id}/ui/${surface.id}/events`,
+      payload,
+    });
+    expect(failed.statusCode).toBe(502);
+    expect(failed.json().error.code).toBe('provider_failure');
+
+    // The failed turn must leave the surface active, not already submitted.
+    const list = await app.inject({ method: 'GET', url: `/api/sessions/${session.id}/ui` });
+    const afterFailure = list
+      .json()
+      .data.items.find((item: { id: string }) => item.id === surface.id);
+    expect(afterFailure.status).toBe('active');
+
+    const retried = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${session.id}/ui/${surface.id}/events`,
+      payload,
+    });
+    expect(retried.statusCode).toBe(200);
+    const { data } = retried.json();
+    expect(data.surface.status).toBe('submitted');
+    expect(data.surface.events).toHaveLength(1);
+    expect(data.memory).not.toBeNull();
+    expect(data.turn.assistant_message.content).toContain('Continuing with the plan');
   });
 
   it('rejects a missing required field', async () => {
