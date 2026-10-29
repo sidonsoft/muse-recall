@@ -1,0 +1,16 @@
+MUSE RECALL — V21 demo transcript
+Duration 2:50.47 · recorded 29 October 2026 · ElevenLabs George
+
+[0:08] Most AI coding tools can generate a first draft. The hard part is the second week: remembering the decisions, noticing when a change breaks one, and letting you correct the direction without losing the history. Muse Recall is built for that second week. This is a live run.
+
+[0:25] I start a fresh project and save one constraint: a warm sunset palette, with a soft coral accent and dark text, no neon. Spark writes a small memory game. I read the source, check the preview, and approve v1. The decision is stored with its project, its source and its history.
+
+[0:47] Now a new session, with no request history. I ask only for a Next Level button. The staged source still uses the sunset accent. Guard has no correction to compare, so it reports not verified. Nothing ships. I reject the change.
+
+[1:03] I change my mind. In Memory, I correct the decision to a cool ocean palette, with a clear blue accent and deep navy text. The sunset record stays auditable but becomes superseded. The ocean decision is now the only active one.
+
+[1:20] I ask for the same button again. The model keeps the old sunset colors. This time Guard has the correction to compare, and it flags the reintroduced sunset palette. That is the point of an advisory check: it shows the evidence, but it does not block me. I reject it myself.
+
+[1:37] Then I ask for the project's current art direction from memory. The source flips to ocean, and the sunset color is gone. Guard reports no violation detected by its supported checks. I approve v2. v1 stays recoverable in version history, and rollback follows the recorded parent.
+
+[1:55] The contribution is the integration: memory you can correct, a change you can review, and evidence that memory changes generated code. In the pre-registered Phase 17 trial, a remembered rule cut original-rule violations from thirty-seven of fifty-seven to zero of fifty-eight on Muse Spark, and forty-nine of sixty to one of sixty on Muse Spark Open. Retyping the rule by hand matched it. Phase 17's correction only released restrictions; the sunset-to-ocean replacement is Phase 12A, one run per condition. Six fixed tasks, not general correctness. Persistent memory is not new. Making it correctable, reviewable and measurable is the point.
