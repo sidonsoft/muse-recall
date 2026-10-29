@@ -15,7 +15,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: npm run site
       # Test-only: a11y audit, widget state machine, mobile overflow, LCP/CLS
       # against `vite preview`. Deliberately not a deploy.
       - run: npm run qa

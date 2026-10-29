@@ -32,6 +32,11 @@ QA mirrors the product's own stance — `scripts/qa.mjs` is dependency-free
 (CDP over Node's global WebSocket) and also runs on CI (`.github/workflows/site-qa.yml`,
 test-only, not a deploy).
 
+`npm run site` builds and then **pre-renders the app into `dist/index.html`**
+(`scripts/prerender.mjs`) — the built output is a portable, static page that
+serves full content to crawlers, link-preview bots, and JS-disabled readers;
+the client bundle still loads and takes over interactions.
+
 Every upstream link used on the site is audited against the real repo tree with
 `npm run links` (expects the `muse-recall` checkout as `../muse-recall-src`,
 override with `UPSTREAM=...`).

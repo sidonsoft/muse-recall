@@ -38,12 +38,12 @@ export default function Hero() {
 
         <figure className="figure reveal visible" style={{ textAlign: 'left' }}>
           <img
-            src="/assets/html-studio-approved-v2.jpg"
+            src="./assets/html-studio-approved-v2.jpg"
             alt="HTML Studio after approving v2 of Ocean Pairs: live preview, the remembered rule supplied to the change, Decision Guard panel, and version history"
             width="1600"
             height="807"
             loading="eager"
-            fetchPriority="high"
+            {...{ fetchpriority: 'high' }}
             decoding="async"
           />
           <figcaption>

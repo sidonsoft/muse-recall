@@ -220,6 +220,16 @@ try {
   );
   check('LCP < 2500ms', vitals.lcp < 2500, `lcp=${vitals.lcp}ms`);
   check('CLS < 0.1', vitals.cls < 0.1, `cls=${vitals.cls}`);
+
+  // 5. pre-rendered static HTML: crawlers, bots, and JS-disabled readers see content
+  const html = await (await fetch(URL_)).text();
+  const missing = [
+    ['hero headline', 'orrectable project memory'],
+    ['evidence table', 'Phase 17'],
+    ['timeline records', 'Sunset → ocean'],
+    ['JSON-LD', 'SoftwareSourceCode'],
+  ].filter(([, probe]) => !html.includes(probe));
+  check('static HTML pre-rendered (works without JS)', missing.length === 0, missing.map(([n]) => n + ' missing').join(', ') || `len=${html.length}`);
 } catch (e) {
   check('script completed', false, e.message);
 } finally {

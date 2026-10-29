@@ -279,22 +279,22 @@ export function Evidence() {
 export function Gallery() {
   const shots = [
     {
-      src: '/assets/phase2-ui-memory-detail.png',
+      src: './assets/phase2-ui-memory-detail.png',
       t: 'Memory detail',
       c: 'A decision with provenance, correction history and the supersession chain.',
     },
     {
-      src: '/assets/phase2-ui-memory-retrieval.png',
+      src: './assets/phase2-ui-memory-retrieval.png',
       t: 'Retrieval explainer',
       c: 'Every retrieval shows its score components and an evidence sentence — no black box.',
     },
     {
-      src: '/assets/phase10-final-diff.png',
+      src: './assets/phase10-final-diff.png',
       t: 'Staged diff',
       c: 'A generated change waits as preview, exact source and a line diff before anyone approves it.',
     },
     {
-      src: '/assets/phase6-showcase.png',
+      src: './assets/phase6-showcase.png',
       t: 'End-to-end showcase',
       c: 'Conversations, memory, retrieval evidence and tool approvals in one local loop.',
     },
