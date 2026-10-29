@@ -451,6 +451,134 @@ export function ForJudges() {
   );
 }
 
+export function Engine() {
+  const stages = [
+    ['hard filters', 'SQL pre-filters before ranking: status (active only), scope, expiry, type.'],
+    ['weighted score', 'six components, shown below — and every result carries its score breakdown.'],
+    ['slots & budget', '2 slots reserved for constraints/goals; then 8 memories max, 4,000 chars total, 1,000 chars per memory (truncate, never drop).'],
+    ['explain', 'results ship with component scores, an evidence sentence and the exact prompt block — <code>/api/retrieval/preview</code> reproduces what a job would receive.'],
+  ];
+  const weights = [
+    ['relevance', 40],
+    ['scope', 20],
+    ['confidence', 15],
+    ['validation', 10],
+    ['recency', 10],
+    ['type priority', 5],
+  ];
+  return (
+    <section className="block" id="engine">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">Under the hood</p>
+          <h2>The retrieval you can inspect</h2>
+          <p>
+            Keyword-first (FTS5) with deterministic weighting — no opaque embeddings.
+            Budgets are configuration, not architecture, and the explainer screen shows
+            exactly what a generation would receive.
+          </p>
+        </div>
+        <div className="engine reveal">
+          {stages.map(([t, d], i) => (
+            <div className="engine-stage" key={t}>
+              <span className="num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <b>{t}</b>
+                <p dangerouslySetInnerHTML={{ __html: d }} />
+              </div>
+              {i < stages.length - 1 && <span className="arrow" aria-hidden="true">↓</span>}
+            </div>
+          ))}
+        </div>
+        <div className="weights reveal" aria-label="Score weights">
+          {weights.map(([k, v]) => (
+            <div className="weight" key={k}>
+              <span>{k}</span>
+              <div className="bar">
+                <i style={{ width: `${v * 2.5}%` }} />
+              </div>
+              <span className="v">{v}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function BeyondGames() {
+  const cards = [
+    {
+      icon: '🧾',
+      h: 'Generated: FocusFlow v1',
+      p: (
+        <>
+          A single-file task planner — no canvas, no game loop. Attempt 1 was{' '}
+          <strong>rejected</strong>: it used a native form submit the sandbox blocks, and the
+          failure record is preserved. Attempt 2 (a disclosed retake with a human-written
+          sandbox instruction) passed <strong>21/21</strong> browser checks and was approved.
+        </>
+      ),
+    },
+    {
+      icon: '✏️',
+      h: 'Modified: FocusFlow v2',
+      p: (
+        <>
+          Muse Spark edited the approved v1 in place — adding task priorities and a
+          high-priority remaining count — passed <strong>25/25</strong> checks, and was approved
+          as v2. Four remembered decisions were recorded as supplied to the job.
+        </>
+      ),
+    },
+    {
+      icon: '🚫',
+      h: 'Refused: the countdown request',
+      p: (
+        <>
+          A later request asked for a countdown timer. The model returned the file{' '}
+          <strong>unchanged</strong>, citing the project&apos;s remembered no-countdown rule.
+          The Guard honestly reported <code>not_verified</code> with 0 findings — it neither
+          detected nor blocked anything there.
+        </>
+      ),
+    },
+  ];
+  return (
+    <section className="block" id="beyond">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">Beyond games</p>
+          <h2>Memory that generalizes past demos</h2>
+          <p>
+            The videos show games. To check HTML Studio isn&apos;t game-specific, Muse Spark
+            generated, modified and governed a real non-game app — refusals and all,{' '}
+            <a
+              href={`${REPO}/blob/main/docs/demo/NON_GAME_HTML_VALIDATION.md`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              full provenance
+            </a>
+            .
+          </p>
+        </div>
+        <div className="features-grid">
+          {cards.map((c) => (
+            <div className="feature reveal" key={c.h}>
+              <div className="icon" aria-hidden="true">
+                {c.icon}
+              </div>
+              <h3>{c.h}</h3>
+              <p>{c.p}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function CTA() {
   return (
     <section className="block" id="cta">

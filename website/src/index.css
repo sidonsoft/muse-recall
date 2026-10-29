@@ -1368,6 +1368,114 @@ pre.code .hl {
   color: var(--cyan);
 }
 
+/* ---------- Memory engine ---------- */
+.engine {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+}
+
+.engine-stage {
+  display: flex;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  background: var(--surface);
+  position: relative;
+}
+
+.engine-stage .num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--cyan);
+  flex: none;
+  padding-top: 2px;
+}
+
+.engine-stage b {
+  font-size: 15.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.engine-stage p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.engine-stage .arrow {
+  position: absolute;
+  left: 26px;
+  bottom: -17px;
+  color: var(--violet);
+  font-size: 15px;
+  z-index: 2;
+  background: var(--bg);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+}
+
+.weights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px 28px;
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--surface);
+}
+
+.weight {
+  display: grid;
+  grid-template-columns: 110px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.weight .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.weight .bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--violet), var(--pink));
+}
+
+.weight .v {
+  text-align: right;
+  color: var(--text);
+}
+
+/* ---------- Nav active state ---------- */
+.nav-links a.active {
+  color: var(--text);
+  position: relative;
+}
+
+.nav-links a.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--violet), var(--pink));
+}
+
 /* ---------- Honesty list ---------- */
 .honesty {
   display: grid;

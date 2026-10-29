@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
-import { Problem, Features, How, Evidence, ForJudges, Gallery, Stack, Quickstart, Honesty, CTA, Footer } from './components/Sections.jsx';
+import { Problem, Features, How, Engine, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, Honesty, CTA, Footer } from './components/Sections.jsx';
+
+const WATCH = ['loop', 'how', 'evidence', 'quickstart'];
 
 export default function App() {
   useEffect(() => {
@@ -18,7 +20,29 @@ export default function App() {
       { threshold: 0.12 }
     );
     document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    const spy = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const link = document.querySelector(`.nav-links a[href="#${e.target.id}"]`);
+          if (!link) continue;
+          if (e.isIntersecting) {
+            document.querySelectorAll('.nav-links a').forEach((a) => a.classList.remove('active'));
+            link.classList.add('active');
+          }
+        }
+      },
+      { rootMargin: '-40% 0px -50% 0px' }
+    );
+    WATCH.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) spy.observe(el);
+    });
+
+    return () => {
+      io.disconnect();
+      spy.disconnect();
+    };
   }, []);
 
   return (
@@ -48,8 +72,10 @@ export default function App() {
         <Problem />
         <How />
         <Features />
+        <Engine />
         <Evidence />
         <ForJudges />
+        <BeyondGames />
         <Gallery />
         <Stack />
         <Quickstart />
