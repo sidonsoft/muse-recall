@@ -1,6 +1,7 @@
 import React from 'react';
 import TimelineWidget from './Timeline.jsx';
 import Lightbox from './Lightbox.jsx';
+import Icon from './Icon.jsx';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
@@ -11,17 +12,17 @@ const CODESPACES = 'https://codespaces.new/sidonsoft/muse-recall?quickstart=1';
 export function Problem() {
   const pains = [
     {
-      emoji: '🔁',
+      emoji: 'repeat',
       q: 'Requirements get restated.',
       a: 'A new session starts from zero, so the user explains the same constraint again.',
     },
     {
-      emoji: '🧠',
+      emoji: 'brain',
       q: 'Changes forget.',
       a: 'A generated edit can drop an earlier decision; the regression appears later, when it is expensive to find.',
     },
     {
-      emoji: '🕰️',
+      emoji: 'history',
       q: 'Stale preferences persist.',
       a: 'When you change your mind, the old preference keeps coming back — a transcript does not say which decision is current.',
     },
@@ -41,7 +42,7 @@ export function Problem() {
           {pains.map((p) => (
             <div className="problem-card reveal" key={p.q}>
               <span className="emoji" aria-hidden="true">
-                {p.emoji}
+                <Icon name={p.emoji} />
               </span>
               <div className="q">{p.q}</div>
               <p>{p.a}</p>
@@ -96,7 +97,7 @@ export function How() {
               <span className="num">{s.n}</span>
               <h3>{s.h}</h3>
               <p>{s.p}</p>
-              {s.arrow && <span className="arrow" aria-hidden="true">→</span>}
+              {s.arrow && <span className="arrow" aria-hidden="true"><Icon name="right" /></span>}
             </div>
           ))}
         </div>
@@ -108,32 +109,32 @@ export function How() {
 export function Features() {
   const feats = [
     {
-      icon: '🪪',
+      icon: 'idcard',
       h: 'Identity & provenance',
       p: 'UUIDs, scope, source reference, confidence, validation status and append-only history for every decision — so “which fact is current” is a query, not a guess.',
     },
     {
-      icon: '🔀',
+      icon: 'shuffle',
       h: 'Transactional supersession',
       p: 'Correction replaces and edges, never erases. The superseded record stays auditable, is excluded from active retrieval, and the same correction replays idempotently.',
     },
     {
-      icon: '🧾',
+      icon: 'receipt',
       h: 'Provable context',
       p: 'One prompt builder; every job records the decision ids it received and the SHA-256 of the exact prompt. Reconstruction reproduces the bytes.',
     },
     {
-      icon: '🗂️',
+      icon: 'layers',
       h: 'Immutable versions & rollback',
       p: 'Approval binds promotion to the exact verified bytes. Every approved version is immutable; rollback follows the recorded parent, even after a non-linear history.',
     },
     {
-      icon: '🛡️',
+      icon: 'shield',
       h: 'Advisory Decision Guard',
       p: 'A deterministic, dependency-free source check over five rule families. It cites the decision and a bounded evidence excerpt — and never blocks approval.',
     },
     {
-      icon: '🔒',
+      icon: 'lock',
       h: 'Local-first & sandboxed',
       p: 'Loopback only, no accounts. Previews run in an opaque-origin iframe with a restrictive CSP; cross-origin state changes are rejected before any handler runs.',
     },
@@ -153,7 +154,7 @@ export function Features() {
           {feats.map((f) => (
             <div className="feature reveal" key={f.h}>
               <div className="icon" aria-hidden="true">
-                {f.icon}
+                <Icon name={f.icon} />
               </div>
               <h3>{f.h}</h3>
               <p>{f.p}</p>
@@ -432,7 +433,7 @@ export function Quickstart() {
         </div>
         <div className="code-shell reveal">
           <button className={`copy-btn${copied ? ' copied' : ''}`} onClick={copy} aria-label="Copy setup commands">
-            {copied ? '✓ copied' : '⧉ copy'}
+            {copied ? <><Icon name="check" /> copied</> : <><Icon name="copy" /> copy</>}
           </button>
           <pre className="code">
             <span className="cmt"># Node ≥ 24 · pnpm 10</span>{'\n'}
@@ -512,11 +513,11 @@ export function Honesty() {
 
 export function Guard() {
   const families = [
-    ['⏱️', 'Countdown mechanics', 'setInterval timers, tick loops'],
-    ['⚡', 'Flashing effects', 'full-screen flash calls'],
-    ['💸', 'Mistake penalties', 'score deductions, resets'],
-    ['🎨', 'Superseded palettes', 'retired colours reintroduced — including hex equivalence: #FF7E5F ≡ 0xFF7E5F'],
-    ['👁️', 'Colour-only cues', 'meaning carried by hue alone'],
+    ['timer', 'Countdown mechanics', 'setInterval timers, tick loops'],
+    ['zap', 'Flashing effects', 'full-screen flash calls'],
+    ['banknote', 'Mistake penalties', 'score deductions, resets'],
+    ['palette', 'Superseded palettes', 'retired colours reintroduced — including hex equivalence: #FF7E5F ≡ 0xFF7E5F'],
+    ['eye', 'Colour-only cues', 'meaning carried by hue alone'],
   ];
   return (
     <section className="block" id="guard">
@@ -536,7 +537,7 @@ export function Guard() {
           {families.map(([icon, name, ex]) => (
             <div className="rulefam reveal" key={name}>
               <span className="icon" aria-hidden="true">
-                {icon}
+                <Icon name={icon} />
               </span>
               <div>
                 <b>{name}</b>
@@ -606,7 +607,7 @@ export function ForJudges() {
   const DOCS = `${REPO}/blob/main/docs`;
   const cards = [
     {
-      icon: '🎬',
+      icon: 'video',
       h: 'Demo video — 2:50, recorded',
       p: (
         <>
@@ -619,7 +620,7 @@ export function ForJudges() {
       ),
     },
     {
-      icon: '📊',
+      icon: 'chart',
       h: 'Behavioural evidence — pre-registered',
       p: (
         <>
@@ -634,7 +635,7 @@ export function ForJudges() {
       ),
     },
     {
-      icon: '🔧',
+      icon: 'wrench',
       h: 'Engineering — verify, don’t trust',
       p: (
         <>
@@ -646,7 +647,7 @@ export function ForJudges() {
       ),
     },
     {
-      icon: '🧠',
+      icon: 'brain',
       h: 'How Muse is used',
       p: (
         <>
@@ -658,7 +659,7 @@ export function ForJudges() {
       ),
     },
     {
-      icon: '⚖️',
+      icon: 'scale',
       h: 'Limits, stated up front',
       p: (
         <>
@@ -686,7 +687,7 @@ export function ForJudges() {
           {cards.map((c) => (
             <div className="feature reveal" key={c.h}>
               <div className="icon" aria-hidden="true">
-                {c.icon}
+                <Icon name={c.icon} />
               </div>
               <h3>{c.h}</h3>
               <p>{c.p}</p>
@@ -733,7 +734,7 @@ export function Engine() {
                 <b>{t}</b>
                 <p dangerouslySetInnerHTML={{ __html: d }} />
               </div>
-              {i < stages.length - 1 && <span className="arrow" aria-hidden="true">↓</span>}
+              {i < stages.length - 1 && <span className="arrow" aria-hidden="true"><Icon name="down" /></span>}
             </div>
           ))}
         </div>
@@ -756,7 +757,7 @@ export function Engine() {
 export function BeyondGames() {
   const cards = [
     {
-      icon: '🧾',
+      icon: 'receipt',
       h: 'Generated: FocusFlow v1',
       p: (
         <>
@@ -768,7 +769,7 @@ export function BeyondGames() {
       ),
     },
     {
-      icon: '✏️',
+      icon: 'pencil',
       h: 'Modified: FocusFlow v2',
       p: (
         <>
@@ -779,7 +780,7 @@ export function BeyondGames() {
       ),
     },
     {
-      icon: '🚫',
+      icon: 'ban',
       h: 'Refused: the countdown request',
       p: (
         <>
@@ -814,7 +815,7 @@ export function BeyondGames() {
           {cards.map((c) => (
             <div className="feature reveal" key={c.h}>
               <div className="icon" aria-hidden="true">
-                {c.icon}
+                <Icon name={c.icon} />
               </div>
               <h3>{c.h}</h3>
               <p>{c.p}</p>
@@ -857,7 +858,7 @@ export function ProofVsRoadmap() {
         </div>
         <div className="two-col">
           <div className="col-card reveal">
-            <h3 className="done-h">✓ Demonstrated, with evidence</h3>
+            <h3 className="done-h"><Icon name="check" /> Demonstrated, with evidence</h3>
             <ul className="proof">
               {done.map((d) => (
                 <li key={d}>{d}</li>
@@ -865,7 +866,7 @@ export function ProofVsRoadmap() {
             </ul>
           </div>
           <div className="col-card reveal">
-            <h3 className="future-h">○ Future work — not claimed</h3>
+            <h3 className="future-h"><Icon name="circle" /> Future work — not claimed</h3>
             <ul className="future">
               {later.map((f) => (
                 <li key={f}>{f}</li>
