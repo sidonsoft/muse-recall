@@ -29,7 +29,7 @@ import { MEMORY_SELECT_COLUMNS, type MemoryRow, rowToMemory } from './rows.js';
  *      never enter the ranking at all.
  *   2. Scoring — six independently observable components, so a result can be
  *      explained rather than asserted.
- *   3. Budgeted selection — pinned constraints/goals first, then by score,
+ *   3. Budgeted selection — pinned memory types first, then by score,
  *      stopping at the memory and character caps.
  *
  * The function performs no writes and takes an injectable clock, so it is safe
@@ -41,6 +41,12 @@ export interface RetrievalOptions {
   now?: Date;
   /** Override weights (benchmark sensitivity runs, experiments). */
   weights?: Partial<RetrievalWeights>;
+  /**
+   * Memory types force-included when active in scope, regardless of keyword
+   * match. Defaults to constraints and goals; callers such as Forge may add
+   * decision-like types their prompts depend on.
+   */
+  pinnedTypes?: readonly MemoryType[];
 }
 
 /** Upper bound on candidates considered before ranking. */
@@ -94,17 +100,18 @@ export const TYPE_PRIORITY: Record<MemoryType, number> = {
   contextual_fact: 0.4,
 };
 
-/** Types force-included when active in scope, regardless of keyword match. */
-const PINNED_TYPES: MemoryType[] = ['constraint', 'goal'];
+/** Default types force-included when active in scope, regardless of keyword match. */
+export const DEFAULT_PINNED_TYPES: readonly MemoryType[] = ['constraint', 'goal'];
 
 /**
  * How many slots are reserved for pinned memories.
  *
- * A constraint must not be lost because the user's wording did not match it,
- * but pinning every constraint ahead of relevance would let a project with ten
- * constraints crowd out the memory that actually answers the question. Two
- * reserved slots is the compromise: the guarantee is real, the budget is not
- * consumed by it. Any further constraints still compete on score.
+ * A pinned decision must not be lost because the user's wording did not match
+ * it, but pinning every such memory ahead of relevance would let a project
+ * with ten constraints crowd out the memory that actually answers the
+ * question. Two reserved slots is the compromise: the guarantee is real, the
+ * budget is not consumed by it. Any further pinned memories still compete on
+ * score, and the normal count/character checks still apply.
  */
 const PINNED_RESERVE = 2;
 
@@ -151,6 +158,8 @@ export function retrieveMemories(
   });
   const now = options.now ?? new Date();
   const nowIso = now.toISOString();
+  const pinnedTypes = options.pinnedTypes ?? DEFAULT_PINNED_TYPES;
+  const pinnedTypeSet = new Set(pinnedTypes);
   const preciseQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query, 'and') : null;
   const broadQuery = parsed.query.trim().length > 0 ? toFtsQuery(parsed.query, 'or') : null;
   const hasQuery = preciseQuery !== null;
@@ -221,6 +230,7 @@ export function retrieveMemories(
     includeGlobal: parsed.include_global,
     types: parsed.types,
     nowIso,
+    pinnedTypes,
     excludeIds: new Set(scopedRows.map((entry) => entry.id)),
   });
 
@@ -239,7 +249,7 @@ export function retrieveMemories(
     const components = scoreComponents(candidate, { now, maxBm25 });
     return {
       ...candidate,
-      pinned: PINNED_TYPES.includes(candidate.memory.type),
+      pinned: pinnedTypeSet.has(candidate.memory.type),
       components,
       evidence: '',
       score: combine(components, weights),
@@ -426,13 +436,15 @@ function loadCandidates(
 
 function loadPinned(
   db: DatabaseSync,
-  filters: ScopeFilters & { excludeIds: Set<string> },
+  filters: ScopeFilters & { pinnedTypes: readonly MemoryType[]; excludeIds: Set<string> },
 ): MemoryRow[] {
+  if (filters.pinnedTypes.length === 0) return [];
+
   const conditions: string[] = [];
   const params: SqlValue[] = [];
   scopeConditions(filters, conditions, params);
-  conditions.push(`m.type IN (${PINNED_TYPES.map(() => '?').join(', ')})`);
-  params.push(...PINNED_TYPES);
+  conditions.push(`m.type IN (${filters.pinnedTypes.map(() => '?').join(', ')})`);
+  params.push(...filters.pinnedTypes);
 
   const rows = db
     .prepare(
@@ -530,7 +542,7 @@ function withoutRelevance(weights: RetrievalWeights): RetrievalWeights {
 function buildEvidence(candidate: ScoredCandidate, hasQuery: boolean): string {
   const parts: string[] = [];
 
-  if (candidate.pinned) parts.push('pinned active constraint/goal');
+  if (candidate.pinned) parts.push(`pinned active ${candidate.memory.type}`);
 
   if (!hasQuery) {
     parts.push('no query text; relevance excluded');
