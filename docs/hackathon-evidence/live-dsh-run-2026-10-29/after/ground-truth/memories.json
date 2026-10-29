@@ -1,0 +1,330 @@
+[
+  {
+    "memory": {
+      "id": "55e3df66-2cbd-475c-9fc3-b474e66db708",
+      "type": "preference",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "Palette: cool \u2014 teal and navy on a soft white background. The warm orange palette is retired.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.9,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:12:04.147Z",
+      "updated_at": "2026-10-29T03:12:04.147Z",
+      "expires_at": null,
+      "supersedes": [
+        "a58f0195-67cd-497b-b071-38e40118e9da"
+      ],
+      "superseded_by": null,
+      "tags": []
+    },
+    "history": [
+      {
+        "id": "b75bb780-80ed-4107-b9e4-75019f6a3195",
+        "memory_id": "55e3df66-2cbd-475c-9fc3-b474e66db708",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": "created by correction",
+        "actor": "user",
+        "at": "2026-10-29T03:12:04.148Z"
+      }
+    ],
+    "supersedes": [
+      {
+        "id": "a58f0195-67cd-497b-b071-38e40118e9da",
+        "type": "preference",
+        "scope": "project",
+        "project_id": "reading-nook",
+        "content": "Palette: warm \u2014 orange, gold and peach on a cream background.",
+        "source": {
+          "session_id": null,
+          "reference": null
+        },
+        "confidence": 0.95,
+        "validation_status": "verified",
+        "status": "superseded",
+        "created_at": "2026-10-29T03:06:37.241Z",
+        "updated_at": "2026-10-29T03:12:04.148Z",
+        "expires_at": null,
+        "supersedes": [],
+        "superseded_by": "55e3df66-2cbd-475c-9fc3-b474e66db708",
+        "tags": [
+          "palette",
+          "warm"
+        ]
+      }
+    ],
+    "superseded_by": null
+  },
+  {
+    "memory": {
+      "id": "e5316211-6401-46f6-ba63-022845d8499b",
+      "type": "technical_decision",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "Offline only: store data in localStorage; no network requests and no external scripts, fonts or images.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.95,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:06:39.047Z",
+      "updated_at": "2026-10-29T03:06:39.047Z",
+      "expires_at": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "tags": [
+        "offline",
+        "local-storage"
+      ]
+    },
+    "history": [
+      {
+        "id": "18ae2284-7cc2-442b-82f4-5877dd32fd1f",
+        "memory_id": "e5316211-6401-46f6-ba63-022845d8499b",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": null,
+        "actor": "user",
+        "at": "2026-10-29T03:06:39.047Z"
+      }
+    ],
+    "supersedes": [],
+    "superseded_by": null
+  },
+  {
+    "memory": {
+      "id": "3e1c894c-47cf-448f-96f3-eeee7eac5766",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "Audience is children aged 7\u201310: tap targets at least 44px, plain words, an encouraging tone, and no scores or rankings that compare children.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.95,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:06:37.292Z",
+      "updated_at": "2026-10-29T03:06:37.292Z",
+      "expires_at": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "tags": [
+        "children",
+        "accessibility",
+        "tone"
+      ]
+    },
+    "history": [
+      {
+        "id": "c3c7441b-c71e-4a78-9ac9-b1d8e57cd7ef",
+        "memory_id": "3e1c894c-47cf-448f-96f3-eeee7eac5766",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": null,
+        "actor": "user",
+        "at": "2026-10-29T03:06:37.292Z"
+      }
+    ],
+    "supersedes": [],
+    "superseded_by": null
+  },
+  {
+    "memory": {
+      "id": "a5999222-dfeb-45fe-91fd-bb0bd9ecfffd",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "Never use colour-only cues: every status (goal met, in progress, finished) must also have a text label or icon, so it works without colour.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.95,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:06:35.079Z",
+      "updated_at": "2026-10-29T03:06:35.079Z",
+      "expires_at": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "tags": [
+        "accessibility",
+        "colour"
+      ]
+    },
+    "history": [
+      {
+        "id": "eb483cda-182e-4279-98d0-c4cdfa33353f",
+        "memory_id": "a5999222-dfeb-45fe-91fd-bb0bd9ecfffd",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": null,
+        "actor": "user",
+        "at": "2026-10-29T03:06:35.080Z"
+      }
+    ],
+    "supersedes": [],
+    "superseded_by": null
+  },
+  {
+    "memory": {
+      "id": "c877c5cd-84bb-44f1-b238-eea731eab232",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "No flashing or blinking animations.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.95,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:06:35.055Z",
+      "updated_at": "2026-10-29T03:06:35.055Z",
+      "expires_at": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "tags": [
+        "animation",
+        "flashing"
+      ]
+    },
+    "history": [
+      {
+        "id": "3282594a-c8d6-4844-9544-c5e79bb6e6e0",
+        "memory_id": "c877c5cd-84bb-44f1-b238-eea731eab232",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": null,
+        "actor": "user",
+        "at": "2026-10-29T03:06:35.055Z"
+      }
+    ],
+    "supersedes": [],
+    "superseded_by": null
+  },
+  {
+    "memory": {
+      "id": "97464315-70f2-4e1b-89e8-a761ef1cbeb3",
+      "type": "constraint",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "No countdown timers or time pressure anywhere in the app.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.95,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:06:35.027Z",
+      "updated_at": "2026-10-29T03:06:35.027Z",
+      "expires_at": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "tags": [
+        "timers",
+        "time-pressure"
+      ]
+    },
+    "history": [
+      {
+        "id": "66ff9565-0f68-46b7-a195-299ce3dcb01f",
+        "memory_id": "97464315-70f2-4e1b-89e8-a761ef1cbeb3",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": null,
+        "actor": "user",
+        "at": "2026-10-29T03:06:35.028Z"
+      }
+    ],
+    "supersedes": [],
+    "superseded_by": null
+  },
+  {
+    "memory": {
+      "id": "a58f0195-67cd-497b-b071-38e40118e9da",
+      "type": "preference",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "Palette: warm \u2014 orange, gold and peach on a cream background.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.95,
+      "validation_status": "verified",
+      "status": "superseded",
+      "created_at": "2026-10-29T03:06:37.241Z",
+      "updated_at": "2026-10-29T03:12:04.148Z",
+      "expires_at": null,
+      "supersedes": [],
+      "superseded_by": "55e3df66-2cbd-475c-9fc3-b474e66db708",
+      "tags": [
+        "palette",
+        "warm"
+      ]
+    },
+    "history": [
+      {
+        "id": "5698b8a1-4cf9-4987-9e6f-aa93fa25126d",
+        "memory_id": "a58f0195-67cd-497b-b071-38e40118e9da",
+        "action": "created",
+        "previous_status": null,
+        "next_status": "active",
+        "reason": null,
+        "actor": "user",
+        "at": "2026-10-29T03:06:37.241Z"
+      },
+      {
+        "id": "0455cad1-9b24-4e33-8802-2b37f7163103",
+        "memory_id": "a58f0195-67cd-497b-b071-38e40118e9da",
+        "action": "superseded",
+        "previous_status": "active",
+        "next_status": "superseded",
+        "reason": "Owner prefers a calmer, cooler look for bedtime reading.",
+        "actor": "user",
+        "at": "2026-10-29T03:12:04.148Z"
+      }
+    ],
+    "supersedes": [],
+    "superseded_by": {
+      "id": "55e3df66-2cbd-475c-9fc3-b474e66db708",
+      "type": "preference",
+      "scope": "project",
+      "project_id": "reading-nook",
+      "content": "Palette: cool \u2014 teal and navy on a soft white background. The warm orange palette is retired.",
+      "source": {
+        "session_id": null,
+        "reference": null
+      },
+      "confidence": 0.9,
+      "validation_status": "verified",
+      "status": "active",
+      "created_at": "2026-10-29T03:12:04.147Z",
+      "updated_at": "2026-10-29T03:12:04.147Z",
+      "expires_at": null,
+      "supersedes": [
+        "a58f0195-67cd-497b-b071-38e40118e9da"
+      ],
+      "superseded_by": null,
+      "tags": []
+    }
+  }
+]

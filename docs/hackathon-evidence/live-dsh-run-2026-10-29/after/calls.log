@@ -1,0 +1,74 @@
+2026-10-29T03:06:32Z POST /api/forge/projects 200
+2026-10-29T03:06:35Z POST /api/memories 201
+2026-10-29T03:06:35Z POST /api/memories 201
+2026-10-29T03:06:35Z POST /api/memories 201
+2026-10-29T03:06:37Z POST /api/memories 201
+2026-10-29T03:06:37Z POST /api/memories 400
+2026-10-29T03:06:37Z POST /api/memories 201
+2026-10-29T03:06:39Z POST /api/memories 201
+2026-10-29T03:06:40Z GET /api/memories?project_id=reading-nook 200
+2026-10-29T03:06:42Z POST /api/retrieval/preview 200
+2026-10-29T03:06:45Z POST /api/forge/projects/reading-nook/generate 202
+2026-10-29T03:07:43Z WAIT b0b5bc8c-d4e2-4653-8162-6269c7feb2f5 -> succeeded after 56s
+2026-10-29T03:07:45Z GET /api/forge/jobs/b0b5bc8c-d4e2-4653-8162-6269c7feb2f5 200
+2026-10-29T03:07:47Z GET /api/forge/projects/reading-nook/artifact?job=b0b5bc8c-d4e2-4653-8162-6269c7feb2f5 -> staged-v1.html
+2026-10-29T03:07:47Z GET /api/forge/jobs/b0b5bc8c-d4e2-4653-8162-6269c7feb2f5/diff 200
+2026-10-29T03:08:33Z GET /api/forge/jobs/b0b5bc8c-d4e2-4653-8162-6269c7feb2f5 200
+2026-10-29T03:08:37Z POST /api/forge/jobs/b0b5bc8c-d4e2-4653-8162-6269c7feb2f5/approve 200
+2026-10-29T03:08:39Z GET /api/forge/jobs/b0b5bc8c-d4e2-4653-8162-6269c7feb2f5 200
+2026-10-29T03:09:16Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:09:47Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:09:57Z POST /api/forge/projects/reading-nook/modify 202
+2026-10-29T03:10:29Z WAIT 95c33a29-65ed-4cbf-a5c0-5f9897bbebdf -> succeeded after 30s
+2026-10-29T03:10:31Z GET /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf 200
+2026-10-29T03:10:37Z GET /api/forge/projects/reading-nook/artifact?job=95c33a29-65ed-4cbf-a5c0-5f9897bbebdf -> staged-v2.html
+2026-10-29T03:10:37Z GET /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf/diff 200
+2026-10-29T03:10:52Z GET /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf/diff 200
+2026-10-29T03:11:11Z GET /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf 200
+2026-10-29T03:11:13Z POST /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf/reject 200
+2026-10-29T03:11:15Z GET /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf 200
+2026-10-29T03:11:42Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:12:01Z GET /api/memories?project_id=reading-nook 200
+2026-10-29T03:12:04Z POST /api/memories/a58f0195-67cd-497b-b071-38e40118e9da/correct 200
+2026-10-29T03:12:06Z GET /api/memories?project_id=reading-nook 200
+2026-10-29T03:12:09Z GET /api/memories/a58f0195-67cd-497b-b071-38e40118e9da 200
+2026-10-29T03:12:23Z POST /api/forge/projects/reading-nook/modify 202
+2026-10-29T03:12:55Z WAIT a198045c-95f8-4757-a97c-8719bfaaca40 -> succeeded after 30s
+2026-10-29T03:13:10Z GET /api/forge/jobs/a198045c-95f8-4757-a97c-8719bfaaca40 200
+2026-10-29T03:13:17Z GET /api/forge/projects/reading-nook/artifact?job=a198045c-95f8-4757-a97c-8719bfaaca40 -> staged-step7.html
+2026-10-29T03:13:29Z GET /api/forge/jobs/a198045c-95f8-4757-a97c-8719bfaaca40 200
+2026-10-29T03:13:31Z POST /api/forge/jobs/a198045c-95f8-4757-a97c-8719bfaaca40/reject 200
+2026-10-29T03:13:33Z GET /api/forge/jobs/a198045c-95f8-4757-a97c-8719bfaaca40 200
+2026-10-29T03:13:55Z POST /api/forge/projects/reading-nook/modify 202
+2026-10-29T03:14:42Z WAIT 90d46102-c4f7-45d2-a2aa-70d295dffed6 -> succeeded after 45s
+2026-10-29T03:14:45Z GET /api/forge/jobs/90d46102-c4f7-45d2-a2aa-70d295dffed6 200
+2026-10-29T03:14:47Z GET /api/forge/projects/reading-nook/artifact?job=90d46102-c4f7-45d2-a2aa-70d295dffed6 -> staged-step8.html
+2026-10-29T03:15:03Z GET /api/forge/jobs/90d46102-c4f7-45d2-a2aa-70d295dffed6 200
+2026-10-29T03:15:07Z POST /api/forge/jobs/90d46102-c4f7-45d2-a2aa-70d295dffed6/approve 200
+2026-10-29T03:15:09Z GET /api/forge/jobs/90d46102-c4f7-45d2-a2aa-70d295dffed6 200
+2026-10-29T03:15:33Z POST /api/forge/projects/reading-nook/modify 202
+2026-10-29T03:16:30Z WAIT aaac57f3-d985-48d1-88e2-2c2511e88d4e -> succeeded after 55s
+2026-10-29T03:16:32Z GET /api/forge/jobs/aaac57f3-d985-48d1-88e2-2c2511e88d4e 200
+2026-10-29T03:16:34Z GET /api/forge/projects/reading-nook/artifact?job=aaac57f3-d985-48d1-88e2-2c2511e88d4e -> staged-step9.html
+2026-10-29T03:16:44Z GET /api/forge/jobs/aaac57f3-d985-48d1-88e2-2c2511e88d4e 200
+2026-10-29T03:16:47Z POST /api/forge/jobs/aaac57f3-d985-48d1-88e2-2c2511e88d4e/approve 200
+2026-10-29T03:16:49Z GET /api/forge/jobs/aaac57f3-d985-48d1-88e2-2c2511e88d4e 200
+2026-10-29T03:17:15Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:17:15Z GET /api/forge/projects/reading-nook/artifact -> approved-v3.html
+2026-10-29T03:17:43Z POST /api/forge/projects/reading-nook/modify 202
+2026-10-29T03:18:15Z WAIT be16ba7e-63ff-4c1b-b839-6820218a35f1 -> succeeded after 30s
+2026-10-29T03:18:17Z GET /api/forge/jobs/be16ba7e-63ff-4c1b-b839-6820218a35f1 200
+2026-10-29T03:18:20Z GET /api/forge/projects/reading-nook/artifact?job=be16ba7e-63ff-4c1b-b839-6820218a35f1 -> staged-step10.html
+2026-10-29T03:18:55Z GET /api/forge/jobs/be16ba7e-63ff-4c1b-b839-6820218a35f1 200
+2026-10-29T03:18:59Z POST /api/forge/jobs/be16ba7e-63ff-4c1b-b839-6820218a35f1/approve 200
+2026-10-29T03:19:01Z GET /api/forge/jobs/be16ba7e-63ff-4c1b-b839-6820218a35f1 200
+2026-10-29T03:19:24Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:19:26Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:19:34Z GET /api/forge/jobs/b0b5bc8c-d4e2-4653-8162-6269c7feb2f5 200
+2026-10-29T03:19:34Z GET /api/forge/jobs/95c33a29-65ed-4cbf-a5c0-5f9897bbebdf 200
+2026-10-29T03:19:34Z GET /api/forge/jobs/a198045c-95f8-4757-a97c-8719bfaaca40 200
+2026-10-29T03:19:34Z GET /api/forge/jobs/90d46102-c4f7-45d2-a2aa-70d295dffed6 200
+2026-10-29T03:19:34Z GET /api/forge/jobs/aaac57f3-d985-48d1-88e2-2c2511e88d4e 200
+2026-10-29T03:19:34Z GET /api/forge/jobs/be16ba7e-63ff-4c1b-b839-6820218a35f1 200
+2026-10-29T03:20:09Z GET /api/forge/projects/reading-nook 200
+2026-10-29T03:20:15Z GET /api/forge/projects/reading-nook/artifact -> approved-v4.html
