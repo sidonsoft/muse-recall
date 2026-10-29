@@ -1656,6 +1656,10 @@ pre.code .hl {
   color: var(--muted);
 }
 
+.tl-printonly {
+  display: none;
+}
+
 .tl-meta {
   margin-top: 10px;
   font-family: var(--mono);
@@ -1819,6 +1823,172 @@ pre.code .hl {
   padding: 14px;
   color: var(--muted);
   font-size: 13.5px;
+}
+
+/* ---------- Print: judge one-pager ---------- */
+@media print {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  body {
+    background: #fff;
+    color: #14141e;
+  }
+  .aurora,
+  .nav,
+  .skip-link,
+  .palette-backdrop,
+  .hero-ctas,
+  .hero-note,
+  .demo-top .lamp,
+  .guide,
+  .cta-band form,
+  .tl-badge,
+  .footer-links {
+    display: none !important;
+  }
+  .reveal,
+  .reveal.visible {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  section.block {
+    padding: 18px 0;
+    break-inside: avoid;
+  }
+  .hero {
+    padding: 10px 0 24px;
+  }
+  h1 {
+    color: #14141e;
+  }
+  h1 .grad {
+    -webkit-text-fill-color: initial;
+    color: #6d28d9;
+  }
+  .stats,
+  .feature,
+  .problem-card,
+  .col-card,
+  .memory-card,
+  .demo-shell,
+  .tl-card,
+  .engine-stage,
+  .weights,
+  .honesty li,
+  .rulefam,
+  .evidence-wrap,
+  .member,
+  .cta-band,
+  figure,
+  .gallery figure {
+    background: #fff !important;
+    border-color: #d5d5de !important;
+    box-shadow: none !important;
+    color: #14141e;
+  }
+  .stats div {
+    background: #fff !important;
+  }
+  .eyebrow {
+    border-color: #d5d5de;
+    background: #fff;
+  }
+  p,
+  small,
+  .kicker,
+  .tl-when,
+  .tl-meta,
+  .footnote,
+  .demo-results .meta,
+  code {
+    color: #3c3c4a !important;
+  }
+  table.evidence th {
+    background: #f2f2f7;
+    color: #3c3c4a;
+  }
+  table.evidence .good {
+    color: #067647;
+  }
+  table.evidence .bad {
+    color: #b42318;
+  }
+  .snippet {
+    background: #f6f6fa;
+    color: #14141e;
+  }
+  .snippet .add {
+    color: #067647;
+  }
+  .snippet .bad-add {
+    color: #b42318;
+  }
+  .snippet .ctx {
+    color: #5c5c6e;
+  }
+  .why {
+    background: #eef7fb;
+    border-color: #a8d5e5;
+    color: #11465c;
+  }
+  .tl-card {
+    padding: 12px 14px;
+  }
+  .tl-peek {
+    display: none !important;
+  }
+  .tl-body,
+  .tl-meta,
+  .tl-swatches {
+    display: block !important;
+  }
+  .tl-card[aria-expanded='false'] .tl-body,
+  .tl-card[aria-expanded='false'] .tl-meta,
+  .tl-card[aria-expanded='false'] .tl-swatches {
+    display: block !important;
+  }
+  .gallery img {
+    aspect-ratio: auto;
+    max-height: 160px;
+    object-fit: contain;
+  }
+  .figure img {
+    max-height: 280px;
+    object-fit: contain;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  a {
+    color: #4a1fb8;
+    text-decoration: none;
+  }
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: #6b6b7a;
+    word-break: break-all;
+  }
+  .brand {
+    color: #14141e;
+  }
+  .gallery,
+  .features-grid,
+  .two-col,
+  .honesty,
+  .rulefams,
+  .team-grid,
+  .problem-grid,
+  .steps,
+  .steps.four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .demo-shell {
+    border: 1px solid #d5d5de;
+  }
 }
 
 /* ---------- Honesty list ---------- */

@@ -93,7 +93,11 @@ export default function Timeline() {
                   <p className="tl-meta">{e.meta}</p>
                 </>
               ) : (
-                <p className="tl-peek">{e.body.slice(0, 84)}…</p>
+                <>
+                  <p className="tl-peek">{e.body.slice(0, 84)}…</p>
+                  <p className="tl-body tl-printonly">{e.body}</p>
+                  <p className="tl-meta tl-printonly">{e.meta}</p>
+                </>
               )}
               <span className={`tl-badge tl-badge-${e.kind}`}>{label}</span>
             </button>
