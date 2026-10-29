@@ -19,3 +19,21 @@ jobs:
       # Test-only: a11y audit, widget state machine, mobile overflow, LCP/CLS
       # against `vite preview`. Deliberately not a deploy.
       - run: npm run qa
+
+  gecko:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run site
+      # Second engine (Gecko) through Playwright's driver — the site must not
+      # depend on Blink. macOS-local Firefox is broken (see script header).
+      - run: npx playwright install firefox --no-shell
+      - run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 2
+          BROWSER=firefox node scripts/firefox-check.mjs
