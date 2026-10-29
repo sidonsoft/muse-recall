@@ -31,7 +31,7 @@ export default function Hero() {
             Try the loop
           </a>
           <a className="btn btn-ghost" href="#quickstart">
-            Try it
+            Run it locally
           </a>
         </div>
         <p className="hero-note">
@@ -39,20 +39,20 @@ export default function Hero() {
           <span className="kbd-hint"> · <kbd>⌘</kbd> <kbd>K</kbd> to jump around this page</span>
         </p>
 
-        <div className="stats hero-stats">
-          <div>
-            <b style={{ fontFamily: 'var(--mono)', fontSize: 22 }}>37/57 → 0/58</b>
+        <div className="stats hero-stats" role="list">
+          <div role="listitem">
+            <b>37/57 → 0/58</b>
             <span>runs breaking the rule, without → with memory (Muse Spark)</span>
           </div>
-          <div>
-            <b style={{ fontFamily: 'var(--mono)', fontSize: 22 }}>49/60 → 1/60</b>
+          <div role="listitem">
+            <b>49/60 → 1/60</b>
             <span>same trial on Muse Spark Open</span>
           </div>
-          <div>
+          <div role="listitem">
             <b>480</b>
             <span>pre-registered runs · exact p &lt; 10⁻¹⁹</span>
           </div>
-          <div>
+          <div role="listitem">
             <b>0/58 · 0/60</b>
             <span>same rule retyped by hand into every request</span>
           </div>

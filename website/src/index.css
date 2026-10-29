@@ -124,7 +124,7 @@ img {
   display: none;
 }
 
-@media (max-width: 719px) {
+@media (max-width: 760px) {
   .nav-menu {
     display: block;
     position: relative;
@@ -2349,8 +2349,161 @@ pre.code .hl {
   .hero-stats div {
     padding: 18px 10px;
   }
+}
+
+/* ---------- Polish pass: hierarchy, rhythm, layout fixes ---------- */
+
+/* Headings break into balanced lines; body copy avoids one-word last lines */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p,
+li,
+figcaption {
+  text-wrap: pretty;
+}
+
+.stats span {
+  text-wrap: balance;
+}
+
+/* The hero line already breaks well, and balancing would split "AI-built" */
+.hero h1 {
+  text-wrap: wrap;
+}
+
+/* `.section-head p` was overriding the kicker's size and colour */
+.section-head .kicker {
+  font-size: 12.5px;
+  color: var(--pink);
+  margin-bottom: 12px;
+}
+
+/* Anchored sections land below the sticky nav, not under it */
+section[id] {
+  scroll-margin-top: 72px;
+}
+
+/* Hero numbers share one face and size so the four cells line up */
+.hero-stats b {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+
+.hero-stats span {
+  display: block;
+  line-height: 1.45;
+}
+
+.hero-measured {
+  line-height: 1.6;
+  text-wrap: balance;
+}
+
+.section-head p + p {
+  margin-top: 10px;
+}
+
+/* Gallery: the width/height attributes were pinning images at 1000px tall */
+.gallery {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.gallery img {
+  height: auto;
+}
+
+/* Five-card grids: three on top, two below, no empty cell */
+@media screen and (min-width: 1000px) {
+  .grid-5 {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .grid-5 > * {
+    grid-column: span 2;
+  }
+
+  .grid-5 > :nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
+/* Timeline lines up with its left-aligned heading */
+.timeline {
+  margin: 0;
+}
+
+.cta-band h2 {
+  line-height: 1.15;
+}
+
+.footer-links {
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+
+/* Desktop nav: tighter gaps between 760px and 1000px so "For judges" fits */
+@media (max-width: 1000px) {
+  .nav-links {
+    gap: 16px;
+    font-size: 13.5px;
+    white-space: nowrap;
+  }
+}
+
+/* Narrow desktop: drop Timeline, which sits directly below The loop */
+@media (max-width: 900px) {
+  .nav-links a[href='#timeline'] {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero {
+    padding: 48px 0 64px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    padding: 6px 12px;
+    margin-bottom: 20px;
+  }
+
+  section.block {
+    padding: 64px 0;
+  }
+
+  .section-head {
+    margin-bottom: 36px;
+  }
+
+  .gallery {
+    grid-template-columns: 1fr;
+  }
 
   .hero-stats b {
-    font-size: 17px !important;
+    font-size: 17px;
+  }
+
+  .cta-band {
+    padding: 44px 22px;
+  }
+
+  footer {
+    padding-bottom: 56px;
+  }
+}
+
+/* Mobile nav: menu sits next to the GitHub button, not mid-bar */
+@media (max-width: 760px) {
+  .nav-menu {
+    margin-left: auto;
+    margin-right: 10px;
   }
 }

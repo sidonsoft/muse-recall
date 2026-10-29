@@ -34,6 +34,7 @@ export default function Nav() {
           <a href="#timeline">Timeline</a>
           <a href="#how">How it works</a>
           <a href="#evidence">Evidence</a>
+          <a href="#judges">For judges</a>
           <a href="#quickstart">Run it</a>
           <a className="btn btn-primary btn-sm" href={REPO} target="_blank" rel="noreferrer">
             GitHub
