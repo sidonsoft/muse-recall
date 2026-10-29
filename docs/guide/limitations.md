@@ -19,9 +19,8 @@ scope and corrections.
   does not own a container, VM or separate OS user. `--workspace` is not an OS isolation boundary.
 - The API key stays server-side and is delivered to the CLI over stdin. There is no browser provider
   path. This does not make a compromised local machine safe.
-- There is no hosted deployment. The application is not reachable at a public URL, and this
-  repository does not contain an uploaded demo-video URL. The recorded 2:50 submission cut is kept
-  outside git by policy; uploading it remains an owner action. See the
+- There is no hosted deployment. The application is not reachable at a public URL. The
+  recorded 2:50 submission cut is committed under [`docs/demo/video/`](../demo/video/). See the
   [demo note](../demo/CORRECTABLE_MEMORY_DEMO.md).
 
 ## Load-time verification limits

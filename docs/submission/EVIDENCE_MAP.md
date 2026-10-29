@@ -351,11 +351,11 @@ Phase 16 / 16B. Those claims are mapped here.
   [Phase 12A](../PHASE12_MEMORY_VALIDATION.md) evidence, one run per condition, not Phase 17.
   No new-rule detector was run, and the result is source-code only.
 
-### C22 — The focused correction demo is recorded; upload pending
+### C22 — The focused correction demo is recorded and committed
 
 - **Evidence:** the recorded cut `Muse_Recall_Demo_V21_1080p.mp4` (170.47 s, SHA-256
   `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`) and its `V21_QA.md`,
-  transcript and 36-cue SRT, held outside git; the beat-by-beat record in
+  transcript and 36-cue SRT, all in [`docs/demo/video/`](../demo/video/); the beat-by-beat record in
   [`docs/demo/CORRECTABLE_MEMORY_DEMO.md`](../demo/CORRECTABLE_MEMORY_DEMO.md) §9; the Phase 12A
   authentic stills and sources
   ([`A-v2-visible.png`](../hackathon-evidence/phase12/A-v2-visible.png),
@@ -369,8 +369,8 @@ Phase 16 / 16B. Those claims are mapped here.
   `superseded-palette`) → reject → ask for the current art direction from memory (ocean; Guard
   `NO VIOLATION DETECTED · SUPPORTED CHECKS`) → approve v2.
 - **Confidence:** high that the recorded sequence and Guard observations happened; the screen
-  recording is the record. The cut is kept out of git by policy and **not yet uploaded**, so the
-  repository does not link it.
+  recording is the record. The cut is committed under `docs/demo/video/` and linked from the
+  README.
 - **Limitations:** one live project, one application, one correction, one model configuration. The
   repeat feature request kept the old palette and the correction did not apply itself; only the
   explicit request for the current art direction produced the ocean version. That failure and
@@ -406,9 +406,9 @@ Phase 16 / 16B. Those claims are mapped here.
 1. No spontaneous model violation was flagged end-to-end: the Guard demo uses the labelled mutation.
 2. Authentic Guard observations remain n = 1 artefact; a wider corpus of Forge-generated files is
    future work.
-3. **The submission cut is recorded but not uploaded.** `Muse_Recall_Demo_V21_1080p.mp4` (2:50.47)
-   and its QA are kept out of git and are not linked from the repository; uploading and linking it
-   remain owner actions. Until then, the repository treats the earlier 2:46 video as the fallback.
+3. **The submission cut is committed, but the repository is private.** `Muse_Recall_Demo_V21_1080p.mp4`
+   (2:50.47) and its QA are in `docs/demo/video/` and linked from the README. Judges can open it only
+   once the repository is public or they are granted access; that remains an owner action.
 4. **The 2:46 video predates the correction cut.** It is a valid fallback for the review loop and
    the Phase 16 result; it does not show the explicit correction beat, and should not be described
    as if it did (C22 covers the 2:50 cut).

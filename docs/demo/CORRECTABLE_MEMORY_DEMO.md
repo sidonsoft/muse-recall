@@ -7,7 +7,8 @@ project memory connected to a reviewable software-building workflow.
 **Status:** **recorded 29 October 2026.** The cut is a continuous live screen recording
 (1920×1080, 2:50) with a visible cursor, speed-ramped generation waits, and insert cards for
 memory, Guard and evidence. The voice describes the palette by name and reads results as “one of
-sixty.” The video is kept **out of git** by policy; QA is kept alongside the video, outside git.
+sixty.” The video, captions, transcript, QA notes, poster and contact sheet are in
+[`video/`](video/).
 The pre-recording storyboard below is retained as the plan. The recorded cut added a
 repeat-request beat where Guard flags the stale palette, then a theme request that lands ocean.
 
@@ -259,13 +260,15 @@ it did.
 
 ## 9. Recorded cut (29 October 2026)
 
-**File:** `Muse_Recall_Demo_V21_1080p.mp4` (the V21 cut). Kept out of git by policy and not
-linked from the repository; **upload pending**.
+**File:** [`video/Muse_Recall_Demo_V21_1080p.mp4`](video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
+(the V21 cut).
 **Duration:** 170.47 s (2:50.47) · 1920×1080 · 30 fps · H.264/AAC. **Voice:** ElevenLabs George;
 377 words.
 **SHA-256:** `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308` · 12,721,832 bytes.
 **Captions:** sidecar `Muse_Recall_Demo_V21.srt`, 36 cues; burned in. **QA:** `V21_QA.md`,
-contact sheet and poster are kept alongside the video, outside git.
+[`video/V21_QA.md`](video/V21_QA.md), with the
+[contact sheet](video/Muse_Recall_Demo_V21_Contact_Sheet.jpg),
+[poster](video/Muse_Recall_Demo_V21_Poster.jpg) and [limits card](video/V21_Limits_Page.png).
 
 | Approx. time | Beat |
 |---|---|

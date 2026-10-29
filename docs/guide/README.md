@@ -64,9 +64,9 @@ review the resulting job. This residual behavior is recorded as F6 in the
 - **Provider support is narrow.** The shipped providers are the Meta Muse Code CLI (`muse-cli`) and
   a deterministic offline `echo` provider. Muse Spark Open on Baseten was used for research; the
   application does not call it, and arbitrary provider support is not implemented.
-- **No hosted URL is maintained here.** The application is not deployed and this repository does
-  not contain an uploaded demo-video URL. The recorded submission cut is kept outside git; its
-  upload is an owner action.
+- **No hosted URL is maintained here.** The application is not deployed. The recorded submission
+  cut is committed under
+  [`docs/demo/video/`](../demo/video/).
 
 ## Related references
 

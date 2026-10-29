@@ -42,8 +42,8 @@ Because the Official Rules were unavailable, this checklist marks visibility and
       exact-p correction and `pnpm verify:research17`
 - [x] Earlier cut (Ocean Pairs, 2:46) produced and QA'd; README and submission copy state
       that it predates the explicit-correction cut
-- [x] Submission cut recorded from a live Muse Spark session (2:50, 1920×1080) and QA'd; kept out
-      of git by policy, QA kept alongside the video outside git; README and copy describe it
+- [x] Submission cut recorded from a live Muse Spark session (2:50, 1920×1080) and QA'd; committed
+      with its QA, captions and transcript under `docs/demo/video/`; README and copy describe it
       accurately, including the failure beat
 - [x] Focused correction storyboard and narration prepared, then recorded as the 2:50 cut:
       [`docs/demo/CORRECTABLE_MEMORY_DEMO.md`](demo/CORRECTABLE_MEMORY_DEMO.md)
@@ -51,7 +51,7 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] Cross-origin state-mutation guard with regression tests and browser reproduction
 - [x] No feature work beyond the approved scope
 - [ ] Repository visibility confirmed against the rules **(owner)**
-- [ ] Demo video uploaded, and its link added to the README **(owner)**
+- [x] Demo video committed under `docs/demo/video/` and linked from the README
 - [ ] Submission form completed on the platform **(owner)**
 - [ ] Official Rules accepted if required **(owner)**
 
@@ -61,9 +61,11 @@ Because the Official Rules were unavailable, this checklist marks visibility and
    required disclosures.
 2. If judges must open the repository, make `sidonsoft/muse-recall` public or grant access.
    Nothing else in the project depends on visibility.
-3. Upload the submission cut `Muse_Recall_Demo_V21_1080p.mp4` (2:50.47, SHA-256
-   `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`, 36-cue SRT sidecar) and
-   add the link where the README's opening section marks it. If that cut is not approved, upload
+3. The submission cut `Muse_Recall_Demo_V21_1080p.mp4` (2:50.47, SHA-256
+   `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`, 36-cue SRT sidecar) is
+   committed under `docs/demo/video/` and linked from the README's opening section. If the form
+   needs a video URL, use its GitHub link once the repository is public, or upload it to a video
+   host. If that cut is not approved, upload
    the 2:46 video instead and keep the README's fallback wording. Describe whichever cut is
    uploaded accurately: the 2:50 cut includes the correction and its failure beat; the 2:46 cut
    does not show an explicit correction.

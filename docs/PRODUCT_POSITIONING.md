@@ -235,7 +235,7 @@ no prediction about the outcome.
 | Runtime verification proves gameplay or pixel correctness. | **No** | Load-time only: page/console errors, blank render, canvas when Phaser is used. |
 | Exported HTML is self-contained. | **Not necessarily** | Download preserves the artifact; a CDN reference still needs network. |
 | The app supports arbitrary providers in production. | **No** | Only Muse Code CLI and deterministic `echo`; independence is a direction. |
-| The 2:46 cut shows the explicit correction. | **No** | It shows the stored rule, refusal, fit, approval and rollback. The 2:50 cut shows the correction but is kept out of git and not yet uploaded. |
+| The 2:46 cut shows the explicit correction. | **No** | It shows the stored rule, refusal, fit, approval and rollback. The 2:50 cut shows the correction; it is in `docs/demo/video/`. |
 
 ---
 

@@ -385,4 +385,4 @@ The branch is not merged, not force-pushed, and the submission has not been made
 | Before/after frames, three viewports | [ux-evidence/README.md](ux-evidence/README.md) |
 | Capture script | `pnpm evidence:ux` (`scripts/ux-evidence.ts`) |
 | Audit comparison set | [assets/ux-audit/](assets/ux-audit/) |
-| Recorded demo cut (V21, 2:50; upload pending) | [demo/CORRECTABLE_MEMORY_DEMO.md](demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026) |
+| Recorded demo cut (V21, 2:50; in `docs/demo/video/`) | [demo/CORRECTABLE_MEMORY_DEMO.md](demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026) |

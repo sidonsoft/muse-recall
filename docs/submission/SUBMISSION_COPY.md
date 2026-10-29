@@ -184,8 +184,8 @@ Vitest, and reproducible evidence scripts.
   untested tasks.
 - The submission cut (2:50, recorded 29 October 2026) shows the correction sequence, including the
   failure beat: the repeat request kept the old sunset palette and Guard flagged it, and only the
-  explicit request for the current art direction produced the ocean version. It is kept out of git
-  by policy and is not yet uploaded. The earlier 2:46 video, retained as the fallback, has
+  explicit request for the current art direction produced the ocean version. It is committed
+  under `docs/demo/video/`. The earlier 2:46 video, retained as the fallback, has
   no explicit correction beat.
 - Provider independence is an **architectural direction, not a shipped capability**. The server has
   a `ModelProvider` boundary, but only the Muse Code CLI and the deterministic offline `echo`
@@ -226,5 +226,5 @@ verifier; the earlier Phase 16 / 16B trials; and the Phase 15B trial with both c
 **Future work (do not read as demonstrated):** automatic enforcement, comprehensive compliance,
 gameplay or interaction verification, verified self-contained export, multi-user deployment,
 arbitrary-provider or production open-model support, and evaluation across many tasks, games or
-models. The 2:50 submission cut is recorded and kept out of git; uploading it is still pending.
+models. The 2:50 submission cut is in `docs/demo/video/`.
 The earlier 2:46 video is not that cut.
