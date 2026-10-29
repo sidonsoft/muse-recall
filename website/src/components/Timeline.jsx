@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Icon from './Icon.jsx';
 
 // Reconstructed verbatim from the seeded demo project (scripts/lib/demo-seed.ts):
 // decision texts are the Phase 12A trial texts, and the version record is the
@@ -51,10 +52,10 @@ const EVENTS = [
 ];
 
 const KIND_LABEL = {
-  store: ['🪪', 'stored'],
-  approve: ['✓', 'approved'],
-  correct: ['🔀', 'corrected'],
-  retrieve: ['🔍', 'retrieved'],
+  store: ['idcard', 'stored'],
+  approve: ['check', 'approved'],
+  correct: ['shuffle', 'corrected'],
+  retrieve: ['search', 'retrieved'],
 };
 
 export default function Timeline() {
@@ -67,7 +68,7 @@ export default function Timeline() {
         return (
           <div className={`tl-item tl-${e.kind}`} key={e.title}>
             <div className="tl-dot" aria-hidden="true">
-              {icon}
+              <Icon name={icon} />
             </div>
             <button
               className="tl-card"

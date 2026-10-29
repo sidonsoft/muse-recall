@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import Icon from './Icon.jsx';
 
 export default function Lightbox({ shots, index, onClose, onMove }) {
   const closeRef = useRef(null);
@@ -35,16 +36,16 @@ export default function Lightbox({ shots, index, onClose, onMove }) {
           <b>{s.t}</b> {s.c}
         </figcaption>
         <div className="lb-bar">
-          <button onClick={() => onMove(-1)} aria-label="Previous screenshot">←</button>
+          <button onClick={() => onMove(-1)} aria-label="Previous screenshot"><Icon name="left" /></button>
           <span className="lb-count">{index + 1} / {shots.length}</span>
-          <button onClick={() => onMove(1)} aria-label="Next screenshot">→</button>
+          <button onClick={() => onMove(1)} aria-label="Next screenshot"><Icon name="right" /></button>
           <button
             className="lb-close"
             ref={closeRef}
             onClick={onClose}
             aria-label="Close viewer (Escape)"
           >
-            ✕ Esc
+            <Icon name="x" /> Esc
           </button>
         </div>
       </figure>

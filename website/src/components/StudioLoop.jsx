@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DECISION_OLD, DECISION_NEW, REQUEST, SNIPPETS, guardFor } from '../loopData.js';
+import Icon from './Icon.jsx';
 
 const WHY = {
   supplied:
@@ -94,7 +95,7 @@ export default function StudioLoop() {
           </div>
           <div className="guard-panel">
             <div className="head">
-              <span aria-hidden="true">🛡</span> Decision Guard — {guard.status}
+              <Icon name="shield" /> Decision Guard — {guard.status}
             </div>
             {guard.findings.map(([f, cite]) => (
               <div className="finding" key={f}>
@@ -105,7 +106,7 @@ export default function StudioLoop() {
               </div>
             ))}
             {guard.findings.length === 0 && (
-              <div className="finding clear">✓ no supported-pattern conflicts</div>
+              <div className="finding clear"><Icon name="check" /> no supported-pattern conflicts</div>
             )}
             <p className="advisory-note">{guard.note}</p>
           </div>

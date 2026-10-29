@@ -1636,18 +1636,27 @@ pre.code .hl {
 }
 
 .col-card .proof li::before {
-  content: '✓';
+  content: '';
   position: absolute;
   left: 0;
-  color: var(--green);
-  font-weight: 700;
+  top: 0.3em;
+  width: 14px;
+  height: 14px;
+  background: var(--green);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .col-card .future li::before {
-  content: '○';
+  content: '';
   position: absolute;
   left: 0;
-  color: var(--amber);
+  top: 0.3em;
+  width: 14px;
+  height: 14px;
+  background: var(--amber);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5'%3E%3Ccircle cx='12' cy='12' r='7'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5'%3E%3Ccircle cx='12' cy='12' r='7'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 /* ---------- Memory timeline ---------- */
@@ -2506,4 +2515,79 @@ section[id] {
     margin-left: auto;
     margin-right: 10px;
   }
+}
+
+/* ---------- Inline SVG icons (replace emoji) ---------- */
+.ico {
+  display: inline-block;
+  flex: none;
+  vertical-align: -0.14em;
+}
+
+.problem-card .emoji {
+  color: var(--pink);
+  font-size: 26px;
+}
+
+.problem-card .emoji .ico {
+  display: block;
+}
+
+.feature .icon {
+  color: #d6c8ff;
+  font-size: 22px;
+}
+
+.rulefam .icon {
+  color: var(--amber);
+}
+
+.tl-dot {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.tl-approve .tl-dot {
+  color: var(--green);
+}
+
+.tl-correct .tl-dot {
+  color: var(--pink);
+}
+
+.tl-retrieve .tl-dot {
+  color: var(--cyan);
+}
+
+.tl-store .tl-dot {
+  color: #c4b5fd;
+}
+
+.step .arrow .ico,
+.engine-stage .arrow .ico {
+  display: block;
+}
+
+.guard-panel .head .ico {
+  color: var(--cyan);
+  margin-right: 4px;
+}
+
+.finding.clear .ico,
+.done-h .ico {
+  color: var(--green);
+}
+
+.future-h .ico {
+  color: var(--amber);
+}
+
+.copy-btn .ico,
+.lb-close .ico {
+  margin-right: 3px;
+}
+
+.palette .ext .ico {
+  margin-left: 6px;
+  font-size: 12px;
 }

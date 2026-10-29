@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 
@@ -84,7 +85,7 @@ export default function CommandPalette() {
             <li key={label}>
               <button onClick={() => go(href)}>
                 {label}
-                {href.startsWith('http') && <span className="ext">↗</span>}
+                {href.startsWith('http') && <span className="ext"><Icon name="external" /></span>}
               </button>
             </li>
           ))}
