@@ -3,9 +3,9 @@ import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
-import { Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, SiteVerified, CTA, Footer } from './components/Sections.jsx';
+import { Watch, Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, SiteVerified, CTA, Footer } from './components/Sections.jsx';
 
-const WATCH = ['loop', 'timeline', 'how', 'evidence', 'quickstart'];
+const WATCH = ['watch', 'loop', 'timeline', 'how', 'evidence', 'quickstart'];
 
 export default function App() {
   useEffect(() => {
@@ -57,6 +57,7 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
+        <Watch />
         <section className="block" id="loop" style={{ paddingTop: 40 }}>
           <div className="container">
             <div className="section-head center">

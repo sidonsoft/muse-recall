@@ -264,6 +264,19 @@ try {
   const r404 = await fetch(URL_ + '404.html');
   const body404 = await r404.text();
   check('404 fallback redirects to app root', r404.status === 200 && body404.includes('Redirecting') && body404.includes('muse-recall-website'), `status=${r404.status}`);
+  const vid = await evalJS(`(() => {
+    const v = document.querySelector("#watch video");
+    if (!v) return null;
+    return { src: v.querySelector("source")?.getAttribute("src"), poster: v.getAttribute("poster"), track: v.querySelector("track")?.getAttribute("src"), controls: v.controls };
+  })()`);
+  const vidOk = [];
+  if (vid) {
+    for (const u of [vid.src, vid.poster, vid.track]) {
+      const r = await fetch(URL_ + u.replace(/^\.\//, ''), { headers: { Range: 'bytes=0-1023' } });
+      vidOk.push(r.status === 200 || r.status === 206);
+    }
+  }
+  check('demo video, poster and captions reachable', !!vid && vid.controls && vidOk.length === 3 && vidOk.every(Boolean), JSON.stringify({ vid, vidOk }));
   const manifest = await (await fetch(URL_ + 'site.webmanifest')).json();
   const iconOk = await Promise.all(
     manifest.icons.map(async (i) => (await fetch(new URL(i.src, URL_))).ok)

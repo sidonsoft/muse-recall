@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 
 const COMMANDS = [
+  ['Watch the demo video', '#watch'],
   ['The interactive loop', '#loop'],
   ['How it works', '#how'],
   ['Memory timeline', '#timeline'],
