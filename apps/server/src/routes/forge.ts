@@ -69,7 +69,8 @@ export function registerForgeRoutes(
   app.get('/api/forge/projects/:id', async (request, reply) => {
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
-      await workspace.ensureProject(id);
+      // Reads are side-effect free. A missing project renders as an empty view;
+      // only POST/create/generate paths initialise the workspace.
       return envelope(await projectView(id));
     });
   });
@@ -205,6 +206,17 @@ export function registerForgeRoutes(
         html = await workspace.currentHtml(id);
         if (html === null) return notFound(reply, 'No approved HTML yet.');
         sha256 = createHash('sha256').update(html, 'utf8').digest('hex');
+        // Compare the bytes actually served with the hash recorded for this
+        // version; a changed file must not be presented as approved source.
+        const recorded = state.versions.find(
+          (entry) => entry.version === state.current_version,
+        )?.sha256;
+        if (recorded && recorded !== sha256) {
+          throw new ForgeError(
+            'version_corrupt',
+            `v${String(state.current_version)} no longer matches its recorded hash.`,
+          );
+        }
       }
 
       return envelope(

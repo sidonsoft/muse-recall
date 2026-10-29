@@ -18,7 +18,7 @@ product.
 | T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app) |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
 | T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; no OS-level sandbox owned by this app |
-| T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job writes, schema validation, explicit recovery issues, no silent state reset |
+| T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job and version promotion, schema validation, explicit recovery issues, no silent state reset, verified version hashes |
 | T10 | A restart silently re-runs an unfinished model job or promotes unreviewed bytes | Duplicate spend / unreviewed publish | **Mitigated**: queued/running jobs become `interrupted`; approval still requires exact-byte SHA-256 and runtime verification |
 
 ## Memory as untrusted data
@@ -78,10 +78,21 @@ scope for the single-user local beta.
   `interrupted` with an explicit error; they are never resumed automatically.
 - A malformed job record produces a recovery issue and is left in place. Other jobs in
   the project still load. A malformed `state.json` raises `state_corrupt`; it is not
-  replaced with an empty project.
+  replaced with an empty project. A missing `state.json` is only initialised for an empty
+  project: existing `versions/` or `jobs/` records raise an explicit error instead of
+  being orphaned by empty state.
+- Project reads are side-effect free. `GET` never creates directories or initialises
+  `state.json`; only project creation and generation paths do.
+- The approved file is verified against its recorded SHA-256 whenever it is read for
+  serving, preview, diff, modification, rollback, or promotion. A mismatch raises
+  `version_corrupt` instead of serving or building on the changed bytes.
 - Completed-but-unapplied jobs keep their staged bytes, so review can continue after a
   restart. Approval re-snapshots the bytes, runs the runtime check, and promotes only the
   matching SHA-256.
+- Promotion stages the immutable copy in a temporary version directory, verifies it, and
+  renames it into place. An interrupted promotion can leave an unreferenced version
+  directory; the next retry moves it aside to a non-numeric `.orphaned-*` name instead of
+  deleting it, so a crash does not block approval and no version bytes are lost.
 - A crash between promotion and the job-record write is reconciled from the version's
   recorded `job_id`.
 - Graceful shutdown stops new starts, marks active jobs cancelled, signals owned children

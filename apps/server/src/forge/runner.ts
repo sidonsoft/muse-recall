@@ -1029,6 +1029,7 @@ export class ForgeJobManager {
         ...(staged ? { expectedSha256: staged.sha256 } : {}),
         verification: approvalVerification,
       });
+      if (promoted.note) this.log(current, promoted.note);
 
       const approved = ForgeJobSchema.parse({
         ...current,

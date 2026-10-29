@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1206,6 +1206,211 @@ describe('forge workflow', () => {
       scope: 'healthy',
       error: null,
     });
+  });
+
+  it('serves an empty project view on GET without writing to disk', async () => {
+    const h = await harness();
+    const before = await readdir(h.root);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await h.app.inject({
+        method: 'GET',
+        url: '/api/forge/projects/never-created',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().data.state).toMatchObject({
+        project_id: 'never-created',
+        current_version: null,
+        versions: [],
+        can_rollback: false,
+      });
+    }
+
+    expect(await readdir(h.root)).toEqual(before);
+    await expect(readdir(join(h.root, 'forge'))).rejects.toMatchObject({ code: 'ENOENT' });
+
+    // Creation is still an explicit POST, which initialises the workspace.
+    expect((await createProject(h.app, 'never-created')).statusCode).toBe(200);
+    expect(await readdir(join(h.root, 'forge'))).toContain('never-created');
+  });
+
+  it('refuses to initialise state over existing version or job data', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const projectDir = join(h.root, 'forge', 'demo-game');
+    const statePath = join(projectDir, 'state.json');
+    const versionFile = join(projectDir, 'versions', '1', 'index.html');
+    await rm(statePath);
+    await mkdir(join(projectDir, 'versions', '1'), { recursive: true });
+    await writeFile(versionFile, 'orphaned version bytes', 'utf8');
+
+    const read = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(read.statusCode).toBe(500);
+    expect(read.json().error.code).toBe('state_corrupt');
+    expect(read.json().error.message).toMatch(/state\.json/);
+    expect(read.json().error.issues.join(' ')).toMatch(/versions\//);
+
+    const generate = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/generate',
+      payload: { prompt: 'A small application that must not reach a model.' },
+    });
+    expect(generate.statusCode).toBe(500);
+    expect(generate.json().error.code).toBe('state_corrupt');
+    expect(h.manager.list('demo-game')).toEqual([]);
+    await expect(readFile(statePath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await readFile(versionFile, 'utf8')).toBe('orphaned version bytes');
+
+    await rm(join(projectDir, 'versions'), { recursive: true, force: true });
+    await writeFile(join(projectDir, 'jobs', '11111111-1111-4111-8111-111111111111.json'), '{}');
+    const created = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects',
+      payload: { project_id: 'demo-game', name: 'Demo Game' },
+    });
+    expect(created.statusCode).toBe(500);
+    expect(created.json().error.code).toBe('state_corrupt');
+    expect(created.json().error.issues.join(' ')).toMatch(/jobs\//);
+    await expect(readFile(statePath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('refuses to serve or build on an approved version whose hash no longer matches', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    const approved = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approved.statusCode).toBe(200);
+
+    const modified = await startModify(h.app);
+    await waitForFinish(h.app, modified);
+
+    const versionFile = join(h.root, 'forge', 'demo-game', 'versions', '1', 'index.html');
+    await writeFile(
+      versionFile,
+      '<!doctype html><html><body><p>tampered</p></body></html>',
+      'utf8',
+    );
+
+    const artifact = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/demo-game/artifact',
+    });
+    expect(artifact.statusCode).toBe(409);
+    expect(artifact.json().error.code).toBe('version_corrupt');
+
+    const previewResponse = await preview(h.app);
+    expect(previewResponse.statusCode).toBe(409);
+    expect(previewResponse.json().error.code).toBe('version_corrupt');
+
+    const jobsBefore = h.manager.list('demo-game').length;
+    const modify = await h.app.inject({
+      method: 'POST',
+      url: '/api/forge/projects/demo-game/modify',
+      payload: { request: 'Make the cards larger.' },
+    });
+    expect(modify.statusCode).toBe(409);
+    expect(modify.json().error.code).toBe('version_corrupt');
+    expect(h.manager.list('demo-game')).toHaveLength(jobsBefore);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('version_corrupt');
+
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBe(1);
+  });
+
+  it('moves an interrupted promotion directory aside when a retry succeeds', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const modified = await startModify(h.app);
+    await waitForFinish(h.app, modified);
+
+    const versionsDir = join(h.root, 'forge', 'demo-game', 'versions');
+    const orphan = join(versionsDir, '2');
+    const staleBytes =
+      '<!doctype html><html><body><p>stale interrupted promotion</p></body></html>';
+    await mkdir(orphan, { recursive: true });
+    await writeFile(join(orphan, 'index.html'), staleBytes, 'utf8');
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(200);
+    expect(approve.json().data.state.current_version).toBe(2);
+    expect(approve.json().data.job.logs.join('\n')).toMatch(
+      /Moved an interrupted promotion directory/,
+    );
+
+    const files = await readdir(versionsDir);
+    expect(files).toContain('1');
+    expect(files).toContain('2');
+    expect(files.some((name) => name.startsWith('.promote-'))).toBe(false);
+    const aside = files.find((name) => name.startsWith('.orphaned-2-'));
+    expect(aside).toBeDefined();
+    expect(await readFile(join(versionsDir, aside as string, 'index.html'), 'utf8')).toBe(
+      staleBytes,
+    );
+
+    const promoted = await readFile(join(versionsDir, '2', 'index.html'), 'utf8');
+    expect(promoted).toContain("CHANGE_MARKER = 'v2'");
+    expect(promoted).not.toContain('stale interrupted promotion');
+  });
+
+  it('never deletes an unreferenced newer version directory during promotion', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+    await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+
+    const modified = await startModify(h.app);
+    await waitForFinish(h.app, modified);
+
+    const versionsDir = join(h.root, 'forge', 'demo-game', 'versions');
+    const newer = join(versionsDir, '3');
+    const newerBytes = '<!doctype html><html><body><p>approved content v3</p></body></html>';
+    await mkdir(newer, { recursive: true });
+    await writeFile(join(newer, 'index.html'), newerBytes, 'utf8');
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${modified}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(200);
+    expect(approve.json().data.state.current_version).toBe(2);
+    expect(
+      approve.json().data.state.versions.map((entry: { version: number }) => entry.version),
+    ).toEqual([1, 2]);
+
+    expect(await readFile(join(newer, 'index.html'), 'utf8')).toBe(newerBytes);
+    const files = await readdir(versionsDir);
+    expect(files).toContain('3');
+    expect(files.some((name) => name.startsWith('.orphaned-'))).toBe(false);
   });
 
   it('surfaces a corrupt state file instead of presenting an empty project', async () => {
