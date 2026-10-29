@@ -38,6 +38,14 @@ Open) — about as well as retyping the rule by hand, without the retyping.
 
 ### Try it
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/sidonsoft/muse-recall?quickstart=1)
+
+**In the browser, no install:** click the badge above. The codespace installs, seeds the
+demo project and opens the app on the offline provider in a few minutes; no Muse account
+or key is needed ([what to expect](.devcontainer/README.md)).
+
+**Locally:**
+
 ```bash
 git clone https://github.com/sidonsoft/muse-recall.git muse-recall && cd muse-recall
 pnpm install
