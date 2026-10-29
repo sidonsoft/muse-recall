@@ -13,7 +13,7 @@
  * Requirements:
  *   - API and web dev servers running; the web client proxies /api.
  *   - The server should use the deterministic fixture:
- *       FORGE_MUSE_BIN=tests/fixtures/fake-muse.mjs
+ *       FORGE_MUSE_BIN="$PWD/tests/fixtures/fake-muse.mjs"   (absolute: the server runs in apps/server)
  *       FAKE_MUSE_MODE=app
  *     (no paid inference, no network, no live Muse call)
  *

@@ -2,7 +2,7 @@
 
 ### Correctable project memory for AI-built software.
 
-_Interactive landing page: **[sidonsoft/muse-recall-website](https://github.com/sidonsoft/muse-recall-website)** (the hosted URL goes live with one Pages toggle)._
+_Interactive landing page: **[sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/)** ([source](https://github.com/sidonsoft/muse-recall-website))._
 
 AI app builders forget. A new session starts from zero, a change quietly drops an earlier
 decision, and an old preference keeps coming back after you change your mind.
@@ -75,7 +75,7 @@ architecture and limitations.
 | | |
 | --- | --- |
 | **Demo video** (2:50, 1080p, recorded 29 October 2026) | One continuous live Muse Spark session (with insert cards for evidence and limits), a visible cursor and speed-ramped generation waits. Save a sunset constraint, generate and approve v1; request a change in a new session and reject it; correct the decision to ocean; request the same change again and reject it when Guard flags the reintroduced sunset palette; then ask for the project's current art direction from memory and approve v2. Guard is advisory throughout and never blocks approval. The video, captions, transcript and QA are in [`docs/demo/video/`](docs/demo/video/); the storyboard, live outcomes, limits and honest failure beat are in [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md). |
-| **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat**; it is the fallback if the 2:50 cut is not published. |
+| **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat** and is kept for the record; the 2:50 cut above is the submission video. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
 | **Engineering** | `pnpm verify` runs lint, typecheck and 728 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
@@ -297,9 +297,9 @@ default.
 > refreshed README, screenshots and user guide (PRs #11, #12 and #14), the committed 2:50 demo
 > video (PR #15) and a one-click Codespaces environment (PR #17). The tags `submission-v14`,
 > `submission-v15` and `phase17-preregistration` remain frozen. The application is local-only
-> and not deployed; the [project website](https://sidonsoft.github.io/muse-recall-website/) is a static landing page. The hackathon
-> submission has not been sent: making the repository public and completing the form are the
-> remaining owner actions. See the [submission checklist](docs/SUBMISSION_CHECKLIST.md) and the
+> and not deployed; the [project website](https://sidonsoft.github.io/muse-recall-website/) is a static landing page. The repository
+> is public (29 October 2026). The hackathon submission has not been sent: completing the form is
+> the remaining owner action. See the [submission checklist](docs/SUBMISSION_CHECKLIST.md) and the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
 
 | Area | Phase | State |
@@ -347,13 +347,14 @@ default.
 | User guide (`docs/guide/`) and refreshed README captures | docs | **Merged to `main`** via PRs #11, #12 and #14 |
 | One-click Codespaces environment for judges (offline provider) | docs | **Merged to `main` via PR #17**; generation still needs the Muse CLI |
 | Project website (static landing page with the 2:50 video) | website | **Published** at [sidonsoft.github.io/muse-recall-website](https://sidonsoft.github.io/muse-recall-website/) |
-| Make the repository public and submit the form | — | **Owner action pending**; not performed |
+| Make the repository public | — | **Done** 29 October 2026 |
+| Submit the hackathon form | — | **Owner action pending**; not performed |
 | Post-hackathon local-beta hardening | hardening | **Merged to `main` via PR #1** (branch tip `5bd287a`; merge `12918fd`) |
 | Phase 17 results and review disposition | 17 | **Merged to `main` via PR #2** (`53389a7`) |
 | Phase 17 documentation citations | 17 | **Merged to `main` via PR #3** (`36fe700`) |
 
-The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
-silently overstate itself.
+The UI's **System** screen reads its module states (memory engine, agent runtime, Muse
+integration and so on) from `GET /api/meta` rather than hard-coding them.
 
 ### Evidence classes
 

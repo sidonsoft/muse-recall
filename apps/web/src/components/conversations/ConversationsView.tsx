@@ -4,7 +4,6 @@ import type {
   Project,
   RetrievalMetadata,
   RetrievedMemory,
-  ServiceMeta,
   Session,
   SessionDetail,
   ToolCall,
@@ -26,7 +25,7 @@ import { MessageBubble } from './MessageBubble.tsx';
  * into another one. Every assistant turn shows what the application retrieved
  * for it, and the composer can turn memory capture off entirely.
  */
-export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
+export function ConversationsView() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -692,7 +691,7 @@ export function ConversationsView({ meta }: { meta: ServiceMeta | null }) {
                 }
               }}
               rows={2}
-              maxLength={meta?.phase ? 16_000 : 16_000}
+              maxLength={16_000}
               placeholder={
                 activeSession?.status === 'archived'
                   ? 'This conversation is archived — unarchive it to continue.'

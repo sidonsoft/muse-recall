@@ -406,7 +406,8 @@ Phase 16 / 16B. Those claims are mapped here.
 1. No spontaneous model violation was flagged end-to-end: the Guard demo uses the labelled mutation.
 2. Authentic Guard observations remain n = 1 artefact; a wider corpus of Forge-generated files is
    future work.
-3. **The submission cut is committed, but the repository is private.** `Muse_Recall_Demo_V21_1080p.mp4`
+3. **Resolved 29 October 2026: the repository is now public.** The note below is kept as written.
+   **The submission cut is committed, but the repository is private.** `Muse_Recall_Demo_V21_1080p.mp4`
    (2:50.47) and its QA are in `docs/demo/video/` and linked from the README. Judges can open it only
    once the repository is public or they are granted access; that remains an owner action. The
    same cut also plays on the public [project website](https://sidonsoft.github.io/muse-recall-website/).

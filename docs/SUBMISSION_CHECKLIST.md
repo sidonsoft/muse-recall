@@ -50,7 +50,7 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] Live FocusFlow generation, modification and refusal evidence preserved
 - [x] Cross-origin state-mutation guard with regression tests and browser reproduction
 - [x] No feature work beyond the approved scope
-- [ ] Repository visibility confirmed against the rules **(owner)**
+- [x] Repository made public on 29 October 2026 (still confirm against the Official Rules) **(owner)**
 - [x] Demo video committed under `docs/demo/video/` and linked from the README
 - [x] User guide published under [`docs/guide/`](guide/README.md) and linked from the README
 - [x] One-click Codespaces environment for judges (offline provider, seeded demo) under
@@ -64,12 +64,12 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 
 1. Read the Official Rules on the submission platform; confirm visibility, video length, and
    required disclosures.
-2. If judges must open the repository, make `sidonsoft/muse-recall` public or grant access.
-   Nothing else in the project depends on visibility.
+2. Done 29 October 2026: `sidonsoft/muse-recall` is public, so judges can open the repository,
+   the committed video and the evidence without being granted access.
 3. The submission cut `Muse_Recall_Demo_V21_1080p.mp4` (2:50.47, SHA-256
    `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`, 36-cue SRT sidecar) is
    committed under `docs/demo/video/` and linked from the README's opening section. If the form
-   needs a video URL, use its GitHub link once the repository is public, the
+   needs a video URL, use its GitHub link (the repository is public), the
    [project website](https://sidonsoft.github.io/muse-recall-website/) (which plays the same cut and is reachable now), or upload it to a
    video host. If that cut is not approved, upload
    the 2:46 video instead and keep the README's fallback wording. Describe whichever cut is

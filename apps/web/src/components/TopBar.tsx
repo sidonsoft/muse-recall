@@ -40,7 +40,7 @@ export function TopBar({
           : 'idle';
 
   return (
-    <header className="flex h-[58px] shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-line bg-surface/70 px-4 backdrop-blur md:px-5">
+    <header className="flex min-h-[58px] shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-line bg-surface/70 px-4 py-2 backdrop-blur md:px-5">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           className="flex size-8 shrink-0 items-center justify-center rounded-[9px] border border-accent/35 bg-accent/10 text-accent"
@@ -69,7 +69,7 @@ export function TopBar({
 
       <nav
         aria-label="Primary"
-        className="order-3 flex w-full items-center gap-0.5 md:order-none md:w-auto"
+        className="order-3 flex w-full items-center gap-0.5 overflow-x-auto md:order-none md:w-auto"
       >
         {VIEWS.map((view) => {
           const active = view.id === current;
@@ -79,7 +79,7 @@ export function TopBar({
               type="button"
               onClick={() => onSelect(view.id)}
               aria-current={active ? 'page' : undefined}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[12.5px] font-medium transition-colors ${
                 active
                   ? 'bg-surface-2 text-ink shadow-[inset_0_0_0_1px_var(--color-line)]'
                   : 'text-muted hover:bg-surface-2/60 hover:text-ink-dim'

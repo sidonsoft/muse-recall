@@ -130,7 +130,7 @@ export function App() {
                   onFocusHandled={() => setMemoryFocus(null)}
                 />
               ) : null}
-              {view === 'conversations' ? <ConversationsView meta={meta} /> : null}
+              {view === 'conversations' ? <ConversationsView /> : null}
               {view === 'system' ? (
                 <Overview
                   health={health}
