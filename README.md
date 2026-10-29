@@ -46,6 +46,8 @@ MODEL_PROVIDER=echo pnpm dev    # no Muse account needed; open http://127.0.0.1:
 Without Muse, the offline provider lets you browse the seeded project: the app, its
 memory and provenance, the retrieval explanation, Decision Guard and version history.
 Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickstart).
+The [user guide](docs/guide/README.md) walks through setup, project memory, HTML Studio,
+architecture and limitations.
 
 ---
 
