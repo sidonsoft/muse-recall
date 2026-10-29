@@ -128,6 +128,7 @@ try {
         violation: s.includes("reintroduced patterns"),
         allowed: s.includes("allowed again"),
         states: [...document.querySelectorAll(".decision-card .state")].map((x) => x.textContent.trim()).sort().join(","),
+        why: document.querySelector(".why")?.textContent?.slice(0, 90) || "",
       };
     })()`);
   const s1 = await state();
@@ -142,6 +143,8 @@ try {
   await sleep(500);
   const s3 = await state();
   check('state: corrected → restriction released, superseded audit kept', s3.findings === '0 findings' && s3.allowed && s3.states === 'active,superseded', JSON.stringify(s3));
+  const whys = new Set([s1.why, s2.why, s3.why]);
+  check('explanation panel updates per state', whys.size === 3 && ![s1, s2, s3].some((s) => !s.why), `${whys.size} distinct explanations`);
 
   // 3. mobile overflow
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });

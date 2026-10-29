@@ -1723,6 +1723,38 @@ pre.code .hl {
   }
 }
 
+/* ---------- Loop guide + why panel ---------- */
+.guide {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.guide li {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--surface);
+}
+
+.why {
+  margin-top: 14px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(34, 211, 238, 0.07);
+  border-radius: 12px;
+  padding: 12px 15px;
+  font-size: 13.5px;
+  color: #a5f3fc;
+  animation: rise 0.3s ease both;
+}
+
 /* ---------- Command palette ---------- */
 .palette-backdrop {
   position: fixed;

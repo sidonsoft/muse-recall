@@ -68,6 +68,7 @@ export default function CommandPalette() {
         <input
           ref={inputRef}
           value={q}
+          aria-label="Filter site sections"
           placeholder="Jump to a section… (Enter opens the first)"
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {

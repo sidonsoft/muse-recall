@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { DECISION_OLD, DECISION_NEW, REQUEST, SNIPPETS, guardFor } from '../loopData.js';
 
+const WHY = {
+  supplied:
+    'Why it matters: the remembered rule survives a brand-new session — you never restate the constraint, and the violation rate collapses (37/57 → 0/58 in Phase 17).',
+  off: 'Why it matters: this is the “no memory” arm — the model cannot know what you already decided, so old constraints silently return (49/60 violations on Muse Spark Open without memory).',
+  corrected:
+    'Why it matters: one transaction retires the old rule — the audit trail stays, but the superseded restriction stops constraining new work.',
+};
+
 export default function StudioLoop() {
   const [memoryOn, setMemoryOn] = useState(true);
   const [corrected, setCorrected] = useState(false);
@@ -18,6 +26,11 @@ export default function StudioLoop() {
       </div>
       <div className="loop-grid">
         <div className="loop-side">
+          <ol className="guide" aria-label="Guided tour">
+            <li>1 · flip a switch</li>
+            <li>2 · read the staged diff</li>
+            <li>3 · check the Guard</li>
+          </ol>
           <h3>Project memory</h3>
           <div className="loop-toggle">
             <button
@@ -72,7 +85,7 @@ export default function StudioLoop() {
           <div className="request-line">
             you: <b>“{REQUEST}”</b> → Muse Spark edits the approved v2 source
           </div>
-          <div className="snippet" key={`${memoryOn}-${corrected}`}>
+          <div className="snippet" key={`snip-${memoryOn}-${corrected}`}>
             {snippet.map((l, i) => (
               <div key={i} className={l.kind}>
                 {l.t}
@@ -100,6 +113,9 @@ export default function StudioLoop() {
             Reconstructed from the recorded demo and the Phase 16/17 arms — illustrative. In the
             real Studio nothing is applied until a load-time browser check passes and{' '}
             <em>you</em> approve the exact staged bytes.
+          </p>
+          <p className="why" key={`why-${memoryOn}-${corrected}`}>
+            {!memoryOn ? WHY.off : corrected ? WHY.corrected : WHY.supplied}
           </p>
         </div>
       </div>
