@@ -1,5 +1,12 @@
 # Local-beta hardening (post-hackathon)
 
+> **Post-merge note (2026-10-29).** PR #1 was merged to `main` as merge commit `12918fd`,
+> with branch tip `5bd287a` (merged code head `0fbc1ef`). The handoff text below is the
+> pre-merge record: its "draft", "pending merge" and "no merge" statements describe the
+> state at handoff time, not the current release. The merged result is 644 passed / 3
+> skipped, with both CI jobs green on the final head. The tags `submission-v14`,
+> `submission-v15` and `phase17-preregistration` were not moved.
+
 **Branch:** `harden/local-beta` (isolated worktree from `main` at `df9a1fd`).
 **Scope:** local, single-user beta. No deployment, no repository-visibility change, no
 hackathon submission, no paid model calls, no research-protocol/baseline/tag changes.
@@ -562,16 +569,16 @@ validation used Node 26.8.1; the Node 24 run is the integration result.
 
 Captured with the deterministic fake-provider fixture (not live Muse generation):
 
-- Before: [before-approved-v1.png](../test-results/studio-before/before-approved-v1.png)
+- Before: `test-results/studio-before/before-approved-v1.png`
   — prefilled animal-card request, generic Guard checks, “app generated” summary,
   “Approved v1. The previous version stays in history.”, chat model shown as Studio identity.
-- After: [after-approved-v1.png](../test-results/studio-after/after-approved-v1.png)
+- After: `test-results/studio-after/after-approved-v1.png`
   — empty neutral change field, no-decision/applicable-check Guard state, explicit memory
   action, recorded request as version summary, “First version approved.”, separate Studio
   identity, export disclosure, and inspectable approval checks.
-- Empty state after: [after-empty.png](../test-results/studio-after/after-empty.png)
-- Recovery banner: [after-recovery-banner.png](../test-results/studio-after/after-recovery-banner.png)
-- After acknowledgement: [after-recovery-ack.png](../test-results/studio-after/after-recovery-ack.png)
+- Empty state after: `test-results/studio-after/after-empty.png`
+- Recovery banner: `test-results/studio-after/after-recovery-banner.png`
+- After acknowledgement: `test-results/studio-after/after-recovery-ack.png`
 
 These are test outputs under the ignored `test-results/` directory; they are not
 historical research evidence.

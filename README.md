@@ -1,56 +1,85 @@
 # Muse Recall
 
-### Build with Muse Spark. Remember what matters.
+### Correctable project memory for AI-built software.
 
-**Muse Recall** is a local-first workspace for building browser applications with Meta's
-Muse Spark, with project memory that lasts between sessions. Describe an app in **HTML
-Studio** and Muse Spark writes a single `index.html`. Ask for a change and it edits the
-approved source. Every change is staged: preview it, read the source and the diff, then
-approve, reject or roll back.
+**Muse Recall** is a local-first **HTML Studio** for Meta's Muse Spark. Describe a browser
+application and Spark writes one `index.html`; ask for a change and it edits the approved
+source. Project decisions persist with identity and provenance, and you can correct them.
+Every change waits as a staged preview, source and diff — nothing becomes the approved
+version until you review and approve it.
 
-Memory is what makes it different. A decision such as *no countdown timers, no flashing,
-no penalties* is stored once, with its provenance and a history you can correct, and is
-supplied to every later change. An advisory **Decision Guard** checks staged code against
-those decisions and cites them. Nothing goes live until you approve it.
+AI builders are fast at the first draft and slow at the second week:
+
+- **Requirements get restated.** A new session starts from zero, so the user explains the
+  same constraint again.
+- **Changes forget.** A generated edit can drop an earlier decision; the regression appears
+  later, when it is expensive to find.
+- **Stale preferences persist.** When the user changes their mind, the old preference can
+  keep coming back, because a transcript does not say which decision is current.
+
+Muse Recall closes that loop. It stores project decisions as structured records, supplies
+the active ones to later generations, supersedes them when you correct them, and keeps the
+change itself reviewable. The **Decision Guard** is an advisory source check, not a gate.
 
 ![HTML Studio after approving v2 of Ocean Pairs: the live preview, the remembered rule supplied to the change, the Decision Guard panel, and version history](docs/assets/html-studio-approved-v2.jpg)
 
-<!-- Demo video: add the submission platform's link here once it is uploaded. -->
+<!-- Demo video: paste the published URL in place of the pending note when the 2:50 cut is uploaded. -->
+**Demo video** — 2:50, recorded 29 October 2026 from a live Muse Spark session. [What the cut
+shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026) · _published link
+pending._
 
 ## For judges
 
 | | |
 | --- | --- |
-| **Demo video** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the two-model results below. |
-| **Main result** | In pre-registered trials on two Meta models, the remembered rule took violations from 28 of 28 usable edits to 0 of 27, and palette-only memory changed nothing (18 of 18). Phase 17 replicated it across two games and a non-game app, two rules and two requests: 37/57 → **0/58** on Muse Spark and 49/60 → **1/60** on Muse Spark Open, while retyping the rule by hand gave **0/58** and **0/60** — no practical difference under the pre-registered +15 pp non-inferiority margin. A correction then released the stale rule. [Phase 16 card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md) · [Phase 17 results](docs/hackathon-evidence/phase17/RESULTS.md); re-derive with `pnpm verify:research16` and `pnpm verify:research17`. |
-| **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 644 passing tests (3 opt-in live tests skipped). A staged change loads in headless Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
-| **Limits** | Single-user and loopback-only. Decision Guard is advisory. The research covers two games, one task planner, two rules and two models, and measures generated code rather than runtime safety. See [Known limitations](#known-limitations). |
+| **Demo video** (2:50, 1080p, recorded 29 October 2026) | One continuous live Muse Spark session (with insert cards for evidence and limits), a visible cursor and speed-ramped generation waits. Save a sunset constraint, generate and approve v1; request a change in a new session and reject it; correct the decision to ocean; request the same change again and reject it when Guard flags the reintroduced sunset palette; then ask for the project's current art direction from memory and approve v2. Guard is advisory throughout and never blocks approval. The file is kept out of git by policy and its upload is pending; the storyboard, live outcomes, limits and honest failure beat are in [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md). |
+| **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat**; it is the fallback if the 2:50 cut is not published. |
+| **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
+| **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 644 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Limits** | Single-user and loopback-only. Decision Guard is advisory. Phase 17 covers six fixed strata, two rules and two models, and measures source code rather than runtime safety. See [Known limitations](#known-limitations). |
 
-### Results: a remembered rule on two models
+### Why this fits “Push the Frontier”
 
-The same request, *"Make the game more exciting and challenging, like an arcade game."*, was
-applied 48 times per model to one baseline game, in three arms. A violation is a countdown,
-a camera flash or a score penalty in the generated code, found by a detector locked before
-the runs.
+The software theme rewards work that moves software building forward, not another chat
+surface. Our bet is that the next step is not a larger context window but a project memory
+you can correct and a change you can review before it becomes current. The contribution is
+the integration — correctable memory, controlled promotion, and a pre-registered behavioural
+test — rather than persistent memory by itself. This is our reading of the theme; it is not
+an organizer endorsement, and we make no prediction about judging.
 
-| Project memory | Muse Spark | Muse Spark Open | Combined |
-| --- | ---: | ---: | ---: |
-| None | 12/12 | 16/16 | **28/28** |
-| Palette decisions only | 12/12 | 6/6 | **18/18** |
-| Child-safety rule + palette | **0/13** | **0/14** | **0/27** |
+### What the evidence shows
 
-Counts are violations over usable (complete) outputs. Two-tailed Fisher exact tests, rule vs no
-memory: p = 1.9 × 10⁻⁷ (Muse Spark) and 6.9 × 10⁻⁹ (Muse Spark Open). Rule vs palette only:
-p = 1.9 × 10⁻⁷ and 2.6 × 10⁻⁵. Some runs were unusable: on Muse Spark, 11 of 48 hit the runtime
-limit or the call and token budget; on Muse Spark Open, 12 of 48 were cut off at the output token
-limit. Counting every unusable run as a violation, rule vs no memory is still 3/16 vs 16/16 and
-2/16 vs 16/16. This measures code on one baseline game. It is not a general safety claim.
+Phase 17 is the current behavioural test: 480 pre-registered runs, four arms × six strata ×
+two models. A violation is the original rule appearing in generated source, found by a
+detector fixed before the runs. Counts are violations over usable runs.
 
-> **Correction (2026-10-28).** The Muse Spark Open figures were first published as 6/16
-> (palette only) and 0/16 (rule), because 12 truncated outputs had been scored as clean. The
-> demo video shows the corrected figures. See
-> [the correction](docs/hackathon-evidence/phase16b/CORRECTION_1.md).
+| Arm | Muse Spark | Muse Spark Open |
+| --- | ---: | ---: |
+| No memory (`none`) | 37/57 | 49/60 |
+| Retrieved project memory (`memory`) | **0/58** | **1/60** |
+| Rule retyped by hand (`manual`) | 0/58 | 0/60 |
+| Rule corrected before the edit (`corrected`) | 41/59 | 50/60 |
+
+- **Without memory vs with memory:** exact two-sided p = 6.5 × 10⁻²⁰ (Muse Spark) and
+  1.1 × 10⁻²⁴ (Muse Spark Open).
+- **The pre-registered manual comparison:** memory is not worse than retyping the same rule;
+  the upper 90% bounds are +4.5 pp and +7.1 pp, inside the +15 pp non-inferiority margin.
+  The product point is that Recall assembles the context for the user.
+- **After correction:** the `corrected` arm is scored with the **original-rule** detector.
+  Its higher rate suggests the superseded restriction was released. It does not test whether a
+  replacement requirement is followed; it only shows that the old rule stopped constraining
+  output. Phase 17's correction was **permissive** — it released restrictions rather than
+  substituting a replacement requirement. The sunset-to-ocean replacement in the focused
+  cut is [Phase 12A](docs/PHASE12_MEMORY_VALIDATION.md) evidence, one run per condition.
+- **Usable runs:** 8 of 240 Muse Spark runs hit the 30-minute cap and are unusable; Muse
+  Spark Open had 0 of 240. Counts above use the remaining denominators. Counting unusable
+  runs as violations does not change a verdict.
+- **Reporting correction:** the p-values above are the exact recomputation adopted in the
+  post-run correction after review. The original as-run values are preserved; no verdict
+  changed. See [STATS_CORRECTION.md](docs/hackathon-evidence/phase17/STATS_CORRECTION.md).
+- **Scope:** six fixed strata, source code only. This does not establish general application
+  correctness, runtime safety, Decision Guard effectiveness or transfer to other tasks.
 
 ### Try it
 
@@ -66,52 +95,61 @@ Without Muse, the offline provider lets you browse the seeded project: the app, 
 memory and provenance, the retrieval explanation, Decision Guard and version history.
 Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickstart).
 
-> **Status:** not yet submitted. Application code is the approved release `328092c`. Later
-> commits add the Phase 16 / 16B evidence, verification scripts, documentation and a fix
-> to the demo seed script. See [Project status](#project-status) and the
+> **Release state (2026-10-29).** `main` now includes the local-beta hardening merge from
+> PR #1 (branch tip `5bd287a`, merge `12918fd`) and the Phase 17 results/evidence from PR #2
+> and #3. The tags `submission-v14`, `submission-v15` and `phase17-preregistration` remain
+> frozen. The application is local-only and not deployed; the hackathon submission has not
+> been sent. The 2:50 submission cut is recorded and QA'd outside git; uploading it and
+> completing the form are the remaining owner actions. See
+> [Project status](#project-status) and the
 > [submission evidence map](docs/submission/EVIDENCE_MAP.md).
->
-> **Local-beta hardening:** an isolated worktree adds a durable Forge job store with
-> restart recovery, bounded memory rendering with record identity and provenance, a
-> scrubbed child-process environment, and a managed deterministic browser workflow. It
-> does not change the research protocol, detectors, baselines, outputs or tags. Phase 17
-> results and evidence are merged into `main` and included here without alteration; this
-> hardening change makes no new Phase 17 claim.
 
 ---
 
 ## What this is
 
-A conventional assistant forgets everything between sessions, or compensates by
-replaying an ever-growing transcript into the context window. Muse Recall takes the
-other path:
+Muse Recall is one workflow with five implemented capabilities:
 
-- **HTML Studio** — the generated browser application is the hero. A sandboxed,
-  interactive preview fills the workspace; **Preview**, **Source** and **Changes** expose
-  the current version, the staged source, and a line diff. Generated HTML is served as
-  data for inspection and download, never injected into the application origin.
-- **Muse Spark development loop** — generation and modification are jobs over an approved
-  `index.html`. Each job records the prompt it sent, that prompt's SHA-256, the decisions
-  it retrieved, and its usage; a change is staged, reviewed, and only then promoted.
-- **Persistent, correctable memory** — a custom SQLite-backed engine with typed memories,
-  provenance, confidence, deduplication, transactional supersession, final deletion, and
-  an append-only audit trail. Retrieval is selective and budgeted, and every result
-  carries the score components and an evidence sentence.
-- **Advisory Decision Guard** — compares source patterns against the same project
-  decisions and cites them with evidence. It is advisory only: it never blocks approval
-  and is not compliance verification.
-- **Versioned rollback** — every approval promotes an immutable version, and rollback
-  follows the recorded parent, so a non-linear history restores the right ancestor.
-- **A controlled agent harness** — model provider, memory, tools, and permissions stay
-  separate boundaries, so retrieved text can never widen its own authority.
-- **Generative interface** — Muse returns a validated declarative UI spec rendered by a
-  fixed component registry. No model-authored JavaScript ever runs.
+1. **Persistent project decisions, with identity and provenance.** Each decision has a stable
+   UUID, a type and scope, its source session or job, confidence, validation status, and an
+   append-only history. A project can carry constraints, decisions and preferences across
+   sessions, app restarts and separate Studio jobs. Retrieval is budgeted; every result
+   carries its score components and an evidence sentence.
+2. **Explicit correction and supersession.** A correction is one transaction: insert the
+   replacement, record the supersession edge, mark the old decision `superseded`, and append
+   history. The old record stays auditable but is excluded from active retrieval, so stale
+   guidance stops constraining new work. Replaying the same correction is idempotent.
+3. **Memory supplied to generation.** Before a generate or modify job, Recall retrieves the
+   project's active decisions and renders them into the production prompt as bounded,
+   escaped reference data — not instructions. The job records the decision ids it received
+   and the SHA-256 of the exact prompt, so the context can be reconstructed.
+4. **Reviewable changes, approval, history and rollback.** A generated change is staged, not
+   applied. **Preview**, **Source** and **Changes** show the live document, the exact staged
+   source and a line diff. Approval snapshot-checks the bytes, loads them in managed Chromium,
+   and promotes exactly those bytes to an immutable version. Rejection leaves the current
+   version untouched; rollback follows the recorded parent, including after a non-linear
+   history.
+5. **Advisory Decision Guard.** A deterministic, dependency-free source check compares the
+   staged file with the job's own decisions. It supports five rule families (countdown
+   mechanics, flashing effects, mistake penalties, superseded palette, colour-only cues),
+   cites the decision and a bounded evidence excerpt, and reports what it cannot verify.
+   It **never blocks approval** and is **not compliance certification**.
+
+Persistent memory is not new: transcripts, retrieval stores and long-running agents all
+provide versions of it. The contribution here is the **integration** — memory that can be
+corrected without losing the audit trail, a generated change that is reviewable before it
+becomes current, and measured evidence that the remembered decision changes generated code.
+
+Also implemented: a sandboxed preview with an opaque origin; a load-time browser gate with
+network blocked except the approved CDN; cross-origin mutation rejection; a controlled agent
+harness that keeps retrieved text from widening its own authority; and a declarative UI
+protocol for generated planning forms.
 
 ---
 
 ## Beyond games: FocusFlow
 
-The video shows a game. To check that HTML Studio is not game-specific, Muse Spark also generated
+The demo videos show a game. To check that HTML Studio is not game-specific, Muse Spark also generated
 and then modified **FocusFlow**, a single-file personal task planner. It is a genuine
 application, not a game: no canvas, no game loop, no Phaser. The full provenance is in
 [docs/demo/NON_GAME_HTML_VALIDATION.md](docs/demo/NON_GAME_HTML_VALIDATION.md).
@@ -275,9 +313,12 @@ default.
 | Final release integration and verification | release | **Complete**; released to `main` by fast-forward (`328092c`) |
 | Phase 16 three-arm trial (Muse Spark) and 16B replication (Muse Spark Open) | 16 / 16B | **Complete**; evidence and verifier published |
 | Phase 17 four-arm trial across two games and one app, two models | 17 | **Complete**; evidence, exact-p correction and strict verifier published |
-| Demo video (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd |
+| Earlier demo cut (Ocean Pairs, 2:46, 1080p) | release | **Complete**, QA'd; predates the explicit-correction cut |
+| Submission demo cut (correctable memory, 2:50, 1080p) | demo | **Recorded and QA'd** 2026-10-29; kept out of git by policy; upload pending |
 | Make the repository public, upload the video and submit the form | — | **Owner action pending**; not performed |
-| Post-hackathon local-beta hardening | hardening | **Implemented** in draft PR #1; pending final merge |
+| Post-hackathon local-beta hardening | hardening | **Merged to `main` via PR #1** (branch tip `5bd287a`; merge `12918fd`) |
+| Phase 17 results and review disposition | 17 | **Merged to `main` via PR #2** (`53389a7`) |
+| Phase 17 documentation citations | 17 | **Merged to `main` via PR #3** (`36fe700`) |
 
 The UI's **System** screen reads these states from `GET /api/meta`, so the app cannot
 silently overstate itself.
@@ -487,6 +528,10 @@ docs/              architecture, memory design, evaluation, Muse findings, statu
 scripts/           benchmarks, Muse probe, browser verification
 ```
 
+The repository is published as `sidonsoft/muse-recall`. Internal identifiers keep the working
+name — `@mml/*` packages, the `muse-memory-lab` default database filename, and some historical
+documents — and refer to the same codebase.
+
 ---
 
 ## Evaluation (measured)
@@ -517,7 +562,18 @@ class and limitations.
 Phase 16 locked a detector built on Phase 15B's corrected definitions, added a palette-only arm
 to separate "the rule helps" from "memory helps", and ran 48 fresh edits on Muse Spark through
 the production HTML Studio path. Phase 16B repeated the same cells on Muse Spark Open (Baseten).
-Results are in the [table at the top](#results-a-remembered-rule-on-two-models).
+The table below reports usable-output counts for the original rule.
+
+| Project memory | Muse Spark | Muse Spark Open | Combined |
+| --- | ---: | ---: | ---: |
+| None | 12/12 | 16/16 | **28/28** |
+| Palette decisions only | 12/12 | 6/6 | **18/18** |
+| Child-safety rule + palette | **0/13** | **0/14** | **0/27** |
+
+> **Correction (2026-10-28).** The Muse Spark Open figures were first published as 6/16
+> (palette only) and 0/16 (rule), because 12 truncated outputs had been scored as clean. The
+> demo video shows the corrected figures. See
+> [the correction](docs/hackathon-evidence/phase16b/CORRECTION_1.md).
 
 - Pre-registered contrasts (Holm, α = .025): rule vs no memory and rule vs palette only, on each
   model. All four are significant (largest p = 2.6 × 10⁻⁵, rule vs palette only on Muse Spark
@@ -525,6 +581,9 @@ Results are in the [table at the top](#results-a-remembered-rule-on-two-models).
 - Phase 16B correction: 12 open-model outputs cut off at the token limit had been scored as clean;
   they are now unusable. This removed an apparent palette-only effect on the open model. See
   [CORRECTION_1.md](docs/hackathon-evidence/phase16b/CORRECTION_1.md).
+- Unusable runs: 11/48 on Muse Spark (runtime, call or token budget) and 12/48 on Muse Spark Open
+  (output token limit). Counting every unusable run as a violation still gives 3/16 vs 16/16
+  (Muse Spark) and 2/16 vs 16/16 (Open) for rule vs no memory.
 - Every Phase 16 job record lists the decisions retrieval supplied: 0, 1 and 2 across the arms.
 - Phase 16B used a chat completion with the production prompt builder rather than the CLI tool
   loop, and its memory block was written in the production format rather than retrieved. Both
@@ -543,16 +602,22 @@ The strata are two games (Farmyard Memory Match, Orchard Catch) × two requests,
 task planner) × two requests; the rules are child safety on the games and calm motion on
 FocusFlow. The arms are `none`, `memory` (rule retrieved from project memory), `manual` (the same
 rule retyped into every request) and `corrected` (the rule is superseded through the production
-correction route before the edit). The protocol, detectors, runners and analysis were locked in
+correction path before the edit: the HTTP correction route on Muse Spark, `MemoryEngine.correct()`
+on Open). The protocol, detectors, runners and analysis were locked in
 `protocol.sha256` and pushed to GitHub before the first run.
 
 - **H1** `memory` vs `none`: 37/57 (65%) → **0/58** on Muse Spark, exact p = 6.5 × 10⁻²⁰;
   49/60 (82%) → **1/60** on Muse Spark Open, exact p = 1.1 × 10⁻²⁴.
-- **H2** `memory` is not worse than `manual`: upper 90% bound of the difference +4.5 pp
-  (Muse Spark) and +7.1 pp (Open), both inside the pre-registered +15 pp margin.
+- **H2** `memory` is not worse than `manual` (the same rule retyped into every request): upper
+  90% bound of the difference +4.5 pp (Muse Spark) and +7.1 pp (Open), both inside the
+  pre-registered +15 pp margin. This is non-inferiority to retyping, not evidence that memory
+  is better than a well-written prompt; the point is that Recall supplies the context.
 - **H3** `corrected` vs `memory`: 41/59 vs 0/58 (p = 6.9 × 10⁻²¹) and 50/60 vs 1/60
-  (p = 1.6 × 10⁻²⁴). H3's detector measures the *original* rule, so this is the corrected arm
-  following the corrected decision, not a safety regression.
+  (p = 1.6 × 10⁻²⁴). H3's detector measures the *original* rule. The higher corrected-arm
+  rate suggests the superseded restriction was released; it does **not** test whether a
+  replacement requirement is followed. Phase 17's correction was permissive; it did not substitute
+  a replacement requirement. The focused cut's sunset-to-ocean replacement is Phase 12A
+  evidence, one run per condition.
 - 8 of 240 Muse Spark runs hit the pre-registered 30-minute runtime cap and are unusable
   (counted, never retried); Muse Spark Open had 0 unusable runs. The worst-case table counts every
   unusable run as a violation and does not change a verdict.
@@ -564,7 +629,10 @@ correction route before the edit). The protocol, detectors, runners and analysis
 Results: [RESULTS.md](docs/hackathon-evidence/phase17/RESULTS.md). Review and audit:
 [REVIEW_DISPOSITION.md](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md).
 `pnpm verify:research17` checks the lock, the 1205-file evidence inventory, the preserved as-run
-values and the corrected analysis (requires `python3`).
+values and the corrected analysis (requires `python3`). The PR #2 review disposition records an
+independent read-only audit of all 480 records and the fixes for four reporting/verifier defects;
+six further issues in locked files (five latent conditions that did not occur, plus one
+cosmetic detector-description error) are documented rather than patched.
 
 ### Phase 15B child-safety memory trial (earlier, superseded by Phase 16)
 
@@ -596,7 +664,9 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
 - [Submission copy](docs/submission/SUBMISSION_COPY.md) — current short and long descriptions
-- [Phase 16 / 16B evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md) — the research in the video
+- [Submission demo cut](docs/demo/CORRECTABLE_MEMORY_DEMO.md) — the 2:50 recorded correction sequence, its beats, narration and honest failure note (upload pending)
+- [Phase 17 results](docs/hackathon-evidence/phase17/RESULTS.md), [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) and [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md)
+- [Phase 16 / 16B evidence card](docs/hackathon-evidence/phase16/EVIDENCE_CARD.md) — the earlier two-model research shown in the 2:46 fallback video
 - [Live FocusFlow validation](docs/demo/NON_GAME_HTML_VALIDATION.md) and [live configuration](docs/demo/LIVE_MUSE_CONFIGURATION.md)
 - [Phase 15B evidence card](docs/hackathon-evidence/phase15b/EVIDENCE_CARD.md), [provenance](docs/hackathon-evidence/phase15b/PROVENANCE_MANIFEST.md) and [deviations](docs/hackathon-evidence/phase15b/DEVIATIONS.md)
 - [Cross-origin security fix](docs/release/CROSS_ORIGIN_SECURITY_FIX.md) and [final integration report](docs/release/FINAL_INTEGRATION_REPORT.md)
@@ -631,9 +701,20 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
   reference still needs network access, and the interface says so.
 - **The Decision Guard is advisory.** It checks source patterns against remembered
   decisions and cites evidence; it never blocks approval and is not compliance
-  verification.
+  verification. It supports five rule families over source text, not rendered behaviour,
+  and its measured false positives, false negatives and abstentions are why enforcement is
+  left to the human.
 - **The A/B/C memory-influence trial is directional.** One run per condition, not a
   statistical result.
+- **Phase 17 is bounded, and its correction result is easy to misread.** Six fixed strata
+  (two games, one task planner), two rules, two requests per baseline and two models. It
+  measures source-code patterns, not runtime behaviour. On Muse Spark 8 of 240 runs hit the
+  30-minute cap and are unusable; Muse Spark Open had 0. The `corrected` arm's higher
+  original-rule rate **suggests the superseded restriction was released**; it does not test
+  whether a replacement requirement is followed. Phase 17's correction was permissive. Exact
+  p-values are a post-run reporting correction, with the as-run analysis preserved. Nothing here
+  establishes general application correctness, Decision Guard effectiveness, or transfer to
+  untested tasks.
 - **Phase 16 / 16B is bounded.** One baseline game, one request, one rule and two models. It
   measures code, not runtime behaviour. The rule arm also carries the palette. Phase 16B ran the
   task through a chat completion, not the CLI tool loop. A quarter of its runs were cut off at the
@@ -647,6 +728,16 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
   executed on FocusFlow.
 - **Exported HTML runs unsandboxed.** The Studio preview is sandboxed; a downloaded file opened
   from disk is not, and it still needs network access for approved CDN dependencies.
+- **The submission cut is recorded but not yet uploaded.** The 2:50 cut (recorded 29 October
+  2026) shows the correction sequence, including the honest failure beat: the repeat request
+  kept the old sunset palette and Guard flagged it, and only the explicit request for the
+  current art direction produced the ocean version. It is kept out of git by policy and is not
+  linked yet. The earlier 2:46 video remains the fallback; it does not show an explicit
+  correction. See [the demo note](docs/demo/CORRECTABLE_MEMORY_DEMO.md).
+- **Provider independence is an architectural direction, not a shipped capability.** The
+  server has a `ModelProvider` boundary, but the shipped providers are the Muse Code CLI and
+  the deterministic offline `echo` provider. Muse Spark Open was used for research on
+  Baseten; the application does not call it, and arbitrary-provider support is not claimed.
 - **Out-of-box model defaults are not Muse Spark.** `.env.example` ships `muse-wonder-1.0`; the live
   demonstration explicitly configured `muse-spark-1.3` / `muse-spark-1.3-contributor` at
   `effort: high`. Check the model shown in the top bar before recording.
@@ -680,11 +771,13 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
 
 ## Roadmap
 
-1. **Hackathon submission.** Upload the demo video, make the repository public for judging,
-   and complete the submission form (owner actions; nothing is submitted automatically).
-2. **Local beta hardening (current).** Durable Forge jobs and restart recovery, bounded
-   memory rendering, a scrubbed child environment, and managed browser coverage are in
-   place. Remaining work is tracked in [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
+1. **Hackathon submission.** The focused correction cut (2:50) is recorded and QA'd. Upload it
+   (or use the earlier 2:46 video as the fallback), add the link where the opening section marks
+   it, and complete the submission form. These are owner actions; nothing is submitted
+   automatically.
+2. **Local beta hardening (merged).** Durable Forge jobs and restart recovery, bounded
+   memory rendering, a scrubbed child environment, and managed browser coverage are on
+   `main`. Remaining work is tracked in [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
 3. **Out of scope for this release.** Authentication, hosted collaboration, embeddings,
    multi-file generation, new model providers, additional Decision Guard rule families,
    interaction/pixel verification, and a verified self-contained export.

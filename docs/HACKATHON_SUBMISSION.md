@@ -1,6 +1,6 @@
 # Muse Recall — submission description
 
-> **Historical document.** This is an earlier product description (the Phase 5 memory companion with generated forms and tools). The submission now uses the Ocean Pairs demo video and the Phase 16 / 16B research; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+> **Historical document.** This is an earlier product description (the Phase 5 memory companion with generated forms and tools). The submission now uses the 2:50 correctable-memory cut and the Phase 17 trial; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
 
 ## Problem
 

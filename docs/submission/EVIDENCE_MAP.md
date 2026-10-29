@@ -1,4 +1,8 @@
-# Muse Recall — evidence map (Phase 14A)
+# Muse Recall — evidence map
+
+This is the cumulative claim map. It began as the Phase 14A submission audit; later sections
+add FocusFlow, Phase 15B, Phase 16 / 16B, Phase 17 and the merged release state. Original evidence
+files are never modified by documentation work.
 
 Every claim we make in the submission story, demo script, and copy is mapped here to existing
 evidence: the file, the branch/commit it lives at, what kind of evidence it is, whether the
@@ -30,15 +34,33 @@ git show <commit>:<path>                              # read it without checking
 | 14A demo production + release blockers | `agent/phase14a-demo-production` | branched from `156c65c`; evidence in `docs/hackathon-evidence/phase14a/` |
 | 15A child-safety pilot (6 runs) | `agent/phase15a-pilot` | `e62b5bc` → `9d91865`; pilot only, not pooled |
 | 15B child-safety trial (32 runs) | `agent/phase15b` | protocol `d84d8a1`, results `2857159`, correction `9f5eaa1`; integrated on the release candidate |
+| 16 / 16B two-model trials | release candidate → `main` | `db70d9b` (align repo to the release video + Phase 16), `f6d6e98` (16B token-limit correction); evidence in `docs/hackathon-evidence/phase16/` and `phase16b/` |
+| 17 four-arm trial (480 runs) | `phase17-results` → `main` (PR #2) | results `43abe92`, review fixes `9b45774`/`d3c7c6d`/`34b9b60`; merge `53389a7` |
 | Live FocusFlow demo | `agent/muse-recall-live-demo` | `2ba4ba2`; evidence in `docs/demo/` |
+
+## Current release state (2026-10-29)
+
+| Item | State |
+| --- | --- |
+| `main` | merge `12918fd` (PR #1); includes Phase 17 evidence from PR #2 (`53389a7`) and PR #3 (`36fe700`) |
+| PR #1 branch tip | `5bd287a`; merged code head `0fbc1ef`; local-beta hardening merged by PR #1 |
+| Tests on the merged tree | `pnpm verify` — 644 passed, 3 skipped (647 total, 41 files) |
+| Tags | `submission-v14`, `submission-v15`, `phase17-preregistration` remain frozen; none moved |
+| Deployment / submission | not deployed, not submitted; local-only and loopback-only |
+| Phase 17 review | PR #2 review disposition: R1–R4 fixed; R5–R10 remain documented in locked files (five latent conditions did not occur; R9 is a cosmetic detector-description error) |
+
+The numbering below is historical. C20 and C21 are the current behavioural evidence; C10's test
+count is updated to the merged tree, while its earlier per-phase counts remain as history.
 
 ## Claim-by-claim map
 
 ### C1 — Memory is persistent, project-scoped, and survives sessions
 
 - **Evidence:** `docs/PHASE11_MEMORY_EVALUATION.md`; `tests/evaluation/forge-memory/forge-memory.test.ts`;
-  Phase 14A demo seed (`scripts/lib/demo-seed.ts`, `tests/unit/demo-seed.test.ts`) proves project
-  scope and active/superseded state through the production engine.
+  `packages/memory-engine/src/migrations.ts` (memories, history, supersession tables),
+  `engine.ts` (create/get/list/detail), and the Phase 14A demo seed
+  (`scripts/lib/demo-seed.ts`, `tests/unit/demo-seed.test.ts`), which proves project scope and
+  active/superseded state through the production engine.
 - **Kind:** deterministic tests over a real file-backed SQLite database opened across sessions;
   cross-session reopening is real, not mocked.
 - **Authentic vs fixture:** deterministic fixture; the *pipeline* is production code.
@@ -48,9 +70,12 @@ git show <commit>:<path>                              # read it without checking
 ### C2 — Decisions are correctable; corrections supersede and stale guidance stops constraining
 
 - **Evidence:** `docs/PHASE11_MEMORY_EVALUATION.md` §3 results 4–5; `docs/PHASE11_DECISION_AWARE_EVALUATION.md`
-  §2 (scenario S3); supersession unit tests in `tests/unit/memory-engine-phase2.test.ts`; Phase 14A
-  seed leaves sunset `superseded` and ocean `active`, and retrieval excludes sunset
-  (`docs/hackathon-evidence/phase14a/demo-seed.json`).
+  §2 (scenario S3); `packages/memory-engine/src/engine.ts` `correct()` (one transaction: replacement,
+  supersession edges, status flip, history) and `retrieval.ts` (`m.status = 'active'`); supersession
+  unit tests in `tests/unit/memory-engine-phase2.test.ts`; the Phase 14A seed leaves sunset
+  `superseded` and ocean `active`, and retrieval excludes sunset
+  (`docs/hackathon-evidence/phase14a/demo-seed.json`). Phase 17's Spark `corrected` arm uses the
+  production correction route; the Open arm calls the same `MemoryEngine.correct()` method.
 - **Authentic vs fixture:** deterministic.
 - **Confidence:** high (atomic supersession, idempotent replay, conflict detection, audit history).
 - **Limitations:** none material for the claim itself.
@@ -148,21 +173,26 @@ git show <commit>:<path>                              # read it without checking
 ### C9 — Human approval is the gate; every change is versioned and rolls back to its recorded parent
 
 - **Evidence:** approval + rollback rows in `trials.json` (all five approved and rolled back); Phase
-  12A pilot (approved/rolled back in all three conditions); Phase 12C integration tests; Phase 14A
+  12A pilot (approved/rolled back in all three conditions); Phase 12C integration tests;
+  `apps/server/src/forge/workspace.ts` (`promote()` binds `expectedSha256`; `rollbackTarget()`
+  follows `base_version`), `runner.ts` `approve()` (runtime check before promotion), and Phase 14A
   `rollback-ancestry.json` (v1→v2→undo→v3 from v1→undo restores v1; repeated undo reports nothing
-  to roll back) and `screenshots/09-approved-v2.png`, `10-rolled-back-v1.png`.
+  to roll back) with `screenshots/09-approved-v2.png`, `10-rolled-back-v1.png`.
 - **Kind:** authentic integration + deterministic regression evidence.
 - **Confidence:** high.
 - **Limitations:** approval authority is this single-user local app (no multi-user ACL).
 
 ### C10 — Test suite health
 
-- **Evidence:** Phase 14A `pnpm verify` → **484 passed, 3 skipped**, exit 0, on
-  `agent/phase14a-demo-production` (lint + typecheck + 30 test files). Phase 12E recorded 457 passed
-  / 3 skipped at `156c65c`; Phase 12C recorded 391 / 3 at `260d9ce`.
+- **Evidence:** merged `main` at `12918fd` / PR #1 code head `0fbc1ef` (branch tip `5bd287a`): `pnpm verify` → **644 passed, 3
+  skipped** (647 total, 41 files), lint and typecheck clean; CI `verify` and `browser` jobs passed
+  on the merged heads. Historical: Phase 14A **484 passed / 3 skipped** on
+  `agent/phase14a-demo-production` (30 test files); Phase 12E 457/3 at `156c65c`; Phase 12C
+  391/3 at `260d9ce`.
 - **Kind:** CI-runnable test counts, re-producible on the named commit.
-- **Confidence:** high — state the branch when quoting the number.
-- **Limitations:** the three skipped tests are the opt-in live-Muse suite, not failures.
+- **Confidence:** high — state the commit when quoting the number.
+- **Limitations:** the three skipped tests are the opt-in live-Muse suite, not failures. Test counts
+  are engineering health, not evidence of application correctness or model behaviour.
 
 ### C11 — Security / credential hygiene and loopback integrity
 
@@ -282,6 +312,72 @@ Phase 16 / 16B. Those claims are mapped here.
   recording is the record. The refusal is one run and does not establish causation; Decision Guard
   reported the palette rule as not verified and played no part in it.
 
+### C20 — Phase 17: a remembered rule reduced original-rule violations on two models
+
+- **Evidence:** [`phase17/RESULTS.md`](../hackathon-evidence/phase17/RESULTS.md),
+  [`PROTOCOL.md`](../hackathon-evidence/phase17/PROTOCOL.md),
+  [`REVIEW_DISPOSITION.md`](../hackathon-evidence/phase17/REVIEW_DISPOSITION.md),
+  [`STATS_CORRECTION.md`](../hackathon-evidence/phase17/STATS_CORRECTION.md), the 480 retained run
+  records and `pnpm verify:research17` (lock, inventory, exact re-analysis).
+- **Kind:** authentic model output. 2 models × 6 strata × 4 arms × 10 runs = 480. Muse Spark used
+  the production Forge modify path; Muse Spark Open used the production prompt builder and
+  retrieval; six runs used the pre-registered second attempt.
+- **Counts (violations / usable runs):** Spark `none` 37/57, `memory` 0/58, `manual` 0/58,
+  `corrected` 41/59; Open `none` 49/60, `memory` 1/60, `manual` 0/60, `corrected` 50/60. Eight
+  Spark runs hit the 30-minute cap; Open had none. H1 exact p = 6.5 × 10⁻²⁰ (Spark) and
+  1.1 × 10⁻²⁴ (Open). H2 upper 90% bounds +4.5 pp and +7.1 pp against the +15 pp margin.
+- **Confidence:** high for these six strata, with an independent read-only audit in PR #2
+  (480/480 records present; 472 succeeded with hash-matched output; 480/480 manipulation checks).
+  R1–R4 were fixed; R5–R10 remain documented in locked files (five latent conditions did not
+  occur; R9 is a confirmed cosmetic detector-description error). The exact p-values are a post-run reporting correction; the as-run analysis is preserved.
+- **Limitations:** six fixed tasks, two rules, two requests per baseline, two models; source code,
+  not runtime behaviour; `manual` and `memory` place the same sentence in different positions, so
+  H2 is non-inferiority to retyping, not superiority; no general correctness, Guard effectiveness
+  or transfer claim.
+
+### C21 — After correction, the original-rule detector rate rose
+
+- **Evidence:** `H3` in [`phase17/RESULTS.md`](../hackathon-evidence/phase17/RESULTS.md) §4, the
+  manipulation checks in §8, and [`REVIEW_DISPOSITION.md`](../hackathon-evidence/phase17/REVIEW_DISPOSITION.md)
+  §8. Raw counts: 41/59 vs 0/58 on Muse Spark; 50/60 vs 1/60 on Open.
+- **Kind:** authentic model output, scored with the detector for the **original** rule.
+- **Confidence:** high that the original-rule detector rate rises after the production correction
+  route. This is consistent with the superseded restriction being released.
+- **Limitations:** the detector does **not** test whether a replacement requirement is followed,
+  and Phase 17's correction is **permissive** — it released restrictions rather than substituting
+  a replacement requirement. Do not phrase these percentages as following a replacement
+  requirement; the correct statement is that the old rule stopped constraining output. The
+  sunset-to-ocean replacement in the focused cut is
+  [Phase 12A](../PHASE12_MEMORY_VALIDATION.md) evidence, one run per condition, not Phase 17.
+  No new-rule detector was run, and the result is source-code only.
+
+### C22 — The focused correction demo is recorded; upload pending
+
+- **Evidence:** the recorded cut `Muse_Recall_Demo_V21_1080p.mp4` (170.47 s, SHA-256
+  `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`) and its `V21_QA.md`,
+  transcript and 36-cue SRT, held outside git; the beat-by-beat record in
+  [`docs/demo/CORRECTABLE_MEMORY_DEMO.md`](../demo/CORRECTABLE_MEMORY_DEMO.md) §9; the Phase 12A
+  authentic stills and sources
+  ([`A-v2-visible.png`](../hackathon-evidence/phase12/A-v2-visible.png),
+  [`C-v2-visible.png`](../hackathon-evidence/phase12/C-v2-visible.png),
+  [`pilot.json`](../hackathon-evidence/phase12/pilot.json)) as evidence inserts for the
+  replacement; and the deterministic seed (`scripts/lib/demo-seed.ts`).
+- **Kind:** authentic live screen recording of one Muse Spark session with insert cards, not a
+  fixture. The live run used `muse-spark-1.3-contributor` at high effort on 2026-10-29: save a
+  sunset constraint → generate v1 → new session request (sunset source; Guard `NOT VERIFIED`) →
+  reject → correct the decision to ocean → repeat the request (still sunset; Guard flags
+  `superseded-palette`) → reject → ask for the current art direction from memory (ocean; Guard
+  `NO VIOLATION DETECTED · SUPPORTED CHECKS`) → approve v2.
+- **Confidence:** high that the recorded sequence and Guard observations happened; the screen
+  recording is the record. The cut is kept out of git by policy and **not yet uploaded**, so the
+  repository does not link it.
+- **Limitations:** one live project, one application, one correction, one model configuration. The
+  repeat feature request kept the old palette and the correction did not apply itself; only the
+  explicit request for the current art direction produced the ocean version. That failure and
+  recovery are kept in the cut. Guard is advisory and did not block approval. The sunset-to-ocean
+  **replacement** is Phase 12A evidence (one run per condition), not Phase 17, and this cut is not
+  a statistical result. The earlier 2:46 video has no explicit correction beat.
+
 ## Claims we explicitly do NOT make (unsupported)
 
 | Tempting claim | Verdict | Why |
@@ -293,20 +389,34 @@ Phase 16 / 16B. Those claims are mapped here.
 | “There is a runtime-verification screenshot” | **Unsupported** | The UI exposes no such image; the browser preview capture is a different feature. |
 | “All remembered constraints are applied to output” | **Unsupported** | Phase 12A: accent tracked in all conditions, text colour ignored; retrieval uses a budget. |
 | “Guard catches every violation of remembered decisions” | **Unsupported** | 8-digit RGBA hexes and tween flashes are demonstrated gaps. |
-| “Statistically significant improvement across development tasks” | **Unsupported** | Phase 16 / 16B support one narrow contrast on two models (one game, rule, request); Phase 15B is one model; 12A is n = 1 per condition and 11A is n = 5. |
-| “Memory in general reduces violations” | **Unsupported** | Palette-only memory left 18 of 18 usable edits in violation; only the rule arm reached zero. |
-| “A demo video exists” | *Superseded* | True since the release: the Ocean Pairs demo video (2:46). Phase 14A itself produced no video. |
+| “Statistically significant improvement across development tasks” | **Unsupported** | Phase 17 supports a narrow, pre-registered contrast on six fixed strata and two models; Phase 16 / 16B one game, rule and request; Phase 15B one model; 12A is n = 1 per condition and 11A is n = 5. |
+| “Memory in general reduces violations” | **Unsupported** | Palette-only memory left 18 of 18 usable edits in violation in Phase 16; only the rule arm reached zero. Phase 17 tests two specific rules, not memory in general. |
+| “The correction percentages mean the model fully followed the updated decision” | **Unsupported** | H3 uses the detector for the **original** rule. It shows the old rule stopped constraining output; it does not test whether a replacement requirement is followed. |
+| “Phase 17 proves general application correctness, Decision Guard effectiveness, or transfer to new tasks” | **Unsupported** | Six fixed strata, source-code detectors, one detector family per rule, two models. It is behavioural evidence for those tasks, not a general guarantee. |
+| “Persistent project memory is unprecedented” | **Unsupported** | Retrieval stores, transcripts and long-running agents all provide memory. The contribution is the integration of correction, controlled promotion and measured evidence. |
+| “The application supports arbitrary providers or production Muse Spark Open” | **Unsupported** | Provider independence is an architectural direction; only the Muse Code CLI and the deterministic `echo` provider are implemented. The open model was used for research. |
+| “The 2:46 video shows the explicit correction” | **Unsupported** | It shows the stored rule, a refusal, a fitting change, approval and rollback. The correction is only in the 2:50 submission cut (C22). |
+| “The 2:50 cut shows the model following a replacement requirement” | **Unsupported** | The repeat request kept the old palette; the ocean source came only from an explicit request for the current art direction. The replacement is Phase 12A evidence, one run per condition. |
+| “The correction applied itself once the decision changed” | **Unsupported** | The cut keeps the failure: the next request still used sunset and Guard flagged it. The user rejected it and asked explicitly for the current art direction. |
+| “A demo video exists” | *Superseded* | True: the 2:46 Ocean Pairs cut and the 2:50 submission cut (C22). Phase 14A itself produced no video. |
 | Performance/memory-cost savings beyond those cited | **Unsupported** | No controlled benchmark of end-to-end savings. |
 
 ## Evidence gaps / open items for the director
 
-1. No spontaneous model violation was flagged end-to-end: the guard demo uses the labelled mutation.
-2. Authentic guard observations remain n = 1 artefact; a wider corpus of Forge-generated files is
+1. No spontaneous model violation was flagged end-to-end: the Guard demo uses the labelled mutation.
+2. Authentic Guard observations remain n = 1 artefact; a wider corpus of Forge-generated files is
    future work.
-3. **No live Muse inference was run in Phase 14A.** The demonstration's modification segment must
-   use a pre-recorded authentic run (preferred) or a director-authorised live run.
-4. **No demo video was recorded.** Phase 14A produced screenshots, a rehearsal record and a
-   recording-ready runbook; creating the final footage is a demo-day action.
+3. **The submission cut is recorded but not uploaded.** `Muse_Recall_Demo_V21_1080p.mp4` (2:50.47)
+   and its QA are kept out of git and are not linked from the repository; uploading and linking it
+   remain owner actions. Until then, the repository treats the earlier 2:46 video as the fallback.
+4. **The 2:46 video predates the correction cut.** It is a valid fallback for the review loop and
+   the Phase 16 result; it does not show the explicit correction beat, and should not be described
+   as if it did (C22 covers the 2:50 cut).
 5. Requirements from the official rules page remain unresolved (see
    [`requirements-review.md`](../hackathon-evidence/requirements-review.md)); anything the form
    demands beyond this package (e.g. a deployed URL) is not yet evidenced.
+6. Phase 17's review disposition records six issues in locked files (R5–R10): five latent
+   conditions did not occur in the 480 runs, and R9 is a cosmetic detector-description error.
+   They are documented, not patched; do not describe the runner as defect-free.
+7. The exact p-values are a post-run reporting correction. Quote the corrected values, and say so;
+   do not present the original as-run values as the final analysis.
