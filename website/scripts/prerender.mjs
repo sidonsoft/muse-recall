@@ -32,6 +32,17 @@ if (!html.includes('<div id="root"></div>')) {
   process.exit(1);
 }
 html = html.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
+
+// Inline the built stylesheet: one fewer render-blocking request.
+const linkRe = /<link rel="stylesheet"[^>]*href="([^"]+\.css)"[^>]*>/;
+const m = html.match(linkRe);
+if (m) {
+  const cssFile = path.join(ROOT, 'dist', m[1].replace(/^\.\//, ''));
+  const css = readFileSync(cssFile, 'utf8');
+  html = html.replace(m[0], `<style>\n${css}\n</style>`);
+  console.log(`prerender: inlined stylesheet (${(css.length / 1024).toFixed(1)} KB)`);
+}
+
 writeFileSync(file, html);
 rmSync(path.join(ROOT, 'dist-ssr'), { recursive: true, force: true });
 

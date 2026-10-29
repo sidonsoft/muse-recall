@@ -38,9 +38,15 @@ export default function Hero() {
 
         <figure className="figure reveal visible" style={{ textAlign: 'left' }}>
           <picture>
-            <source srcSet="./assets/html-studio-approved-v2.webp" type="image/webp" />
+            <source
+              srcSet="./assets/html-studio-820.webp 820w, ./assets/html-studio-1240.webp 1240w, ./assets/html-studio-approved-v2.webp 1600w"
+              sizes="(max-width: 1140px) 94vw, 1140px"
+              type="image/webp"
+            />
             <img
               src="./assets/html-studio-approved-v2.jpg"
+              srcSet="./assets/html-studio-approved-v2.jpg 1600w"
+              sizes="(max-width: 1140px) 94vw, 1140px"
               alt="HTML Studio after approving v2 of Ocean Pairs: live preview, the remembered rule supplied to the change, Decision Guard panel, and version history"
               width="1600"
               height="807"

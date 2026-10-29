@@ -243,6 +243,10 @@ try {
   const badImgs = imgs.filter((i) => !i.ok || !i.webp);
   check(`${imgs.length} images all load WebP`, badImgs.length === 0, badImgs.length ? JSON.stringify(badImgs) : 'webp + loaded');
 
+  // 6b. no aspect-ratio distortion (Lighthouse image-aspect-ratio guard)
+  const heroBox = await evalJS(`(() => { const i = document.querySelector("figure img"); return { nat: i.naturalWidth / i.naturalHeight, box: i.clientWidth / i.clientHeight, src: i.currentSrc.split("/").pop() }; })()`);
+  check('hero not distorted, responsive variant picked', Math.abs(heroBox.nat - heroBox.box) < 0.03 && heroBox.src.endsWith('.webp'), JSON.stringify(heroBox));
+
   // 7. reduced-motion honoring
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   await sleep(400);
