@@ -443,9 +443,29 @@ export function Quickstart() {
             pnpm dev{'\n\n'}
             <span className="cmt"># verify, don't trust:</span>{'\n'}
             pnpm verify{'               '}
-            <span className="cmt"># lint + typecheck + 728 tests</span>
+            <span className="cmt"># lint + typecheck + 728 tests</span>{'\n'}
+            pnpm verify:research17{'    '}
+            <span className="cmt"># re-derive every Phase 17 count and p-value (python3)</span>
           </pre>
         </div>
+        <p className="footnote reveal">
+          <code>pnpm verify:research17</code> needs no Muse account: it checks the
+          pre-registration lock and the 1205-file evidence inventory, and recomputes the
+          counts and p-values from the 480 retained run records in under a minute. Full
+          instructions:{' '}
+          <a href={`${REPO}#reproduce-the-evidence`} target="_blank" rel="noreferrer">
+            reproduce the evidence
+          </a>{' '}
+          ·{' '}
+          <a href={`${REPO}#quickstart`} target="_blank" rel="noreferrer">
+            full quickstart
+          </a>{' '}
+          ·{' '}
+          <a href={REPO} target="_blank" rel="noreferrer">
+            source on GitHub
+          </a>
+          .
+        </p>
       </div>
     </section>
   );
@@ -934,15 +954,18 @@ export function Footer() {
           © 2026 Muse Memory Lab contributors · MIT · built for the Meta Muse hackathon
         </span>
         <span className="footnote">
-          This page mirrors the product repository at{' '}
-          <a href={`${REPO}/commit/aaa70ca`} target="_blank" rel="noreferrer">
-            <code>aaa70ca</code>
+          This page is built from the{' '}
+          <a href={`${REPO}/tree/main/website`} target="_blank" rel="noreferrer">
+            <code>website/</code>
           </a>{' '}
-          — every figure and quote traces to that tree.
+          folder of the product repository — every figure and quote traces to that tree.
         </span>
         <div className="footer-links">
           <a href={REPO} target="_blank" rel="noreferrer">
-            muse-recall
+            muse-recall on GitHub
+          </a>
+          <a href={`${REPO}#reproduce-the-evidence`} target="_blank" rel="noreferrer">
+            Reproduce the evidence
           </a>
           <a href={`${REPO}/blob/main/docs/submission/SUBMISSION_COPY.md`} target="_blank" rel="noreferrer">
             Submission copy

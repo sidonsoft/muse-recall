@@ -37,6 +37,20 @@ while ((m = re.exec(all))) {
   seen.add(p);
   const loc = p.replace(/^\/(blob|tree)\/main\//, '').replace(/^\/$/, '');
   if (!loc) continue;
+  if (loc.startsWith('#')) {
+    // README anchor: GitHub slugs each heading (lowercase, drop punctuation, spaces to hyphens)
+    const slugs = fs
+      .readFileSync(path.join(UP, 'README.md'), 'utf8')
+      .split('\n')
+      .filter((l) => /^#{1,6} /.test(l))
+      .map((l) => l.replace(/^#+ /, '').trim().toLowerCase().replace(/[^\p{L}\p{N} _-]/gu, '').replace(/ /g, '-'));
+    if (slugs.includes(loc.slice(1))) console.log(`OK   README ${loc}`);
+    else {
+      fails++;
+      console.log(`MISS README ${loc}`);
+    }
+    continue;
+  }
   const commit = loc.match(/^\/commit\/([0-9a-f]{7,40})$/)?.[1];
   if (commit) {
     const r = spawnSync('git', ['-C', UP, 'cat-file', '-e', `${commit}^{commit}`]);

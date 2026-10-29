@@ -22,7 +22,7 @@ site states exactly what the evidence supports.
   printable judge one-pager (`@media print`), `prefers-reduced-motion` and
   JS-disabled fallbacks
 - Pre-rendered static HTML (`npm run site`), WebP imagery with srcset, JSON-LD
-  and PWA manifest; the footer names the product-repo commit the copy mirrors
+  and PWA manifest; the footer links back to this folder and to the reproduction steps
 - Real product screenshots in `public/assets/` (MIT, from the source repo)
 
 ## Run

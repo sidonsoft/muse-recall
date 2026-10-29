@@ -14,6 +14,16 @@ demonstrations (2026-10-28). See [EVIDENCE_MAP.md](EVIDENCE_MAP.md); nothing is 
 **Word limits.** 100-word description: **99 words** (limit 100). 300-word description: **296
 words** (limit 300). Counts are whitespace-delimited; re-count after any edit.
 
+## Links for the form
+
+| Field | Link |
+| --- | --- |
+| Repository | https://github.com/sidonsoft/muse-recall |
+| Project website | https://sidonsoft.github.io/muse-recall/ (plays the 2:50 video; links back to the repository and the reproduction steps) |
+| Demo video (2:50) | https://github.com/sidonsoft/muse-recall/blob/main/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true (the committed file; the website also plays the cut in the page). If the form wants a video-host link, upload this file and use that link instead |
+| Try it, no install | https://codespaces.new/sidonsoft/muse-recall?quickstart=1 |
+| Reproduce the evidence | https://github.com/sidonsoft/muse-recall#reproduce-the-evidence (`pnpm verify:research17`) |
+
 ---
 
 ## Project title
@@ -212,8 +222,9 @@ Vitest, and reproducible evidence scripts.
 
 ## What is demonstrated vs future work
 
-**Demonstrated:** Muse Spark generation and live modification of working HTML applications (Ocean
-Pairs in the current video; FocusFlow, a non-game planner, after a disclosed retake); sandboxed
+**Demonstrated:** Muse Spark generation and live modification of working HTML applications (a
+memory game in the 2:50 submission cut; Ocean Pairs in the earlier 2:46 cut; FocusFlow, a
+non-game planner, after a disclosed retake); sandboxed
 preview; source inspection; staged diffs; persistent project decisions with identity, provenance,
 corrections and recorded retrieval; the retrieval explainer; live memory-conflict refusals on both
 applications; a Phase 12A correction from a sunset to an ocean palette, one run per condition,

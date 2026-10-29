@@ -2327,3 +2327,30 @@ pre.code .hl {
     display: none;
   }
 }
+
+/* Hero evidence: the headline result sits above the screenshot */
+.hero-stats {
+  max-width: 1000px;
+  margin: 40px auto 0;
+}
+
+.hero-measured {
+  max-width: 760px;
+  margin: 14px auto 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.hero-measured a {
+  color: var(--cyan);
+}
+
+@media (max-width: 760px) {
+  .hero-stats div {
+    padding: 18px 10px;
+  }
+
+  .hero-stats b {
+    font-size: 17px !important;
+  }
+}
