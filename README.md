@@ -2,13 +2,40 @@
 
 ### Correctable project memory for AI-built software.
 
-_Interactive landing page: **[sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/)** (source in [`website/`](website/))._
-
 AI app builders forget. A new session starts from zero, a change quietly drops an earlier
 decision, and an old preference keeps coming back after you change your mind.
 
 **Muse Recall** is a local-first HTML Studio for Meta's Muse Spark that remembers your
 project's decisions, lets you correct them, and makes every change wait for your review.
+
+**[▶ Watch the 2:50 demo](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)** ·
+**[Project website](https://sidonsoft.github.io/muse-recall/)** ·
+**[Try it in your browser](https://codespaces.new/sidonsoft/muse-recall?quickstart=1)** ·
+**[Check the evidence yourself](#reproduce-the-evidence)**
+
+### Headline result: retrieved memory changed the code Muse Spark wrote
+
+**What was measured.** Phase 17 is a pre-registered trial of 480 runs on two Meta
+models, across two games and a non-game task planner. Each project carried one rule: a
+child-safety rule for the games (no flashing effects, countdown timers or penalties for
+mistakes) and a no-animation rule for the planner. Each run then asked for one of four
+changes that a model could satisfy by breaking the rule, such as "make the game more exciting
+and challenging, like an arcade game". A code detector, fixed and pushed before the first run, checked the generated source
+for the rule being broken.
+
+| Runs where the generated source broke the rule | Muse Spark | Muse Spark Open |
+| --- | ---: | ---: |
+| No project memory | 37 of 57 | 49 of 60 |
+| Project memory retrieved by Muse Recall | **0 of 58** | **1 of 60** |
+| The same rule retyped by hand into every request | 0 of 58 | 0 of 60 |
+
+Counts are over usable runs (8 of 240 Muse Spark runs hit the 30-minute cap; none on Muse
+Spark Open). Memory vs no memory: exact two-sided p = 6.5 × 10⁻²⁰ and 1.1 × 10⁻²⁴.
+
+**How we read it.** Retrieved memory did as well as retyping the rule by hand, without anyone
+retyping it. It is not better than a well-written prompt; it saves writing that prompt every
+time. The trial covers six fixed tasks and measures source code, not runtime behaviour or
+general correctness. [Full results, the correction arm and the limits](#what-the-evidence-shows)
 
 ![Current HTML Studio reviewing staged v2 of Farmyard Memory Match: the live preview, the project decisions supplied to the change, the Decision Guard advisory and the approve/reject controls](docs/assets/readme-2026-10-29/studio-review.png)
 
@@ -18,11 +45,10 @@ project's decisions, lets you correct them, and makes every change wait for your
 [**Watch (mp4, 1080p, 12.7 MB)**](docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true) ·
 [captions (SRT)](docs/demo/video/Muse_Recall_Demo_V21.srt) ·
 [transcript](docs/demo/video/Muse_Recall_Demo_V21_Transcript.txt) ·
-[what the cut shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026)
-
-**Project website:** [sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/), a one-page
-overview with the video, the loop and the evidence. It is a static landing page, not a hosted copy
-of the app.
+[what the cut shows](docs/demo/CORRECTABLE_MEMORY_DEMO.md#9-recorded-cut-29-october-2026).
+The video also plays on the [project website](https://sidonsoft.github.io/muse-recall/), a
+one-page overview with the loop and the evidence (a static landing page, not a hosted copy
+of the app; source in [`website/`](website/)).
 
 ## For judges
 
@@ -36,11 +62,9 @@ the approved source. Around that loop, Muse Recall does three things:
 3. **Nothing changes until you approve it.** Each change waits as a preview, its source and
    a diff. Approval publishes exactly the bytes that were checked, and you can roll back.
 
-**Does the memory change the code?** In a pre-registered trial of 480 runs on two Meta
-models, the original rule appeared in generated source in **37 of 57** runs without memory
-and **0 of 58** with retrieved project memory on Muse Spark (**49/60 → 1/60** on Muse Spark
-Open) — about as well as retyping the rule by hand, without the retyping.
-[What the evidence shows](#what-the-evidence-shows)
+**Does the memory change the code?** Yes, in the trial above: with retrieved project memory
+the rule was broken in 0 of 58 Muse Spark runs, against 37 of 57 without memory.
+[What the evidence shows](#what-the-evidence-shows) has the correction arm and the limits.
 
 ### Try it
 
@@ -65,6 +89,23 @@ memory and provenance, the retrieval explanation, Decision Guard and version his
 Generating or changing an app needs the Muse Code CLI; see [Quickstart](#quickstart).
 The [user guide](docs/guide/README.md) walks through setup, project memory, HTML Studio,
 architecture and limitations.
+
+### Reproduce the evidence
+
+Every Phase 17 count and p-value can be re-derived from the 480 retained run records in this
+repository. It needs Node and `python3`, no Muse account and no network after `pnpm install`,
+and takes under a minute:
+
+```bash
+pnpm verify:research17   # lock, 1205-file inventory, counts, as-run and corrected p-values
+```
+
+It prints the counts above for each model and ends with three `PASS` lines. Its first block
+shows the preserved as-run p-values (about 10⁻¹⁶); the exact values quoted in this README are
+the [post-run correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md), checked in the
+last block. The protocol was locked at commit
+[`6640e83`](https://github.com/sidonsoft/muse-recall/commit/6640e83f3c999cd1349420ad5e95bc329fff7d36)
+before the first run; see [RESULTS.md](docs/hackathon-evidence/phase17/RESULTS.md).
 
 ---
 
@@ -718,6 +759,7 @@ Phase 15A is published separately as a six-run **pilot**, not pooled with Phase 
 ## Submission materials
 
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md) — requirements status and owner actions
+- [Judge entry-point audit](docs/release/JUDGE_ENTRY_POINT_AUDIT.md) — README, website and submission text checked against the 15 / 60 / 90-second goals
 - [Project website](https://sidonsoft.github.io/muse-recall/) — the one-page overview with the 2:50 video
 - [User guide](docs/guide/README.md) and [Codespaces notes](.devcontainer/README.md)
 - [Submission copy](docs/submission/SUBMISSION_COPY.md) — current short and long descriptions

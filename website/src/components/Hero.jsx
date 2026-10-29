@@ -31,12 +31,41 @@ export default function Hero() {
             Try the loop
           </a>
           <a className="btn btn-ghost" href="#quickstart">
-            Run it locally
+            Try it
           </a>
         </div>
         <p className="hero-note">
           AI builders are fast at the first draft and slow at the second week.
           <span className="kbd-hint"> · <kbd>⌘</kbd> <kbd>K</kbd> to jump around this page</span>
+        </p>
+
+        <div className="stats hero-stats">
+          <div>
+            <b style={{ fontFamily: 'var(--mono)', fontSize: 22 }}>37/57 → 0/58</b>
+            <span>runs breaking the rule, without → with memory (Muse Spark)</span>
+          </div>
+          <div>
+            <b style={{ fontFamily: 'var(--mono)', fontSize: 22 }}>49/60 → 1/60</b>
+            <span>same trial on Muse Spark Open</span>
+          </div>
+          <div>
+            <b>480</b>
+            <span>pre-registered runs · exact p &lt; 10⁻¹⁹</span>
+          </div>
+          <div>
+            <b>0/58 · 0/60</b>
+            <span>same rule retyped by hand into every request</span>
+          </div>
+        </div>
+        <p className="hero-measured">
+          <strong>What was measured:</strong> each project carried one rule (no countdowns,
+          flashes or penalties in two children&apos;s games; no animation in a task planner), then
+          Muse was asked for a change that could break it. A detector fixed before the first run
+          checked the generated source. Six fixed tasks; source code, not runtime behaviour.{' '}
+          <a href="#evidence">Full table</a> ·{' '}
+          <a href={`${REPO}#reproduce-the-evidence`} target="_blank" rel="noreferrer">
+            re-derive it yourself
+          </a>
         </p>
 
         <figure className="figure reveal visible" style={{ textAlign: 'left' }}>
@@ -64,24 +93,6 @@ export default function Hero() {
           </figcaption>
         </figure>
 
-        <div className="container stats reveal" style={{ marginTop: 56 }}>
-          <div>
-            <b style={{ fontFamily: 'var(--mono)', fontSize: 22 }}>37/57 → 0/58</b>
-            <span>rule violations with memory (Muse Spark)</span>
-          </div>
-          <div>
-            <b style={{ fontFamily: 'var(--mono)', fontSize: 22 }}>49/60 → 1/60</b>
-            <span>same trial on Muse Spark Open</span>
-          </div>
-          <div>
-            <b>480</b>
-            <span>pre-registered runs · exact p &lt; 10⁻¹⁹</span>
-          </div>
-          <div>
-            <b>728</b>
-            <span>passing tests · pnpm verify</span>
-          </div>
-        </div>
       </div>
     </section>
   );

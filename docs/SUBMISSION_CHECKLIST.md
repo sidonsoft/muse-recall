@@ -57,6 +57,10 @@ Because the Official Rules were unavailable, this checklist marks visibility and
       [`.devcontainer/`](../.devcontainer/README.md), with a README badge
 - [x] Project website published at [sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/): a
       static landing page with the 2:50 video, not a hosted copy of the app
+- [x] Judge entry points audited (README, website, submission copy): headline result with what
+      was measured near the top of each, cross-links, and a links table for the form;
+      see [`docs/release/JUDGE_ENTRY_POINT_AUDIT.md`](release/JUDGE_ENTRY_POINT_AUDIT.md)
+- [ ] Codespaces badge opened once by the owner to confirm the no-install path **(owner)**
 - [ ] Submission form completed on the platform **(owner)**
 - [ ] Official Rules accepted if required **(owner)**
 
@@ -76,7 +80,7 @@ Because the Official Rules were unavailable, this checklist marks visibility and
    uploaded accurately: the 2:50 cut includes the correction and its failure beat; the 2:46 cut
    does not show an explicit correction.
 4. Submit the repository URL, video URL, and the description in
-   `docs/submission/SUBMISSION_COPY.md`.
+   `docs/submission/SUBMISSION_COPY.md`; its "Links for the form" table has every URL.
 5. Claim significance only for the Phase 17 contrasts, within their stated limits; Phase 16 / 16B
    is earlier, narrower evidence. Use the corrected exact p-values, not the original as-run values,
    and keep the correction percentages described as release of the superseded restriction — not as
