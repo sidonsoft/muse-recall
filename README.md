@@ -231,6 +231,12 @@ deterministic provider is **not a model**: it is labelled as such in the API, th
 and the provider capability notes, and it refuses to impersonate Muse. Tests use it by
 default.
 
+`MODEL_PROVIDER` affects **chat only** (conversation turns, the health probe, and the
+provider bench). Forge generation always spawns the real Muse CLI, even when
+`MODEL_PROVIDER=echo`. To run Forge without Muse, point `FORGE_MUSE_BIN` at a fake
+binary such as `tests/fixtures/fake-muse.mjs`; the echo provider is never used by
+Forge.
+
 ---
 
 ## Project status
@@ -238,7 +244,7 @@ default.
 | Area | Phase | State |
 | --- | --- | --- |
 | Monorepo, TypeScript, lint, tests, CI | 1 | **Complete** |
-| Fastify API + `/api/health` with a real write round-trip | 1 | **Complete** |
+| Fastify API + `/api/health` with a read-only DB check | 1 | **Complete** |
 | SQLite schema, migration runner, FTS5 index | 1 | **Complete** |
 | Shared Zod contracts | 1 | **Complete** |
 | Meta Muse provider adapter (real calls, streaming, usage) | 1 | **Complete**, verified live |
@@ -358,9 +364,8 @@ interaction.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/live` | Liveness; touches nothing |
-| `GET` | `/api/health` | DB write round-trip, schema version, provider state |
-| `GET` | `/api/health?probe=live` | Same, plus a real (cached) model round-trip |
-| `POST` | `/api/health/muse` | Force a live Muse check |
+| `GET` | `/api/health` | Read-only DB check, schema version, provider state |
+| `POST` | `/api/health/muse` | Force a live Muse check (origin-guarded) |
 | `GET` | `/api/meta` | Provider capabilities, retrieval config, honest module status |
 | `POST` | `/api/provider/generate` | Bounded raw model call (test bench, no memory) |
 | `GET` | `/api/memories` | List/search/filter with paging |
@@ -450,7 +455,7 @@ paths.
 | --- | --- | --- |
 | `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address; must be loopback (`127.0.0.1`, `::1`, `localhost`) or startup fails |
 | `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file, relative to the checkout root |
-| `MODEL_PROVIDER` | `muse-cli` | `muse-cli` or `echo` (offline) |
+| `MODEL_PROVIDER` | `muse-cli` | Chat provider: `muse-cli` or `echo` (offline) |
 | `MUSE_MODEL` | `muse-wonder-1.0` | Any model the CLI offers |
 | `MUSE_REASONING_EFFORT` | `medium` | `none`…`ultra` |
 | `MUSE_TIMEOUT_MS` | `120000` | Hard per-call budget |

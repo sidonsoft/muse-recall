@@ -58,11 +58,6 @@ export interface AppDependencies {
   startedAt?: number;
 }
 
-const HealthQuerySchema = z.object({
-  /** `live` performs (or reuses a recent) real model round-trip. */
-  probe: z.enum(['live']).optional(),
-});
-
 /**
  * Input contract for the provider test bench.
  *
@@ -319,14 +314,11 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     );
   });
 
-  // --- Health: database round-trip + provider state. ----------------------
-  app.get('/api/health', async (request) => {
-    const query = HealthQuerySchema.parse(request.query ?? {});
-    if (query.probe === 'live') {
-      await providerHealth.check();
-    }
-
-    const databaseProbe = probeDatabase(db, dbPath);
+  // --- Health: read-only DB check + provider state. -----------------------
+  // A live model call is a POST (/api/health/muse) so the origin guard covers
+  // it; a plain GET never writes to the database or spends model quota.
+  app.get('/api/health', async () => {
+    const databaseProbe = probeDatabase(db, dbPath, { readOnly: true });
     const providerState = providerHealth.current();
     const capabilities = provider.capabilities();
 

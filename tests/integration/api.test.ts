@@ -1,3 +1,4 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
 import type { FastifyInstance } from 'fastify';
@@ -62,7 +63,11 @@ function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
 }
 
 async function createTestApp(
-  options: { provider?: EchoProvider; config?: Partial<AppConfig> } = {},
+  options: {
+    provider?: EchoProvider;
+    config?: Partial<AppConfig>;
+    configureDb?: (db: DatabaseSync) => void;
+  } = {},
 ): Promise<FastifyInstance> {
   const database = openDatabase({ path: ':memory:', wal: false });
   openDatabases.push(database);
@@ -76,6 +81,7 @@ async function createTestApp(
     providerHealth: new ProviderHealthTracker(provider, 0),
     startedAt: Date.now() - 5_000,
   });
+  options.configureDb?.(database.db);
   openApps.push(app);
   return app;
 }
@@ -140,8 +146,11 @@ describe('GET /api/live', () => {
 });
 
 describe('GET /api/health', () => {
-  it('verifies the database with a real write round-trip', async () => {
-    const app = await createTestApp();
+  it('checks the database without writing to it', async () => {
+    const app = await createTestApp({
+      // A read-only connection would reject any write the probe attempted.
+      configureDb: (db) => db.exec('PRAGMA query_only = ON'),
+    });
     const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).toBe(200);
 
@@ -149,7 +158,8 @@ describe('GET /api/health', () => {
     expect(data.service).toBe('muse-memory-lab');
     expect(data.version).toBe(SERVICE_VERSION);
     expect(data.database.status).toBe('ok');
-    expect(data.database.write_verified).toBe(true);
+    expect(data.database.write_verified).toBe(false);
+    expect(data.database.detail).toMatch(/read verified/);
     expect(data.database.schema_version).toBeGreaterThanOrEqual(1);
     expect(data.database.engine).toMatch(/^sqlite/);
     expect(data.uptime_seconds).toBeGreaterThan(0);
@@ -165,21 +175,13 @@ describe('GET /api/health', () => {
     expect(data.provider.capabilities.streaming).toBe(true);
   });
 
-  it('verifies the provider on demand with ?probe=live', async () => {
+  it('does not run a live probe from a GET query', async () => {
     const app = await createTestApp();
     const response = await app.inject({ method: 'GET', url: '/api/health?probe=live' });
+    expect(response.statusCode).toBe(200);
     const { data } = response.json();
-    expect(data.provider.verified_with_live_call).toBe(true);
-    expect(data.provider.status).toBe('ok');
-    expect(data.provider.model).toBe('echo-1');
-    expect(data.status).toBe('ok');
-  });
-
-  it('rejects an unknown probe value with a validation error', async () => {
-    const app = await createTestApp();
-    const response = await app.inject({ method: 'GET', url: '/api/health?probe=everything' });
-    expect(response.statusCode).toBe(400);
-    expect(response.json().error.code).toBe('validation_failed');
+    expect(data.provider.verified_with_live_call).toBe(false);
+    expect(data.provider.status).toBe('skipped');
   });
 });
 

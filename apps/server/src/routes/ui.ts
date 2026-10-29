@@ -194,6 +194,20 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
       throw error;
     }
 
+    // A submitted plan is an explicit request to act: let the agent use
+    // project tools (writes still require a separate approval). Run the
+    // follow-up turn before recording the submission so a provider failure
+    // leaves the surface active and the form resubmittable.
+    const turn = await runtime.runTurn(
+      id,
+      {
+        content: `${normalised.summary}\n\nUse the available project tools to record follow-up work such as tasks.`,
+        capture_memories: false,
+      },
+      new CollectingHandler(),
+      { tools: 'force' },
+    );
+
     store.recordEvent(surfaceId, normalised.form.id, normalised.values);
     store.markSubmitted(surfaceId);
 
@@ -213,18 +227,6 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
       });
       memory = created.memory;
     }
-
-    // A submitted plan is an explicit request to act: let the agent use
-    // project tools (writes still require a separate approval).
-    const turn = await runtime.runTurn(
-      id,
-      {
-        content: `${normalised.summary}\n\nUse the available project tools to record follow-up work such as tasks.`,
-        capture_memories: false,
-      },
-      new CollectingHandler(),
-      { tools: 'force' },
-    );
 
     const updated = store.get(surfaceId);
     if (!updated) throw new Error('interface disappeared after submission');

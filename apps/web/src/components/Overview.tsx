@@ -69,10 +69,14 @@ export function Overview({
             <DataRow label="engine" value={database.engine} mono />
             <DataRow label="schema" value={`v${database.schema_version}`} mono />
             <DataRow
-              label="write test"
+              label="read test"
               value={
-                <span className={database.write_verified ? 'text-ok' : 'text-err'}>
-                  {database.write_verified ? 'round-trip verified' : 'failed'}
+                <span className={database.status === 'ok' ? 'text-ok' : 'text-err'}>
+                  {database.status !== 'ok'
+                    ? 'failed'
+                    : database.write_verified
+                      ? 'round-trip verified'
+                      : 'read verified'}
                 </span>
               }
             />
@@ -158,7 +162,7 @@ function RealityCheck({ meta }: { meta: ServiceMeta | null }) {
     {
       label: 'Local API and SQLite',
       status: 'complete',
-      note: 'Health verifies a real read/write round-trip; memories persist on this machine.',
+      note: 'Health checks the local database read-only; memories persist on this machine.',
     },
     {
       label: 'Muse Spark integration',

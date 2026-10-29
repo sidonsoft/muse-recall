@@ -327,6 +327,20 @@ describe('database health probe', () => {
     }
   });
 
+  it('can verify reads on a read-only connection', () => {
+    const opened = openDatabase({ path: ':memory:' });
+    try {
+      opened.db.exec('PRAGMA query_only = ON');
+      const probe = probeDatabase(opened.db, ':memory:', { readOnly: true });
+      expect(probe.status).toBe('ok');
+      expect(probe.write_verified).toBe(false);
+      expect(probe.detail).toMatch(/read verified/);
+      expect(probe.schema_version).toBe(latestVersion());
+    } finally {
+      opened.close();
+    }
+  });
+
   it('reports an error instead of throwing when the schema is missing', () => {
     const { db, close } = openDatabase({ path: ':memory:' });
     try {
