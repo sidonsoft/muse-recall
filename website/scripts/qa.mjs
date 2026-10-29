@@ -200,10 +200,11 @@ try {
   const expandedTitles = await evalJS(`[...document.querySelectorAll(".tl-card")]
     .filter((c) => c.getAttribute("aria-expanded") === "true")
     .map((c) => c.querySelector("b")?.textContent?.slice(0, 30))`);
+  const whyInOpen = await evalJS(`document.querySelectorAll('.tl-card[aria-expanded="true"] .tl-why').length`);
   check(
-    'memory timeline cards expand on click',
-    tl.total === 5 && expandedTitles.includes(tl.title),
-    `clicked "${tl.title}" → expanded [${expandedTitles.join(' | ')}]`
+    'memory timeline cards expand on click (with why-panel)',
+    tl.total === 5 && expandedTitles.includes(tl.title) && whyInOpen === 1,
+    `clicked "${tl.title}" → expanded [${expandedTitles.join(' | ')}], why panels in open card: ${whyInOpen}`
   );
 
   // 4. vitals

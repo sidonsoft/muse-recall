@@ -1680,6 +1680,16 @@ pre.code .hl {
   color: var(--muted);
 }
 
+.tl-why {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-left: 2px solid var(--violet);
+  background: rgba(139, 92, 246, 0.07);
+  border-radius: 0 10px 10px 0;
+  font-size: 13.5px;
+  color: #c4b5fd;
+}
+
 .tl-swatches {
   display: flex;
   gap: 12px;
@@ -1976,6 +1986,10 @@ pre.code .hl {
     background: #eef7fb;
     border-color: #a8d5e5;
     color: #11465c;
+  }
+  .tl-why {
+    background: #f3efff;
+    color: #3f2a7a;
   }
   .tl-card {
     padding: 12px 14px;
