@@ -310,7 +310,10 @@ export function Gallery() {
         <div className="gallery">
           {shots.map((s) => (
             <figure className="reveal" key={s.src}>
-              <img src={s.src} alt={s.c} loading="lazy" decoding="async" width="1440" height="960" />
+              <picture>
+                <source srcSet={s.src.replace(/\.(png|jpe?g)$/, '.webp')} type="image/webp" />
+                <img src={s.src} alt={s.c} loading="lazy" decoding="async" width="1440" height="960" />
+              </picture>
               <figcaption>
                 <b>{s.t}</b>
                 {s.c}

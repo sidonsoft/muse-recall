@@ -230,6 +230,17 @@ try {
     ['JSON-LD', 'SoftwareSourceCode'],
   ].filter(([, probe]) => !html.includes(probe));
   check('static HTML pre-rendered (works without JS)', missing.length === 0, missing.map(([n]) => n + ' missing').join(', ') || `len=${html.length}`);
+
+  // 6. WebP sources serve every image
+  await send('Page.navigate', { url: `${URL_}?imgs=${Date.now()}` });
+  await sleep(1200);
+  const imgs = await evalJS(`(async () => {
+    [...document.images].forEach((i) => (i.loading = "eager"));
+    await Promise.all([...document.images].map((i) => i.complete ? 1 : new Promise((r) => { i.onload = r; i.onerror = () => r("err"); })));
+    return [...document.images].map((i) => ({ src: (i.currentSrc || i.src).split("/").pop(), ok: i.naturalWidth > 0, webp: (i.currentSrc || "").endsWith(".webp") }));
+  })()`, true);
+  const badImgs = imgs.filter((i) => !i.ok || !i.webp);
+  check(`${imgs.length} images all load WebP`, badImgs.length === 0, badImgs.length ? JSON.stringify(badImgs) : 'webp + loaded');
 } catch (e) {
   check('script completed', false, e.message);
 } finally {

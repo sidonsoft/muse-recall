@@ -37,15 +37,18 @@ export default function Hero() {
         </p>
 
         <figure className="figure reveal visible" style={{ textAlign: 'left' }}>
-          <img
-            src="./assets/html-studio-approved-v2.jpg"
-            alt="HTML Studio after approving v2 of Ocean Pairs: live preview, the remembered rule supplied to the change, Decision Guard panel, and version history"
-            width="1600"
-            height="807"
-            loading="eager"
-            {...{ fetchpriority: 'high' }}
-            decoding="async"
-          />
+          <picture>
+            <source srcSet="./assets/html-studio-approved-v2.webp" type="image/webp" />
+            <img
+              src="./assets/html-studio-approved-v2.jpg"
+              alt="HTML Studio after approving v2 of Ocean Pairs: live preview, the remembered rule supplied to the change, Decision Guard panel, and version history"
+              width="1600"
+              height="807"
+              loading="eager"
+              {...{ fetchpriority: 'high' }}
+              decoding="async"
+            />
+          </picture>
           <figcaption>
             HTML Studio after approving v2 of <em>Ocean Pairs</em> — the live preview, the
             remembered rule supplied to the change, the Decision Guard panel, and version history.
