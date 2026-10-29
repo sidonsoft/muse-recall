@@ -1,0 +1,95 @@
+name: Website
+
+# The landing page in website/ is a standalone npm project (not part of the
+# pnpm workspace). PRs run its own QA; pushes to main also publish it to
+# GitHub Pages at https://sidonsoft.github.io/muse-recall/ once Pages is
+# enabled (Settings → Pages → Source: GitHub Actions).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - '.github/workflows/website.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: website
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # `npm run links` also checks the commit the site footer cites.
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run site
+      # Test-only: a11y audit, widget state machine, mobile overflow, LCP/CLS
+      # against `vite preview`. Deliberately not a deploy.
+      - run: npm run qa
+      # Every upstream link on the site must resolve in this repo's tree.
+      - run: npm run links
+
+  gecko:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run site
+      # Second engine (Gecko) through Playwright's driver — the site must not
+      # depend on Blink. macOS-local Firefox is broken (see script header).
+      - run: npx playwright install firefox --no-shell
+      - run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 2
+          BROWSER=firefox node scripts/firefox-check.mjs
+
+  build-pages:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [qa, gecko]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run site
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: website/dist }
+
+  deploy:
+    needs: build-pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

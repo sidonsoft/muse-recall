@@ -1,10 +1,11 @@
 # Muse Recall — marketing site
 
-The landing page for **[Muse Recall](https://github.com/sidonsoft/muse-recall)** —
+The landing page for **[Muse Recall](https://github.com/sidonsoft/muse-recall)**, kept in the
+`website/` folder of the product repo —
 correctable project memory for AI-built software. A local-first HTML Studio for
 Meta's Muse Spark, built for the Meta Muse hackathon ("Push the Frontier").
 
-All product copy, stats and screenshots come from the `sidonsoft/muse-recall`
+All product copy, stats and screenshots come from the rest of this
 repository (README, `docs/submission/SUBMISSION_COPY.md`, `docs/assets/`), so the
 site states exactly what the evidence supports.
 
@@ -26,7 +27,10 @@ site states exactly what the evidence supports.
 
 ## Run
 
+The site is a standalone npm project, separate from the pnpm workspace:
+
 ```bash
+cd website
 npm install
 npm run dev      # → http://localhost:5173
 npm run build    # production build in dist/
@@ -36,8 +40,8 @@ npm run qa       # build, then verify against the preview: a11y audit,
 ```
 
 QA mirrors the product's own stance — `scripts/qa.mjs` is dependency-free
-(CDP over Node's global WebSocket) and also runs on CI (`.github/workflows/site-qa.yml`,
-test-only, not a deploy).
+(CDP over Node's global WebSocket) and also runs on CI (the `qa` and `gecko` jobs in
+`.github/workflows/website.yml`, on any PR that touches `website/`).
 
 `npm run site` builds and then **pre-renders the app into `dist/index.html`**
 (`scripts/prerender.mjs`) — the built output is a portable, static page that
@@ -45,8 +49,8 @@ serves full content to crawlers, link-preview bots, and JS-disabled readers;
 the client bundle still loads and takes over interactions.
 
 Every upstream link used on the site is audited against the real repo tree with
-`npm run links` (expects the `muse-recall` checkout as `../muse-recall-src`,
-override with `UPSTREAM=...`).
+`npm run links` (checks the parent repo this folder lives in, override with
+`UPSTREAM=...`).
 
 ## Scoreboard
 
@@ -63,14 +67,16 @@ Verified state of this repo at the product-repo commit the footer cites:
 
 ## Deploy
 
-`.github/workflows/pages.yml` builds with `npm run site` and publishes the static
-`dist/` to GitHub Pages on every push to `main` (and on demand from the Actions
-tab). `base: './'` keeps it portable, so it works at
-`https://sidonsoft.github.io/muse-recall-website/`.
+The `deploy` job in `.github/workflows/website.yml` builds with `npm run site` and
+publishes the static `dist/` to GitHub Pages on every push to `main` that touches
+`website/` (and on demand from the Actions tab). `base: './'` keeps it portable, so it works at
+`https://sidonsoft.github.io/muse-recall/`.
 
 One-time switch: repo **Settings → Pages → Build and deployment → Source:
-GitHub Actions**, then re-run the latest "Pages (static deploy)" workflow (or
-push to `main`).
+GitHub Actions**, then re-run the latest "Website" workflow from the Actions tab.
+
+The site used to live in `sidonsoft/muse-recall-website` (published at
+`sidonsoft.github.io/muse-recall-website/`); its full history was imported here.
 
 The demo video is served from `public/video/` (copied from
 `muse-recall/docs/demo/video/`, SHA-256 `4020c0c6…b308`, re-muxed with

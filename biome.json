@@ -26,7 +26,8 @@
       "!docs/hackathon-evidence/phase17/phase17-analysis.json",
       "!docs/hackathon-evidence/phase17/phase17-analysis-corrected.json",
       "!docs/hackathon-evidence/live-dsh-run-2026-10-29",
-      "!docs/demo/evidence"
+      "!docs/demo/evidence",
+      "!website"
     ]
   },
   "formatter": {

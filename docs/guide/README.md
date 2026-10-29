@@ -66,7 +66,7 @@ review the resulting job. This residual behavior is recorded as F6 in the
   application does not call it, and arbitrary provider support is not implemented.
 - **The application is not hosted.** It runs locally, or in your own GitHub Codespace on the
   offline provider (see [Getting started](getting-started.md#run-in-github-codespaces)). The
-  [project website](https://sidonsoft.github.io/muse-recall-website/) is a static landing page, not a copy of the app. The recorded
+  [project website](https://sidonsoft.github.io/muse-recall/) is a static landing page, not a copy of the app. The recorded
   submission cut is committed under [`docs/demo/video/`](../demo/video/).
 
 ## Related references

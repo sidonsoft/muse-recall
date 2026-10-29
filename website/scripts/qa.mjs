@@ -263,7 +263,7 @@ try {
   check('static HTML pre-rendered (works without JS)', missing.length === 0, missing.map(([n]) => n + ' missing').join(', ') || `len=${html.length}`);
   const r404 = await fetch(URL_ + '404.html');
   const body404 = await r404.text();
-  check('404 fallback redirects to app root', r404.status === 200 && body404.includes('Redirecting') && body404.includes('muse-recall-website'), `status=${r404.status}`);
+  check('404 fallback redirects to app root', r404.status === 200 && body404.includes('Redirecting') && body404.includes('/muse-recall/'), `status=${r404.status}`);
   const vid = await evalJS(`(() => {
     const v = document.querySelector("#watch video");
     if (!v) return null;

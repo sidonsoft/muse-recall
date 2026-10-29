@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Link audit: every github.com/sidonsoft/muse-recall path referenced in the site
 // must exist in the upstream repo checkout. Run after editing copy or links.
-// Usage: npm run links   (expects the muse-recall clone at ../muse-recall-src,
+// Usage: npm run links   (audits the parent muse-recall checkout this folder lives in,
 //        or set UPSTREAM=/path/to/muse-recall)
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const UP = process.env.UPSTREAM || new URL('../muse-recall-src', `file://${process.cwd()}/`).pathname;
+const UP = process.env.UPSTREAM || new URL('..', `file://${process.cwd()}/`).pathname;
 if (!fs.existsSync(UP)) {
   console.error(`links: upstream checkout not found at ${UP} (set UPSTREAM=...)`);
   process.exit(1);
