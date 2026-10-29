@@ -81,8 +81,9 @@ export const RetrievedMemorySchema = z.object({
   /** True when `injected_content` is shorter than `memory.content`. */
   truncated: z.boolean(),
   /**
-   * True when the memory was force-included because it is an active
-   * constraint or goal, regardless of keyword relevance.
+   * True when the memory was force-included because its type is pinned,
+   * regardless of keyword relevance. The default pinned types are constraints
+   * and goals; callers may configure additional decision-like types.
    */
   pinned: z.boolean(),
   /** Weighted total in [0, 1]. */

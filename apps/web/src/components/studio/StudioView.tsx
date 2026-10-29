@@ -45,6 +45,10 @@ function readDraft(projectId: string): StudioDraft {
   return { prompt: read('prompt'), change: read('change') };
 }
 
+function referencesWebStorage(html: string): boolean {
+  return /\b(?:local|session)Storage\b/.test(html);
+}
+
 type StudioTab = 'preview' | 'source' | 'diff';
 type Action = 'open' | 'generate' | 'modify' | 'approve' | 'reject' | 'rollback' | null;
 type Notice = { tone: 'ok' | 'warn' | 'err'; text: string } | null;
@@ -601,6 +605,11 @@ export function StudioView({
     diff && state ? Math.max(0, ...state.versions.map((entry) => entry.version)) + 1 : null;
   const previewJobId = previewMode === 'staged' ? activeJobId : null;
   const previewSrc = api.forgePreviewUrl(projectId, previewJobId ?? undefined);
+  const previewArtifact =
+    artifact && (previewJobId ? artifact.job_id === previewJobId : artifact.job_id === null)
+      ? artifact
+      : null;
+  const previewUsesStorage = previewArtifact ? referencesWebStorage(previewArtifact.html) : false;
   const currentProject = projects.find((entry) => entry.id === projectId) ?? null;
   const projectName =
     currentProject?.name && currentProject.name !== projectId ? currentProject.name : null;
@@ -1023,6 +1032,13 @@ export function StudioView({
                     : 'no version'}
               </span>
             </div>
+          ) : null}
+
+          {tab === 'preview' && previewUsesStorage ? (
+            <p className="border-b border-line bg-base/40 px-2.5 py-1 text-[10px] leading-relaxed text-muted">
+              Preview storage is temporary and resets when the preview reloads; the exported file
+              keeps its data.
+            </p>
           ) : null}
 
           <div className="min-h-0 flex-1">

@@ -18,6 +18,7 @@ import {
   type ForgeUsage,
   type ForgeValidation,
   type Memory,
+  type MemoryType,
   type RetrievedMemory,
   redactSecrets,
 } from '@mml/shared';
@@ -85,6 +86,18 @@ interface ExecuteState {
 }
 
 const MAX_LOGS = 200;
+
+/**
+ * Forge prompts depend on project decisions, not just constraints and goals.
+ * Pinning these types keeps a saved palette or storage decision available even
+ * when the task wording shares no keywords with it.
+ */
+export const FORGE_PINNED_TYPES: readonly MemoryType[] = [
+  'constraint',
+  'goal',
+  'preference',
+  'technical_decision',
+];
 
 export class ForgeJobManager {
   readonly workspace: ForgeWorkspace;
@@ -812,7 +825,7 @@ export class ForgeJobManager {
           query,
           budget: { max_memories: 6, max_characters: 3_000 },
         },
-        { now: this.now() },
+        { now: this.now(), pinnedTypes: FORGE_PINNED_TYPES },
       );
       const memoryIds = retrieval.results.map((result) => result.memory.id);
       memories = retrieval.results;

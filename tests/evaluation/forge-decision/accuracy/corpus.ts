@@ -686,9 +686,9 @@ function onTimeout() { score -= 2; }`,
     options: { supersededDecisions: [DEC_PALETTE_WARM_WORDS] },
     source: `<style>body { background: linear-gradient(180deg, #FFB300 0%, #FF7E47 100%); }</style>`,
     ground_truth: 'violation',
-    ideal: 'UNVERIFIED',
+    ideal: 'BLOCK',
     notes:
-      'Superseded record has family words but NO hexes; original sunset hexes can only abstain (no forbidden-hex set).',
+      'Superseded record has family words but NO hexes; v1.3.0 HSL family classification detects the warm source colours, so the violation now blocks.',
   },
   {
     id: 'D11',

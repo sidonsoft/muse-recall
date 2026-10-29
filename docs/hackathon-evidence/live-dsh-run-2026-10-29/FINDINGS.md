@@ -7,6 +7,14 @@ here is pre-registered, and no number below should be pooled with Phase 15–17.
 > `main`**. The same run was repeated on code combining them: see
 > [`after/AFTER_FIXES.md`](after/AFTER_FIXES.md). This file records the original run as it happened.
 
+> **Merge update (2026-10-29).** F1–F5 are now fixed on `main`: F1 in
+> [PR #5](https://github.com/sidonsoft/muse-recall/pull/5), F2 in
+> [PR #6](https://github.com/sidonsoft/muse-recall/pull/6), F3 in
+> [PR #7](https://github.com/sidonsoft/muse-recall/pull/7), and F4–F5 in
+> [PR #8](https://github.com/sidonsoft/muse-recall/pull/8), through merge commit `b30d640`.
+> F6–F7 and repeat-run findings N1–N3 remain open. The earlier update and findings below
+> are preserved as the dated record of the runs.
+
 A DeepSeek Harness (`dsh`) headless worker acted as the human operator of Muse Recall. It created
 a project, saved six decisions, asked live Muse Spark for a single-file app, reviewed every staged
 change against the source and approved or rejected it, corrected one decision, and kept a log.

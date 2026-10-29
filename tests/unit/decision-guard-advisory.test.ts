@@ -285,6 +285,28 @@ describe('advisory evaluation', () => {
     expect(advisory.applicable_rules).toEqual([]);
   });
 
+  it('abstains on a hidden long timer without publishing a violation finding', () => {
+    const source = `var SPRINT_LEN = 15*60*1000;
+var sprintTimer = null;
+function startSprint(){
+  if(sprintTimer) window.clearTimeout(sprintTimer);
+  sprintTimer = window.setTimeout(function(){
+    sprintTimer = null;
+    setSprintMsg('Reading time finished — great cozy reading!');
+  }, SPRINT_LEN);
+}`;
+    const advisory = evaluate({ source, rows: [CHILD], memoryIds: [CHILD.id] });
+    expect(advisory.engine_verdict).toBe('UNVERIFIED');
+    expect(advisory.assessment).toBe('not_verified');
+    expect(advisory.findings).toEqual([]);
+    const entry = advisory.unverified.find(
+      (item) => item.decision_id === CHILD.id && item.rule === 'countdown-mechanics',
+    );
+    expect(entry?.code).toBe('rule_unverified');
+    expect(entry?.reason).toContain('15-minute timer bounds an activity');
+    expect(entry?.reason).toContain('SPRINT_LEN = 15*60*1000');
+  });
+
   it('evaluates a corrected palette and resolves its superseded history', () => {
     const advisory = evaluate({
       source: `${PHASER}<style>:root { --accent: #FF7E5F; }</style>`,
