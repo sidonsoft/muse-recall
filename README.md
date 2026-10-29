@@ -472,7 +472,14 @@ paths.
 | `FORGE_MUSE_MODEL` | unset | Forge model id (for example `muse-spark-1.3-contributor`) |
 | `FORGE_REASONING_EFFORT` | `low` | Forge reasoning tier |
 | `FORGE_MAX_RUNTIME_MS` | `600000` | Hard wall-clock budget per Forge job |
+| `FORGE_MAX_CALLS` | `25` | Model-call cap, passed to `muse exec --max-model-steps` and re-checked on completion |
+| `FORGE_MAX_INPUT_TOKENS` | `1500000` | Input-token budget, checked after the run (observational) |
 | `FORGE_RUNTIME_BROWSER` | `managed` | Runtime verification browser: `managed` or explicit `chrome` |
+
+`FORGE_MAX_CALLS` stops the CLI from starting another model step, so it is enforced
+before the cap is crossed. `FORGE_MAX_INPUT_TOKENS` has no mid-run CLI control and is
+checked only after the child exits (observational): exceeding it marks the job
+`budget_exceeded` but cannot prevent the tokens already spent.
 
 The API key never reaches the browser: the server shells out to the Muse CLI, which
 uses its own stored login (or a `META_API_KEY` delivered over stdin).

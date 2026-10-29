@@ -1,11 +1,13 @@
-import type {
-  ForgeArtifact,
-  ForgeDiff,
-  ForgeJob,
-  ForgeProjectView,
-  Memory,
-  Project,
-  ServiceMeta,
+import {
+  FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH,
+  FORGE_SCREENSHOT_MAX_BYTES,
+  type ForgeArtifact,
+  type ForgeDiff,
+  type ForgeJob,
+  type ForgeProjectView,
+  type Memory,
+  type Project,
+  type ServiceMeta,
 } from '@mml/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
@@ -53,6 +55,12 @@ function messageOf(cause: unknown): string {
   if (cause instanceof ApiError) return cause.message;
   if (cause instanceof Error) return cause.message;
   return String(cause);
+}
+
+function screenshotTooLarge(): string {
+  return `This preview capture is too large (over ${String(
+    Math.round(FORGE_SCREENSHOT_MAX_BYTES / 1_000_000),
+  )} MB decoded). Reduce the preview size or capture a smaller canvas, then recapture.`;
 }
 
 function delay(ms: number): Promise<void> {
@@ -290,6 +298,12 @@ export function StudioView({
       }
       if (data?.type !== 'forge:screenshot') return;
       if (data.dataUrl) {
+        if (data.dataUrl.length > FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH) {
+          setScreenshot(null);
+          setNotice(null);
+          setError(screenshotTooLarge());
+          return;
+        }
         setScreenshot(data.dataUrl);
         setNotice({ tone: 'ok', text: 'Preview captured. Describe the change you want.' });
         setError(null);
@@ -439,7 +453,9 @@ export function StudioView({
         setError(finished.error ?? `Change ${finished.status.replace('_', ' ')}.`);
       }
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(
+        cause instanceof ApiError && cause.status === 413 ? screenshotTooLarge() : messageOf(cause),
+      );
     } finally {
       setAction(null);
       await api

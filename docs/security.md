@@ -132,6 +132,13 @@ the stream at ~4 chars/token: it stops reading and terminates the child when the
 is exceeded, then reports `stop_reason: "max_tokens"` with text cut at the budget.
 Truncation is explicit rather than silently delivered.
 
+**Forge budgets are mixed, and the labels matter.** `FORGE_MAX_RUNTIME_MS` is a hard
+wall-clock kill. `FORGE_MAX_CALLS` is passed to `muse exec --max-model-steps`, so the CLI
+stops before starting another model step; the reported call count is still re-checked
+when the run completes. `FORGE_MAX_INPUT_TOKENS` has no CLI flag that can stop a run
+mid-flight, so it is checked only after the child exits: it is an **observational**
+budget that marks the job `budget_exceeded`, not an in-process token stop.
+
 **Secrets never reach the browser.** The API key lives in the server environment or the
 Muse CLI's credential store. The client has no code path to a provider endpoint;
 `VITE_*` variables are limited to the API base URL.

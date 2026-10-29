@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
 import {
@@ -39,6 +39,7 @@ export type ForgeErrorCode =
   | 'invalid_job_id'
   | 'path_escape'
   | 'invalid_staged'
+  | 'invalid_screenshot'
   | 'invalid_job_state'
   | 'version_conflict'
   | 'version_corrupt'
@@ -65,6 +66,16 @@ export class ForgeError extends Error {
 
 const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_BYTES = 1_500_000;
+/**
+ * Bound the work a generated document can request from `node --check`.
+ *
+ * Each inline script costs one child process. Generated applications need a
+ * handful; these caps stop a hostile or runaway document from spawning an
+ * unbounded number of syntax checks while the server awaits them.
+ */
+export const MAX_INLINE_SCRIPTS = 32;
+export const MAX_INLINE_SCRIPT_BYTES = 500_000;
+const INLINE_SCRIPT_CHECK_TIMEOUT_MS = 10_000;
 
 /**
  * Resolve the version a rollback should restore.
@@ -419,14 +430,30 @@ export class ForgeWorkspace {
       }
     }
 
-    for (const script of extractInlineScripts(html)) {
-      const check = spawnSync(process.execPath, ['--check', '-'], {
-        input: script,
-        encoding: 'utf8',
-        timeout: 10_000,
-      });
-      if (check.status !== 0) {
-        issues.push(`Inline script failed syntax check: ${String(check.stderr).slice(0, 300)}`);
+    const scripts = extractInlineScripts(html);
+    const scriptBytes = scripts.reduce((total, script) => total + Buffer.byteLength(script), 0);
+    if (scripts.length > MAX_INLINE_SCRIPTS) {
+      issues.push(
+        `Too many inline scripts: ${String(scripts.length)} exceeds the limit of ${String(
+          MAX_INLINE_SCRIPTS,
+        )}.`,
+      );
+    }
+    if (scriptBytes > MAX_INLINE_SCRIPT_BYTES) {
+      issues.push(
+        `Inline script source is ${String(scriptBytes)} bytes, above the ${String(
+          MAX_INLINE_SCRIPT_BYTES,
+        )}-byte limit.`,
+      );
+    }
+    // Skip the syntax checks when a cap already failed: running them would
+    // defeat the bound the cap exists to enforce.
+    if (scripts.length <= MAX_INLINE_SCRIPTS && scriptBytes <= MAX_INLINE_SCRIPT_BYTES) {
+      for (const script of scripts) {
+        const check = await checkInlineScript(script);
+        if (!check.ok) {
+          issues.push(`Inline script failed syntax check: ${check.stderr.slice(0, 300)}`);
+        }
       }
     }
 
@@ -659,6 +686,54 @@ export function extractInlineScripts(html: string): string[] {
     match = pattern.exec(html);
   }
   return scripts;
+}
+
+/**
+ * Syntax-check one inline script without blocking the event loop.
+ *
+ * Same pass/fail contract as `spawnSync`: exit status 0 passes, anything else
+ * reports stderr. A timeout or spawn failure is a failed check, never a throw.
+ */
+function checkInlineScript(script: string): Promise<{ ok: boolean; stderr: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, ['--check', '-'], {
+      stdio: ['pipe', 'ignore', 'pipe'],
+      windowsHide: true,
+    });
+    let stderr = '';
+    let timedOut = false;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (result: { ok: boolean; stderr: string }) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      resolve(result);
+    };
+
+    timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, INLINE_SCRIPT_CHECK_TIMEOUT_MS);
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk: string) => {
+      if (stderr.length < 4_000) stderr += chunk;
+    });
+    child.on('error', (error) => {
+      finish({ ok: false, stderr: error.message });
+    });
+    child.on('close', (code) => {
+      finish({
+        ok: code === 0 && !timedOut,
+        stderr: timedOut
+          ? `syntax check timed out after ${String(INLINE_SCRIPT_CHECK_TIMEOUT_MS)} ms`
+          : stderr,
+      });
+    });
+    // A timed-out child closes stdin before it is killed; that is expected.
+    child.stdin?.on('error', () => undefined);
+    child.stdin?.end(script);
+  });
 }
 
 /**

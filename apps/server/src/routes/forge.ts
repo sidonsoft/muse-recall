@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
+  FORGE_MODIFY_BODY_LIMIT_BYTES,
+  FORGE_SCREENSHOT_MAX_BYTES,
   ForgeApproveSchema,
   ForgeArtifactSchema,
   ForgeCreateProjectSchema,
@@ -104,23 +106,29 @@ export function registerForgeRoutes(
     });
   });
 
-  app.post('/api/forge/projects/:id/modify', async (request, reply) => {
-    return guard(reply, async () => {
-      const { id } = ProjectParams.parse(request.params);
-      const body = ForgeModifySchema.parse(request.body ?? {});
-      const screenshot = body.screenshot_data_url ? decodePng(body.screenshot_data_url) : undefined;
-      await workspace.ensureProject(id);
-      const job = await manager.start({
-        projectId: id,
-        kind: 'modify',
-        prompt: body.request,
-        request: body.request,
-        ...(screenshot ? { screenshot } : {}),
+  app.post(
+    '/api/forge/projects/:id/modify',
+    { bodyLimit: FORGE_MODIFY_BODY_LIMIT_BYTES },
+    async (request, reply) => {
+      return guard(reply, async () => {
+        const { id } = ProjectParams.parse(request.params);
+        const body = ForgeModifySchema.parse(request.body ?? {});
+        const screenshot = body.screenshot_data_url
+          ? decodePng(body.screenshot_data_url)
+          : undefined;
+        await workspace.ensureProject(id);
+        const job = await manager.start({
+          projectId: id,
+          kind: 'modify',
+          prompt: body.request,
+          request: body.request,
+          ...(screenshot ? { screenshot } : {}),
+        });
+        reply.status(202);
+        return envelope(ForgeJobSchema.parse(job));
       });
-      reply.status(202);
-      return envelope(ForgeJobSchema.parse(job));
-    });
-  });
+    },
+  );
 
   app.get('/api/forge/jobs/:jobId', async (request, reply) => {
     return guard(reply, async () => {
@@ -352,19 +360,29 @@ function notFound(reply: FastifyReply, message: string) {
   return reply.status(404).send({ ok: false, error: { code: 'not_found', message } });
 }
 
+/** PNG magic bytes plus the IHDR length/type/width/height prefix. */
+const PNG_HEADER_BYTES = 24;
+
 function decodePng(dataUrl: string): Buffer {
   const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
   if (!match?.[1])
-    throw new ForgeError('invalid_staged', 'Screenshot must be a base64 PNG data URL.');
+    throw new ForgeError('invalid_screenshot', 'Screenshot must be a base64 PNG data URL.');
   const buffer = Buffer.from(match[1], 'base64');
   if (buffer.length < 8 || buffer[0] !== 0x89 || buffer.toString('ascii', 1, 4) !== 'PNG') {
-    throw new ForgeError('invalid_staged', 'Screenshot is not a valid PNG.');
+    throw new ForgeError('invalid_screenshot', 'Screenshot is not a valid PNG.');
   }
-  if (buffer.length > 6_000_000) throw new ForgeError('invalid_staged', 'Screenshot is too large.');
+  if (buffer.length > FORGE_SCREENSHOT_MAX_BYTES) {
+    throw new ForgeError('invalid_screenshot', 'Screenshot is too large.');
+  }
+  // Width and height live at offsets 16 and 20. A truncated PNG must fail as a
+  // request error, not as a RangeError escaping the route guard.
+  if (buffer.length < PNG_HEADER_BYTES) {
+    throw new ForgeError('invalid_screenshot', 'Screenshot PNG header is truncated.');
+  }
   const width = buffer.readUInt32BE(16);
   const height = buffer.readUInt32BE(20);
   if (width < 32 || height < 32) {
-    throw new ForgeError('invalid_staged', 'Screenshot is too small to be a preview capture.');
+    throw new ForgeError('invalid_screenshot', 'Screenshot is too small to be a preview capture.');
   }
   return buffer;
 }
@@ -387,7 +405,8 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
                   ? 500
                   : error.code === 'path_escape' ||
                       error.code === 'invalid_project_id' ||
-                      error.code === 'decision_required'
+                      error.code === 'decision_required' ||
+                      error.code === 'invalid_screenshot'
                     ? 400
                     : 409;
       return reply.status(status).send({

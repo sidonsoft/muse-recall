@@ -31,9 +31,10 @@ import { ForgeError, type ForgeWorkspace } from './workspace.js';
 /**
  * Runs one Muse job against a staging copy.
  *
- * Budgets are enforced on what is measurable: wall-clock runtime and observed
- * model calls are hard stops; tokens are reported but cannot be capped inside
- * the CLI, so they are labelled observational.
+ * Budgets are enforced on what is measurable: wall-clock runtime is a hard
+ * stop; the call cap is passed to `muse exec --max-model-steps` and re-checked
+ * on completion; tokens are reported but cannot be capped inside the CLI, so
+ * they are labelled observational.
  */
 
 export interface ForgeManagerOptions {
@@ -1177,6 +1178,10 @@ export class ForgeJobManager {
       staging,
       '--prompt-file',
       promptPath,
+      // Enforce the call budget before the CLI starts another model step. The
+      // reported usage is still re-checked on completion.
+      '--max-model-steps',
+      String(this.maxCalls),
       '--reasoning-effort',
       this.effort,
     ];
