@@ -439,24 +439,30 @@ More: [architecture](docs/architecture.md) · [memory design](docs/memory-design
 
 ## Configuration
 
-Environment-based; see [`.env.example`](.env.example). Relative paths resolve against
-the process working directory (`apps/server` when run via the pnpm scripts).
+Environment-based; see [`.env.example`](.env.example). The `.env` file is read from the
+checkout root (the directory containing `pnpm-workspace.yaml`) even when pnpm starts the
+server from `apps/server`. `MML_ENV_FILE=/path/to/file` overrides it; a scoped
+`apps/server/.env` is the fallback. Relative `DATABASE_PATH` and `WORKSPACE_ROOT` values
+resolve against the checkout root. Startup logs the loaded `.env`, database and workspace
+paths.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `HOST` / `PORT` | `127.0.0.1` / `8787` | API bind address; must be loopback (`127.0.0.1`, `::1`, `localhost`) or startup fails |
-| `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file |
+| `DATABASE_PATH` | `./data/muse-memory-lab.db` | SQLite file, relative to the checkout root |
 | `MODEL_PROVIDER` | `muse-cli` | `muse-cli` or `echo` (offline) |
 | `MUSE_MODEL` | `muse-wonder-1.0` | Any model the CLI offers |
 | `MUSE_REASONING_EFFORT` | `medium` | `none`…`ultra` |
 | `MUSE_TIMEOUT_MS` | `120000` | Hard per-call budget |
 | `META_API_KEY` | unset | Optional chat key, delivered to the CLI over stdin |
+| `MUSE_FALLBACK_API_KEY` | unset | Optional quota-failover key, delivered over stdin |
+| `MUSE_FALLBACK_MODEL` | `muse-spark-1.3-contributor` | Model used only for the fallback attempt |
 | `MEMORY_MAX_MEMORIES` | `8` | Retrieval count budget |
 | `MEMORY_MAX_CHARACTERS` | `4000` | Rendered memory-context characters (escaping, provenance, delimiters) |
 | `MEMORY_MAX_MEMORY_CHARACTERS` | `1000` | Per-memory cap (truncates, never drops) |
 | `MEMORY_SWEEP_ON_START` | `true` | Expire stale memories at startup |
 | `TOOL_APPROVAL_POLICY` | `always` | Approval mode for agent tool calls |
-| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions |
+| `WORKSPACE_ROOT` | `./workspaces` | Root for Forge project jobs, staging and versions, relative to the checkout root |
 | `FORGE_MUSE_BIN` | unset | Override the Muse CLI binary used only by Forge |
 | `FORGE_MUSE_MODEL` | unset | Forge model id (for example `muse-spark-1.3-contributor`) |
 | `FORGE_REASONING_EFFORT` | `low` | Forge reasoning tier |

@@ -12,7 +12,7 @@ import { isLoopbackSocketAddress } from './host-guard.js';
  * server is worse than a refused one.
  */
 async function main(): Promise<void> {
-  loadDotEnv();
+  const envFile = loadDotEnv();
   const config = loadConfig();
 
   mkdirSync(dirname(config.databasePath), { recursive: true });
@@ -78,6 +78,8 @@ async function main(): Promise<void> {
       provider: provider.id,
       model: config.provider.museModel ?? null,
       database: config.databasePath,
+      workspaceRoot: config.workspaceRoot,
+      envFile,
       environment: config.environment,
     },
     'Muse Recall API ready',
