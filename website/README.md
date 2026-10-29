@@ -11,11 +11,18 @@ site states exactly what the evidence supports.
 ## Stack
 
 - Vite + React 18, hand-written CSS design system (no UI framework)
-- Interactive "one request, three memory states" widget reconstructing the
-  recorded demo / Phase 16–17 arms (memory supplied · not supplied · corrected),
-  with the advisory Decision Guard panel
+- Interactive "one request, three memory states" widget with a guided tour and
+  per-state explanation panel, reconstructing the recorded demo / Phase 16–17
+  arms (memory supplied · not supplied · corrected) plus the advisory Decision
+  Guard
+- **Memory timeline** of expandable decision cards built from the real seeded
+  demo records (`scripts/lib/demo-seed.ts` in the product repo) — texts verbatim
+- ⌘K command palette, screenshot lightbox, copy-to-clipboard quickstart,
+  printable judge one-pager (`@media print`), `prefers-reduced-motion` and
+  JS-disabled fallbacks
+- Pre-rendered static HTML (`npm run site`), WebP imagery with srcset, JSON-LD
+  and PWA manifest; the footer names the product-repo commit the copy mirrors
 - Real product screenshots in `public/assets/` (MIT, from the source repo)
-- Scroll-reveal via IntersectionObserver; `prefers-reduced-motion` respected
 
 ## Run
 
@@ -40,6 +47,25 @@ the client bundle still loads and takes over interactions.
 Every upstream link used on the site is audited against the real repo tree with
 `npm run links` (expects the `muse-recall` checkout as `../muse-recall-src`,
 override with `UPSTREAM=...`).
+
+## Scoreboard
+
+Verified state of this repo at the product-repo commit the footer cites:
+
+| Check | Result |
+| --- | --- |
+| `npm run qa` (local + CI) | 20/20 — a11y audit, widget state machine + explanations, timeline accordion, ⌘K palette, lightbox, copy button, mobile overflow, WebP sources, aspect-ratio guard, no-JS fallback, reduced-motion, manifest, LCP/CLS |
+| `npm run links` | 12/12 paths + commit resolve against the upstream repo |
+| Lighthouse (mobile preset) | Perf 100 · A11y 100 · Best-Practices 100 · SEO 100 |
+| Lighthouse (desktop preset) | 100 · 100 · 100 · 100 |
+| Content parity | every quantitative claim re-grepped verbatim against `docs/hackathon-evidence/` |
+
+## Deploy
+
+Deliberately **not deployed yet** — iteration is active. The branch
+`deploy-ready` carries a GitHub Pages workflow (`npm run site` → static
+`dist/`, portable `base: './'` so any subpath works); merging it turns on
+hosting without touching this branch's behavior.
 
 ## Structure
 
