@@ -5,6 +5,7 @@
 //        or set UPSTREAM=/path/to/muse-recall)
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const UP = process.env.UPSTREAM || new URL('../muse-recall-src', `file://${process.cwd()}/`).pathname;
 if (!fs.existsSync(UP)) {
@@ -36,6 +37,16 @@ while ((m = re.exec(all))) {
   seen.add(p);
   const loc = p.replace(/^\/(blob|tree)\/main\//, '').replace(/^\/$/, '');
   if (!loc) continue;
+  const commit = loc.match(/^\/commit\/([0-9a-f]{7,40})$/)?.[1];
+  if (commit) {
+    const r = spawnSync('git', ['-C', UP, 'cat-file', '-e', `${commit}^{commit}`]);
+    if (r.status === 0) console.log(`OK   commit ${commit}`);
+    else {
+      fails++;
+      console.log(`MISS commit ${commit}`);
+    }
+    continue;
+  }
   if (fs.existsSync(path.join(UP, loc))) {
     console.log(`OK   ${loc}`);
   } else {
