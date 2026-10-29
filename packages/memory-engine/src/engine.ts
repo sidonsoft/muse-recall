@@ -506,7 +506,13 @@ export class MemoryEngine {
         // intent, so a different correction against an inactive target is a
         // conflict: the caller should correct the replacement instead.
         if (replay && memoryContentHash(replay) === hash) {
-          return { memory: replay, superseded: targets, created: false };
+          return {
+            memory: replay,
+            // Re-read even on replay so the response always reflects persisted
+            // lifecycle fields rather than a caller's earlier snapshot.
+            superseded: targetIds.map((targetId) => this.requireMemory(targetId)),
+            created: false,
+          };
         }
 
         throw new MemoryConflictError(
@@ -602,7 +608,12 @@ export class MemoryEngine {
         });
       }
 
-      return { memory: this.requireMemory(replacement.id), superseded: targets, created };
+      // The rows loaded before the UPDATEs were still `active` and had no
+      // `superseded_by`. Re-read them after the writes so the immediate response
+      // is identical to a fresh GET, including `updated_at`.
+      const superseded = targetIds.map((targetId) => this.requireMemory(targetId));
+
+      return { memory: this.requireMemory(replacement.id), superseded, created };
     });
   }
 

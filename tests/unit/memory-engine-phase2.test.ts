@@ -149,6 +149,14 @@ describe('corrections', () => {
       expect(old?.superseded_by).toBe(corrected.memory.id);
       expect(old?.content).toBe('Use SQLite for storage'); // history is immutable
 
+      // The immediate response must match what a fresh read would return, not
+      // the pre-UPDATE snapshot that still said `active`.
+      expect(corrected.superseded).toEqual([old]);
+      expect(corrected.superseded[0]).toMatchObject({
+        status: 'superseded',
+        superseded_by: corrected.memory.id,
+      });
+
       const detail = engine.getDetail(original.memory.id);
       expect(detail.superseded_by?.id).toBe(corrected.memory.id);
       expect(detail.history.map((entry) => entry.action)).toEqual(['created', 'superseded']);
@@ -196,6 +204,11 @@ describe('corrections', () => {
 
       expect(replay.created).toBe(false);
       expect(replay.memory.id).toBe(first.memory.id);
+      expect(replay.superseded).toEqual([engine.get(original.memory.id)]);
+      expect(replay.superseded[0]).toMatchObject({
+        status: 'superseded',
+        superseded_by: first.memory.id,
+      });
       expect(engine.stats().active).toBe(1);
       expect(engine.stats().superseded).toBe(1);
     } finally {
@@ -216,6 +229,12 @@ describe('corrections', () => {
       });
 
       expect(corrected.superseded).toHaveLength(2);
+      for (const target of [a.memory.id, b.memory.id]) {
+        const fresh = engine.get(target);
+        expect(fresh?.status).toBe('superseded');
+        expect(fresh?.superseded_by).toBe(corrected.memory.id);
+        expect(corrected.superseded.find((memory) => memory.id === target)).toEqual(fresh);
+      }
       expect(engine.get(a.memory.id)?.status).toBe('superseded');
       expect(engine.get(b.memory.id)?.status).toBe('superseded');
       expect(engine.getDetail(corrected.memory.id).supersedes).toHaveLength(2);

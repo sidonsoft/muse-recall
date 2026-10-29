@@ -187,8 +187,13 @@ export function registerMemoryRoutes(
   app.post('/api/retrieval/preview', async (request) => {
     const body = RetrievalRequestSchema.parse(request.body ?? {});
 
-    // Installation defaults apply unless the caller asks for a specific budget.
-    const budget = { ...config.memoryBudget, ...(body.budget ?? {}) };
+    // Installation defaults apply to the default profile. Forge mode uses the
+    // shared Forge profile (pinned types and 6/3,000 budget) unless the caller
+    // explicitly overrides the budget for an experiment.
+    const budget = {
+      ...(body.mode === 'forge' ? {} : config.memoryBudget),
+      ...(body.budget ?? {}),
+    };
     const retrieval = engine.retrieve({ ...body, budget });
     const context = engine.renderContext({ ...body, budget });
 

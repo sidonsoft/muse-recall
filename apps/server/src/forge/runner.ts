@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
   type DecisionGuardAdvisory,
+  FORGE_PINNED_TYPES,
   type ForgeApprovalVerification,
   type ForgeJob,
   type ForgeJobKind,
@@ -18,7 +19,6 @@ import {
   type ForgeUsage,
   type ForgeValidation,
   type Memory,
-  type MemoryType,
   type RetrievedMemory,
   redactSecrets,
 } from '@mml/shared';
@@ -88,16 +88,11 @@ interface ExecuteState {
 const MAX_LOGS = 200;
 
 /**
- * Forge prompts depend on project decisions, not just constraints and goals.
- * Pinning these types keeps a saved palette or storage decision available even
- * when the task wording shares no keywords with it.
+ * Kept as a re-export for callers that imported Forge's pinned set from the
+ * runner. The configuration itself lives in `@mml/shared` so the preview API
+ * cannot drift from the production retrieval path.
  */
-export const FORGE_PINNED_TYPES: readonly MemoryType[] = [
-  'constraint',
-  'goal',
-  'preference',
-  'technical_decision',
-];
+export { FORGE_PINNED_TYPES };
 
 export class ForgeJobManager {
   readonly workspace: ForgeWorkspace;
@@ -823,9 +818,9 @@ export class ForgeJobManager {
         {
           project_id: input.projectId,
           query,
-          budget: { max_memories: 6, max_characters: 3_000 },
+          mode: 'forge',
         },
-        { now: this.now(), pinnedTypes: FORGE_PINNED_TYPES },
+        { now: this.now() },
       );
       const memoryIds = retrieval.results.map((result) => result.memory.id);
       memories = retrieval.results;
@@ -1048,7 +1043,10 @@ export class ForgeJobManager {
         status: 'succeeded',
         version: promoted.version,
         approval_verification: approvalVerification,
-        finished_at: this.now().toISOString(),
+        // `finished_at` records when generation completed, not when a human
+        // later approved the already-finished artifact. Approval time lives in
+        // `approval_verification.recorded_at`.
+        finished_at: current.finished_at ?? this.now().toISOString(),
       });
       this.setJob(approved);
       try {
@@ -1115,7 +1113,9 @@ export class ForgeJobManager {
       const rejected = ForgeJobSchema.parse({
         ...current,
         status: 'rejected',
-        finished_at: this.now().toISOString(),
+        // Rejection is a review decision on a completed generation; it must not
+        // rewrite when the model actually finished.
+        finished_at: current.finished_at ?? this.now().toISOString(),
       });
       this.setJob(rejected);
       try {
