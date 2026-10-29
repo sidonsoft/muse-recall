@@ -329,6 +329,8 @@ export function Honesty() {
     ['Corrections need an explicit request', 'The honest failure beat from the demo: the model kept the old palette until asked for the project’s current art direction.'],
     ['Single-user, loopback-only', 'No auth, no multi-tenant hosting. An origin guard blocks cross-site mutations; it is not an authentication story.'],
     ['Exports run unsandboxed', 'The Studio preview is sandboxed. A downloaded file opened from disk is an ordinary local file — and the UI says so.'],
+    ['Memory doesn’t automatically save tokens', 'Measured: the CLI carries a ~16,630-token baseline; a ~4k-character memory block adds ~877. But it removes setup turns — whole-task input roughly halved in Demo C.'],
+    ['Deletion is irreversible through the API', 'That is the guarantee, not a bug. Corrections keep history; deletions remove the FTS row and hide the record everywhere.'],
   ];
   return (
     <section className="block" id="honesty">
@@ -350,6 +352,59 @@ export function Honesty() {
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+export function Guard() {
+  const families = [
+    ['⏱️', 'Countdown mechanics', 'setInterval timers, tick loops'],
+    ['⚡', 'Flashing effects', 'full-screen flash calls'],
+    ['💸', 'Mistake penalties', 'score deductions, resets'],
+    ['🎨', 'Superseded palettes', 'retired colours reintroduced — including hex equivalence: #FF7E5F ≡ 0xFF7E5F'],
+    ['👁️', 'Colour-only cues', 'meaning carried by hue alone'],
+  ];
+  return (
+    <section className="block" id="guard">
+      <div className="container">
+        <div className="section-head">
+          <p className="kicker">The advisor</p>
+          <h2>Decision Guard — findings with receipts, zero authority</h2>
+          <p>
+            A deterministic, pure, dependency-free engine checks the staged source against{' '}
+            <em>that job&apos;s own decisions</em>. It cites the decision id and a bounded
+            evidence excerpt, reports what it cannot verify — and never blocks approval.
+            Its independent accuracy audit (measured false positives, misses and abstentions)
+            is exactly why enforcement stays human.
+          </p>
+        </div>
+        <div className="rulefams">
+          {families.map(([icon, name, ex]) => (
+            <div className="rulefam reveal" key={name}>
+              <span className="icon" aria-hidden="true">
+                {icon}
+              </span>
+              <div>
+                <b>{name}</b>
+                <p>{ex}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="footnote reveal">
+          Five supported rule families over source text — it does not claim comprehensive
+          compliance, and{' '}
+          <a
+            href={`${REPO}/tree/main/packages/decision-guard`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--cyan)' }}
+          >
+            the engine is pure TypeScript you can read in one sitting
+          </a>
+          .
+        </p>
       </div>
     </section>
   );

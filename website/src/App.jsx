@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
-import { Problem, Features, How, Engine, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, Honesty, CTA, Footer } from './components/Sections.jsx';
+import { Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, Honesty, CTA, Footer } from './components/Sections.jsx';
 
 const WATCH = ['loop', 'how', 'evidence', 'quickstart'];
 
@@ -73,6 +73,7 @@ export default function App() {
         <How />
         <Features />
         <Engine />
+        <Guard />
         <Evidence />
         <ForJudges />
         <BeyondGames />
