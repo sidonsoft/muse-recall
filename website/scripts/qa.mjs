@@ -263,6 +263,24 @@ try {
   const payload = await evalJS(`document.querySelector(".code-shell pre")?.innerText || ""`);
   const cmds = ['git clone', 'pnpm demo:seed', 'MODEL_PROVIDER=echo pnpm dev', 'pnpm verify'];
   check('copy payload carries the right commands', cmds.every((c) => payload.includes(c)), cmds.filter((c) => !payload.includes(c)).join(', ') || 'all present');
+
+  // 9. gallery lightbox
+  await evalJS(`document.querySelector("#gallery")?.scrollIntoView({behavior:"instant",block:"center"})`);
+  await sleep(500);
+  await evalJS(`document.querySelectorAll(".lb-open")[0].click()`);
+  await sleep(500);
+  const lbOpen = await evalJS(`({ exists: !!document.querySelector(".lb-backdrop"), img: document.querySelector(".lb-backdrop img")?.currentSrc?.split("/").pop(), count: document.querySelector(".lb-count")?.textContent?.trim() })`);
+  await evalJS(`window.dispatchEvent(new KeyboardEvent("keydown", {key:"ArrowRight", bubbles:true}))`);
+  await sleep(400);
+  const lbMoved = await evalJS(`document.querySelector(".lb-count")?.textContent?.trim()`);
+  await evalJS(`window.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", bubbles:true}))`);
+  await sleep(400);
+  const lbClosed = await evalJS(`!document.querySelector(".lb-backdrop")`);
+  check(
+    'gallery lightbox opens, arrows move, Escape closes',
+    lbOpen.exists && lbOpen.img?.endsWith('.webp') && lbOpen.count === '1 / 4' && lbMoved === '2 / 4' && lbClosed,
+    JSON.stringify({ ...lbOpen, moved: lbMoved, closed: lbClosed })
+  );
 } catch (e) {
   check('script completed', false, e.message);
 } finally {

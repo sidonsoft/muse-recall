@@ -1,5 +1,6 @@
 import React from 'react';
 import TimelineWidget from './Timeline.jsx';
+import Lightbox from './Lightbox.jsx';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
@@ -277,6 +278,7 @@ export function Evidence() {
 }
 
 export function Gallery() {
+  const [lb, setLb] = React.useState(-1);
   const shots = [
     {
       src: './assets/phase2-ui-memory-detail.png',
@@ -308,11 +310,26 @@ export function Gallery() {
           <p>Real screens from the local-first Studio.</p>
         </div>
         <div className="gallery">
-          {shots.map((s) => (
+          {shots.map((s, i) => (
             <figure className="reveal" key={s.src}>
+              <button
+                className="lb-open"
+                onClick={() => setLb(i)}
+                aria-label={`View full size: ${s.t}`}
+              >
+                ⤢ full size
+              </button>
               <picture>
                 <source srcSet={s.src.replace(/\.(png|jpe?g)$/, '.webp')} type="image/webp" />
-                <img src={s.src} alt={s.c} loading="lazy" decoding="async" width="1440" height="960" />
+                <img
+                  src={s.src}
+                  alt={s.c}
+                  loading="lazy"
+                  decoding="async"
+                  width="1440"
+                  height="960"
+                  onClick={() => setLb(i)}
+                />
               </picture>
               <figcaption>
                 <b>{s.t}</b>
@@ -321,6 +338,14 @@ export function Gallery() {
             </figure>
           ))}
         </div>
+        {lb >= 0 && (
+          <Lightbox
+            shots={shots}
+            index={lb}
+            onClose={() => setLb(-1)}
+            onMove={(d) => setLb((lb + d + shots.length) % shots.length)}
+          />
+        )}
       </div>
     </section>
   );
