@@ -241,6 +241,17 @@ try {
   })()`, true);
   const badImgs = imgs.filter((i) => !i.ok || !i.webp);
   check(`${imgs.length} images all load WebP`, badImgs.length === 0, badImgs.length ? JSON.stringify(badImgs) : 'webp + loaded');
+
+  // 7. reduced-motion honoring
+  await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await sleep(400);
+  const rm = await evalJS(`({
+    scroll: getComputedStyle(document.documentElement).scrollBehavior,
+    aurora: getComputedStyle(document.querySelector(".aurora span")).animationName,
+    why: getComputedStyle(document.querySelector(".why") || document.body).animationName,
+  })`);
+  check('prefers-reduced-motion: reduce honored', rm.scroll === 'auto' && rm.aurora === 'none' && rm.why === 'none', JSON.stringify(rm));
+  await send('Emulation.setEmulatedMedia', { features: [] });
 } catch (e) {
   check('script completed', false, e.message);
 } finally {

@@ -12,6 +12,7 @@ export default function Nav() {
         </a>
         <nav className="nav-links" aria-label="Primary">
           <a href="#loop">The loop</a>
+          <a href="#timeline">Timeline</a>
           <a href="#how">How it works</a>
           <a href="#evidence">Evidence</a>
           <a href="#quickstart">Run it</a>

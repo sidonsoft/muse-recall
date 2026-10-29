@@ -52,7 +52,9 @@ export default function CommandPalette() {
   const go = (href) => {
     setOpen(false);
     if (href.startsWith('http')) window.open(href, '_blank', 'noopener');
-    else document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
+    else document.querySelector(href)?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
   };
 
   if (!open) return null;
