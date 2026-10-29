@@ -2,6 +2,8 @@
 
 ### Correctable project memory for AI-built software.
 
+_Interactive landing page: **[sidonsoft/muse-recall-website](https://github.com/sidonsoft/muse-recall-website)** (the hosted URL goes live with one Pages toggle)._
+
 AI app builders forget. A new session starts from zero, a change quietly drops an earlier
 decision, and an old preference keeps coming back after you change your mind.
 
