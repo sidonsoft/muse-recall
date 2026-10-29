@@ -262,6 +262,49 @@ export function registerForgeRoutes(
 }
 
 /**
+ * Preview-only Web Storage. A sandboxed document has an opaque origin, so the
+ * real Storage accessors throw `SecurityError`. Generated applications that
+ * save in localStorage or sessionStorage still need working storage while they
+ * are reviewed; this data lives for the life of the preview document and is
+ * never written to the artifact or the approved file.
+ */
+const STORAGE_SHIM = `<script data-forge-preview-storage>(function(){
+function createStorage(){
+  var data=Object.create(null);
+  var keys=[];
+  function has(key){return Object.prototype.hasOwnProperty.call(data,key);}
+  return {
+    getItem:function(key){key=String(key);return has(key)?data[key]:null;},
+    setItem:function(key,value){
+      key=String(key);value=String(value);
+      if(!has(key))keys.push(key);
+      data[key]=value;
+    },
+    removeItem:function(key){
+      key=String(key);
+      if(!has(key))return;
+      delete data[key];
+      var at=keys.indexOf(key);
+      if(at>=0)keys.splice(at,1);
+    },
+    clear:function(){data=Object.create(null);keys.length=0;},
+    key:function(index){var at=Number(index)>>>0;return at<keys.length?keys[at]:null;},
+    get length(){return keys.length;}
+  };
+}
+function install(name){
+  // Leave real storage alone when it is usable; only replace an accessor that
+  // throws because the document is sandboxed.
+  try{window[name];return;}catch(error){}
+  try{
+    Object.defineProperty(window,name,{value:createStorage(),configurable:true,enumerable:true});
+  }catch(error){}
+}
+install('localStorage');
+install('sessionStorage');
+})();</script>`;
+
+/**
  * Injected into every preview, in the sandboxed document only. It lets the host
  * request a PNG of the game canvas; the generated game never sees app state.
  */
@@ -322,14 +365,22 @@ window.addEventListener('error',function(event){
 });
 })();</script>`;
 function withCaptureBridge(html: string): string {
-  // Must run before the Phaser CDN script: defining window.Phaser after the CDN
-  // has assigned it would replace the library with our accessor.
+  // Both scripts must run before generated code: the storage shim before any
+  // application script touches Web Storage, and the Phaser accessor before the
+  // CDN script assigns window.Phaser (which would replace the accessor).
+  const injected = `${STORAGE_SHIM}${CAPTURE_BRIDGE}`;
   const head = /<head[^>]*>/i.exec(html);
-  if (head) {
-    const at = head.index + head[0].length;
-    return `${html.slice(0, at)}${CAPTURE_BRIDGE}${html.slice(at)}`;
+  const firstScript = /<script\b/i.exec(html);
+  const at = head ? head.index + head[0].length : 0;
+  // Normal documents put <head> before every script. Also cover a malformed
+  // leading script so the shim is never after application code.
+  if (firstScript && firstScript.index < at) {
+    return `${html.slice(0, firstScript.index)}${injected}${html.slice(firstScript.index)}`;
   }
-  return `${CAPTURE_BRIDGE}${html}`;
+  if (head) {
+    return `${html.slice(0, at)}${injected}${html.slice(at)}`;
+  }
+  return `${injected}${html}`;
 }
 
 function envelope<T>(data: T): { ok: true; data: T } {

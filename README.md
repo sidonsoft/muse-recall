@@ -647,6 +647,9 @@ Full list in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). The ones that matter:
   executed on FocusFlow.
 - **Exported HTML runs unsandboxed.** The Studio preview is sandboxed; a downloaded file opened
   from disk is not, and it still needs network access for approved CDN dependencies.
+- **Preview storage is temporary.** The sandboxed preview stores `localStorage` and
+  `sessionStorage` in document memory, so it resets when the preview reloads; the exported file
+  keeps data normally.
 - **Out-of-box model defaults are not Muse Spark.** `.env.example` ships `muse-wonder-1.0`; the live
   demonstration explicitly configured `muse-spark-1.3` / `muse-spark-1.3-contributor` at
   `effort: high`. Check the model shown in the top bar before recording.
