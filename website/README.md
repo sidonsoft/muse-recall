@@ -24,7 +24,13 @@ npm install
 npm run dev      # → http://localhost:5173
 npm run build    # production build in dist/
 npm run preview  # serve the production build
+npm run qa       # build, then verify against the preview: a11y audit,
+                 # widget state machine, mobile overflow, LCP/CLS (needs Chrome)
 ```
+
+QA mirrors the product's own stance — `scripts/qa.mjs` is dependency-free
+(CDP over Node's global WebSocket) and also runs on CI (`.github/workflows/site-qa.yml`,
+test-only, not a deploy).
 
 ## Structure
 
