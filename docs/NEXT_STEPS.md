@@ -157,6 +157,13 @@ now is maintenance honesty, not new surface:
   checks local, 49 with CI visual slots) re-stated only after a real run —
   the local gate itself was re-run at head on 31 Oct (after ~25 cadence
   merges): 48/48 checks green on darwin, no claim drift.
+  Two reference audits ran at head on 31 Oct with clean results, recorded
+  so they need not be guessed at: every `DNNN` cited in docs or code
+  resolves to a defined decision (54/54, zero dangling — the D027 skip is
+  now annotated in DECISIONS.md), and every `pnpm <script>` named in the
+  six living docs exists in a package.json (the only regex hits were
+  `install`/`exec`/`workspace`, i.e. not script names). A judge typing any
+  documented command hits no phantom step.
 - Drift gates stay load-bearing: error-catalogue live probes, browser
   workflow on two engines, backup drill on every push. New asymmetries are
   either fixed in lockstep (v2 discipline, D054) or honestly catalogued.
