@@ -774,3 +774,9 @@ timeline and inspector can never disagree.
 bounded endpoint; the 46-check browser workflow need not touch it yet. G-9
 stays Partial until a visual view exists — now with the risky half (shape +
 honesty invariants) settled and test-gated.
+
+**Follow-up (same day):** the endpoint proved its shape by being trivial to
+consume — `TimelinePanel` in the Memory view renders created/corrected
+events read-only, and the browser workflow grew its first cross-view check
+(nav → Memory timeline lists the just-saved decision), 46→47 checks. G-9
+remains Partial: only the CANVAS graph view is still missing now.

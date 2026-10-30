@@ -29,6 +29,8 @@ import {
   MemoryCreateResultSchema,
   type MemoryDetail,
   MemoryDetailSchema,
+  type MemoryGraph,
+  MemoryGraphSchema,
   type MemoryListResponse,
   MemoryListResponseSchema,
   type MemoryStats,
@@ -221,6 +223,11 @@ export const api = {
     ),
 
   // --- Memory -------------------------------------------------------------
+
+  memoryGraph: () =>
+    request<MemoryGraph>('/api/memories/graph', { method: 'GET' }, (data) =>
+      MemoryGraphSchema.parse(data),
+    ),
 
   listMemories: (params: MemoryListParams = {}) =>
     request<MemoryListResponse>(

@@ -333,7 +333,7 @@ pnpm mcp:serve --project demo --db ./data/muse-recall.db --allow-writes
 ```
 
 `verify:studio-workflow` needs a production build and the Playwright-managed Chromium
-(`pnpm build && pnpm exec playwright-core install chromium`). CI runs the same 46 checks on a
+(`pnpm build && pnpm exec playwright-core install chromium`). CI runs the same 47 checks on a
 second engine (managed Firefox) as a matrix leg. The script preflights the browser and
 fails with an actionable message if it is missing; it does not fall back automatically.
 It starts its own API, web preview, database, workspace and ports; it never touches the

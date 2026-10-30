@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ConversationsView } from './components/conversations/ConversationsView.tsx';
 import { Icon } from './components/Icon.tsx';
 import { MemoryInspector } from './components/memory/MemoryInspector.tsx';
+import { TimelinePanel } from './components/memory/TimelinePanel.tsx';
 import { Overview } from './components/Overview.tsx';
 import { StudioView } from './components/studio/StudioView.tsx';
 import { TopBar } from './components/TopBar.tsx';
@@ -124,11 +125,14 @@ export function App() {
           {view !== 'studio' ? (
             <ViewFrame label={current.label} description={current.description}>
               {view === 'memories' ? (
-                <MemoryInspector
-                  meta={meta}
-                  focus={memoryFocus}
-                  onFocusHandled={() => setMemoryFocus(null)}
-                />
+                <>
+                  <MemoryInspector
+                    meta={meta}
+                    focus={memoryFocus}
+                    onFocusHandled={() => setMemoryFocus(null)}
+                  />
+                  <TimelinePanel />
+                </>
               ) : null}
               {view === 'conversations' ? <ConversationsView /> : null}
               {view === 'system' ? (
