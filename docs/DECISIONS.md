@@ -558,3 +558,29 @@ the default local beta still runs unwrapped, and the wrapper path is visible
 in the startup log. Cost: every child spawn now flows through one more
 execve when configured; wrappers that mutate argv must be pass-through by
 contract, enforced only by the probe (executes argv[0]), not by inspection.
+
+---
+
+### D043 — One tool contract, two transports; scope and writes bound at startup
+
+**Context:** Gap G-5 wanted an MCP server plus a versioned shared contract.
+The easy path — a second, hand-maintained tool list for MCP — was exactly the
+drift roadmap §4 warned about. MCP also has no interactive approval surface,
+which collides with the beta's two-phase write confirmation (D032).
+**Decision:** The MCP server registers directly from
+`createDefaultToolRegistry()`: tool list, descriptions, and JSON Schemas
+(input AND output, via zod) all derive from the one registry; dotted ids map
+to MCP-safe names (`memory.search` → `memory_search`) with the original id
+kept as the tool title and in the contract. `TOOL_CONTRACT_VERSION` (shared)
+is stamped into `GET /api/tools` and a `mcp-recall://contract` resource.
+Because MCP calls are headless, the two properties the session enforces
+interactively become startup bindings: `--project` fixes scope (never
+model-supplied, same as D033) and `--allow-writes` is the operator's
+confirmation; a model cannot self-confirm or retarget.
+**Conformance:** integration tests connect a real MCP client over an
+in-memory transport pair and pin: MCP list ≡ registry list, contract
+resource ≡ version+scope+policy, reads round-trip with validated
+structuredContent, writes refuse without the flag, invalid args error
+loudly. A second test pins the REST surface's version stamp. Cost: the SDK
+stays a thin transport layer (low-level request handlers, no zod coupling
+into the SDK), which keeps zod-version drift out of the protocol surface.

@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 54 files / 804 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 56 files / 811 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -63,8 +63,9 @@ Statuses here describe the code as it exists today. They do not assert release r
 
 ## 3. Integration layer
 
-**Status: Partial. A REST API and six bounded tools exist; the versioned shared contract and
-MCP transport from roadmap §4 do not.**
+**Status: Implemented (for this phase). A REST API, six bounded tools, a versioned shared
+tool contract, and an MCP (stdio) surface over the SAME registry exist. Pagination,
+idempotency keys, and a machine-readable error catalogue remain open.**
 
 - **HTTP API** (Fastify; routes in [app.ts](../../apps/server/src/app.ts) and
   [routes/](../../apps/server/src/routes)):
@@ -90,9 +91,18 @@ MCP transport from roadmap §4 do not.**
 - **Muse CLI provider** ([muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts)):
   stateless `muse exec --json` adapter; verified behaviour in
   [muse-integration.md](../muse-integration.md). An `echo-provider.ts` exists for offline/Codespaces use.
-- **Absent:** MCP server or client (nothing in `package.json` or any package — confirmed by
-  grep); no pagination, idempotency keys, or machine-readable error catalogue across the API;
-  no versioned contract tests as envisioned in roadmap §4.
+- **MCP surface** ([packages/mcp-server](../../packages/mcp-server/src/index.ts), stdio entry
+  [main.ts](../../packages/mcp-server/src/main.ts), `pnpm mcp:serve`): the same six tools over
+  the Model Context Protocol from the same `createDefaultToolRegistry()`; JSON Schemas (input
+  AND output) derived from the tools' zod contracts so clients can validate structured results;
+  project scope and the writes policy are startup-bound, never model-supplied; a
+  `mcp-recall://contract` resource publishes the version, scope, and write policy.
+- **Versioned contract** (`TOOL_CONTRACT_VERSION` in [shared/tool.ts](../../packages/shared/src/tool.ts)):
+  stamped into `GET /api/tools` and the MCP contract resource; conformance tests pin MCP tool
+  list ≡ registry list ([mcp-contract.test.ts](../../tests/integration/mcp-contract.test.ts))
+  and the REST stamping ([tools-contract.test.ts](../../tests/integration/tools-contract.test.ts)).
+- **Absent:** MCP client usage in-product; no pagination, idempotency keys, or machine-readable
+  error catalogue across the REST API.
 
 ## 4. Trust boundary
 
@@ -176,8 +186,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-8/G-11/G-12):** 52 files,
-  **804 passed, 3 skipped (807)**; the browser workflow now runs 45 checks
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-8/G-11/G-12):** 56 files,
+  **811 passed, 3 skipped (814)**; the browser workflow now runs 45 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -229,7 +239,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | **Partial** (wrapper seam + fail-fast probe + setpriv recipe, D042; operator provisioning remains, 2026-10-30) |
 | G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M | **Closed** (migration v7 + D038, 2026-10-30) |
 | G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | **Closed** (envelope + D039, 2026-10-30) |
-| G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | Open |
+| G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | **Closed** (MCP stdio surface + TOOL_CONTRACT_VERSION + conformance tests, D043, 2026-10-30) |
 | G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | Open |
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | **Closed** (v1.5.0 autoplay-media + external-assets, 22 corpus rows, 2026-10-30) |
 | G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
@@ -243,7 +253,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 804 pass / 3 skip
+pnpm run verify                                                    # 811 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

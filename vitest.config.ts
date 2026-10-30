@@ -19,6 +19,7 @@ export default defineConfig({
       '@mml/agent-core': resolve(import.meta.dirname, 'packages/agent-core/src/index.ts'),
       '@mml/ui-protocol': resolve(import.meta.dirname, 'packages/ui-protocol/src/index.ts'),
       '@mml/tool-runtime': resolve(import.meta.dirname, 'packages/tool-runtime/src/index.ts'),
+      '@mml/mcp-server': resolve(import.meta.dirname, 'packages/mcp-server/src/index.ts'),
       '@mml/decision-guard': resolve(import.meta.dirname, 'packages/decision-guard/src/index.ts'),
     },
   },
