@@ -26,8 +26,19 @@ export const ToolInfoSchema = z.object({
 });
 export type ToolInfo = z.infer<typeof ToolInfoSchema>;
 
+/**
+ * Version of the shared tool contract (gap G-5 / roadmap §4).
+ *
+ * Every surface that exposes the tool set — the session runtime, `GET
+ * /api/tools`, and the MCP server — stamps this version. It bumps only on
+ * breaking changes to tool identity, argument meaning, or side-effect
+ * semantics; conformance tests pin the surfaces against one registry.
+ */
+export const TOOL_CONTRACT_VERSION = '1';
+
 export const ToolListSchema = z.object({
   items: z.array(ToolInfoSchema),
+  contract_version: z.string().default(TOOL_CONTRACT_VERSION),
 });
 export type ToolList = z.infer<typeof ToolListSchema>;
 

@@ -31,6 +31,7 @@
     "evidence:phase14a": "tsx scripts/phase14a-rehearsal.ts",
     "evidence:phase14a-ui": "tsx scripts/phase14a-demo-ui-evidence.ts",
     "format": "biome format --write .",
+    "mcp:serve": "node --import tsx packages/mcp-server/src/main.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "muse:probe": "tsx scripts/probe-muse.ts",
@@ -60,6 +61,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^26.6.5",
     "pixelmatch": "^8.0.0",
     "playwright-core": "^1.64.1",
