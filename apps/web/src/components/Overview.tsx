@@ -137,6 +137,83 @@ export function Overview({
       {health.forge ? <RecoverySummary forge={health.forge} /> : null}
 
       <Panel>
+        <div role="region" aria-label="Alert signals">
+          <SectionTitle
+            icon="bolt"
+            title="Alert signals"
+            hint="The states pnpm ops:alert-prober consumes (D050/D051). The UI mirrors them; nothing here pages a human by itself."
+          />
+          {health.alerts ? (
+            <dl className="mt-3 divide-y divide-line/70">
+              <DataRow
+                label="backup"
+                value={
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <StatusPill
+                      tone={
+                        health.alerts.backup.state === 'ok'
+                          ? 'ok'
+                          : health.alerts.backup.state === 'disabled'
+                            ? 'idle'
+                            : 'warn'
+                      }
+                    >
+                      {health.alerts.backup.state === 'ok'
+                        ? `fresh · ${health.alerts.backup.age_hours?.toFixed(1) ?? '?'}h old (limit ${health.alerts.backup.max_age_hours}h)`
+                        : health.alerts.backup.state === 'stale'
+                          ? `stale · ${health.alerts.backup.age_hours?.toFixed(1) ?? '?'}h > ${health.alerts.backup.max_age_hours}h`
+                          : health.alerts.backup.state === 'missing'
+                            ? 'no backups found next to the database'
+                            : 'watching disabled'}
+                    </StatusPill>
+                    <span className="text-[11px] text-muted">
+                      {health.alerts.backup.backup_count} backup file(s)
+                    </span>
+                  </span>
+                }
+              />
+              <DataRow
+                label="storage"
+                value={
+                  <StatusPill tone={health.alerts.storage.ok ? 'ok' : 'warn'}>
+                    {health.alerts.storage.ok
+                      ? 'clear'
+                      : `${health.alerts.storage.unacknowledged_issues} unacknowledged issue(s)`}
+                  </StatusPill>
+                }
+              />
+              <DataRow
+                label="provider"
+                value={
+                  <StatusPill
+                    tone={
+                      health.alerts.provider.state === 'ok'
+                        ? 'ok'
+                        : health.alerts.provider.state === 'error'
+                          ? 'err'
+                          : 'idle'
+                    }
+                  >
+                    {health.alerts.provider.state === 'ok'
+                      ? 'reachable'
+                      : health.alerts.provider.state === 'error'
+                        ? 'failing'
+                        : 'unverified'}
+                  </StatusPill>
+                }
+              />
+            </dl>
+          ) : (
+            <p className="mt-3 text-[11px] text-muted">
+              This server build predates alert signals; upgrade to see backup freshness and
+              storage/provider states here (the prober reports the same as a stale-deployment
+              finding).
+            </p>
+          )}
+        </div>
+      </Panel>
+
+      <Panel>
         <SectionTitle
           icon="bolt"
           title="Provider bench"
