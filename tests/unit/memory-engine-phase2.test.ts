@@ -641,6 +641,60 @@ describe('deletion', () => {
       close();
     }
   });
+
+  it('purge cascades cleanly: history, edges, and FTS vanish; graph cannot walk back', () => {
+    // purge's docstring promises "Cascades remove history and supersession
+    // edges; the FTS trigger removes the index row" — none of which the
+    // engine itself does in code: it runs ONE DELETE and trusts schema
+    // cascades + triggers. A migration touching FK clauses or FTS triggers
+    // would orphan evidence rows with zero test signal. Pin all four.
+    const { engine, db, close } = seeded();
+    try {
+      const older = engine.create(baseInput({ content: 'zephyralpha: use file cache' }));
+      const newer = engine.correct({
+        supersedes: [older.memory.id],
+        type: 'technical_decision',
+        project_id: 'demo-game',
+        content: 'zephyrbeta: use redis cache',
+      });
+
+      engine.softDelete(older.memory.id); // superseded -> deleted, purgable
+      engine.purge(older.memory.id);
+
+      const count = (sql: string, ...params: unknown[]) =>
+        (db.prepare(sql).get(...(params as never[])) as { c: number }).c;
+      expect(count('SELECT COUNT(*) c FROM memories WHERE id = ?', older.memory.id)).toBe(0);
+      // Cascade 1: every history row that referenced it (created, superseded,
+      // deleted) is gone — including the tombstone evidence.
+      expect(
+        count('SELECT COUNT(*) c FROM memory_history WHERE memory_id = ?', older.memory.id),
+      ).toBe(0);
+      // Cascade 2: the supersession edge (newer -> older) is gone; the chain
+      // does not dangle.
+      expect(
+        count(
+          'SELECT COUNT(*) c FROM memory_supersessions WHERE old_id = ? OR new_id = ?',
+          older.memory.id,
+          older.memory.id,
+        ),
+      ).toBe(0);
+      // Trigger 3: the FTS index row is gone; the SURVIVOR stays searchable.
+      expect(count("SELECT COUNT(*) c FROM memory_fts WHERE memory_fts MATCH 'zephyralpha'")).toBe(
+        0,
+      );
+      expect(count("SELECT COUNT(*) c FROM memory_fts WHERE memory_fts MATCH 'zephyrbeta'")).toBe(
+        1,
+      );
+      // The graph claim: purged records cannot be resurrected by walking it.
+      const graph = engine.graph({ projectId: 'demo-game' });
+      expect(graph.nodes.map((node) => node.id)).not.toContain(older.memory.id);
+      expect(graph.edges).toHaveLength(0);
+      // The survivor is intact and still an honest record of itself.
+      expect(engine.get(newer.memory.id)?.content).toContain('zephyrbeta');
+    } finally {
+      close();
+    }
+  });
 });
 
 describe('project isolation', () => {
