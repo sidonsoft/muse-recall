@@ -2,6 +2,7 @@ import React from 'react';
 import TimelineWidget from './Timeline.jsx';
 import Lightbox from './Lightbox.jsx';
 import Icon from './Icon.jsx';
+import EvidenceSection from './EvidenceSection.jsx';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
@@ -58,26 +59,26 @@ export function How() {
   const steps = [
     {
       n: '01 · store',
-      h: 'Decisions, not chat logs',
-      p: 'Each project decision gets a stable UUID, type and scope, its source session, confidence, validation status and an append-only history. Identity and provenance from day one.',
+      h: 'Save a decision',
+      p: 'Give the project a decision it should remember. Each decision keeps its source and history, so you can see where it came from.',
       arrow: true,
     },
     {
       n: '02 · supply',
-      h: 'Memory feeds the next generation',
-      p: 'Before a generate or modify job, Recall retrieves the active decisions and renders them into the prompt as bounded, escaped reference data. The job records the decision ids it received and the SHA-256 of the exact prompt.',
+      h: 'Use it in the next edit',
+      p: 'When you ask for a change, Recall retrieves relevant active decisions and supplies them as reference data to Muse Spark.',
       arrow: true,
     },
     {
       n: '03 · review',
-      h: 'Changes are staged, never applied',
-      p: 'Preview, exact source and a line diff. A load-time browser gate runs before approval is even possible; the advisory Decision Guard checks the staged source against the remembered decisions. You approve, reject — or roll back to the recorded parent.',
+      h: 'Review before approval',
+      p: 'Inspect the preview, source and diff. Decision Guard can flag supported conflicts; its findings are advisory. You decide whether to approve the change.',
       arrow: true,
     },
     {
       n: '04 · correct',
-      h: 'Change your mind, keep the audit',
-      p: 'A correction is one transaction: insert the replacement, record the supersession edge, mark the old decision superseded. It stays auditable but stops constraining new work — and replays idempotently.',
+      h: 'Correct the memory',
+      p: 'Replace an outdated decision when your plans change. Its history stays available, while the current decision can guide future edits.',
     },
   ];
   return (
@@ -85,10 +86,9 @@ export function How() {
       <div className="container">
         <div className="section-head">
           <p className="kicker">How it works</p>
-          <h2>Store → supply → review → correct</h2>
+          <h2>A simple loop, with you in control.</h2>
           <p>
-            One workflow with five implemented capabilities. Persistent memory is not new —
-            correctable memory wired into a reviewable change loop is.
+            From a remembered decision to a reviewed change, each step is visible.
           </p>
         </div>
         <div className="steps four">
@@ -174,18 +174,10 @@ export function Evidence() {
     ['Rule corrected first (corrected)', '41/59', '50/60'],
   ];
   return (
-    <section className="block" id="evidence">
-      <div className="container">
-        <div className="section-head">
-          <p className="kicker">Evidence, honestly labelled</p>
-          <h2>A pre-registered behavioural trial, not a vibe check</h2>
-          <p>
-            Phase 17: 480 runs — four arms × six strata (two games and a task planner) × two
-            models, detector fixed and pushed before the first run. A violation is the original
-            rule appearing in generated source.
-          </p>
-        </div>
-        <div className="evidence-wrap reveal">
+    <EvidenceSection>
+        <h3>Phase 17 · all four conditions</h3>
+        <p>The corrected-rule condition deliberately relaxes the original restriction. Its higher original-rule count shows that the retired restriction no longer constrains output.</p>
+        <div className="evidence-wrap reveal" role="region" aria-label="Phase 17 trial results, scroll horizontally if needed" tabIndex="0">
           <table className="evidence">
             <thead>
               <tr>
@@ -219,16 +211,16 @@ export function Evidence() {
           </a>
         </p>
 
-        <div className="section-head" style={{ marginTop: 72 }}>
+        <div className="section-head" style={{ marginTop: 32 }}>
           <p className="kicker">Phase 16 / 16B — the sharper question</p>
-          <h2>Does the rule help — or does any memory help?</h2>
+          <h3>Does the rule help — or does any memory help?</h3>
           <p>
             A palette-only arm separates the two on both models. 48 fresh edits per run set,
             through the production Studio path; violations are original-rule patterns in the
             generated source.
           </p>
         </div>
-        <div className="evidence-wrap reveal">
+        <div className="evidence-wrap reveal" role="region" aria-label="Phase 16 trial results, scroll horizontally if needed" tabIndex="0">
           <table className="evidence">
             <thead>
               <tr>
@@ -275,8 +267,7 @@ export function Evidence() {
             Evidence card &amp; correction →
           </a>
         </p>
-      </div>
-    </section>
+    </EvidenceSection>
   );
 }
 
@@ -523,42 +514,25 @@ export function Guard() {
     <section className="block" id="guard">
       <div className="container">
         <div className="section-head">
-          <p className="kicker">The advisor</p>
-          <h2>Decision Guard — findings with receipts, zero authority</h2>
+          <p className="kicker">Decision Guard</p>
+          <h2>See the conflict. Make the call.</h2>
           <p>
-            A deterministic, pure, dependency-free engine checks the staged source against{' '}
-            <em>that job&apos;s own decisions</em>. It cites the decision id and a bounded
-            evidence excerpt, reports what it cannot verify — and never blocks approval.
-            Its independent accuracy audit (measured false positives, misses and abstentions)
-            is exactly why enforcement stays human.
+            Guard flags supported conflicts between the proposed code and the saved decisions.
+            Its advice never blocks your approval.
           </p>
         </div>
-        <div className="rulefams grid-5">
-          {families.map(([icon, name, ex]) => (
-            <div className="rulefam reveal" key={name}>
-              <span className="icon" aria-hidden="true">
-                <Icon name={icon} />
-              </span>
-              <div>
-                <b>{name}</b>
-                <p>{ex}</p>
-              </div>
-            </div>
-          ))}
+        <div className="guard-story">
+          <div className="guard-story-step"><span>Saved rule</span><div className="guard-story-icon"><Icon name="ban" /></div><strong>No countdowns</strong></div>
+          <span className="guard-story-arrow" aria-hidden="true"><Icon name="right" /></span>
+          <div className="guard-story-step guard-story-conflict"><span>Proposed edit</span><div className="guard-story-icon"><Icon name="timer" /><b>3s</b></div><strong>Conflict flagged</strong></div>
+          <span className="guard-story-arrow" aria-hidden="true"><Icon name="right" /></span>
+          <div className="guard-story-step"><span>Your review</span><div className="guard-story-icon"><Icon name="eye" /></div><strong>You decide</strong></div>
         </div>
-        <p className="footnote reveal">
-          Five supported rule families over source text — it does not claim comprehensive
-          compliance, and{' '}
-          <a
-            href={`${REPO}/tree/main/packages/decision-guard`}
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: 'var(--cyan)' }}
-          >
-            the engine is pure TypeScript you can read in one sitting
-          </a>
-          .
-        </p>
+        <details className="guard-supported"><summary>Supported checks and limits</summary><div>
+          <div className="guard-family-list">{families.map(([icon, name, example]) => <div key={name}><Icon name={icon} /><div><strong>{name}</strong><p>{example}</p></div></div>)}</div>
+          <p>Guard checks five source-pattern families and cites the matching decision and code excerpt. It can miss conflicts or flag them incorrectly; its accuracy audit includes misses, false positives and abstentions.</p>
+          <a href={`${REPO}/tree/main/packages/decision-guard`} target="_blank" rel="noreferrer">Read the engine and accuracy audit <span aria-hidden="true">↗</span></a>
+        </div></details>
       </div>
     </section>
   );

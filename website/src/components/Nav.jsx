@@ -29,10 +29,9 @@ export default function Nav() {
           </div>
         </details>
         <nav className="nav-links" aria-label="Primary">
-          <a href="#watch">Demo</a>
-          <a href="#loop">The loop</a>
-          <a href="#timeline">Timeline</a>
+          <a href="#loop">The example</a>
           <a href="#how">How it works</a>
+          <a href="#watch">Demo</a>
           <a href="#evidence">Evidence</a>
           <a href="#judges">For judges</a>
           <a href="#quickstart">Run it</a>

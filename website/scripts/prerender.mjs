@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 
-execFileSync('npx', ['vite', 'build', '--ssr', 'src/ssr.jsx', '--outDir', 'dist-ssr'], {
+execFileSync(process.execPath, [path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js'), 'build', '--ssr', 'src/ssr.jsx', '--outDir', 'dist-ssr'], {
   stdio: 'inherit',
   cwd: ROOT,
 });
