@@ -130,9 +130,10 @@ repository's working backlog; completed items stay for the audit trail.
 14. **Graph/timeline data surface for the G-9 remainder.** — **Done (2026-10-30,
     D052).** `GET /api/memories/graph`: excerpt nodes + timestamped supersession
     edges + bounded created/corrected events + honest `truncated`; project scoping
-    parity with list(); deleted memories unreachable via graph walks. The visual
-    graph/timeline VIEW remains open (G-9 stays Partial) but is now a pure client
-    over one bounded, test-gated endpoint.
+    parity with list(); deleted memories unreachable via graph walks. The Memory
+    view now renders it as a read-only event stream (`TimelinePanel`; browser
+    workflow 46→47 checks incl. its first cross-view navigation). Only the
+    CANVAS graph view remains open (G-9 stays Partial).
 
 ## P2 — explicitly out of scope for this milestone
 

@@ -442,6 +442,17 @@ async function main(): Promise<void> {
     await page.getByText('No project decisions to check.').waitFor({ state: 'hidden' });
     check('explicitly added a scoped project decision');
 
+    // D052: the Memory surface renders the graph/timeline data as a stream —
+    // the decision just saved must appear as a created event without reload.
+    const primaryNav = page.getByRole('navigation', { name: 'Primary' });
+    await primaryNav.getByRole('button', { name: 'Memory', exact: true }).click();
+    const timeline = page.getByRole('region', { name: 'Memory timeline' });
+    await timeline.waitFor({ timeout: 15_000 });
+    await timeline.getByText('Never use countdown timers.').waitFor({ timeout: 15_000 });
+    check('the Memory timeline lists the decision as a created event');
+    await primaryNav.getByRole('button', { name: 'HTML Studio', exact: true }).click();
+    await page.getByLabel('Application description').waitFor({ timeout: 15_000 });
+
     // Drafts are project-scoped and must not leak on a project switch.
     const promptBox = page.getByLabel('Application description');
     await promptBox.fill('Draft prompt for this project.');
