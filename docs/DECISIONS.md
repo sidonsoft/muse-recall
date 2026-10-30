@@ -649,3 +649,26 @@ concepts; a CLI-side default fallback (the verified `--model does-not-exist`
 behaviour) becomes visible in job records instead of being papered over. The
 fake CLI echoes `--model`, so the browser workflow can pin the full path:
 frame → job record → meta → UI (check #46).
+
+---
+
+### D047 — The adversarial suite pins the guard LAYERING, not just each guard
+
+**Context:** host, origin and token guards each had their own tests, but roadmap
+§5 makes an adversarial suite a release criterion for remote access: the danger
+is in the composition (which layer refuses first, and whether satisfying one
+layer skips another).
+**Decision:** a standing CI suite attacks the composed surface and pins the
+contract: onRequest order is host guard → authentication → origin guard; a valid
+bearer never overrides the host check and never acts as CSRF clearance; the
+health exemption is path-exact and never widens under case/slash/method tricks;
+Authorization parsing is exact-match over digests, so shape games (case,
+spacing, appends, percent-lookalikes, wire-joined duplicates) are refusals, not
+parsing quirks; response bodies never echo the secret. The D045 posture (token
+mode accepts arbitrary Host names ONLY with the secret and the exact configured
+port) is asserted directly so dropping either half fails CI.
+**Consequence:** two behaviors that looked like bypasses in test review are
+documented as design: `..` segments are normalized to the SAME exempt route
+before hooks see the URL (no hidden second health endpoint), and percent-
+encoding in headers is not decoded (headers are not URLs). Future guard work
+must keep these invariants or this suite goes red.

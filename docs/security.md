@@ -212,6 +212,19 @@ already get — and remember the secret travels over plain HTTP unless you termi
 yourself. Multi-user deployment still needs the roadmap §5 controls (identity, scoped
 credentials, quotas); setting this token does not provide them.
 
+**Standing adversarial suite** (2026-10-30, roadmap §5 release criterion):
+[tests/integration/adversarial-boundary.test.ts](../tests/integration/adversarial-boundary.test.ts)
+attacks the composed surface, not the guards in isolation, and runs on every CI
+push. It pins the hook order (**host guard → authentication → origin guard**), so a
+valid token never overrides the host check (wrong port is refused even authenticated)
+and never acts as CSRF clearance (cross-origin mutations still 403); the health
+exemption never widens under path-shape tricks (case, trailing slash, `POST`);
+Authorization shape games (case, spacing, appended bytes, percent-lookalikes,
+wire-joined duplicates) all fail the digest comparison; and no response body ever
+echoes the secret. The D045 posture itself is pinned — arbitrary Host names pass in
+token mode only WITH the secret AND the exact configured port, so a regression that
+drops the port check would fail CI.
+
 ## Deployment
 
 Beyond the optional shared token: per-user namespaces, CSRF tokens, and rate limiting are

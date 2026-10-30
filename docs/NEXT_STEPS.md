@@ -73,6 +73,21 @@ repository's working backlog; completed items stay for the audit trail.
    and startup interrupted-job counts, up to five issues), and the System screen renders
    it as a read-only panel. Acknowledgement and repair deliberately stay in the Studio
    project view.
+9. **Adversarial boundary suite for the access-control layers (roadmap §5 release
+   criterion).** — **Done (2026-10-30).** `tests/integration/adversarial-boundary.test.ts`
+   (11 attacks, every CI push): Host+Origin consistent spoof refused by the host guard
+   before routing; route-casing evasion never reaches routing with a mutation;
+   `X-Forwarded-Host` laundering refused; `Sec-Fetch-Site: cross-site` with stripped
+   Origin refused; health-exemption path-shape evasion (case, slash, POST) 401s while
+   normalization to the same exempt route stays open-by-design; Authorization shape
+   games (case, spacing, appended bytes, percent-lookalikes, wire-joined duplicates)
+   all fail digest comparison; a valid token never overrides the host guard (wrong port
+   400 authenticated) and is never CSRF clearance (cross-origin POST with a valid token
+   403s); no response echoes the secret; the D045 posture (any Host name only with
+   secret + exact port) is pinned so a regression is caught. Suite learned two honest
+   lessons in review: `..` segments normalize to the same route before hooks see them,
+   and inject cannot send real duplicate headers — the suite models what Node puts on
+   the wire instead.
 
 ## P2 — explicitly out of scope for this milestone
 
