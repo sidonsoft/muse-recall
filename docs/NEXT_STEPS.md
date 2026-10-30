@@ -44,9 +44,14 @@ repository's working backlog; completed items stay for the audit trail.
    interrupted-job restart scenario driven through the API. Keep live-model checks
    opt-in. Add observed Studio model identity persisted from CLI telemetry, if the
    protocol exposes it reliably.
-7. **Remove the legacy raw `memoryBlock` input.**
+7. **Remove the legacy raw `memoryBlock` input.** — **Done (2026-10-30).**
    Freeze a local prompt snapshot for the Phase 15A historical protocol, then delete the
-   raw input path from production prompt construction.
+   raw input path from production prompt construction. The historical wording is frozen
+   in `scripts/lib/phase15a-prompt-snapshot.ts` (provenance recorded to `defe684`,
+   byte-verified against the production builder at freeze time, and pinned by unit tests
+   against the recorded fixtures); the production builder now renders structured
+   retrieval records only, and the evaluation harnesses were switched to the structured
+   path so measured prompts cannot drift from production again.
 8. **Surface recovery issues in the System screen.** — **Done (2026-10-30).**
    The Studio banner reports them; add a read-only recovery summary to the System status
    page for operators who do not open a project. `GET /api/health` now carries a
