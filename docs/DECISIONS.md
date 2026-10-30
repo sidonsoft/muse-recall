@@ -800,3 +800,29 @@ three surfaces (and now execute `memory_graph` over MCP end to end).
 **Consequence:** clients can branch on the stamped version instead of
 probing tool lists; future removals/renames still need the same bump, which
 is fine — the stamp is a capability signal, not a compatibility promise.
+
+---
+
+### D054 — Catalogue v2: both pinned asymmetries fixed; storage failures answer 5xx under a stable code
+
+**Context:** D048 deliberately published two wrong-but-known mappings
+(storage failures on a generic 400; Forge schema failures as `invalid_request`)
+so clients could code against reality, with "fix moves the entry" recorded in
+the entry text itself. The fix round arrived; the promise had to be honoured
+in lockstep.
+**Decision:** (1) The engine's `transaction()` now wraps any failure BELOW the
+domain layer — including `BEGIN` itself, so a connection that dies between
+startup and the write cannot slip past unlabelled — as `memory_storage_failed`
+with only the failure CLASS NAME on the wire, the original error chained as
+`cause` for debugging. `DryRunAbort` (engine-internal control flow) passes
+through untouched. HTTP maps it to 500. (2) Forge zod failures now emit
+`validation_failed` with the central handler's exact `{details:[{path,
+message}]}` shape; `invalid_request` no longer occurs on that surface.
+Catalogue version 1 → 2 (breaking for clients that pinned the old shapes —
+exactly what a version is for). Live probes: the drift gate now kills a
+connection under a live app and asserts 500 + code + entry-status parity;
+forge tests assert the detail shape.
+**Consequence:** clients get honest status semantics (5xx means OUR storage
+hurt, 4xx means YOUR request); driver internals never cross the wire; the
+rollback-under-failure invariant re-verified through a forced trigger (state
+fully rolled back, cause text preserved only in the chain).

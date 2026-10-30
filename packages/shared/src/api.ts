@@ -46,14 +46,14 @@ export const API_ERROR_CODES = {
 
 /**
  * Machine-readable error catalogue (roadmap §3 remainder). It MIRRORS the
- * mappings the server actually performs today — including the two known
- * asymmetries (memory_storage_failed landing on the generic 400 handler, and
- * Forge routes reporting schema failures as `invalid_request` instead of
- * `validation_failed`) — so a client can code against reality. When a mapping
- * is fixed, the catalogue and the boundary tests move together; CI compares
- * live responses against these entries.
+ * mappings the server actually performs today — so a client can code against
+ * reality. The two known asymmetries (storage failures on a generic 400, and
+ * Forge schema failures as invalid_request) were FIXED on 2026-10-31, which
+ * is version 2: clients that pinned the old shapes must re-read the
+ * catalogue. When any mapping changes, the catalogue and the boundary tests
+ * move together; CI compares live responses against these entries.
  */
-export const ERROR_CATALOG_VERSION = 1;
+export const ERROR_CATALOG_VERSION = 2;
 
 export const ErrorCatalogEntrySchema = z.object({
   code: z.string().min(1).max(64),
@@ -167,8 +167,8 @@ export const API_ERROR_CATALOG: ErrorCatalog = {
       },
       {
         code: 'memory_storage_failed',
-        http_status: 400,
-        when: 'Durable write failed. Asymmetry pinned by the catalogue: the generic handler currently maps this to 400; a 5xx mapping is open roadmap work.',
+        http_status: 500,
+        when: 'A durable write failed below the domain layer (driver/IO). details.cause carries the failure class name only — never driver internals. (Catalogue v2: was a generic 400 in v1.)',
       },
     ],
     forge: [
@@ -247,11 +247,9 @@ export const API_ERROR_CATALOG: ErrorCatalog = {
         http_status: 409,
         when: 'Staged bytes changed between staging and approval (exact SHA mismatch).',
       },
-      {
-        code: 'invalid_request',
-        http_status: 400,
-        when: 'Forge routes report schema failures as invalid_request (first issue message) — asymmetry vs validation_failed, pinned here until unified.',
-      },
+      // v2: Forge schema failures now report validation_failed like every
+      // other route (live-probed in forge-api tests); invalid_request no
+      // longer occurs on this surface.
     ],
     provider: [
       {

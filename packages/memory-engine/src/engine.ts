@@ -31,6 +31,7 @@ import {
   type ReviewQueueQuery,
   ReviewQueueQuerySchema,
 } from '@mml/shared';
+import { ZodError } from 'zod';
 import { memoryContentHash } from './content-hash.js';
 import { formatMemoryContext } from './context.js';
 import { MemoryConflictError, MemoryError, MemoryNotFoundError } from './errors.js';
@@ -110,9 +111,12 @@ export class MemoryEngine {
   private transaction<T>(operation: () => T): T {
     if (this.transactionDepth > 0) return operation();
 
-    this.db.exec('BEGIN IMMEDIATE');
     this.transactionDepth += 1;
     try {
+      // BEGIN itself is inside the try: a connection that dies between
+      // "alive at startup" and "this write" must surface as
+      // memory_storage_failed, not slip past the wrap unlabelled.
+      this.db.exec('BEGIN IMMEDIATE');
       const result = operation();
       this.db.exec('COMMIT');
       return result;
@@ -121,6 +125,21 @@ export class MemoryEngine {
         this.db.exec('ROLLBACK');
       } catch {
         // A rollback failure must never mask the original error.
+      }
+      // Anything below the domain layer (node:sqlite errors, I/O faults) is a
+      // STORAGE failure, not a request failure: wrap it under a stable code so
+      // the HTTP layer answers 5xx without exposing driver internals. Domain
+      // errors and input schema errors pass through untouched.
+      if (!MemoryError.isMemoryError(error) && !(error instanceof ZodError)) {
+        // DryRunAbort is engine-internal control flow, not a storage fault.
+        if (error instanceof DryRunAbort) throw error;
+        const wrapped = new MemoryError('memory_storage_failed', 'Durable storage write failed.', {
+          cause: error instanceof Error ? error.name : String(error),
+        });
+        // Keep the original error (and its stack) chained for engine-level
+        // debugging; the HTTP layer sends only the class name above.
+        (wrapped as Error & { cause?: unknown }).cause = error;
+        throw wrapped;
       }
       throw error;
     } finally {

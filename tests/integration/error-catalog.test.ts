@@ -1,6 +1,7 @@
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
 import type { ErrorCatalog } from '@mml/shared';
+import { ERROR_CATALOG_VERSION } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
@@ -86,7 +87,7 @@ describe('machine-readable error catalogue (GET /api/errors)', () => {
     });
     expect(response.statusCode).toBe(200);
     const catalog = response.json().data as ErrorCatalog;
-    expect(catalog.catalog_version).toBe(1);
+    expect(catalog.catalog_version).toBe(ERROR_CATALOG_VERSION);
     const groups = Object.entries(catalog.groups);
     expect(groups.length).toBe(5);
     for (const [name, entries] of groups) {
@@ -148,6 +149,42 @@ describe('machine-readable error catalogue (GET /api/errors)', () => {
             payload: { nope: true },
           }),
       },
+      {
+        // Catalogue v2: a write that fails BELOW the domain layer answers 5xx
+        // under a stable code — proven by closing the connection out from
+        // under a live app, the classic half-dead storage state.
+        code: 'memory_storage_failed',
+        run: async () => {
+          const database = openDatabase({ path: ':memory:', wal: false });
+          try {
+            const broken = new EchoProvider();
+            const appUnderTest = await buildApp({
+              config: testConfig(),
+              db: database.db,
+              dbPath: ':memory:',
+              provider: broken,
+              engine: new MemoryEngine(database.db),
+              providerHealth: new ProviderHealthTracker(broken, 0),
+            });
+            openApps.push(appUnderTest);
+            // Closed deliberately and NOT registered with afterEach: the
+            // double-close itself would be a false alarm.
+            database.close();
+            return await appUnderTest.inject({
+              method: 'POST',
+              url: '/api/memories',
+              headers: { host: LOOPBACK },
+              payload: { type: 'contextual_fact', scope: 'global', content: 'storage probe' },
+            });
+          } finally {
+            try {
+              database.close();
+            } catch {
+              // already closed — expected
+            }
+          }
+        },
+      },
     ];
     for (const probe of probes) {
       const response = await probe.run();
@@ -183,6 +220,9 @@ describe('machine-readable error catalogue (GET /api/errors)', () => {
   it('meta points at the catalogue so discovery needs no docs', async () => {
     const app = await appWith();
     const meta = await app.inject({ method: 'GET', url: '/api/meta', headers: { host: LOOPBACK } });
-    expect(meta.json().data.errors).toEqual({ catalog_version: 1, endpoint: '/api/errors' });
+    expect(meta.json().data.errors).toEqual({
+      catalog_version: ERROR_CATALOG_VERSION,
+      endpoint: '/api/errors',
+    });
   });
 });
