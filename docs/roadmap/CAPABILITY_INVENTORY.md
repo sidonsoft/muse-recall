@@ -258,6 +258,12 @@ durability) closed 2026-10-30.**
   darwin, plus per-engine visual snapshot slots against committed linux-* baselines
   (tests/visual) — the +1 since 2026-10-30 is the System-view alert-signals check
   mirroring the D050 states the cron prober consumes.
+  The 3 "skipped" tests are the OPT-IN live Muse suite, and it PASSES when
+  enabled: `MML_LIVE_MUSE=1` re-ran all three at head on 31 Oct against the
+  real CLI — round-trip (single-word READY, `stop_reason=completed`),
+  structured-output schema, and streaming incremental deltas, all green in
+  ~12s. The full 920-test suite has therefore run green at head, opt-ins
+  included; the default 917/3 split stands because CI must not burn quota.
 - **Invariant guard ledger (31 Oct 2026)** — code/schema promises that were
   audited into enforced tests during the pre-judging cadence (each pair:
   promise site → witness; every row corresponds to tests that RAN green):
