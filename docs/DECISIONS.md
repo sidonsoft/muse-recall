@@ -537,3 +537,24 @@ appends the new ids; the historical five keep their order and version pins.
 nine adversarial dimensions each): precision 1.0, zero false positives on
 both; one honest FN recorded (G07) and one deliberate abstention (F03). The
 advisory stance is unchanged — breadth never converts a finding into a block.
+
+---
+
+### D042 — Worker isolation is an operator seam, not a self-declared sandbox
+
+**Context:** Gap G-2: the Forge child runs with the server user's OS permissions.
+A hardcoded "sandbox" the application claims for itself would be theatre: the
+only honest strong boundary is one the operator provisions (dedicated uid,
+container) and the server cannot create it at runtime for an unprivileged
+process.
+**Decision:** Ship the code-side seam: `FORGE_WORKER_WRAPPER` names an
+absolute executable that launches the CLI as `wrapper <cli> <args...>`.
+Boot fails fast unless the wrapper passes a real pass-through probe
+(`<wrapper> node -e 0`). argv is otherwise untouched; env scrubbing and
+staging cwd semantics are unchanged. The Linux setpriv recipe (dedicated
+`forge` uid, workspace-only mount) is documented in security.md.
+**Consequence:** Isolation becomes deployable without inventing a fake claim:
+the default local beta still runs unwrapped, and the wrapper path is visible
+in the startup log. Cost: every child spawn now flows through one more
+execve when configured; wrappers that mutate argv must be pass-through by
+contract, enforced only by the probe (executes argv[0]), not by inspection.

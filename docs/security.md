@@ -17,7 +17,7 @@ product.
 | T5 | Malformed or hostile HTTP input crashes the server | Denial of service | **Handled**: Zod validation + envelope + safe error mapping |
 | T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app) |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
-| T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; no OS-level sandbox owned by this app |
+| T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; operator-owned OS isolation is available via the probed `FORGE_WORKER_WRAPPER` launch seam (default local beta still runs as the server user) |
 | T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job and version promotion, schema validation, explicit recovery issues, no silent state reset, verified version hashes |
 | T10 | A restart silently re-runs an unfinished model job or promotes unreviewed bytes | Duplicate spend / unreviewed publish | **Mitigated**: queued/running jobs become `interrupted`; approval still requires exact-byte SHA-256 and runtime verification |
 
@@ -65,9 +65,24 @@ the full server environment. It now receives:
 **What this does not establish.** `--workspace` roots the CLI's policy-gated tools; it is
 not a container, VM, or OS user boundary. The child runs as the same local user as the
 server and could read files that user can read if the CLI's own sandbox/approval layer were
-bypassed. The app does not claim to sandbox that process. A stronger boundary would run
-Forge in a dedicated OS user/container with only the workspace mounted; that is out of
-scope for the single-user local beta.
+bypassed. The app does not claim to sandbox that process. A stronger boundary — running
+Forge in a dedicated OS user/container with only the workspace mounted — is an operator
+deployment step, and the server now provides the code-side seam for it: when
+`FORGE_WORKER_WRAPPER` names an absolute executable, every Forge CLI launch goes through
+that pass-through wrapper (`wrapper <cli> <args...>`). The wrapper is verified at startup
+by actually running it (`<wrapper> node -e 0`); a wrapper that fails validation or the
+probe refuses boot rather than silently reverting to direct execution. Linux example:
+
+```sh
+# /usr/local/bin/forge-setpriv: run the worker as user `forge`, only the
+# workspace readable; argv passthrough keeps the CLI contract unchanged.
+#!/bin/sh
+exec setpriv --reuid forge --regid forge --clear-groups "$@"
+```
+
+Set `FORGE_WORKER_WRAPPER=/usr/local/bin/forge-setpriv` for the server process. The
+wrapper concept also composes with systemd-run scopes or container launchers. The default
+single-user local beta still runs the child directly.
 
 ## Durable jobs and restart recovery
 

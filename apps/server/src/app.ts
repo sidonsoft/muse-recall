@@ -143,6 +143,16 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     await forgeManager.shutdown();
   });
 
+  // Surface the operator-configured OS isolation seam (roadmap G-2). The
+  // wrapper's pass-through was already probed when the manager was built; a
+  // broken wrapper never reaches this line.
+  if (forgeManager.workerWrapper) {
+    app.log.warn(
+      { wrapper: forgeManager.workerWrapper.path },
+      'Forge CLI launches through the configured worker wrapper',
+    );
+  }
+
   // Reload durable Forge jobs before any request can list a project. The
   // report is logged and exposed through the project API; a malformed record
   // is never reported as an empty project.
