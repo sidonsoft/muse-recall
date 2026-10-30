@@ -361,6 +361,77 @@ describe('corrections', () => {
     }
   });
 
+  it('wraps writes in BEGIN IMMEDIATE then COMMIT, and reads open nothing (lock-first doctrine)', () => {
+    // engine.ts line ~74: "Every mutation runs inside a BEGIN IMMEDIATE
+    // transaction: the write lock is taken up front." Pin the literal
+    // statement sequence (and that the guard sees COMMIT, not deferred
+    // BEGIN), plus the other half of the design: reads stay outside.
+    const opened = openDatabase({ path: ':memory:' });
+    const observed: string[] = [];
+    const guarded = new Proxy(opened.db, {
+      get(target, property) {
+        if (property === 'exec') {
+          return (sql: string) => {
+            if (/^(BEGIN|COMMIT|ROLLBACK)/.test(sql)) observed.push(sql);
+            return target.exec(sql);
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as DatabaseSync;
+    const engine = new MemoryEngine(guarded);
+    try {
+      const created = engine.create(baseInput());
+      engine.list({ project_id: 'demo-game' });
+      engine.getDetail(created.memory.id);
+      expect(observed).toEqual(['BEGIN IMMEDIATE', 'COMMIT']);
+    } finally {
+      opened.close();
+    }
+  });
+
+  it('a failed mutation closes its transaction with ROLLBACK, not COMMIT', () => {
+    const opened = openDatabase({ path: ':memory:' });
+    const observed: string[] = [];
+    const guarded = new Proxy(opened.db, {
+      get(target, property) {
+        if (property === 'exec') {
+          return (sql: string) => {
+            if (/^(BEGIN|COMMIT|ROLLBACK)/.test(sql)) observed.push(sql);
+            return target.exec(sql);
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as DatabaseSync;
+    const engine = new MemoryEngine(guarded);
+    try {
+      const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
+      opened.db.exec(`
+        CREATE TRIGGER force_supersede_failure
+        BEFORE UPDATE OF status ON memories
+        WHEN NEW.status = 'superseded'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced failure');
+        END;
+      `);
+      observed.length = 0; // watch the failing correct() only
+      expect(() =>
+        engine.correct({
+          supersedes: [original.memory.id],
+          type: 'technical_decision',
+          project_id: 'demo-game',
+          content: 'Use Postgres for storage',
+        }),
+      ).toThrow();
+      expect(observed).toEqual(['BEGIN IMMEDIATE', 'ROLLBACK']);
+    } finally {
+      opened.close();
+    }
+  });
+
   it('never lets a failed ROLLBACK mask the original error', () => {
     // The transaction() comment promises "a rollback failure must never mask
     // the original error" — the sibling forced-failure test above pins the
