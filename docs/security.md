@@ -227,8 +227,10 @@ drops the port check would fail CI.
 
 ## Deployment
 
-Beyond the optional shared token: per-user namespaces, CSRF tokens, and rate limiting are
-**not** implemented. The loopback bind, host/origin guards, optional bearer token, and
+Operator procedures (upgrade, rollback, incident, disaster recovery) live in
+[ops/OPERATOR_RUNBOOKS.md](ops/OPERATOR_RUNBOOKS.md); alerting is not implemented yet and
+the runbook says so. Beyond the optional shared token: per-user namespaces, CSRF tokens,
+and rate limiting are **not** implemented. The loopback bind, host/origin guards, optional bearer token, and
 absence of a public URL are the only controls keeping the API private. Do not expose this
 build to a network without setting `ACCESS_TOKEN` — and treat that as groundwork, not a
 multi-user security boundary.

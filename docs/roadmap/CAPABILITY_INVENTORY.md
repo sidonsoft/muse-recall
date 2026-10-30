@@ -201,6 +201,12 @@ durability) closed 2026-10-30.**
   plus fsync-before-rename since 2026-10-30 (PR #35, gap G-8 closed). Recovery integration tests exist
   ([forge-recovery.test.ts](../../tests/integration/forge-recovery.test.ts),
   [forge-completion-failure.test.ts](../../tests/integration/forge-completion-failure.test.ts)).
+- **Runbooks (roadmap §8)**: [ops/OPERATOR_RUNBOOKS.md](../ops/OPERATOR_RUNBOOKS.md) —
+  upgrade (backup-first, migration rehearsal on a copy), rollback (app-only; schema is
+  forward-only by policy), incident triage (health/meta/errors/recovery endpoints, audit),
+  and DR (backup cron example, isolated-then-forced restore, drill). Named accountable
+  operator: the maintainer until a hosted deployment assigns one. **Alerts remain unmet**
+  (roadmap G4 gate); the runbook lists the signals to wire them to rather than pretending.
 
 ## 7. Tests & verification
 
