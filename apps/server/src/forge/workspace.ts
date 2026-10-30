@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { constants as fsConstants } from 'node:fs';
+import { type Dirent, constants as fsConstants } from 'node:fs';
 import {
   copyFile,
   lstat,
@@ -17,10 +17,17 @@ import {
   FORGE_PROJECT_ID_PATTERN,
   type ForgeApprovalVerification,
   type ForgeDiff,
+  ForgeJobSchema,
+  type ForgeJobStatus,
+  type ForgeJobSummary,
+  type ForgeRepairResult,
   type ForgeState,
+  type ForgeStateFilePresence,
+  type ForgeStateInspection,
   ForgeStateSchema,
   type ForgeValidation,
   type ForgeVersion,
+  type ForgeVersionScanEntry,
   ForgeVersionSchema,
 } from '@mml/shared';
 import { ensurePrivateDirectory, isMissingFile } from './fs-utils.js';
@@ -50,6 +57,7 @@ export type ForgeErrorCode =
   | 'no_current_version'
   | 'staged_changed'
   | 'state_corrupt'
+  | 'state_valid'
   | 'persistence_failed'
   | 'shutting_down'
   | 'decision_required';
@@ -156,6 +164,194 @@ export class ForgeWorkspace {
       return { project_id: projectId, current_version: null, versions: [], can_rollback: false };
     }
     return this.parseState(projectId, found.raw);
+  }
+
+  /**
+   * Diagnose a damaged `state.json` without throwing (NEXT_STEPS.md P0 #3).
+   *
+   * Reports the failure mode, the raw (bounded) bytes, the approved version
+   * files that survive on disk, and a compact job listing, so an operator can
+   * inspect a blocked project before deciding to repair it.
+   */
+  async inspect(projectId: string): Promise<ForgeStateInspection> {
+    const { presence, raw } = await this.classifyStateFile(projectId);
+    const content = raw === null ? null : raw.length > 65_536 ? raw.slice(0, 65_536) : raw;
+    const scan = await this.scanVersions(projectId);
+    return {
+      project_id: projectId,
+      state_file: { presence, content, truncated: raw !== null && raw.length > 65_536 },
+      versions_readable: scan.readable,
+      versions: scan.entries.slice(0, 200),
+      jobs: await this.scanJobs(projectId),
+      repairable: presence !== 'ok',
+    };
+  }
+
+  /**
+   * Rebuild `state.json` from approved version files still on disk.
+   *
+   * Refuses to run on a valid state. The damaged file is always renamed aside
+   * (never overwritten) before a new state is written. Versions with readable,
+   * in-cap bytes are adopted with their recomputed hash; unreadable ones are
+   * reported as skipped, not silently dropped. Adopted versions form a linear
+   * `base_version` chain so rollback stays functional after repair.
+   */
+  async repairState(projectId: string): Promise<ForgeRepairResult> {
+    const { presence } = await this.classifyStateFile(projectId);
+    if (presence === 'ok') {
+      throw new ForgeError(
+        'state_valid',
+        'The Forge state file parses and validates; repair refused to avoid replacing a valid state.',
+      );
+    }
+    // Read the surviving records before touching anything, so a versions
+    // directory that cannot be listed leaves the damaged file exactly where it is.
+    const scan = await this.scanVersions(projectId);
+    if (!scan.readable) {
+      throw new ForgeError(
+        'state_corrupt',
+        'The Forge versions directory could not be read. Restore it before repairing state.json.',
+      );
+    }
+    const dir = this.projectDir(projectId);
+    let archivedTo: string | null = null;
+    if (presence !== 'missing') {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '');
+      let name = `state.corrupt-${stamp}.json`;
+      try {
+        await lstat(join(dir, name));
+        name = `state.corrupt-${stamp}-${randomUUID().slice(0, 8)}.json`;
+      } catch {
+        // Target name is free.
+      }
+      await rename(join(dir, 'state.json'), join(dir, name));
+      archivedTo = name;
+    }
+    const adopted: ForgeVersion[] = [];
+    let baseVersion: number | null = null;
+    for (const entry of scan.entries) {
+      if (!entry.usable) continue;
+      adopted.push({
+        version: entry.version,
+        created_at: entry.modified_at ?? new Date().toISOString(),
+        summary: `Recovered from versions/${entry.version} on disk during state repair`,
+        base_version: baseVersion,
+        job_id: null,
+        sha256: entry.sha256 ?? undefined,
+      });
+      baseVersion = entry.version;
+    }
+    const latest = adopted[adopted.length - 1];
+    await this.writeState(projectId, {
+      current: latest ? latest.version : null,
+      versions: adopted,
+    });
+    return {
+      archived_to: archivedTo,
+      adopted_versions: adopted.map((entry) => entry.version),
+      skipped_versions: scan.entries.filter((entry) => !entry.usable).map((entry) => entry.version),
+      state: await this.state(projectId),
+    };
+  }
+
+  /** Classify the state file without throwing; `ok` means `state()` would accept it. */
+  private async classifyStateFile(
+    projectId: string,
+  ): Promise<{ presence: ForgeStateFilePresence; raw: string | null }> {
+    let raw: string;
+    try {
+      raw = await readFile(join(this.projectDir(projectId), 'state.json'), 'utf8');
+    } catch (error) {
+      if (isMissingFile(error)) return { presence: 'missing', raw: null };
+      return { presence: 'unreadable', raw: null };
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { presence: 'invalid_json', raw };
+    }
+    try {
+      this.parseState(projectId, parsed);
+      return { presence: 'ok', raw };
+    } catch {
+      return { presence: 'invalid_value', raw };
+    }
+  }
+
+  /** List numeric version directories and check their bytes; never throws on a missing dir. */
+  private async scanVersions(
+    projectId: string,
+  ): Promise<{ readable: boolean; entries: ForgeVersionScanEntry[] }> {
+    let entries: Dirent[];
+    try {
+      entries = await readdir(join(this.projectDir(projectId), 'versions'), {
+        withFileTypes: true,
+      });
+    } catch (error) {
+      // A never-created project has no versions; a directory that exists but
+      // cannot be read is structural damage and blocks repair.
+      if (isMissingFile(error)) return { readable: true, entries: [] };
+      return { readable: false, entries: [] };
+    }
+    const scanned: ForgeVersionScanEntry[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !/^\d+$/.test(entry.name)) continue;
+      const version = Number(entry.name);
+      if (!Number.isSafeInteger(version) || version < 1) continue;
+      const file = this.versionFile(projectId, version);
+      let bytes: Buffer | null = null;
+      let modifiedAt: string | null = null;
+      try {
+        const info = await lstat(file);
+        modifiedAt = new Date(info.mtimeMs).toISOString();
+        if (info.size > 0 && info.size <= MAX_BYTES) {
+          bytes = await this.readContainedBuffer(projectId, file);
+        }
+      } catch {
+        bytes = null;
+      }
+      scanned.push({
+        version,
+        usable: bytes !== null,
+        bytes: bytes === null ? null : bytes.length,
+        sha256: bytes === null ? null : createHash('sha256').update(bytes).digest('hex'),
+        modified_at: modifiedAt,
+      });
+    }
+    scanned.sort((a, b) => a.version - b.version);
+    return { readable: true, entries: scanned };
+  }
+
+  /** Compact per-project job listing; a record that does not parse shows with null status. */
+  private async scanJobs(projectId: string): Promise<ForgeJobSummary[]> {
+    const jobsDir = join(this.projectDir(projectId), 'jobs');
+    let entries: Dirent[];
+    try {
+      entries = await readdir(jobsDir, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+    const summaries: ForgeJobSummary[] = [];
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json') || entry.name.startsWith('.')) continue;
+      const jobId = entry.name.slice(0, -'.json'.length);
+      if (!JOB_ID_PATTERN.test(jobId)) continue;
+      let status: ForgeJobStatus | null = null;
+      let modifiedAt: string | null = null;
+      try {
+        const info = await lstat(join(jobsDir, entry.name));
+        modifiedAt = new Date(info.mtimeMs).toISOString();
+        const raw = await readFile(join(jobsDir, entry.name), 'utf8');
+        const parsed = ForgeJobSchema.safeParse(JSON.parse(raw));
+        status = parsed.success ? parsed.data.status : null;
+      } catch {
+        // Record exists but cannot be read or parsed; `status: null` reports that.
+      }
+      summaries.push({ job_id: jobId, status, modified_at: modifiedAt });
+      if (summaries.length >= 200) break;
+    }
+    return summaries;
   }
 
   private async createProjectDirs(dir: string): Promise<void> {

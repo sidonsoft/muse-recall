@@ -13,6 +13,8 @@ import {
   ForgeProjectViewSchema,
   ForgeRecoveryAckSchema,
   ForgeRecoveryReportSchema,
+  ForgeRepairResultSchema,
+  ForgeStateInspectionSchema,
   ForgeStateSchema,
 } from '@mml/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
@@ -91,6 +93,23 @@ export function registerForgeRoutes(
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
       return envelope(ForgeRecoveryReportSchema.parse(await manager.checkStorage(id)));
+    });
+  });
+
+  // Explicit repair/restore path for `state_corrupt` (NEXT_STEPS.md P0 #3).
+  // Inspection never throws on a damaged state file; repair preserves the
+  // damaged bytes by renaming them aside before rebuilding the state.
+  app.get('/api/forge/projects/:id/recovery/state', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      return envelope(ForgeStateInspectionSchema.parse(await workspace.inspect(id)));
+    });
+  });
+
+  app.post('/api/forge/projects/:id/recovery/repair', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      return envelope(ForgeRepairResultSchema.parse(await workspace.repairState(id)));
     });
   });
 
