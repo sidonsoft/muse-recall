@@ -197,7 +197,8 @@ now is maintenance honesty, not new surface:
   to `main` gate on managed-Chromium but not managed-Firefox. Either align
   (add the third required context to 26184025 — one API call) or keep the
   asymmetry deliberately with a stated reason; both are owner calls, and as
-  of this census both rulesets have strict=false (unknown additional statuses
+  of this census both rulesets have
+  `strict_required_status_checks_policy=false` (additional unknown statuses
   never block).
 - Post-judging cleanup candidate — evaluated, not acted (pre-Nov-4 rule): the
   history-action enum admits `'purged'` (CHECK in two migrations; shared
