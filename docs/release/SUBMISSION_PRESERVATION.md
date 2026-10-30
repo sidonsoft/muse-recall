@@ -75,6 +75,19 @@ git archive --format=tar.gz --prefix=muse-recall-submission-2026-11-04/ submissi
 but the tag SHA matches, compare against the archive attached to the Release before treating
 it as tampering.
 
+### Repository settings — ruleset census verified 31 Oct 2026
+
+| Ruleset | Target | Enforces |
+| --- | --- | --- |
+| `Freeze submission tags` | tags | no deletion, no non-fast-forward, no update; **cannot be bypassed** (`current_user_can_bypass: never`) |
+| `Protect integration` | `integration` | PRs required; required checks: "Lint, typecheck, test, build", "Managed browser workflow (fake provider)", "Managed browser workflow (fake provider · managed Firefox)" |
+| `Protect main` | `main` | PRs required; required checks: the lint job and **one** browser leg (Chromium) |
+
+The `main` asymmetry (Firefox leg not required there) is recorded as-found;
+whether promotions to `main` should gate on both engines is an owner call
+for the post-judging period, not a silent fix. The tag freeze is bypass-proof
+by settings, which is the strongest guarantee the register rests on.
+
 ## While judging is open
 
 - Nothing is promoted to `main`, so the README, website and Codespaces stay as submitted.
