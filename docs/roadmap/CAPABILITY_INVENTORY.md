@@ -409,10 +409,14 @@ pnpm run verify                                                    # 922 pass / 
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval
-# API surface
+# API surface (SHAPE-CHECK ONLY - not a counting instrument)
 grep -nE "\.(get|post|patch|delete)\(" apps/server/src/routes/*.ts apps/server/src/app.ts
+#   60 raw lines today: false positives (manager.get/store.get/registry.get are
+#   not routes) and one false negative (forge.ts:170 registers app.post( across
+#   lines). The authoritative tally is the route census above: 45 unique paths,
+#   52 verb+path pairs - that census parsed registrations, not raw grep shape.
 # tools & side effects
-grep -n "id: '" packages/tool-runtime/src/tools.ts
+grep -n "id: '" packages/tool-runtime/src/tools.ts               # 7 MCP tool ids
 # storage versions
 grep -n "version:" packages/memory-engine/src/migrations.ts
 # governance
