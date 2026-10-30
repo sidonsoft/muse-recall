@@ -111,6 +111,15 @@ that target is untested and effectively unassigned until a deployment exists.
 - **Alerting:** the full signal→consumer chain now exists (D050 + D051,
   2026-10-30): `GET /api/health` carries `alerts.{backup,storage,provider}`,
   and **`pnpm ops:alert-prober [base-url]` is the consumer** — cron-ready,
+  Re-witnessed end-to-end at head 31 Oct: `db:backup` rc 0 produced
+  `d.db.backup-20261030T192542Z`; prober on a healthy base-url printed
+  `ALERT none: all states acceptable` rc 0. The same round's missteps
+  produced the other two branches for free, so all three exit codes were
+  freshly observed at head: missing snapshot → `ALERT backup=missing` rc 1;
+  a full health path passed where base-url belongs → `ALERT endpoint=http_status_404`
+  rc 2 (the prober takes a BASE url — `/api/health` double-appends). A
+  missing database file also refuses `db:backup` with a plain "Database not
+  found" rather than writing an empty snapshot.
   exit 0 healthy, 1 findings (one `ALERT component=state: detail` line each
   on stdout), 2 unreachable/outage. Token mode: set `ACCESS_TOKEN` and it
   sends the bearer. Version skew is handled honestly (`alerts=absent` when a
