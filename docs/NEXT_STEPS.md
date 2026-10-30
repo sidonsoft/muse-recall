@@ -176,6 +176,17 @@ now is maintenance honesty, not new surface:
     A further script-reference audit over .devcontainer + workflows found
     zero drift (only prose false-positives), extending the documented-
     command guarantee to automation files.
+  - Bench-artifact policy (31 Oct, after #117 caught real drift): retrieval
+    `-latest` is regenerated at head (offline, deterministic); the real-Muse
+    bench artifacts (`muse-overhead`, `context-efficiency`, `retrieval-eval`)
+    stay at their self-dated 26 Oct runs because regeneration costs quota and
+    model variance makes deltas non-comparable — their headers state the run
+    date, and every doc quote was cross-checked against the artifact (16,630 /
+    17,507 / +877 / 998 / 0.879≈"0.88×" all match; the Demo C "roughly halved"
+    quote names its whole-task basis, and the SAME artifact records that the
+    answering call costs +37 tokens — qualifier with claim, already). A doc
+    quote may cite an artifact only as-of its header date; that is what keeps
+    "latest" honest.
 - Drift gates stay load-bearing: error-catalogue live probes, browser
   workflow on two engines, backup drill on every push. New asymmetries are
   either fixed in lockstep (v2 discipline, D054) or honestly catalogued.
