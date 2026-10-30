@@ -219,7 +219,12 @@ now is maintenance honesty, not new surface:
   asymmetry deliberately with a stated reason; both are owner calls, and as
   of this census both rulesets have
   `strict_required_status_checks_policy=false` (additional unknown statuses
-  never block).
+  never block). Re-matched at head `4960c56` (31 Oct, after 20+ cadence
+  merges): ci.yml emits EXACTLY the contexts each ruleset demands — the
+  `verify` job's name plus the matrix `job_name` strings, Firefox leg
+  integration-only — zero name drift; a required-check string silently
+  missing would stall every merge, so this pair gets re-read whenever ci.yml
+  or a ruleset changes (neither has, beyond adding 26245608).
 - Post-judging cleanup candidate — evaluated, not acted (pre-Nov-4 rule): the
   history-action enum admits `'purged'` (CHECK in two migrations; shared
   `MEMORY_HISTORY_ACTIONS`) but NOTHING emits it: engine audit actions are
