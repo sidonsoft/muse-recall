@@ -421,3 +421,28 @@ so frozen evidence remains reproducible. They are not current verification entry
 `scripts/lib/browser.ts` / the server policy: managed Chromium by default, explicit
 `FORGE_RUNTIME_BROWSER=chrome` only, no fallback.
 **Fix:** Rewrite the phase scripts only if their evidence is deliberately re-baselined.
+
+### KI-33 — Five inline wire error codes live outside the versioned error catalogue
+
+**Severity:** Low (contract completeness, not function)
+**Detail (found 31 Oct 2026 by doc-vs-catalog diff):** `GET /api/errors`
+publishes 45 codes (D048, catalogue version 2), and the mirror test suite
+drift-gates the probed mappings. But five codes the server returns as
+hand-built (not `apiFailure`) responses are absent from the catalogue:
+`ui_generation_failed` (`routes/ui.ts:114`, a 502 when the model misses
+the interface schema twice), `surface_not_found` (ui.ts:167),
+`surface_already_submitted` (ui.ts:174), `tool_call_not_found`
+(`routes/tools.ts:56`), `tool_call_not_pending` (tools.ts:63). They
+behave correctly and are shape-stable; the catalogue just under-mirrors
+reality for these five — the same "catalogue must mirror reality"
+standard D048 set for the other surfaces.
+**Mitigation:** behavior is exercised by ui/tools API tests; the codes
+appear nowhere else than these five sites; the gap is documented here
+rather than left to be discovered by an integrator diffing wire traffic
+against `/api/errors`.
+**Fix (post-judging, one lockstep PR):** add the five entries to
+`API_ERROR_CATALOG`, bump `ERROR_CATALOG_VERSION` 2→3 (adding entries is
+catalogue-visible), replace the inline sends with `apiFailure()` at those
+five sites, and extend the mirror suite to probe all five — code,
+catalogue, tests, version in one PR, per the D048/D051 discipline.
+Pre-Nov-4 rule: contract bumps wait for the judging window to close.
