@@ -370,3 +370,46 @@ export const ProjectSchema = z.object({
   updated_at: z.iso.datetime(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
+
+/**
+ * Relationship graph + timeline payload (gap G-9 remainder groundwork, D052).
+ * Nodes are never full records — excerpts keep the payload small and bounded;
+ * the edges (and their timestamps) are the authoritative timeline data,
+ * straight from `memory_supersessions`. Deleted memories stay unreachable:
+ * a graph must not resurrect what a purge removed.
+ */
+export const MemoryGraphNodeSchema = z.object({
+  id: z.string(),
+  type: MemoryTypeSchema,
+  scope: z.enum(['global', 'project']),
+  project_id: z.string().nullable(),
+  excerpt: z.string(),
+  status: z.enum(['active', 'superseded', 'expired']),
+  revision: z.number().int().min(1),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(),
+});
+export type MemoryGraphNode = z.infer<typeof MemoryGraphNodeSchema>;
+
+export const MemoryGraphEdgeSchema = z.object({
+  new_id: z.string(),
+  old_id: z.string(),
+  at: z.iso.datetime(),
+});
+export type MemoryGraphEdge = z.infer<typeof MemoryGraphEdgeSchema>;
+
+export const MemoryGraphEventSchema = z.object({
+  at: z.iso.datetime(),
+  kind: z.enum(['created', 'corrected']),
+  memory_id: z.string(),
+});
+export type MemoryGraphEvent = z.infer<typeof MemoryGraphEventSchema>;
+
+export const MemoryGraphSchema = z.object({
+  nodes: z.array(MemoryGraphNodeSchema),
+  edges: z.array(MemoryGraphEdgeSchema),
+  events: z.array(MemoryGraphEventSchema),
+  truncated: z.boolean(),
+  observed_at: z.iso.datetime(),
+});
+export type MemoryGraph = z.infer<typeof MemoryGraphSchema>;

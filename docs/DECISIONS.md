@@ -754,3 +754,23 @@ Version skew is a first-class state: a server without `alerts` yields
 **Consequence:** G4's remaining work is operational (install the cron, wire a
 waker), not engineering. Live smoke proven on a fresh file DB: exit 1
 `backup=missing`; after one `db:backup`, exit 0 `ALERT none`.
+
+---
+
+### D052 — Graph and timeline come as a data surface first; the UI consumes, never re-derives
+
+**Context:** gap G-9's remainder named relationship-graph and timeline VIEWS.
+Jumping straight to a canvas UI means inventing the data shape under time
+pressure in the wrong layer; the supersession edges (`memory_supersessions`,
+timestamped since v1) already ARE the timeline — nobody was exposing them.
+**Decision:** `GET /api/memories/graph` (+ optional `project_id`, `limit`≤2000):
+excerpt nodes (140 chars, never full records), edges between kept nodes only,
+merged `events` (created/corrected) capped at 200, honest `truncated` flag.
+Scoping mirrors list() exactly (project + global). Deleted memories are
+unreachable through the graph — a graph walk must never resurrect purged
+data. Events and edges derive from the SAME rows the detail view shows, so
+timeline and inspector can never disagree.
+**Consequence:** any future canvas/timeline view is a pure client over one
+bounded endpoint; the 46-check browser workflow need not touch it yet. G-9
+stays Partial until a visual view exists — now with the risky half (shape +
+honesty invariants) settled and test-gated.

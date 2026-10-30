@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 68 files / 879 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 69 files / 885 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -146,7 +146,10 @@ covers `POST /api/memories` and Forge generation — D049; §3's named remainder
 ## 5. Application layer
 
 **Status: Implemented for the local product (explorer = the Memory surface; its review
-queue landed 2026-10-30, gap G-9 Partial); relationship graph/timeline views remain absent.**
+queue landed 2026-10-30, gap G-9 Partial). `GET /api/memories/graph` (D052) now serves the
+relationship graph + timeline DATA surface — excerpt nodes, supersession edges with their
+own timestamps, bounded events, honest `truncated` flag; a visual graph/timeline UI
+remains absent.**
 
 - **Four surfaces** ([views.ts](../../apps/web/src/views.ts)): HTML Studio (`studio`),
   Memory (`memories`), Conversations (`conversations`), System (`system`). Component groups:
@@ -223,8 +226,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 68 files,
-  **879 passed, 3 skipped (882)**; the browser workflow now runs 46 checks
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 69 files,
+  **885 passed, 3 skipped (888)**; the browser workflow now runs 46 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -280,7 +283,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | **Partial** (optional shared bearer token + token-aware bind/Host guards + posture in meta, D045; §5 adversarial boundary suite now a standing CI gate; identity/scoping/rotation remain, 2026-10-30) |
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | **Closed** (v1.5.0 autoplay-media + external-assets, 22 corpus rows, 2026-10-30) |
 | G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
-| G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | **Partial** (review queue shipped 2026-10-30, D044; graph/timeline remain) |
+| G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | **Partial** (review queue D044; graph/timeline REST data surface D052 — edges+events live; visual view remains) |
 | G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | **Closed** (46 checks incl. visual snapshots + observed-model identity, 2 engines, 2026-10-30) |
 | G-11 | Legacy raw `memoryBlock` input removal | §2 (capture layer) | [NEXT_STEPS P1 #7](../NEXT_STEPS.md) | S | **Closed** (PR #37 + D036, 2026-10-30) |
 | G-12 | Recovery summary on System screen | §5, §6 | [NEXT_STEPS P1 #8](../NEXT_STEPS.md) | S | **Closed** (PR #36, 2026-10-30) |
@@ -290,7 +293,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 879 pass / 3 skip
+pnpm run verify                                                    # 885 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

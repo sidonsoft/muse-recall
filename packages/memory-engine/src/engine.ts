@@ -332,6 +332,101 @@ export class MemoryEngine {
     };
   }
 
+  /**
+   * Relationship graph + timeline over the supersession edges (D052).
+   * Nodes are bounded excerpts, never full records; deleted memories are
+   * excluded everywhere so a purge cannot be undone by walking a graph.
+   * When `projectId` is set, nodes are that project's plus global memories —
+   * the same scoping rule as list().
+   */
+  graph(options: { projectId?: string; limit?: number } = {}): {
+    nodes: {
+      id: string;
+      type: Memory['type'];
+      scope: 'global' | 'project';
+      project_id: string | null;
+      excerpt: string;
+      status: 'active' | 'superseded' | 'expired';
+      revision: number;
+      created_at: string;
+      updated_at: string;
+    }[];
+    edges: { new_id: string; old_id: string; at: string }[];
+    events: { at: string; kind: 'created' | 'corrected'; memory_id: string }[];
+    truncated: boolean;
+    observed_at: string;
+  } {
+    const limit = Math.min(Math.max(options.limit ?? 500, 1), 2000);
+    const params: string[] = [];
+    let where = "status != 'deleted'";
+    if (options.projectId) {
+      where += " AND (scope = 'global' OR project_id = ?)";
+      params.push(options.projectId);
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT id, type, scope, project_id, content, status, revision, created_at, updated_at
+         FROM memories WHERE ${where}
+         ORDER BY updated_at DESC, id DESC LIMIT ?`,
+      )
+      .all(...params, limit + 1) as unknown as {
+      id: string;
+      type: Memory['type'];
+      scope: 'global' | 'project';
+      project_id: string | null;
+      content: string;
+      status: string;
+      revision: number;
+      created_at: string;
+      updated_at: string;
+    }[];
+    const truncated = rows.length > limit;
+    const kept = rows.slice(0, limit);
+    const nodes = kept
+      .map((row) => ({
+        id: row.id,
+        type: row.type,
+        scope: row.scope,
+        project_id: row.project_id,
+        excerpt: row.content.length > 140 ? `${row.content.slice(0, 137)}...` : row.content,
+        status: (row.status === 'active' || row.status === 'superseded' || row.status === 'expired'
+          ? row.status
+          : 'active') as 'active' | 'superseded' | 'expired',
+        revision: row.revision,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      }))
+      .sort((a, b) =>
+        a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : a.id < b.id ? -1 : 1,
+      );
+
+    const ids = new Set(nodes.map((node) => node.id));
+    const edges = (
+      this.db
+        .prepare(
+          `SELECT new_id, old_id, created_at FROM memory_supersessions
+           ORDER BY created_at DESC, rowid DESC LIMIT 4000`,
+        )
+        .all() as unknown as { new_id: string; old_id: string; created_at: string }[]
+    )
+      .filter((edge) => ids.has(edge.new_id) && ids.has(edge.old_id))
+      .sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
+      .map((edge) => ({ new_id: edge.new_id, old_id: edge.old_id, at: edge.created_at }));
+
+    const events = [
+      ...nodes.map((node) => ({
+        at: node.created_at,
+        kind: 'created' as const,
+        memory_id: node.id,
+      })),
+      ...edges.map((edge) => ({ at: edge.at, kind: 'corrected' as const, memory_id: edge.new_id })),
+    ]
+      .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+      .slice(0, 200);
+
+    return { nodes, edges, events, truncated, observed_at: new Date().toISOString() };
+  }
+
   history(id: string): MemoryHistoryEntry[] {
     // A deleted memory is not addressable through the API, so its history is
     // not reachable either.

@@ -127,6 +127,12 @@ repository's working backlog; completed items stay for the audit trail.
     file DB → exit 1 `backup=missing`; after `pnpm db:backup` → exit 0
     `ALERT none`. G4 still needs the OPERATOR step (install the cron, wire cron
     mail to something that wakes a human) — now an install, not a build.
+14. **Graph/timeline data surface for the G-9 remainder.** — **Done (2026-10-30,
+    D052).** `GET /api/memories/graph`: excerpt nodes + timestamped supersession
+    edges + bounded created/corrected events + honest `truncated`; project scoping
+    parity with list(); deleted memories unreachable via graph walks. The visual
+    graph/timeline VIEW remains open (G-9 stays Partial) but is now a pure client
+    over one bounded, test-gated endpoint.
 
 ## P2 — explicitly out of scope for this milestone
 
