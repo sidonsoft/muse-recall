@@ -101,6 +101,14 @@ and required contexts; the three frozen tags still point at
 drift anywhere in the register's foundation between the first and second
 census — the guarantee has now been confirmed twice, on separate calls.
 
+**Judge-demo path re-smoked at head (31 Oct, after 18 further merges):** fresh
+`DATABASE_PATH` → `pnpm demo:seed` → built server → health 200; graph: 3 nodes,
+one edge stamped exactly `2026-10-27T00:00:00.000Z`, 4 events; two scoped
+memories listed; retrieval preview for "countdown timers" hits the constraint.
+The D055 determinism survived the merge storm unchanged — re-observed, not
+assumed. A docs/tests-only stretch still gets one end-to-end witness per
+audit round rather than trust in CI alone.
+
 ### Rehearsal — the commands above run as written (31 Oct 2026)
 
 Simulated the judge path on the DEFAULT branch (`main` = `c32d03b4b6bb…`):
