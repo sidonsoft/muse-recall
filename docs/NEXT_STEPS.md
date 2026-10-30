@@ -14,11 +14,16 @@ repository's working backlog; completed items stay for the audit trail.
 2. **Run both CI gates before integrating the hardening branch.** — **Done (2026-10-29).**
    The `verify` and `browser` gates ran before PR #1 merged (`12918fd`); submission
    snapshots, research evidence and tags are unchanged.
-3. **Add a repair/restore path for `state_corrupt`.**
+3. **Add a repair/restore path for `state_corrupt`.** — **Done (2026-10-30).**
    The server now refuses to present a malformed `state.json` as an empty project, which
    is correct but leaves the Studio unable to open that project until the file is fixed.
    Provide an explicit export/repair flow that preserves the damaged file and lets the
-   user inspect job records.
+   user inspect job records. Shipped on `integration`: `GET .../recovery/state` inspects
+   damage (failure mode, bounded raw bytes, surviving versions, job listing) and
+   `POST .../recovery/repair` archives the damaged bytes before rebuilding state from
+   surviving approved versions (PR #32); the Studio banner wires both, and the managed
+   browser workflow corrupts `state.json` live and repairs through the UI as a standing
+   gate (PR #33, 35 checks). Repair refuses on a valid state (`state_valid`, 409).
 4. **Isolate the Forge worker from the server user.**
    The environment allow-list and CLI sandbox flags reduce accidental exposure, but the
    child still runs with the server user's filesystem permissions. Move Forge to a
