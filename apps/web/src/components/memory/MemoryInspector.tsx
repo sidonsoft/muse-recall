@@ -5,6 +5,8 @@ import {
   type MemoryStats,
   type MemoryType,
   type Project,
+  type ReviewItem,
+  type ReviewQueue,
   type ServiceMeta,
   type ValidationStatus,
 } from '@mml/shared';
@@ -19,6 +21,7 @@ import {
   MemoryDetailPanel,
 } from './MemoryDetailPanel.tsx';
 import { RetrievalExplainer } from './RetrievalExplainer.tsx';
+import { ReviewQueuePanel } from './ReviewQueuePanel.tsx';
 
 const STATUS_OPTIONS = [
   { value: 'visible', label: 'All visible' },
@@ -84,6 +87,9 @@ export function MemoryInspector({
   const [detail, setDetail] = useState<MemoryDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  const [review, setReview] = useState<ReviewQueue | null>(null);
+  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
+
   const [panel, setPanel] = useState<'detail' | 'retrieval'>('detail');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -138,6 +144,17 @@ export function MemoryInspector({
     }
   }, []);
 
+  // Review queue follows the current project scope, like the list.
+  const loadReview = useCallback(async () => {
+    try {
+      setReview(
+        await api.reviewQueue(project === 'all' ? { all_projects: true } : { project_id: project }),
+      );
+    } catch {
+      setReview(null); // the list already surfaces the error
+    }
+  }, [project]);
+
   useEffect(() => {
     void loadList();
   }, [loadList]);
@@ -145,6 +162,10 @@ export function MemoryInspector({
   useEffect(() => {
     void loadSideData();
   }, [loadSideData]);
+
+  useEffect(() => {
+    void loadReview();
+  }, [loadReview]);
 
   // Deep link from HTML Studio: select the decision that was just inspected.
   useEffect(() => {
@@ -182,8 +203,34 @@ export function MemoryInspector({
   }, [selectedId]);
 
   const refresh = useCallback(async () => {
-    await Promise.all([loadList(), loadSideData()]);
-  }, [loadList, loadSideData]);
+    await Promise.all([loadList(), loadSideData(), loadReview()]);
+  }, [loadList, loadSideData, loadReview]);
+
+  async function handleReview(item: ReviewItem, action: 'verified' | 'disputed' | 'extend') {
+    setReviewBusy(item.memory.id);
+    try {
+      if (action === 'extend') {
+        await api.updateMemory(item.memory.id, {
+          expires_at: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+          expected_revision: item.memory.revision,
+        });
+        flash('ok', 'Expiry extended by 30 days.');
+      } else {
+        await api.updateMemory(item.memory.id, {
+          validation_status: action,
+          expected_revision: item.memory.revision,
+        });
+        flash('ok', action === 'verified' ? 'Marked verified.' : 'Marked disputed.');
+      }
+      await refresh();
+      if (selectedId === item.memory.id) setDetail(await api.memory(item.memory.id));
+    } catch (cause) {
+      flash('err', describeError(cause));
+      await refresh();
+    } finally {
+      setReviewBusy(null);
+    }
+  }
 
   const activeProject = project === 'all' ? (projects[0]?.id ?? '') : project;
 
@@ -282,6 +329,17 @@ export function MemoryInspector({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
       {/* ---------------- List column ---------------- */}
       <div className="min-w-0 space-y-3">
+        <ReviewQueuePanel
+          queue={review}
+          busyId={reviewBusy}
+          onVerify={(item) => void handleReview(item, 'verified')}
+          onDispute={(item) => void handleReview(item, 'disputed')}
+          onExtend={(item) => void handleReview(item, 'extend')}
+          onOpen={(item) => {
+            setPanel('detail');
+            setSelectedId(item.memory.id);
+          }}
+        />
         <div className="panel p-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">

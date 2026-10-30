@@ -869,3 +869,94 @@ describe('export / import (roadmap §6, gap G-4)', () => {
     expect(newer.json().error.code).toBe('memory_invalid');
   });
 });
+
+describe('GET /api/memories/review (gap G-9)', () => {
+  const future = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+
+  it('surfaces unverified, disputed, expired and expiring memories with computed reasons', async () => {
+    const app = await createTestApp();
+    await createMemory(app, { content: 'plain unverified claim for review tests' });
+    await createMemory(app, { content: 'verified and fresh claim', validation_status: 'verified' });
+    await createMemory(app, {
+      content: 'expires in five days claim',
+      validation_status: 'verified',
+      expires_at: future(5),
+    });
+    await createMemory(app, {
+      content: 'expired three days ago claim',
+      validation_status: 'verified',
+      expires_at: future(-3),
+    });
+    const disputed = await createMemory(app, {
+      content: 'hotly disputed claim',
+      validation_status: 'verified',
+    });
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${disputed.id}`,
+      payload: { validation_status: 'disputed' },
+    });
+    expect(patch.statusCode).toBe(200);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/memories/review?project_id=demo-game',
+    });
+    expect(response.statusCode).toBe(200);
+    const data = response.json().data as {
+      horizon_days: number;
+      total: number;
+      items: Array<{ memory: { content: string }; reasons: string[] }>;
+    };
+    expect(data.horizon_days).toBe(7);
+    const reasons = new Map(data.items.map((item) => [item.memory.content, item.reasons]));
+    expect([...reasons.keys()].sort()).toEqual(
+      [
+        'expired three days ago claim',
+        'expires in five days claim',
+        'hotly disputed claim',
+        'plain unverified claim for review tests',
+      ].sort(),
+    );
+    expect(reasons.get('plain unverified claim for review tests')).toEqual(['unverified']);
+    expect(reasons.get('hotly disputed claim')).toEqual(['disputed']);
+    expect(reasons.get('expires in five days claim')).toEqual(['expiring']);
+    expect(reasons.get('expired three days ago claim')).toEqual(['expired']);
+    expect(data.total).toBe(4);
+  });
+
+  it('horizon_days shrinks the expiring window; verified-and-current memories never appear', async () => {
+    const app = await createTestApp();
+    await createMemory(app, {
+      content: 'expires in five days claim',
+      validation_status: 'verified',
+      expires_at: future(5),
+    });
+    const far = await app.inject({
+      method: 'GET',
+      url: '/api/memories/review?project_id=demo-game&horizon_days=3',
+    });
+    expect(far.json().data.items).toHaveLength(0);
+    expect(far.json().data.horizon_days).toBe(3);
+  });
+
+  it('triage through PATCH leaves the queue and is audit-visible', async () => {
+    const app = await createTestApp();
+    const item = await createMemory(app, { content: 'claim awaiting verification' });
+    const before = await app.inject({ url: '/api/memories/review?project_id=demo-game' });
+    expect(before.json().data.total).toBe(1);
+
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${item.id}`,
+      payload: { validation_status: 'verified' },
+    });
+    expect(patch.statusCode).toBe(200);
+
+    const after = await app.inject({ url: '/api/memories/review?project_id=demo-game' });
+    expect(after.json().data.total).toBe(0);
+    const history = await app.inject({ method: 'GET', url: `/api/memories/${item.id}/history` });
+    const entries = history.json().data.entries as Array<{ action: string }>;
+    expect(entries.some((entry) => entry.action === 'updated')).toBe(true);
+  });
+});

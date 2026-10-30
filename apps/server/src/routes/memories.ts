@@ -27,6 +27,7 @@ import {
   ProjectSchema,
   RetrievalPreviewSchema,
   RetrievalRequestSchema,
+  ReviewQueueSchema,
   type ServiceMeta,
 } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
@@ -63,6 +64,14 @@ const ListQuerySchema = z.object({
   all_projects: Booleanish.optional(),
   status: z.string().max(200).optional(),
   type: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+const ReviewQueryStrings = z.object({
+  project_id: z.string().min(1).max(128).optional(),
+  all_projects: Booleanish.optional(),
+  horizon_days: z.coerce.number().int().min(0).max(365).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -157,6 +166,24 @@ export function registerMemoryRoutes(
       ),
     );
 
+    return apiSuccess(list);
+  });
+
+  // --- Review queue (roadmap §7 / gap G-9) ---------------------------------
+  // Derived, never stored: unverified, disputed, or expiry inside the horizon
+  // (expired items have a negative days_until_expiry). Static route, so it
+  // wins over /api/memories/:id regardless of registration order.
+  app.get('/api/memories/review', async (request) => {
+    const query = ReviewQueryStrings.parse(request.query ?? {});
+    const list = ReviewQueueSchema.parse(
+      engine.reviewQueue({
+        ...(query.project_id ? { project_id: query.project_id } : {}),
+        ...(query.all_projects === undefined ? {} : { all_projects: query.all_projects }),
+        ...(query.horizon_days === undefined ? {} : { horizon_days: query.horizon_days }),
+        limit: query.limit,
+        offset: query.offset,
+      }),
+    );
     return apiSuccess(list);
   });
 
