@@ -32,7 +32,10 @@ if [ ! -f .env ]; then
   cp .env.example .env
   # No Muse CLI or credentials in the container: use the labelled offline
   # provider, which never impersonates a model.
-  sed -i 's/^MODEL_PROVIDER=.*/MODEL_PROVIDER=echo/' .env
+  # Portable rewrite: BSD sed (macOS host runs) rejects GNU-style `-i expr`;
+  # a temp-file swap works on both. Observed live on macOS: the old form made
+  # this script abort under `set -e` halfway through setup.
+  sed 's/^MODEL_PROVIDER=.*/MODEL_PROVIDER=echo/' .env > .env.tmp && mv .env.tmp .env
 
   # The forwarded web origin is trusted at server start from the codespace's
   # own environment (apps/server/src/codespaces.ts), so nothing is written here.
