@@ -29,6 +29,12 @@ import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } fro
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
+import {
+  applyWorkerWrapper,
+  type ForgeWorkerWrapper,
+  probeWorkerWrapper,
+  resolveWorkerWrapper,
+} from './worker-wrapper.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
 
 /**
@@ -68,6 +74,13 @@ export interface ForgeManagerOptions {
   jobStore?: ForgeJobPersistence;
   /** Grace period before a shutdown escalates from SIGTERM to SIGKILL. */
   shutdownGraceMs?: number;
+  /**
+   * Pass-through launch wrapper for the CLI child (roadmap G-2). A string
+   * overrides FORGE_WORKER_WRAPPER; null explicitly disables the env value
+   * (tests). A configured wrapper that fails validation or the pass-through
+   * probe makes construction throw: isolation must not be silently ignored.
+   */
+  workerWrapper?: string | null;
   now?: () => Date;
 }
 
@@ -101,6 +114,8 @@ export class ForgeJobManager {
   readonly workspace: ForgeWorkspace;
   private readonly engine: MemoryEngine;
   private readonly museBin: string;
+  /** Operator-configured launch wrapper; null means direct execution. */
+  readonly workerWrapper: ForgeWorkerWrapper | null;
   private readonly maxRuntimeMs: number;
   private readonly maxCalls: number;
   private readonly maxInputTokens: number;
@@ -154,6 +169,18 @@ export class ForgeJobManager {
     this.workspace = options.workspace;
     this.engine = options.engine;
     this.museBin = options.museBin ?? process.env.FORGE_MUSE_BIN ?? 'muse';
+    const wrapperResolution =
+      options.workerWrapper === null
+        ? { wrapper: null, error: null }
+        : options.workerWrapper !== undefined
+          ? resolveWorkerWrapper({ FORGE_WORKER_WRAPPER: options.workerWrapper })
+          : resolveWorkerWrapper();
+    if (wrapperResolution.error) throw new Error(wrapperResolution.error);
+    if (wrapperResolution.wrapper) {
+      const probeFailure = probeWorkerWrapper(wrapperResolution.wrapper);
+      if (probeFailure) throw new Error(probeFailure);
+    }
+    this.workerWrapper = wrapperResolution.wrapper;
     this.maxRuntimeMs = options.maxRuntimeMs ?? 10 * 60_000;
     this.maxCalls = options.maxCalls ?? 25;
     this.maxInputTokens = options.maxInputTokens ?? 1_500_000;
@@ -1216,10 +1243,13 @@ export class ForgeJobManager {
     this.update(job, { status: 'running', started_at: this.now().toISOString() });
     const startedAt = Date.now();
 
-    const child = spawn(this.museBin, args, {
+    const { command, argv } = applyWorkerWrapper(this.workerWrapper, this.museBin, args);
+    const child = spawn(command, argv, {
       // Running from the staging directory makes relative paths in the child
-      // default to the job's workspace. It is a convenience, not a sandbox:
-      // the process still has the server user's OS permissions.
+      // default to the job's workspace. It is a convenience, not a sandbox.
+      // With FORGE_WORKER_WRAPPER set, the operator's wrapper (for example
+      // setpriv to a dedicated uid) is the OS-level isolation seam; without
+      // it the process still has the server user's OS permissions.
       cwd: staging,
       env: forgeChildEnv(this.env),
       stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],

@@ -24,10 +24,14 @@ repository's working backlog; completed items stay for the audit trail.
    surviving approved versions (PR #32); the Studio banner wires both, and the managed
    browser workflow corrupts `state.json` live and repairs through the UI as a standing
    gate (PR #33, 35 checks). Repair refuses on a valid state (`state_valid`, 409).
-4. **Isolate the Forge worker from the server user.**
-   The environment allow-list and CLI sandbox flags reduce accidental exposure, but the
-   child still runs with the server user's filesystem permissions. Move Forge to a
-   dedicated OS user/container with only the staging directory mounted.
+4. **Isolate the Forge worker from the server user.** — **Partial (2026-10-30).**
+   The code-side seam landed: `FORGE_WORKER_WRAPPER` (absolute executable, pass-through
+   probe at startup, boot refused on failure; decision D042) routes every Forge CLI
+   launch through an operator wrapper — `setpriv` to a dedicated uid, systemd-run scope,
+   or a container launcher, with a recipe in [security.md](security.md). Remaining: the
+   operator-side provisioning itself (create the dedicated user, mount only the staging
+   directory) is a deployment action outside this repository; the default local beta
+   still runs the child as the server user.
 
 ## P1 — next hardening
 
