@@ -88,6 +88,26 @@ whether promotions to `main` should gate on both engines is an owner call
 for the post-judging period, not a silent fix. The tag freeze is bypass-proof
 by settings, which is the strongest guarantee the register rests on.
 
+### Rehearsal — the commands above run as written (31 Oct 2026)
+
+Simulated the judge path on the DEFAULT branch (`main` = `c32d03b4b6bb…`):
+fresh clone → `pnpm install --frozen-lockfile` → build → `cp .env.example .env`
+→ `demo:seed` → server → `/api/health` 200. The quickstart carries no
+missing steps on the entry itself.
+
+The preservation commands were executed verbatim against today's candidate:
+`git fetch origin --tags --force` (all frozen tags fetched, none moved)
+and `git archive … main | sha256sum` produced
+`3ed8b42492eea923…` for `c32d03b` — labeled as a REHEARSAL value; the
+authoritative archive checksum is produced from the actual submitted
+commit on 4 Nov, per the manifest above.
+
+Freeze separation confirmed by the same smoke: the judges' entry does NOT
+carry integration-only surfaces — `GET /api/memories/graph` (added to
+`integration` after the entry) answers `validation_failed` on `main`,
+absorbed by the `:id` route's id-pattern guard. Nothing leaked into the
+entry, and the guard failed it closed, not open.
+
 ## While judging is open
 
 - Nothing is promoted to `main`, so the README, website and Codespaces stay as submitted.
