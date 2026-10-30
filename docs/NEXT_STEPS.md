@@ -231,6 +231,13 @@ now is maintenance honesty, not new surface:
     is structural, not hoped-for — every documented environment installs
     `--frozen-lockfile` (both CI jobs, devcontainer setup), so a stale
     lockfile fails the gate rather than silently resolving differently.
+  - Disclosure channel witnessed live (31 Oct, at head): SECURITY.md's
+    "Security → Report a vulnerability" path was probed, not trusted —
+    `security/advisories/new` answers 200 unauthenticated, i.e. GitHub
+    private vulnerability reporting is actually enabled on the repo; a
+    repo without it 404s that URL, so the promised channel exists rather
+    than being aspirational prose. (The three-business-day acknowledgement
+    is a stated intention, not a witnessed mechanism — unchanged wording.)
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
