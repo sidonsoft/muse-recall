@@ -69,7 +69,7 @@ finding. The human is the enforcement layer.
 - The Guard is not a runtime sandbox, a security scanner, a content moderator or a substitute for
   testing. It does not inspect the rendered page or network behavior.
 
-See [HTML Studio](html-studio.md) for the review workflow and the five rules.
+See [HTML Studio](html-studio.md) for the review workflow and the seven rules.
 
 ## Memory behavior
 

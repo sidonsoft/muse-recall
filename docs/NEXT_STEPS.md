@@ -67,7 +67,8 @@ repository's working backlog; completed items stay for the audit trail.
 
 - Authentication, hosted collaboration, multi-user namespaces, or network exposure.
 - Embeddings/semantic retrieval, multi-file generation, or new model providers.
-- Additional Decision Guard rule families; it remains advisory.
+- Decision Guard rule-family breadth: **extended (2026-10-30, v1.5.0)** with autoplay-media and
+  external-assets plus 22 corpus cases; it remains advisory.
 - A verified self-contained HTML export (downloaded files currently lose the sandbox).
 
 ---

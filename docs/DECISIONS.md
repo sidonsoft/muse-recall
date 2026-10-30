@@ -517,3 +517,23 @@ Cost: the macOS 27 host cannot run the bundled Firefox until Playwright 1.65
 (upstream #42768), so the second engine is verified in CI only; a Firefox leg
 failure now also blocks developer visibility of the gate even though only
 Chromium is required.
+
+---
+
+### D041 — Rule-family breadth without weakening the abstention contract
+
+**Context:** Gap G-7: Decision Guard's five families were palette-centric.
+The obvious fix — pattern rules that always answer — would turn unprovable
+cases into fake PASSes, breaking the engine's founding rule ("never PASS
+because nothing matched").
+**Decision:** Two families with opposite determinism. Autoplay-media BLOCKs
+only on declared autoplay (attribute, property, setAttribute) and ABSTAINS on
+bare `.play()` calls, because user-initiation is not statically decidable.
+External-assets PASSes/BLOCKes deterministically on absolute references
+(including protocol-relative `//`), with the known URL-assembled-from-parts
+FN pinned in the corpus as ideal-UNVERIFIED rather than hidden. RULE_ORDER
+appends the new ids; the historical five keep their order and version pins.
+**Consequence:** v1.5.0: seven families. Corpus +22 cases (11 per rule, all
+nine adversarial dimensions each): precision 1.0, zero false positives on
+both; one honest FN recorded (G07) and one deliberate abstention (F03). The
+advisory stance is unchanged — breadth never converts a finding into a block.

@@ -125,8 +125,8 @@ Phaser CDN; other HTTP requests are aborted, every WebSocket is closed, and both
 ### Advisory Decision Guard
 
 A deterministic, dependency-free engine checks the staged source against the job's own retrieved
-decisions, using five pattern rule families (countdown mechanics, flashing effects, mistake
-penalties, superseded palette colours, colour-only cues). Findings cite the decision and show a
+decisions, using seven pattern rule families (countdown mechanics, flashing effects, mistake
+penalties, superseded palette colours, colour-only cues, autoplaying media, external assets). Findings cite the decision and show a
 source excerpt; when a decision cannot be checked, the guard says so instead of claiming compliance.
 
 Phase 12E hardened this layer: comment/prose masking, bounded evidence projection with secret

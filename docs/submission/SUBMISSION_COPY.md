@@ -104,7 +104,7 @@ Decision Guard effectiveness or transfer claim. Single-user, loopback-only.
 - **Advisory Decision Guard:** a deterministic, pure, dependency-free engine that checks staged
   source against the job's own decisions and cites them, including hexadecimal equivalence between
   CSS `#FF7E5F` and Phaser `0xFF7E5F`; its independent accuracy audit is why it stays advisory.
-  It supports five rule families and reports unverified decisions rather than claiming compliance.
+  It supports seven rule families and reports unverified decisions rather than claiming compliance.
 - **A controlled test of correctable memory:** Phase 17's four arms (`none`, `memory`, `manual`,
   `corrected`) separate "the rule is present" from "the rule is retrieved" and from "the rule was
   superseded". It is pre-registered across six strata and two models (480 runs), with a detector

@@ -705,3 +705,90 @@ describe('integration adapter', () => {
     expect(adaptedNotes.unverified_notes.some((note) => note.includes('dec-rounded'))).toBe(true);
   });
 });
+
+describe('v1.5.0 autoplay-media and external-assets families (roadmap G-7)', () => {
+  const NO_AUTOPLAY: GuardDecision = {
+    id: 'dec-noautoplay',
+    content: 'Never autoplay audio or music; playback starts only on user action.',
+    status: 'active',
+    supersedes: [],
+  };
+  const SELF_CONTAINED: GuardDecision = {
+    id: 'dec-selfcontained',
+    content:
+      'The app must stay self-contained: no external CDNs, scripts, fonts, or other remote assets.',
+    status: 'active',
+    supersedes: [],
+  };
+
+  it('extends the fixed rule order without renumbering the historical rules', () => {
+    expect(RULE_ORDER).toEqual([
+      'countdown-mechanics',
+      'flashing-effects',
+      'mistake-penalty',
+      'superseded-palette',
+      'colour-only-cue',
+      'autoplay-media',
+      'external-assets',
+    ]);
+  });
+
+  it('blocks declared autoplay with exact spans', () => {
+    const source = `<audio autoplay src="t.mp3"></audio>`;
+    const result = evaluateDecisions([NO_AUTOPLAY], source);
+    const autoplay = result.evaluations.find((entry) => entry.rule === 'autoplay-media');
+    expect(autoplay?.verdict).toBe('BLOCK');
+    expect(autoplay?.findings[0]?.severity).toBe('high');
+    expect(autoplay?.findings[0]?.match_spans[0]?.start).toBe(0);
+  });
+
+  it('abstains on bare play calls: user-initiated playback cannot be proven statically', () => {
+    const result = evaluateDecisions(
+      [NO_AUTOPLAY],
+      `<audio id="b" src="t.mp3"></audio><button onclick="document.getElementById('b').play()">Play</button>`,
+    );
+    expect(result.evaluations.find((entry) => entry.rule === 'autoplay-media')?.verdict).toBe(
+      'UNVERIFIED',
+    );
+  });
+
+  it('HTML-commented autoplay markup stays inert', () => {
+    const result = evaluateDecisions([NO_AUTOPLAY], `<!-- <audio autoplay src="t.mp3"> -->`);
+    expect(result.evaluations.find((entry) => entry.rule === 'autoplay-media')?.verdict).toBe(
+      'PASS',
+    );
+  });
+
+  it('blocks protocol-relative CDNs, remote CSS urls, and reports the earliest external hit', () => {
+    const result = evaluateDecisions(
+      [SELF_CONTAINED],
+      `<script src="//cdn.example.org/lib.js"></script>
+<style>@import url("https://fonts.example.org/x.css");</style>`,
+    );
+    const external = result.evaluations.find((entry) => entry.rule === 'external-assets');
+    expect(external?.verdict).toBe('BLOCK');
+    expect(external?.findings[0]?.severity).toBe('medium');
+    expect(external?.findings[0]?.match_spans[0]?.start).toBe(0);
+  });
+
+  it('relative paths and data: URLs satisfy the self-contained decision', () => {
+    const result = evaluateDecisions(
+      [SELF_CONTAINED],
+      `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
+<script src="game.js"></script>`,
+    );
+    expect(result.evaluations.find((entry) => entry.rule === 'external-assets')?.verdict).toBe(
+      'PASS',
+    );
+    expect(result.verdict).toBe('PASS');
+  });
+
+  it('decisions that never mention the new families never activate them', () => {
+    const result = evaluateDecisions(
+      [CHILD_DECISION],
+      `<audio autoplay></audio><script src="https://cdn.example.org/x.js"></script>`,
+    );
+    expect(result.evaluations.some((entry) => entry.rule === 'autoplay-media')).toBe(false);
+    expect(result.evaluations.some((entry) => entry.rule === 'external-assets')).toBe(false);
+  });
+});

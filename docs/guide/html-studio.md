@@ -93,9 +93,9 @@ correct.
 
 ### Decision Guard is advisory
 
-The Guard runs on the staged source against the job's recorded decisions. It supports five rule
-families: **countdown mechanics, flashing effects, mistake penalties, superseded palettes and
-colour-only cues**. It cites the decision, a bounded evidence excerpt and an explanation. A snapshot
+The Guard runs on the staged source against the job's recorded decisions. It supports seven rule
+families: **countdown mechanics, flashing effects, mistake penalties, superseded palettes,
+colour-only cues, autoplaying media and external assets**. It cites the decision, a bounded evidence excerpt and an explanation. A snapshot
 is recorded when generation finishes and recomputed after the approval-time runtime check, so
 `runtime_verified` distinguishes the two contexts.
 

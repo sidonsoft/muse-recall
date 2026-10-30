@@ -23,9 +23,13 @@ import type {
 } from '../../../../packages/decision-guard/src/index.js';
 import {
   DEC_ALL_RULES,
+  DEC_AUTOMEDIA,
+  DEC_AUTOMEDIA_EXPIRED,
   DEC_COLOUR,
   DEC_COUNTDOWN,
   DEC_COUNTDOWN_EXPIRED,
+  DEC_EXT,
+  DEC_EXT_EXPIRED,
   DEC_FLASH,
   DEC_FLASH_ALLOWED,
   DEC_FLASH_SUPERSEDED,
@@ -560,7 +564,9 @@ function onTimeout() { score -= 2; }`,
     ground_truth: 'compliant',
     ideal: 'PASS',
     notes:
-      'Irrelevant active decision (music) must yield none-applicable UNVERIFIED, not extra PASSes; overall must not become PASS.',
+      'Pre-v1.5.0 this music decision was out of scope (none-applicable UNVERIFIED kept the aggregate honest). ' +
+      'Since v1.5.0 the autoplay-media rule checks it and abstains/passes on media-free sources — the corpus ' +
+      'keeps this row to pin that coverage change.',
   },
   {
     id: 'C13',
@@ -932,5 +938,265 @@ go.setFill('#00FF00'); stop.setFill('#FF0000');`,
     ideal: 'UNVERIFIED',
     notes:
       'All five matchers fire from one decision; palette axis (under audit) abstains — no history supplied. Other axes block. Aggregate is sound.',
+  },
+  // =========================================================================
+  // Rule F — autoplay-media (v1.5.0, decisions: DEC_AUTOMEDIA)
+  // =========================================================================
+  {
+    id: 'F01',
+    rule: 'autoplay-media',
+    category: 'violation-clear',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<audio autoplay src="assets/theme.mp3"></audio>
+<button onclick="bgm.play()">Music</button>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Declarative autoplay attribute on an audio element.',
+  },
+  {
+    id: 'F02',
+    rule: 'autoplay-media',
+    category: 'violation-clear',
+    decisions: [DEC_AUTOMEDIA],
+    source: `const bgm = new Audio('assets/theme.mp3');
+bgm.autoplay = !0;
+bgm.load();`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Autoplay set via the DOM property (minified true).',
+  },
+  {
+    id: 'F03',
+    rule: 'autoplay-media',
+    category: 'compliance-clear',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<audio id="bgm" src="assets/theme.mp3"></audio>
+<button onclick="document.getElementById('bgm').play()">Play music</button>`,
+    ground_truth: 'compliant',
+    ideal: 'UNVERIFIED',
+    notes:
+      'Playback goes through .play(); whether it is user-initiated is not statically decidable, so an honest engine abstains rather than certifying PASS.',
+  },
+  {
+    id: 'F04',
+    rule: 'autoplay-media',
+    category: 'compliance-clear',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<div class="quiz"><h1>Quiz</h1><button id="next">Next</button></div>`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes: 'No media anywhere: the prohibited construct is provably absent.',
+  },
+  {
+    id: 'F05',
+    rule: 'autoplay-media',
+    category: 'comment-inert',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<!-- <audio autoplay src="assets/theme.mp3"> -->
+// TODO: re-add the soundtrack (no autoplay!)
+let question = 0;`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes: 'Autoplay markup lives only in an HTML comment and a line comment.',
+  },
+  {
+    id: 'F06',
+    rule: 'autoplay-media',
+    category: 'string-inert',
+    decisions: [DEC_AUTOMEDIA],
+    source: `title.textContent = 'autoplay is off by design';`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes: 'The word appears only as prose inside a string; no declaration construct matches.',
+  },
+  {
+    id: 'F07',
+    rule: 'autoplay-media',
+    category: 'renamed',
+    decisions: [DEC_AUTOMEDIA],
+    source: `const media = new Audio('assets/theme.mp3');
+media.autoplay = true;`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Renamed variable and full `true` literal: the property construct still matches.',
+  },
+  {
+    id: 'F08',
+    rule: 'autoplay-media',
+    category: 'alt-pattern',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<script>
+player.setAttribute('autoplay', '');
+</script>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'setAttribute form of the same declaration.',
+  },
+  {
+    id: 'F09',
+    rule: 'autoplay-media',
+    category: 'formatting',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<audio
+  src="assets/theme.mp3"
+  autoplay
+  loop
+></audio>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Attribute spread across lines; the tag span still matches.',
+  },
+  {
+    id: 'F10',
+    rule: 'autoplay-media',
+    category: 'multi-construct',
+    decisions: [DEC_AUTOMEDIA],
+    source: `<audio autoplay src="a.mp3"></audio>
+<script>vid.play();</script>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Declaration plus a later play call; the unambiguous declaration decides.',
+  },
+  {
+    id: 'F11',
+    rule: 'autoplay-media',
+    category: 'memory-relevance',
+    decisions: [DEC_AUTOMEDIA, DEC_AUTOMEDIA_EXPIRED],
+    source: `<div>quiet trivia</div>`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes:
+      'Expired record required autoplay; only the active no-autoplay decision may enforce, and it passes.',
+  },
+  // =========================================================================
+  // Rule G — external-assets (v1.5.0, decisions: DEC_EXT)
+  // =========================================================================
+  {
+    id: 'G01',
+    rule: 'external-assets',
+    category: 'violation-clear',
+    decisions: [DEC_EXT],
+    source: `${CDN}
+<main id="game"></main>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Protocol-qualified CDN script tag.',
+  },
+  {
+    id: 'G02',
+    rule: 'external-assets',
+    category: 'violation-clear',
+    decisions: [DEC_EXT],
+    source: `<style>
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P");
+</style>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Remote font pulled through a CSS @import url().',
+  },
+  {
+    id: 'G03',
+    rule: 'external-assets',
+    category: 'compliance-clear',
+    decisions: [DEC_EXT],
+    source: `<link rel="stylesheet" href="styles.css">
+<script src="game.js"></script>
+<style>body { background: url(assets/tiles.png); }</style>`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes: 'Relative script, stylesheet, and image references.',
+  },
+  {
+    id: 'G04',
+    rule: 'external-assets',
+    category: 'compliance-clear',
+    decisions: [DEC_EXT],
+    source: `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes:
+      'The XML namespace URI inside the data: URL is not a network fetch; the attribute value starts with data:, not //.',
+  },
+  {
+    id: 'G05',
+    rule: 'external-assets',
+    category: 'comment-inert',
+    decisions: [DEC_EXT],
+    source: `<!-- old build: <link href="https://fonts.googleapis.com/css?family=VT323"> -->
+<style>body { font-family: monospace; }</style>`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes: 'The external reference survives only in a commented-out tag.',
+  },
+  {
+    id: 'G06',
+    rule: 'external-assets',
+    category: 'string-inert',
+    decisions: [DEC_EXT],
+    source: `help.textContent = 'We no longer use https://cdn.jsdelivr.net for anything';`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes:
+      'A URL in prose does not load anything: patterns require tag attributes, CSS urls, or fetch/import calls.',
+  },
+  {
+    id: 'G07',
+    rule: 'external-assets',
+    category: 'renamed',
+    decisions: [DEC_EXT],
+    source: `const lib = 'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js';
+const script = document.createElement('script');
+script.src = lib;`,
+    ground_truth: 'violation',
+    ideal: 'UNVERIFIED',
+    notes:
+      'URL assembled in a variable, attribute set later: honest engines cannot see the linkage statically. Recorded limitation (engine abstention ideal; current engine passes).',
+  },
+  {
+    id: 'G08',
+    rule: 'external-assets',
+    category: 'alt-pattern',
+    decisions: [DEC_EXT],
+    source: `<script src="//cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Protocol-relative URL: still an external dependency.',
+  },
+  {
+    id: 'G09',
+    rule: 'external-assets',
+    category: 'formatting',
+    decisions: [DEC_EXT],
+    source: `<link
+  rel="stylesheet"
+  href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'Whitespace around `=` and multi-line tag: the attribute pattern is tolerant.',
+  },
+  {
+    id: 'G10',
+    rule: 'external-assets',
+    category: 'multi-construct',
+    decisions: [DEC_EXT],
+    source: `${CDN}
+<script>
+fetch('https://api.example.org/scores').then((r) => r.json());
+</script>`,
+    ground_truth: 'violation',
+    ideal: 'BLOCK',
+    notes: 'CDN tag plus a remote fetch; the earliest reference is reported.',
+  },
+  {
+    id: 'G11',
+    rule: 'external-assets',
+    category: 'memory-relevance',
+    decisions: [DEC_EXT, DEC_EXT_EXPIRED],
+    source: `<script src="game.js"></script>`,
+    ground_truth: 'compliant',
+    ideal: 'PASS',
+    notes:
+      'Expired record permitted CDN loading; enforcement comes only from the active self-contained decision.',
   },
 ];
