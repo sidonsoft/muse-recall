@@ -254,6 +254,35 @@ durability) closed 2026-10-30.**
   darwin, plus per-engine visual snapshot slots against committed linux-* baselines
   (tests/visual) — the +1 since 2026-10-30 is the System-view alert-signals check
   mirroring the D050 states the cron prober consumes.
+- **Invariant guard ledger (31 Oct 2026)** — code/schema promises that were
+  audited into enforced tests during the pre-judging cadence (each pair:
+  promise site → witness; every row corresponds to tests that RAN green):
+  - backup freshness judged by NAME stamp, never mtime — alert-signals scan →
+    [alert-signals.test.ts](../../tests/unit/alert-signals.test.ts) mtime-inversion test;
+  - child-env allowlist is a CLOSED 49-key set; secrets (incl. `ACCESS_TOKEN`)
+    and the injection-variable family excluded — shared `buildChildEnv` →
+    [child-env-policy.test.ts](../../tests/unit/child-env-policy.test.ts);
+  - a failed `ROLLBACK` must never mask the original error; mutations wrap in
+    `BEGIN IMMEDIATE`…`COMMIT` (reads open nothing) and close with `ROLLBACK`
+    on failure — engine `transaction()` → [memory-engine-phase2.test.ts](../../tests/unit/memory-engine-phase2.test.ts);
+  - deleted content unreachable from EVERY serving path (get/list/retrieve/graph)
+    — engine read paths → same file, one-delete walk;
+  - `purge` cascades history + supersession edges + FTS row; the graph cannot
+    resurrect it — schema FK/triggers (enforcement lives in migrations, not
+    the method) → same file;
+  - expiry sweep keeps tombstones, respects `IS NOT NULL`, and `<=` includes
+    the exact boundary instant — engine `expireStale` → same file, fixed-clock test;
+  - retrieval dedupes by fingerprint even when twins reach storage below the
+    API guarantee — `retrieval.ts` defensive pass → same file, SQL-created twin;
+  - audit rows attribute `user`/`agent`/`system` correctly and the actor CHECK
+    really checks — `memory_history` → same file;
+  - session `DELETE` cascades messages/surfaces/events/tool-calls/turn-evidence
+    across two levels, while the deliberate no-FK design keeps memories outliving
+    conversations and purged memories' influence records intact; message order
+    is `UNIQUE (session_id, sequence)`, not clock order — migrations v3–v6 →
+    [session-cascade.test.ts](../../tests/unit/session-cascade.test.ts);
+  - the judges' demo seed is bit-identical across runs (engine clock pinned) —
+    `scripts/lib/demo-seed.ts` → [demo-seed-graph.test.ts](../../tests/integration/demo-seed-graph.test.ts).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
   and "Managed browser workflow (fake provider)" (Playwright Chromium) are *required
   status checks* on `integration` via the "Protect integration" ruleset; a second
