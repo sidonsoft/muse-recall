@@ -27,6 +27,14 @@ differed from what the repository contains, and how this version handles each on
 > `integration` ([SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md)).
 > The 30 Oct rows below are kept verbatim as history of what the audit found
 > then.
+> **Second refresh (also 31 Oct, same day, ~30 PRs later):** the cadence now
+> stands at ~74 scoped PRs into `integration`; suite 76 files / 922 passed /
+> 3 skipped (925, opt-in live suite green at head); 17 guard-ledger rows of
+> adversarial witnesses; freeze sentinel re-run green (main `c32d03b`, three
+> frozen tags, four active rulesets incl. the new phase17 tag guard); judge
+> entry points (both quickstart faces, seeded demo ×3, dev mode, live site,
+> MCP stdio, SSE+token, alert chain) all witnessed at head. Still no product
+> surface added pre-Nov-4; the queue below remains the plan of record.
 
 | Roadmap 1.0 said | Repository shows | Change in this version |
 |---|---|---|
