@@ -470,6 +470,24 @@ async function main(): Promise<void> {
     await page.getByRole('tab', { name: 'Changes' }).click();
     const diffPanel = page.locator('#studio-panel-diff');
     await diffPanel.getByText('staged · not approved').waitFor({ timeout: 10_000 });
+
+    // Observed model identity (P1#6): what the CLI SAID it used, surfaced
+    // end to end — job record, meta, and the Studio UI.
+    // The prompt-status footer sits below the fold; assert DOM presence, not
+    // viewport visibility (the same text is on the job record we meta-check).
+    await page
+      .getByText('reported model fake-muse')
+      .first()
+      .waitFor({ state: 'attached', timeout: 10_000 });
+    const metaAfterGenerate = await json<{ forge: { observed_model: string | null } }>(
+      `${apiBase}/api/meta`,
+    );
+    if (metaAfterGenerate.forge.observed_model !== 'fake-muse') {
+      throw new Error(
+        `meta reports observed_model ${String(metaAfterGenerate.forge.observed_model)}, expected the CLI-reported id`,
+      );
+    }
+    check('the Studio shows and meta persists the model identity the CLI reported');
     if ((await diffPanel.locator('[data-diff-kind="add"]').count()) === 0) {
       throw new Error('Changes panel rendered no added lines');
     }
@@ -493,6 +511,7 @@ async function main(): Promise<void> {
     }
     await page.getByText('v1 approved').waitFor({ timeout: 10_000 });
     check('first-version approval messaging is accurate');
+
     await page.screenshot({ path: join(OUT, 'after-approved-v1.png'), fullPage: true });
 
     // The change request starts empty and cannot be submitted while blank.

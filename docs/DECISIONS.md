@@ -628,3 +628,24 @@ introspectable, not inferred.
 operator. The docs say so; the meta field says so; anything beyond
 (shared-secret rotation UI, per-project authorization, quotas) stays open in
 G-6 rather than being implied by a green "auth enabled" flag.
+
+---
+
+### D046 — Forge persists the model id the CLI reports, never the one we asked for
+
+**Context:** The meta field `forge.observed_model` was hardcoded `null`: honest,
+but the CLI protocol already carries `run.model.configured` (verified in
+muse-integration.md) and the chat adapter has always reported it. Gap in
+honest telemetry, not capability (P1#6 remainder).
+**Decision:** Forge jobs record `model_observed` from `run.model.configured`
+frames (validated string, ≤128 chars, last frame wins so a fallback attempt's
+identity replaces the primary's). `/api/meta` exposes the most recent observed
+id; the Studio generation strip shows `reported model <id>` beside the
+existing `(configured)` label. Runs that never reach a model (auth, network,
+quota-before-run) keep `null` — absence of observation is recorded as
+absence, not guessed.
+**Consequence:** Configured and observed identity are distinct, visible
+concepts; a CLI-side default fallback (the verified `--model does-not-exist`
+behaviour) becomes visible in job records instead of being papered over. The
+fake CLI echoes `--model`, so the browser workflow can pin the full path:
+frame → job record → meta → UI (check #46).

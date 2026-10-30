@@ -254,6 +254,7 @@ function Provenance({ job }: { job: ForgeJob | null }) {
             <Row label="runtime" value={`${(job.usage.runtime_ms / 1000).toFixed(1)}s`} />
           </>
         ) : null}
+        {job.model_observed ? <Row label="model (reported)" value={job.model_observed} /> : null}
         {job.prompt_sha256 ? (
           <Row label="prompt" value={shortSha(job.prompt_sha256, 10)} mono />
         ) : null}

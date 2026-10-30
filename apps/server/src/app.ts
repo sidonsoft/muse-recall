@@ -475,8 +475,10 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         provider: 'muse-cli',
         configured_model: config.forge?.model ?? null,
         cli_available: forgeManager.cliAvailable(),
-        // Forge does not currently persist an independently observed model id.
-        observed_model: null,
+        // What the CLI itself reported using (run.model.configured), across
+        // recent jobs; null until the protocol has emitted one. Never the
+        // configured request value promoted into an "observation".
+        observed_model: forgeManager.lastObservedModel(),
       },
       modules: {
         memory_engine: 'complete',
