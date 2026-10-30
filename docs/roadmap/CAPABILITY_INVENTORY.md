@@ -407,7 +407,16 @@ find tests -name "*.test.ts" -print | wc -l                       # 76 files;
 #    comment "54 files" was the inventory-era suite size, stale since)
 pnpm run verify                                                    # 922 pass / 3 skip
 # retrieval & eval baselines
-pnpm eval:retrieval        # 22-question corpus (2 misses documented)
+# WARNING both rewrite tracked docs/benchmarks/*-latest artifacts - git status
+# after either run; and eval:retrieval REQUIRES a running server (fresh DB is
+# fine; it seeds its own corpus) - without one it dies ECONNREFUSED :8787.
+# Crucially: run it against the echo provider and "muse answers" collapses to
+# 0/0, silently overwriting the richer live-Muse artifact. The committed
+# artifact (26 Oct, run ptpng9) carries 7/7 correct, 7/7 memory-grounded Muse
+# answers; preserving THAT is why an echo-mode eval rerun must not be
+# committed. Re-verify the 20/22 retrieval core with echo (offline-safe);
+# refresh the Muse-answer section only with live Muse, deliberately.
+pnpm eval:retrieval        # 22 questions, 20/22 retrieval (2 misses: KI-18)
 pnpm bench:retrieval
 # API surface (SHAPE-CHECK ONLY - not a counting instrument)
 grep -nE "\.(get|post|patch|delete)\(" apps/server/src/routes/*.ts apps/server/src/app.ts

@@ -242,6 +242,15 @@ now is maintenance honesty, not new surface:
     inventory appendix already listed (re-reading your own docs pays
     rent). (The three-business-day acknowledgement
     is a stated intention, not a witnessed mechanism — unchanged wording.)
+  - Eval re-run at head, with a trap caught (31 Oct): 20/22 retrieval core
+    re-observed against a throwaway-DB echo server (the 2 FAILs remain the
+    documented KI-18 vocabulary misses). The trap: eval rewrites the tracked
+    retrieval-eval-latest artifacts, and the echo-mode run zeroes the 7/7
+    correct + 7/7 grounded live-Muse answer section that the committed
+    artifact carries — richer evidence destroyed by an offline rerun. The
+    regenerated files were DISCARDED (git checkout), the committed 26 Oct
+    live-Muse artifact stands, and the appendix now warns in-line so the
+    next runner doesn't commit the downgrade.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
