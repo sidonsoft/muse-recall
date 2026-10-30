@@ -182,6 +182,15 @@ now is maintenance honesty, not new surface:
     idempotency wire incl. replayed-failure behavior (#104). Single-
     observation claims now reduce to the Codespaces path (GitHub-hosted,
     re-verifiable only there; its setup.sh portability fix landed in #76).
+    Refinement from the 31 Oct structural audit of the judge one-click path:
+    the FORWARDING MECHANISM itself is already exercised locally —
+    codespaces-origin.test.ts replays the exact env triple (CODESPACES,
+    CODESPACE_NAME, forwarding domain) and the rewritten Host/Origin pair
+    through a real config load and real app — so what remains unobserved is
+    only the platform's provisioning, not the repo's behavior on it.
+    setup.sh's sequence also audited read-only: install -> .env from
+    example (guarded, user .env respected) -> MODEL_PROVIDER=echo ->
+    demo:seed; postAttach `pnpm dev`; image Node 24; both ports forwarded.
     A further script-reference audit over .devcontainer + workflows found
     zero drift (only prose false-positives), extending the documented-
     command guarantee to automation files.
