@@ -128,6 +128,14 @@ and `git archive … main | sha256sum` produced
 authoritative archive checksum is produced from the actual submitted
 commit on 4 Nov, per the manifest above.
 
+   Full value for cross-checking: `3ed8b42492eea923b109221c050544490010752e9c577f00fd5e33495d364d43`.
+   Re-derived later the same day from `origin/main` on the dev checkout —
+   ~40 merges deep into the cadence, different working tree, different day:
+   **byte-identical**. The archive of `c32d03b` is stable across invocations,
+   so a Nov 4 checksum can be compared against this rehearsal value only if
+   the submitted commit IS `c32d03b`; otherwise it is simply the same
+   deterministic procedure on a different tree.
+
 Freeze separation confirmed by the same smoke: the judges' entry does NOT
 carry integration-only surfaces — `GET /api/memories/graph` (added to
 `integration` after the entry) answers `validation_failed` on `main`,
