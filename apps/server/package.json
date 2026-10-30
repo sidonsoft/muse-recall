@@ -12,6 +12,7 @@
     "db:migrate": "tsx src/scripts/migrate.ts",
     "backup:drill": "node --import tsx src/scripts/backup-drill.ts",
     "db:restore": "node --import tsx src/scripts/db-restore.ts",
+    "ops:alert-prober": "node --import tsx src/scripts/alert-prober.ts",
     "db:purge": "tsx src/scripts/purge.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

@@ -118,6 +118,15 @@ repository's working backlog; completed items stay for the audit trail.
     liveness `status`, and **notification delivery is still external** — G4's
     "working alerts" gate stays unmet until a prober pages someone. Unit +
     integration coverage (+7 tests) includes the stale-but-still-alive case.
+13. **Alert consumer script closing the signal→finding gap (G4 groundwork).** —
+    **Done (2026-10-30, D051).** `pnpm ops:alert-prober [base-url]`: cron-ready
+    consumer of the health alerts block; exit 0 healthy / 1 findings (one
+    `ALERT component=state: detail` line each) / 2 unreachable-or-outage;
+    bearer header from `ACCESS_TOKEN` in token mode; version skew surfaces as
+    `alerts=absent` (a stale deployment is a finding). Live smoke proven: fresh
+    file DB → exit 1 `backup=missing`; after `pnpm db:backup` → exit 0
+    `ALERT none`. G4 still needs the OPERATOR step (install the cron, wire cron
+    mail to something that wakes a human) — now an install, not a build.
 
 ## P2 — explicitly out of scope for this milestone
 

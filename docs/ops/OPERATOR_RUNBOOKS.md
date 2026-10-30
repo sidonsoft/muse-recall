@@ -108,14 +108,21 @@ that target is untested and effectively unassigned until a deployment exists.
 
 ## What §8 still does not have (stated, not hidden)
 
-- **Alerting:** signal GROUNDWORK shipped (2026-10-30, D050): `GET /api/health`
-  carries an `alerts` block — `alerts.backup` (`ok`/`stale`/`missing`/`disabled`
-  vs `ALERT_BACKUP_MAX_AGE_HOURS` over snapshots taken next to the database,
-  judged by the name stamp), `alerts.storage` (`ok`, `unacknowledged_issues`)
-  and `alerts.provider` (`ok`/`error`/`skipped`). States are machine-readable;
-  **notification delivery is still external** — a prober (cron + curl + your
-  channel) must consume them, and roadmap G4's "working alerts" gate is NOT
-  met until that consumer exists and pages someone. `alerts` never flips the
+- **Alerting:** the full signal→consumer chain now exists (D050 + D051,
+  2026-10-30): `GET /api/health` carries `alerts.{backup,storage,provider}`,
+  and **`pnpm ops:alert-prober [base-url]` is the consumer** — cron-ready,
+  exit 0 healthy, 1 findings (one `ALERT component=state: detail` line each
+  on stdout), 2 unreachable/outage. Token mode: set `ACCESS_TOKEN` and it
+  sends the bearer. Version skew is handled honestly (`alerts=absent` when a
+  server predates the block). Live-proven: on a fresh file database the
+  prober exits 1 with `backup=missing`; after one `pnpm db:backup` it exits
+  0 with `ALERT none`.
+  ```cron
+  */30 * * * * cd /path/to/muse-recall && pnpm ops:alert-prober >> "$ALERT_LOG" 2>&1
+  ```
+  What STILL keeps G4 unmet until an operator does it: installing that cron,
+  and wiring cron mail/a forwarder to something that wakes a human. The
+  prober prints findings; it never pages anyone by design. `alerts` never flips the
   top-level `status`: liveness stays the server-alive verdict.
 - **RPO/RTO numbers for a hosted deployment:** unmeasured; the drill demonstrates
   the procedure, not the target.

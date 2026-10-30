@@ -735,3 +735,22 @@ signal; conflating them makes monitors misfire during disk incidents.
 G4's "working alerts" gate is now narrowed to "wire a consumer to these
 states" rather than undefined. Health stays open (no token) so the block must
 stay secret-free: ages, counts and states only — never paths or values.
+
+---
+
+### D051 — The alert prober is a dumb pipe: named findings plus an exit code, never paging
+
+**Context:** D050 shipped states; G4 still lacked a consumer. Any in-server
+pager would need webhook secrets and new failure domains; any "smart" prober
+that dials numbers invents the same problems in a script.
+**Decision:** `pnpm ops:alert-prober [base-url]` evaluates the health payload
+into `ALERT component=state: detail` lines and a cron contract:
+0 = all states acceptable; 1 = findings (degraded, backup stale/missing,
+storage issues, provider error); 2 = unreachable, non-health response, or
+server-reported error (an outage or a broken prober — both need a human).
+Delivery is whatever cron already does (MAILTO, forwarder, monitor hooks).
+Version skew is a first-class state: a server without `alerts` yields
+`alerts=absent`, exit 1 — a stale deployment is itself a finding.
+**Consequence:** G4's remaining work is operational (install the cron, wire a
+waker), not engineering. Live smoke proven on a fresh file DB: exit 1
+`backup=missing`; after one `db:backup`, exit 0 `ALERT none`.
