@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ConversationsView } from './components/conversations/ConversationsView.tsx';
 import { Icon } from './components/Icon.tsx';
 import { MemoryInspector } from './components/memory/MemoryInspector.tsx';
+import { RelationshipMapPanel } from './components/memory/RelationshipMapPanel.tsx';
 import { TimelinePanel } from './components/memory/TimelinePanel.tsx';
 import { Overview } from './components/Overview.tsx';
 import { StudioView } from './components/studio/StudioView.tsx';
@@ -132,6 +133,7 @@ export function App() {
                     onFocusHandled={() => setMemoryFocus(null)}
                   />
                   <TimelinePanel />
+                  <RelationshipMapPanel />
                 </>
               ) : null}
               {view === 'conversations' ? <ConversationsView /> : null}

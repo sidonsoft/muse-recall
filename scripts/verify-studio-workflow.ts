@@ -450,6 +450,13 @@ async function main(): Promise<void> {
     await timeline.waitFor({ timeout: 15_000 });
     await timeline.getByText('Never use countdown timers.').waitFor({ timeout: 15_000 });
     check('the Memory timeline lists the decision as a created event');
+    // D052 follow-up: the same payload also drives an SVG relationship map —
+    // the region must expose an img-role label stating links and node count.
+    const map = page.getByRole('region', { name: 'Memory relationship map' });
+    await map.waitFor({ timeout: 15_000 });
+    await map.getByRole('img', { name: /memories/ }).waitFor({ timeout: 15_000 });
+    await map.getByText('Never use countdown timers.').waitFor({ timeout: 15_000 });
+    check('the Memory relationship map renders the chain (SVG plus text fallback)');
     await primaryNav.getByRole('button', { name: 'HTML Studio', exact: true }).click();
     await page.getByLabel('Application description').waitFor({ timeout: 15_000 });
 
