@@ -30,7 +30,7 @@ import {
   type ForgeVersionScanEntry,
   ForgeVersionSchema,
 } from '@mml/shared';
-import { ensurePrivateDirectory, isMissingFile } from './fs-utils.js';
+import { ensurePrivateDirectory, isMissingFile, syncDirectory, syncFile } from './fs-utils.js';
 
 /**
  * The only code allowed to touch generated application files.
@@ -225,6 +225,7 @@ export class ForgeWorkspace {
         // Target name is free.
       }
       await rename(join(dir, 'state.json'), join(dir, name));
+      await syncDirectory(dir);
       archivedTo = name;
     }
     const adopted: ForgeVersion[] = [];
@@ -758,6 +759,9 @@ export class ForgeWorkspace {
           'The promoted file did not match the staged bytes.',
         );
       }
+      // The approved bytes are the acknowledged artifact: flush them, and the
+      // promoted directory entry, before the state pointer can reference them.
+      await syncFile(join(temp, 'index.html'));
 
       // State is not proof that older version bytes are absent, so never delete
       // a version directory. Only the destination can block this rename; move
@@ -776,6 +780,7 @@ export class ForgeWorkspace {
         note = `Moved an interrupted promotion directory for v${next} aside to versions/${asideName}; no version data was deleted.`;
       }
       await rename(temp, dir);
+      await syncDirectory(versionsDir);
     } catch (error) {
       await rm(temp, { recursive: true, force: true }).catch(() => undefined);
       throw error;
@@ -859,7 +864,11 @@ export class ForgeWorkspace {
     );
     const temp = join(dir, `.state-${process.pid}-${randomUUID()}.tmp`);
     await writeFile(temp, `${payload}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    // Durable by the same rule as job records (NEXT_STEPS P1 #5): bytes hit
+    // the device before the atomic rename publishes them.
+    await syncFile(temp);
     await rename(temp, join(dir, 'state.json'));
+    await syncDirectory(dir);
   }
 
   private within(base: string, ...parts: string[]): string {

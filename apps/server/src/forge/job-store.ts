@@ -9,7 +9,7 @@ import {
   type ForgeRecoveryIssue,
   redactSecrets,
 } from '@mml/shared';
-import { ensurePrivateDirectory, isMissingFile } from './fs-utils.js';
+import { ensurePrivateDirectory, isMissingFile, syncDirectory, syncFile } from './fs-utils.js';
 import type { ForgeWorkspace } from './workspace.js';
 
 /**
@@ -336,13 +336,17 @@ export class ForgeJobStore implements ForgeJobPersistence {
     try {
       // `wx` prevents clobbering a concurrently created temp file. The final
       // rename is atomic on the same filesystem, so a reader sees either the
-      // previous complete record or the new complete record.
+      // previous complete record or the new complete record. The temp file is
+      // fsynced before the rename (NEXT_STEPS P1 #5): a power loss after an
+      // acknowledged save can publish the entry, never an entry without bytes.
       await writeFile(temp, `${JSON.stringify(job, null, 2)}\n`, {
         encoding: 'utf8',
         mode: 0o600,
         flag: 'wx',
       });
+      await syncFile(temp);
       await rename(temp, target);
+      await syncDirectory(dir);
     } catch (error) {
       await rm(temp, { force: true }).catch(() => undefined);
       throw error;
