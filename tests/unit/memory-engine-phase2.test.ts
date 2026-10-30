@@ -506,6 +506,42 @@ describe('corrections', () => {
       close();
     }
   });
+
+  it('retrieval dedupes by fingerprint even if two active twins reach storage', () => {
+    // The engine's create/correct guarantees make twins unreachable via the
+    // API (pinned by the two tests above) — which means retrieval's own
+    // defensive line, "two records making the same claim must not consume
+    // two slots; the highest-scoring copy wins", is UNREACHABLE through the
+    // engine and had never been exercised. Pin it directly: create the twin
+    // by SQL (simulating a future insert path that forgets the guard) and
+    // prove retrieval spends ONE slot, reports the exclusion honestly, and
+    // the FTS trigger indexed the twin the moment it landed.
+    const { engine, db, close } = seeded();
+    try {
+      const original = engine.create(baseInput({ content: 'gamma7: always ship behind a flag' }));
+      const twinId = '11111111-1111-4111-8111-111111111111';
+      db.prepare(
+        `INSERT INTO memories
+             (id, type, scope, project_id, content, source_session_id, source_reference,
+              confidence, validation_status, status, created_at, updated_at, expires_at,
+              content_hash, tags, superseded_by, revision, actor)
+           SELECT ?, type, scope, project_id, content, NULL, NULL,
+              confidence, validation_status, 'active', created_at, updated_at, expires_at,
+              content_hash, tags, NULL, 1, 'system'
+           FROM memories WHERE id = ?`,
+      ).run(twinId, original.memory.id);
+
+      expect(engine.stats().active).toBe(2); // the twin lives below the API guarantee
+      const result = retrieveMemories(db, { project_id: 'demo-game', query: 'gamma7 flag' });
+      const ids = result.results.map((entry) => entry.memory.id);
+      expect(ids).toHaveLength(1);
+      expect([original.memory.id, twinId]).toContain(ids[0]);
+      expect(result.metadata.excluded_by.duplicate).toBe(1);
+      expect(result.metadata.selected_count).toBe(1);
+    } finally {
+      close();
+    }
+  });
 });
 
 describe('deletion', () => {
