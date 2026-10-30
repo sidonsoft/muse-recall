@@ -17,6 +17,17 @@ as tag `submission-2026-11-04` · External PRs target `integration`
 Version 1.0 was written without the repository in view. These are the places where it
 differed from what the repository contains, and how this version handles each one.
 
+> **Refresh (31 Oct 2026), so the table isn't misread as current:** the
+> pre-audit cadence has since run ~40 PRs into `integration` (tests, docs, and
+> pins only — no product surface). `integration` no longer equals `main`
+> (`c32d03b` stays frozen as the submission candidate); the suite grew from
+> the "~740 tests" cited below to **76 files / 917 passed / 3 skipped
+> (920 total, and the 3 opt-in live tests also passed at head — #102)**; the
+> submission is now rehearsed end-to-end twice on `main` and once on
+> `integration` ([SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md)).
+> The 30 Oct rows below are kept verbatim as history of what the audit found
+> then.
+
 | Roadmap 1.0 said | Repository shows | Change in this version |
 |---|---|---|
 | The submission is already frozen on `main` | Not submitted yet; the deadline is 4 Nov 2026 9:00 PM ET. `main` and `integration` both point at `c32d03b` (PR #29). No tags exist. | Preservation happens at submission time; see [SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md). The 14-day plan moves preservation from 1–2 Nov to 4–5 Nov. |
