@@ -664,6 +664,62 @@ describe('deletion', () => {
     }
   });
 
+  it('audit trail attributes every transition to the actor that caused it', () => {
+    // The API accepts actor 'agent' and 'system' (routes/memories.ts parses
+    // them); the trail is the WHO of the audit contract. The schema CHECKs
+    // actor IN (user, agent, system), but no test had ever asserted WHICH
+    // one lands — misattribution (everything silently 'user', or a
+    // replacement credit-wrong after an agent correction) would pass today.
+    const { engine, db, close } = seeded();
+    try {
+      const agentCreated = engine.create(baseInput({ content: 'zeta audit actor' }), 'agent');
+      engine.softDelete(agentCreated.memory.id, { actor: 'system', reason: 'retired' });
+      const agentRows = db
+        .prepare('SELECT action, actor FROM memory_history WHERE memory_id = ? ORDER BY at, action')
+        .all(agentCreated.memory.id) as unknown as { action: string; actor: string }[];
+      expect(agentRows).toEqual([
+        { action: 'created', actor: 'agent' },
+        { action: 'deleted', actor: 'system' },
+      ]);
+
+      const a = engine.create(baseInput({ content: 'eta audit chain' }), 'user');
+      const b = engine.correct(
+        {
+          supersedes: [a.memory.id],
+          type: 'technical_decision',
+          project_id: 'demo-game',
+          content: 'theta audit chain',
+        },
+        'agent',
+      );
+      const aRows = db
+        .prepare('SELECT action, actor FROM memory_history WHERE memory_id = ? ORDER BY at, action')
+        .all(a.memory.id) as unknown as { action: string; actor: string }[];
+      expect(aRows).toEqual([
+        { action: 'created', actor: 'user' },
+        { action: 'superseded', actor: 'agent' },
+      ]);
+      const bRows = db
+        .prepare('SELECT action, actor FROM memory_history WHERE memory_id = ? ORDER BY at, action')
+        .all(b.memory.id) as unknown as { action: string; actor: string }[];
+      expect(bRows).toEqual([{ action: 'created', actor: 'agent' }]);
+
+      // The CHECK really checks: an unknown actor cannot be written even by
+      // direct SQL.
+      expect(() =>
+        db
+          .prepare(
+            `INSERT INTO memory_history
+               (id, memory_id, action, previous_status, next_status, reason, actor, at)
+             VALUES ('h-forge', ?, 'updated', 'active', 'active', NULL, 'robot', ?)`,
+          )
+          .run(a.memory.id, new Date().toISOString()),
+      ).toThrow();
+    } finally {
+      close();
+    }
+  });
+
   it('only purges deleted or expired records', () => {
     const { engine, close } = seeded();
     try {
