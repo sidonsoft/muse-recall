@@ -265,6 +265,12 @@ now is maintenance honesty, not new surface:
   integration-only — zero name drift; a required-check string silently
   missing would stall every merge, so this pair gets re-read whenever ci.yml
   or a ruleset changes (neither has, beyond adding 26245608).
+- Post-judging contract completion — evaluated, not acted (pre-Nov-4 rule):
+  five inline wire codes (`ui_generation_failed`, `surface_not_found`,
+  `surface_already_submitted`, `tool_call_not_found`, `tool_call_not_pending`)
+  are absent from the 45-code versioned catalogue; fix is one lockstep PR
+  (catalogue entries + apiFailure refactor at the five sites + mirror-suite
+  probes + ERROR_CATALOG_VERSION 2→3) — full detail in KNOWN_ISSUES KI-33.
 - Post-judging cleanup candidate — evaluated, not acted (pre-Nov-4 rule): the
   history-action enum admits `'purged'` (CHECK in two migrations; shared
   `MEMORY_HISTORY_ACTIONS`) but NOTHING emits it: engine audit actions are
