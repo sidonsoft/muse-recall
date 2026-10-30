@@ -422,7 +422,7 @@ so frozen evidence remains reproducible. They are not current verification entry
 `FORGE_RUNTIME_BROWSER=chrome` only, no fallback.
 **Fix:** Rewrite the phase scripts only if their evidence is deliberately re-baselined.
 
-### KI-33 — Five inline wire error codes live outside the versioned error catalogue
+### KI-43 — Five inline wire error codes live outside the versioned error catalogue
 
 **Severity:** Low (contract completeness, not function)
 **Detail (found 31 Oct 2026 by doc-vs-catalog diff):** `GET /api/errors`
