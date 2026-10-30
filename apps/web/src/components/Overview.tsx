@@ -137,7 +137,7 @@ export function Overview({
       {health.forge ? <RecoverySummary forge={health.forge} /> : null}
 
       <Panel>
-        <div role="region" aria-label="Alert signals">
+        <section aria-label="Alert signals">
           <SectionTitle
             icon="bolt"
             title="Alert signals"
@@ -210,7 +210,7 @@ export function Overview({
               finding).
             </p>
           )}
-        </div>
+        </section>
       </Panel>
 
       <Panel>
