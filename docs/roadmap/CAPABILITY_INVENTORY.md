@@ -71,7 +71,13 @@ the sessions `total` was fixed from page-length to a real COUNT, 2026-10-30), an
 machine-readable via a versioned catalogue (`GET /api/errors`, `catalog_version: 2`, mirrored
 in `/api/meta.errors`; tests compare live responses against published entries, so mapping
 drift fails CI — D048, and the two v1 asymmetries were fixed with v2 the same week — D054). `Idempotency-Key` replay (24h window, SQLite-backed, first-wins)
-covers `POST /api/memories` and Forge generation — D049; §3's named remainders are closed.**
+covers `POST /api/memories` and Forge generation — D049; §3's named remainders are closed.
+Live wire proof (31 Oct, clean clone over real HTTP, not test-injection): replay returned
+byte-identical bodies with `idempotent-replayed: 1` and one stored row; a real comma-joined
+duplicate header (which `light-my-request` cannot even send) was refused 400 as ambiguous;
+short keys refused too. The in-flight 409 race stays pinned by the in-process tests — over
+HTTP a server this fast cannot reliably be forced into that window, and we do not claim
+what we could not reproduce.
 
 - **HTTP API** (Fastify; routes in [app.ts](../../apps/server/src/app.ts) and
   [routes/](../../apps/server/src/routes)):
