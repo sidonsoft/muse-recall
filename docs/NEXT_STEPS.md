@@ -226,6 +226,11 @@ now is maintenance honesty, not new surface:
     no duplicates, tracked per-application in `schema_migrations`.
     Governance claims (PR-only workflow, schema versioning) re-verified
     as mechanisms, not manners.
+  - Dependency hygiene (31 Oct, at head): `pnpm audit` (level=low) reports
+    ZERO known vulnerabilities across the workspace; lockfile v9 freshness
+    is structural, not hoped-for — every documented environment installs
+    `--frozen-lockfile` (both CI jobs, devcontainer setup), so a stale
+    lockfile fails the gate rather than silently resolving differently.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
