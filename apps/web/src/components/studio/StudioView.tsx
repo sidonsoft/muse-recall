@@ -5,6 +5,7 @@ import {
   type ForgeDiff,
   type ForgeJob,
   type ForgeProjectView,
+  type ForgeStateInspection,
   type Memory,
   type Project,
   type ServiceMeta,
@@ -131,6 +132,7 @@ export function StudioView({
   const [decision, setDecision] = useState('');
   const [action, setAction] = useState<Action>(null);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [damaged, setDamaged] = useState<ForgeStateInspection | null>(null);
   const [loadingProject, setLoadingProject] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +211,7 @@ export function StudioView({
   const loadProject = useCallback(
     async (id: string, restoreStaged: boolean) => {
       setLoadingProject(true);
+      setDamaged(null);
       try {
         const next = await api.forgeState(id);
         setProject(next);
@@ -243,6 +246,14 @@ export function StudioView({
         }
       } catch (cause) {
         setError(messageOf(cause));
+        // The project view failed; try the damage-aware path so the banner
+        // can offer inspect/repair instead of a dead end.
+        try {
+          const view = await api.forgeStateInspection(id);
+          setDamaged(view.repairable ? view : null);
+        } catch {
+          setDamaged(null);
+        }
       } finally {
         setLoadingProject(false);
       }
@@ -346,6 +357,49 @@ export function StudioView({
       );
     } catch (cause) {
       setError(messageOf(cause));
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  async function reinspectDamage(): Promise<void> {
+    setRecoveryBusy(true);
+    try {
+      const view = await api.forgeStateInspection(projectId);
+      setDamaged(view.repairable ? view : null);
+      if (!view.repairable) message('ok', 'The state file validates again; no repair needed.');
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  async function repairDamagedState(): Promise<void> {
+    setRecoveryBusy(true);
+    try {
+      const result = await api.forgeStateRepair(projectId);
+      setDamaged(null);
+      const rebuilt = result.adopted_versions.map((version) => `v${version}`).join(', ');
+      message(
+        'ok',
+        `State repaired: ${rebuilt || 'empty project'} rebuilt${
+          result.archived_to ? `; damaged file archived as ${result.archived_to}` : ''
+        }${
+          result.skipped_versions.length > 0
+            ? `; unreadable ${result.skipped_versions.map((version) => `v${version}`).join(', ')} left on disk`
+            : ''
+        }.`,
+      );
+      await loadProject(projectId, false);
+    } catch (cause) {
+      setError(messageOf(cause));
+      try {
+        const view = await api.forgeStateInspection(projectId);
+        setDamaged(view.repairable ? view : null);
+      } catch {
+        // Inspection can lag the repair; the user can re-inspect manually.
+      }
     } finally {
       setRecoveryBusy(false);
     }
@@ -743,6 +797,46 @@ export function StudioView({
             >
               <Icon name="x" className="size-3.5" />
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {damaged ? (
+        <div className="border-b border-warn/25 bg-warn/5 px-4 py-2" role="status">
+          <div className="flex items-start gap-2">
+            <Icon name="alert" className="mt-0.5 size-3.5 shrink-0 text-warn" />
+            <div className="min-w-0 flex-1 text-[11px] leading-relaxed text-warn">
+              <p>
+                The Forge state file is damaged ({damaged.state_file.presence}).{' '}
+                {damaged.versions_readable
+                  ? `${damaged.versions.filter((entry) => entry.usable).length} approved version file${
+                      damaged.versions.length === 1 ? '' : 's'
+                    } and ${damaged.jobs.length} job record${damaged.jobs.length === 1 ? '' : 's'} survive on disk.`
+                  : 'The versions directory itself cannot be read; restore it before repair.'}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={recoveryBusy || !damaged.versions_readable}
+                  onClick={() => void repairDamagedState()}
+                  className="rounded border border-warn/30 px-2 py-0.5 text-[10px] hover:bg-warn/10 disabled:opacity-50"
+                >
+                  Repair state from surviving versions
+                </button>
+                <button
+                  type="button"
+                  disabled={recoveryBusy}
+                  onClick={() => void reinspectDamage()}
+                  className="rounded border border-warn/30 px-2 py-0.5 text-[10px] hover:bg-warn/10 disabled:opacity-50"
+                >
+                  Re-inspect
+                </button>
+                <span className="text-[9.5px] text-warn/80">
+                  Repair archives the damaged file untouched, then rebuilds the state from approved
+                  version files.
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
