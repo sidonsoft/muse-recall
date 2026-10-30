@@ -164,6 +164,18 @@ now is maintenance honesty, not new surface:
   six living docs exists in a package.json (the only regex hits were
   `install`/`exec`/`workspace`, i.e. not script names). A judge typing any
   documented command hits no phantom step.
+  - Re-witness rotation complete as of 31 Oct: every operator-facing claim
+    has a witness AT post-cadence head — settings/tags census (2×, #91),
+    judge demo seed path (2×, #93), local browser gate 48/48 (#94), MCP
+    stdio seven tools + refusal path (2×, #95), alert chain all three
+    prober exit codes (#96), live Muse opt-ins 3/3 → full 920-test suite
+    green incl. opt-ins (#102), SSE composed with token mode (#103),
+    idempotency wire incl. replayed-failure behavior (#104). Single-
+    observation claims now reduce to the Codespaces path (GitHub-hosted,
+    re-verifiable only there; its setup.sh portability fix landed in #76).
+    A further script-reference audit over .devcontainer + workflows found
+    zero drift (only prose false-positives), extending the documented-
+    command guarantee to automation files.
 - Drift gates stay load-bearing: error-catalogue live probes, browser
   workflow on two engines, backup drill on every push. New asymmetries are
   either fixed in lockstep (v2 discipline, D054) or honestly catalogued.
