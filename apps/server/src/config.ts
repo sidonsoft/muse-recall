@@ -22,107 +22,128 @@ import { isLoopbackBindHost } from './host-guard.js';
 export const SERVICE_NAME = 'muse-memory-lab' as const;
 export const SERVICE_VERSION = '0.1.0';
 
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  // No authentication exists, so the bind address is the network boundary.
-  HOST: z.string().min(1).default('127.0.0.1').refine(isLoopbackBindHost, {
-    message:
-      'must be a loopback address (127.0.0.1, ::1 or localhost); the API has no authentication and must not be exposed to a network',
-  }),
-  PORT: z.coerce.number().int().min(1).max(65_535).default(8787),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  CORS_ORIGINS: z.string().default('http://127.0.0.1:5173,http://localhost:5173'),
-  DATABASE_PATH: z.string().min(1).default('./data/muse-memory-lab.db'),
-  SQLITE_WAL: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-  MODEL_PROVIDER: z.enum(PROVIDER_KINDS).default('muse-cli'),
-  MUSE_BIN: z.string().min(1).default('muse'),
-  MUSE_MODEL: z.string().min(1).default(MUSE_DEFAULT_MODEL),
-  MUSE_REASONING_EFFORT: z.enum(MUSE_REASONING_EFFORTS).default(MUSE_DEFAULT_REASONING_EFFORT),
-  MUSE_FALLBACK_API_KEY: z.string().min(10).optional(),
-  MUSE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
-  MUSE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(900_000).default(120_000),
-  /** Optional Meta API key for chat; delivered to the CLI over stdin. */
-  META_API_KEY: z.string().min(10).optional(),
-  TOOL_APPROVAL_POLICY: z.enum(['always', 'never']).default('always'),
-  WORKSPACE_ROOT: z.string().min(1).default('./workspaces'),
-  MEMORY_MAX_MEMORIES: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(50)
-    .default(DEFAULT_RETRIEVAL_BUDGET.max_memories),
-  MEMORY_MAX_CHARACTERS: z.coerce
-    .number()
-    .int()
-    .min(200)
-    .max(50_000)
-    .default(DEFAULT_RETRIEVAL_BUDGET.max_characters),
-  MEMORY_MAX_MEMORY_CHARACTERS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .max(8_000)
-    .default(DEFAULT_RETRIEVAL_BUDGET.max_memory_characters),
-  MEMORY_SWEEP_ON_START: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-  CONTEXT_MAX_HISTORY_MESSAGES: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(50)
-    .default(DEFAULT_CONTEXT_BUDGETS.max_history_messages),
-  CONTEXT_MAX_HISTORY_CHARACTERS: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(200_000)
-    .default(DEFAULT_CONTEXT_BUDGETS.max_history_characters),
-  CONTEXT_MAX_PROMPT_CHARACTERS: z.coerce
-    .number()
-    .int()
-    .min(1_000)
-    .max(500_000)
-    .default(DEFAULT_CONTEXT_BUDGETS.max_prompt_characters),
-  CONTEXT_MAX_MESSAGE_CHARACTERS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .max(100_000)
-    .default(DEFAULT_CONTEXT_BUDGETS.max_message_characters),
-  CONTEXT_MAX_CORRECTION_HISTORY: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(10)
-    .default(DEFAULT_CONTEXT_BUDGETS.max_correction_history),
-  AGENT_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(64).max(8_000).default(1_200),
-  MEMORY_AUTO_CAPTURE: z.enum(['off', 'suggest']).default('suggest'),
-  TOOLS_ENABLED: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-  TOOL_MAX_CALLS_PER_TURN: z.coerce.number().int().min(1).max(5).default(3),
-  TOOL_DECISION_MODE: z.enum(['auto', 'always', 'off']).default('auto'),
-  FORGE_MAX_RUNTIME_MS: z.coerce.number().int().min(10_000).max(1_800_000).default(600_000),
-  FORGE_MAX_CALLS: z.coerce.number().int().min(1).max(100).default(25),
-  FORGE_MAX_INPUT_TOKENS: z.coerce.number().int().min(10_000).max(10_000_000).default(1_500_000),
-  FORGE_MUSE_BIN: z.string().min(1).optional(),
-  FORGE_MUSE_API_KEY: z.string().min(10).optional(),
-  FORGE_MUSE_MODEL: z.string().min(2).optional(),
-  FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
-  FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
-  FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
-});
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    // No authentication exists by default, so the bind address IS the network
+    // boundary — unless the operator sets ACCESS_TOKEN (gap G-6 groundwork),
+    // the one configuration in which a non-loopback bind is defensible.
+    HOST: z.string().min(1).default('127.0.0.1'),
+    ACCESS_TOKEN: z
+      .string()
+      .min(16)
+      .max(512)
+      .optional()
+      .describe('shared bearer secret; presence switches the trust model'),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(8787),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
+    CORS_ORIGINS: z.string().default('http://127.0.0.1:5173,http://localhost:5173'),
+    DATABASE_PATH: z.string().min(1).default('./data/muse-memory-lab.db'),
+    SQLITE_WAL: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    MODEL_PROVIDER: z.enum(PROVIDER_KINDS).default('muse-cli'),
+    MUSE_BIN: z.string().min(1).default('muse'),
+    MUSE_MODEL: z.string().min(1).default(MUSE_DEFAULT_MODEL),
+    MUSE_REASONING_EFFORT: z.enum(MUSE_REASONING_EFFORTS).default(MUSE_DEFAULT_REASONING_EFFORT),
+    MUSE_FALLBACK_API_KEY: z.string().min(10).optional(),
+    MUSE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
+    MUSE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(900_000).default(120_000),
+    /** Optional Meta API key for chat; delivered to the CLI over stdin. */
+    META_API_KEY: z.string().min(10).optional(),
+    TOOL_APPROVAL_POLICY: z.enum(['always', 'never']).default('always'),
+    WORKSPACE_ROOT: z.string().min(1).default('./workspaces'),
+    MEMORY_MAX_MEMORIES: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .default(DEFAULT_RETRIEVAL_BUDGET.max_memories),
+    MEMORY_MAX_CHARACTERS: z.coerce
+      .number()
+      .int()
+      .min(200)
+      .max(50_000)
+      .default(DEFAULT_RETRIEVAL_BUDGET.max_characters),
+    MEMORY_MAX_MEMORY_CHARACTERS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(8_000)
+      .default(DEFAULT_RETRIEVAL_BUDGET.max_memory_characters),
+    MEMORY_SWEEP_ON_START: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    CONTEXT_MAX_HISTORY_MESSAGES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(50)
+      .default(DEFAULT_CONTEXT_BUDGETS.max_history_messages),
+    CONTEXT_MAX_HISTORY_CHARACTERS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(200_000)
+      .default(DEFAULT_CONTEXT_BUDGETS.max_history_characters),
+    CONTEXT_MAX_PROMPT_CHARACTERS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(500_000)
+      .default(DEFAULT_CONTEXT_BUDGETS.max_prompt_characters),
+    CONTEXT_MAX_MESSAGE_CHARACTERS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(100_000)
+      .default(DEFAULT_CONTEXT_BUDGETS.max_message_characters),
+    CONTEXT_MAX_CORRECTION_HISTORY: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(10)
+      .default(DEFAULT_CONTEXT_BUDGETS.max_correction_history),
+    AGENT_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(64).max(8_000).default(1_200),
+    MEMORY_AUTO_CAPTURE: z.enum(['off', 'suggest']).default('suggest'),
+    TOOLS_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    TOOL_MAX_CALLS_PER_TURN: z.coerce.number().int().min(1).max(5).default(3),
+    TOOL_DECISION_MODE: z.enum(['auto', 'always', 'off']).default('auto'),
+    FORGE_MAX_RUNTIME_MS: z.coerce.number().int().min(10_000).max(1_800_000).default(600_000),
+    FORGE_MAX_CALLS: z.coerce.number().int().min(1).max(100).default(25),
+    FORGE_MAX_INPUT_TOKENS: z.coerce.number().int().min(10_000).max(10_000_000).default(1_500_000),
+    FORGE_MUSE_BIN: z.string().min(1).optional(),
+    FORGE_MUSE_API_KEY: z.string().min(10).optional(),
+    FORGE_MUSE_MODEL: z.string().min(2).optional(),
+    FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
+    FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
+    FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
+  })
+  .superRefine((value, ctx) => {
+    if (!isLoopbackBindHost(value.HOST) && !value.ACCESS_TOKEN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['HOST'],
+        message:
+          'must be a loopback address (127.0.0.1, ::1 or localhost) unless ACCESS_TOKEN is set; ' +
+          'without authentication the API must not be exposed to a network',
+      });
+    }
+  });
 
 export interface AppConfig {
   environment: 'development' | 'test' | 'production';
   host: string;
   port: number;
+  /** Shared bearer secret (gap G-6 groundwork); null/absent = loopback-only trust model. */
+  accessToken?: string | null;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   corsOrigins: string[];
   databasePath: string;
@@ -195,6 +216,7 @@ export function loadConfig(
     environment: value.NODE_ENV,
     host: value.HOST,
     port: value.PORT,
+    accessToken: value.ACCESS_TOKEN ?? null,
     logLevel: value.LOG_LEVEL,
     corsOrigins,
     databasePath: resolve(projectRoot, value.DATABASE_PATH),

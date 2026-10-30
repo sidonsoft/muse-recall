@@ -53,6 +53,12 @@ export const ServiceMetaSchema = z.object({
     tool_approval_policy: z.enum(['always', 'never']),
     /** Whether generated UI may ever execute model-authored code. */
     generated_code_execution: z.literal(false),
+    /**
+     * Which trust model is enforcing access right now: the loopback bind
+     * itself, or a shared bearer token (gap G-6 groundwork). One shared
+     * secret is authentication without identity — the mode says so.
+     */
+    authentication: z.enum(['loopback-only', 'shared-token']).default('loopback-only'),
   }),
 });
 export type ServiceMeta = z.infer<typeof ServiceMetaSchema>;

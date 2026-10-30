@@ -61,11 +61,20 @@ async function main(): Promise<void> {
   // `localhost` is resolved at bind time; confirm every bound socket is
   // actually loopback rather than trusting the configured name.
   const exposed = app.addresses().filter((bound) => !isLoopbackSocketAddress(bound.address));
-  if (exposed.length > 0) {
+  if (exposed.length > 0 && !config.accessToken) {
     await app.close();
     database.close();
     throw new Error(
       `Refusing to serve on non-loopback address ${exposed.map((bound) => bound.address).join(', ')} — HOST=${config.host} did not resolve to loopback`,
+    );
+  }
+  if (exposed.length > 0) {
+    // G-6 groundwork: a non-loopback bind is only reachable with the bearer
+    // token, and the Host guard relaxed its name check solely for that mode.
+    // The secret must have arrived out of band — say so on every startup.
+    app.log.warn(
+      { addresses: exposed.map((bound) => bound.address) },
+      'Serving off-loopback under ACCESS_TOKEN: authentication without identity; provision the secret out of band',
     );
   }
 

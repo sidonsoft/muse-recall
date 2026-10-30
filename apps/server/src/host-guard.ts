@@ -40,6 +40,13 @@ export interface HostGuardOptions {
   port: number;
   /** Locally served web origins whose forwarded Host is also acceptable. */
   corsOrigins: readonly string[];
+  /**
+   * True when bearer-token auth is active (gap G-6 groundwork). DNS
+   * rebinding still cannot bypass auth — a rebinding browser cannot attach
+   * the secret — so any host name is acceptable, but the port must still be
+   * the configured one when it is known.
+   */
+  tokenAuth?: boolean;
 }
 
 /** Parse a `Host` header into a lower-cased hostname and numeric port. */
@@ -67,7 +74,11 @@ export function isAllowedHostHeader(value: string | undefined, options: HostGuar
   if (value === undefined) return false;
   const parsed = parseHostHeader(value);
   if (!parsed) return false;
-  if (!LOOPBACK_HOSTNAMES.has(parsed.hostname)) return false;
+  if (!LOOPBACK_HOSTNAMES.has(parsed.hostname)) {
+    if (!options.tokenAuth) return false;
+    // Token mode: hostname is unconstrained; the port still must match.
+    return options.port === 0 ? true : parsed.port === options.port;
+  }
 
   // Port 0 means "assigned at bind time": no concrete port exists to compare.
   if (options.port === 0) return true;

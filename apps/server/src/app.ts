@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import cors from '@fastify/cors';
 import { AgentError, AgentRuntime } from '@mml/agent-core';
@@ -176,12 +177,35 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     const allowed = isAllowedHostHeader(request.headers.host, {
       port: config.port,
       corsOrigins: config.corsOrigins,
+      tokenAuth: Boolean(config.accessToken),
     });
     if (allowed) return;
     return reply
       .status(400)
       .send(apiFailure(API_ERROR_CODES.invalidHost, 'Unexpected Host header.'));
   });
+
+  // Shared bearer token (gap G-6 groundwork). Absent ACCESS_TOKEN keeps the
+  // beta's zero-friction loopback model untouched. When set, it is the only
+  // credential: authentication WITHOUT identity — every holder is the same
+  // operator. Liveness (`GET /api/health`) stays open for probes.
+  if (config.accessToken) {
+    const expected = `Bearer ${config.accessToken}`;
+    const tokenBytes = createHash('sha256').update(expected).digest();
+    app.addHook('onRequest', async (request, reply) => {
+      const url = request.url.split('?')[0];
+      if (request.method === 'GET' && url === '/api/health') return;
+      const presented = request.headers.authorization;
+      const ok =
+        typeof presented === 'string' &&
+        timingSafeEqual(createHash('sha256').update(presented).digest(), tokenBytes);
+      if (ok) return;
+      reply.header('www-authenticate', 'Bearer');
+      return reply
+        .status(401)
+        .send(apiFailure(API_ERROR_CODES.unauthorized, 'Missing or invalid bearer token.'));
+    });
+  }
 
   // Reject state-changing requests that a foreign page can send without a
   // preflight. CORS hides the response but does not stop the mutation; the
@@ -466,6 +490,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       safety: {
         tool_approval_policy: config.toolApprovalPolicy,
         generated_code_execution: false,
+        authentication: config.accessToken ? 'shared-token' : 'loopback-only',
       },
     });
     return apiSuccess(meta);
