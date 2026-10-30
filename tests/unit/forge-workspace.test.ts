@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -407,5 +407,58 @@ describe('state file integrity', () => {
       code: 'state_corrupt',
     });
     expect(await readFile(statePath(), 'utf8')).toBe(malformed);
+  });
+});
+
+describe('approved-version containment (adversarial witness, 31 Oct)', () => {
+  // The staging path got symlink witnesses early; the READ side — the
+  // approved version an API response and preview are built from — had no
+  // adversarial coverage. `readContainedBuffer` promises (lstat rejection +
+  // realpath re-check) these tests now pin.
+  const versionPath = (v: number) =>
+    join(root, 'forge', 'demo-game', 'versions', String(v), 'index.html');
+
+  async function promoteV1(): Promise<void> {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    await workspace.promote('demo-game', JOB, 'v1', { baseVersion: null, jobId: JOB });
+  }
+
+  it('refuses an approved version replaced by a symlink', async () => {
+    await promoteV1();
+    await unlink(versionPath(1));
+    await symlink('/etc/hostname', versionPath(1));
+    await expect(workspace.currentHtml('demo-game')).rejects.toMatchObject({
+      code: 'unsafe_file',
+    });
+  });
+
+  it('refuses an approved version replaced by a non-regular file', async () => {
+    await promoteV1();
+    await rm(versionPath(1));
+    await mkdir(versionPath(1));
+    await expect(workspace.currentHtml('demo-game')).rejects.toMatchObject({
+      code: 'unsafe_file',
+    });
+  });
+
+  it('refuses an approved version whose parent dir was swapped for an escaping symlink', async () => {
+    // The final component stays a regular file THROUGH a symlinked parent,
+    // so the lstat layer cannot see this — only the realpath re-check can.
+    await promoteV1();
+    const outside = await mkdtemp(join(tmpdir(), 'forge-esc-'));
+    await writeFile(
+      join(outside, 'index.html'),
+      HTML.replace('const score = 0;', 'const score = 999;'),
+    );
+    await rm(join(root, 'forge', 'demo-game', 'versions', '1'), {
+      recursive: true,
+      force: true,
+    });
+    await symlink(outside, join(root, 'forge', 'demo-game', 'versions', '1'));
+    await expect(workspace.currentHtml('demo-game')).rejects.toMatchObject({
+      code: 'unsafe_file',
+    });
+    await rm(outside, { recursive: true, force: true });
   });
 });
