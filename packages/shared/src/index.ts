@@ -11,6 +11,7 @@ export * from './evaluation.js';
 export * from './forge.js';
 export * from './health.js';
 export * from './memory.js';
+export * from './memory-export.js';
 export * from './meta.js';
 export * from './provider.js';
 export * from './redact.js';

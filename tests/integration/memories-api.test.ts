@@ -785,3 +785,87 @@ describe('PATCH /api/memories/:id optimistic concurrency', () => {
     expect(current.json().data.memory).toMatchObject({ confidence: 0.9, revision: 2 });
   });
 });
+
+describe('export / import (roadmap §6, gap G-4)', () => {
+  it('exports the raw envelope with a download filename', async () => {
+    const app = await createTestApp();
+    await createMemory(app);
+    const response = await app.inject({ method: 'GET', url: '/api/memories/export' });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-disposition']).toContain('attachment');
+    const envelope = response.json();
+    expect(envelope).toMatchObject({
+      format: 'muse-recall-memory-export',
+      format_version: 1,
+    });
+    expect(envelope.records.length).toBeGreaterThan(0);
+    expect(envelope.history.length).toBeGreaterThan(0);
+  });
+
+  it('imports into a second server and replays idempotently', async () => {
+    const source = await createTestApp();
+    await createMemory(source, { content: 'A rule worth porting.' });
+    const envelope = (await source.inject({ method: 'GET', url: '/api/memories/export' })).json();
+
+    const target = await createTestApp();
+    const imported = await target.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: envelope,
+    });
+    expect(imported.statusCode).toBe(200);
+    expect(imported.json().data).toMatchObject({
+      records_imported: envelope.records.length,
+      records_replayed: 0,
+      dry_run: false,
+    });
+
+    const replay = await target.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: envelope,
+    });
+    expect(replay.json().data).toMatchObject({
+      records_imported: 0,
+      records_replayed: envelope.records.length,
+    });
+
+    // The ported rule is visible and retrievable on the target side.
+    const listed = await target.inject({ method: 'GET', url: '/api/memories?all_projects=true' });
+    expect(listed.json().data.items.map((m: { content: string }) => m.content)).toContain(
+      'A rule worth porting.',
+    );
+  });
+
+  it('dry_run answers the plan without importing', async () => {
+    const source = await createTestApp();
+    await createMemory(source, { content: 'Dry-run only, please.' });
+    const envelope = (await source.inject({ method: 'GET', url: '/api/memories/export' })).json();
+
+    const target = await createTestApp();
+    const planned = await target.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: { ...envelope, dry_run: true },
+    });
+    expect(planned.statusCode).toBe(200);
+    expect(planned.json().data).toMatchObject({ dry_run: true });
+    const listed = await target.inject({ method: 'GET', url: '/api/memories' });
+    expect(listed.json().data.items).toEqual([]);
+  });
+
+  it('rejects structurally invalid envelopes and newer formats with 400', async () => {
+    const app = await createTestApp();
+    const junk = await app.inject({ method: 'POST', url: '/api/memories/import', payload: {} });
+    expect(junk.statusCode).toBe(400);
+
+    const real = (await app.inject({ method: 'GET', url: '/api/memories/export' })).json();
+    const newer = await app.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: { ...real, format_version: 99 },
+    });
+    expect(newer.statusCode).toBe(400);
+    expect(newer.json().error.code).toBe('memory_invalid');
+  });
+});

@@ -470,3 +470,27 @@ lost-update races become actionable conflicts. Cost: one table rebuild, and
 every write path (create, update, correct, expire, delete, accept, reject)
 must now maintain the counter — enforced by the contract test suite rather
 than convention.
+
+---
+
+### D039 — Portable export/import is a database snapshot, not an API dump
+
+**Context:** Roadmap §6 requires memory export/import "with schema versions
+and round-trip checks" including provenance and relationships (gap G-4). The
+API deliberately hides tombstones and merges audit trails into detail views;
+reusing those shapes for portability would silently drop data.
+**Decision:** A dedicated envelope (`muse-recall-memory-export`, format
+version 1) that snapshots the whole memory domain: records in every status
+including tombstones, verbatim history, supersession edges and project
+anchors, each record carrying its `content_hash` so replay detection is
+defined over the normalized fingerprint. Referential integrity is part of
+the schema — exports self-check on the way out, imports refuse envelopes
+whose history or edges point at records the envelope does not carry. An
+import is one transaction that either lands completely or rolls back with
+every clashing id reported; identical rows replay as no-ops; `dry_run`
+answers the plan without writing. Records insert in supersession dependency
+order because `superseded_by` references its replacement.
+**Consequence:** Restores and migrations can be rehearsed with the same code
+that ships them; a half-imported store cannot exist. Cost: the envelope is a
+second contract to keep aligned with the record schema (versioned, and the
+round-trip test fails loudly when it drifts).
