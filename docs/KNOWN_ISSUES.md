@@ -100,13 +100,18 @@ instead of computing a delta from it.
 for the constant.
 **Fix:** A direct API adapter or long-lived `muse serve` session would remove it.
 
-### KI-4 — No authentication or rate limiting on the API
+### KI-4 — No per-user auth; token mode optional; no rate limiting
 
 **Severity:** Low locally, blocking for any deployment
-**Detail:** The API binds `127.0.0.1` with no auth, no per-user isolation, and no rate
-limiting. The provider bench and memory writes are reachable by anything on the
-loopback interface.
-**Mitigation:** Loopback binding only; documented in [security.md](security.md).
+**Detail (re-surveyed 31 Oct 2026):** Default posture unchanged: the API binds
+`127.0.0.1` with no auth, no per-user isolation, and no rate limiting. Since
+D045 an **optional shared bearer token** (`ACCESS_TOKEN`) guards every `/api`
+route except `/api/health` (wire-witnessed, incl. 401 refusals and SSE
+composition), and bind/Host guards are token-aware — but that is one shared
+secret, not identity. Identity, scoping and rotation remain the post-judging
+G-6 items.
+**Mitigation:** Loopback binding by default; optional token mode; documented
+in [security.md](security.md).
 
 ### KI-5 — Browser verification is a script, not a test project
 
@@ -129,8 +134,11 @@ and reports the requested id. Our adapter reports what the CLI says it resolved.
 ### KI-7 — The provider bench is non-streaming
 
 **Severity:** Low (cosmetic)
-**Detail:** Streaming exists in the adapter and is covered by tests, but no HTTP route
-exposes it yet.
+**Detail (re-surveyed 31 Oct 2026):** Streaming IS exposed over HTTP — the SSE
+turn route `POST /api/sessions/:id/messages` streams `retrieval`/`delta`/
+`usage`/`completed` (D026; wire-witnessed with headers and event order, #78
+and #103). What remains true: the *provider bench script* itself drives the
+adapter without streaming, so bench numbers reflect non-streamed calls.
 
 ### KI-8 — Single-writer assumption
 
