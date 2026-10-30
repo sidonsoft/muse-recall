@@ -214,5 +214,20 @@ entry, and the guard failed it closed, not open.
    docs, or `website/` — every one of the 40+ cadence PRs targets
    `integration` and its diff was inspected for frozen paths.
 
+### Demo media census (read-only, 31 Oct)
+
+The README's demo claims were probed, not trusted. On `main` (frozen):
+mp4 blob = 12,721,832 bytes ("12.7 MB" ✓ decimal); `ffprobe` duration =
+170.474 s, so the advertised **"2:50" is exact to the second** — a claim
+that had only ever been human recall. SRT captions end at 2:32.3, i.e.
+the last ~18 s outro runs caption-free (honest reading of the SRT, not
+a discrepancy to fix — captions follow speech). Poster, contact sheet,
+transcript, limits page and QA notes all present at `docs/demo/video/`.
+The website hosts its own copy (`./video/muse-recall-demo.mp4`, HTTP
+200, `video/mp4`, 12,721,852 B) — 20 bytes above the repo blob, a
+container-level difference from the site's own build pipeline; the
+repository blob stays the authoritative archive asset, and neither copy
+is byte-differenced in any checksum promise today.
+
 Once results are announced, promotion from `integration` to `main` resumes (owner decision,
 30 October 2026; §2 of the roadmap). The tag, Release and archive stay unchanged.
