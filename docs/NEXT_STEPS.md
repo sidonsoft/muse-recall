@@ -208,6 +208,13 @@ now is maintenance honesty, not new surface:
     (`... repair · .../ack`, `accept / reject`, `export · import`) —
     lesson recorded: parse route tables verb-aware or check literal path
     containment.
+  - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
+    43 KI ids, zero duplicates, every entry carrying Severity and Detail
+    (mechanically checked; the #137 renumber left it clean) — and the
+    inventory gap table: G-1..G-12 reads 10 Closed, 2 Partial, and BOTH
+    Partial rows (G-2 provisioning, G-6 identity) correspond exactly to
+    post-judging owner-queue entries; no gap is Closed on paper while
+    Open in practice, and none is left unqualified.
   - Web→API call census (31 Oct, at head): every `/api/...` string
     referenced in apps/web (19 distinct) resolves to a registered route —
     the web client cannot call a dead path today. (The scanner's seven
