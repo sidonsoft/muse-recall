@@ -270,7 +270,7 @@ now is maintenance honesty, not new surface:
   `surface_already_submitted`, `tool_call_not_found`, `tool_call_not_pending`)
   are absent from the 45-code versioned catalogue; fix is one lockstep PR
   (catalogue entries + apiFailure refactor at the five sites + mirror-suite
-  probes + ERROR_CATALOG_VERSION 2→3) — full detail in KNOWN_ISSUES KI-33.
+  probes + ERROR_CATALOG_VERSION 2→3) — full detail in KNOWN_ISSUES KI-43.
 - Post-judging cleanup candidate — evaluated, not acted (pre-Nov-4 rule): the
   history-action enum admits `'purged'` (CHECK in two migrations; shared
   `MEMORY_HISTORY_ACTIONS`) but NOTHING emits it: engine audit actions are
