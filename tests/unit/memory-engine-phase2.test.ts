@@ -1058,6 +1058,54 @@ describe('lifecycle and retention', () => {
     }
   });
 
+  it('expiry sweep is boundary-inclusive and never touches undated, future, or non-active records', () => {
+    // The sweep SQL is `status = 'active' AND expires_at <= now`: three
+    // conditions, each load-bearing, none individually pinned — an
+    // off-by-a-sign boundary flip, a dropped status guard (re-expiring
+    // tombstones), or dropping `IS NOT NULL` (deleting the concept of
+    // "never expires") would all pass the existing test. Clock is FIXED so
+    // the exact-instant boundary is deterministic.
+    const opened = openDatabase({ path: ':memory:' });
+    const fixed = new Date('2026-06-01T12:00:00.000Z');
+    const engine = new MemoryEngine(opened.db, { now: () => fixed });
+    try {
+      const boundary = engine.create(
+        baseInput({ content: 'expires exactly at now', expires_at: fixed.toISOString() }),
+      );
+      const future = engine.create(
+        baseInput({
+          content: 'expires a minute from now',
+          expires_at: new Date(fixed.getTime() + 60_000).toISOString(),
+        }),
+      );
+      const eternal = engine.create(baseInput({ content: 'never expires' }));
+      const gone = engine.create(
+        baseInput({
+          content: 'already deleted despite past date',
+          expires_at: new Date(fixed.getTime() - 60_000).toISOString(),
+        }),
+      );
+      engine.softDelete(gone.memory.id);
+
+      expect(engine.expireStale()).toBe(1); // only the boundary record
+      expect(engine.get(boundary.memory.id)?.status).toBe('expired');
+      expect(engine.get(future.memory.id)?.status).toBe('active');
+      expect(engine.get(eternal.memory.id)?.status).toBe('active');
+
+      // Tombstone untouched by the sweep: still deleted, never re-audited.
+      const tombRow = opened.db
+        .prepare('SELECT status FROM memories WHERE id = ?')
+        .get(gone.memory.id) as unknown as { status: string };
+      expect(tombRow.status).toBe('deleted');
+      const expiredAudits = opened.db
+        .prepare("SELECT COUNT(*) c FROM memory_history WHERE action = 'expired'")
+        .get() as unknown as { c: number };
+      expect(expiredAudits.c).toBe(1);
+    } finally {
+      opened.close();
+    }
+  });
+
   it('updates memory content and records the change', () => {
     const { engine, close } = seeded();
     try {
