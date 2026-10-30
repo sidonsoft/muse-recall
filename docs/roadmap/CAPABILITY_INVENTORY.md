@@ -18,7 +18,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Integration layer (contract, MCP) | **Partial** — REST + six tools + Muse CLI provider; **no MCP** | [routes/](../../apps/server/src/routes), [tools.ts](../../packages/tool-runtime/src/tools.ts), [muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts) |
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
-| Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
+| Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
 | Tests & verification | **Implemented** — 65 files / 866 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
@@ -175,10 +175,12 @@ queue landed 2026-10-30, gap G-9 Partial); relationship graph/timeline views rem
 **Status: Implemented; both named gaps (state_corrupt repair flow; fsync
 durability) closed 2026-10-30.**
 
-- **Six migrations** ([migrations.ts](../../packages/memory-engine/src/migrations.ts)):
+- **Eight migrations** ([migrations.ts](../../packages/memory-engine/src/migrations.ts)):
   v1 `core_memory_schema`, v2 `supersession_pointer_and_retrieval_indexes`,
   v3 `sessions_messages_and_turn_evidence`, v4 `porter_stemming_for_keyword_retrieval`,
-  v5 `ui_surfaces_and_events`, v6 `project_tasks_and_tool_audit`. Forward-only;
+  v5 `ui_surfaces_and_events`, v6 `project_tasks_and_tool_audit`,
+  v7 `record_contract_revision_actor_proposed`, v8 `idempotency_keys` (transient replay
+  records; excluded from the export envelope by design — D049). Forward-only;
   `db:migrate` reports schema version ([scripts/migrate.ts](../../apps/server/src/scripts/migrate.ts)).
 - **Backup/purge/restore**: [backup.ts](../../apps/server/src/backup.ts) + `db:backup`, `db:restore`,
   `db:purge` ([scripts/db-backup.ts](../../apps/server/src/scripts/db-backup.ts),
