@@ -853,3 +853,41 @@ edges (idempotence also now pinned by tests).
 **Consequence:** the judge demo's timeline/map story is reproducible on any
 machine at any time; the demo data feeding D052's surfaces has its own
 end-to-end regression beyond the browser workflow.
+
+---
+
+### D056 — Pre-judging cadence: guard, witness, consolidate; add nothing new
+
+**Context:** With the submission due 4 Nov 2026 and judging 4–8 Nov, the
+weeks after PR #29 left a gap: real work was possible on `integration`,
+while `main`, the frozen tags, evidence/submission/demo docs and the
+website could not be touched. The earliest audits of that period kept
+finding the same class of gap: comments and schema constraints that READ
+like specs but had no adversarial test (rollback masking, cascade trust,
+name-vs-mtime freshness, closed-set allowlists, "transient" TTLs never
+aged, "re-validated on read" never corrupted). Meanwhile doc claims aged
+against code in both directions — overstated and, just as bad,
+understated (issues outliving fixes, benchmark blocks quoting stale runs).
+**Decision:** until judging closes, `integration` work is limited to three
+shapes, each PR-scoped and green-CI-gated: (1) **guards** — convert
+promise comments into enforced tests (never change behavior to pass);
+(2) **witnesses** — re-run operator-facing claims (demo seed, MCP stdio,
+SSE+token, alert chain, opt-in live suite, quickstart on both branches
+and in dev mode) at head, recording dated evidence lines; (3)
+**consolidations** — ledgers and maps (invariant guard ledger §7,
+re-witness rotation map, freeze sentinel, bench-artifact policy). No
+schema migrations, no contract bumps, no new surfaces, no behavior
+changes unless a judge-visible defect demands one; parked observations
+get evaluated into the post-judging queue instead of acted on (the
+dead `'purged'` enum, the 2-vs-3 required-checks asymmetry, the G-6
+identity work). Docs claim only what was RUN — and the doctrine applies
+to the auditor too: three self-corrections shipped (#77 sha256sum,
+#100 values_json assumption, #113 API field name) plus one caught
+self-inflicted doc mangling (#91→#92).
+**Consequence:** ~50 scoped PRs later: `main` and the tags verified
+untouched on every merge, 15 guard rows with adversarial witnesses,
+every operator-facing claim fresh at head, planning docs cross-checked
+against artifacts and each other, and a post-judging queue whose entries
+carry evaluations rather than mysteries. The repo enters judging week
+with its evidence fresh, its freeze double-observed, and its known gaps
+named instead of discovered.
