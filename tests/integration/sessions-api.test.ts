@@ -240,6 +240,20 @@ describe('session CRUD', () => {
     const invalid = await harness.app.inject({ method: 'GET', url: '/api/sessions?offset=-1' });
     expect(invalid.statusCode).toBe(400);
     expect(invalid.json().error.code).toBe('validation_failed');
+
+    // ListQuerySchema's max(200) is a contract, not a suggestion: it must
+    // refuse one past the boundary and accept exactly at it. (The memories
+    // list clamp — max 2000 — was witnessed the same way long ago via
+    // limit=5000; this closes the sessions-side twin.)
+    const overLimit = await harness.app.inject({
+      method: 'GET',
+      url: '/api/sessions?limit=201',
+    });
+    expect(overLimit.statusCode).toBe(400);
+    expect(overLimit.json().error.code).toBe('validation_failed');
+    const atLimit = await harness.app.inject({ method: 'GET', url: '/api/sessions?limit=200' });
+    expect(atLimit.statusCode).toBe(200);
+    expect(atLimit.json().data.limit).toBe(200);
   });
 
   it('404s for an unknown session and 400s for a malformed id', async () => {
