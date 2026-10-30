@@ -99,6 +99,8 @@ interface ExecuteState {
   terminal: string | null;
   terminalText: string | null;
   usage: ForgeUsage;
+  /** Model id the CLI reported via `run.model.configured` (last one wins). */
+  observedModel: string | null;
 }
 
 const MAX_LOGS = 200;
@@ -114,6 +116,23 @@ export class ForgeJobManager {
   readonly workspace: ForgeWorkspace;
   private readonly engine: MemoryEngine;
   private readonly museBin: string;
+  /**
+   * The most recent model id any persisted or in-memory Forge job observed
+   * (from the CLI's own `run.model.configured` frames). Null until the
+   * protocol reports one — deliberately not the configured request value,
+   * matching the provider's "report what the CLI says" stance.
+   */
+  lastObservedModel(): string | null {
+    let best: { model: string; at: string } | null = null;
+    for (const job of this.jobs.values()) {
+      const model = job.model_observed;
+      if (!model) continue;
+      const at = job.finished_at ?? job.created_at;
+      if (!best || at > best.at) best = { model, at };
+    }
+    return best?.model ?? null;
+  }
+
   /** Operator-configured launch wrapper; null means direct execution. */
   readonly workerWrapper: ForgeWorkerWrapper | null;
   private readonly maxRuntimeMs: number;
@@ -876,6 +895,7 @@ export class ForgeJobManager {
         finished_at: null,
         logs: [],
         usage: null,
+        model_observed: null,
         memory_ids: memoryIds,
         base_version: baseVersion,
         validation: null,
@@ -906,6 +926,7 @@ export class ForgeJobManager {
     this.state.set(id, {
       child: null,
       timedOut: false,
+      observedModel: null,
       terminal: null,
       terminalText: null,
       usage: { calls: 0, input_tokens: 0, output_tokens: 0, runtime_ms: 0 },
@@ -1330,7 +1351,11 @@ export class ForgeJobManager {
     attempt: 'primary' | 'fallback',
   ): Promise<void> {
     if (this.terminalJobs.has(job.id)) return;
-    const base = { usage: execState.usage, finished_at: this.now().toISOString() };
+    const base = {
+      usage: execState.usage,
+      model_observed: execState.observedModel,
+      finished_at: this.now().toISOString(),
+    };
     const cancelled = this.cancelled.has(job.id);
 
     if (cancelled) {
@@ -1483,6 +1508,17 @@ export class ForgeJobManager {
     const type = typeof event.payload_type === 'string' ? event.payload_type : '';
     const payload = isRecord(event.payload) ? event.payload : {};
 
+    if (type === 'run.model.configured') {
+      // The provider's verified behaviour (muse-integration.md): the CLI
+      // reports the model it actually resolved. Last frame wins, which also
+      // captures a fallback attempt's identity.
+      const modelId = payload.model_id;
+      if (typeof modelId === 'string' && modelId.length > 0 && modelId.length <= 128) {
+        execState.observedModel = modelId;
+      }
+      return;
+    }
+
     if (type === 'run.usage') {
       const models = Array.isArray(payload.models) ? payload.models : [];
       let input = 0;
@@ -1598,6 +1634,7 @@ export class ForgeJobManager {
       validation?: ForgeValidation;
       decision_guard?: DecisionGuardAdvisory;
       usage?: ForgeUsage;
+      model_observed?: string | null;
       finished_at?: string;
     },
   ): Promise<void> {
@@ -1629,6 +1666,7 @@ export class ForgeJobManager {
       validation?: ForgeValidation;
       decision_guard?: DecisionGuardAdvisory;
       usage?: ForgeUsage;
+      model_observed?: string | null;
       finished_at?: string;
     },
   ): Promise<void> {
@@ -1646,6 +1684,7 @@ export class ForgeJobManager {
           validation: patch.validation ?? job.validation,
           decision_guard: patch.decision_guard ?? job.decision_guard,
           usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
+          model_observed: patch.model_observed ?? job.model_observed,
           finished_at: patch.finished_at ?? this.now().toISOString(),
         },
         true,

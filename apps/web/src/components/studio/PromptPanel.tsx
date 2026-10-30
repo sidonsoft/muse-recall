@@ -369,6 +369,7 @@ export function GenerationStrip({
           {job.usage
             ? ` · ${job.usage.calls} model calls · ${(job.usage.runtime_ms / 1000).toFixed(1)}s`
             : ''}
+          {job.model_observed ? ` · reported model ${job.model_observed}` : ''}
         </p>
       ) : null}
     </div>

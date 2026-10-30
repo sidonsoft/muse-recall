@@ -193,6 +193,7 @@ async function job(app: FastifyInstance, jobId: string) {
     version: number | null;
     validation: { ok: boolean; issues: string[] } | null;
     usage: { calls: number } | null;
+    model_observed: string | null;
     memory_ids: string[];
   };
 }
@@ -1820,6 +1821,21 @@ describe('forge workflow', () => {
     const files = await readdir(versionsDir);
     expect(files).toContain('3');
     expect(files.some((name) => name.startsWith('.orphaned-'))).toBe(false);
+  });
+
+  it('persists the model identity the CLI reported and exposes it in meta', async () => {
+    const h = await harness();
+    const before = await h.app.inject({ method: 'GET', url: '/api/meta' });
+    expect(before.json().data.forge.observed_model).toBeNull();
+
+    await createProject(h.app);
+    const jobId = await startGenerate(h.app);
+    await waitForFinish(h.app, jobId);
+    const record = await job(h.app, jobId);
+    expect(record.model_observed).toBe('fake-muse-resolved-1');
+
+    const meta = await h.app.inject({ method: 'GET', url: '/api/meta' });
+    expect(meta.json().data.forge.observed_model).toBe('fake-muse-resolved-1');
   });
 
   it('surfaces a corrupt state file instead of presenting an empty project', async () => {

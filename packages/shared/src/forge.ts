@@ -217,6 +217,13 @@ export const ForgeJobSchema = z.object({
   finished_at: z.iso.datetime().nullable(),
   logs: z.array(z.string()),
   usage: ForgeUsageSchema.nullable(),
+  /**
+   * The model id the CLI itself reported (`run.model.configured`) — the
+   * provider's verified behaviour: report what the CLI says it used, never
+   * promote the id we asked for into an observation. Null when the protocol
+   * never emitted one for this job.
+   */
+  model_observed: z.string().min(1).max(128).nullable().default(null),
   memory_ids: z.array(z.uuid()),
   base_version: z.number().int().min(1).nullable(),
   /** sha256 of the exact prompt sent to the model, when known. */

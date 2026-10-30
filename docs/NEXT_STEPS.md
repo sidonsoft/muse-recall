@@ -52,9 +52,12 @@ repository's working backlog; completed items stay for the audit trail.
    opt-in. Visual snapshot comparison landed the same day: three timestamp-free
    Studio regions (navigation, Development panel, Decision Guard advisory) are compared
    against CI-recorded per-engine baselines with a pixel budget; drift failures upload
-   actual+diff PNGs; non-Linux local runs skip the stage honestly. Remaining: observed
-   Studio model identity persisted from CLI telemetry, if the protocol exposes it
-   reliably.
+   actual+diff PNGs; non-Linux local runs skip the stage honestly. The remaining piece
+   landed the same day: observed Studio model identity is persisted end to end —
+   `run.model.configured` frames are recorded per job (`model_observed`), surfaced in
+   `/api/meta` (`forge.observed_model`) and the generation strip, and pinned by browser
+   check #46 (D046). The protocol exposes it reliably: the verified CLI emits the frame
+   whenever a model run actually starts.
 7. **Remove the legacy raw `memoryBlock` input.** — **Done (2026-10-30).**
    Freeze a local prompt snapshot for the Phase 15A historical protocol, then delete the
    raw input path from production prompt construction. The historical wording is frozen
