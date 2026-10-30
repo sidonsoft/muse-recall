@@ -153,7 +153,7 @@ provisioning act, and G-6, deliberately post-submission). The working cadence
 now is maintenance honesty, not new surface:
 
 - Periodic doc re-audits: sweep every status claim in the living docs against
-  code (the #60 pattern); counts (71 files / 902 tests / 3 skipped; 48 browser
+  code (the #60 pattern); counts (71 files / 903 tests / 3 skipped; 48 browser
   checks local, 49 with CI visual slots) re-stated only after a real run.
 - Drift gates stay load-bearing: error-catalogue live probes, browser
   workflow on two engines, backup drill on every push. New asymmetries are
