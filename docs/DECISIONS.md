@@ -826,3 +826,25 @@ forge tests assert the detail shape.
 hurt, 4xx means YOUR request); driver internals never cross the wire; the
 rollback-under-failure invariant re-verified through a forced trigger (state
 fully rolled back, cause text preserved only in the chain).
+
+---
+
+### D055 — The demo seed pins its engine clock: identical rows AND audit stamps on every seed
+
+**Context:** `DEMO_SEED_TIMESTAMP` pinned one project-row field while the
+memory engine used the real clock — memory rows and supersession audit
+stamps said "whenever the judge ran demo:seed," not the recorded demo time.
+The claim "the seeded demo renders identically" was only mostly true. A new
+regression test (seed → engine.graph) surfaced it by asserting the edge
+stamp and getting the run-time value instead.
+**Decision:** `seedForgeDemo` constructs its engine with
+`now: () => new Date(DEMO_SEED_TIMESTAMP)` — content, row fields, history
+entries, and supersession edges are now bit-identical across seed runs.
+Wire-verified on the judge path: fresh DATABASE_PATH → `pnpm demo:seed` →
+live server → `GET /api/memories/graph?project_id=forge-demo` → 3 nodes,
+one edge stamped exactly `2026-10-27T00:00:00.000Z`, 4 events, not
+truncated. A second seed run creates nothing and cannot re-chain the
+edges (idempotence also now pinned by tests).
+**Consequence:** the judge demo's timeline/map story is reproducible on any
+machine at any time; the demo data feeding D052's surfaces has its own
+end-to-end regression beyond the browser workflow.
