@@ -192,6 +192,15 @@ now is maintenance honesty, not new surface:
     `MML_ENV_FILE` (config loader hint, read via process.env). The example
     file is a justified superset — an operator copying it hits no undefined
     variable and misses no defined one.
+  - Runtime-version promise census (31 Oct, at head): CI Node 24 =
+    devcontainer image `javascript-node:24` = engines `>=24.0.0`;
+    `packageManager: pnpm@10.32.1` is what pnpm/action-setup@v4 installs
+    (no separate version field to drift), matching README's "10.x"
+    requirement and its verified-10.32.1 line; the local witness Node
+    26.8.1 satisfies `>=24`. The only Node 22 in the repo is
+    `website.yml` — deliberate and self-documented: the landing page is
+    a standalone npm project outside the pnpm workspace, so repo engines
+    never apply to it. No version promise contradicts another.
   - Bench-artifact policy (31 Oct, after #117 caught real drift): retrieval
     `-latest` is regenerated at head (offline, deterministic); the real-Muse
     bench artifacts (`muse-overhead`, `context-efficiency`, `retrieval-eval`)
