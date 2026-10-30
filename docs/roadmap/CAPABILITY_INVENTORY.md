@@ -413,7 +413,7 @@ grep -n "id: '" packages/tool-runtime/src/tools.ts
 # storage versions
 grep -n "version:" packages/memory-engine/src/migrations.ts
 # governance
-gh api repos/sidonsoft/muse-recall/rulesets --jq '.[].name'        # 3 active rulesets
+gh api repos/sidonsoft/muse-recall/rulesets --jq '.[].name'        # 4 active rulesets (26245608 joined 31 Oct)
 gh api repos/sidonsoft/muse-recall/private-vulnerability-reporting # {"enabled": true}
 ```
 
