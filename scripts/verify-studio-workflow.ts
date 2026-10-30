@@ -457,6 +457,18 @@ async function main(): Promise<void> {
     await map.getByRole('img', { name: /memories/ }).waitFor({ timeout: 15_000 });
     await map.getByText('Never use countdown timers.').waitFor({ timeout: 15_000 });
     check('the Memory relationship map renders the chain (SVG plus text fallback)');
+    // D050 follow-up: the System view mirrors the same alert states the cron
+    // prober consumes — an operator seeing them in two places means one truth.
+    await primaryNav.getByRole('button', { name: 'System', exact: true }).click();
+    const alerts = page.getByRole('region', { name: 'Alert signals' });
+    await alerts.waitFor({ timeout: 15_000 });
+    await alerts.getByText('backup', { exact: true }).waitFor({ timeout: 10_000 });
+    await alerts.getByText(/fresh ·|stale ·|no backups|watching disabled/).waitFor({
+      timeout: 10_000,
+    });
+    await alerts.getByText('storage', { exact: true }).waitFor({ timeout: 10_000 });
+    await alerts.getByText('provider', { exact: true }).waitFor({ timeout: 10_000 });
+    check('the System view mirrors the alert signals the prober consumes');
     await primaryNav.getByRole('button', { name: 'HTML Studio', exact: true }).click();
     await page.getByLabel('Application description').waitFor({ timeout: 15_000 });
 
