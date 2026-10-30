@@ -567,6 +567,7 @@ requires the bearer header **except** the open liveness probe `GET /api/health`;
 | `PATCH` | `/api/sessions/:id` | Rename or archive |
 | `DELETE` | `/api/sessions/:id` | Delete a conversation |
 | `POST` | `/api/sessions/:id/messages` | Streaming turn (SSE) or JSON `TurnResult` |
+| `GET` | `/api/sessions/:id/messages/:messageId` | Single message with its retrieval evidence; unknown message id reports `session_not_found` with both ids in details |
 | `GET` | `/api/sessions/:id/ui` | Generated interfaces and their submissions |
 | `POST` | `/api/sessions/:id/ui` | Generate a validated interface for an intent |
 | `POST` | `/api/sessions/:id/ui/:surfaceId/events` | Submit an interface; the agent continues |
