@@ -418,6 +418,21 @@ pnpm run verify                                                    # 922 pass / 
 # refresh the Muse-answer section only with live Muse, deliberately.
 pnpm eval:retrieval        # 22 questions, 20/22 retrieval (2 misses: KI-18)
 pnpm bench:retrieval
+# Mutation registry (31 Oct): every exposed script that REWRITES a tracked
+# docs/benchmarks artifact, so runners know which tree dirt and which live
+# evidence an offline rerun would destroy:
+#   eval:retrieval      -> retrieval-eval-latest.{json,md}   (Muse-answer section: live-only)
+#   eval:comparison     -> evaluation-comparison.{json,md}    ("measured with real Muse": live-only)
+#   bench:context       -> context-efficiency-latest.{json,md}("...real Muse": live-only)
+#   bench:muse-overhead -> muse-overhead-latest.{json,md}     (live-only)
+#   bench:retrieval     -> retrieval-latest.{json,md}         (provider-neutral; safe rerun)
+#   demo:sessions       -> demo-sessions.json                 (echo-safe)
+#   demo:showcase       -> showcase.json                      (echo-safe)
+#   demo:tools          -> docs/benchmarks tool evidence      (echo-safe)
+# Four of eight are "measured with real Muse" artifacts: rerunning THEM under
+# echo mode produces a titled lie AND overwrites the evidence. Rule as usual:
+# verify offline where provider-neutral; refresh live-only artifacts only
+# deliberately, with live Muse, and expect quota.
 # API surface (SHAPE-CHECK ONLY - not a counting instrument)
 grep -nE "\.(get|post|patch|delete)\(" apps/server/src/routes/*.ts apps/server/src/app.ts
 #   60 raw lines today: false positives (manager.get/store.get/registry.get are
