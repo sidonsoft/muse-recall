@@ -241,6 +241,51 @@ export const MemoryQuerySchema = z.object({
 });
 export type MemoryQuery = z.infer<typeof MemoryQuerySchema>;
 
+/**
+ * Review queue (roadmap §7 / gap G-9 first slice).
+ *
+ * The queue is DERIVED, never a stored state machine: a memory is in the
+ * queue when it needs a human decision — an unverified or disputed claim, or
+ * a claim whose expiry has passed or is about to. Expiry is computed against
+ * the moment of the request, so nothing goes stale between reads.
+ */
+export const REVIEW_HORIZON_DAYS_DEFAULT = 7;
+export const REVIEW_HORIZON_DAYS_MAX = 365;
+
+export const REVIEW_REASONS = ['unverified', 'disputed', 'expired', 'expiring'] as const;
+export const ReviewReasonSchema = z.enum(REVIEW_REASONS);
+export type ReviewReason = z.infer<typeof ReviewReasonSchema>;
+
+export const ReviewItemSchema = z.object({
+  memory: MemorySchema,
+  reasons: z.array(ReviewReasonSchema).min(1),
+  days_until_expiry: z.number().int().nullable(),
+});
+export type ReviewItem = z.infer<typeof ReviewItemSchema>;
+
+export const ReviewQueueQuerySchema = z.object({
+  /** A named project always scopes the queue; without one it spans projects. */
+  project_id: z.string().min(1).max(128).nullable().default(null),
+  /** Kept for parity with the inspector query surface; scoping is decided by project_id. */
+  all_projects: z.boolean().default(false),
+  horizon_days: z
+    .number()
+    .int()
+    .min(0)
+    .max(REVIEW_HORIZON_DAYS_MAX)
+    .default(REVIEW_HORIZON_DAYS_DEFAULT),
+  limit: z.number().int().min(1).max(200).default(50),
+  offset: z.number().int().min(0).default(0),
+});
+export type ReviewQueueQuery = z.infer<typeof ReviewQueueQuerySchema>;
+
+export const ReviewQueueSchema = z.object({
+  items: z.array(ReviewItemSchema),
+  total: z.number().int().min(0),
+  horizon_days: z.number().int().min(0),
+});
+export type ReviewQueue = z.infer<typeof ReviewQueueSchema>;
+
 /** One audit entry per lifecycle transition. Append-only. */
 export const MemoryHistoryEntrySchema = z.object({
   id: z.uuid(),

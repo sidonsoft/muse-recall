@@ -26,6 +26,10 @@ import {
   MemoryUpdateInputSchema,
   type Project,
   ProjectSchema,
+  type ReviewItem,
+  type ReviewQueue,
+  type ReviewQueueQuery,
+  ReviewQueueQuerySchema,
 } from '@mml/shared';
 import { memoryContentHash } from './content-hash.js';
 import { formatMemoryContext } from './context.js';
@@ -417,6 +421,65 @@ export class MemoryEngine {
       limit: parsed.limit,
       offset: parsed.offset,
     };
+  }
+
+  /**
+   * The review queue (roadmap §7 / gap G-9): memories that need a
+   * human decision — unverified, disputed, past expiry, or expiring within
+   * the horizon. Derived against the moment of the call, never stored.
+   */
+  reviewQueue(query: Partial<ReviewQueueQuery> = {}): ReviewQueue {
+    const parsed = ReviewQueueQuerySchema.parse(query);
+    const now = this.nowIso();
+    const horizon = new Date(Date.parse(now) + parsed.horizon_days * 86_400_000).toISOString();
+
+    const conditions: string[] = [
+      "m.status IN ('active', 'expired')",
+      "(m.validation_status IN ('unverified', 'disputed') OR (m.expires_at IS NOT NULL AND m.expires_at <= ?))",
+    ];
+    const params: SqlValue[] = [horizon];
+
+    // A named project always scopes the queue; without one it spans projects.
+    if (parsed.project_id) {
+      conditions.push('m.project_id = ?');
+      params.push(parsed.project_id);
+    }
+
+    const where = conditions.join(' AND ');
+
+    const totalRow = this.db
+      .prepare(`SELECT COUNT(*) AS count FROM memories m WHERE ${where}`)
+      .get(...params) as { count: number } | undefined;
+
+    const rows = this.db
+      .prepare(
+        `SELECT ${MEMORY_SELECT_COLUMNS} FROM memories m
+         WHERE ${where}
+         ORDER BY m.updated_at DESC, m.id ASC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...params, parsed.limit, parsed.offset) as unknown as MemoryRow[];
+
+    const items: ReviewItem[] = rows.map((row) => {
+      const memory = rowToMemory(row);
+      const reasons: ReviewItem['reasons'] = [];
+      if (memory.validation_status === 'unverified') reasons.push('unverified');
+      if (memory.validation_status === 'disputed') reasons.push('disputed');
+      let days: number | null = null;
+      if (memory.expires_at) {
+        const diffDays = Math.ceil((Date.parse(memory.expires_at) - Date.parse(now)) / 86_400_000);
+        days = diffDays;
+        if (diffDays < 0) reasons.push('expired');
+        else reasons.push('expiring');
+      }
+      return {
+        memory,
+        reasons: reasons.length > 0 ? reasons : ['unverified'],
+        days_until_expiry: days,
+      };
+    });
+
+    return { items, total: totalRow?.count ?? 0, horizon_days: parsed.horizon_days };
   }
 
   // -------------------------------------------------------------------------

@@ -41,6 +41,8 @@ import {
   type RetrievalMode,
   type RetrievalPreview,
   RetrievalPreviewSchema,
+  type ReviewQueue,
+  ReviewQueueSchema,
   type ServiceMeta,
   ServiceMetaSchema,
   type Session,
@@ -226,6 +228,21 @@ export const api = {
   memoryStats: () =>
     request<MemoryStats>('/api/memories/stats', { method: 'GET' }, (data) =>
       MemoryStatsSchema.parse(data),
+    ),
+
+  reviewQueue: (
+    params: {
+      project_id?: string;
+      all_projects?: boolean;
+      horizon_days?: number;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) =>
+    request<ReviewQueue>(
+      `/api/memories/review${toQuery({ ...params })}`,
+      { method: 'GET' },
+      (data) => ReviewQueueSchema.parse(data),
     ),
 
   projects: () =>

@@ -584,3 +584,24 @@ structuredContent, writes refuse without the flag, invalid args error
 loudly. A second test pins the REST surface's version stamp. Cost: the SDK
 stays a thin transport layer (low-level request handlers, no zod coupling
 into the SDK), which keeps zod-version drift out of the protocol surface.
+
+---
+
+### D044 — The review queue is derived, never a stored state machine
+
+**Context:** Gap G-9 asks for explorer review-queue features. A stored
+"needs review" flag would create a second lifecycle that can drift from
+validation status and expiry — and a background sweep would have to maintain
+it correctly across imports, corrections, and sweeps.
+**Decision:** Queue membership is COMPUTED per request from the fields that
+already exist: unverified or disputed validation status, or expiry at/inside
+a caller-supplied horizon (default 7 days). Swept-out `expired` rows stay in
+the queue (an expired claim is precisely a now-problem). Actions are ordinary
+`PATCH /api/memories/:id` with the optimistic revision guard, so every triage
+decision lands in the append-only audit history — the queue adds no new
+mutation path and no new schema state.
+**Consequence:** The queue can never disagree with the data; imports need no
+queue bookkeeping. Cost: the queue query recomputes each load (trivial at
+single-user scale — one indexed scan), and horizon semantics are deliberately
+"as of the moment of the call", so a UI showing counts is a snapshot, not a
+subscription.
