@@ -115,3 +115,23 @@ jobs:
           MODEL_PROVIDER: echo
           LOG_LEVEL: warn
           FORGE_RUNTIME_BROWSER: ${{ matrix.engine }}
+          # One-shot baseline recording; remove once baselines are committed.
+          FORGE_VISUAL_UPDATE: '1'
+
+      # Baselines live in the repository (tests/visual). The update run
+      # uploads them for review/commit; drift runs upload the failing
+      # actual screenshots and diff images for triage.
+      - name: Upload recorded visual baselines
+        if: env.FORGE_VISUAL_UPDATE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-${{ matrix.engine }}
+          path: tests/visual/*.png
+
+      - name: Upload visual drift evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs-${{ matrix.engine }}
+          path: test-results/studio-after/visual-*.png
+          if-no-files-found: ignore

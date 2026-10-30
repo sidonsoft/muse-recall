@@ -12,7 +12,8 @@
  *
  * Form entry and keyboard activation (Enter / Ctrl+Enter) are exercised, and
  * accessibility landmarks, live status regions and dialog focus behaviour
- * are asserted (roadmap §7, gap G-10).
+ * are asserted (roadmap §7, gap G-10). Three Studio regions are compared
+ * against CI-recorded per-engine visual baselines (Linux runners only).
  * Screenshots and logs go to `test-results/`, never to historical evidence.
  *
  * Requirements: `pnpm build` first, and a Playwright Chromium build
@@ -28,12 +29,14 @@
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import pixelmatch from 'pixelmatch';
 import type { Browser, Locator, Page } from 'playwright-core';
+import { PNG } from 'pngjs';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 
 const ROOT = process.cwd();
@@ -758,6 +761,70 @@ async function main(): Promise<void> {
     check('generation works normally after an interrupted job');
     allowResourceErrors = false;
 
+    // ---- Visual snapshots: fixed regions compared to recorded baselines --
+    // Baselines are recorded on the CI Linux runners (per engine) and
+    // compared on later runs. Local platforms skip: font rendering differs,
+    // and committing OS-specific baselines nobody regenerates is a trap.
+    await page.getByText('Change rejected.').waitFor({ state: 'hidden', timeout: 20_000 });
+    const visualDir = join(ROOT, 'tests', 'visual');
+    const engineKey = launched.selection.policy;
+    const platformKey = process.platform;
+    if (platformKey === 'linux') {
+      const slots: Array<[string, Locator]> = [
+        ['navigation', page.getByRole('navigation')],
+        ['development', page.getByRole('region', { name: 'Development' })],
+        ['review', page.getByRole('region', { name: 'Review' })],
+      ];
+      const updateBaselines = process.env.FORGE_VISUAL_UPDATE === '1';
+      const mismatches: string[] = [];
+      for (const [slot, locator] of slots) {
+        const baselinePath = join(visualDir, `${platformKey}-${engineKey}-${slot}.png`);
+        const shot = await locator.screenshot({ animations: 'disabled', timeout: 15_000 });
+        if (updateBaselines || !existsSync(baselinePath)) {
+          await mkdir(visualDir, { recursive: true });
+          await writeFile(baselinePath, shot);
+          continue;
+        }
+        const baseline = PNG.sync.read(readFileSync(baselinePath));
+        const actual = PNG.sync.read(shot);
+        if (baseline.width !== actual.width || baseline.height !== actual.height) {
+          mismatches.push(
+            `${slot}: size ${actual.width}x${actual.height} vs baseline ${baseline.width}x${baseline.height}`,
+          );
+          await writeFile(join(OUT, `visual-actual-${slot}.png`), shot);
+          continue;
+        }
+        const diff = new PNG({ width: baseline.width, height: baseline.height });
+        const changed = pixelmatch(
+          baseline.data,
+          actual.data,
+          diff.data,
+          baseline.width,
+          baseline.height,
+          {
+            threshold: 0.1,
+          },
+        );
+        const budget = Math.max(64, Math.round(baseline.width * baseline.height * 0.0025));
+        if (changed > budget) {
+          mismatches.push(`${slot}: ${changed} pixels differ (budget ${budget})`);
+          await writeFile(join(OUT, `visual-diff-${slot}.png`), PNG.sync.write(diff));
+          await writeFile(join(OUT, `visual-actual-${slot}.png`), shot);
+        }
+      }
+      if (updateBaselines) {
+        check('visual baselines written for this engine (update run)');
+      } else if (mismatches.length > 0) {
+        throw new Error(`visual snapshot drift: ${mismatches.join('; ')}`);
+      } else {
+        check(`visual snapshots match recorded baselines (3 regions, ${engineKey})`);
+      }
+    } else {
+      console.log(
+        `  (visual snapshot stage skipped on ${platformKey}: baselines are CI-Linux-recorded)`,
+      );
+    }
+
     // ---- Damaged state.json: inspect, then repair from the UI ----------
     const forgeDir = join(dataRoot, 'workspaces', 'forge', PROJECT);
     const damagedBytes = '{ broken by the regression script';
@@ -835,7 +902,7 @@ async function main(): Promise<void> {
     console.log('  • syntax/structure: automated node --check + HTML checks; not execution');
     console.log('  • successful loading: server runtime check loads the staged page once');
     console.log(
-      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart, interrupted generation, damaged-state repair, accessibility landmarks and dialog focus',
+      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart, interrupted generation, damaged-state repair, accessibility landmarks and dialog focus, visual snapshot comparison (3 regions per engine against CI-recorded baselines)',
     );
     console.log('  • human review: visual design, gameplay and decision quality remain manual');
     console.log(`Logs and screenshot: ${OUT}/`);
