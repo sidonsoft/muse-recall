@@ -55,6 +55,11 @@ Use whatever `main` points at when you press Submit.
    Attach the archive to the Release. Keep a copy outside GitHub as well.
 4. Make sure the "Freeze submission tags" ruleset is active, so the tag can't be moved or
    deleted.
+   Verified against the live ruleset on 31 Oct (third census): its scope is
+   `refs/tags/submission-*`, so `submission-2026-11-04` is covered the moment
+   it is created, and its rules are exactly deletion + update +
+   non_fast_forward — tag CREATION stays allowed, which is what makes the
+   submission act itself possible under the freeze.
 5. Fill in the _to record_ fields above in a PR into `integration`.
 
 The archive holds tracked files only. No secrets are in the repository (`.env` is ignored);
