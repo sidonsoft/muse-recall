@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 61 files / 840 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 62 files / 845 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -175,10 +175,15 @@ durability) closed 2026-10-30.**
   v3 `sessions_messages_and_turn_evidence`, v4 `porter_stemming_for_keyword_retrieval`,
   v5 `ui_surfaces_and_events`, v6 `project_tasks_and_tool_audit`. Forward-only;
   `db:migrate` reports schema version ([scripts/migrate.ts](../../apps/server/src/scripts/migrate.ts)).
-- **Backup/purge**: [backup.ts](../../apps/server/src/backup.ts) + `db:backup`,
+- **Backup/purge/restore**: [backup.ts](../../apps/server/src/backup.ts) + `db:backup`, `db:restore`,
   `db:purge` ([scripts/db-backup.ts](../../apps/server/src/scripts/db-backup.ts),
-  [scripts/purge.ts](../../apps/server/src/scripts/purge.ts)). No restore drill or
-  documented schedule yet (roadmap §8 requirement).
+  [scripts/db-restore.ts](../../apps/server/src/scripts/db-restore.ts),
+  [scripts/purge.ts](../../apps/server/src/scripts/purge.ts)). Restores are integrity-checked and land
+  only in an operator-named isolated target (`--into`; `--force` for deliberate replacement).
+  The roadmap §8 drill is a standing gate: `pnpm backup:drill` seeds → backs up → destroys →
+  restores → verifies record parity and the clobber guard, and CI runs it on every push (that IS
+  the repo-side schedule; operators additionally cron it for live data). Drill timings are for a
+  single local file and are explicitly NOT evidence for the hosted ≤4h recovery-time target.
 - **Forge state**: `state.json` + `versions/` staging under
   [forge/workspace.ts](../../apps/server/src/forge/workspace.ts). A corrupt or missing
   `state.json` yields `state_corrupt` refusal — and since 2026-10-30 (PRs #32/#33)
@@ -201,8 +206,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 61 files,
-  **840 passed, 3 skipped (843)**; the browser workflow now runs 46 checks
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 62 files,
+  **845 passed, 3 skipped (848)**; the browser workflow now runs 46 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -268,7 +273,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 840 pass / 3 skip
+pnpm run verify                                                    # 845 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

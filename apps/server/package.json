@@ -10,6 +10,8 @@
     "start": "node --enable-source-maps dist/index.js",
     "db:backup": "tsx src/scripts/db-backup.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
+    "backup:drill": "node --import tsx src/scripts/backup-drill.ts",
+    "db:restore": "node --import tsx src/scripts/db-restore.ts",
     "db:purge": "tsx src/scripts/purge.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

@@ -44,6 +44,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Backup drill (roadmap §8; the documented schedule runs this on every push)
+        run: pnpm backup:drill
+
       - name: Build
         run: pnpm run build
         env:
