@@ -94,6 +94,11 @@ pnpm db:restore /backups/.../backup-<stamp> --into "$LIVE_DB" --force   # live r
 backup aborts loudly. The live replacement needs the explicit `--force` precisely
 so an operator never clobbers a live DB by typo.
 
+Freshness without grepping logs: `curl -fsS localhost:8787/api/health | jq .alerts.backup`
+reports the newest next-to-DB snapshot's age and an `ok`/`stale`/`missing` state
+(threshold `ALERT_BACKUP_MAX_AGE_HOURS`, default 24; snapshots in operator-chosen
+directories are that cron's own bookkeeping).
+
 **Drill:** `pnpm backup:drill` performs seed → backup → destroy → restore →
 record-parity verification plus the clobber-guard refusal, in a throwaway temp
 directory — safe to run any time, and it runs on every CI push. It prints its own
@@ -103,11 +108,15 @@ that target is untested and effectively unassigned until a deployment exists.
 
 ## What §8 still does not have (stated, not hidden)
 
-- **Alerting:** no alerts exist yet (roadmap G4 requires working alerts before
-  "operational beta"). The signals to alert on once wired: backup freshness
-  (the cron above logs), sustained 5xx/latency from access logs,
-  `storage_ok: false` or new `issues` in `/api/health`, and `authentication`
-  changing unexpectedly in `/api/meta`.
+- **Alerting:** signal GROUNDWORK shipped (2026-10-30, D050): `GET /api/health`
+  carries an `alerts` block — `alerts.backup` (`ok`/`stale`/`missing`/`disabled`
+  vs `ALERT_BACKUP_MAX_AGE_HOURS` over snapshots taken next to the database,
+  judged by the name stamp), `alerts.storage` (`ok`, `unacknowledged_issues`)
+  and `alerts.provider` (`ok`/`error`/`skipped`). States are machine-readable;
+  **notification delivery is still external** — a prober (cron + curl + your
+  channel) must consume them, and roadmap G4's "working alerts" gate is NOT
+  met until that consumer exists and pages someone. `alerts` never flips the
+  top-level `status`: liveness stays the server-alive verdict.
 - **RPO/RTO numbers for a hosted deployment:** unmeasured; the drill demonstrates
   the procedure, not the target.
 - **Multi-host or identity-aware operations:** out of scope (see security.md §

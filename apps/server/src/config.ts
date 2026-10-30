@@ -78,6 +78,8 @@ const EnvSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((value) => value === 'true'),
+    /** Alert threshold for db:backup freshness next to the DB (0 disables). */
+    ALERT_BACKUP_MAX_AGE_HOURS: z.coerce.number().int().min(0).max(8_760).default(24),
     CONTEXT_MAX_HISTORY_MESSAGES: z.coerce
       .number()
       .int()
@@ -169,6 +171,8 @@ export interface AppConfig {
   memoryBudget: RetrievalBudget;
   /** Mark memories past their expiry as expired at startup. */
   sweepOnStart: boolean;
+  /** Optional so hand-built test configs keep compiling; runtime defaults to 24. */
+  alertBackupMaxAgeHours?: number;
   /** Conversation context and capture configuration. */
   agent: {
     budgets: ContextBudgets;
@@ -240,6 +244,7 @@ export function loadConfig(
       max_memory_characters: value.MEMORY_MAX_MEMORY_CHARACTERS,
     },
     sweepOnStart: value.MEMORY_SWEEP_ON_START,
+    alertBackupMaxAgeHours: value.ALERT_BACKUP_MAX_AGE_HOURS,
     agent: {
       budgets: {
         max_history_messages: value.CONTEXT_MAX_HISTORY_MESSAGES,

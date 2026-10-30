@@ -68,6 +68,27 @@ export const ForgeHealthSummarySchema = z.object({
 });
 export type ForgeHealthSummary = z.infer<typeof ForgeHealthSummarySchema>;
 
+/**
+ * Alert signals (roadmap §8 groundwork): states an EXTERNAL prober can watch.
+ * This server never sends notifications itself — the block exists so a cron
+ * or uptime monitor can alert on named states without parsing prose.
+ */
+export const BackupFreshnessSchema = z.object({
+  state: z.enum(['ok', 'stale', 'missing', 'disabled']),
+  latest_backup_at: z.string().nullable(),
+  age_hours: z.number().min(0).nullable(),
+  max_age_hours: z.number().min(0),
+  backup_count: z.number().int().min(0),
+});
+export type BackupFreshness = z.infer<typeof BackupFreshnessSchema>;
+
+export const AlertSignalsSchema = z.object({
+  backup: BackupFreshnessSchema,
+  storage: z.object({ ok: z.boolean(), unacknowledged_issues: z.number().int().min(0) }),
+  provider: z.object({ state: z.enum(['ok', 'error', 'skipped']) }),
+});
+export type AlertSignals = z.infer<typeof AlertSignalsSchema>;
+
 export const HealthResponseSchema = z.object({
   status: ServiceStatusSchema,
   service: z.literal('muse-memory-lab'),
@@ -78,6 +99,7 @@ export const HealthResponseSchema = z.object({
   database: DatabaseCheckSchema,
   provider: ProviderCheckSchema,
   forge: ForgeHealthSummarySchema.optional(),
+  alerts: AlertSignalsSchema.optional(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
