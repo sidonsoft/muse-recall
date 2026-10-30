@@ -437,6 +437,74 @@ export const ForgeRecoveryAckSchema = z.object({
   issue_ids: z.array(z.string().min(1).max(400)).min(1).max(50),
 });
 
+/**
+ * Explicit repair/restore path for `state_corrupt` (NEXT_STEPS.md P0 #3).
+ *
+ * A corrupt `state.json` currently blocks a project until the file is fixed by
+ * hand. These contracts let a client inspect the damaged bytes and the
+ * surviving records without throwing, then rebuild `state.json` from approved
+ * version files still on disk. Repair never overwrites the damaged file: it
+ * renames it aside first.
+ */
+export const FORGE_STATE_FILE_PRESENCE = [
+  'ok',
+  'missing',
+  'unreadable',
+  'invalid_json',
+  'invalid_value',
+] as const;
+export const ForgeStateFilePresenceSchema = z.enum(FORGE_STATE_FILE_PRESENCE);
+export type ForgeStateFilePresence = z.infer<typeof ForgeStateFilePresenceSchema>;
+
+export const ForgeVersionScanEntrySchema = z.object({
+  version: z.number().int().min(1),
+  /** True when `versions/<n>/index.html` reads cleanly and is within the workspace byte cap. */
+  usable: z.boolean(),
+  bytes: z.number().int().min(0).nullable(),
+  sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  modified_at: z.iso.datetime().nullable(),
+});
+export type ForgeVersionScanEntry = z.infer<typeof ForgeVersionScanEntrySchema>;
+
+/** Compact job listing for inspection; full records stay on the job routes. */
+export const ForgeJobSummarySchema = z.object({
+  job_id: z.uuid(),
+  /** Null when the record exists but does not parse as a job. */
+  status: ForgeJobStatusSchema.nullable(),
+  modified_at: z.iso.datetime().nullable(),
+});
+export type ForgeJobSummary = z.infer<typeof ForgeJobSummarySchema>;
+
+export const ForgeStateInspectionSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  state_file: z.object({
+    presence: ForgeStateFilePresenceSchema,
+    /** Raw bytes, capped at 64 KiB so a damaged file stays inspectable. */
+    content: z.string().max(65_536).nullable(),
+    truncated: z.boolean(),
+  }),
+  /** False when the versions directory itself could not be listed. */
+  versions_readable: z.boolean(),
+  versions: z.array(ForgeVersionScanEntrySchema).max(200),
+  jobs: z.array(ForgeJobSummarySchema).max(200),
+  repairable: z.boolean(),
+});
+export type ForgeStateInspection = z.infer<typeof ForgeStateInspectionSchema>;
+
+export const ForgeRepairResultSchema = z.object({
+  /** Where the damaged `state.json` was moved, relative to the project directory. */
+  archived_to: z.string().max(300).nullable(),
+  /** Version numbers rebuilt into the new state, ascending. */
+  adopted_versions: z.array(z.number().int().min(1)).max(200),
+  /** Numeric version directories whose bytes could not be read. */
+  skipped_versions: z.array(z.number().int().min(1)).max(200),
+  state: ForgeStateSchema,
+});
+export type ForgeRepairResult = z.infer<typeof ForgeRepairResultSchema>;
+
 export const ForgeJobListSchema = z.object({ items: z.array(ForgeJobSchema) });
 export const ForgeApprovalResultSchema = z.object({
   job: ForgeJobSchema,
