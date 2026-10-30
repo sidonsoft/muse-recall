@@ -69,11 +69,9 @@ jobs:
             job_name: Managed browser workflow (fake provider · managed Firefox)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      # One-shot visual baseline recording for this PR's first push; remove
-      # together with the upload step once baselines are committed. Job-level
-      # so the upload step's `if` can read it (step env is not visible there).
-      FORGE_VISUAL_UPDATE: '1'
+    # (No FORGE_VISUAL_UPDATE here: baselines are committed; this job now
+    #  compares. Set the job env to '1' temporarily to re-record after an
+    #  intentional UI change, then commit the new PNGs and remove it.)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
