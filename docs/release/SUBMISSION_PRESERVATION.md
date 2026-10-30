@@ -204,7 +204,10 @@ entry, and the guard failed it closed, not open.
    `71416ae7`, `6640e83f`) — annotated tag objects notwithstanding;
 3. rulesets `26184029`/`26184026`/`26184025` present and active;
 4. no `website.yml` PUSH run since 29 Oct (the only recent runs are PR checks —
-   the 30 Oct one is PR #28's own CI): the live site cannot change mid-judging;
+   the 30 Oct one is PR #28's own CI): the live site cannot change mid-judging.
+   And it is LIVE: the URL the README leads with responded 200 on 31 Oct with
+   `<title>Muse Recall — correctable project memory for AI-built software</title>`
+   — the judge's click from the repo front page lands where promised;
 5. PR #28 still open, its content pinned at `refs/pull/28/head` (see the
    correction above);
 6. zero cadence activity touched `main`, tags, evidence, submission, or demo
