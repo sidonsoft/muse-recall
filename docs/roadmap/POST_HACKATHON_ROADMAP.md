@@ -518,6 +518,14 @@ user-facing controls and retention.
 This plan starts with evidence and a narrow working slice. Nothing is promoted to `main`
 during it.
 
+> **Running ahead of schedule (31 Oct 2026).** The 1–3 Nov row is already complete:
+> the three rulesets are applied and their required-check contexts verified from the API
+> (census in [SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md)), private
+> vulnerability reporting is enabled (`/private-vulnerability-reporting → {"enabled": true}`),
+> and the evidence-classified inventory exists ([CAPABILITY_INVENTORY.md](CAPABILITY_INVENTORY.md)).
+> The 4–5 Nov row stays genuinely future work — submission is the owner's act on 4 Nov.
+> The rest of the plan below is kept as written.
+
 | Dates | Actions | Reviewable output |
 |---|---|---|
 | **1–3 Nov** | Apply the prepared rulesets; enable private vulnerability reporting; inventory actual code, interfaces, storage, tests and deployments starting from the repository check above; classify implemented/partial/absent/unknown with evidence | Governance gaps closed or listed; capability inventory and prioritized gap list |
