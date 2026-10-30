@@ -960,3 +960,58 @@ describe('GET /api/memories/review (gap G-9)', () => {
     expect(entries.some((entry) => entry.action === 'updated')).toBe(true);
   });
 });
+
+describe('GET /api/memories/graph (D052)', () => {
+  it('exposes supersession edges and timeline events after a correction', async () => {
+    const app = await createTestApp();
+    const original = await createMemory(app, { content: 'Use SQLite for storage' });
+    const corrected = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${original.id}/correct`,
+      payload: {
+        type: 'technical_decision',
+        project_id: 'demo-game',
+        content: 'Use Postgres for storage',
+        confidence: 0.95,
+        validation_status: 'verified',
+      },
+    });
+    expect(corrected.statusCode).toBe(200);
+    const replacementId = corrected.json().data.memory.id as string;
+
+    const response = await app.inject({ method: 'GET', url: '/api/memories/graph' });
+    expect(response.statusCode).toBe(200);
+    const graph = response.json().data as {
+      nodes: { id: string; status: string; excerpt: string }[];
+      edges: { new_id: string; old_id: string; at: string }[];
+      events: { kind: string }[];
+      truncated: boolean;
+    };
+    expect(graph.nodes.map((node) => node.id).sort()).toEqual([original.id, replacementId].sort());
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0]).toMatchObject({ new_id: replacementId, old_id: original.id });
+    expect(graph.nodes.find((node) => node.id === original.id)?.status).toBe('superseded');
+    expect(graph.events.map((event) => event.kind).sort()).toEqual([
+      'corrected',
+      'created',
+      'created',
+    ]);
+    expect(graph.truncated).toBe(false);
+  });
+
+  it('honours project scoping and reports truncation honestly', async () => {
+    const app = await createTestApp();
+    await createMemory(app, { content: 'first demo-game fact' });
+    await createMemory(app, { content: 'second demo-game fact' });
+
+    const scoped = await app.inject({
+      method: 'GET',
+      url: '/api/memories/graph?project_id=demo-game',
+    });
+    expect(scoped.json().data.nodes).toHaveLength(2);
+
+    const paged = await app.inject({ method: 'GET', url: '/api/memories/graph?limit=1' });
+    expect(paged.json().data.nodes).toHaveLength(1);
+    expect(paged.json().data.truncated).toBe(true);
+  });
+});

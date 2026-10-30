@@ -12,6 +12,7 @@ import {
   MemoryCreateResultSchema,
   type MemoryDetail,
   MemoryDetailSchema,
+  MemoryGraphSchema,
   type MemoryHistoryEntry,
   MemoryHistoryEntrySchema,
   MemoryImportResultSchema,
@@ -57,6 +58,11 @@ const ProposalDecisionSchema = z.object({ reason: z.string().max(1_000).optional
 const Booleanish = z
   .union([z.boolean(), z.enum(['true', 'false'])])
   .transform((value) => value === true || value === 'true');
+
+const GraphQuerySchema = z.object({
+  project_id: z.string().min(1).max(128).optional(),
+  limit: z.coerce.number().int().min(1).max(2000).optional(),
+});
 
 const ListQuerySchema = z.object({
   q: z.string().max(500).optional(),
@@ -148,6 +154,21 @@ export function registerMemoryRoutes(
   });
 
   // --- List / search -------------------------------------------------------
+  // Relationship graph + timeline (gap G-9 remainder, D052). Static path so
+  // it must not collide with /api/memories/:id — Fastify prefers statics,
+  // but the intent is recorded here.
+  app.get('/api/memories/graph', async (request) => {
+    const query = GraphQuerySchema.parse(request.query ?? {});
+    return apiSuccess(
+      MemoryGraphSchema.parse(
+        engine.graph({
+          ...(query.project_id ? { projectId: query.project_id } : {}),
+          ...(query.limit ? { limit: query.limit } : {}),
+        }),
+      ),
+    );
+  });
+
   app.get('/api/memories', async (request) => {
     const query = ListQuerySchema.parse(request.query ?? {});
     const statuses = csv(query.status);
