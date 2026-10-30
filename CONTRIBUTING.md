@@ -30,4 +30,7 @@ was judged.
 - CI runs on your PR after the maintainer approves it (required for first-time
   and outside contributors).
 - A PR needs one approving review and green CI before it can merge.
+- PRs into `integration` are squash-merged, so each PR becomes one commit.
+  Give your PR a clear title; it becomes the commit message.
+- Tested batches are promoted from `integration` to `main` in one reviewed PR.
 - Nothing is merged automatically.
