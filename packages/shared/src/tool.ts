@@ -31,10 +31,12 @@ export type ToolInfo = z.infer<typeof ToolInfoSchema>;
  *
  * Every surface that exposes the tool set — the session runtime, `GET
  * /api/tools`, and the MCP server — stamps this version. It bumps only on
- * breaking changes to tool identity, argument meaning, or side-effect
- * semantics; conformance tests pin the surfaces against one registry.
+ * breaking OR additive changes to the tool set — a client must be able to
+ * notice a capability change from the stamped version alone; conformance
+ * tests pin the surfaces against one registry.
  */
-export const TOOL_CONTRACT_VERSION = '1';
+// '2' added memory.graph (read) to the shared contract; '1' was the six-tool baseline.
+export const TOOL_CONTRACT_VERSION = '2';
 
 export const ToolListSchema = z.object({
   items: z.array(ToolInfoSchema),

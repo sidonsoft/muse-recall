@@ -123,7 +123,7 @@ before the first run; see [RESULTS.md](docs/hackathon-evidence/phase17/RESULTS.m
 | **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat** and is kept for the record; the 2:50 cut above is the submission video. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 885 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 887 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. Phase 17 covers six fixed strata, two rules and two models, and measures source code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Why this fits “Push the Frontier”
@@ -282,7 +282,7 @@ extend dated claims), inspect, correct, delete, and explain retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (885 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (887 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -299,7 +299,7 @@ pnpm verify:studio-workflow # managed Chromium (or FORGE_RUNTIME_BROWSER=firefox
                             # visual baselines (3 regions per engine, CI-recorded);
                             # deterministic fake provider
 pnpm verify:forge           # HTML Studio browser loop (FORGE_VERIFY_BASE, default :5173)
-pnpm mcp:serve              # stdio MCP server (six tools, one shared contract) — see below
+pnpm mcp:serve              # stdio MCP server (seven tools, one shared contract) — see below
 pnpm verify:browser         # broad product UI smoke (VERIFY_URL, default :5173)
 pnpm demo:seed              # seed the recorded demo project and its decisions
 pnpm bench:retrieval        # retrieval latency, selectivity, accuracy, stale rate
@@ -320,7 +320,7 @@ pnpm ops:alert-prober [url] # cron-ready consumer of /api/health alert states (e
 ### MCP endpoint (Model Context Protocol)
 
 `pnpm mcp:serve --project <project-id> --db <path>` (or `DATABASE_PATH`) exposes the same
-six bounded tools the session runtime enforces — over stdio, from the **same tool
+seven bounded tools the session runtime enforces — over stdio, from the **same tool
 registry**, with input *and* output JSON Schemas and a `mcp-recall://contract` resource
 that publishes the contract version, project scope, and write policy. Scope and the
 writes policy are fixed at startup: a model sharing this endpoint cannot retarget the

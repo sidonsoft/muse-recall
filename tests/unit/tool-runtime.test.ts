@@ -26,11 +26,12 @@ function setup(projectId: string | null = 'demo-game') {
 }
 
 describe('registry', () => {
-  it('advertises the six initial tools with schemas', () => {
+  it('advertises the seven contract tools with schemas', () => {
     const { registry } = setup();
     const ids = registry.list().map((tool) => tool.id);
     expect(ids).toEqual([
       'memory.create',
+      'memory.graph',
       'memory.search',
       'project.get',
       'project.update',
@@ -140,6 +141,51 @@ describe('project tools', () => {
       expect(result.status).toBe('failed');
       expect(result.error).toMatch(/project-scoped/);
     }
+  });
+});
+
+describe('memory.graph tool (D052 surface parity)', () => {
+  it('exposes supersession edges and events, scoped to the session project', async () => {
+    const { registry, context, memory } = setup();
+    memory.ensureProject('demo-game');
+    const a = memory.create({
+      type: 'technical_decision',
+      scope: 'project',
+      project_id: 'demo-game',
+      content: 'Use SQLite for storage',
+    }).memory;
+    const b = memory.correct({
+      type: 'technical_decision',
+      scope: 'project',
+      project_id: 'demo-game',
+      content: 'Use SQLite with WAL and fsync-before-rename',
+      supersedes: [a.id],
+    }).memory;
+    memory.create({
+      type: 'goal',
+      scope: 'project',
+      project_id: 'other-project',
+      content: 'Other project private goal',
+    });
+
+    const result = await registry.invoke('memory.graph', {}, context);
+    expect(result.status).toBe('executed');
+    const graph = result.output as {
+      nodes: { id: string }[];
+      edges: { new_id: string; old_id: string }[];
+      events: { kind: string }[];
+    };
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0]).toMatchObject({ new_id: b.id, old_id: a.id });
+    expect(graph.nodes.map((node) => node.id).sort()).toEqual([a.id, b.id].sort());
+    expect(graph.events.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('is a read tool: never gated by the write policy', async () => {
+    const { registry } = setup();
+    const info = registry.list().find((tool) => tool.id === 'memory.graph');
+    expect(info?.side_effect).toBe('read');
+    expect(info?.requires_confirmation).toBe(false);
   });
 });
 

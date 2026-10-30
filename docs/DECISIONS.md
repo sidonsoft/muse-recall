@@ -780,3 +780,20 @@ consume — `TimelinePanel` in the Memory view renders created/corrected
 events read-only, and the browser workflow grew its first cross-view check
 (nav → Memory timeline lists the just-saved decision), 46→47 checks. G-9
 remains Partial: only the CANVAS graph view is still missing now.
+
+---
+
+### D053 — Contract version bumps on additions too: a stamped version must reveal capability shifts
+
+**Context:** `memory.graph` (D052) is additive — old tools keep identity and
+semantics — and the contract-version doc said "bump only on breaking
+changes". But an MCP client that snapshots the tool set gets a silent
+capability change with an unchanged stamp; "breaking-only" made the version
+useless to exactly the consumers it exists for.
+**Decision:** `TOOL_CONTRACT_VERSION` 1 → 2 on this addition; doc updated so
+the version bumps on breaking OR additive changes. One registry remains the
+single source for REST, session runtime, and MCP; conformance tests pin all
+three surfaces (and now execute `memory_graph` over MCP end to end).
+**Consequence:** clients can branch on the stamped version instead of
+probing tool lists; future removals/renames still need the same bump, which
+is fine — the stamp is a capability signal, not a compatibility promise.
