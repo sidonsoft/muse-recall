@@ -71,6 +71,12 @@ git archive --format=tar.gz --prefix=muse-recall-submission-2026-11-04/ submissi
   | sha256sum
 ```
 
+> Portability note (found during the 31 Oct rehearsal on a macOS host): `sha256sum` is a
+> GNU coreutils binary and does **not** exist on macOS. The BSD equivalent is
+> `shasum -a 256` — same algorithm, same `digest  filename` output format — usable both
+> standalone and in the pipe (`| shasum -a 256`). Whichever is used, use it consistently
+> on both sides of any comparison.
+
 `git archive` output is stable for the same commit and Git version. If the checksum differs
 but the tag SHA matches, compare against the archive attached to the Release before treating
 it as tampering.
