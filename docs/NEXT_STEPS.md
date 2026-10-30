@@ -146,6 +146,29 @@ repository's working backlog; completed items stay for the audit trail.
 
 ---
 
+## Cadence — after the build-out, until judging locks the entry
+
+The P0/P1 lists are executed (gap ledger: everything open is G-2, an operator
+provisioning act, and G-6, deliberately post-submission). The working cadence
+now is maintenance honesty, not new surface:
+
+- Periodic doc re-audits: sweep every status claim in the living docs against
+  code (the #60 pattern); counts (69 files / 887 tests / 3 skipped; 48 browser
+  checks local, 49 with CI visual slots) re-stated only after a real run.
+- Drift gates stay load-bearing: error-catalogue live probes, browser
+  workflow on two engines, backup drill on every push. New asymmetries are
+  either fixed in lockstep (v2 discipline, D054) or honestly catalogued.
+- Lint floor raised: `biome check .` reports zero warnings repo-wide
+  (since the last non-null assertions were removed in this PR); the
+  historical 3-warning baseline is retired.
+- No schema migrations, no contract bumps, no new surfaces before Nov 4
+  unless a judge-visible defect demands it. Code flows only through
+  integration PRs; `main` and the submission tags stay frozen until judging
+  closes.
+- At submission (owner, Nov 4): record the submitted SHA and tags in
+  `docs/release/SUBMISSION_PRESERVATION.md`; after judging: G-6 identity,
+  scoping, rotation, then G-2 provisioning follow-up.
+
 ## Historical plan (Phase 6, kept for the development record)
 
 > This section is superseded by the backlog above. It is retained so the earlier

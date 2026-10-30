@@ -90,9 +90,9 @@ describe('migration v7 — record contract columns', () => {
     expect(columns(db, 'memories')).not.toContain('revision');
 
     const migration = MIGRATIONS.find((entry) => entry.version === 7);
-    expect(migration).toBeDefined();
+    if (!migration) throw new Error('migration v7 is missing');
     db.exec('BEGIN');
-    migration!.up(db);
+    migration.up(db);
     db.exec('COMMIT');
 
     expect(columns(db, 'memories')).toEqual(expect.arrayContaining(['revision', 'actor']));
@@ -116,7 +116,8 @@ describe('migration v7 — record contract columns', () => {
 
   it('keeps audit rows, supersession edges and the FTS index usable', () => {
     const db = legacyDatabase();
-    const migration = MIGRATIONS.find((entry) => entry.version === 7)!;
+    const migration = MIGRATIONS.find((entry) => entry.version === 7);
+    if (!migration) throw new Error('migration v7 is missing');
     db.exec('BEGIN');
     migration.up(db);
     db.exec('COMMIT');
@@ -143,7 +144,8 @@ describe('migration v7 — record contract columns', () => {
 
   it('accepts the new actions and lifecycle state, and keeps rejecting invalid ones', () => {
     const db = legacyDatabase();
-    const migration = MIGRATIONS.find((entry) => entry.version === 7)!;
+    const migration = MIGRATIONS.find((entry) => entry.version === 7);
+    if (!migration) throw new Error('migration v7 is missing');
     db.exec('BEGIN');
     migration.up(db);
     db.exec('COMMIT');
