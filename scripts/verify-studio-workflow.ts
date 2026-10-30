@@ -6,15 +6,20 @@
  *
  *   generation → staged review → approval → modification → rejection →
  *   second approval → rollback → staged change survives a server restart →
- *   approval after restart → damaged state.json is inspected and repaired
+ *   approval after restart → generation interrupted by a hard crash becomes
+ *   an interrupted job the UI explains and the queue recovers → damaged
+ *   state.json is inspected and repaired
  *
- * Form entry and keyboard activation (Enter / Ctrl+Enter) are exercised.
+ * Form entry and keyboard activation (Enter / Ctrl+Enter) are exercised, and
+ * accessibility landmarks, live status regions and dialog focus behaviour
+ * are asserted (roadmap §7, gap G-10).
  * Screenshots and logs go to `test-results/`, never to historical evidence.
  *
  * Requirements: `pnpm build` first, and a Playwright Chromium build
  * (`pnpm exec playwright-core install chromium`). Playwright-managed Chromium
- * is the default; set FORGE_RUNTIME_BROWSER=chrome only for an explicit
- * system-Chrome run. There is no automatic fallback.
+ * is the default; FORGE_RUNTIME_BROWSER=firefox selects managed Firefox (the
+ * second CI engine) and =chrome an explicit system-Chrome run. There is no
+ * automatic fallback.
  *
  * Verification levels are printed at the end. This is automated interaction
  * coverage, not human design review.
@@ -45,6 +50,8 @@ interface Managed {
 
 const managed: Managed[] = [];
 const checks: string[] = [];
+let killFailure = '';
+let hardKillTimer: NodeJS.Timeout | undefined;
 
 function check(label: string): void {
   checks.push(label);
@@ -105,6 +112,30 @@ async function stop(item: Managed): Promise<void> {
       process.kill(-pid, 'SIGTERM');
     } catch {
       item.child.kill('SIGTERM');
+    }
+  });
+}
+
+/** SIGKILL the whole process group: an abrupt crash, no graceful shutdown. */
+async function hardKill(item: Managed): Promise<void> {
+  const pid = item.child.pid;
+  if (item.child.exitCode !== null || pid === undefined) return;
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-pid, 'SIGKILL');
+      } catch {
+        // Already gone.
+      }
+    }, 5_000);
+    item.child.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    try {
+      process.kill(-pid, 'SIGKILL');
+    } catch {
+      item.child.kill('SIGKILL');
     }
   });
 }
@@ -241,6 +272,10 @@ async function main(): Promise<void> {
     FORGE_MAX_RUNTIME_MS: '60000',
     FAKE_MUSE_MODE: 'app',
     FAKE_MUSE_APP: join(ROOT, 'tests/fixtures/general-app-form.html'),
+    // The server's approval-gate runtime check has its own engine policy
+    // (managed Chromium only). The driving script's FORGE_RUNTIME_BROWSER —
+    // e.g. firefox on the CI second leg — must not leak into the server.
+    FORGE_RUNTIME_BROWSER: 'managed',
   };
   const webEnv: NodeJS.ProcessEnv = {
     ...process.env,
@@ -249,6 +284,8 @@ async function main(): Promise<void> {
 
   let browser: Browser | null = null;
   let server: Managed | null = null;
+  // Hoisted so the failure dump can replay what the page collected.
+  const errors: string[] = [];
   try {
     // Fail early and actionably if the selected browser is missing; do not
     // silently fall back to a different browser.
@@ -296,7 +333,6 @@ async function main(): Promise<void> {
       acceptDownloads: false,
     });
     const page = await context.newPage();
-    const errors: string[] = [];
     // The damaged-state segment deliberately makes the project view return
     // 500; its resource-loader console message is expected and allowed.
     let allowResourceErrors = false;
@@ -315,12 +351,60 @@ async function main(): Promise<void> {
     await openProject(page);
     const review = page.getByRole('region', { name: 'Review' });
 
-    await page.getByText(/1 interrupted by a server restart/).waitFor({ timeout: 15_000 });
+    // The banner must arrive through a live region, not just as static text.
+    await page
+      .getByRole('status')
+      .getByText(/1 interrupted by a server restart/)
+      .waitFor({ timeout: 15_000 });
+    check('recovery notices are announced through a role=status live region');
     await page.screenshot({ path: join(OUT, 'after-recovery-banner.png'), fullPage: true });
     await page.getByRole('button', { name: 'Acknowledge notices' }).click();
     await page.getByText(/1 interrupted by a server restart/).waitFor({ state: 'hidden' });
     check('recovery banner was acknowledged without deleting the interrupted job');
     await page.screenshot({ path: join(OUT, 'after-recovery-ack.png'), fullPage: true });
+
+    // ---- Accessibility surface (roadmap §7, gap G-10) ---------------------
+    // Landmarks first: assistive tech navigates by role, so the shell must
+    // expose banner / navigation / main exactly once.
+    for (const [role, region] of [
+      ['banner', page.getByRole('banner')],
+      ['navigation', page.getByRole('navigation', { name: 'Primary' })],
+      ['main', page.getByRole('main')],
+    ] as const) {
+      const found = await region.count();
+      if (found !== 1) {
+        throw new Error(`expected exactly one ${role} landmark, found ${found}`);
+      }
+    }
+    check('app shell exposes exactly one banner, navigation and main landmark');
+
+    // Dialog semantics and focus handoff on the project switcher.
+    const switcher = page.locator('button[title^="Project:"]');
+    if ((await switcher.getAttribute('aria-haspopup')) !== 'dialog') {
+      throw new Error('project switcher does not advertise that it opens a dialog');
+    }
+    await switcher.focus();
+    await page.keyboard.press('Enter');
+    const switchDialog = page.getByRole('dialog', { name: 'Switch project' });
+    await switchDialog.waitFor({ timeout: 10_000 });
+    if ((await switcher.getAttribute('aria-expanded')) !== 'true') {
+      throw new Error('project switcher did not announce its expanded state');
+    }
+    await page.keyboard.press('Escape');
+    await switchDialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    if ((await switcher.getAttribute('aria-expanded')) !== 'false') {
+      throw new Error('project switcher kept a stale expanded state after Escape');
+    }
+    const focusReturned = await page.evaluate(() => {
+      const active = document.activeElement;
+      return (
+        active instanceof HTMLElement && (active.getAttribute('title') ?? '').startsWith('Project:')
+      );
+    });
+    if (!focusReturned) {
+      throw new Error('Escape closed the dialog but left focus orphaned');
+    }
+    check('project switcher dialog announces state and returns focus on Escape');
 
     // Provider/model identity: chat and Studio generation are separate.
     await page.getByText('Chat · echo (offline)').waitFor({ timeout: 10_000 });
@@ -604,6 +688,76 @@ async function main(): Promise<void> {
     }
     check('v1 and v2 remain intact and v3 records its v1 ancestry');
 
+    // ---- Interrupted generation: hard crash mid-job (roadmap §7, G-10) ----
+    // The seeded fixture proves startup bookkeeping; this proves the live
+    // path: a generation in flight when the server dies is marked
+    // interrupted (never silently resumed), the UI says so, and the queue
+    // recovers for the next generation.
+    allowResourceErrors = true; // the page predictably loses the API mid-poll
+    await stop(server);
+    server = start('api-sleep', process.execPath, [join(ROOT, 'apps/server/dist/index.js')], {
+      cwd: ROOT,
+      env: { ...serverEnv, FAKE_MUSE_MODE: 'sleep' },
+    });
+    await waitForHttp(`${apiBase}/api/health`);
+    await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
+    await openProject(page, PROJECT, 'v3 approved');
+
+    await page.getByRole('tab', { name: 'Change this app' }).click();
+    await page.getByLabel('Change request').fill('Interrupt this generation mid-flight.');
+    await page.getByRole('button', { name: 'Generate change' }).click();
+    await page
+      .getByRole('region', { name: 'Development' })
+      .getByText('Studio generation is writing…')
+      .waitFor({ timeout: 30_000 });
+    hardKillTimer = setTimeout(() => {
+      killFailure =
+        'the generation ran past the hard-kill deadline; the fixture is not interruptible';
+    }, 30_000);
+    await hardKill(server);
+    clearTimeout(hardKillTimer);
+    if (killFailure) throw new Error(killFailure);
+    check('SIGKILLed the API (and the in-flight generation) mid-job without graceful shutdown');
+
+    server = start('api', process.execPath, [join(ROOT, 'apps/server/dist/index.js')], {
+      cwd: ROOT,
+      env: serverEnv,
+    });
+    await waitForHttp(`${apiBase}/api/health`);
+    await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
+    await openProject(page, PROJECT, 'v3 approved');
+
+    await page
+      .getByRole('status')
+      .getByText(/1 interrupted by a server restart and not resumed/)
+      .waitFor({ timeout: 15_000 });
+    await page.screenshot({ path: join(OUT, 'after-interrupted-generation.png'), fullPage: true });
+    check('a crashed generation resurfaces as an interrupted-job notice, not a lost job');
+
+    const interrupted = await json<{
+      jobs: Array<{ status: string; kind: string; prompt: string }>;
+    }>(`${apiBase}/api/forge/projects/${PROJECT}`);
+    const crashedJob = interrupted.jobs.find(
+      (job) => job.status === 'interrupted' && job.prompt.includes('mid-flight'),
+    );
+    if (!crashedJob) {
+      throw new Error('the in-flight generation was not recorded as interrupted on disk');
+    }
+    await page.getByRole('button', { name: 'Acknowledge notices' }).click();
+    await page.getByText(/1 interrupted by a server restart/).waitFor({ state: 'hidden' });
+    check('the queue acknowledges interruption without deleting the job record');
+
+    // The queue is healthy: the next generation stages normally.
+    await page.getByRole('tab', { name: 'Change this app' }).click();
+    await page.getByRole('button', { name: 'Generate change' }).click();
+    await page.getByText(/Change staged\./).waitFor({ timeout: LONG });
+    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    await page
+      .getByText('Change rejected. The approved application is untouched.')
+      .waitFor({ timeout: 20_000 });
+    check('generation works normally after an interrupted job');
+    allowResourceErrors = false;
+
     // ---- Damaged state.json: inspect, then repair from the UI ----------
     const forgeDir = join(dataRoot, 'workspaces', 'forge', PROJECT);
     const damagedBytes = '{ broken by the regression script';
@@ -681,7 +835,7 @@ async function main(): Promise<void> {
     console.log('  • syntax/structure: automated node --check + HTML checks; not execution');
     console.log('  • successful loading: server runtime check loads the staged page once');
     console.log(
-      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart, damaged-state repair',
+      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart, interrupted generation, damaged-state repair, accessibility landmarks and dialog focus',
     );
     console.log('  • human review: visual design, gameplay and decision quality remain manual');
     console.log(`Logs and screenshot: ${OUT}/`);
@@ -696,6 +850,9 @@ async function main(): Promise<void> {
       }
     }
     console.error(error);
+    if (errors.length > 0) {
+      console.error(`page errors so far: ${errors.slice(0, 6).join(' | ')}`);
+    }
     for (const item of managed) {
       console.error(`\n--- ${item.name} (${item.log}) ---\n${item.tail.slice(-4_000)}`);
     }

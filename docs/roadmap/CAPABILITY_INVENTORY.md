@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 52 files / 782 tests (3 skipped) behind `pnpm verify`, two CI gates | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 52 files / 784 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -176,10 +176,18 @@ durability) closed 2026-10-30.**
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
   **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-8/G-11/G-12):** 52 files,
-  **782 passed, 3 skipped (785)**; the browser workflow now runs 35 checks.
+  **784 passed, 3 skipped (787)**; the browser workflow now runs 44 checks
+  across two engines (managed Chromium and managed Firefox).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
-  and "Managed browser workflow (fake provider)" (Playwright Chromium); both are
-  *required status checks* on `integration` via the "Protect integration" ruleset.
+  and "Managed browser workflow (fake provider)" (Playwright Chromium) are *required
+  status checks* on `integration` via the "Protect integration" ruleset; a second
+  matrix leg "Managed browser workflow (fake provider · managed Firefox)" runs the
+  same 44-check workflow on Firefox (roadmap §7, G-10).
+- **Local Firefox caveat (macOS 27):** managed Firefox cannot launch on this host with
+  Playwright 1.64.1 — the bundled build trips macOS TCC on the Firefox app-data dir
+  (upstream [playwright#42768](https://github.com/microsoft/playwright/issues/42768),
+  fixed upstream in a 1.65 roll). CI's Ubuntu runners are unaffected; the launcher
+  policy is covered locally by [script-browser-policy.test.ts](../../tests/unit/script-browser-policy.test.ts).
 - **Evidence/verify script families** ([package.json](../../package.json)):
   `verify:browser`, `verify:forge`, `verify:runtime`, `verify:security`,
   `verify:formsandbox`, `verify:studio-workflow`, `verify:research{,16,17}`,
@@ -224,7 +232,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | Open |
 | G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
 | G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | Open |
-| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | Open |
+| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | **Closed** (44 checks, 2 engines, 2026-10-30) |
 | G-11 | Legacy raw `memoryBlock` input removal | §2 (capture layer) | [NEXT_STEPS P1 #7](../NEXT_STEPS.md) | S | **Closed** (PR #37 + D036, 2026-10-30) |
 | G-12 | Recovery summary on System screen | §5, §6 | [NEXT_STEPS P1 #8](../NEXT_STEPS.md) | S | **Closed** (PR #36, 2026-10-30) |
 
@@ -233,7 +241,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 52 files
-pnpm run verify                                                    # 782 pass / 3 skip
+pnpm run verify                                                    # 784 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

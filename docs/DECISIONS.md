@@ -494,3 +494,26 @@ order because `superseded_by` references its replacement.
 that ships them; a half-imported store cannot exist. Cost: the envelope is a
 second contract to keep aligned with the record schema (versioned, and the
 round-trip test fails loudly when it drifts).
+
+---
+
+### D040 — Second browser engine without renaming the required check
+
+**Context:** Roadmap §7 (gap G-10) wants the managed browser workflow to run on a
+second engine and to assert accessibility and interrupted-job behaviour. The
+"Protect integration" ruleset requires checks by exact name, and the ruleset
+itself is part of the judged repository surface.
+**Decision:** Extend the existing `browser` job with a matrix: Chromium keeps the
+historical name verbatim, Firefox joins as "Managed browser workflow (fake
+provider · managed Firefox)". Engine choice stays an explicit env
+(`FORGE_RUNTIME_BROWSER=firefox`); no automatic fallback. The interrupted-job
+scenario is driven live (SIGKILL mid-generation, restart, UI notice, queue
+recovers) instead of trusting the pre-seeded bookkeeping fixture alone.
+**Consequence:** No ruleset edit was needed to introduce the second engine; the
+new check can be promoted to required independently. The engine variable is
+scoped to the driving script: the server's approval-gate runtime check keeps
+its own managed-Chromium policy regardless of which engine drives the UI.
+Cost: the macOS 27 host cannot run the bundled Firefox until Playwright 1.65
+(upstream #42768), so the second engine is verified in CI only; a Firefox leg
+failure now also blocks developer visibility of the gate even though only
+Chromium is required.
