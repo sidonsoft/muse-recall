@@ -16,6 +16,8 @@
     "build": "pnpm --filter @mml/web run build && pnpm --filter @mml/server run build",
     "db:backup": "pnpm --filter @mml/server run db:backup",
     "db:migrate": "pnpm --filter @mml/server run db:migrate",
+    "db:restore": "pnpm --filter @mml/server run db:restore",
+    "backup:drill": "pnpm --filter @mml/server run backup:drill",
     "db:purge": "pnpm --filter @mml/server run db:purge",
     "demo:seed": "tsx scripts/seed-forge-demo.ts",
     "demo:sessions": "tsx scripts/demo-sessions.ts",
