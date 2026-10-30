@@ -516,8 +516,7 @@ interaction.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/live` | Liveness; touches nothing |
-| `GET` | `/api/health` | DB write round-trip, schema version, provider state |
-| `GET` | `/api/health?probe=live` | Same, plus a real (cached) model round-trip |
+| `GET` | `/api/health` | DB write round-trip, schema version, provider state, alert signals (D050) |
 | `POST` | `/api/health/muse` | Force a live Muse check |
 | `GET` | `/api/meta` | Provider capabilities, retrieval config, honest module status |
 | `POST` | `/api/provider/generate` | Bounded raw model call (test bench, no memory) |
@@ -529,6 +528,13 @@ interaction.
 | `DELETE` | `/api/memories/:id` | Soft delete with reason (final through the API) |
 | `GET` | `/api/memories/:id/history` | Audit trail |
 | `GET` | `/api/memories/stats` | Lifecycle counts |
+| `GET` | `/api/memories/graph` | Relationship graph + timeline events (D052) |
+| `GET` | `/api/memories/review` | Review queue: claims needing a human decision |
+| `POST` | `/api/memories/proposals` | Candidate (proposed ≠ fact) intake |
+| `POST` | `/api/memories/:id/accept` / `:id/reject` | Proposal decisions |
+| `GET` | `/api/memories/export` · `POST` `/api/memories/import` | Versioned envelope; import supports dry-run (D039) |
+| `GET` | `/api/errors` | Versioned error catalogue; `/api/meta.errors` points here (D048) |
+| `GET` | `/api/tools` | Tool contract — same registry the MCP server serves (G-5) |
 | `GET` | `/api/projects` | Scope anchors |
 | `POST` | `/api/forge/projects` | Create/open an HTML Studio project |
 | `GET` | `/api/forge/projects/:id` | Project state, version history, jobs |
@@ -540,9 +546,17 @@ interaction.
 | `POST` | `/api/forge/jobs/:jobId/approve` | Promote the verified bytes (human approval) |
 | `POST` | `/api/forge/jobs/:jobId/reject` | Delete the staging copy; current version untouched |
 | `POST` | `/api/forge/projects/:id/rollback` | Restore the recorded parent version |
+| `POST` | `/api/forge/projects/:id/storage-check` | Storage health probe behind the recovery banner |
+| `GET` | `/api/forge/projects/:id/recovery/state` | Bounded raw inspection of a corrupt state |
+| `POST` | `/api/forge/projects/:id/recovery/repair` · `.../recovery/ack` | Guided repair (archives damaged bytes) and acknowledgement |
 | `GET` | `/api/forge/projects/:id/artifact` | Approved or staged HTML as data (source/export) |
 | `GET` | `/api/forge/projects/:id/preview` | Sandboxed preview document (opaque origin) |
 | `POST` | `/api/retrieval/preview` | Ranking + evidence + the exact prompt block |
+
+Notes: `POST /api/memories` and `POST /api/forge/projects/:id/generate` accept an
+`Idempotency-Key` header (24h replay window — D049). In token mode, every `/api` route
+requires the bearer header **except** the open liveness probe `GET /api/health`;
+`GET /api/live` and everything else need the token.
 | `POST` | `/api/sessions` | Create a conversation (optional project scope) |
 | `GET` | `/api/sessions` | List conversations |
 | `GET` | `/api/sessions/:id` | Transcript with per-turn retrieval evidence |
