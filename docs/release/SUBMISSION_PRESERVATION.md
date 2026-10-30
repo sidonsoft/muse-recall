@@ -32,6 +32,15 @@ _to record_ are filled in once, after the form is submitted, in a PR into `integ
 `main` at verification time: `c32d03b`. Peels were re-read from the remote with
 `git ls-remote` + local `git rev-list`; none moved.
 
+Note on reading these values with plain `git ls-remote`: all three tags are
+**annotated**, so the bare ref line shows the TAG OBJECT sha (e.g.
+`c2ad110a…` for `submission-v15`), and only the `^{}`-deref'd line shows the
+commit sha recorded above. A first-time `ls-remote` reader — including this
+cadence's own auditor — can momentarily "see" different SHAs and suspect the
+freeze broke; the deref lines (`5e83616e…`, `71416ae7…`, `6640e83f…`) match
+the table exactly, as re-confirmed 31 Oct.
+
+
 If anything is promoted to `main` before submitting, the candidate SHA above is out of date.
 Use whatever `main` points at when you press Submit.
 
@@ -176,6 +185,20 @@ entry, and the guard failed it closed, not open.
     awaits per-branch ancestry checks post-judging, since some may back phase
     history cited in docs.
 - The evidence under `docs/hackathon-evidence/` and `docs/demo/evidence/` is never edited.
+
+### Freeze sentinel — six invariants, re-checked together 31 Oct 2026
+
+1. `refs/heads/main` = `c32d03b…` — unchanged;
+2. all three frozen tags deref to their recorded commits (`5e83616e`,
+   `71416ae7`, `6640e83f`) — annotated tag objects notwithstanding;
+3. rulesets `26184029`/`26184026`/`26184025` present and active;
+4. no `website.yml` PUSH run since 29 Oct (the only recent runs are PR checks —
+   the 30 Oct one is PR #28's own CI): the live site cannot change mid-judging;
+5. PR #28 still open, its content pinned at `refs/pull/28/head` (see the
+   correction above);
+6. zero cadence activity touched `main`, tags, evidence, submission, or demo
+   docs, or `website/` — every one of the 40+ cadence PRs targets
+   `integration` and its diff was inspected for frozen paths.
 
 Once results are announced, promotion from `integration` to `main` resumes (owner decision,
 30 October 2026; §2 of the roadmap). The tag, Release and archive stay unchanged.
