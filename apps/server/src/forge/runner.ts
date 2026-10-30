@@ -25,7 +25,7 @@ import {
 import { forgeChildEnv } from './child-env.js';
 import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
-import { ensurePrivateDirectory, writePrivateFile } from './fs-utils.js';
+import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
@@ -591,7 +591,9 @@ export class ForgeJobManager {
         mode: 0o600,
         flag: 'wx',
       });
+      await syncFile(temp);
       await rename(temp, target);
+      await syncDirectory(root);
     } catch {
       await rm(temp, { force: true }).catch(() => undefined);
       throw new ForgeError(

@@ -31,9 +31,14 @@ repository's working backlog; completed items stay for the audit trail.
 
 ## P1 — next hardening
 
-5. **Make job persistence power-loss safe.**
+5. **Make job persistence power-loss safe.** — **Done (2026-10-30).**
    Add `fsync` for the job/state file and containing directory if the beta needs stronger
-   durability than atomic rename.
+   durability than atomic rename. Every Forge atomic write now fsyncs the temporary file
+   before its rename and syncs the containing directory after: job records, `state.json`,
+   promoted version bytes plus the versions directory entry, recovery acknowledgements,
+   and the repair archive rename. File syncs are strict (a failure is a write failure);
+   directory syncs are best-effort and documented, because platforms that refuse
+   directory fsync must not break writes that are still atomic.
 6. **Expand managed browser coverage.**
    Add visual snapshots, a second browser engine, accessibility assertions, and an
    interrupted-job restart scenario driven through the API. Keep live-model checks
