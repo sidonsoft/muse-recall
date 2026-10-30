@@ -294,7 +294,8 @@ pnpm verify:formsandbox     # native submission blocked; JS/Enter interactions w
 pnpm verify:forge-workflow  # backend generate/stage/diff/approve/reject/rollback
 pnpm verify:studio-workflow # managed Chromium (or FORGE_RUNTIME_BROWSER=firefox):
                             # generate, review, approve, modify, reject, rollback,
-                            # restart recovery, interrupted generation, a11y asserts;
+                            # restart recovery, interrupted generation, a11y asserts,
+                            # visual baselines (3 regions per engine, CI-recorded);
                             # deterministic fake provider
 pnpm verify:forge           # HTML Studio browser loop (FORGE_VERIFY_BASE, default :5173)
 pnpm verify:browser         # broad product UI smoke (VERIFY_URL, default :5173)
@@ -311,7 +312,7 @@ pnpm eval:guard             # advisory Decision Guard accuracy corpus
 ```
 
 `verify:studio-workflow` needs a production build and the Playwright-managed Chromium
-(`pnpm build && pnpm exec playwright-core install chromium`). CI runs the same 44 checks on a
+(`pnpm build && pnpm exec playwright-core install chromium`). CI runs the same 45 checks on a
 second engine (managed Firefox) as a matrix leg. The script preflights the browser and
 fails with an actionable message if it is missing; it does not fall back automatically.
 It starts its own API, web preview, database, workspace and ports; it never touches the
@@ -875,8 +876,9 @@ fresh superseded records. Corrections still require an explicit application-chan
   interrupted generation (server SIGKILLed mid-job), project drafts, explicit decision
   creation and approval verification — on managed Chromium in CI, plus the same script
   on managed Firefox as a second matrix leg. It asserts landmarks, live-status notices
-  and dialog focus handoff, but it is not a visual-regression, pixel, gameplay, or
-  full accessibility audit.
+  and dialog focus handoff, and compares three timestamp-free Studio regions against
+  committed per-engine visual baselines; it is not a full visual-regression, pixel,
+  gameplay, or accessibility audit.
 - **Approval verification telemetry starts with this build.** Versions approved before
   this change have no recorded runtime hash/browser/timestamp; the UI says “not recorded”
   rather than implying the check passed.

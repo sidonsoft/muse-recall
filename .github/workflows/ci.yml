@@ -69,6 +69,9 @@ jobs:
             job_name: Managed browser workflow (fake provider · managed Firefox)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # (No FORGE_VISUAL_UPDATE here: baselines are committed; this job now
+    #  compares. Set the job env to '1' temporarily to re-record after an
+    #  intentional UI change, then commit the new PNGs and remove it.)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -115,3 +118,21 @@ jobs:
           MODEL_PROVIDER: echo
           LOG_LEVEL: warn
           FORGE_RUNTIME_BROWSER: ${{ matrix.engine }}
+
+      # Baselines live in the repository (tests/visual). The update run
+      # uploads them for review/commit; drift runs upload the failing
+      # actual screenshots and diff images for triage.
+      - name: Upload recorded visual baselines
+        if: env.FORGE_VISUAL_UPDATE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-${{ matrix.engine }}
+          path: tests/visual/*.png
+
+      - name: Upload visual drift evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs-${{ matrix.engine }}
+          path: test-results/studio-after/visual-*.png
+          if-no-files-found: ignore

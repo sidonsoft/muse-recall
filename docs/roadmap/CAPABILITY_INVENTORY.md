@@ -177,8 +177,9 @@ durability) closed 2026-10-30.**
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
   **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-8/G-11/G-12):** 52 files,
-  **791 passed, 3 skipped (794)**; the browser workflow now runs 44 checks
-  across two engines (managed Chromium and managed Firefox).
+  **791 passed, 3 skipped (794)**; the browser workflow now runs 45 checks
+  across two engines (managed Chromium and managed Firefox), including per-engine
+  visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
   and "Managed browser workflow (fake provider)" (Playwright Chromium) are *required
   status checks* on `integration` via the "Protect integration" ruleset; a second
@@ -233,7 +234,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | **Closed** (v1.5.0 autoplay-media + external-assets, 22 corpus rows, 2026-10-30) |
 | G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
 | G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | Open |
-| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | **Closed** (44 checks, 2 engines, 2026-10-30) |
+| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | **Closed** (45 checks incl. visual snapshots, 2 engines, 2026-10-30) |
 | G-11 | Legacy raw `memoryBlock` input removal | §2 (capture layer) | [NEXT_STEPS P1 #7](../NEXT_STEPS.md) | S | **Closed** (PR #37 + D036, 2026-10-30) |
 | G-12 | Recovery summary on System screen | §5, §6 | [NEXT_STEPS P1 #8](../NEXT_STEPS.md) | S | **Closed** (PR #36, 2026-10-30) |
 
