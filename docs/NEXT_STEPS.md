@@ -218,6 +218,14 @@ now is maintenance honesty, not new surface:
     value there is a labelled placeholder. Honest width: it is a
     pattern scan, not an entropy-based full-history scan — the archive
     ships tracked files only, which is the surface the claim covers.
+  - Branch-discipline audit (31 Oct, at head): the last 100 commits on
+    `integration` are 100% PR-associated — zero direct pushes in that
+    window (message-shape scan, spot-checked against the commits→pulls
+    API: #139/#138/#137 all report merged=true at their squashed SHAs).
+    The migration ledger also reads clean: versions 1..8, contiguous,
+    no duplicates, tracked per-application in `schema_migrations`.
+    Governance claims (PR-only workflow, schema versioning) re-verified
+    as mechanisms, not manners.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
