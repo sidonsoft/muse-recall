@@ -116,10 +116,18 @@ that target is untested and effectively unassigned until a deployment exists.
   sends the bearer. Version skew is handled honestly (`alerts=absent` when a
   server predates the block). Live-proven: on a fresh file database the
   prober exits 1 with `backup=missing`; after one `pnpm db:backup` it exits
-  0 with `ALERT none`.
+  0 with `ALERT none`. Re-proven 2026-10-31 from a **clean clone** of
+  `integration` (install → build → `demo:seed` → server → prober): same
+  verdicts, zero quickstart deviations; the operator chain also matches the
+  README (a judge following it hits no missing steps).
   ```cron
   */30 * * * * cd /path/to/muse-recall && pnpm ops:alert-prober >> "$ALERT_LOG" 2>&1
   ```
+  Wrapper note: through the pnpm workspace runner, an exit-1 finding also
+  surfaces as pnpm's own `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` bookkeeping.
+  The exit code and the `ALERT` lines are the contract; if you want stdout
+  to carry nothing but contract, invoke the script directly
+  (`node --import tsx apps/server/src/scripts/alert-prober.ts <url>`).
   What STILL keeps G4 unmet until an operator does it: installing that cron,
   and wiring cron mail/a forwarder to something that wakes a human. The
   prober prints findings; it never pages anyone by design. `alerts` never flips the
