@@ -19,11 +19,18 @@ interface Chain {
 function buildChains(graph: MemoryGraph): Chain[] {
   const parent = new Map<string, string>(graph.nodes.map((node) => [node.id, node.id]));
   const find = (id: string): string => {
+    // No non-null assertions: an unregistered id simply roots itself, and
+    // path compression halts at the first gap instead of throwing on `!`.
     let root = id;
-    while (parent.get(root) !== root) root = parent.get(root)!;
+    for (;;) {
+      const next = parent.get(root);
+      if (next === undefined || next === root) break;
+      root = next;
+    }
     let cursor = id;
-    while (parent.get(cursor) !== root) {
-      const next = parent.get(cursor)!;
+    for (;;) {
+      const next = parent.get(cursor);
+      if (next === undefined || next === root) break;
       parent.set(cursor, root);
       cursor = next;
     }
