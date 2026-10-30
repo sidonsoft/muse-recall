@@ -14,6 +14,7 @@ import {
   MemoryDetailSchema,
   type MemoryHistoryEntry,
   MemoryHistoryEntrySchema,
+  MemoryImportResultSchema,
   type MemoryListResponse,
   MemoryListResponseSchema,
   MemoryQuerySchema,
@@ -107,6 +108,26 @@ export function registerMemoryRoutes(
   app.get('/api/memories/stats', async () => {
     const stats: MemoryStats = MemoryStatsSchema.parse(engine.stats());
     return apiSuccess(stats);
+  });
+
+  // --- Export / import (roadmap §6 "Make changes safe") --------------------
+  // The export is the raw envelope (not an apiSuccess wrapper) so the body
+  // round-trips into POST /api/memories/import unchanged. Tombstones and
+  // audit history are included by design: dropping them would erase the
+  // audit guarantees the trail exists to provide.
+  app.get('/api/memories/export', async (_request, reply) => {
+    const envelope = engine.exportMemories();
+    reply.header(
+      'content-disposition',
+      `attachment; filename="memory-export-${envelope.exported_at.slice(0, 10)}.json"`,
+    );
+    return envelope;
+  });
+
+  app.post('/api/memories/import', async (request) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const result = engine.importExport(body, { dryRun: body.dry_run === true });
+    return apiSuccess(MemoryImportResultSchema.parse(result));
   });
 
   // --- Projects: scope anchors and the inspector's filter source. ----------

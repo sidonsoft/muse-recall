@@ -14,12 +14,12 @@ Statuses here describe the code as it exists today. They do not assert release r
 
 | Capability area | Status | Headline evidence |
 |---|---|---|
-| Memory core (records, retrieval, correction) | **Implemented** (gaps: export/import; record contract closed 2026-10-30) | [memory.ts](../../packages/shared/src/memory.ts), [engine.ts](../../packages/memory-engine/src/engine.ts) |
+| Memory core (records, retrieval, correction, export/import) | **Implemented** — record contract and export/import closed 2026-10-30 | [memory.ts](../../packages/shared/src/memory.ts), [engine.ts](../../packages/memory-engine/src/engine.ts) |
 | Integration layer (contract, MCP) | **Partial** — REST + six tools + Muse CLI provider; **no MCP** | [routes/](../../apps/server/src/routes), [tools.ts](../../packages/tool-runtime/src/tools.ts), [muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts) |
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 51 files / 771 tests (3 skipped) behind `pnpm verify`, two CI gates | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 52 files / 782 tests (3 skipped) behind `pnpm verify`, two CI gates | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -56,9 +56,10 @@ Statuses here describe the code as it exists today. They do not assert release r
   (mirrors the latest `MemoryHistoryEntry.actor`: `user|agent|system`);
   `proposed` is a lifecycle state decided by accept/reject endpoints and kept
   out of retrieval.
-- **Remaining gap vs roadmap §6:** no export/import path anywhere (no export route in
-  [routes/memories.ts](../../apps/server/src/routes/memories.ts), nothing in
-  [engine.ts](../../packages/memory-engine/src/engine.ts)).
+- **Export/import (closed 2026-10-30, D039):** `GET /api/memories/export` and
+  `POST /api/memories/import` move a versioned envelope covering tombstones,
+  audit history and supersession edges; imports are atomic, idempotent on
+  replay, refuse newer formats and support `dry_run`.
 
 ## 3. Integration layer
 
@@ -174,8 +175,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-8/G-11/G-12):** 51 files,
-  **771 passed, 3 skipped (774)**; the browser workflow now runs 35 checks.
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-8/G-11/G-12):** 52 files,
+  **782 passed, 3 skipped (785)**; the browser workflow now runs 35 checks.
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
   and "Managed browser workflow (fake provider)" (Playwright Chromium); both are
   *required status checks* on `integration` via the "Protect integration" ruleset.
@@ -217,7 +218,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-1 | `state_corrupt` user-facing export/repair flow | §6 | [NEXT_STEPS P0 #3](../NEXT_STEPS.md); §8 recovery | M | **Closed** (PRs #32/#33, 2026-10-30) |
 | G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | Open |
 | G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M | **Closed** (migration v7 + D038, 2026-10-30) |
-| G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | Open |
+| G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | **Closed** (envelope + D039, 2026-10-30) |
 | G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | Open |
 | G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | Open |
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | Open |
@@ -231,8 +232,8 @@ Sizes: S = hours, M = days, L = multi-day.
 
 ```sh
 # structure
-find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 51 files
-pnpm run verify                                                    # 771 pass / 3 skip
+find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 52 files
+pnpm run verify                                                    # 782 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

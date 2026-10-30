@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  MEMORY_EXPORT_FORMAT,
+  MEMORY_EXPORT_FORMAT_VERSION,
   type Memory,
   type MemoryCorrectionInput,
   MemoryCorrectionInputSchema,
@@ -9,12 +11,17 @@ import {
   MemoryCreateInputSchema,
   type MemoryCreateResult,
   type MemoryDetail,
+  type MemoryExportEnvelope,
+  MemoryExportEnvelopeSchema,
+  type MemoryExportRecord,
   type MemoryHistoryEntry,
   MemoryHistoryEntrySchema,
+  type MemoryImportResult,
   type MemoryListResponse,
   type MemoryQuery,
   MemoryQuerySchema,
   type MemoryStats,
+  type MemorySupersessionEdge,
   type MemoryUpdateInput,
   MemoryUpdateInputSchema,
   type Project,
@@ -22,8 +29,9 @@ import {
 } from '@mml/shared';
 import { memoryContentHash } from './content-hash.js';
 import { formatMemoryContext } from './context.js';
-import { MemoryConflictError, MemoryNotFoundError } from './errors.js';
+import { MemoryConflictError, MemoryError, MemoryNotFoundError } from './errors.js';
 import { toFtsQuery } from './fts.js';
+import { currentSchemaVersion } from './migrations.js';
 import { type RetrievalOptions, retrieveMemories } from './retrieval.js';
 import { MEMORY_SELECT_COLUMNS, type MemoryRow, rowToMemory } from './rows.js';
 
@@ -952,5 +960,294 @@ export class MemoryEngine {
       deleted: byStatus.get('deleted') ?? 0,
       by_type: byType as MemoryStats['by_type'],
     };
+  }
+
+  // -------------------------------------------------------------------------
+  // Portable export / import (roadmap §6 "Make changes safe")
+  // -------------------------------------------------------------------------
+
+  /**
+   * Snapshot the whole memory domain — records (including tombstones), audit
+   * history, supersession edges and project anchors — into a portable
+   * envelope. The result is parsed through the envelope schema on the way
+   * out, so referential integrity violations in the snapshot are caught at
+   * the source rather than surfacing as import failures later.
+   */
+  exportMemories(): MemoryExportEnvelope {
+    const projects = (
+      this.db
+        .prepare(
+          `SELECT id, name, description, created_at, updated_at
+           FROM projects ORDER BY id`,
+        )
+        .all() as unknown as ProjectRow[]
+    ).map((row) => ProjectSchema.parse(row));
+
+    const records = (
+      this.db
+        .prepare(`SELECT ${MEMORY_SELECT_COLUMNS}, m.content_hash FROM memories m
+                  ORDER BY m.created_at ASC, m.id ASC`)
+        .all() as unknown as MemoryRow[]
+    ).map((row) => ({ ...rowToMemory(row), content_hash: row.content_hash }));
+
+    const history = (
+      this.db
+        .prepare(
+          `SELECT id, memory_id, action, previous_status, next_status, reason, actor, at
+           FROM memory_history ORDER BY memory_id ASC, at ASC, rowid ASC`,
+        )
+        .all() as unknown as HistoryRow[]
+    ).map((entry) =>
+      MemoryHistoryEntrySchema.parse({
+        id: entry.id,
+        memory_id: entry.memory_id,
+        action: entry.action,
+        previous_status: entry.previous_status,
+        next_status: entry.next_status,
+        reason: entry.reason,
+        actor: entry.actor,
+        at: entry.at,
+      }),
+    );
+
+    const supersessions = this.db
+      .prepare(
+        'SELECT new_id, old_id, created_at FROM memory_supersessions ORDER BY new_id, old_id',
+      )
+      .all() as unknown as MemorySupersessionEdge[];
+
+    return MemoryExportEnvelopeSchema.parse({
+      format: MEMORY_EXPORT_FORMAT,
+      format_version: MEMORY_EXPORT_FORMAT_VERSION,
+      schema_version: currentSchemaVersion(this.db),
+      exported_at: this.nowIso(),
+      projects,
+      records,
+      history,
+      supersessions,
+    });
+  }
+
+  /**
+   * Import an export envelope. The whole envelope lands in a single
+   * transaction: an import that hits a foreign id holding different content
+   * rolls back completely and reports every clashing id, because a half
+   * imported snapshot is worse than no import at all.
+   *
+   * Replay is idempotent: a record whose stored row matches the envelope
+   * byte-for-byte (same content hash, status, revision, actor and
+   * timestamps) counts as replayed, not imported. Provenance rides along
+   * with the data — history entries are inserted verbatim, and tombstones
+   * stay out of the FTS index exactly as the live write path keeps them.
+   */
+  importExport(envelope: unknown, options: { dryRun?: boolean } = {}): MemoryImportResult {
+    const parsed = MemoryExportEnvelopeSchema.safeParse(envelope);
+    if (!parsed.success) {
+      throw new MemoryError('memory_invalid', 'The export envelope is not a valid snapshot.', {
+        issues: parsed.error.issues.slice(0, 10).map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+    }
+    if (parsed.data.format !== MEMORY_EXPORT_FORMAT) {
+      throw new MemoryError('memory_invalid', 'Not a memory export envelope.', {
+        format: parsed.data.format,
+      });
+    }
+    if (parsed.data.format_version > MEMORY_EXPORT_FORMAT_VERSION) {
+      throw new MemoryError(
+        'memory_invalid',
+        `Export format version ${parsed.data.format_version} is newer than this build supports (${MEMORY_EXPORT_FORMAT_VERSION}).`,
+        {
+          export_format_version: parsed.data.format_version,
+          supported_format_version: MEMORY_EXPORT_FORMAT_VERSION,
+        },
+      );
+    }
+
+    try {
+      return this.transaction(() => {
+        const result = this.importEnvelope(parsed.data);
+        if (options.dryRun) throw new DryRunAbort(result);
+        return result;
+      });
+    } catch (error) {
+      if (error instanceof DryRunAbort) return { ...error.result, dry_run: true };
+      throw error;
+    }
+  }
+
+  private importEnvelope(envelope: MemoryExportEnvelope): MemoryImportResult {
+    const result: MemoryImportResult = {
+      format_version: envelope.format_version,
+      schema_version: envelope.schema_version,
+      records_imported: 0,
+      records_replayed: 0,
+      history_imported: 0,
+      edges_imported: 0,
+      projects_ensured: 0,
+      dry_run: false,
+    };
+
+    const insertProject = this.db.prepare(
+      `INSERT INTO projects (id, name, description, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+    );
+    for (const project of envelope.projects) {
+      result.projects_ensured += Number(
+        insertProject.run(
+          project.id,
+          project.name,
+          project.description,
+          project.created_at,
+          project.updated_at,
+        ).changes,
+      );
+    }
+
+    const conflicts: { id: string; reason: string }[] = [];
+    // A superseded row's `superseded_by` points at its replacement, so the
+    // replacement must land first: insert in dependency order, one pass per
+    // link of the correction chains (the envelope's integrity refine already
+    // guarantees every referenced id is present in the snapshot).
+    const envelopeIds = new Set(envelope.records.map((record) => record.id));
+    const placed = new Set<string>();
+    const insertRecord = this.db.prepare(
+      `INSERT INTO memories (
+         id, type, scope, project_id, content, source_session_id, source_reference,
+         confidence, validation_status, status, created_at, updated_at, expires_at,
+         content_hash, tags, superseded_by, revision, actor
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const unindex = this.db.prepare('DELETE FROM memory_fts WHERE memory_id = ?');
+
+    let remaining = [...envelope.records];
+    while (remaining.length > 0) {
+      const ready = remaining.filter(
+        (record) =>
+          !record.superseded_by ||
+          !envelopeIds.has(record.superseded_by) ||
+          placed.has(record.superseded_by),
+      );
+      if (ready.length === 0) {
+        throw new MemoryError('memory_invalid', 'The export contains a supersession cycle.', {
+          ids: remaining.map((record) => record.id).slice(0, 5),
+        });
+      }
+      for (const record of ready) {
+        const existing = this.findRow(record.id);
+        if (existing) {
+          if (this.rowsMatch(existing, record)) {
+            result.records_replayed += 1;
+          } else {
+            conflicts.push({
+              id: record.id,
+              reason: 'a different record is already stored under this id',
+            });
+          }
+        } else {
+          insertRecord.run(
+            record.id,
+            record.type,
+            record.scope,
+            record.project_id,
+            record.content,
+            record.source.session_id,
+            record.source.reference,
+            record.confidence,
+            record.validation_status,
+            record.status,
+            record.created_at,
+            record.updated_at,
+            record.expires_at,
+            record.content_hash,
+            JSON.stringify(record.tags),
+            record.superseded_by,
+            record.revision,
+            record.actor,
+          );
+          // Tombstones stay out of the search index, matching softDelete's
+          // guarantee; the insert trigger has already indexed the row.
+          if (record.status === 'deleted') unindex.run(record.id);
+          result.records_imported += 1;
+        }
+        placed.add(record.id);
+      }
+      remaining = remaining.filter((record) => !placed.has(record.id));
+    }
+
+    if (conflicts.length > 0) {
+      throw new MemoryConflictError(
+        `${conflicts.length} record id(s) in the export already hold different content.`,
+        { conflicts: conflicts.slice(0, 20) },
+      );
+    }
+
+    const insertHistory = this.db.prepare(
+      `INSERT INTO memory_history (
+         id, memory_id, action, previous_status, next_status, reason, actor, at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+    );
+    for (const entry of envelope.history) {
+      result.history_imported += Number(
+        insertHistory.run(
+          entry.id,
+          entry.memory_id,
+          entry.action,
+          entry.previous_status,
+          entry.next_status,
+          entry.reason,
+          entry.actor,
+          entry.at,
+        ).changes,
+      );
+    }
+
+    const insertEdge = this.db.prepare(
+      `INSERT INTO memory_supersessions (new_id, old_id, created_at)
+       VALUES (?, ?, ?) ON CONFLICT(new_id, old_id) DO NOTHING`,
+    );
+    for (const edge of envelope.supersessions) {
+      result.edges_imported += Number(
+        insertEdge.run(edge.new_id, edge.old_id, edge.created_at).changes,
+      );
+    }
+
+    return result;
+  }
+
+  private rowsMatch(row: MemoryRow, record: MemoryExportRecord): boolean {
+    let storedTags: unknown;
+    try {
+      storedTags = JSON.parse(row.tags);
+    } catch {
+      return false;
+    }
+    return (
+      row.type === record.type &&
+      row.scope === record.scope &&
+      row.project_id === record.project_id &&
+      row.content === record.content &&
+      row.content_hash === record.content_hash &&
+      row.source_session_id === record.source.session_id &&
+      row.source_reference === record.source.reference &&
+      row.confidence === record.confidence &&
+      row.validation_status === record.validation_status &&
+      row.status === record.status &&
+      row.created_at === record.created_at &&
+      row.updated_at === record.updated_at &&
+      row.expires_at === record.expires_at &&
+      row.superseded_by === record.superseded_by &&
+      row.revision === record.revision &&
+      row.actor === record.actor &&
+      JSON.stringify(storedTags) === JSON.stringify(record.tags)
+    );
+  }
+}
+
+class DryRunAbort extends Error {
+  constructor(readonly result: MemoryImportResult) {
+    super('dry-run rollback');
   }
 }
