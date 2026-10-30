@@ -154,7 +154,9 @@ now is maintenance honesty, not new surface:
 
 - Periodic doc re-audits: sweep every status claim in the living docs against
   code (the #60 pattern); counts (72 files / 907 tests / 3 skipped; 48 browser
-  checks local, 49 with CI visual slots) re-stated only after a real run.
+  checks local, 49 with CI visual slots) re-stated only after a real run —
+  the local gate itself was re-run at head on 31 Oct (after ~25 cadence
+  merges): 48/48 checks green on darwin, no claim drift.
 - Drift gates stay load-bearing: error-catalogue live probes, browser
   workflow on two engines, backup drill on every push. New asymmetries are
   either fixed in lockstep (v2 discipline, D054) or honestly catalogued.
