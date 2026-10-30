@@ -313,6 +313,11 @@ message after a cancellation.
 
 ---
 
+> **Note on numbering:** D027 was never used — the number was skipped during
+> an early renumbering, no decision exists under it, and the whole repo
+> (docs and code) contains zero references to it. Verified by audit 31 Oct
+> 2026: 54 defined, 54 referenced, zero dangling references anywhere.
+
 ### D028 — Model output is a declarative spec, not markup
 
 **Context:** Letting a model emit HTML or JavaScript would make every generated interface a
