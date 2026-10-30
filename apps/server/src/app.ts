@@ -31,6 +31,7 @@ import { SERVICE_NAME } from './config.js';
 import { ForgeJobManager } from './forge/runner.js';
 import { ForgeWorkspace } from './forge/workspace.js';
 import { isAllowedHostHeader } from './host-guard.js';
+import { IdempotencyStore } from './idempotency.js';
 import { evaluateRequestOrigin } from './origin-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { registerForgeRoutes } from './routes/forge.js';
@@ -341,11 +342,17 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   );
 
   // --- Memory CRUD, correction, deletion, retrieval preview ---------------
-  registerMemoryRoutes(app, { engine, config });
+  const idempotency = new IdempotencyStore(db);
+  registerMemoryRoutes(app, { engine, config, idempotency });
   registerSessionRoutes(app, { runtime });
   registerUiRoutes(app, { runtime, engine, provider, config });
   registerToolRoutes(app, { runtime, engine, registry: toolRegistry, store: toolStore });
-  registerForgeRoutes(app, { manager: forgeManager, workspace: forgeWorkspace, engine });
+  registerForgeRoutes(app, {
+    manager: forgeManager,
+    workspace: forgeWorkspace,
+    engine,
+    idempotency,
+  });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {

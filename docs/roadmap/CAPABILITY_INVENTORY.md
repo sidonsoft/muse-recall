@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 64 files / 861 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 65 files / 866 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -69,7 +69,8 @@ uniform (`limit`/`offset` + filter-wide `total` on memories, review queue, and s
 the sessions `total` was fixed from page-length to a real COUNT, 2026-10-30), and errors are
 machine-readable via a versioned catalogue (`GET /api/errors`, `catalog_version: 1`, mirrored
 in `/api/meta.errors`; tests compare live responses against published entries, so mapping
-drift fails CI — D048). Idempotency keys remain open.**
+drift fails CI — D048). `Idempotency-Key` replay (24h window, SQLite-backed, first-wins)
+covers `POST /api/memories` and Forge generation — D049; §3's named remainders are closed.**
 
 - **HTTP API** (Fastify; routes in [app.ts](../../apps/server/src/app.ts) and
   [routes/](../../apps/server/src/routes)):
@@ -105,7 +106,8 @@ drift fails CI — D048). Idempotency keys remain open.**
   stamped into `GET /api/tools` and the MCP contract resource; conformance tests pin MCP tool
   list ≡ registry list ([mcp-contract.test.ts](../../tests/integration/mcp-contract.test.ts))
   and the REST stamping ([tools-contract.test.ts](../../tests/integration/tools-contract.test.ts)).
-- **Absent:** MCP client usage in-product; idempotency keys across the REST write surface.
+- **Absent:** MCP client usage in-product. Sessions turns deliberately rely on the
+  `session_busy` lock rather than idempotency keys; proposals on content dedup (D049).
 
 ## 4. Trust boundary
 
@@ -209,8 +211,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 64 files,
-  **861 passed, 3 skipped (864)**; the browser workflow now runs 46 checks
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 65 files,
+  **866 passed, 3 skipped (869)**; the browser workflow now runs 46 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -276,7 +278,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 861 pass / 3 skip
+pnpm run verify                                                    # 866 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

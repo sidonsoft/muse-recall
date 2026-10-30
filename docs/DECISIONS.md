@@ -692,3 +692,26 @@ change, so list envelopes agree (`items/total/limit/offset`).
 **Consequence:** fixing either asymmetry is a deliberate catalogue edit — code,
 catalogue and tests move in one PR or CI goes red. Discovery is self-service
 via `/api/meta.errors`; no docs can silently diverge from the wire format.
+
+---
+
+### D049 — Idempotency keys where a retry costs money; locks where it does not
+
+**Context:** roadmap §3's last open remainder. A network-timeout retry of
+Forge generation double-spends model quota; a retried memory create double-writes.
+Sessions already serialize (409 `session_busy`); proposals already dedup by
+content hash. Bolting keys onto everything would add state for no benefit.
+**Decision:** `Idempotency-Key` (single 8-128-char header) on
+`POST /api/memories` and Forge generate only. Replay records: SQLite table
+(schema v8) keyed by `METHOD + concrete path + key`, 24h TTL purged lazily,
+first-wins semantics (a diverged body under a used key replays the original
+response), durable across restarts, and excluded from the export envelope —
+a replay window must not survive a data restore as a hidden side effect.
+Comma-joined duplicate headers are refused as ambiguous, mirroring the
+adversarial suite's wire-modeling. In-flight de-dup is in-process (409
+`idempotency_in_progress`) and the catalogue says so; there is no cross-process
+claim in the single-server beta.
+**Consequence:** retried clients are safe exactly where retries were costly;
+the remaining routes' protections are named explicitly instead of implied.
+When multi-process deployment arrives, the in-process Set is the component
+that must be replaced — the table already survives restarts.
