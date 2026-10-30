@@ -14,6 +14,7 @@
  * accessibility landmarks, live status regions and dialog focus behaviour
  * are asserted (roadmap §7, gap G-10). Three Studio regions are compared
  * against CI-recorded per-engine visual baselines (Linux runners only).
+ * Regions are chosen timestamp-free: navigation, Development panel, advisory.
  * Screenshots and logs go to `test-results/`, never to historical evidence.
  *
  * Requirements: `pnpm build` first, and a Playwright Chromium build
@@ -773,7 +774,9 @@ async function main(): Promise<void> {
       const slots: Array<[string, Locator]> = [
         ['navigation', page.getByRole('navigation')],
         ['development', page.getByRole('region', { name: 'Development' })],
-        ['review', page.getByRole('region', { name: 'Review' })],
+        // The Review panel itself would contain per-run version timestamps;
+        // the advisory block is the deterministic review-side region.
+        ['advisory', page.getByRole('region', { name: 'Decision Guard advisory' })],
       ];
       const updateBaselines = process.env.FORGE_VISUAL_UPDATE === '1';
       const mismatches: string[] = [];
