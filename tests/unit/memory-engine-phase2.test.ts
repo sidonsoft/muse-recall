@@ -551,6 +551,41 @@ describe('deletion', () => {
     }
   });
 
+  it('deleted content is unreachable from EVERY serving path', () => {
+    // The header guarantee is plural — get, list/search, retrieval, graph.
+    // Individual paths were pinned singly; this walks them all around one
+    // soft-delete, before vs after, so a regression in any single surface
+    // trips the same test. Purge (erasure) stays separate: the row keeps
+    // existing; the GUARANTEE is about serving, not erasing.
+    const { engine, db, close } = seeded();
+    try {
+      const created = engine.create(baseInput({ content: 'Use SQLite for persistent caching' }));
+      const id = created.memory.id;
+      expect(engine.get(id)?.content).toContain('caching');
+      expect(
+        retrieveMemories(db, { project_id: 'demo-game', query: 'caching' }).results.some(
+          (entry) => entry.memory.id === id,
+        ),
+      ).toBe(true);
+
+      engine.softDelete(id);
+
+      expect(engine.get(id)).toBeNull(); // engine serves null for invisible rows
+      expect(engine.list({ text: 'caching', all_projects: true }).total).toBe(0);
+      expect(
+        retrieveMemories(db, { project_id: 'demo-game', query: 'caching' }).results.some(
+          (entry) => entry.memory.id === id,
+        ),
+      ).toBe(false);
+      expect(engine.graph({ projectId: 'demo-game' }).nodes.some((node) => node.id === id)).toBe(
+        false,
+      );
+      expect(engine.stats()).toMatchObject({ active: 0, deleted: 1 });
+    } finally {
+      close();
+    }
+  });
+
   it('never returns deleted rows even when explicitly requested', () => {
     const { engine, close } = seeded();
     try {
