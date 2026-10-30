@@ -252,8 +252,8 @@ export class MemoryEngine {
           `INSERT INTO memories
              (id, type, scope, project_id, content, source_session_id, source_reference,
               confidence, validation_status, status, created_at, updated_at, expires_at,
-              content_hash, tags, superseded_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, NULL)`,
+              content_hash, tags, superseded_by, revision, actor)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, NULL, 1, ?)`,
         )
         .run(
           id,
@@ -270,6 +270,7 @@ export class MemoryEngine {
           parsed.expires_at,
           hash,
           JSON.stringify(parsed.tags),
+          actor,
         );
 
       this.appendHistory({
@@ -419,6 +420,17 @@ export class MemoryEngine {
 
     return this.transaction(() => {
       const current = this.requireMemory(id);
+
+      // Optimistic-concurrency guard (roadmap §6 "Make changes safe"): a
+      // stale read must surface as an actionable conflict, never a silent
+      // overwrite of someone else's edit.
+      if (parsed.expected_revision !== undefined && parsed.expected_revision !== current.revision) {
+        throw new MemoryConflictError(
+          `This memory is at revision ${current.revision}; the update was written against revision ${parsed.expected_revision}. Re-read it and reapply the change.`,
+          { id, expected_revision: parsed.expected_revision, current_revision: current.revision },
+        );
+      }
+
       const now = this.nowIso();
 
       const nextContent = parsed.content ?? current.content;
@@ -441,7 +453,7 @@ export class MemoryEngine {
         .prepare(
           `UPDATE memories SET
              content = ?, content_hash = ?, confidence = ?, validation_status = ?,
-             tags = ?, expires_at = ?, updated_at = ?
+             tags = ?, expires_at = ?, updated_at = ?, revision = revision + 1, actor = ?
            WHERE id = ?`,
         )
         .run(
@@ -452,6 +464,7 @@ export class MemoryEngine {
           JSON.stringify(parsed.tags ?? current.tags),
           parsed.expires_at === undefined ? current.expires_at : parsed.expires_at,
           now,
+          actor,
           id,
         );
 
@@ -571,8 +584,8 @@ export class MemoryEngine {
             `INSERT INTO memories
                (id, type, scope, project_id, content, source_session_id, source_reference,
                 confidence, validation_status, status, created_at, updated_at, expires_at,
-                content_hash, tags, superseded_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, NULL, ?, ?, NULL)`,
+                content_hash, tags, superseded_by, revision, actor)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, NULL, ?, ?, NULL, 1, ?)`,
           )
           .run(
             id,
@@ -588,6 +601,7 @@ export class MemoryEngine {
             now,
             hash,
             JSON.stringify(parsed.tags),
+            actor,
           );
         this.appendHistory({
           memoryId: id,
@@ -613,10 +627,11 @@ export class MemoryEngine {
         this.db
           .prepare(
             `UPDATE memories
-             SET status = 'superseded', superseded_by = ?, updated_at = ?
+             SET status = 'superseded', superseded_by = ?, updated_at = ?,
+                 revision = revision + 1, actor = ?
              WHERE id = ?`,
           )
-          .run(replacement.id, now, target.id);
+          .run(replacement.id, now, actor, target.id);
 
         this.appendHistory({
           memoryId: target.id,
@@ -660,6 +675,166 @@ export class MemoryEngine {
   }
 
   // -------------------------------------------------------------------------
+  // Proposals (roadmap §6: candidates kept apart from established facts)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Record a candidate without making it a fact.
+   *
+   * `proposed` rows are invisible to retrieval and to the default inspector
+   * query; they exist to be reviewed. Idempotency matches `create`: the same
+   * content already established (active) or already awaiting review is
+   * returned with `created: false` instead of piling up duplicates.
+   */
+  propose(input: MemoryCreateInput, actor: MemoryActor = 'agent'): MemoryCreateResult {
+    const parsed = MemoryCreateInputSchema.parse(input);
+
+    return this.transaction(() => {
+      if (parsed.scope === 'project' && parsed.project_id) {
+        this.ensureProject(parsed.project_id);
+      }
+
+      const hash = memoryContentHash(parsed);
+      const established = this.findActiveByHash(hash);
+      if (established) return { memory: established, created: false };
+
+      const pending = this.findProposedByHash(hash);
+      if (pending) return { memory: pending, created: false };
+
+      const id = randomUUID();
+      const now = this.nowIso();
+      this.db
+        .prepare(
+          `INSERT INTO memories
+             (id, type, scope, project_id, content, source_session_id, source_reference,
+              confidence, validation_status, status, created_at, updated_at, expires_at,
+              content_hash, tags, superseded_by, revision, actor)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?, ?, ?, ?, ?, NULL, 1, ?)`,
+        )
+        .run(
+          id,
+          parsed.type,
+          parsed.scope,
+          parsed.project_id,
+          parsed.content,
+          parsed.source.session_id,
+          parsed.source.reference,
+          parsed.confidence,
+          parsed.validation_status,
+          now,
+          now,
+          parsed.expires_at,
+          hash,
+          JSON.stringify(parsed.tags),
+          actor,
+        );
+
+      this.appendHistory({
+        memoryId: id,
+        action: 'created',
+        previousStatus: null,
+        nextStatus: 'proposed',
+        reason: null,
+        actor,
+      });
+
+      return { memory: this.requireMemory(id), created: true };
+    });
+  }
+
+  /** Promote a proposal to an established fact. */
+  acceptProposal(id: string, options: { reason?: string; actor?: MemoryActor } = {}): Memory {
+    const actor = options.actor ?? 'user';
+    return this.transaction(() => {
+      const current = this.requireMemory(id);
+      if (current.status !== 'proposed') {
+        throw new MemoryConflictError(
+          current.status === 'active'
+            ? 'This memory is already accepted.'
+            : `Only proposed memories can be accepted; this one is ${current.status}.`,
+          { id, status: current.status },
+        );
+      }
+      // Accepting must not create two active records of the same fact; the
+      // proposal should be superseded by the established one instead.
+      const collision = this.findActiveByHash(memoryContentHash(current));
+      if (collision && collision.id !== id) {
+        throw new MemoryConflictError(
+          'An active memory already has this content; supersede the proposal instead of accepting it.',
+          { id, existing_id: collision.id },
+        );
+      }
+
+      this.db
+        .prepare(
+          `UPDATE memories
+           SET status = 'active', updated_at = ?, revision = revision + 1, actor = ?
+           WHERE id = ?`,
+        )
+        .run(this.nowIso(), actor, id);
+
+      this.appendHistory({
+        memoryId: id,
+        action: 'accepted',
+        previousStatus: 'proposed',
+        nextStatus: 'active',
+        reason: options.reason ?? null,
+        actor,
+      });
+
+      return this.requireMemory(id);
+    });
+  }
+
+  /**
+   * Reject a proposal: it becomes a tombstone exactly like a soft delete
+   * (content leaves FTS in the same transaction, the row survives for audit),
+   * but the history action distinguishes rejection from deletion.
+   */
+  rejectProposal(id: string, options: { reason?: string; actor?: MemoryActor } = {}): void {
+    const actor = options.actor ?? 'user';
+    this.transaction(() => {
+      const current = this.requireMemory(id);
+      if (current.status !== 'proposed') {
+        throw new MemoryConflictError(
+          `Only proposed memories can be rejected; this one is ${current.status}.`,
+          { id, status: current.status },
+        );
+      }
+
+      const now = this.nowIso();
+      this.db.prepare('DELETE FROM memory_fts WHERE memory_id = ?').run(id);
+      this.db
+        .prepare(
+          `UPDATE memories
+           SET status = 'deleted', updated_at = ?, revision = revision + 1, actor = ?
+           WHERE id = ?`,
+        )
+        .run(now, actor, id);
+
+      this.appendHistory({
+        memoryId: id,
+        action: 'rejected',
+        previousStatus: 'proposed',
+        nextStatus: 'deleted',
+        reason: options.reason ?? null,
+        actor,
+      });
+    });
+  }
+
+  private findProposedByHash(hash: string): Memory | null {
+    const row = this.db
+      .prepare(
+        `SELECT ${MEMORY_SELECT_COLUMNS} FROM memories m
+         WHERE m.content_hash = ? AND m.status = 'proposed'
+         ORDER BY m.updated_at DESC, m.id ASC LIMIT 1`,
+      )
+      .get(hash) as MemoryRow | undefined;
+    return row ? rowToMemory(row) : null;
+  }
+
+  // -------------------------------------------------------------------------
   // Deletion
   // -------------------------------------------------------------------------
 
@@ -677,8 +852,12 @@ export class MemoryEngine {
 
       this.db.prepare('DELETE FROM memory_fts WHERE memory_id = ?').run(id);
       this.db
-        .prepare("UPDATE memories SET status = 'deleted', updated_at = ? WHERE id = ?")
-        .run(now, id);
+        .prepare(
+          `UPDATE memories
+           SET status = 'deleted', updated_at = ?, revision = revision + 1, actor = ?
+           WHERE id = ?`,
+        )
+        .run(now, options.actor ?? 'user', id);
 
       this.appendHistory({
         memoryId: id,
@@ -729,7 +908,11 @@ export class MemoryEngine {
 
       for (const row of rows) {
         this.db
-          .prepare("UPDATE memories SET status = 'expired', updated_at = ? WHERE id = ?")
+          .prepare(
+            `UPDATE memories
+             SET status = 'expired', updated_at = ?, revision = revision + 1, actor = 'system'
+             WHERE id = ?`,
+          )
           .run(now, row.id);
         this.appendHistory({
           memoryId: row.id,
@@ -762,6 +945,7 @@ export class MemoryEngine {
 
     return {
       total: statusRows.reduce((sum, row) => sum + row.count, 0),
+      proposed: byStatus.get('proposed') ?? 0,
       active: byStatus.get('active') ?? 0,
       superseded: byStatus.get('superseded') ?? 0,
       expired: byStatus.get('expired') ?? 0,

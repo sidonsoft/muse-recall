@@ -339,6 +339,166 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 7,
+    name: 'record_contract_revision_actor_proposed',
+    up: (db) => {
+      // Roadmap §6 record contract: `revision` and `actor` on every record,
+      // and `proposed` joins the lifecycle (DECISIONS.md D038). The CHECK
+      // constraint on status cannot be widened in place, so the table is
+      // rebuilt with the copy-then-rename recipe.
+      //
+      // Dropping the parent fires an implicit DELETE that cascades into the
+      // child tables' ON DELETE CASCADE clauses — even with constraints
+      // deferred — so the audit trail and the supersession edges are first
+      // snapshotted into temp tables and restored after the rename.
+      // `defer_foreign_keys` keeps the surviving REFERENCES clauses (which
+      // name the table, not the rowid) valid across the DROP/RENAME window;
+      // `PRAGMA foreign_keys` itself is a no-op inside this transaction.
+      db.exec(`
+        PRAGMA defer_foreign_keys = ON;
+
+        CREATE TEMP TABLE contract_backup_history AS
+          SELECT id, memory_id, action, previous_status, next_status, reason, actor, at
+          FROM memory_history;
+
+        CREATE TEMP TABLE contract_backup_supersessions AS
+          SELECT new_id, old_id, created_at FROM memory_supersessions;
+
+        CREATE TABLE memories_new (
+          id                TEXT PRIMARY KEY,
+          type              TEXT NOT NULL,
+          scope             TEXT NOT NULL CHECK (scope IN ('global', 'project')),
+          project_id        TEXT REFERENCES projects(id) ON DELETE CASCADE,
+          content           TEXT NOT NULL,
+          source_session_id TEXT,
+          source_reference  TEXT,
+          confidence        REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+          validation_status TEXT NOT NULL CHECK (
+                              validation_status IN ('unverified', 'verified', 'disputed')
+                            ),
+          status            TEXT NOT NULL CHECK (
+                              status IN ('proposed', 'active', 'superseded', 'deleted', 'expired')
+                            ),
+          created_at        TEXT NOT NULL,
+          updated_at        TEXT NOT NULL,
+          expires_at        TEXT,
+          content_hash      TEXT NOT NULL,
+          tags              TEXT NOT NULL DEFAULT '[]',
+          superseded_by     TEXT REFERENCES memories_new(id) ON DELETE SET NULL,
+          revision          INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+          actor             TEXT NOT NULL DEFAULT 'user'
+                              CHECK (actor IN ('user', 'agent', 'system')),
+          CHECK (scope = 'global' OR project_id IS NOT NULL)
+        );
+
+        -- Revision history predates the counter, so existing records start at
+        -- 1. The record-level actor is backfilled from the latest audit
+        -- entry; rows with no history default to 'user', which is the only
+        -- actor the pre-contract HTTP layer ever accepted.
+        INSERT INTO memories_new (
+          id, type, scope, project_id, content, source_session_id, source_reference,
+          confidence, validation_status, status, created_at, updated_at, expires_at,
+          content_hash, tags, superseded_by, revision, actor
+        )
+        SELECT
+          id, type, scope, project_id, content, source_session_id, source_reference,
+          confidence, validation_status, status, created_at, updated_at, expires_at,
+          content_hash, tags, superseded_by, 1,
+          COALESCE(
+            (SELECT h.actor FROM contract_backup_history h
+              WHERE h.memory_id = memories.id
+              ORDER BY h.at DESC, h.rowid DESC LIMIT 1),
+            'user'
+          )
+        FROM memories;
+
+        DROP TABLE memories;
+        ALTER TABLE memories_new RENAME TO memories;
+
+        CREATE INDEX idx_memories_project_status
+          ON memories (project_id, status);
+        CREATE INDEX idx_memories_type
+          ON memories (type);
+        CREATE INDEX idx_memories_hash
+          ON memories (content_hash);
+        CREATE INDEX idx_memories_status_expiry
+          ON memories (status, expires_at);
+        CREATE INDEX idx_memories_superseded_by ON memories (superseded_by);
+        CREATE INDEX idx_memories_scope_status
+          ON memories (scope, project_id, status);
+        CREATE INDEX idx_memories_status_updated
+          ON memories (status, updated_at DESC);
+
+        -- Reattach the FTS triggers dropped with the old table. The index
+        -- itself holds a content copy, and the rebuilt rows are identical,
+        -- so memory_fts stays consistent without a resync.
+        CREATE TRIGGER memories_fts_insert AFTER INSERT ON memories BEGIN
+          INSERT INTO memory_fts (content, tags, memory_id)
+          VALUES (new.content, new.tags, new.id);
+        END;
+
+        CREATE TRIGGER memories_fts_content_update AFTER UPDATE OF content, tags ON memories BEGIN
+          DELETE FROM memory_fts WHERE memory_id = old.id;
+          INSERT INTO memory_fts (content, tags, memory_id)
+          VALUES (new.content, new.tags, new.id);
+        END;
+
+        CREATE TRIGGER memories_fts_delete AFTER DELETE ON memories BEGIN
+          DELETE FROM memory_fts WHERE memory_id = old.id;
+        END;
+
+        -- Widen the audit action CHECK for accepted/rejected transitions.
+        -- Rows come from the snapshot: the cascade above already emptied the
+        -- live table when the parent was dropped.
+        CREATE TABLE memory_history_new (
+          id              TEXT PRIMARY KEY,
+          memory_id       TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+          action          TEXT NOT NULL CHECK (
+                            action IN ('created', 'updated', 'superseded',
+                                       'deleted', 'expired', 'purged',
+                                       'accepted', 'rejected')
+                          ),
+          previous_status TEXT,
+          next_status     TEXT NOT NULL,
+          reason          TEXT,
+          actor           TEXT NOT NULL CHECK (actor IN ('user', 'agent', 'system')),
+          at              TEXT NOT NULL
+        );
+
+        INSERT INTO memory_history_new (
+          id, memory_id, action, previous_status, next_status, reason, actor, at
+        )
+        SELECT id, memory_id, action, previous_status, next_status, reason, actor, at
+        FROM contract_backup_history;
+
+        DROP TABLE memory_history;
+        ALTER TABLE memory_history_new RENAME TO memory_history;
+
+        CREATE INDEX idx_history_memory ON memory_history (memory_id, at);
+
+        -- Supersession edges keep their shape; restore them from the snapshot.
+        CREATE TABLE memory_supersessions_new (
+          new_id     TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+          old_id     TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (new_id, old_id)
+        );
+
+        INSERT INTO memory_supersessions_new (new_id, old_id, created_at)
+        SELECT new_id, old_id, created_at FROM contract_backup_supersessions;
+
+        DROP TABLE memory_supersessions;
+        ALTER TABLE memory_supersessions_new RENAME TO memory_supersessions;
+
+        CREATE INDEX idx_supersessions_old ON memory_supersessions (old_id);
+        CREATE INDEX idx_supersessions_new ON memory_supersessions (new_id);
+
+        DROP TABLE contract_backup_history;
+        DROP TABLE contract_backup_supersessions;
+      `);
+    },
+  },
 ];
 
 /** Highest migration version defined in code. */

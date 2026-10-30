@@ -14,19 +14,20 @@ Statuses here describe the code as it exists today. They do not assert release r
 
 | Capability area | Status | Headline evidence |
 |---|---|---|
-| Memory core (records, retrieval, correction) | **Implemented** (gaps: revisions, actor, export) | [memory.ts](../../packages/shared/src/memory.ts), [engine.ts](../../packages/memory-engine/src/engine.ts) |
+| Memory core (records, retrieval, correction) | **Implemented** (gaps: export/import; record contract closed 2026-10-30) | [memory.ts](../../packages/shared/src/memory.ts), [engine.ts](../../packages/memory-engine/src/engine.ts) |
 | Integration layer (contract, MCP) | **Partial** — REST + six tools + Muse CLI provider; **no MCP** | [routes/](../../apps/server/src/routes), [tools.ts](../../packages/tool-runtime/src/tools.ts), [muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts) |
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
-| Storage & persistence | **Implemented** (6 migrations, backup/purge); repair path **Partial**, fsync **Absent** | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 47 files / 742 tests behind `pnpm verify`, two CI gates | [ci.yml](../../.github/workflows/ci.yml) |
+| Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
+| Tests & verification | **Implemented** — 51 files / 771 tests (3 skipped) behind `pnpm verify`, two CI gates | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
 
 ## 2. Memory core
 
-**Status: Implemented, with three named gaps (revision number, actor field, export/import).**
+**Status: Implemented; the record contract (revision, actor, proposed) closed
+2026-10-30 — export/import remains the named gap.**
 
 - **Record schema** ([memory.ts](../../packages/shared/src/memory.ts)): ten memory types
   (`preference`, `project`, `technical_decision`, `constraint`, `verified_solution`,
@@ -49,12 +50,13 @@ Statuses here describe the code as it exists today. They do not assert release r
 - **Capture** ([memory-capture.ts](../../packages/agent-core/src/memory-capture.ts)):
   explicit "remember …", correction detection, deterministic supersession targeting, and
   candidate proposals that require user confirmation before saving.
-- **Gaps vs roadmap §6:** no explicit `revision` field; no `actor` field on the record
-  itself (actors are already recorded per transition on history entries
-  (`MemoryHistoryEntry.actor`: `user|agent|system`) and threaded through engine calls, so
-  the contract gap is a current-actor/origin field on the record, not a missing audit
-  dimension); no `proposed` lifecycle state (candidates exist at the capture layer, not in the record schema);
-  no export/import path anywhere (no export route in
+- **Record contract (closed 2026-10-30, migration v7 / D038):** records carry
+  `revision` (monotonic; every in-place change bumps it; `PATCH` supports
+  `expected_revision` with a 409 conflict) and a record-level `actor`
+  (mirrors the latest `MemoryHistoryEntry.actor`: `user|agent|system`);
+  `proposed` is a lifecycle state decided by accept/reject endpoints and kept
+  out of retrieval.
+- **Remaining gap vs roadmap §6:** no export/import path anywhere (no export route in
   [routes/memories.ts](../../apps/server/src/routes/memories.ts), nothing in
   [engine.ts](../../packages/memory-engine/src/engine.ts)).
 
@@ -138,7 +140,8 @@ MCP transport from roadmap §4 do not.**
 
 ## 6. Storage & persistence
 
-**Status: Implemented with two named gaps (state_corrupt repair flow; fsync durability).**
+**Status: Implemented; both named gaps (state_corrupt repair flow; fsync
+durability) closed 2026-10-30.**
 
 - **Six migrations** ([migrations.ts](../../packages/memory-engine/src/migrations.ts)):
   v1 `core_memory_schema`, v2 `supersession_pointer_and_retrieval_indexes`,
@@ -151,12 +154,12 @@ MCP transport from roadmap §4 do not.**
   documented schedule yet (roadmap §8 requirement).
 - **Forge state**: `state.json` + `versions/` staging under
   [forge/workspace.ts](../../apps/server/src/forge/workspace.ts). A corrupt or missing
-  `state.json` yields `state_corrupt` banners ("Restore or repair state.json before
-  continuing") — refusal is correct, but the user-facing **export/repair flow requested by
-  [NEXT_STEPS.md](../NEXT_STEPS.md) P0 #3 is absent**. `recovery/ack` exists in
-  [routes/forge.ts](../../apps/server/src/routes/forge.ts); there is no guided repair.
-- **Job persistence** is atomic-rename based ([forge/job-store.ts](../../apps/server/src/forge/job-store.ts));
-  `fsync` hardening (NEXT_STEPS P1 #5) is absent. Recovery integration tests exist
+  `state.json` yields `state_corrupt` refusal — and since 2026-10-30 (PRs #32/#33)
+  a guided flow exists: `recovery/state` inspection + `recovery/repair` archiving the
+  damaged bytes and rebuilding from surviving versions, surfaced as a Studio banner
+  (gap G-1 closed).
+- **Job persistence** is atomic-rename based ([forge/job-store.ts](../../apps/server/src/forge/job-store.ts))
+  plus fsync-before-rename since 2026-10-30 (PR #35, gap G-8 closed). Recovery integration tests exist
   ([forge-recovery.test.ts](../../tests/integration/forge-recovery.test.ts),
   [forge-completion-failure.test.ts](../../tests/integration/forge-completion-failure.test.ts)).
 
@@ -171,6 +174,8 @@ MCP transport from roadmap §4 do not.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
+  **Updated baseline (2026-10-30, after G-1/G-3/G-8/G-11/G-12):** 51 files,
+  **771 passed, 3 skipped (774)**; the browser workflow now runs 35 checks.
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
   and "Managed browser workflow (fake provider)" (Playwright Chromium); both are
   *required status checks* on `integration` via the "Protect integration" ruleset.
@@ -207,27 +212,27 @@ MCP transport from roadmap §4 do not.**
 
 Sizes: S = hours, M = days, L = multi-day.
 
-| # | Gap | Evidence (this doc) | Roadmap ref | Size |
-|---|---|---|---|---|
-| G-1 | `state_corrupt` user-facing export/repair flow | §6 | [NEXT_STEPS P0 #3](../NEXT_STEPS.md); §8 recovery | M |
-| G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L |
-| G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M |
-| G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M |
-| G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L |
-| G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L |
-| G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M |
-| G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S |
-| G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L |
-| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M |
-| G-11 | Legacy raw `memoryBlock` input removal | §2 (capture layer) | [NEXT_STEPS P1 #7](../NEXT_STEPS.md) | S |
-| G-12 | Recovery summary on System screen | §5, §6 | [NEXT_STEPS P1 #8](../NEXT_STEPS.md) | S |
+| # | Gap | Evidence (this doc) | Roadmap ref | Size | Status |
+|---|---|---|---|---|---|
+| G-1 | `state_corrupt` user-facing export/repair flow | §6 | [NEXT_STEPS P0 #3](../NEXT_STEPS.md); §8 recovery | M | **Closed** (PRs #32/#33, 2026-10-30) |
+| G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | Open |
+| G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M | **Closed** (migration v7 + D038, 2026-10-30) |
+| G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | Open |
+| G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | Open |
+| G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | Open |
+| G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | Open |
+| G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
+| G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | Open |
+| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | Open |
+| G-11 | Legacy raw `memoryBlock` input removal | §2 (capture layer) | [NEXT_STEPS P1 #7](../NEXT_STEPS.md) | S | **Closed** (PR #37 + D036, 2026-10-30) |
+| G-12 | Recovery summary on System screen | §5, §6 | [NEXT_STEPS P1 #8](../NEXT_STEPS.md) | S | **Closed** (PR #36, 2026-10-30) |
 
 ## 11. Reproduction
 
 ```sh
 # structure
-find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 47 files
-pnpm run verify                                                    # 739 pass / 3 skip
+find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 51 files
+pnpm run verify                                                    # 771 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

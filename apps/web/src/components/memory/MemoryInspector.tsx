@@ -23,6 +23,7 @@ import { RetrievalExplainer } from './RetrievalExplainer.tsx';
 const STATUS_OPTIONS = [
   { value: 'visible', label: 'All visible' },
   { value: 'active', label: 'Active only' },
+  { value: 'proposed', label: 'Proposals' },
   { value: 'superseded', label: 'Superseded' },
   { value: 'expired', label: 'Expired' },
 ] as const;
@@ -30,6 +31,7 @@ const STATUS_OPTIONS = [
 type StatusFilter = (typeof STATUS_OPTIONS)[number]['value'];
 
 const STATUS_TONE: Record<Memory['status'], Tone> = {
+  proposed: 'accent',
   active: 'ok',
   superseded: 'accent',
   expired: 'warn',
@@ -253,13 +255,15 @@ export function MemoryInspector({
     [projects],
   );
 
-  // Active decisions are what Recall can supply; superseded history follows.
+  // Active decisions are what Recall can supply; candidates needing a user
+  // decision follow immediately, then superseded history.
   const orderedItems = useMemo(() => {
     const rank: Record<Memory['status'], number> = {
       active: 0,
-      superseded: 1,
-      expired: 2,
-      deleted: 3,
+      proposed: 1,
+      superseded: 2,
+      expired: 3,
+      deleted: 4,
     };
     return [...items].sort(
       (a, b) => rank[a.status] - rank[b.status] || b.updated_at.localeCompare(a.updated_at),

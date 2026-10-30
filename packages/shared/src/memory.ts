@@ -49,9 +49,23 @@ export type ValidationStatus = z.infer<typeof ValidationStatusSchema>;
  * that removes the row from every retrieval index; `expired` is applied by
  * retention policy. Hard deletion (`purge`) removes the bytes entirely.
  */
-export const MEMORY_STATUSES = ['active', 'superseded', 'deleted', 'expired'] as const;
+// `proposed` is a candidate that has not been accepted yet: it never enters
+// retrieval or the default inspector list. Accepting promotes it to `active`
+// (history action `accepted`); rejecting soft-deletes it (history action
+// `rejected`). Roadmap §6 chose a lifecycle state over a separate proposal
+// table so candidates share id space, history, and supersession edges while
+// staying out of established facts (see DECISIONS.md D038).
+export const MEMORY_STATUSES = ['proposed', 'active', 'superseded', 'deleted', 'expired'] as const;
 export const MemoryStatusSchema = z.enum(MEMORY_STATUSES);
 export type MemoryStatus = z.infer<typeof MemoryStatusSchema>;
+
+/**
+ * Who performed a lifecycle operation. Recorded per transition on history
+ * entries and, at the record level, as the actor of the latest change.
+ */
+export const MEMORY_ACTORS = ['user', 'agent', 'system'] as const;
+export const MemoryActorSchema = z.enum(MEMORY_ACTORS);
+export type MemoryActor = z.infer<typeof MemoryActorSchema>;
 
 /**
  * Where a memory came from. Provenance is mandatory in spirit: a memory
@@ -91,6 +105,15 @@ export const MemorySchema = z.object({
   /** The record that replaced this one, when superseded. */
   superseded_by: z.uuid().nullable(),
   tags: z.array(TagSchema),
+  /**
+   * Monotonic edit counter (roadmap §6 record contract). Every in-place
+   * change — field update, supersession flip, expiry, proposal transition —
+   * increments it. Callers can guard concurrent edits by sending
+   * `expected_revision`; a mismatch is a conflict, never a silent overwrite.
+   */
+  revision: z.number().int().min(1),
+  /** Actor of the most recent change to this record (see history for all). */
+  actor: MemoryActorSchema,
 });
 export type Memory = z.infer<typeof MemorySchema>;
 
@@ -125,6 +148,12 @@ export const MemoryUpdateInputSchema = z.object({
   validation_status: ValidationStatusSchema.optional(),
   tags: z.array(TagSchema).max(16).optional(),
   expires_at: z.iso.datetime().nullable().optional(),
+  /**
+   * Optional optimistic-concurrency guard. When present, the engine only
+   * applies the update if the record is still at this revision; otherwise it
+   * fails with `memory_conflict` and the record's current revision.
+   */
+  expected_revision: z.number().int().min(1).optional(),
 });
 export type MemoryUpdateInput = z.infer<typeof MemoryUpdateInputSchema>;
 
@@ -216,12 +245,22 @@ export type MemoryQuery = z.infer<typeof MemoryQuerySchema>;
 export const MemoryHistoryEntrySchema = z.object({
   id: z.uuid(),
   memory_id: z.uuid(),
-  action: z.enum(['created', 'updated', 'superseded', 'deleted', 'expired', 'purged']),
+  // `accepted` promotes a proposal to active; `rejected` tombstones it.
+  action: z.enum([
+    'created',
+    'updated',
+    'superseded',
+    'deleted',
+    'expired',
+    'purged',
+    'accepted',
+    'rejected',
+  ]),
   previous_status: MemoryStatusSchema.nullable(),
   next_status: MemoryStatusSchema,
   /** Human-readable reason, e.g. "user corrected the target platform". */
   reason: z.string().max(1_000).nullable(),
-  actor: z.enum(['user', 'agent', 'system']),
+  actor: MemoryActorSchema,
   at: z.iso.datetime(),
 });
 export type MemoryHistoryEntry = z.infer<typeof MemoryHistoryEntrySchema>;
@@ -266,6 +305,8 @@ export type MemoryCorrectionResult = z.infer<typeof MemoryCorrectionResultSchema
 /** Aggregate counts for the inspector header and the benchmark. */
 export const MemoryStatsSchema = z.object({
   total: z.number().int().min(0),
+  /** Candidates awaiting a decision; never counted as current facts. */
+  proposed: z.number().int().min(0),
   active: z.number().int().min(0),
   superseded: z.number().int().min(0),
   expired: z.number().int().min(0),
