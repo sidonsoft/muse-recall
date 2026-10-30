@@ -85,7 +85,9 @@ what we could not reproduce.
     `GET /api/sessions/:id/messages/:messageId`, `POST /api/sessions/:id/messages` (SSE turn;
     wire-witnessed 31 Oct 2026 against a live server: `text/event-stream`, chunked transfer,
     `retrieval` first, `completed` last carrying the full TurnResult, and the transcript then
-    holds exactly user+assistant — streaming is not merely a route name).
+    holds exactly user+assistant — streaming is not merely a route name). Re-witnessed post-cadence with token mode ON
+    (after ~30 merges): unauthenticated turn POST → 401, authenticated SSE
+    streams with identical event ordering — auth and streaming compose.
   - Memories/projects: `GET /api/projects`, `GET /api/memories` (filtered list),
     `GET/POST /api/memories`, `GET/PATCH/DELETE /api/memories/:id`,
     `POST /api/memories/:id/correct`, `GET /api/memories/:id/history`,
