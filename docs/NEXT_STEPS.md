@@ -185,6 +185,13 @@ now is maintenance honesty, not new surface:
     A further script-reference audit over .devcontainer + workflows found
     zero drift (only prose false-positives), extending the documented-
     command guarantee to automation files.
+  - Env-surface census (31 Oct, at head): `.env.example` vs `config.ts` —
+    ZERO config variables missing from the example (ACCESS_TOKEN included),
+    and the example's two extras are real usages elsewhere, not ghosts:
+    `FORGE_RUNTIME_BROWSER` (forge runtime-check + verify scripts) and
+    `MML_ENV_FILE` (config loader hint, read via process.env). The example
+    file is a justified superset — an operator copying it hits no undefined
+    variable and misses no defined one.
   - Bench-artifact policy (31 Oct, after #117 caught real drift): retrieval
     `-latest` is regenerated at head (offline, deterministic); the real-Muse
     bench artifacts (`muse-overhead`, `context-efficiency`, `retrieval-eval`)
