@@ -456,6 +456,25 @@ describe('Forge restart recovery', () => {
       expect(view.jobs.find((entry) => entry.id === running.id)?.status).toBe('interrupted');
       expect(view.recovery.startup.loaded_jobs).toBe(1);
       expect(view.recovery.startup.interrupted_jobs).toBe(1);
+
+      // The System screen's store-wide summary (P1 #8) surfaces the same
+      // startup recovery state without opening the project.
+      const healthResponse = await app.inject({ method: 'GET', url: '/api/health' });
+      expect(healthResponse.statusCode).toBe(200);
+      const forge = healthResponse.json().data.forge as {
+        storage_ok: boolean;
+        unacknowledged_issues: number;
+        interrupted_jobs_current: number;
+        interrupted_jobs_startup: number;
+        loaded_jobs_startup: number;
+        issues: Array<{ kind: string; project_id: string; code: string }>;
+      };
+      expect(forge.storage_ok).toBe(true);
+      expect(forge.loaded_jobs_startup).toBe(1);
+      expect(forge.interrupted_jobs_startup).toBe(1);
+      expect(forge.interrupted_jobs_current).toBe(1);
+      expect(forge.unacknowledged_issues).toBe(1);
+      expect(forge.issues[0]).toMatchObject({ kind: 'startup', project_id: 'demo' });
     } finally {
       await app.close();
     }

@@ -1,4 +1,4 @@
-import type { HealthResponse, ServiceMeta } from '@mml/shared';
+import type { ForgeHealthSummary, HealthResponse, ServiceMeta } from '@mml/shared';
 import { formatLatency, formatTokens, formatUptime, shortenPath } from '../lib/format.ts';
 import { Icon } from './Icon.tsx';
 import { ProviderBench } from './ProviderBench.tsx';
@@ -134,6 +134,8 @@ export function Overview({
         </Panel>
       </div>
 
+      {health.forge ? <RecoverySummary forge={health.forge} /> : null}
+
       <Panel>
         <SectionTitle
           icon="bolt"
@@ -147,6 +149,62 @@ export function Overview({
 
       <RealityCheck meta={meta} />
     </div>
+  );
+}
+
+/**
+ * Read-only store-wide Forge recovery summary (NEXT_STEPS P1 #8), so an
+ * operator sees outstanding job-interruption and storage notices without
+ * opening a project. Acknowledgement and repair stay in the Studio view.
+ */
+function RecoverySummary({ forge }: { forge: ForgeHealthSummary }) {
+  const clean =
+    forge.storage_ok && forge.unacknowledged_issues === 0 && forge.interrupted_jobs_current === 0;
+  return (
+    <Panel>
+      <SectionTitle
+        icon="system"
+        title="Forge recovery"
+        hint="Store-wide · read-only here; open HTML Studio to acknowledge or repair"
+      />
+      <dl className="mt-3 divide-y divide-line/70">
+        <DataRow
+          label="storage"
+          value={
+            <span className={forge.storage_ok ? 'text-ok' : 'text-err'}>
+              {forge.storage_ok ? 'healthy' : 'a write check failed'}
+            </span>
+          }
+        />
+        <DataRow
+          label="open notices"
+          value={
+            <span className={forge.unacknowledged_issues === 0 ? 'text-ok' : 'text-warn'}>
+              {forge.unacknowledged_issues}
+            </span>
+          }
+        />
+        <DataRow label="interrupted now" value={String(forge.interrupted_jobs_current)} />
+        <DataRow
+          label="startup"
+          value={`recovered ${forge.loaded_jobs_startup} job record${forge.loaded_jobs_startup === 1 ? '' : 's'} · ${forge.interrupted_jobs_startup} interrupted`}
+        />
+        <DataRow label="acknowledged" value={String(forge.acknowledged_issues)} />
+      </dl>
+      {forge.issues.length > 0 ? (
+        <ul className="mt-2 list-inside list-disc space-y-0.5 font-mono text-[10px] text-warn/90">
+          {forge.issues.map((issue) => (
+            <li key={issue.id}>
+              {issue.project_id} · {issue.file}: {issue.message}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-[10px] text-muted">
+          {clean ? 'No open recovery notices; every Forge write check passed.' : 'Details above.'}
+        </p>
+      )}
+    </Panel>
   );
 }
 

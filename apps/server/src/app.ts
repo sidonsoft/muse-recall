@@ -366,6 +366,21 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           max_context_tokens: capabilities.max_context_tokens,
         },
       },
+      // Store-wide Forge recovery summary for the System screen (P1 #8).
+      // Read-only; the Studio project view stays the place to acknowledge or
+      // act on issues. Bounded to five issues so health stays small.
+      forge: (() => {
+        const report = forgeManager.recovery();
+        return {
+          storage_ok: report.storage.ok,
+          unacknowledged_issues: report.issues.length,
+          acknowledged_issues: report.acknowledged_issues,
+          interrupted_jobs_current: report.current_interrupted_jobs,
+          interrupted_jobs_startup: report.startup.interrupted_jobs,
+          loaded_jobs_startup: report.startup.loaded_jobs,
+          issues: report.issues.slice(0, 5),
+        };
+      })(),
     });
 
     return apiSuccess(payload);
