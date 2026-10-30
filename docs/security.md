@@ -205,6 +205,11 @@ warning naming the exposed addresses. Browser clients pick the secret up from
 `GET /api/meta` reports `safety.authentication` as `loopback-only` or `shared-token` —
 the server states its own posture instead of letting operators infer it.
 
+Wire-verified 31 Oct 2026 (built server, fresh port, real curl): no token → `401
+{code: unauthorized}`; correct bearer → `200`; wrong bearer → `401`; `GET /api/health`
+open (`200`) while `GET /api/live` requires the token — the exemption boundary the README
+documents, confirmed at socket level rather than only in inject tests.
+
 This is deliberately **authentication without identity**: one shared secret, no users, no
 per-project authorization, no rotation UI, no expiry. The token in `localStorage` is
 readable by any script on the served page, so pair token mode with the origin guard you
