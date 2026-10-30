@@ -199,6 +199,14 @@ now is maintenance honesty, not new surface:
     (`... repair · .../ack`, `accept / reject`, `export · import`) —
     lesson recorded: parse route tables verb-aware or check literal path
     containment.
+  - Web→API call census (31 Oct, at head): every `/api/...` string
+    referenced in apps/web (19 distinct) resolves to a registered route —
+    the web client cannot call a dead path today. (The scanner's seven
+    "unmatched" strings were all template-interpolation artifacts
+    (`/api/memories/review$` etc.) — the third visit to this same false-
+    positive family; the semantic answer is zero.) Reverse direction is
+    NOT asserted: server routes unused by the web are fine — MCP, tests
+    and operators consume them too.
   - Runtime-version promise census (31 Oct, at head): CI Node 24 =
     devcontainer image `javascript-node:24` = engines `>=24.0.0`;
     `packageManager: pnpm@10.32.1` is what pnpm/action-setup@v4 installs
