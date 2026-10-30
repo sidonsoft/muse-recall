@@ -658,3 +658,130 @@ describe('meta', () => {
     expect(data.memory.weights.relevance).toBe(0.4);
   });
 });
+
+describe('proposals (roadmap §6 record contract)', () => {
+  async function createProposal(app: FastifyInstance, content: string): Promise<string> {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/memories/proposals',
+      payload: { type: 'constraint', scope: 'project', project_id: 'demo-game', content },
+    });
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.data.created).toBe(true);
+    expect(body.data.memory.status).toBe('proposed');
+    expect(body.data.memory.actor).toBe('agent'); // default proposer
+    expect(body.data.memory.revision).toBe(1);
+    return body.data.memory.id as string;
+  }
+
+  it('proposes without creating a current fact, then accepts it', async () => {
+    const app = await createTestApp();
+    const id = await createProposal(app, 'Proposals stay out of retrieval.');
+
+    // Not in the default list, visible only when asked for explicitly.
+    const listed = await app.inject({ method: 'GET', url: '/api/memories' });
+    expect(listed.json().data.items.map((m: { id: string }) => m.id)).not.toContain(id);
+    const pending = await app.inject({
+      method: 'GET',
+      url: '/api/memories?status=proposed&all_projects=true',
+    });
+    expect(pending.json().data.items.map((m: { id: string }) => m.id)).toContain(id);
+
+    const accepted = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${id}/accept`,
+      payload: { reason: 'user review' },
+    });
+    expect(accepted.statusCode).toBe(200);
+    expect(accepted.json().data).toMatchObject({
+      status: 'active',
+      revision: 2,
+      actor: 'user',
+    });
+
+    const history = await app.inject({ method: 'GET', url: `/api/memories/${id}/history` });
+    expect(history.json().data.entries.map((e: { action: string }) => e.action)).toEqual([
+      'created',
+      'accepted',
+    ]);
+  });
+
+  it('rejecting a proposal tombstones it and answers like a delete', async () => {
+    const app = await createTestApp();
+    const id = await createProposal(app, 'A proposal nobody wants.');
+
+    const rejected = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${id}/reject`,
+      payload: { reason: 'wrong for this project' },
+    });
+    expect(rejected.statusCode).toBe(200);
+    expect(rejected.json().data).toEqual({ id, deleted: true });
+
+    const gone = await app.inject({ method: 'GET', url: `/api/memories/${id}` });
+    expect(gone.statusCode).toBe(404);
+
+    // Deciding a tombstone twice cannot succeed.
+    const again = await app.inject({ method: 'POST', url: `/api/memories/${id}/reject` });
+    expect(again.statusCode).toBe(404);
+  });
+
+  it('refuses to decide a memory that is not a candidate', async () => {
+    const app = await createTestApp();
+    const memory = await createMemory(app);
+    const response = await app.inject({ method: 'POST', url: `/api/memories/${memory.id}/accept` });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('memory_conflict');
+  });
+
+  it('deduplicates a proposal against an established fact', async () => {
+    const app = await createTestApp();
+    const memory = await createMemory(app, { content: 'Use SQLite for persistent storage.' });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/memories/proposals',
+      payload: {
+        type: 'technical_decision',
+        scope: 'project',
+        project_id: 'demo-game',
+        content: 'Use SQLite for persistent storage.',
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.data.created).toBe(false);
+    expect(body.data.memory.id).toBe(memory.id);
+    expect(body.data.memory.status).toBe('active');
+  });
+});
+
+describe('PATCH /api/memories/:id optimistic concurrency', () => {
+  it('409s a stale edit with the current revision so the caller can re-apply', async () => {
+    const app = await createTestApp();
+    const memory = await createMemory(app);
+
+    const first = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${memory.id}`,
+      payload: { confidence: 0.9, expected_revision: 1 },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().data.revision).toBe(2);
+
+    const stale = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${memory.id}`,
+      payload: { confidence: 0.2, expected_revision: 1 },
+    });
+    expect(stale.statusCode).toBe(409);
+    const body = stale.json();
+    expect(body.error.code).toBe('memory_conflict');
+    expect(body.error.details).toMatchObject({ expected_revision: 1, current_revision: 2 });
+
+    // The losing write changed nothing. (GET by id returns the audit detail
+    // envelope, so the record itself is under `memory`.)
+    const current = await app.inject({ method: 'GET', url: `/api/memories/${memory.id}` });
+    expect(current.json().data.memory).toMatchObject({ confidence: 0.9, revision: 2 });
+  });
+});

@@ -17,6 +17,9 @@ const VALIDATION_TONE: Record<ValidationStatus, Tone> = {
 };
 
 const STATUS_TONE: Record<Memory['status'], Tone> = {
+  // Candidates render with the same weight as superseded history: real rows,
+  // never current facts.
+  proposed: 'accent',
   active: 'ok',
   superseded: 'accent',
   expired: 'warn',

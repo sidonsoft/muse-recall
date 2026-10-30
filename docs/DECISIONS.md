@@ -446,3 +446,27 @@ approved versions. Acknowledgement and repair stay out of the System screen.
 shell. Cost: repair trusts surviving version bytes as the source of truth; the
 archive keeps the disputed file inspectable, and the managed browser workflow
 now exercises the whole corrupt-inspect-repair loop as a standing gate.
+
+---
+
+### D038 — `proposed` joins the lifecycle; records carry `revision` and `actor`
+
+**Context:** Roadmap §6 requires an explicit record contract: candidates must
+stay separate from established decisions, concurrent edits must fail loudly,
+and every record must be attributable. Options were a separate proposal
+table, or lifecycle states on the existing record.
+**Decision:** One record table, widened lifecycle: `proposed` (never
+retrieved, never in the default list), promoted to `active` by `accepted` or
+tombstoned by `rejected` — both recorded as distinct audit actions. Every
+record carries a monotonic `revision` (every in-place change bumps it) and a
+record-level `actor` mirroring the latest audit entry. `PATCH` accepts an
+optional `expected_revision`; a mismatch is `memory_conflict` (409) with the
+current revision included. Migration v7 rebuilds `memories` under the new
+CHECKs, snapshotting children first because dropping the parent fires their
+CASCADE actions even with deferred constraints.
+**Consequence:** Proposals share identity, history and supersession edges
+with facts instead of living in a parallel store with weaker guarantees;
+lost-update races become actionable conflicts. Cost: one table rebuild, and
+every write path (create, update, correct, expire, delete, accept, reject)
+must now maintain the counter — enforced by the contract test suite rather
+than convention.

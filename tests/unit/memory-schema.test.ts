@@ -115,6 +115,10 @@ describe('MemorySchema', () => {
     supersedes: [],
     superseded_by: null,
     tags: ['database', 'architecture'],
+    // The brief's example predates the record contract (roadmap §6): every
+    // stored record now also carries its edit counter and latest actor.
+    revision: 1,
+    actor: 'user',
   };
 
   it('accepts the canonical example from the brief', () => {

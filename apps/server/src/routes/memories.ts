@@ -43,6 +43,13 @@ import type { AppConfig } from '../config.js';
 
 const IdParamsSchema = z.object({ id: z.uuid() });
 
+/**
+ * Proposal decisions carry an optional human-readable reason. The proposal
+ * body itself reuses MemoryCreateInputSchema plus an explicit actor split
+ * out in the route handler.
+ */
+const ProposalDecisionSchema = z.object({ reason: z.string().max(1_000).optional() });
+
 /** Query-string booleans arrive as `"true"`/`"false"`. */
 const Booleanish = z
   .union([z.boolean(), z.enum(['true', 'false'])])
@@ -145,6 +152,35 @@ export function registerMemoryRoutes(
     const result: MemoryCreateResult = MemoryCreateResultSchema.parse(engine.create(input));
     // 201 only when a row was actually written; a deduplicated replay is 200.
     return reply.status(result.created ? 201 : 200).send(apiSuccess(result));
+  });
+
+  // --- Proposals (roadmap §6: candidates kept apart from established facts) --
+  // Proposals never enter retrieval; they are listed explicitly with
+  // `?status=proposed` and decided through the routes below. A browser is a
+  // `user` when deciding, while the proposal body names the originating
+  // actor explicitly (default: an agent candidate).
+  app.post('/api/memories/proposals', async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const { actor = 'agent', ...memoryFields } = body;
+    const parsedActor = z.enum(['agent', 'system']).parse(actor);
+    const input: MemoryCreateInput = MemoryCreateInputSchema.parse(memoryFields);
+    const result: MemoryCreateResult = MemoryCreateResultSchema.parse(
+      engine.propose(input, parsedActor),
+    );
+    return reply.status(result.created ? 201 : 200).send(apiSuccess(result));
+  });
+
+  app.post('/api/memories/:id/accept', async (request) => {
+    const { id } = IdParamsSchema.parse(request.params);
+    const body = ProposalDecisionSchema.parse(request.body ?? {});
+    return apiSuccess(engine.acceptProposal(id, { reason: body.reason }));
+  });
+
+  app.post('/api/memories/:id/reject', async (request) => {
+    const { id } = IdParamsSchema.parse(request.params);
+    const body = ProposalDecisionSchema.parse(request.body ?? {});
+    engine.rejectProposal(id, { reason: body.reason });
+    return apiSuccess(DeleteResultSchema.parse({ id, deleted: true }));
   });
 
   // --- Update --------------------------------------------------------------
