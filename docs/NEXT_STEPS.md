@@ -167,7 +167,12 @@ now is maintenance honesty, not new surface:
   "scripts"), or a proposal stated as such ("for example `pnpm demo:offline`"
   in the readiness plan, which the shipped `demo:seed` + echo provider
   already satisfies). A judge typing any documented command hits no phantom
-  step, in any file, not just the curated ones.
+  step, in any file, not just the curated ones. The same full-repo sweep
+  then checked every relative link in those 127 markdown files: zero
+  broken. (Five apparent hits were `...mp4?raw=true` links — GitHub's
+  raw-view query syntax; the mp4 blob exists on every branch, ffprobe'd
+  in #116. Naive path checks flag these; future sweeps should strip the
+  query first — noted so nobody chases five fake ghosts again.)
   - Re-witness rotation complete as of 31 Oct: every operator-facing claim
     has a witness AT post-cadence head — settings/tags census (2×, #91),
     judge demo seed path (2×, #93), local browser gate 48/48 (#94), MCP
