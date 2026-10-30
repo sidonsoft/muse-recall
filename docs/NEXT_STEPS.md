@@ -47,9 +47,13 @@ repository's working backlog; completed items stay for the audit trail.
 7. **Remove the legacy raw `memoryBlock` input.**
    Freeze a local prompt snapshot for the Phase 15A historical protocol, then delete the
    raw input path from production prompt construction.
-8. **Surface recovery issues in the System screen.**
+8. **Surface recovery issues in the System screen.** — **Done (2026-10-30).**
    The Studio banner reports them; add a read-only recovery summary to the System status
-   page for operators who do not open a project.
+   page for operators who do not open a project. `GET /api/health` now carries a
+   store-wide `forge` summary (storage state, open/acknowledged notice counts, current
+   and startup interrupted-job counts, up to five issues), and the System screen renders
+   it as a read-only panel. Acknowledgement and repair deliberately stay in the Studio
+   project view.
 
 ## P2 — explicitly out of scope for this milestone
 

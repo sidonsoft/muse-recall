@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ForgeRecoveryIssueSchema } from './forge.js';
 
 export const ServiceStatusSchema = z.enum(['ok', 'degraded', 'error']);
 export type ServiceStatus = z.infer<typeof ServiceStatusSchema>;
@@ -50,6 +51,23 @@ export const DatabaseCheckSchema = ComponentCheckSchema.extend({
 });
 export type DatabaseCheck = z.infer<typeof DatabaseCheckSchema>;
 
+/**
+ * Store-wide Forge recovery summary for operators who have not opened a
+ * project (NEXT_STEPS P1 #8). Read-only display data: acknowledgement and
+ * repair stay in the Studio project view, which remains the full source.
+ */
+export const ForgeHealthSummarySchema = z.object({
+  storage_ok: z.boolean(),
+  unacknowledged_issues: z.number().int().min(0),
+  acknowledged_issues: z.number().int().min(0),
+  interrupted_jobs_current: z.number().int().min(0),
+  interrupted_jobs_startup: z.number().int().min(0),
+  loaded_jobs_startup: z.number().int().min(0),
+  /** Display subset; bounded so health stays a small, fast payload. */
+  issues: z.array(ForgeRecoveryIssueSchema).max(5),
+});
+export type ForgeHealthSummary = z.infer<typeof ForgeHealthSummarySchema>;
+
 export const HealthResponseSchema = z.object({
   status: ServiceStatusSchema,
   service: z.literal('muse-memory-lab'),
@@ -59,6 +77,7 @@ export const HealthResponseSchema = z.object({
   timestamp: z.iso.datetime(),
   database: DatabaseCheckSchema,
   provider: ProviderCheckSchema,
+  forge: ForgeHealthSummarySchema.optional(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
