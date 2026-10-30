@@ -78,6 +78,13 @@ duplicate header (which `light-my-request` cannot even send) was refused 400 as 
 short keys refused too. The in-flight 409 race stays pinned by the in-process tests — over
 HTTP a server this fast cannot reliably be forced into that window, and we do not claim
 what we could not reproduce.
+Post-cadence (after ~30 merges) it was re-observed at head: a same-key
+retry of `POST /api/memories` returned the 201 with byte-identical body and
+the SAME memory id, and the project list showed exactly one row. The round
+also surfaced a quiet detail now stated for the first time: a recorded
+FAILURE replays too — my first attempt sent an invalid `type` (400
+validation), and the retry returned that 400 byte-identically instead of
+re-running the handler. Idempotency remembers outcomes, not just successes.
 
 - **HTTP API** (Fastify; routes in [app.ts](../../apps/server/src/app.ts) and
   [routes/](../../apps/server/src/routes)):
