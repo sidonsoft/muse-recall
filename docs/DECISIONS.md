@@ -605,3 +605,26 @@ queue bookkeeping. Cost: the queue query recomputes each load (trivial at
 single-user scale — one indexed scan), and horizon semantics are deliberately
 "as of the moment of the call", so a UI showing counts is a snapshot, not a
 subscription.
+
+---
+
+### D045 — Groundwork, not theatre: an optional shared bearer token
+
+**Context:** Gap G-6: the loopback bind IS the security boundary, and roadmap §5
+lists authentication/quota/credential controls as remote-deployment
+prerequisites. Building a full identity system now would be speculative;
+shipping nothing leaves the loopback assumption untestable in deployment.
+**Decision:** Add ONE optional credential: `ACCESS_TOKEN` (≥16 chars).
+Unset — the default — leaves the single-user beta bit-for-bit untouched (no
+header, no friction). Set — every `/api` route except `GET /api/health`
+requires `Authorization: Bearer`, compared over SHA-256 digests with
+`timingSafeEqual`; the check runs BEFORE the origin guard (401 before 403);
+the Host-name check relaxes only in token mode (rebinding can deliver a
+request but cannot attach the secret); a non-loopback `HOST` becomes
+configurable and the post-bind re-check logs a warning naming the exposed
+addresses. `/api/meta` reports `safety.authentication` so the posture is
+introspectable, not inferred.
+**Consequence:** This is authentication WITHOUT identity: one secret = one
+operator. The docs say so; the meta field says so; anything beyond
+(shared-secret rotation UI, per-project authorization, quotas) stays open in
+G-6 rather than being implied by a green "auth enabled" flag.

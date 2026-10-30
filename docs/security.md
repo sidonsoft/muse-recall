@@ -15,7 +15,7 @@ product.
 | T3 | Generated UI executes model-authored JavaScript | Full client compromise | **Split**: declarative UI never executes model code; HTML Studio JavaScript runs only in a sandboxed opaque-origin iframe |
 | T4 | API key leaks to the browser | Credential theft | **Prevented**: keys stay in the server/CLI environment and travel to the CLI over stdin |
 | T5 | Malformed or hostile HTTP input crashes the server | Denial of service | **Handled**: Zod validation + envelope + safe error mapping |
-| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app) |
+| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated by default**: with `ACCESS_TOKEN` unset, startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app). An operator MAY set `ACCESS_TOKEN` for a deliberate off-loopback bind — see “Remote-access groundwork” below |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
 | T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; operator-owned OS isolation is available via the probed `FORGE_WORKER_WRAPPER` launch seam (default local beta still runs as the server user) |
 | T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job and version promotion, schema validation, explicit recovery issues, no silent state reset, verified version hashes |
@@ -182,19 +182,43 @@ paths, not absolute host paths.
 **Envelope discipline.** Clients get exactly one response shape, so a failure is never
 silently treated as an empty success.
 
-**Loopback bind.** `HOST` must be `127.0.0.1`, `::1`, or `localhost`; any other value (including
-`0.0.0.0`) stops startup. After `listen`, every bound socket is checked again so a `localhost`
-that resolves off-loopback is also refused. This is the network boundary: the Host-header check
-below is not, because a client that reaches a non-loopback socket can send any `Host` it likes.
+**Loopback bind (default).** `HOST` must be `127.0.0.1`, `::1`, or `localhost`; any other value
+(including `0.0.0.0`) stops startup. After `listen`, every bound socket is checked again so a
+`localhost` that resolves off-loopback is also refused. This is the network boundary: the
+Host-header check below is not, because a client that reaches a non-loopback socket can send
+any `Host` it likes. The one exception is a deliberate `ACCESS_TOKEN` configuration (below),
+where the re-check logs a warning instead of refusing.
 
-**Host/origin guards.** Requests must name a loopback host. State-changing requests with a
-foreign or `null` Origin are rejected; CORS only allows configured local origins.
+**Host/origin guards.** In the default (tokenless) mode requests must name a loopback host.
+State-changing requests with a foreign or `null` Origin are rejected; CORS only allows
+configured local origins. With `ACCESS_TOKEN` set, the Host *name* check relaxes (the port must
+still match): DNS rebinding can deliver a request but cannot attach the bearer secret, which the
+timing-safe check enforces first — 401 precedes any origin verdict.
+
+## Remote-access groundwork (2026-10-30, decision D045)
+
+`ACCESS_TOKEN` (≥16 chars) switches the trust model: every `/api` route except
+`GET /api/health` requires `Authorization: Bearer <token>` (compared over SHA-256 digests,
+timing-safe); a non-loopback `HOST` becomes permissible and the startup re-check logs a
+warning naming the exposed addresses. Browser clients pick the secret up from
+`localStorage['mml.access_token']`; curl/MCP-style clients set the header directly.
+`GET /api/meta` reports `safety.authentication` as `loopback-only` or `shared-token` —
+the server states its own posture instead of letting operators infer it.
+
+This is deliberately **authentication without identity**: one shared secret, no users, no
+per-project authorization, no rotation UI, no expiry. The token in `localStorage` is
+readable by any script on the served page, so pair token mode with the origin guard you
+already get — and remember the secret travels over plain HTTP unless you terminate TLS
+yourself. Multi-user deployment still needs the roadmap §5 controls (identity, scoped
+credentials, quotas); setting this token does not provide them.
 
 ## Deployment
 
-Authentication, per-user namespaces, CSRF tokens, and rate limiting are **not**
-implemented. The loopback bind, host/origin guards, and absence of a public URL are the
-only controls keeping the API private. Do not expose this build to a network.
+Beyond the optional shared token: per-user namespaces, CSRF tokens, and rate limiting are
+**not** implemented. The loopback bind, host/origin guards, optional bearer token, and
+absence of a public URL are the only controls keeping the API private. Do not expose this
+build to a network without setting `ACCESS_TOKEN` — and treat that as groundwork, not a
+multi-user security boundary.
 
 ## Repository hygiene
 

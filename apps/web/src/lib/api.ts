@@ -69,6 +69,7 @@ import {
   UiSurfaceListSchema,
 } from '@mml/ui-protocol';
 import { z } from 'zod';
+import { authorizationHeader } from './access-token.ts';
 
 /**
  * Typed API client.
@@ -106,7 +107,10 @@ async function request<T>(
   try {
     // Only declare a JSON content type when a body is actually sent: Fastify
     // rejects an empty payload announced as application/json.
-    const headers: Record<string, string> = { ...((init.headers as Record<string, string>) ?? {}) };
+    const headers: Record<string, string> = {
+      ...authorizationHeader(),
+      ...((init.headers as Record<string, string>) ?? {}),
+    };
     if (init.body !== undefined && init.body !== null) {
       headers['content-type'] = 'application/json';
     }

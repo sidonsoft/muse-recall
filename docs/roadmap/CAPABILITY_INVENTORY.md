@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (7 migrations, backup/purge, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 58 files / 821 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 60 files / 835 tests (3 skipped) behind `pnpm verify`; browser gate on two engines | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -106,12 +106,17 @@ idempotency keys, and a machine-readable error catalogue remain open.**
 
 ## 4. Trust boundary
 
-**Status: Partial. Structural guards and approval/audit exist; identity and authorization do not.**
+**Status: Partial. Structural guards, approval/audit, and (since 2026-10-30) an optional shared-token authentication layer exist; identity and per-project authorization do not.**
 
-- **Loopback-only**: non-loopback bind refused at startup; Host-header validation blocks
-  DNS rebinding ([host-guard.ts](../../apps/server/src/host-guard.ts)); origin guard for
+- **Loopback-only by default**: non-loopback bind refused at startup; Host-header validation
+  blocks DNS rebinding ([host-guard.ts](../../apps/server/src/host-guard.ts)); origin guard for
   browser clients ([origin-guard.ts](../../apps/server/src/origin-guard.ts)) with CI test
   [forge-origin-guard.test.ts](../../tests/integration/forge-origin-guard.test.ts).
+- **Optional shared bearer token** (2026-10-30, gap G-6 groundwork, D045):
+  `ACCESS_TOKEN` gates every `/api` route (liveness excepted) with a timing-safe Bearer check
+  that runs before the origin guard; enables a deliberate off-loopback bind (startup re-check
+  warns instead of refusing); `/api/meta` states the posture (`loopback-only` | `shared-token`);
+  web client sends it from `localStorage`. Tests: [access-token-auth.test.ts](../../tests/integration/access-token-auth.test.ts).
 - **Approval is two-phase** (D032 in [DECISIONS.md](../DECISIONS.md)): write tool calls
   persist as `pending`; `POST /api/sessions/:id/tools/:callId/decision` approves or denies.
   Forge approvals bind to an exact-byte SHA-256 and refuse stale bases (CAS) — see
@@ -127,9 +132,11 @@ idempotency keys, and a machine-readable error catalogue remain open.**
   external-assets); advisories recorded but
   a human can proceed ("advisory-blocked-but-approved" in
   [forge-decision-guard.test.ts](../../tests/integration/forge-decision-guard.test.ts)).
-- **Absent:** identity, authentication, per-project authorization for remote clients, quotas,
-  credential lifecycle. The threat model in [security.md](../security.md) (T1–T10) covers the
-  local-beta case only.
+- **Absent:** identity (the token authenticates without identifying), per-project
+  authorization for remote clients, quotas, credential lifecycle (rotation/expiry), and the
+  adversarial suite that roadmap §5 makes a release criterion. The threat model in
+  [security.md](../security.md) (T1–T10) covers the local-beta case; token mode documents its
+  own residual risks in that file.
 
 ## 5. Application layer
 
@@ -194,8 +201,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-8/G-9-queue/G-11/G-12):** 58 files,
-  **821 passed, 3 skipped (824)**; the browser workflow now runs 45 checks
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12):** 60 files,
+  **835 passed, 3 skipped (838)**; the browser workflow now runs 45 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -248,7 +255,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M | **Closed** (migration v7 + D038, 2026-10-30) |
 | G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | **Closed** (envelope + D039, 2026-10-30) |
 | G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | **Closed** (MCP stdio surface + TOOL_CONTRACT_VERSION + conformance tests, D043, 2026-10-30) |
-| G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | Open |
+| G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | **Partial** (optional shared bearer token + token-aware bind/Host guards + posture in meta, D045; identity/scoping/rotation remain, 2026-10-30) |
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | **Closed** (v1.5.0 autoplay-media + external-assets, 22 corpus rows, 2026-10-30) |
 | G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
 | G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | **Partial** (review queue shipped 2026-10-30, D044; graph/timeline remain) |
@@ -261,7 +268,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 821 pass / 3 skip
+pnpm run verify                                                    # 835 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

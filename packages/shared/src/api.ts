@@ -38,6 +38,7 @@ export const API_ERROR_CODES = {
   invalidHost: 'invalid_host',
   forbiddenOrigin: 'forbidden_origin',
   notFound: 'not_found',
+  unauthorized: 'unauthorized',
   validationFailed: 'validation_failed',
   providerUnavailable: 'provider_unavailable',
   internal: 'internal_error',
