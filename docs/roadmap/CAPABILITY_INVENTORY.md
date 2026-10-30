@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, optional shared bearer token (D045), two-phase approval, audit; **no identity/per-project authorization** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** — explorer with review queue, timeline stream, SVG relationship map (G-9 closed); four surfaces | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 72 files / 907 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (49 checks incl. visual slots); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 73 files / 909 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (49 checks incl. visual slots); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -241,19 +241,19 @@ durability) closed 2026-10-30.**
 
 **Status: Implemented.**
 
-- **Unit/integration/evaluation/research suites**: **72 test files (31 Oct 2026)** —
-  41 unit, 25 integration (API, Forge lifecycle, recovery, origin guards, Codespaces,
+- **Unit/integration/evaluation/research suites**: **73 test files (31 Oct 2026)** —
+  42 unit, 25 integration (API, Forge lifecycle, recovery, origin guards, Codespaces,
   error-catalogue drift, idempotency, alerting, graph/demo-seed regressions, child-env
-  policy, session-stack schema promises), 5 evaluation
+  policy, session-stack schema promises, idempotency TTL), 5 evaluation
   (decision-guard accuracy corpus, forge-memory), 1 research (Phase 17 evidence). At the
   first recorded baseline below the census was 47 (27/14/5/1) — composition of the same
-  four families, grown by this cycle's 25 files.
+  four families, grown by this cycle's 26 files.
 - **Recorded baseline (this checkout, `integration@0c124e5`):** `pnpm verify` green —
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-31, after the session-cascade schema pins): 72 files,
-  **907 passed, 3 skipped (910)**; the browser workflow runs
+  **Updated baseline (2026-10-31, after the idempotency-TTL pin): 73 files,
+  **909 passed, 3 skipped (912)**; the browser workflow runs
   49 checks across two engines (managed Chromium and managed Firefox) — 48 local on
   darwin, plus per-engine visual snapshot slots against committed linux-* baselines
   (tests/visual) — the +1 since 2026-10-30 is the System-view alert-signals check
@@ -286,7 +286,11 @@ durability) closed 2026-10-30.**
     is `UNIQUE (session_id, sequence)`, not clock order — migrations v3–v6 →
     [session-cascade.test.ts](../../tests/unit/session-cascade.test.ts);
   - the judges' demo seed is bit-identical across runs (engine clock pinned) —
-    `scripts/lib/demo-seed.ts` → [demo-seed-graph.test.ts](../../tests/integration/demo-seed-graph.test.ts).
+    `scripts/lib/demo-seed.ts` → [demo-seed-graph.test.ts](../../tests/integration/demo-seed-graph.test.ts);
+  - idempotency replay records are TRANSIENT by design: 24h TTL, boundary-inclusive
+    cutoff (`created_at < cutoff`), purge runs before every decision —
+    [idempotency.ts](../../apps/server/src/idempotency.ts) →
+    [idempotency-ttl.test.ts](../../tests/unit/idempotency-ttl.test.ts).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
   and "Managed browser workflow (fake provider)" (Playwright Chromium) are *required
   status checks* on `integration` via the "Protect integration" ruleset; a second
@@ -350,7 +354,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 907 pass / 3 skip
+pnpm run verify                                                    # 909 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval
