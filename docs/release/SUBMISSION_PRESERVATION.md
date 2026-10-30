@@ -136,6 +136,15 @@ commit on 4 Nov, per the manifest above.
    the submitted commit IS `c32d03b`; otherwise it is simply the same
    deterministic procedure on a different tree.
 
+The same quickstart was repeated later on 31 Oct as a **clean clone of
+`integration` at head** (clone → `pnpm install --frozen-lockfile` → build →
+`cp .env.example .env` → `demo:seed` → built server → health 200): the scoped
+list shows the two seeded memories and the graph shows 3 nodes with the one
+edge stamped exactly `2026-10-27T00:00:00.000Z` — identical to the `main`
+rehearsal, confirming the working branch keeps the judge path green as it
+diverges upward from the frozen entry. Server killed, port verified empty,
+clone removed.
+
 Freeze separation confirmed by the same smoke: the judges' entry does NOT
 carry integration-only surfaces — `GET /api/memories/graph` (added to
 `integration` after the entry) answers `validation_failed` on `main`,
