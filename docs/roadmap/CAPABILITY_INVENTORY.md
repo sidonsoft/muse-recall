@@ -237,9 +237,12 @@ durability) closed 2026-10-30.**
 
 **Status: Implemented.**
 
-- **Unit/integration/evaluation/research suites**: 47 test files — 27 unit, 14 integration
-  (API, Forge lifecycle, recovery, origin guards, Codespaces), 5 evaluation (decision-guard
-  accuracy corpus, forge-memory), 1 research (Phase 17 evidence).
+- **Unit/integration/evaluation/research suites**: **70 test files (31 Oct 2026)** —
+  39 unit, 25 integration (API, Forge lifecycle, recovery, origin guards, Codespaces,
+  error-catalogue drift, idempotency, alerting, graph/demo-seed regressions), 5 evaluation
+  (decision-guard accuracy corpus, forge-memory), 1 research (Phase 17 evidence). At the
+  first recorded baseline below the census was 47 (27/14/5/1) — composition of the same
+  four families, grown by this cycle's 23 files.
 - **Recorded baseline (this checkout, `integration@0c124e5`):** `pnpm verify` green —
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
