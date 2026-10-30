@@ -394,3 +394,55 @@ something it should not have.
 Results are stored as JSON; no secret material is logged.
 **Consequence:** The demo can be verified from the database, and a prompt-injection attempt
 appears as a denied or pending call rather than disappearing.
+
+---
+
+### D035 — Atomic writes are fsynced before they are published
+
+**Context:** Temp-file-plus-rename makes a reader see either the old or the new
+record, but after a power loss a published rename can point at bytes that never
+reached the device. Forge's promise is that acknowledged writes and approved
+versions survive.
+**Decision:** Every Forge atomic write fsyncs the temporary file before its
+rename and syncs the containing directory after (`syncFile` strict,
+`syncDirectory` best-effort with the tradeoff written in the code). Version
+promotion also syncs the approved `index.html` before the version directory is
+renamed in, so the state pointer can never name bytes that are not on disk.
+**Consequence:** Acknowledged writes survive power loss, not just torn reads.
+Cost: one fsync per persistence operation (visible in job throughput but small
+at Studio scale); on platforms that refuse directory fsync the guarantee
+degrades to "bytes durable, entry may be absent", which is documented rather
+than hidden.
+
+---
+
+### D036 — Historical research prompts are frozen snapshots, not compatibility inputs
+
+**Context:** The Phase 15A trial reconstructs recorded `prompt_sha256` values,
+which kept a legacy raw-text memory input alive inside the production prompt
+builder. The evaluation harnesses used that same raw path, so measured prompts
+had already drifted from the structured rendering production actually sends.
+**Decision:** Copy the builder at the freeze commit into
+`scripts/lib/phase15a-prompt-snapshot.ts` with provenance recorded, pin it with
+byte-fixture tests, and delete the raw input from the production builder.
+Harnesses pass structured retrieval records from now on.
+**Consequence:** Production has one memory path, so eval output measures what
+the server sends. Cost: new prompt wording no longer applies retroactively to
+Phase 15A evidence — that is intentional, the snapshot freezes it instead.
+
+---
+
+### D037 — Recovery has two read surfaces and one guarded repair action
+
+**Context:** A damaged `state.json` made a project look empty and left operators
+with no way to see or fix recovery state without host filesystem access.
+**Decision:** Three deliberate surfaces: per-project Studio inspection
+(`GET .../recovery/state`, never throws on damage), a store-wide read-only
+summary embedded in `/api/health` for the System screen, and one guarded
+action (`POST .../recovery/repair`) that refuses on valid state (`state_valid`,
+409) and always archives the damaged bytes before rebuilding from surviving
+approved versions. Acknowledgement and repair stay out of the System screen.
+**Consequence:** Damage is visible at both scopes and repairable without a
+shell. Cost: repair trusts surviving version bytes as the source of truth; the
+archive keeps the disputed file inspectable, and the managed browser workflow
+now exercises the whole corrupt-inspect-repair loop as a standing gate.

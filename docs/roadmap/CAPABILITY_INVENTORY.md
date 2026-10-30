@@ -49,8 +49,11 @@ Statuses here describe the code as it exists today. They do not assert release r
 - **Capture** ([memory-capture.ts](../../packages/agent-core/src/memory-capture.ts)):
   explicit "remember …", correction detection, deterministic supersession targeting, and
   candidate proposals that require user confirmation before saving.
-- **Gaps vs roadmap §6:** no explicit `revision` field, no `actor` field, no `proposed`
-  lifecycle state (candidates exist at the capture layer, not in the record schema);
+- **Gaps vs roadmap §6:** no explicit `revision` field; no `actor` field on the record
+  itself (actors are already recorded per transition on history entries
+  (`MemoryHistoryEntry.actor`: `user|agent|system`) and threaded through engine calls, so
+  the contract gap is a current-actor/origin field on the record, not a missing audit
+  dimension); no `proposed` lifecycle state (candidates exist at the capture layer, not in the record schema);
   no export/import path anywhere (no export route in
   [routes/memories.ts](../../apps/server/src/routes/memories.ts), nothing in
   [engine.ts](../../packages/memory-engine/src/engine.ts)).
@@ -208,7 +211,7 @@ Sizes: S = hours, M = days, L = multi-day.
 |---|---|---|---|---|
 | G-1 | `state_corrupt` user-facing export/repair flow | §6 | [NEXT_STEPS P0 #3](../NEXT_STEPS.md); §8 recovery | M |
 | G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L |
-| G-3 | Record contract gaps: `revision`, `actor`, `proposed` state | §2 | §6 "Establish the record contract" | M |
+| G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M |
 | G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M |
 | G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L |
 | G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L |
