@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { MemoryTypeSchema } from '@mml/shared';
+import {
+  MemoryGraphEdgeSchema,
+  MemoryGraphEventSchema,
+  MemoryGraphNodeSchema,
+  MemoryTypeSchema,
+} from '@mml/shared';
 import { z } from 'zod';
 import { ToolRegistry } from './registry.js';
 import type { ToolContext } from './types.js';
@@ -12,6 +17,17 @@ import { defineTool } from './types.js';
  * session context, never from model arguments. There is no shell, filesystem,
  * or network tool in this phase.
  */
+
+const MemoryGraphInput = z.object({
+  limit: z.number().int().min(1).max(500).optional(),
+});
+const MemoryGraphOutput = z.object({
+  nodes: z.array(MemoryGraphNodeSchema),
+  edges: z.array(MemoryGraphEdgeSchema),
+  events: z.array(MemoryGraphEventSchema),
+  truncated: z.boolean(),
+  observed_at: z.string(),
+});
 
 const MemorySearchInput = z.object({
   query: z.string().min(2).max(300),
@@ -145,6 +161,25 @@ export function createDefaultToolRegistry(): ToolRegistry {
           })),
         };
       },
+    }),
+  );
+
+  registry.register(
+    defineTool({
+      id: 'memory.graph',
+      description:
+        'Read the relationship graph and timeline of memories: supersession edges ' +
+        '(which claim replaced which, and when) plus recent created/corrected events. ' +
+        'Read-only; deleted memories never appear.',
+      sideEffect: 'read',
+      requiresConfirmation: false,
+      input: MemoryGraphInput,
+      output: MemoryGraphOutput,
+      execute: (input, context) =>
+        context.memory.graph({
+          ...(context.projectId ? { projectId: context.projectId } : {}),
+          ...(input.limit ? { limit: input.limit } : {}),
+        }),
     }),
   );
 

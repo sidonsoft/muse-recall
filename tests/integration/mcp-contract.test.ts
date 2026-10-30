@@ -68,6 +68,8 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
     expect(search?.annotations?.readOnlyHint).toBe(true);
     const create = tools.find((tool) => tool.name === 'memory_create');
     expect(create?.annotations?.readOnlyHint).toBe(false);
+    const graphInfo = tools.find((tool) => tool.name === 'memory_graph');
+    expect(graphInfo?.annotations?.readOnlyHint).toBe(true);
     const inputSchema = search?.inputSchema as { properties?: Record<string, unknown> };
     expect(Object.keys(inputSchema.properties ?? {})).toEqual(['query', 'limit']);
   });
@@ -103,6 +105,17 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
 
     const project = await client.callTool({ name: 'project_get', arguments: {} });
     expect((project.structuredContent as { project: { id: string } }).project.id).toBe('demo');
+
+    // D052 graph surface over MCP: same edges/events as REST, one registry.
+    const graph = await client.callTool({ name: 'memory_graph', arguments: {} });
+    expect(graph.isError).toBeFalsy();
+    const graphOut = graph.structuredContent as {
+      nodes: { id: string }[];
+      events: { kind: string }[];
+      truncated: boolean;
+    };
+    expect(graphOut.nodes.length).toBeGreaterThanOrEqual(1);
+    expect(graphOut.events.some((event) => event.kind === 'created')).toBe(true);
   });
 
   it('runs writes only under the operator startup flag, then they persist', async () => {

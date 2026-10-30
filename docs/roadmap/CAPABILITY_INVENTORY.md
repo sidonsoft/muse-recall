@@ -15,7 +15,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Capability area | Status | Headline evidence |
 |---|---|---|
 | Memory core (records, retrieval, correction, export/import) | **Implemented** — record contract and export/import closed 2026-10-30 | [memory.ts](../../packages/shared/src/memory.ts), [engine.ts](../../packages/memory-engine/src/engine.ts) |
-| Integration layer (contract, MCP) | **Partial** — REST + six tools + Muse CLI provider; **no MCP** | [routes/](../../apps/server/src/routes), [tools.ts](../../packages/tool-runtime/src/tools.ts), [muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts) |
+| Integration layer (contract, MCP) | **Implemented (beta)** — REST + seven tools + MCP stdio server + Muse CLI provider | [routes/](../../apps/server/src/routes), [tools.ts](../../packages/tool-runtime/src/tools.ts), [muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts) |
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
@@ -89,15 +89,16 @@ covers `POST /api/memories` and Forge generation — D049; §3's named remainder
     ([routes/forge.ts](../../apps/server/src/routes/forge.ts)).
   - Ops: `GET /api/health`, `POST /api/health/muse`, `GET /api/live`, `GET /api/meta`,
     `POST /api/provider/generate`.
-- **Six tools** ([tools.ts](../../packages/tool-runtime/src/tools.ts)) with declared
-  side-effect class: `memory.search` (read), `memory.create` (write), `project.get` (read),
+- **Seven tools** ([tools.ts](../../packages/tool-runtime/src/tools.ts), contract v2) with declared
+  side-effect class: `memory.search` (read), `memory.graph` (read, D052 parity),
+  `memory.create` (write), `project.get` (read),
   `project.update` (write), `task.create` (write), `task.list` (read). Registry enforces
   Zod validation and confirmation for writes ([registry.ts](../../packages/tool-runtime/src/registry.ts)).
 - **Muse CLI provider** ([muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts)):
   stateless `muse exec --json` adapter; verified behaviour in
   [muse-integration.md](../muse-integration.md). An `echo-provider.ts` exists for offline/Codespaces use.
 - **MCP surface** ([packages/mcp-server](../../packages/mcp-server/src/index.ts), stdio entry
-  [main.ts](../../packages/mcp-server/src/main.ts), `pnpm mcp:serve`): the same six tools over
+  [main.ts](../../packages/mcp-server/src/main.ts), `pnpm mcp:serve`): the same seven tools over
   the Model Context Protocol from the same `createDefaultToolRegistry()`; JSON Schemas (input
   AND output) derived from the tools' zod contracts so clients can validate structured results;
   project scope and the writes policy are startup-bound, never model-supplied; a
@@ -227,7 +228,7 @@ durability) closed 2026-10-30.**
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
   **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 69 files,
-  **885 passed, 3 skipped (888)**; the browser workflow now runs 47 checks
+  **887 passed, 3 skipped (890)**; the browser workflow now runs 47 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -293,7 +294,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 885 pass / 3 skip
+pnpm run verify                                                    # 887 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval
