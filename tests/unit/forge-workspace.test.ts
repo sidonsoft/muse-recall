@@ -1,7 +1,8 @@
-import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ensurePrivateDirectory, writePrivateFile } from '../../apps/server/src/forge/fs-utils.js';
 import {
   extractInlineScripts,
   ForgeError,
@@ -460,5 +461,46 @@ describe('approved-version containment (adversarial witness, 31 Oct)', () => {
       code: 'unsafe_file',
     });
     await rm(outside, { recursive: true, force: true });
+  });
+});
+
+describe('owner-only workspace layout (adversarial witness, 31 Oct)', () => {
+  // fs-utils comments promise "a directory that only the owning user can
+  // enter" and owner-only files, but only the backup path asserted the bits.
+  // This pins the promise where the Forge workspace actually lays out.
+  // Deliberately NOT asserted here: version-file bits, which inherit from
+  // whatever wrote them into staging (the production runner uses
+  // writePrivateFile -> 0600; a test's writeFile would not) - claiming a bit
+  // nobody sets would be a false guard.
+
+  it('lays out workspace dirs at 0700 and state.json at 0600', async () => {
+    await workspace.ensureProject('demo-game');
+    const base = join(root, 'forge', 'demo-game');
+    for (const dir of [
+      join(root, 'forge'),
+      base,
+      join(base, 'versions'),
+      join(base, 'staging'),
+      join(base, 'jobs'),
+    ]) {
+      expect(((await stat(dir)).mode & 0o777).toString(8)).toBe('700');
+    }
+    expect(((await stat(join(base, 'state.json'))).mode & 0o777).toString(8)).toBe('600');
+  });
+
+  it('helpers pin the exact bits under an open umask', async () => {
+    // mkdir(mode) is umask-masked on the way in; the helpers' explicit chmod
+    // must pin the exact bits anyway.
+    const previous = process.umask(0o000);
+    try {
+      const dir = join(root, 'umask-probe');
+      await ensurePrivateDirectory(dir);
+      const file = join(dir, 'payload');
+      await writePrivateFile(file, 'x');
+      expect(((await stat(dir)).mode & 0o777).toString(8)).toBe('700');
+      expect(((await stat(file)).mode & 0o777).toString(8)).toBe('600');
+    } finally {
+      process.umask(previous);
+    }
   });
 });

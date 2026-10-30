@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, optional shared bearer token (D045), two-phase approval, audit; **no identity/per-project authorization** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** — explorer with review queue, timeline stream, SVG relationship map (G-9 closed); four surfaces | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 76 files / 920 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (49 checks incl. visual slots); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 76 files / 922 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (49 checks incl. visual slots); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -261,10 +261,10 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Re-refresh (31 Oct, after the approved-version containment witness): 76 test
-  files, 920 passed, 3 skipped (923).** The 3 new tests extend the existing
-  `forge-workspace.test.ts` (file census unchanged at 76); skips remain the
-  opt-in live suite, green at head (#102).
+  **Re-refresh (31 Oct, after the approved-version containment and owner-only
+  layout witnesses): 76 test files, 922 passed, 3 skipped (925).** The 5 new
+  tests extend the existing `forge-workspace.test.ts` (file census unchanged
+  at 76); skips remain the opt-in live suite, green at head (#102).
   **Updated baseline (2026-10-31, after the stored-JSON integrity matrix): 76 files,
   **917 passed, 3 skipped (920)**; the browser workflow runs
   49 checks across two engines (managed Chromium and managed Firefox) — 48 local on
@@ -330,7 +330,13 @@ durability) closed 2026-10-30.**
     invisible to the lstat layer (final component is a regular file THROUGH
     the link) and only the realpath re-check refuses it; all three land on
     `unsafe_file`. Staging-side escapes were witnessed from day one; the
-    READ side of the same promise had never been attacked until now.
+    READ side of the same promise had never been attacked until now;
+  - Forge workspace is owner-ONLY on disk — dirs 0700, `state.json` 0600,
+    and the `ensurePrivateDirectory`/`writePrivateFile` helpers pin EXACT
+    bits under an open umask (mkdir's mode is umask-masked; the explicit
+    chmod is the real guarantee) — same test file, layout block; version-file
+    bits deliberately NOT asserted (they inherit the staging writer; the
+    runner's 0600 is witnessed there, a test's 0644 would not be).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
   and "Managed browser workflow (fake provider)" (Playwright Chromium) are *required
   status checks* on `integration` via the "Protect integration" ruleset; a second
@@ -394,7 +400,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 920 pass / 3 skip
+pnpm run verify                                                    # 922 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval
