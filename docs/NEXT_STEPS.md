@@ -160,10 +160,14 @@ now is maintenance honesty, not new surface:
   Two reference audits ran at head on 31 Oct with clean results, recorded
   so they need not be guessed at: every `DNNN` cited in docs or code
   resolves to a defined decision (54/54, zero dangling — the D027 skip is
-  now annotated in DECISIONS.md), and every `pnpm <script>` named in the
-  six living docs exists in a package.json (the only regex hits were
-  `install`/`exec`/`workspace`, i.e. not script names). A judge typing any
-  documented command hits no phantom step.
+  now annotated in DECISIONS.md), and the pnpm-command audit — first run
+  over the six living docs, then extended to ALL 127 markdown files in the
+  repo — found zero phantom script references: every regex hit was a
+  direct binary invocation (`pnpm vitest`, `pnpm tsx`), prose ("workspace",
+  "scripts"), or a proposal stated as such ("for example `pnpm demo:offline`"
+  in the readiness plan, which the shipped `demo:seed` + echo provider
+  already satisfies). A judge typing any documented command hits no phantom
+  step, in any file, not just the curated ones.
   - Re-witness rotation complete as of 31 Oct: every operator-facing claim
     has a witness AT post-cadence head — settings/tags census (2×, #91),
     judge demo seed path (2×, #93), local browser gate 48/48 (#94), MCP
