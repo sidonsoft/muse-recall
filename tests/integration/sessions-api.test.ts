@@ -199,6 +199,49 @@ describe('session CRUD', () => {
     expect(missing.statusCode).toBe(404);
   });
 
+  it('paginates the list with a filter-wide total, not a page count', async () => {
+    const harness = await createHarness();
+    const ids: string[] = [];
+    for (const title of ['one', 'two', 'three']) {
+      const session = await createSession(harness, { title });
+      ids.push(session.id as string);
+    }
+
+    const page1 = await harness.app.inject({ method: 'GET', url: '/api/sessions?limit=2' });
+    expect(page1.statusCode).toBe(200);
+    expect(page1.json().data.items).toHaveLength(2);
+    expect(page1.json().data.total).toBe(3);
+    expect(page1.json().data).toMatchObject({ limit: 2, offset: 0 });
+
+    const page2 = await harness.app.inject({
+      method: 'GET',
+      url: '/api/sessions?limit=2&offset=2',
+    });
+    expect(page2.json().data.items).toHaveLength(1);
+    expect(page2.json().data.total).toBe(3);
+    const combined = new Set([
+      ...page1.json().data.items.map((item: { id: string }) => item.id),
+      ...page2.json().data.items.map((item: { id: string }) => item.id),
+    ]);
+    expect(combined.size).toBe(3);
+
+    await harness.app.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${ids[0]}`,
+      payload: { status: 'archived' },
+    });
+    const archived = await harness.app.inject({
+      method: 'GET',
+      url: '/api/sessions?status=archived',
+    });
+    expect(archived.json().data.total).toBe(1);
+    expect(archived.json().data.items).toHaveLength(1);
+
+    const invalid = await harness.app.inject({ method: 'GET', url: '/api/sessions?offset=-1' });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('validation_failed');
+  });
+
   it('404s for an unknown session and 400s for a malformed id', async () => {
     const harness = await createHarness();
     const unknown = await harness.app.inject({

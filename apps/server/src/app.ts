@@ -5,9 +5,12 @@ import { AgentError, AgentRuntime } from '@mml/agent-core';
 import { type MemoryEngine, MemoryError, probeDatabase } from '@mml/memory-engine';
 import { ProviderError } from '@mml/muse-provider';
 import {
+  API_ERROR_CATALOG,
   API_ERROR_CODES,
   apiFailure,
   apiSuccess,
+  ERROR_CATALOG_VERSION,
+  ErrorCatalogSchema,
   HealthResponseSchema,
   LivenessResponseSchema,
   type ModelProvider,
@@ -457,6 +460,14 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     }
   });
 
+  // --- Machine-readable error catalogue (roadmap §3 remainder) ------------
+  // Mirrors the mappings this server actually performs today, including known
+  // asymmetries; the boundary tests compare live responses against it, so a
+  // silent mapping drift fails CI instead of surprising integrators.
+  app.get('/api/errors', async () => {
+    return apiSuccess(ErrorCatalogSchema.parse(API_ERROR_CATALOG));
+  });
+
   // --- Service metadata: provider capabilities + honest build status. -----
   app.get('/api/meta', async () => {
     const capabilities = provider.capabilities();
@@ -489,6 +500,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         evaluation: 'partial',
       },
       memory: memoryMeta(config),
+      errors: { catalog_version: ERROR_CATALOG_VERSION, endpoint: '/api/errors' },
       safety: {
         tool_approval_policy: config.toolApprovalPolicy,
         generated_code_execution: false,

@@ -92,8 +92,14 @@ export class AgentRuntime {
     });
   }
 
-  listSessions(options: { status?: SessionStatus; limit?: number } = {}): Session[] {
+  listSessions(
+    options: { status?: SessionStatus; limit?: number; offset?: number } = {},
+  ): Session[] {
     return this.store.listSessions(options);
+  }
+
+  countSessions(options: { status?: SessionStatus } = {}): number {
+    return this.store.countSessions(options);
   }
 
   getSession(id: string): Session {

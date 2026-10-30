@@ -88,6 +88,16 @@ repository's working backlog; completed items stay for the audit trail.
    lessons in review: `..` segments normalize to the same route before hooks see them,
    and inject cannot send real duplicate headers — the suite models what Node puts on
    the wire instead.
+10. **Close the REST API remainders that block integration (roadmap §3): traversal and a
+    machine-readable error catalogue.** — **Done (2026-10-30, D048).** `GET /api/memories`,
+    `/api/memories/review` and `/api/sessions` all page with `limit`/`offset` and report a
+    filter-wide `total` (the sessions `total` had been the page length — fixed to a real
+    `COUNT(*)`, additive schema fields `limit`/`offset`). `GET /api/errors` publishes a
+    versioned catalogue (`catalog_version: 1`) across transport/session/memory/forge/provider
+    groups, pointed to by `/api/meta.errors`; it mirrors the mappings the server actually
+    performs, pinned asymmetries included (`memory_storage_failed` on a 400 today; Forge
+    zod errors as `invalid_request`), and boundary tests compare live responses against the
+    published entries so drift fails CI. Idempotency keys remain open by deliberate scope.
 
 ## P2 — explicitly out of scope for this milestone
 
