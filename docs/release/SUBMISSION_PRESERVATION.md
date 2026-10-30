@@ -154,6 +154,17 @@ rehearsal, confirming the working branch keeps the judge path green as it
 diverges upward from the frozen entry. Server killed, port verified empty,
 clone removed.
 
+**Dev-mode face of the quickstart witnessed 31 Oct too** — every prior
+rehearsal exercised the BUILD path (`pnpm run build` + seeded server), but
+the README's headline first-run is `MODEL_PROVIDER=echo pnpm dev` → open
+http://127.0.0.1:5173. At head: API health 200 on :8787, web 200 on :5173
+serving `<title>Muse Recall — Build with Muse Spark</title>`, and the
+vite-side `/api` proxy answers 200 on :5173 — the full browser experience,
+not just two independent ports. Servers killed, both ports verified empty,
+scratch db removed. No browser automation needed: two curls witness the
+documented dev entry point.
+
+
 Freeze separation confirmed by the same smoke: the judges' entry does NOT
 carry integration-only surfaces — `GET /api/memories/graph` (added to
 `integration` after the entry) answers `validation_failed` on `main`,
