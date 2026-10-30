@@ -189,6 +189,17 @@ now is maintenance honesty, not new surface:
 - At submission (owner, Nov 4): record the submitted SHA and tags in
   `docs/release/SUBMISSION_PRESERVATION.md`; after judging: G-6 identity,
   scoping, rotation, then G-2 provisioning follow-up.
+- Post-judging owner decision — asymmetry pinned exactly (re-read from the API
+  31 Oct): "Protect main" (ruleset 26184025) requires 2 checks — `Lint,
+  typecheck, test, build` and `Managed browser workflow (fake provider)` —
+  while "Protect integration" (26184026) requires those 2 PLUS
+  `Managed browser workflow (fake provider · managed Firefox)`. So promotions
+  to `main` gate on managed-Chromium but not managed-Firefox. Either align
+  (add the third required context to 26184025 — one API call) or keep the
+  asymmetry deliberately with a stated reason; both are owner calls, and as
+  of this census both rulesets have
+  `strict_required_status_checks_policy=false` (additional unknown statuses
+  never block).
 - Post-judging cleanup candidate — evaluated, not acted (pre-Nov-4 rule): the
   history-action enum admits `'purged'` (CHECK in two migrations; shared
   `MEMORY_HISTORY_ACTIONS`) but NOTHING emits it: engine audit actions are
