@@ -849,8 +849,10 @@ fresh superseded records. Corrections still require an explicit application-chan
 - **Memory costs tokens on the answering call** (~37 in our measured task) but removes setup
   turns; the whole-task input roughly halved in Demo C.
 - **Deletion is irreversible through the API.** That is the guarantee, not a bug.
-- **Single-user, loopback-only.** No authentication or rate limiting; not production-ready for
-  public multi-user hosting.
+- **Single-user, loopback-only by default.** No authentication or rate limiting in the
+  default posture; an optional shared `ACCESS_TOKEN` (token mode, see API notes and
+  security.md) permits a deliberate non-loopback bind but is not identity. Not
+  production-ready for public multi-user hosting.
 - **Runtime verification is load-time only.** HTML Studio approval loads the staged
   document in headless Chrome and rejects page/console errors, blocked network requests,
   or a blank render (Phaser documents must create a canvas). It does **not** exercise
