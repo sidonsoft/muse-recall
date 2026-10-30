@@ -18,6 +18,7 @@
     "db:migrate": "pnpm --filter @mml/server run db:migrate",
     "db:restore": "pnpm --filter @mml/server run db:restore",
     "backup:drill": "pnpm --filter @mml/server run backup:drill",
+    "ops:alert-prober": "pnpm --filter @mml/server run ops:alert-prober",
     "db:purge": "pnpm --filter @mml/server run db:purge",
     "demo:seed": "tsx scripts/seed-forge-demo.ts",
     "demo:sessions": "tsx scripts/demo-sessions.ts",
