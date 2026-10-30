@@ -499,6 +499,28 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    name: 'idempotency_keys',
+    up: (db) => {
+      // Replay records for POST idempotency keys (roadmap §3 remainder, D049).
+      // Scoped per route+key; rows are transient (24h TTL, purged lazily), so
+      // this table is deliberately NOT part of the export envelope: an
+      // idempotency replay window must never survive a data restore as a
+      // hidden side effect.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS idempotency_keys (
+          route      TEXT NOT NULL,
+          key        TEXT NOT NULL,
+          status     INTEGER NOT NULL,
+          response   TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (route, key)
+        );
+        CREATE INDEX idx_idempotency_created ON idempotency_keys (created_at);
+      `);
+    },
+  },
 ];
 
 /** Highest migration version defined in code. */

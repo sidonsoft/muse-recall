@@ -93,7 +93,16 @@ export const API_ERROR_CATALOG: ErrorCatalog = {
         http_status: 403,
         when: 'State-changing request from a foreign Origin, or Sec-Fetch-Site declares cross-site.',
       },
-      { code: 'bad_request', http_status: 400, when: 'Request body is not valid JSON.' },
+      {
+        code: 'bad_request',
+        http_status: 400,
+        when: 'Request body is not valid JSON, or the Idempotency-Key header is malformed (must be one 8-128 char string).',
+      },
+      {
+        code: 'idempotency_in_progress',
+        http_status: 409,
+        when: 'An Idempotency-Key is already being processed in this process (single-flight guard; de-dup is in-process only for the single-server beta).',
+      },
       {
         code: 'validation_failed',
         http_status: 400,

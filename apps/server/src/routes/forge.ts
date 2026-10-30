@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
+  apiFailure,
   FORGE_MODIFY_BODY_LIMIT_BYTES,
   FORGE_SCREENSHOT_MAX_BYTES,
   ForgeApproveSchema,
@@ -21,6 +22,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { ForgeJobManager } from '../forge/runner.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
+import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
 
 const ProjectParams = z.object({ id: z.string().min(2).max(64) });
 const JobParams = z.object({ jobId: z.uuid() });
@@ -50,7 +52,12 @@ function documentTitle(html: string, fallback: string): string {
  */
 export function registerForgeRoutes(
   app: FastifyInstance,
-  deps: { manager: ForgeJobManager; workspace: ForgeWorkspace; engine: MemoryEngine },
+  deps: {
+    manager: ForgeJobManager;
+    workspace: ForgeWorkspace;
+    engine: MemoryEngine;
+    idempotency: IdempotencyStore;
+  },
 ): void {
   const { manager, workspace } = deps;
 
@@ -113,16 +120,50 @@ export function registerForgeRoutes(
     });
   });
 
+  // Idempotency-Key (D049): a client that retried after a timeout must not
+  // pay model quota twice. Replay returns the recorded 202 job; a concurrent
+  // duplicate in this process gets 409 while the first is still starting.
+  // (guard() returns run()'s payload on success and the Reply on failure —
+  // anything that is not a plain payload is not recorded, so failures retry.)
   app.post('/api/forge/projects/:id/generate', async (request, reply) => {
-    return guard(reply, async () => {
-      const { id } = ProjectParams.parse(request.params);
-      const body = ForgeGenerateSchema.parse(request.body ?? {});
-      await workspace.ensureProject(id);
-      deps.engine.ensureProject(id);
-      const job = await manager.start({ projectId: id, kind: 'generate', prompt: body.prompt });
-      reply.status(202);
-      return envelope(ForgeJobSchema.parse(job));
-    });
+    const decision = beginIdempotency(deps.idempotency, request);
+    if (decision.state === 'bad_key') {
+      return reply.status(400).send(apiFailure('bad_request', decision.message));
+    }
+    if (decision.state === 'replay') {
+      reply.header('idempotent-replayed', '1');
+      return reply.status(decision.record.status).send(decision.record.body as never);
+    }
+    if (decision.state === 'in_progress') {
+      return reply
+        .status(409)
+        .send(
+          apiFailure(
+            'idempotency_in_progress',
+            'A request with this Idempotency-Key is still being processed.',
+          ),
+        );
+    }
+    const runGuard = () =>
+      guard(reply, async () => {
+        const { id } = ProjectParams.parse(request.params);
+        const body = ForgeGenerateSchema.parse(request.body ?? {});
+        await workspace.ensureProject(id);
+        deps.engine.ensureProject(id);
+        const job = await manager.start({ projectId: id, kind: 'generate', prompt: body.prompt });
+        reply.status(202);
+        return envelope(ForgeJobSchema.parse(job));
+      });
+    if (decision.state === 'no_key') return runGuard();
+    try {
+      const result = await runGuard();
+      if (result !== undefined && result !== reply) {
+        deps.idempotency.record(decision.route, decision.key, 202, result);
+      }
+      return result;
+    } finally {
+      deps.idempotency.release(decision.route, decision.key);
+    }
   });
 
   app.post(

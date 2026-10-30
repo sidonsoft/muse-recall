@@ -33,6 +33,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppConfig } from '../config.js';
+import { type IdempotencyStore, idempotent } from '../idempotency.js';
 
 /**
  * Memory API.
@@ -105,13 +106,14 @@ function csv(value: string | undefined): string[] | undefined {
 export interface MemoryRouteDependencies {
   engine: MemoryEngine;
   config: AppConfig;
+  idempotency: IdempotencyStore;
 }
 
 export function registerMemoryRoutes(
   app: FastifyInstance,
   dependencies: MemoryRouteDependencies,
 ): void {
-  const { engine, config } = dependencies;
+  const { engine, config, idempotency } = dependencies;
 
   // --- Stats: aggregate counts for the inspector header. -------------------
   app.get('/api/memories/stats', async () => {
@@ -195,11 +197,15 @@ export function registerMemoryRoutes(
   });
 
   // --- Create --------------------------------------------------------------
+  // Idempotency-Key support (D049): a client that retried after a timeout
+  // replays the recorded response instead of creating a second memory.
   app.post('/api/memories', async (request, reply) => {
-    const input: MemoryCreateInput = MemoryCreateInputSchema.parse(request.body ?? {});
-    const result: MemoryCreateResult = MemoryCreateResultSchema.parse(engine.create(input));
-    // 201 only when a row was actually written; a deduplicated replay is 200.
-    return reply.status(result.created ? 201 : 200).send(apiSuccess(result));
+    return idempotent(request, reply, idempotency, async () => {
+      const input: MemoryCreateInput = MemoryCreateInputSchema.parse(request.body ?? {});
+      const result: MemoryCreateResult = MemoryCreateResultSchema.parse(engine.create(input));
+      // 201 only when a row was actually written; a deduplicated replay is 200.
+      return { status: result.created ? 201 : 200, body: apiSuccess(result) };
+    });
   });
 
   // --- Proposals (roadmap §6: candidates kept apart from established facts) --
