@@ -104,6 +104,11 @@ covers `POST /api/memories` and Forge generation — D049; §3's named remainder
   AND output) derived from the tools' zod contracts so clients can validate structured results;
   project scope and the writes policy are startup-bound, never model-supplied; a
   `mcp-recall://contract` resource publishes the version, scope, and write policy.
+  Live stdio smoke (2026-10-31, out-of-band from the in-process contract tests):
+  initialize handshake, `tools/list` (SEVEN names — the README count, verified
+  against a running process, not just the registry), and a read call all succeed;
+  with no `--db`/`DATABASE_PATH` it refuses startup honestly, and its banner
+  prints the bound posture (`writes=disabled`) before any model sees it.
 - **Versioned contract** (`TOOL_CONTRACT_VERSION` in [shared/tool.ts](../../packages/shared/src/tool.ts)):
   stamped into `GET /api/tools` and the MCP contract resource; conformance tests pin MCP tool
   list ≡ registry list ([mcp-contract.test.ts](../../tests/integration/mcp-contract.test.ts))
