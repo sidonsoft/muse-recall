@@ -251,6 +251,15 @@ now is maintenance honesty, not new surface:
     regenerated files were DISCARDED (git checkout), the committed 26 Oct
     live-Muse artifact stands, and the appendix now warns in-line so the
     next runner doesn't commit the downgrade.
+  - Mutation registry for the exposed verify/demo/bench scripts (31 Oct):
+    mapped all eight package scripts that rewrite the twelve tracked
+    docs/benchmarks artifacts; four carry "measured with real Muse" in
+    their titles (retrieval-eval, evaluation-comparison, context-efficiency,
+    muse-overhead) - rerunning THOSE under the echo provider overwrites
+    live evidence and leaves a titled lie. bench:retrieval and the three
+    demo generators are provider-neutral and safe. The map turns the #149
+    near-miss into a standing guardrail any runner can consult BEFORE
+    dirtying the tree.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
