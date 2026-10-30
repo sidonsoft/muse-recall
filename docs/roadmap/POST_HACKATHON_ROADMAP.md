@@ -28,7 +28,7 @@ differed from what the repository contains, and how this version handles each on
 | Treat confidence as metadata, not a probability, unless calibrated | `ConfidenceSchema` is documented in code as "a probability", but it has never been calibrated. | Kept the roadmap's rule. Relabelling the code comment is a G1 item. |
 | Confirm the license | MIT ([LICENSE](../../LICENSE)). No CLA or DCO. | Recorded. No contribution terms are added by this roadmap. |
 | Publish CONTRIBUTING, a PR template, issue templates and a security route | CONTRIBUTING.md and the PR template exist (PR #29). | This change adds [SECURITY.md](../../SECURITY.md) and issue templates. |
-| Protect `integration` with review and required checks | Ruleset JSON and steps are prepared but are applied by the owner in repository settings. | Tracked as a G0 owner action. CI now also runs on pushes to `integration`. |
+| Protect `integration` with review and required checks | **Applied.** Verified 31 Oct 2026 from the API: ruleset "Protect integration" (active) requires PRs, and its required-status-checks parameter names exactly "Lint, typecheck, test, build" plus both managed-browser legs (strict=false). Companion rulesets "Protect main" and "Freeze submission tags" are active too. | Closed as owner action; census lives in [SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md). CI also runs on pushes to `integration`. |
 | A judging deployment to preserve | Judges use the public repository, the GitHub Pages site and Codespaces (offline provider, seeded demo). There is no hosted app. | Preservation covers the tag, Release, archive checksum, and the site and Codespaces entry points (§2). |
 
 ## 1. Executive summary
