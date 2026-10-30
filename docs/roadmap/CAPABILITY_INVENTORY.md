@@ -82,7 +82,10 @@ what we could not reproduce.
 - **HTTP API** (Fastify; routes in [app.ts](../../apps/server/src/app.ts) and
   [routes/](../../apps/server/src/routes)):
   - Sessions: `POST/GET /api/sessions`, `GET/PATCH/DELETE /api/sessions/:id`,
-    `GET /api/sessions/:id/messages/:messageId`, `POST /api/sessions/:id/messages` (SSE turn).
+    `GET /api/sessions/:id/messages/:messageId`, `POST /api/sessions/:id/messages` (SSE turn;
+    wire-witnessed 31 Oct 2026 against a live server: `text/event-stream`, chunked transfer,
+    `retrieval` first, `completed` last carrying the full TurnResult, and the transcript then
+    holds exactly user+assistant — streaming is not merely a route name).
   - Memories/projects: `GET /api/projects`, `GET /api/memories` (filtered list),
     `GET/POST /api/memories`, `GET/PATCH/DELETE /api/memories/:id`,
     `POST /api/memories/:id/correct`, `GET /api/memories/:id/history`,
