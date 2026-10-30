@@ -118,6 +118,10 @@ what we could not reproduce.
   against a running process, not just the registry), and a read call all succeed;
   with no `--db`/`DATABASE_PATH` it refuses startup honestly, and its banner
   prints the bound posture (`writes=disabled`) before any model sees it.
+  Re-observed at a later head the same day (~25 merges on): same handshake,
+  same seven names, `memory_search` succeeds against a fresh `DATABASE_PATH`;
+  and calling a name NOT in the list comes back as an `isError` result — the
+  server's own refusal, discovered when the probe itself used the wrong name.
 - **Versioned contract** (`TOOL_CONTRACT_VERSION` in [shared/tool.ts](../../packages/shared/src/tool.ts)):
   stamped into `GET /api/tools` and the MCP contract resource; conformance tests pin MCP tool
   list ≡ registry list ([mcp-contract.test.ts](../../tests/integration/mcp-contract.test.ts))
