@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
+  API_ERROR_CODES,
   apiFailure,
   FORGE_MODIFY_BODY_LIMIT_BYTES,
   FORGE_SCREENSHOT_MAX_BYTES,
@@ -526,10 +527,15 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
       });
     }
     if (error instanceof z.ZodError) {
-      return reply.status(400).send({
-        ok: false,
-        error: { code: 'invalid_request', message: error.issues[0]?.message ?? 'Invalid request.' },
-      });
+      // Catalogue v2: same code AND same issue-detail shape as the central
+      // handler — Forge schema failures are validation_failed everywhere.
+      return reply.status(400).send(
+        apiFailure(
+          API_ERROR_CODES.validationFailed,
+          'The request did not match the expected schema.',
+          error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+        ),
+      );
     }
     throw error;
   }

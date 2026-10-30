@@ -1052,7 +1052,7 @@ describe('forge workflow', () => {
       payload: { capture_memory: true },
     });
     expect(missing.statusCode).toBe(400);
-    expect(missing.json().error.code).toBe('invalid_request');
+    expect(missing.json().error.code).toBe('validation_failed');
 
     const blank = await h.app.inject({
       method: 'POST',
@@ -1060,7 +1060,13 @@ describe('forge workflow', () => {
       payload: { capture_memory: true, decision: '   ' },
     });
     expect(blank.statusCode).toBe(400);
-    expect(blank.json().error.code).toBe('invalid_request');
+    expect(blank.json().error.code).toBe('validation_failed');
+    // catalogue v2 parity: same {details:[{path,message}]} shape as the
+    // central handler; this failure is an object-level refine, so the path
+    // is empty and the message carries the rule.
+    const details = (blank.json().error as { details?: { path: string; message: string }[] })
+      .details;
+    expect(details?.[0]?.message).toContain('decision must be a non-empty');
     expect(h.engine.list({ project_id: 'demo-game', status: ['active'] }).total).toBe(0);
     expect(
       (await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' })).json().data

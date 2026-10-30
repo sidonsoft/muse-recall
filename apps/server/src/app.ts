@@ -287,7 +287,13 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
     if (MemoryError.isMemoryError(error)) {
       const status =
-        error.code === 'memory_not_found' ? 404 : error.code === 'memory_conflict' ? 409 : 400;
+        error.code === 'memory_not_found'
+          ? 404
+          : error.code === 'memory_conflict'
+            ? 409
+            : error.code === 'memory_storage_failed'
+              ? 500
+              : 400;
       return reply
         .status(status)
         .send(apiFailure(error.code, error.message, error.details as never));

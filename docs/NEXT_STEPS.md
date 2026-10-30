@@ -93,11 +93,12 @@ repository's working backlog; completed items stay for the audit trail.
     `/api/memories/review` and `/api/sessions` all page with `limit`/`offset` and report a
     filter-wide `total` (the sessions `total` had been the page length — fixed to a real
     `COUNT(*)`, additive schema fields `limit`/`offset`). `GET /api/errors` publishes a
-    versioned catalogue (`catalog_version: 1`) across transport/session/memory/forge/provider
-    groups, pointed to by `/api/meta.errors`; it mirrors the mappings the server actually
-    performs, pinned asymmetries included (`memory_storage_failed` on a 400 today; Forge
-    zod errors as `invalid_request`), and boundary tests compare live responses against the
-    published entries so drift fails CI. Idempotency keys remain open by deliberate scope.
+    versioned catalogue (now `catalog_version: 2`) across transport/session/memory/forge/
+    provider groups, pointed to by `/api/meta.errors`; it mirrors the mappings the server
+    actually performs, and boundary tests compare live responses against the published
+    entries so drift fails CI. Both mappings the v1 catalogue had pinned as asymmetries
+    were fixed when v2 shipped (storage failures → 500 `memory_storage_failed`; Forge
+    schema failures → `validation_failed` with the standard detail shape) — see D054.
 11. **Idempotency-Key replay for the retry-sensitive writes (last roadmap §3 remainder).** —
     **Done (2026-10-30, D049).** `Idempotency-Key` (single 8–128-char header) on
     `POST /api/memories` and `POST /api/forge/projects/:id/generate`: the first response is

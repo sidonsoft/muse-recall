@@ -7,6 +7,7 @@ import {
   formatMemoryContext,
   MemoryConflictError,
   MemoryEngine,
+  MemoryError,
   MemoryNotFoundError,
   openDatabase,
   retrieveMemories,
@@ -329,14 +330,23 @@ describe('corrections', () => {
         END;
       `);
 
-      expect(() =>
+      // Catalogue v2 contract: a write that fails BELOW the domain layer
+      // surfaces as memory_storage_failed; the driver text stays chained for
+      // debugging but never rides the stable message.
+      let thrown: unknown;
+      try {
         engine.correct({
           supersedes: [original.memory.id],
           type: 'technical_decision',
           project_id: 'demo-game',
           content: 'Use Postgres for storage',
-        }),
-      ).toThrow(/forced failure/);
+        });
+      } catch (error) {
+        thrown = error;
+      }
+      expect(MemoryError.isMemoryError(thrown)).toBe(true);
+      expect((thrown as MemoryError).code).toBe('memory_storage_failed');
+      expect((thrown as Error & { cause?: Error }).cause?.message).toContain('forced failure');
 
       // Nothing from the failed attempt survives.
       const rows = db.prepare('SELECT content, status FROM memories').all() as unknown as {
