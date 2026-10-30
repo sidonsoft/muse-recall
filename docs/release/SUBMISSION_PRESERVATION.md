@@ -67,7 +67,12 @@ it as tampering.
 ## While judging is open
 
 - Nothing is promoted to `main`, so the README, website and Codespaces stay as submitted.
-- Contributor PRs keep landing in `integration`.
+- Contributor PRs keep landing in `integration` — on integration-only paths.
+- **Held by the freeze:** PR #28 (`codex/website-clarity-review`) changes only
+  `website/**` (file census: 12/12), so it waits until judging closes and merges
+  alongside the post-judging queue. The hold is recorded on the PR itself; the
+  branch stays live so nothing is lost. `main` and the tags are untouched either
+  way, and `website.yml` deploys only on push to `main`.
 - The evidence under `docs/hackathon-evidence/` and `docs/demo/evidence/` is never edited.
 
 Once results are announced, promotion from `integration` to `main` resumes (owner decision,
