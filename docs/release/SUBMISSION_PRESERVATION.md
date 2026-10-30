@@ -70,4 +70,5 @@ it as tampering.
 - Contributor PRs keep landing in `integration`.
 - The evidence under `docs/hackathon-evidence/` and `docs/demo/evidence/` is never edited.
 
-What happens to `main` after judging is an open decision; see §2 of the roadmap.
+Once results are announced, promotion from `integration` to `main` resumes (owner decision,
+30 October 2026; §2 of the roadmap). The tag, Release and archive stay unchanged.

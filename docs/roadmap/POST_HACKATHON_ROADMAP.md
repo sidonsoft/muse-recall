@@ -20,8 +20,8 @@ differed from what the repository contains, and how this version handles each on
 | Roadmap 1.0 said | Repository shows | Change in this version |
 |---|---|---|
 | The submission is already frozen on `main` | Not submitted yet; the deadline is 4 Nov 2026 9:00 PM ET. `main` and `integration` both point at `c32d03b` (PR #29). No tags exist. | Preservation happens at submission time; see [SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md). The 14-day plan moves preservation from 1–2 Nov to 4–5 Nov. |
-| `main` gets no merges for the whole plan | [CONTRIBUTING.md](../../CONTRIBUTING.md) promotes tested batches from `integration` to `main` with a merge commit. The website deploy ([website.yml](../../.github/workflows/website.yml)), the Codespaces button and the repository front page all follow `main`. | Freeze policy for `main` is an open owner decision (§2). The protected tag and Release are the permanent frozen record either way. |
-| Release tags must not advance `main` | Same promotion flow | Release tags are cut from approved `integration` or `release/*` commits; whether `main` follows depends on the §2 decision. |
+| `main` gets no merges for the whole plan | [CONTRIBUTING.md](../../CONTRIBUTING.md) promotes tested batches from `integration` to `main` with a merge commit. The website deploy ([website.yml](../../.github/workflows/website.yml)), the Codespaces button and the repository front page all follow `main`. `main` is frozen only while judging is open, then promotions resume (owner decision, 30 Oct 2026; §2). The protected tag and Release are the permanent frozen record. |
+| Release tags must not advance `main` | Same promotion flow | Release tags are cut from approved `integration` or `release/*` commits, which are then promoted to `main`. |
 | Product is a memory layer for AI coding agents, with MCP, Claude Code and Codex targets | The shipped product is a local-first HTML Studio for Meta Muse Spark with correctable project memory. There is no MCP server; [muse-integration.md](../muse-integration.md) lists MCP as a future option. [PRODUCT_STRATEGY.md](../PRODUCT_STRATEGY.md) names "memory layer for existing agents" as one candidate direction, not the chosen one. | Kept as the proposed direction, labelled as a change of product focus that needs an owner decision before P0 work starts (§3). |
 | Inventory the implementation from scratch | Much already exists and is documented: typed memories with scope, provenance, confidence, validation status and lifecycle (`active`, `superseded`, `deleted`, `expired`) in [memory.ts](../../packages/shared/src/memory.ts); append-only correction history and supersession edges; SQLite/FTS5 retrieval with scored, budgeted results; tool calls that need explicit approval; an append-only audit; a written threat model ([security.md](../security.md)); about 740 tests behind `pnpm verify`; a working backlog in [NEXT_STEPS.md](../NEXT_STEPS.md). | The 3–4 Nov inventory starts from these documents and confirms them rather than rediscovering them. |
 | A hosted service, authentication and remote access are assumed | The app is single-user and loopback-only: the server refuses a non-loopback `HOST` and has no authentication by design (security.md, T6). | Authentication and remote access are new work, gated behind G4 (§8). |
@@ -74,7 +74,7 @@ If readiness is incomplete, continue a limited beta and publish the remaining wo
 | Branch or reference | Purpose | Proposed policy |
 |---|---|---|
 | `submission-2026-11-04` tag + Release | Frozen hackathon submission | Created once on the submitted commit; protected against update and deletion; never moved |
-| `main` | Default branch; what the README, website and Codespaces show | No direct pushes, force pushes or resets. Frozen from submission until judging results are announced. Afterwards: **owner decision pending** (see below) |
+| `main` | Default branch; what the README, website and Codespaces show | No direct pushes, force pushes or resets. Frozen from submission until judging results are announced. Afterwards, tested batches are promoted from `integration` with merge commits |
 | `integration` | Post-hackathon collaboration | Default target for external PRs; squash-merge only after required review and checks |
 | `feature/*`, `fix/*`, `docs/*` | Scoped contribution work | Branch from `integration`; PR back into `integration` |
 | `research/*` | Optional experiments | Explicitly experimental; require separate review before entering a release |
@@ -84,16 +84,11 @@ If readiness is incomplete, continue a limited beta and publish the remaining wo
 Branch patterns and tag names are conventions to adopt, not statements about existing
 references. Do not recreate or move an existing submission reference.
 
-**Open decision: `main` after judging.** Two workable options:
-
-- **A (recommended).** Resume promoting `integration` to `main` with merge commits once
-  results are announced. The tag and Release stay the permanent record of what was judged,
-  and the website, Codespaces and repository front page keep showing current work.
-- **B.** Keep `main` frozen for the whole plan. Before the first public release, switch the
-  default branch to `integration` (or a `stable` branch) and move the website deploy,
-  Codespaces links and README links to it.
-
-Until the owner decides, treat `main` as frozen.
+**Decided (owner, 30 October 2026): `main` is frozen only through judging.** Once results
+are announced, promotion from `integration` to `main` with merge commits resumes. The tag and
+Release stay the permanent record of what was judged, and the website, Codespaces and
+repository front page keep showing current work. The alternative, a permanently frozen
+`main` with the default branch moved elsewhere, was considered and not chosen.
 
 ### Preservation checklist
 
