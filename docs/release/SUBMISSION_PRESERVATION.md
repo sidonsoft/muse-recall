@@ -111,6 +111,7 @@ it as tampering.
 | `Freeze submission tags` | tags | no deletion, no non-fast-forward, no update; **cannot be bypassed** (`current_user_can_bypass: never`) |
 | `Protect integration` | `integration` | PRs required; required checks: "Lint, typecheck, test, build", "Managed browser workflow (fake provider)", "Managed browser workflow (fake provider · managed Firefox)" |
 | `Protect main` | `main` | PRs required; required checks: the lint job and **one** browser leg (Chromium) |
+| `Freeze phase17 pre-registration tag` (`26245608`, added 31 Oct via PR #126) | exact ref `refs/tags/phase17-preregistration` | same three tag rules; closes a real gap — that tag never matched the `submission-*` glob, so the original freeze table silently missed it |
 
 The `main` asymmetry (Firefox leg not required there) is recorded as-found;
 whether promotions to `main` should gate on both engines is an owner call
@@ -131,6 +132,20 @@ memories listed; retrieval preview for "countdown timers" hits the constraint.
 The D055 determinism survived the merge storm unchanged — re-observed, not
 assumed. A docs/tests-only stretch still gets one end-to-end witness per
 audit round rather than trust in CI alone.
+
+**About-panel metadata, one settings change + census (31 Oct):** the repo's
+`homepage` field was `null` while README, the site docs, and the release all
+promise the live Pages site — the one surface where the promise looked
+broken was the GitHub sidebar every judge sees first. Owner settings action
+(reversible, zero content impact): `homepage` now points at
+`https://sidonsoft.github.io/muse-recall/`, the exact URL already
+witnessed LIVE (200 + submitted title). Same census recorded the rest
+as-found: description names the hackathon and the two product faces;
+`topics` is empty (discovery nicety, deliberately not touched during
+judging window); wiki/projects flags as-found; `default_branch: main`.
+Repo settings are not part of the tag/archive surface, so this changes no
+submitted bytes — it only stops the entry's own framing from contradicting
+the entry.
 
 ### Rehearsal — the commands above run as written (31 Oct 2026)
 
