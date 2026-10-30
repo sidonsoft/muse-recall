@@ -192,6 +192,13 @@ now is maintenance honesty, not new surface:
     `MML_ENV_FILE` (config loader hint, read via process.env). The example
     file is a justified superset — an operator copying it hits no undefined
     variable and misses no defined one.
+  - API route-table census (31 Oct, at head): all 52 registered routes vs
+    the README API table — exactly one omission (`GET
+    /api/sessions/:id/messages/:messageId`, added by this census); the
+    other three apparent hits were regex artifacts of combined cells
+    (`... repair · .../ack`, `accept / reject`, `export · import`) —
+    lesson recorded: parse route tables verb-aware or check literal path
+    containment.
   - Runtime-version promise census (31 Oct, at head): CI Node 24 =
     devcontainer image `javascript-node:24` = engines `>=24.0.0`;
     `packageManager: pnpm@10.32.1` is what pnpm/action-setup@v4 installs
