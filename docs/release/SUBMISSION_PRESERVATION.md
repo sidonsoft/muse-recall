@@ -157,9 +157,24 @@ entry, and the guard failed it closed, not open.
 - Contributor PRs keep landing in `integration` — on integration-only paths.
 - **Held by the freeze:** PR #28 (`codex/website-clarity-review`) changes only
   `website/**` (file census: 12/12), so it waits until judging closes and merges
-  alongside the post-judging queue. The hold is recorded on the PR itself; the
-  branch stays live so nothing is lost. `main` and the tags are untouched either
-  way, and `website.yml` deploys only on push to `main`.
+  alongside the post-judging queue. The hold is recorded on the PR itself.
+  `main` and the tags are untouched either way, and `website.yml` deploys only
+  on push to `main`.
+  - **Correction (31 Oct, branch census):** this paragraph previously said "the
+    branch stays live so nothing is lost" — the remote branch
+    `codex/website-clarity-review` has since been DELETED (by its owning agent
+    session's cleanup, not by anything in this cadence). Nothing IS lost, via
+    a mechanism worth recording: GitHub keeps open-PR heads at
+    `refs/pull/28/head` (still exactly `f1a16f791e…`), the commit is fetchable
+    and verified present, and it is NOT an ancestor of `integration` (so the
+    website work is genuinely unmerged, not silently landed). Post-judging
+    procedure: `git fetch origin refs/pull/28/head`, recreate the branch at
+    that SHA, push, then review and merge normally.
+  - Same census, for completeness: the remote holds 39 branches (`agent/*`,
+    `strata-*`, `claude/project-thread-*`, etc.) — historical side chains from
+    earlier phases. None was touched during this cadence; deleting any of them
+    awaits per-branch ancestry checks post-judging, since some may back phase
+    history cited in docs.
 - The evidence under `docs/hackathon-evidence/` and `docs/demo/evidence/` is never edited.
 
 Once results are announced, promotion from `integration` to `main` resumes (owner decision,
