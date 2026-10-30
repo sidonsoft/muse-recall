@@ -401,7 +401,10 @@ Sizes: S = hours, M = days, L = multi-day.
 
 ```sh
 # structure
-find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
+find tests -name "*.test.ts" -print | wc -l                       # 76 files;
+#   (the original loose glob `*.test.ts*` returns 77 matches: the 76 tests plus
+#    one vitest SNAPSHOT artifact, accuracy.test.ts.snap - not a test file;
+#    comment "54 files" was the inventory-era suite size, stale since)
 pnpm run verify                                                    # 922 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
