@@ -347,10 +347,14 @@ syntax and structure only. The approval gate loads the staged page once in a bro
 None of that is human review: reading the diff, playing the preview, and judging the
 design remain manual.
 
-`pnpm bench:retrieval` on the reference machine:
+`pnpm bench:retrieval` on the reference machine (re-run on the same box
+31 Oct 2026; the accuracy figures are unchanged since 26 Oct, while latency
+moved from p50 0.20 ms to ~0.30 ms after the memory-budget work of `0ff358e`
+raised mean injected characters from ~507 to ~1,892 — a deliberate trade,
+recorded where it can be seen):
 
 ```
-130 memories · 300 retrievals · latency p50 0.20 ms
+130 memories · 300 retrievals · latency p50 0.30 ms
 accuracy 100% (30/30) · correction 100% (12/12) · stale rate 0.000%
 ```
 
