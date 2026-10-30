@@ -12,7 +12,11 @@ import {
   ForgeProjectViewSchema,
   type ForgeRecoveryReport,
   ForgeRecoveryReportSchema,
+  type ForgeRepairResult,
+  ForgeRepairResultSchema,
   type ForgeState,
+  type ForgeStateInspection,
+  ForgeStateInspectionSchema,
   ForgeStateSchema,
   type HealthResponse,
   HealthResponseSchema,
@@ -362,6 +366,20 @@ export const api = {
       `/api/forge/projects/${projectId}/storage-check`,
       { method: 'POST' },
       (data) => ForgeRecoveryReportSchema.parse(data),
+    ),
+
+  forgeStateInspection: (projectId: string) =>
+    request<ForgeStateInspection>(
+      `/api/forge/projects/${projectId}/recovery/state`,
+      { method: 'GET' },
+      (data) => ForgeStateInspectionSchema.parse(data),
+    ),
+
+  forgeStateRepair: (projectId: string) =>
+    request<ForgeRepairResult>(
+      `/api/forge/projects/${projectId}/recovery/repair`,
+      { method: 'POST' },
+      (data) => ForgeRepairResultSchema.parse(data),
     ),
 
   forgeGenerate: (projectId: string, prompt: string) =>

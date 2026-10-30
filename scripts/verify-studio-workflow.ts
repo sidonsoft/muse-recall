@@ -6,7 +6,7 @@
  *
  *   generation → staged review → approval → modification → rejection →
  *   second approval → rollback → staged change survives a server restart →
- *   approval after restart
+ *   approval after restart → damaged state.json is inspected and repaired
  *
  * Form entry and keyboard activation (Enter / Ctrl+Enter) are exercised.
  * Screenshots and logs go to `test-results/`, never to historical evidence.
@@ -24,7 +24,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -297,10 +297,15 @@ async function main(): Promise<void> {
     });
     const page = await context.newPage();
     const errors: string[] = [];
+    // The damaged-state segment deliberately makes the project view return
+    // 500; its resource-loader console message is expected and allowed.
+    let allowResourceErrors = false;
     page.on('console', (message) => {
       const text = message.text();
       const ignorable =
-        text.toLowerCase().includes('favicon') || /Failed to load resource.*404/i.test(text);
+        text.toLowerCase().includes('favicon') ||
+        /Failed to load resource.*404/i.test(text) ||
+        (allowResourceErrors && /Failed to load resource/i.test(text));
       if (message.type() === 'error' && !ignorable) errors.push(text);
     });
     page.on('pageerror', (error) => errors.push(error.message));
@@ -599,6 +604,69 @@ async function main(): Promise<void> {
     }
     check('v1 and v2 remain intact and v3 records its v1 ancestry');
 
+    // ---- Damaged state.json: inspect, then repair from the UI ----------
+    const forgeDir = join(dataRoot, 'workspaces', 'forge', PROJECT);
+    const damagedBytes = '{ broken by the regression script';
+    await writeFile(join(forgeDir, 'state.json'), damagedBytes, 'utf8');
+
+    allowResourceErrors = true;
+    await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
+    await page.getByText(/state file is damaged/).waitFor({ timeout: 15_000 });
+    check('a damaged state file shows an inspect/repair banner instead of a dead end');
+
+    const damaged = await json<{
+      repairable: boolean;
+      state_file: { presence: string };
+      versions: Array<{ version: number; usable: boolean }>;
+      jobs: Array<{ job_id: string }>;
+    }>(`${apiBase}/api/forge/projects/${PROJECT}/recovery/state`);
+    if (!damaged.repairable || damaged.state_file.presence !== 'invalid_json') {
+      throw new Error(`unexpected inspection: ${JSON.stringify(damaged.state_file)}`);
+    }
+    if (
+      damaged.versions.map((entry) => `${entry.version}:${entry.usable ? 'u' : 'x'}`).join(',') !==
+      '1:u,2:u,3:u'
+    ) {
+      throw new Error(`inspection mis-read versions: ${JSON.stringify(damaged.versions)}`);
+    }
+    if (!damaged.jobs.some((entry) => entry.job_id === interruptedJobId)) {
+      throw new Error('inspection lost the seeded interrupted job record');
+    }
+    check('recovery/state keeps versions and job records inspectable while the view is blocked');
+
+    await page.getByRole('button', { name: /Repair state from surviving versions/ }).click();
+    await page.getByText(/State repaired:/).waitFor({ timeout: 20_000 });
+    const repaired = await json<{
+      state: {
+        current_version: number | null;
+        versions: Array<{ version: number; sha256?: string }>;
+      };
+    }>(`${apiBase}/api/forge/projects/${PROJECT}`);
+    if (repaired.state.current_version !== 3) {
+      throw new Error(
+        `expected repaired current v3, got ${String(repaired.state.current_version)}`,
+      );
+    }
+    if (repaired.state.versions.map((entry) => entry.version).join(',') !== '1,2,3') {
+      throw new Error(
+        `repaired history lost versions: ${repaired.state.versions.map((entry) => entry.version).join(',')}`,
+      );
+    }
+    if (!repaired.state.versions.every((entry) => typeof entry.sha256 === 'string')) {
+      throw new Error('repaired versions are missing recomputed sha256 hashes');
+    }
+    const archived = (await readdir(forgeDir)).filter((name) => name.startsWith('state.corrupt-'));
+    if (archived.length !== 1) {
+      throw new Error(`expected exactly one archived damaged state, found ${archived.join(', ')}`);
+    }
+    if ((await readFile(join(forgeDir, archived[0]), 'utf8')) !== damagedBytes) {
+      throw new Error('the archived state file does not preserve the damaged bytes');
+    }
+    allowResourceErrors = false;
+    await assertStudio(page);
+    await page.screenshot({ path: join(OUT, 'after-state-repair.png'), fullPage: true });
+    check('repair archived the damaged bytes and rebuilt a working v1–v3 history from the UI');
+
     await page.screenshot({ path: join(OUT, 'studio-workflow-final.png'), fullPage: true });
 
     if (errors.length > 0) {
@@ -613,7 +681,7 @@ async function main(): Promise<void> {
     console.log('  • syntax/structure: automated node --check + HTML checks; not execution');
     console.log('  • successful loading: server runtime check loads the staged page once');
     console.log(
-      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart',
+      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart, damaged-state repair',
     );
     console.log('  • human review: visual design, gameplay and decision quality remain manual');
     console.log(`Logs and screenshot: ${OUT}/`);
