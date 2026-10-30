@@ -21,6 +21,17 @@ _to record_ are filled in once, after the form is submitted, in a PR into `integ
 | Submitted at | _to record_ (date and time, ET) |
 | Judge entry points | README on `main`; https://sidonsoft.github.io/muse-recall/ (built from `main`); Codespaces button (default branch) |
 
+### Existing frozen tags — census verified 31 Oct 2026
+
+| Tag | Points at (peeled) | Lineage |
+| --- | --- | --- |
+| `submission-v15` | `5e83616e60c4397d1acb75ae94f6dbf9f735455c` | ancestor of `main` |
+| `submission-v14` | `71416ae753c18ecdac19a43f0f5571cb7f8c492e` | ancestor of `main` |
+| `phase17-preregistration` | `6640e83f3c999cd1349420ad5e95bc329fff7d36` | **not** an ancestor of `main` — intentional: it pins the Phase 17 pre-registration commit (locked research hashes) on the side chain; the plan doc says never modify it |
+
+`main` at verification time: `c32d03b`. Peels were re-read from the remote with
+`git ls-remote` + local `git rev-list`; none moved.
+
 If anything is promoted to `main` before submitting, the candidate SHA above is out of date.
 Use whatever `main` points at when you press Submit.
 
