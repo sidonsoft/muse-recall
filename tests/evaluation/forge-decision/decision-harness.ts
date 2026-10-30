@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildRetrievalQuery } from '../../../apps/server/src/forge/prompt.js';
 import { MemoryEngine, openDatabase } from '../../../packages/memory-engine/src/index.js';
-import { buildForgePromptForEval, memoryBlockFor } from '../forge-memory/harness.js';
+import { buildForgePromptForEval } from '../forge-memory/harness.js';
 
 export const DECISION_PROJECT = 'forge-decision-eval';
 
@@ -120,7 +120,7 @@ export function retrieveDecision(engine: MemoryEngine, request: string) {
 }
 
 export function decisionPromptFor(engine: MemoryEngine, request: string): string {
-  return buildForgePromptForEval(memoryBlockFor(retrieveDecision(engine, request)), request);
+  return buildForgePromptForEval(retrieveDecision(engine, request), request);
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +300,7 @@ export function captureScenario(key: 's1' | 's2' | 's3'): ScenarioEvidence {
   const setup = setupDecision(key);
   try {
     const retrieval = retrieveDecision(setup.engine, request);
-    const prompt = buildForgePromptForEval(memoryBlockFor(retrieval), request);
+    const prompt = buildForgePromptForEval(retrieval, request);
     const active = retrieval.results.map((r) => r.memory);
     const decisionSource = active.find((m) => m.id === (setup.correctedId ?? setup.decisionId));
     const guard = key === 's2' ? accessibilityGuard : key === 's3' ? paletteGuard : decisionGuard;
