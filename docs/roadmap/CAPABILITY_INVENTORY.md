@@ -264,7 +264,9 @@ durability) closed 2026-10-30.**
   **Re-refresh (31 Oct, after the approved-version containment and owner-only
   layout witnesses): 76 test files, 922 passed, 3 skipped (925).** The 5 new
   tests extend the existing `forge-workspace.test.ts` (file census unchanged
-  at 76); skips remain the opt-in live suite, green at head (#102).
+  at 76); skips remain the opt-in live suite, green at head (#102). Full
+  `pnpm run verify` (lint → `tsc` per package → tests) re-run green end-to-
+  end, exit 0, at the 65-PR milestone head `dec4d24` on 31 Oct.
   **Updated baseline (2026-10-31, after the stored-JSON integrity matrix): 76 files,
   **917 passed, 3 skipped (920)**; the browser workflow runs
   49 checks across two engines (managed Chromium and managed Firefox) — 48 local on
