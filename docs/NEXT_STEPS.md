@@ -153,7 +153,7 @@ provisioning act, and G-6, deliberately post-submission). The working cadence
 now is maintenance honesty, not new surface:
 
 - Periodic doc re-audits: sweep every status claim in the living docs against
-  code (the #60 pattern); counts (74 files / 912 tests / 3 skipped; 48 browser
+  code (the #60 pattern); counts (75 files / 915 tests / 3 skipped; 48 browser
   checks local, 49 with CI visual slots) re-stated only after a real run —
   the local gate itself was re-run at head on 31 Oct (after ~25 cadence
   merges): 48/48 checks green on darwin, no claim drift.
