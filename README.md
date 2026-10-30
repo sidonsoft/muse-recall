@@ -535,7 +535,7 @@ interaction.
 | `GET` | `/api/memories/graph` | Relationship graph + timeline events (D052) |
 | `GET` | `/api/memories/review` | Review queue: claims needing a human decision |
 | `POST` | `/api/memories/proposals` | Candidate (proposed ≠ fact) intake |
-| `POST` | `/api/memories/:id/accept` / `:id/reject` | Proposal decisions |
+| `POST` | `/api/memories/:id/accept` / `/api/memories/:id/reject` | Proposal decisions |
 | `GET` | `/api/memories/export` · `POST` `/api/memories/import` | Versioned envelope; import supports dry-run (D039) |
 | `GET` | `/api/errors` | Versioned error catalogue; `/api/meta.errors` points here (D048) |
 | `GET` | `/api/tools` | Tool contract — same registry the MCP server serves (G-5) |
@@ -552,7 +552,7 @@ interaction.
 | `POST` | `/api/forge/projects/:id/rollback` | Restore the recorded parent version |
 | `POST` | `/api/forge/projects/:id/storage-check` | Storage health probe behind the recovery banner |
 | `GET` | `/api/forge/projects/:id/recovery/state` | Bounded raw inspection of a corrupt state |
-| `POST` | `/api/forge/projects/:id/recovery/repair` · `.../recovery/ack` | Guided repair (archives damaged bytes) and acknowledgement |
+| `POST` | `/api/forge/projects/:id/recovery/repair` · `/api/forge/projects/:id/recovery/ack` | Guided repair (archives damaged bytes) and acknowledgement |
 | `GET` | `/api/forge/projects/:id/artifact` | Approved or staged HTML as data (source/export) |
 | `GET` | `/api/forge/projects/:id/preview` | Sandboxed preview document (opaque origin) |
 | `POST` | `/api/retrieval/preview` | Ranking + evidence + the exact prompt block |
