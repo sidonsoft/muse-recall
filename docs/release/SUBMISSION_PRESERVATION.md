@@ -69,6 +69,15 @@ Use whatever `main` points at when you press Submit.
    it is created, and its rules are exactly deletion + update +
    non_fast_forward — tag CREATION stays allowed, which is what makes the
    submission act itself possible under the freeze.
+   Fourth census, same day (sentinel re-run at `d4bb953`): that scope leaves
+   `refs/tags/phase17-preregistration` OUTSIDE any ruleset — the tag was
+   frozen by convention and this document's own warning, not by settings.
+   Fixed the same day, settings-only and protective: ruleset `26245608`
+   ("Freeze phase17 pre-registration tag") targets that exact ref with the
+   identical rule set (deletion + non_fast_forward + update), no bypass
+   actors. All three frozen tags are now ruleset-enforced; the tag CONTENTS
+   were not touched by the change, only the guard around them widened to
+   match the documented promise.
 5. Fill in the _to record_ fields above in a PR into `integration`.
 
 The archive holds tracked files only. No secrets are in the repository (`.env` is ignored);
@@ -202,7 +211,8 @@ entry, and the guard failed it closed, not open.
 1. `refs/heads/main` = `c32d03b…` — unchanged;
 2. all three frozen tags deref to their recorded commits (`5e83616e`,
    `71416ae7`, `6640e83f`) — annotated tag objects notwithstanding;
-3. rulesets `26184029`/`26184026`/`26184025` present and active;
+3. rulesets `26184029`/`26184026`/`26184025` present and active — plus
+   `26245608` (phase17 tag, added 31 Oct, see the fourth census above);
 4. no `website.yml` PUSH run since 29 Oct (the only recent runs are PR checks —
    the 30 Oct one is PR #28's own CI): the live site cannot change mid-judging.
    And it is LIVE: the URL the README leads with responded 200 on 31 Oct with
