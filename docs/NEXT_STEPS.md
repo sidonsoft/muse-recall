@@ -131,9 +131,9 @@ repository's working backlog; completed items stay for the audit trail.
     D052).** `GET /api/memories/graph`: excerpt nodes + timestamped supersession
     edges + bounded created/corrected events + honest `truncated`; project scoping
     parity with list(); deleted memories unreachable via graph walks. The Memory
-    view now renders it as a read-only event stream (`TimelinePanel`; browser
-    workflow 46→47 checks incl. its first cross-view navigation). Only the
-    CANVAS graph view remains open (G-9 stays Partial).
+    view now renders it fully: read-only event stream (`TimelinePanel`) plus an
+    SVG relationship map with text fallback (`RelationshipMapPanel`); browser
+    workflow 46→48 checks incl. cross-view navigation. **G-9 remainder closed.**
 
 ## P2 — explicitly out of scope for this milestone
 

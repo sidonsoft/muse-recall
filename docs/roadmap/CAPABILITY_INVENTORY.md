@@ -149,8 +149,10 @@ covers `POST /api/memories` and Forge generation — D049; §3's named remainder
 **Status: Implemented for the local product (explorer = the Memory surface; its review
 queue landed 2026-10-30, gap G-9 Partial). `GET /api/memories/graph` (D052) serves the
 relationship graph + timeline DATA surface — excerpt nodes, timestamped supersession edges,
-bounded events, honest `truncated` flag — and the Memory view renders it as a readable
-event stream (`TimelinePanel`, browser-checked); a CANVAS graph view remains absent.**
+bounded events, honest `truncated` flag — and the Memory view renders it fully: a readable
+event stream (`TimelinePanel`) AND an SVG relationship map with left-to-right supersession
+chains, accented current claims, and a text fallback list (`RelationshipMapPanel`), both
+browser-checked. G-9 remainder CLOSED.**
 
 - **Four surfaces** ([views.ts](../../apps/web/src/views.ts)): HTML Studio (`studio`),
   Memory (`memories`), Conversations (`conversations`), System (`system`). Component groups:
@@ -228,7 +230,7 @@ durability) closed 2026-10-30.**
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
   **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 69 files,
-  **887 passed, 3 skipped (890)**; the browser workflow now runs 47 checks
+  **887 passed, 3 skipped (890)**; the browser workflow now runs 48 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -284,8 +286,8 @@ Sizes: S = hours, M = days, L = multi-day.
 | G-6 | No identity/authorization beyond loopback assumption | §4 | §5 "Required controls"; G4 | L | **Partial** (optional shared bearer token + token-aware bind/Host guards + posture in meta, D045; §5 adversarial boundary suite now a standing CI gate; identity/scoping/rotation remain, 2026-10-30) |
 | G-7 | Decision Guard rule-family coverage stays narrow (palette-centric) | §4 | NEXT_STEPS P2 (advisory stays advisory) | M | **Closed** (v1.5.0 autoplay-media + external-assets, 22 corpus rows, 2026-10-30) |
 | G-8 | fsync/durability hardening | §6 | [NEXT_STEPS P1 #5](../NEXT_STEPS.md) | S | **Closed** (PR #35 + D035, 2026-10-30) |
-| G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | **Partial** (review queue D044; graph/timeline data surface D052 + timeline event stream in the Memory view; canvas graph remains) |
-| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | **Closed** (47 checks incl. visual snapshots + observed-model identity, 2 engines, 2026-10-30) |
+| G-9 | Explorer list/detail/review queue (+ later graph) | §5 | §7; G3 | L | **Closed** (review queue D044; graph/timeline data surface D052; Memory view shows timeline stream + SVG relationship map with text fallback, browser-checked; 2026-10-31) |
+| G-10 | Managed-browser coverage: second engine, a11y asserts, interrupted-job restart | §7 | [NEXT_STEPS P1 #6](../NEXT_STEPS.md) | M | **Closed** (48 checks incl. visual snapshots + observed-model identity, 2 engines, 2026-10-30) |
 | G-11 | Legacy raw `memoryBlock` input removal | §2 (capture layer) | [NEXT_STEPS P1 #7](../NEXT_STEPS.md) | S | **Closed** (PR #37 + D036, 2026-10-30) |
 | G-12 | Recovery summary on System screen | §5, §6 | [NEXT_STEPS P1 #8](../NEXT_STEPS.md) | S | **Closed** (PR #36, 2026-10-30) |
 

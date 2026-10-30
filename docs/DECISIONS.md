@@ -778,8 +778,11 @@ honesty invariants) settled and test-gated.
 **Follow-up (same day):** the endpoint proved its shape by being trivial to
 consume — `TimelinePanel` in the Memory view renders created/corrected
 events read-only, and the browser workflow grew its first cross-view check
-(nav → Memory timeline lists the just-saved decision), 46→47 checks. G-9
-remains Partial: only the CANVAS graph view is still missing now.
+(nav → Memory timeline lists the just-saved decision), 46→47 checks.
+**Second follow-up:** `RelationshipMapPanel` adds the SVG canvas — union-find
+chain grouping, oldest-left arrows, accented current claims, and a TEXT
+fallback list so the information is never visual-only; still zero server-side
+layout code. Browser checks 47→48, and G-9's remainder is now CLOSED.
 
 ---
 
