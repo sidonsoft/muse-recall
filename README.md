@@ -123,7 +123,7 @@ before the first run; see [RESULTS.md](docs/hackathon-evidence/phase17/RESULTS.m
 | **Earlier cut** (2:46) | Ocean Pairs, a children's memory game built with Muse Spark. It shows the stored rule and its provenance, the retrieval explainer, a request for a countdown and a penalty that comes back with no change, a change that fits being reviewed and approved as v2, a rollback to v1, and the Phase 16 two-model result. It has **no explicit correction beat** and is kept for the record; the 2:50 cut above is the submission video. |
 | **Behavioural evidence** | Pre-registered Phase 17 (480 runs, six strata, two models): original-rule violations fell from **37/57 to 0/58** on Muse Spark and **49/60 to 1/60** on Muse Spark Open. Retyping the rule by hand gave **0/58** and **0/60**. After correction, the original-rule detector rose to 41/59 and 50/60, which suggests the superseded restriction was released; it does not test whether a replacement requirement is followed. Phase 17's correction was permissive; the sunset-to-ocean **replacement** is Phase 12A evidence, one run per condition. [Results](docs/hackathon-evidence/phase17/RESULTS.md) · [exact-p correction](docs/hackathon-evidence/phase17/STATS_CORRECTION.md) · [review disposition](docs/hackathon-evidence/phase17/REVIEW_DISPOSITION.md). |
 | **Meta models** | Muse Spark (Muse Code CLI) builds and edits the apps. Muse Spark Open on Baseten replicated the research; the application does not call it. |
-| **Engineering** | `pnpm verify` runs lint, typecheck and 782 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
+| **Engineering** | `pnpm verify` runs lint, typecheck and 784 passing tests (3 opt-in live tests skipped). A staged change loads in managed Chromium before it can be approved, and approval publishes exactly the bytes that were checked. Rollback follows recorded ancestry. Cross-origin requests cannot change state. |
 | **Limits** | Single-user and loopback-only. Decision Guard is advisory. Phase 17 covers six fixed strata, two rules and two models, and measures source code rather than runtime safety. See [Known limitations](#known-limitations). |
 
 ### Why this fits “Push the Frontier”
@@ -280,7 +280,7 @@ retrieval.
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (782 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (784 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse
@@ -291,8 +291,10 @@ pnpm verify:research16      # Phase 16/16B: locked hashes, order, detector count
 pnpm verify:research17      # Phase 17: 480 runs, lock, inventory, exact p-values (python3)
 pnpm verify:formsandbox     # native submission blocked; JS/Enter interactions work
 pnpm verify:forge-workflow  # backend generate/stage/diff/approve/reject/rollback
-pnpm verify:studio-workflow # managed Chromium: generate, review, approve, modify, reject,
-                            # rollback, restart recovery; deterministic fake provider
+pnpm verify:studio-workflow # managed Chromium (or FORGE_RUNTIME_BROWSER=firefox):
+                            # generate, review, approve, modify, reject, rollback,
+                            # restart recovery, interrupted generation, a11y asserts;
+                            # deterministic fake provider
 pnpm verify:forge           # HTML Studio browser loop (FORGE_VERIFY_BASE, default :5173)
 pnpm verify:browser         # broad product UI smoke (VERIFY_URL, default :5173)
 pnpm demo:seed              # seed the recorded demo project and its decisions
@@ -308,8 +310,9 @@ pnpm eval:guard             # advisory Decision Guard accuracy corpus
 ```
 
 `verify:studio-workflow` needs a production build and the Playwright-managed Chromium
-(`pnpm build && pnpm exec playwright-core install chromium`). It preflights the browser and
-fails with an actionable message if it is missing; it does not fall back to system Chrome.
+(`pnpm build && pnpm exec playwright-core install chromium`). CI runs the same 44 checks on a
+second engine (managed Firefox) as a matrix leg. The script preflights the browser and
+fails with an actionable message if it is missing; it does not fall back automatically.
 It starts its own API, web preview, database, workspace and ports; it never touches the
 development servers.
 
@@ -867,9 +870,12 @@ fresh superseded records. Corrections still require an explicit application-chan
   runs with the server user's filesystem permissions. The CLI's own sandbox/approval flags
   are the remaining enforcement layer.
 - **Browser coverage is representative, not exhaustive.** The managed workflow drives
-  generation, review, approval, modification, rejection, rollback, restart recovery,
-  project drafts, explicit decision creation and approval verification in managed
-  Chromium. It is not a visual-regression, pixel, gameplay, or accessibility audit.
+  generation, review, approval, modification, rejection, rollback, restart recovery, an
+  interrupted generation (server SIGKILLed mid-job), project drafts, explicit decision
+  creation and approval verification — on managed Chromium in CI, plus the same script
+  on managed Firefox as a second matrix leg. It asserts landmarks, live-status notices
+  and dialog focus handoff, but it is not a visual-regression, pixel, gameplay, or
+  full accessibility audit.
 - **Approval verification telemetry starts with this build.** Versions approved before
   this change have no recorded runtime hash/browser/timestamp; the UI says “not recorded”
   rather than implying the check passed.
@@ -877,8 +883,10 @@ fresh superseded records. Corrections still require an explicit application-chan
   incidents for this workspace; it leaves job files and audit records in place. Active
   storage failures remain visible until a healthy storage check clears them.
 - **Runtime browser selection is explicit.** The default is Playwright-managed Chromium;
-  system Chrome is used only when `FORGE_RUNTIME_BROWSER=chrome` is set. There is no
-  automatic fallback after an arbitrary launch failure.
+  `FORGE_RUNTIME_BROWSER=firefox` selects managed Firefox (the CI second engine) and
+  `=chrome` an explicit system-Chrome run. There is no automatic fallback after an
+  arbitrary launch failure. On macOS 27, managed Firefox needs Playwright 1.65
+  (upstream app-data fix); the other selections work today.
 - **Studio identity is configured, not observed.** The Studio shows the configured Forge
   model; execution-time model telemetry is not independently recorded.
 

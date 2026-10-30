@@ -52,7 +52,21 @@ jobs:
           LOG_LEVEL: silent
 
   browser:
-    name: Managed browser workflow (fake provider)
+    name: ${{ matrix.job_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Explicit fields only: no conditionals, so nothing can be coerced
+        # (GitHub Actions treats empty strings as falsy in && / || chains).
+        # The Chromium leg keeps the historical required check name; the
+        # Firefox leg adds a second independent engine (roadmap §7 G-10).
+        include:
+          - engine: managed
+            extra_browser: ''
+            job_name: Managed browser workflow (fake provider)
+          - engine: firefox
+            extra_browser: firefox
+            job_name: Managed browser workflow (fake provider · managed Firefox)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -72,16 +86,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Pin the browser to the Playwright version in the lockfile. The cache
-      # key includes the lockfile so a Playwright upgrade cannot silently reuse
-      # an incompatible Chromium.
-      - name: Cache Playwright Chromium
+      # key includes the lockfile and the matrix engine so a Playwright
+      # upgrade cannot silently reuse an incompatible build.
+      - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ matrix.engine }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright-core install --with-deps chromium
+      # Chromium is installed on every leg: the approval gate's runtime check
+      # loads the staged page in managed Chromium server-side, whatever engine
+      # the driving workflow uses. The Firefox leg adds its engine on top.
+      - name: Install Playwright Chromium${{ matrix.extra_browser && ' + Firefox' || '' }}
+        run: pnpm exec playwright-core install --with-deps chromium ${{ matrix.extra_browser }}
 
       - name: Build production artifacts
         run: pnpm run build
@@ -97,3 +114,4 @@ jobs:
         env:
           MODEL_PROVIDER: echo
           LOG_LEVEL: warn
+          FORGE_RUNTIME_BROWSER: ${{ matrix.engine }}

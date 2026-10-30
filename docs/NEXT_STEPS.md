@@ -39,11 +39,14 @@ repository's working backlog; completed items stay for the audit trail.
    and the repair archive rename. File syncs are strict (a failure is a write failure);
    directory syncs are best-effort and documented, because platforms that refuse
    directory fsync must not break writes that are still atomic.
-6. **Expand managed browser coverage.**
-   Add visual snapshots, a second browser engine, accessibility assertions, and an
-   interrupted-job restart scenario driven through the API. Keep live-model checks
-   opt-in. Add observed Studio model identity persisted from CLI telemetry, if the
-   protocol exposes it reliably.
+6. **Expand managed browser coverage.** — **Partial (2026-10-30).**
+   Done: a second browser engine (managed Firefox as a CI matrix leg; Chromium keeps
+   the required-check name), accessibility assertions (banner/navigation/main
+   landmarks, role=status live notices, dialog focus handoff), and an
+   interrupted-job scenario driven live end to end — SIGKILL mid-generation, restart,
+   UI interrupted notice, job record kept, queue recovers. Live-model checks remain
+   opt-in. Remaining: visual snapshots, and observed Studio model identity persisted
+   from CLI telemetry, if the protocol exposes it reliably.
 7. **Remove the legacy raw `memoryBlock` input.** — **Done (2026-10-30).**
    Freeze a local prompt snapshot for the Phase 15A historical protocol, then delete the
    raw input path from production prompt construction. The historical wording is frozen
