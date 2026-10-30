@@ -189,6 +189,17 @@ now is maintenance honesty, not new surface:
 - At submission (owner, Nov 4): record the submitted SHA and tags in
   `docs/release/SUBMISSION_PRESERVATION.md`; after judging: G-6 identity,
   scoping, rotation, then G-2 provisioning follow-up.
+- Post-judging cleanup candidate — evaluated, not acted (pre-Nov-4 rule): the
+  history-action enum admits `'purged'` (CHECK in two migrations; shared
+  `MEMORY_HISTORY_ACTIONS`) but NOTHING emits it: engine audit actions are
+  created/updated/superseded/deleted/accepted/rejected/expired. And the value
+  is structurally unsurfaced — history rows FK-cascade off the memory, so a
+  'purged' audit row for a purged memory could never outlive the purge it
+  would record. Post-judging options: (a) remove the value (migration +
+  contract/census review; it also sits in the envelope schema, so import
+  validation accepts it today), or (b) keep it and document the deadness in
+  the schema comment. Owner call; either way code+catalogue+migration in
+  lockstep per D042, no silent half-removal.
 
 ## Historical plan (Phase 6, kept for the development record)
 
