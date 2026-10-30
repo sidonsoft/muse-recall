@@ -23,7 +23,7 @@ import { Icon } from '../Icon.tsx';
  */
 
 const SUPPORTED_CHECKS =
-  'countdown mechanics, flashing effects, mistake penalties, superseded palette, colour-only cues';
+  'countdown mechanics, flashing effects, mistake penalties, superseded palette, colour-only cues, autoplaying media, external assets';
 
 const RULE_LABELS: Record<string, string> = {
   'countdown-mechanics': 'countdown mechanics',
@@ -31,6 +31,8 @@ const RULE_LABELS: Record<string, string> = {
   'mistake-penalty': 'mistake penalties',
   'superseded-palette': 'superseded palette',
   'colour-only-cue': 'colour-only cues',
+  'autoplay-media': 'autoplaying media',
+  'external-assets': 'external assets',
 };
 
 function ruleLabel(rule: string): string {

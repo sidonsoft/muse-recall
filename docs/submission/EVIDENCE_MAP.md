@@ -383,7 +383,7 @@ Phase 16 / 16B. Those claims are mapped here.
 | Tempting claim | Verdict | Why |
 | --- | --- | --- |
 | “Decision Guard enforces design compliance / blocks violations” | **Unsupported** | Advisory only by mandate; approval succeeds with findings present (tested). |
-| “Decision Guard is comprehensive compliance verification” | **Unsupported** | Five pattern rule families, source-only; 12E documents FPs/FNs and up to 46% abstention on one rule. |
+| “Decision Guard is comprehensive compliance verification” | **Unsupported** | Seven pattern rule families (v1.5.0), source-only; the 12E audit documents FPs/FNs and up to 46% abstention on one rule for the original five; the two v1.5.0 families carry their own corpus rows. |
 | “The runtime gate plays the game / verifies pixels / proves it cannot crash later” | **Unsupported** | The gate is load-time: page/console errors and canvas creation only. |
 | “The app verifies the build before the user asks to approve” | **Unsupported** | Runtime verification runs during approval, on the staged source. |
 | “There is a runtime-verification screenshot” | **Unsupported** | The UI exposes no such image; the browser preview capture is a different feature. |
