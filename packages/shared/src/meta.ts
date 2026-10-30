@@ -60,5 +60,12 @@ export const ServiceMetaSchema = z.object({
      */
     authentication: z.enum(['loopback-only', 'shared-token']).default('loopback-only'),
   }),
+  /** Pointer to the machine-readable error catalogue (GET /api/errors). */
+  errors: z
+    .object({
+      catalog_version: z.number().int(),
+      endpoint: z.literal('/api/errors'),
+    })
+    .optional(),
 });
 export type ServiceMeta = z.infer<typeof ServiceMetaSchema>;

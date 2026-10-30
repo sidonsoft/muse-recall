@@ -31,7 +31,10 @@ export type Session = z.infer<typeof SessionSchema>;
 
 export const SessionListSchema = z.object({
   items: z.array(SessionSchema),
+  /** Filter-wide count, not the page length (matches the memories list). */
   total: z.number().int().min(0),
+  limit: z.number().int().min(1).optional(),
+  offset: z.number().int().min(0).optional(),
 });
 export type SessionList = z.infer<typeof SessionListSchema>;
 

@@ -672,3 +672,23 @@ documented as design: `..` segments are normalized to the SAME exempt route
 before hooks see the URL (no hidden second health endpoint), and percent-
 encoding in headers is not decoded (headers are not URLs). Future guard work
 must keep these invariants or this suite goes red.
+
+---
+
+### D048 — The error catalogue mirrors reality, asymmetries included, and is drift-gated
+
+**Context:** roadmap §3 listed "machine-readable error catalogue" as open. Codes
+already existed in error classes, but the taxonomy lived only in prose and four
+scattered mappings; integrators had no discovery endpoint, and two real
+asymmeties (generic-handler 400 for `memory_storage_failed`; Forge zod errors
+reported as `invalid_request` instead of `validation_failed`) would have been
+silently "smoothed over" by an aspirational catalogue.
+**Decision:** `GET /api/errors` publishes `API_ERROR_CATALOG` (shared,
+`catalog_version: 1`, five groups) generated from the CURRENT mappings, with
+the asymmetries written into their `when` text as known open work. Tests probe
+live responses and assert each code's status equals the published entry. The
+sessions list `total` is fixed from page-length to `COUNT(*)` in the same
+change, so list envelopes agree (`items/total/limit/offset`).
+**Consequence:** fixing either asymmetry is a deliberate catalogue edit — code,
+catalogue and tests move in one PR or CI goes red. Discovery is self-service
+via `/api/meta.errors`; no docs can silently diverge from the wire format.
