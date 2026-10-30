@@ -16,10 +16,10 @@ Statuses here describe the code as it exists today. They do not assert release r
 |---|---|---|
 | Memory core (records, retrieval, correction, export/import) | **Implemented** — record contract and export/import closed 2026-10-30 | [memory.ts](../../packages/shared/src/memory.ts), [engine.ts](../../packages/memory-engine/src/engine.ts) |
 | Integration layer (contract, MCP) | **Implemented (beta)** — REST + seven tools + MCP stdio server + Muse CLI provider | [routes/](../../apps/server/src/routes), [tools.ts](../../packages/tool-runtime/src/tools.ts), [muse-cli-provider.ts](../../packages/muse-provider/src/muse-cli-provider.ts) |
-| Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
-| Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
+| Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, optional shared bearer token (D045), two-phase approval, audit; **no identity/per-project authorization** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
+| Application layer (memory UI, Studio) | **Implemented** — explorer with review queue, timeline stream, SVG relationship map (G-9 closed); four surfaces | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 69 files / 885 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 69 files / 887 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (48 checks); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -27,7 +27,8 @@ Statuses here describe the code as it exists today. They do not assert release r
 ## 2. Memory core
 
 **Status: Implemented; the record contract (revision, actor, proposed) closed
-2026-10-30 — export/import remains the named gap.**
+2026-10-30 — the export/import envelope closed the same day (D039); every named
+memory-core remainder in §3 is now closed (traversal, error catalogue, idempotency).**
 
 - **Record schema** ([memory.ts](../../packages/shared/src/memory.ts)): ten memory types
   (`preference`, `project`, `technical_decision`, `constraint`, `verified_solution`,
