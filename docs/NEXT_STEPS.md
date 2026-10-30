@@ -208,6 +208,16 @@ now is maintenance honesty, not new surface:
     (`... repair · .../ack`, `accept / reject`, `export · import`) —
     lesson recorded: parse route tables verb-aware or check literal path
     containment.
+  - Suite-boundary + secrets sweep (31 Oct, at head): 76 test files on
+    disk = 76 collected by vitest's `tests/**/*.test.ts` include — zero
+    orphan test files pretending to matter, zero silently-excluded ones;
+    and the "no secrets in the repository" claim was re-scanned: a
+    pattern sweep (assignment-shaped key/secret/token/password literals,
+    ≥24 chars) over all tracked files hit nothing outside placeholder
+    contexts, only `.env.example` is tracked (no `.env`), and every
+    value there is a labelled placeholder. Honest width: it is a
+    pattern scan, not an entropy-based full-history scan — the archive
+    ships tracked files only, which is the surface the claim covers.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
