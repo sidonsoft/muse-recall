@@ -109,6 +109,15 @@ repository's working backlog; completed items stay for the audit trail.
     deliberately absent from the export envelope. Sessions keep relying on the `session_busy`
     lock; proposals on content dedup — both documented in D049 rather than bolted on. The
     error catalogue gained both new codes, drift-gated as before.
+12. **Alert signal groundwork for the §8 / G4 operational gap.** — **Done (2026-10-30,
+    D050).** `GET /api/health` now carries `alerts.{backup,storage,provider}`:
+    backup freshness vs `ALERT_BACKUP_MAX_AGE_HOURS` (default 24; judged by the
+    `db:backup` name stamp next to the database — never mtime, malformed names
+    ignored, `:memory:`/0 ⇒ `disabled`), storage ok + unacknowledged issue count,
+    provider `ok/error/skipped`. Informational by design: alerts never flip the
+    liveness `status`, and **notification delivery is still external** — G4's
+    "working alerts" gate stays unmet until a prober pages someone. Unit +
+    integration coverage (+7 tests) includes the stale-but-still-alive case.
 
 ## P2 — explicitly out of scope for this milestone
 

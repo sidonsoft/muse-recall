@@ -715,3 +715,23 @@ claim in the single-server beta.
 the remaining routes' protections are named explicitly instead of implied.
 When multi-process deployment arrives, the in-process Set is the component
 that must be replaced — the table already survives restarts.
+
+---
+
+### D050 — Alert SIGNALS live in /api/health; alert DELIVERY stays an external component
+
+**Context:** roadmap §8 demands alerting and G4 gates "operational beta" on
+working alerts. Building notification into the server would invent secrets
+(webhooks), threads, and failure modes far beyond the local-beta scope — but
+with nothing machine-readable, a prober could only grep prose.
+**Decision:** publish named states inside `GET /api/health` —
+`alerts.backup` (freshness of next-to-DB `db:backup` snapshots by NAME stamp,
+threshold `ALERT_BACKUP_MAX_AGE_HOURS`, `disabled` for `:memory:` or 0),
+`alerts.storage`, `alerts.provider` — and explicitly keep consumption
+external (cron/curl/monitor). `alerts` never flips the top-level `status`:
+liveness is the server-alive verdict, backup staleness is a data-safety
+signal; conflating them makes monitors misfire during disk incidents.
+**Consequence:** the runbook's DR section gained a one-command freshness check;
+G4's "working alerts" gate is now narrowed to "wire a consumer to these
+states" rather than undefined. Health stays open (no token) so the block must
+stay secret-free: ages, counts and states only — never paths or values.

@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, two-phase approval, audit; **no identity/authentication** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** for local use; explorer/graph **Absent** | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 65 files / 866 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 67 files / 873 tests (3 skipped) behind `pnpm verify`; browser gate on two engines; adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -205,8 +205,11 @@ durability) closed 2026-10-30.**
   upgrade (backup-first, migration rehearsal on a copy), rollback (app-only; schema is
   forward-only by policy), incident triage (health/meta/errors/recovery endpoints, audit),
   and DR (backup cron example, isolated-then-forced restore, drill). Named accountable
-  operator: the maintainer until a hosted deployment assigns one. **Alerts remain unmet**
-  (roadmap G4 gate); the runbook lists the signals to wire them to rather than pretending.
+  operator: the maintainer until a hosted deployment assigns one. Alert SIGNAL groundwork
+  landed the same day (D050): `GET /api/health` `alerts.{backup,storage,provider}` states
+  (`ALERT_BACKUP_MAX_AGE_HOURS` default 24, name-stamp freshness next to the DB).
+  **Delivery is still external and roadmap G4's "working alerts" gate remains unmet** —
+  no process here pages anyone.
 
 ## 7. Tests & verification
 
@@ -219,8 +222,8 @@ durability) closed 2026-10-30.**
   **739 passed, 3 skipped (742)**; the 3 skips are the live-Muse tests gated by
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
-  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 65 files,
-  **866 passed, 3 skipped (869)**; the browser workflow now runs 46 checks
+  **Updated baseline (2026-10-30, after G-1/G-3/G-4/G-5/G-6-token/G-8/G-9-queue/G-11/G-12): 67 files,
+  **873 passed, 3 skipped (876)**; the browser workflow now runs 46 checks
   across two engines (managed Chromium and managed Firefox), including per-engine
   visual snapshot comparison against committed baselines (tests/visual).
 - **CI gates** ([ci.yml](../../.github/workflows/ci.yml)): "Lint, typecheck, test, build"
@@ -286,7 +289,7 @@ Sizes: S = hours, M = days, L = multi-day.
 ```sh
 # structure
 find . -path ./node_modules -prune -o -name "*.test.ts*" -print   # 54 files
-pnpm run verify                                                    # 866 pass / 3 skip
+pnpm run verify                                                    # 873 pass / 3 skip
 # retrieval & eval baselines
 pnpm eval:retrieval        # 22-question corpus (2 misses documented)
 pnpm bench:retrieval

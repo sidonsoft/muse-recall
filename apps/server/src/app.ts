@@ -26,6 +26,7 @@ import {
 } from '@mml/tool-runtime';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { scanBackupFreshness } from './alert-signals.js';
 import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
 import { ForgeJobManager } from './forge/runner.js';
@@ -367,6 +368,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   app.get('/api/health', async () => {
     const databaseProbe = probeDatabase(db, dbPath, { readOnly: true });
     const providerState = providerHealth.current();
+    let forgeReport: ReturnType<typeof forgeManager.recovery> | undefined;
     const capabilities = provider.capabilities();
 
     const providerStatus: ServiceStatus | 'skipped' = !providerState.checked_at
@@ -414,7 +416,8 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       // Read-only; the Studio project view stays the place to acknowledge or
       // act on issues. Bounded to five issues so health stays small.
       forge: (() => {
-        const report = forgeManager.recovery();
+        forgeReport = forgeManager.recovery();
+        const report = forgeReport;
         return {
           storage_ok: report.storage.ok,
           unacknowledged_issues: report.issues.length,
@@ -425,6 +428,18 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           issues: report.issues.slice(0, 5),
         };
       })(),
+      // Alert signals for EXTERNAL probers (roadmap §8 groundwork; D050):
+      // named states, never notifications from this process. Informational —
+      // a stale or missing backup does not flip `status`, which stays the
+      // liveness verdict for the running server itself.
+      alerts: {
+        backup: scanBackupFreshness(dbPath, config.alertBackupMaxAgeHours ?? 24),
+        storage: {
+          ok: forgeReport ? forgeReport.storage.ok : false,
+          unacknowledged_issues: forgeReport ? forgeReport.issues.length : 0,
+        },
+        provider: { state: providerStatus },
+      },
     });
 
     return apiSuccess(payload);
