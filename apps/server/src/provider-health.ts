@@ -7,7 +7,12 @@ export interface ProviderHealthState {
   latency_ms: number | null;
   model: string | null;
   message: string;
-  /** True only when a real model call succeeded in this process. */
+  /**
+   * True once a live provider call has actually run in this process — a
+   * returned FAILURE counts (it proves the provider is wired), only the
+   * never-checked state is false. "verified" here means "live-checked",
+   * not "healthy"; health is `ok`.
+   */
   verified_with_live_call: boolean;
 }
 
