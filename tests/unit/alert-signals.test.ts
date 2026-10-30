@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -52,6 +52,30 @@ describe('scanBackupFreshness', () => {
     writeFileSync(join(staleDir, 'app.db.backup-20261020T110000Z'), 'x');
     const stale = scanBackupFreshness(join(staleDir, 'app.db'), 1, NOW);
     expect(stale.state).toBe('stale');
+  });
+
+  it('follows the NAME stamp even when mtime contradicts it', () => {
+    // The header comment promises mtime is never consulted — pin it by making
+    // mtime LIE in both directions.
+    const dir = workspace();
+    const oldName = join(dir, 'app.db.backup-20261020T110000Z');
+    writeFileSync(oldName, 'x');
+    // File touched a YEAR in the future; the name says 10 days 1h old.
+    const future = new Date(NOW.getTime() + 365 * 24 * 3_600_000);
+    utimesSync(oldName, future, future);
+    const stale = scanBackupFreshness(join(dir, 'app.db'), 24, NOW);
+    expect(stale.state).toBe('stale');
+    expect(stale.age_hours).toBe(241);
+
+    // Fresh name, mtime a year in the past: still OK, latest wins by NAME.
+    const freshName = join(dir, 'app.db.backup-20261030T115000Z');
+    writeFileSync(freshName, 'x');
+    const past = new Date(NOW.getTime() - 365 * 24 * 3_600_000);
+    utimesSync(freshName, past, past);
+    const ok = scanBackupFreshness(join(dir, 'app.db'), 24, NOW);
+    expect(ok.state).toBe('ok');
+    expect(ok.backup_count).toBe(2);
+    expect(ok.age_hours).toBe(0.2); // scanner rounds to 0.1h units
   });
 
   it('disabled for :memory: databases and maxAge 0', () => {
