@@ -277,7 +277,9 @@ Open <http://127.0.0.1:5173>. HTML Studio is the landing surface. To load the
 deterministic recorded demo (project `forge-demo`, three project decisions, v1 approved),
 run `pnpm demo:seed` once before `pnpm dev`. Press **live check** on the System screen to
 confirm real inference, then use **Memory** to work the review queue (verify, dispute,
-extend dated claims), inspect, correct, delete, and explain retrieval.
+extend dated claims), inspect, correct, delete, and explain retrieval — plus the timeline
+stream of created/corrected events and the SVG relationship map over supersession chains
+(text fallback included, so it is never visual-only).
 
 ### Verify, don't trust
 

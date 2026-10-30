@@ -228,8 +228,10 @@ drops the port check would fail CI.
 ## Deployment
 
 Operator procedures (upgrade, rollback, incident, disaster recovery) live in
-[ops/OPERATOR_RUNBOOKS.md](ops/OPERATOR_RUNBOOKS.md); alerting is not implemented yet and
-the runbook says so. Beyond the optional shared token: per-user namespaces, CSRF tokens,
+[ops/OPERATOR_RUNBOOKS.md](ops/OPERATOR_RUNBOOKS.md). Alert SIGNALS
+(`GET /api/health alerts.*`) and a cron-ready prober (`pnpm ops:alert-prober`, D050/D051)
+exist; no process pages a human by itself — that wiring remains an operator step, and the
+runbook says so. Beyond the optional shared token: per-user namespaces, CSRF tokens,
 and rate limiting are **not** implemented. The loopback bind, host/origin guards, optional bearer token, and
 absence of a public URL are the only controls keeping the API private. Do not expose this
 build to a network without setting `ACCESS_TOKEN` — and treat that as groundwork, not a
