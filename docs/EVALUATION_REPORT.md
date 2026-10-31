@@ -2,6 +2,12 @@
 
 Measured on 2026-10-27 · model `muse-wonder-1.0` (Muse Code 1.4.13) · Node 26.8.1.
 
+> **Environment note (31 Oct 2026):** the local Muse Code CLI has since moved to
+> 1.4.14, and the opt-in live trio re-ran green against it (see the capability
+> matrix's dated addendum). The measurements below remain **as measured in the
+> 27 Oct environment** - not re-measured under 1.4.14 - and are quoted with that
+> as-of boundary.
+
 ## 1. Persistent memory vs inline facts
 
 `pnpm eval:comparison` (source: `scripts/evaluation-comparison.ts`).

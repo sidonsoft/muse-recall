@@ -459,6 +459,15 @@ now is maintenance honesty, not new surface:
     same string. Full sentinel sweep same round: all six invariants
     green (main c32d03b, 3 tags, 4 rulesets, 0 site pushes, PR #28
     pinned, 0 frozen-path touches).
+  - Live-suite citations triaged across docs (31 Oct): #102-era claims
+    in dated refresh blockquotes and the retrospective stay verbatim -
+    they were true at their dates and the roadmap's newest refresh
+    still holds; the EVALUATION_REPORT header gains only a pointer
+    noting the CLI moved to 1.4.14 and its measurements were NOT
+    re-taken (quotation boundary, no re-measurement claim). Dialect
+    catch: grepping for PR cites `#102` first hits FOUR hex colors
+    (#102A43) - reference searches must word-anchor or false-positive
+    palettes answer first.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
