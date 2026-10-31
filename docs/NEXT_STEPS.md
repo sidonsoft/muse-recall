@@ -208,7 +208,13 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    completion; website.yml pinning included once unfrozen (#162/#195 scope).
    Same tier: bump website/ vite to 8.x + esbuild (KI-46, semver-major,
    build-tooling only; re-audit clean after).
-7. Test-typecheck tsconfig in CI (documented trade, #161).
+7. Test-typecheck tsconfig in CI (documented trade, #161). MEASURED 31 Oct: config
+   staged as tsconfig.tests.json (unwired, gates unaffected); first honest run shows
+   270 errors across 99 files - top: TS2739 x87 partial fixtures, TS2345 x53,
+   undefined-access x43 (TS18048/2532), TS2307 x22 missing @mml/* mappings (incl.
+   agent-core), TS5097 x7 .ts-extension imports. The 87 fixture-vs-interface cases
+   are a design decision (Partial<> types vs explicit fields), not mechanical;
+   B-7 is now a scoped plan with a number, not a vague trade.
 8. ~~Archive this cadence register into a dated log file~~ DONE 31 Oct: journal
    moved whole to archive/2026-10-31-cadence-journal.md; freeze-era watch bullets
    retired with it (no longer appended).
