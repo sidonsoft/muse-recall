@@ -165,7 +165,10 @@ toward the home doc.
     Sidebar, ForgeView (superseded web components); MUSE_FORGE_VIDEO_CONCEPT,
     VIDEO_CONCEPTS, VIDEO_STORYBOARD; DEMO_RUNBOOK, DEMO_SCRIPT_3MIN,
     PHASE14B_INDEPENDENT_AUDIT (exists nowhere else). Owner decides keep/archive/let-go
-    per file. Foreign trio (2 claude/*, study02/checkpoint-1 @ 7a6cacf5) is not ours to
+    per file. Restore mechanics verified 31 Oct: `e8fe9df` is the FULL superset
+    (exactly those 9 branch-only files), so keeping the set is ONE command -
+    `git checkout e8fe9df -- <the 9 paths>` - onto any base, then commit as an
+    archive drop. Foreign trio (2 claude/*, study02/checkpoint-1 @ 7a6cacf5) is not ours to
     touch. All other former heads were ancestors of main; zero content lost in the
     prune (SUBMISSION_PRESERVATION.md census).
 12. Optional live rejection-probe of ruleset 26245608 (read-only verification done).
