@@ -745,6 +745,16 @@ now is maintenance honesty, not new surface:
     host; the CI receipts stand as this head's witnesses, and the
     static call-site count (45) would have UNDERCOUNTED the loops
     anyway - the runtime counter is the measure, never grep -c.
+  - pnpm-command census across judge-facing prose (31 Oct): every
+    `pnpm <script>` and `pnpm run <script>` token in the guide set,
+    README and devlog names a script that exists in package.json -
+    50 bare tokens scanned, 48 real commands all resolve, the two
+    "misses" are prose ("pnpm monorepo:", "pnpm scripts") that the
+    scanner can't tell from commands, and the `pnpm run` form is
+    zero-missing. No doc tells a reader to type a command that
+    errors out; no script is undocumented in the prose that a
+    judge follows. Command-token scanning needs the prose-exception
+    note: the two false positives were named, not deleted.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
