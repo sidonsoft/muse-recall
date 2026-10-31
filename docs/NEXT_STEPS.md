@@ -269,6 +269,15 @@ now is maintenance honesty, not new surface:
     `test:coverage`, `lint:fix`, deliberately left as universal
     developer conventions rather than padding the README's table.
     No phantom commands; no undiscoverable scripts.
+  - Ops pair consistency + drill containment (31 Oct, at head): the
+    README's "see runbooks" pointer resolves to
+    docs/ops/OPERATOR_RUNBOOKS.md, which covers the db trio, the cron
+    backup recipe, and the alert prober's three-code contract - the
+    same contract the live alert-chain witness exercised. And
+    `backup:drill`, which CI runs every push, was verified temp-dir-
+    only INSIDE the tree's mutation registry (mkdtemp under os.tmpdir,
+    including its "must not clobber" guard test) - an exposed command
+    that can never dirty tracked files, now recorded as such.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
