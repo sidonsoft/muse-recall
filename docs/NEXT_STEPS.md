@@ -204,8 +204,12 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    all three code-honesty fixes (32 entries -> 33+).
 5. PR #28: fetch `refs/pull/28/head` (f1a16f791e49...), recreate branch, merge or
    close with reason (SUBMISSION_PRESERVATION.md recovery block).
-6. SHA-pin the 17 floating `uses:` steps (9 actions) + per-file `permissions:`
-   completion; website.yml pinning included once unfrozen (#162/#195 scope).
+6. SHA-pin the floating `uses:` steps. PART DONE 31 Oct: all 9 ci.yml uses pinned
+   to their v4-alias RESOLVED SHAs (verified alias==commit per action first;
+   pnpm/action-setup's v4 alias is at v4.3.0, BEHIND the newest v4.4.0 - pinning
+   follows today's real resolution, no silent upgrades). Remaining post-judging:
+   the 8 website.yml steps once unfrozen + periodic re-check of pinned SHAs vs
+   security patches. (#162/#195 scope)
    Same tier: bump website/ vite to 8.x + esbuild (KI-46, semver-major,
    build-tooling only; re-audit clean after).
 7. Test-typecheck tsconfig in CI (documented trade, #161). MEASURED 31 Oct: config
