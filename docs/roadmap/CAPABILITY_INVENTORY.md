@@ -429,6 +429,10 @@ pnpm bench:retrieval
 #   demo:sessions       -> demo-sessions.json                 (echo-safe)
 #   demo:showcase       -> showcase.json                      (echo-safe)
 #   demo:tools          -> docs/benchmarks tool evidence      (echo-safe)
+#   backup:drill        -> NOTHING tracked: verified temp-dir-only
+#                         (mkdtemp under os.tmpdir(), clobber-guard test
+#                         included); CI runs it on every push, which is
+#                         only safe because it cannot dirty the tree.
 # Four of eight are "measured with real Muse" artifacts: rerunning THEM under
 # echo mode produces a titled lie AND overwrites the evidence. Rule as usual:
 # verify offline where provider-neutral; refresh live-only artifacts only
