@@ -585,6 +585,17 @@ now is maintenance honesty, not new surface:
     3 tags, 4 rulesets). Wrong-number watches got rarer precisely
     because the fresh-query rule exists - it caught this fourth one
     inside the round it happened.
+  - Count census reaches SECURITY.md (31 Oct): the threat table's T1
+    row still said "six bounded tools" - the same stale-seven family
+    as #185, hidden in a file the guide-era passes never scanned.
+    Fixed to seven, matching the registry, README:325 ("seven
+    bounded tools... same tool registry") and the /api/tools wire
+    shape. Census meta-lesson: coverage is a SET - "which files did
+    I scan" must be enumerable, or stale twins hide in unscanned
+    siblings. Remaining word-numbers in SECURITY/CONTRIBUTING/
+    preservation all check out against their subjects (four
+    boundaries enumerated; one job JSON; one staged file; one
+    shared secret = authentication-without-identity).
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the

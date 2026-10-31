@@ -10,7 +10,7 @@ product.
 
 | # | Threat | Impact | Status |
 | --- | --- | --- | --- |
-| T1 | Model emits a tool call that was never authorized | File/data damage | **Mitigated**: six bounded tools; writes require a separate user decision; append-only audit |
+| T1 | Model emits a tool call that was never authorized | File/data damage | **Mitigated**: seven bounded tools; writes require a separate user decision; append-only audit |
 | T2 | Prompt injection arrives via stored memory or external content | Agent obeys attacker text | **Mitigated in prompt construction**: bounded escaped data, ids/provenance, explicit no-authority wording; model robustness remains a residual risk |
 | T3 | Generated UI executes model-authored JavaScript | Full client compromise | **Split**: declarative UI never executes model code; HTML Studio JavaScript runs only in a sandboxed opaque-origin iframe |
 | T4 | API key leaks to the browser | Credential theft | **Prevented**: keys stay in the server/CLI environment and travel to the CLI over stdin |
