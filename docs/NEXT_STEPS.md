@@ -876,6 +876,16 @@ now is maintenance honesty, not new surface:
     Together with the KI/D/G census this closes cross-reference
     integrity for ALL four id families the docs lean on: KI, D, G,
     and PR - nothing anywhere points at an entity that never was.
+  - Loopback/token bind interlock probed both directions at head
+    (31 Oct): HOST=0.0.0.0 WITHOUT ACCESS_TOKEN -> startup refused
+    (exit 1) with the error itself restating the invariant ("must
+    be a loopback address ... unless ACCESS_TOKEN is set; without
+    authentication the API must not be exposed to a network");
+    HOST=0.0.0.0 WITH a 16-char token -> server listens. The
+    .env.example comment and SECURITY.md claim are enforced by the
+    config schema, fails closed at boot, and the refusal message
+    doubles as documentation. Scratch DBs/logs deleted, server
+    stopped, tree verified clean.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
