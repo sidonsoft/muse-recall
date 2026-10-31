@@ -474,3 +474,24 @@ docs-only lines to `main` before cutting the submission tag (they change
 no code, but they DO change the SHA judges currently see), or ship as-is
 knowing one index line points at a nonexistent file. Recorded in the
 preservation doc's owner-act list.
+
+### KI-45 - Malformed JSON body answers `internal_error`, but the catalogue promises `bad_request`
+
+**Severity:** Low (right status, wrong code; every documented client path sends valid JSON)
+**Detail:** Wire probe at head (31 Oct, echo provider, fresh DB):
+`POST` with body `not json` to any route answers **400 with
+`{"ok":false,"error":{"code":"internal_error","message":"Request body is not valid JSON."}}`**.
+The catalogue's `bad_request` entry (api.ts, transport group) claims exactly that
+situation: "Request body is not valid JSON, or the Idempotency-Key header is
+malformed...". The header half is mirror-tested (`idempotency.test.ts` asserts
+`bad_request`); the body half is NOT tested - and the content-type parser tags
+the parse failure with `statusCode: 400` (comment: "Malformed JSON is a client
+error, not a server fault") while the generic error handler maps it to
+`internal_error`. So the code contradicts BOTH its own catalogue entry and its
+own source comment. Status (400) is right; only the code lies.
+**Why not fixed before judging:** behavior change, not judge-visible on any
+demo path. **Fix plan:** handler maps statusCode-400 parse failures to
+`apiFailure('bad_request', ...)`; mirror probe asserts live 400 + bad_request;
+catalogue text needs NO change (the docs are the truth being caught up to), so
+`ERROR_CATALOG_VERSION` stays 2 - fits naturally in KI-43's post-judging
+lockstep PR as a second code-honesty item.
