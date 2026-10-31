@@ -495,3 +495,17 @@ demo path. **Fix plan:** handler maps statusCode-400 parse failures to
 catalogue text needs NO change (the docs are the truth being caught up to), so
 `ERROR_CATALOG_VERSION` stays 2 - fits naturally in KI-43's post-judging
 lockstep PR as a second code-honesty item.
+
+### KI-46 - Landing-page build tooling carries two dev-server advisories (website/ vite high, esbuild moderate)
+
+**Severity:** Low **for this project's shipped surface** (the advisories are real; the exploit context is absent)
+**Detail:** `npm audit` at head (31 Oct, read-only) in the standalone `website/` npm project:
+- **vite** high - path traversal in dev-server optimized-deps `.map` handling, range ≤6.4.3,
+  fix requires a semver-major bump to vite 8.x;
+- **esbuild** moderate - dev server lets any page send/read requests, range ≤0.24.2.
+Both are **dev-server** flaws. The deployed landing page is static output built by
+website.yml and served by GitHub Pages: no dev server ever faces a visitor, and the
+app's own runtime does not use vite at all. The workspace itself audits CLEAN
+(`pnpm audit`, prod+dev, 31 Oct). Frozen path + semver-major: the bump is queued
+post-judging (website/ unfreezes first), as part of the supply-chain tier with
+action-register item 6.
