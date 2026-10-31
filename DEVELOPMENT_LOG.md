@@ -208,7 +208,7 @@ outstanding. What happened after, with pointers instead of re-narration:
   tags, four rulesets) green throughout. Register + retrospective at the
   top of `docs/NEXT_STEPS.md`; entry mechanics in
   `docs/release/SUBMISSION_PRESERVATION.md`.
-- **Suite at the time of writing:** 76 files, 922 passed, 3 skipped
+- **Suite at the time of writing:** 77 files, 925 passed, 3 skipped
   (925 total incl. the opt-in live trio, green at head. Corrected 31 Oct:
   this line first said "923 total" - off by two, a stale figure carried in
   from the 920-pass era; the authoritative total is the CI line

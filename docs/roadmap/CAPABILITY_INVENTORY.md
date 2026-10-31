@@ -19,7 +19,7 @@ Statuses here describe the code as it exists today. They do not assert release r
 | Trust boundary (auth, approval, audit) | **Partial** — loopback/host guards, optional shared bearer token (D045), two-phase approval, audit; **no identity/per-project authorization** | [host-guard.ts](../../apps/server/src/host-guard.ts), [decision](../../apps/server/src/routes/tools.ts), [store.ts](../../packages/tool-runtime/src/store.ts) |
 | Application layer (memory UI, Studio) | **Implemented** — explorer with review queue, timeline stream, SVG relationship map (G-9 closed); four surfaces | [views.ts](../../apps/web/src/views.ts), [ui-protocol](../../packages/ui-protocol/src/schema.ts) |
 | Storage & persistence | **Implemented** (8 migrations, backup/purge/restore, fsync-before-rename, guided state repair) | [migrations.ts](../../packages/memory-engine/src/migrations.ts), [backup.ts](../../apps/server/src/backup.ts) |
-| Tests & verification | **Implemented** — 76 files / 922 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (49 checks incl. visual slots); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
+| Tests & verification | **Implemented** — 77 files / 925 tests (3 skipped) behind `pnpm verify`; browser gate on two engines (49 checks incl. visual slots); adversarial boundary suite in CI | [ci.yml](../../.github/workflows/ci.yml) |
 | Deployments | **Partial by design** — Pages site + Codespaces; no hosted app | [website.yml](../../.github/workflows/website.yml), [.devcontainer](../../.devcontainer/devcontainer.json) |
 | Decision Guard | **Implemented as advisory** (advisory posture is deliberate) | [decision-guard](../../packages/decision-guard/src/index.ts), [forge/decision-guard.ts](../../apps/server/src/forge/decision-guard.ts) |
 | Muse Forge (HTML Studio backend) | **Implemented**, promoted from experiment into `apps/server` | [forge/](../../apps/server/src/forge) |
@@ -250,7 +250,7 @@ durability) closed 2026-10-30.**
 
 **Status: Implemented.**
 
-- **Unit/integration/evaluation/research suites**: **76 test files (31 Oct 2026)** —
+- **Unit/integration/evaluation/research suites**: **77 test files (31 Oct 2026)** —
   45 unit, 25 integration (API, Forge lifecycle, recovery, origin guards, Codespaces,
   error-catalogue drift, idempotency, alerting, graph/demo-seed regressions, child-env
   policy, session-stack schema promises, idempotency TTL), 5 evaluation
@@ -262,12 +262,12 @@ durability) closed 2026-10-30.**
   `MML_LIVE_MUSE=1` ([muse-live.test.ts](../../tests/integration/muse-live.test.ts)).
   Duration ≈ 13 s; lint + typecheck precede the test run in the `verify` script.
   **Re-refresh (31 Oct, after the approved-version containment and owner-only
-  layout witnesses): 76 test files, 922 passed, 3 skipped (925).** The 5 new
+  layout witnesses): 77 test files, 925 passed, 3 skipped (928).** The 5 new
   tests extend the existing `forge-workspace.test.ts` (file census unchanged
   at 76); skips remain the opt-in live suite - re-run green against the
   newer Muse Code 1.4.14 on 31 Oct (real round-trip / structured schema /
   streaming deltas, 3/3). Test
-  TOPOLOGY (censed 31 Oct): all 76 files live in the central `tests/` tree
+  TOPOLOGY (censed 31 Oct): all 77 files live in the central `tests/` tree
   (45 unit / 25 integration / 5 evaluation+research), importing directly
   from `apps/*` and `packages/*` - no tests hide inside packages. The web
   app has ZERO unit tests by design: its coverage is the managed-browser
@@ -284,7 +284,8 @@ durability) closed 2026-10-30.**
   Full
   `pnpm run verify` (lint → `tsc` per package → tests) re-run green end-to-
   end, exit 0, at the 65-PR milestone head `dec4d24` on 31 Oct.
-  **Updated baseline (2026-10-31, after the stored-JSON integrity matrix): 76 files,
+  **Updated baseline (2026-10-31, after the stored-JSON integrity matrix and the
+  error-envelope lockstep pins): 77 files,
   **917 passed, 3 skipped (920)**; the browser workflow runs
   49 checks across two engines (managed Chromium and managed Firefox) — 48 local on
   darwin, plus per-engine visual snapshot slots against committed linux-* baselines
@@ -418,11 +419,11 @@ Sizes: S = hours, M = days, L = multi-day.
 
 ```sh
 # structure
-find tests -name "*.test.ts" -print | wc -l                       # 76 files;
-#   (the original loose glob `*.test.ts*` returns 77 matches: the 76 tests plus
+find tests -name "*.test.ts" -print | wc -l                       # 77 files;
+#   (the original loose glob `*.test.ts*` returns 78 matches: the 77 tests plus
 #    one vitest SNAPSHOT artifact, accuracy.test.ts.snap - not a test file;
 #    comment "54 files" was the inventory-era suite size, stale since)
-pnpm run verify                                                    # 922 pass / 3 skip
+pnpm run verify                                                    # 925 pass / 3 skip
 # retrieval & eval baselines
 # WARNING both rewrite tracked docs/benchmarks/*-latest artifacts - git status
 # after either run; and eval:retrieval REQUIRES a running server (fresh DB is
