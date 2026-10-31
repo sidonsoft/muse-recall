@@ -426,8 +426,12 @@ so frozen evidence remains reproducible. They are not current verification entry
 
 **Severity:** Low (contract completeness, not function)
 **Detail (found 31 Oct 2026 by doc-vs-catalog diff):** `GET /api/errors`
-publishes 45 codes (D048, catalogue version 2), and the mirror test suite
-drift-gates the probed mappings. But five codes the server returns as
+publishes 45 codes (D048, catalogue version 2 - wire re-witnessed 31 Oct
+at head as 45 UNIQUE codes across 46 group entries: `invalid_request`
+deliberately publishes twice, session/400 runtime rejection and
+provider/503 bench request-bug, code+status+context triples per the
+mirror rule; "45 codes" throughout this entry counts uniques), and the
+mirror test suite drift-gates the probed mappings. But five codes the server returns as
 hand-built (not `apiFailure`) responses are absent from the catalogue:
 `ui_generation_failed` (`routes/ui.ts:114`, a 502 when the model misses
 the interface schema twice), `surface_not_found` (ui.ts:167),
