@@ -205,6 +205,16 @@ promote the two docs-only lines to `main` first (SHA changes; no code moves)
 or submit as-is with one dead index pointer. Decision belongs to the
 submission acts; the freeze keeps `main` untouched until then.
 
+**Same shape, same decision line (added 31 Oct, KI-47):** on `main`,
+`CONTRIBUTING.md:33` links `[SECURITY.md](SECURITY.md)` — the root security
+policy exists only on `integration` (added after `main`'s cut), so the link
+404s there and GitHub's security-policy indicator reads unset on the default
+branch (raw probes: `main/SECURITY.md` 404 vs `integration/SECURITY.md` 200).
+The post-judging promotion repairs both with zero new work; if the owner
+already promotes docs-only lines for KI-44, these lines can ride the same
+promotion. One decision, two blemishes — recorded together in the action
+register (NEXT_STEPS, line 2 of tier A).
+
 ## While judging is open
 
 - Nothing is promoted to `main`, so the README, website and Codespaces stay as submitted.
