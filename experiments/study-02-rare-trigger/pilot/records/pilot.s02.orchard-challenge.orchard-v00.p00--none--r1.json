@@ -1,0 +1,95 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r1",
+  "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+  "stratum": "orchard-challenge",
+  "arm": "none",
+  "rep": 1,
+  "repeat_id": "repeat-09",
+  "repeat_of": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r0",
+  "seed_mode": "new",
+  "seed": 234167252,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:none:1\")[0:8])",
+  "seed_source": "plan_repeat_seed",
+  "derived_seed": 4034269096,
+  "order_key": "b39676e1d8935fd46a64f06c65947fc30823512ac4e03001dc3e0f8a17fba334",
+  "variant_id": "orchard-v00",
+  "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-challenge.orchard-v00.p00--none--r1.txt",
+  "prompt_sha256": "71ec965f7fb42a1696338a1865acb1c0ffa40e6d4077cd84f6c2cf46e1c3d0ac",
+  "prompt_bytes": 20216,
+  "request_sha256": "284589a3f0ba9b44d948b09ba15d8decd671d023c100d8b3632b41b082742133",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T13:12:32.887Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 299.092,
+      "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v00.p00--none--r1.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v00.p00--none--r1.attempt1.sse.txt",
+      "response_sha256": "8df6e6e5049682db89a4e8e38ddefe36e06fd9b6135a39f0b4ac45df8ec4692c"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6541,
+    "completion_tokens": 6730,
+    "total_tokens": 13271,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6541,
+    "prompt_ms": 17148.2,
+    "prompt_per_token_ms": 2.622,
+    "prompt_per_second": 381.4,
+    "predicted_n": 6730,
+    "predicted_ms": 278878.7,
+    "predicted_per_token_ms": 41.438,
+    "predicted_per_second": 24.1,
+    "draft_n": 5230,
+    "draft_n_accepted": 5173
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-challenge.orchard-v00.p00--none--r1.html",
+  "output_bytes": 20162,
+  "output_sha256": "786e09100a169f6b76b6fa5b7d592f9c6b5da7a0cf213e8cabfa1876e46e077b",
+  "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v00.p00--none--r1.attempt1.json",
+  "started_at": "2026-10-31T13:12:32.887Z",
+  "finished_at": "2026-10-31T13:17:36.986Z",
+  "seconds_total": 304.099,
+  "streamed": true,
+  "extraction": "raw",
+  "attempt_count": 1,
+  "failure_kind": null
+}

@@ -1,0 +1,6 @@
+# Study 02 frozen detector copies. Verify with:
+#   cd experiments/study-02-rare-trigger && shasum -a 256 -c scoring/manifest.sha256
+# Both hashes are byte-identical to the originals pinned in
+# docs/hackathon-evidence/phase17/protocol.sha256 (see scoring/provenance.json).
+96ced5971c816547058ea1af2cb3fa64e83e9a402d1a0e3b881253c84bfab790  scoring/phase17/detectors.py
+b154dc31227a2ad26c57adf0eb17e01f627363a6ad9b3b4939e8f9f089e626b2  scoring/phase16/detector.py

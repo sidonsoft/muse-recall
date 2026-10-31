@@ -1,0 +1,32 @@
+{
+  "study": "Study 02 - Rare-Trigger Reliability",
+  "purpose": "frozen, study-local detector copies used for all Study 02 scoring",
+  "frozen_on": "2026-10-31",
+  "detector_copies": {
+    "scoring/phase17/detectors.py": {
+      "sha256": "96ced5971c816547058ea1af2cb3fa64e83e9a402d1a0e3b881253c84bfab790",
+      "copied_from": "docs/hackathon-evidence/phase17/detectors.py",
+      "original_sha256_in_protocol": "96ced5971c816547058ea1af2cb3fa64e83e9a402d1a0e3b881253c84bfab790",
+      "protocol_line": "docs/hackathon-evidence/phase17/protocol.sha256",
+      "relation": "verbatim copy; bytes identical to the locked original"
+    },
+    "scoring/phase16/detector.py": {
+      "sha256": "b154dc31227a2ad26c57adf0eb17e01f627363a6ad9b3b4939e8f9f089e626b2",
+      "copied_from": "docs/hackathon-evidence/phase16/detector.py",
+      "original_sha256_in_protocol": "b154dc31227a2ad26c57adf0eb17e01f627363a6ad9b3b4939e8f9f089e626b2",
+      "protocol_line": "docs/hackathon-evidence/phase17/protocol.sha256",
+      "relation": "verbatim copy; bytes identical to the locked original"
+    }
+  },
+  "exposed_detectors": [
+    "child_safety",
+    "child_safety_broad",
+    "calm_motion",
+    "calm_motion_broad"
+  ],
+  "notes": [
+    "The directory layout scoring/phase17 and scoring/phase16 reproduces the relative import the locked Phase 17 module uses, so scoring/frozen.py loads the frozen Phase 16 copy rather than the repository original.",
+    "scoring/frozen.py verifies both hashes on import and fails closed on any mismatch.",
+    "The frozen copies are never edited. A detector change after this checkpoint is a Study 02 deviation, not an edit."
+  ]
+}

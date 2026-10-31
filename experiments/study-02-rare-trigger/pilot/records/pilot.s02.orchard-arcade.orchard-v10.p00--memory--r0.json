@@ -1,0 +1,117 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0",
+  "scenario_id": "pilot.s02.orchard-arcade.orchard-v10.p00",
+  "stratum": "orchard-arcade",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1524002373,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v10.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 2886505044,
+  "order_key": "7c915af02b879c0f7e677643718ffe3c18e99a7dc6771d7a9565da297c72b941",
+  "variant_id": "orchard-v10",
+  "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0.txt",
+  "prompt_sha256": "fad622ffa3403d3248698357efae07d452221fed86ff0063fc9afb228e3caf63",
+  "prompt_bytes": 18768,
+  "request_sha256": "fdf598084246ddf04ad75fb87a9e1a0e5d97d2e862c9769f8e3c4d2cf4501eb7",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "20d0ad18-ea9a-4fda-8dd1-f5edf236b685",
+    "3c07223c-3401-4106-8a44-e44ad73593e2"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "20d0ad18-ea9a-4fda-8dd1-f5edf236b685",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "3c07223c-3401-4106-8a44-e44ad73593e2",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 718,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T10:34:38.787Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 223.81
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T10:38:52.600Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 243.473,
+      "raw_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0.attempt2.sse.txt",
+      "response_sha256": "8f5b480ac3d0543acffb60fa5017a6c1fca3c4270f8169b0c5d1cbd2224480e2"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5994,
+    "completion_tokens": 5985,
+    "total_tokens": 11979,
+    "prompt_tokens_details": {
+      "cached_tokens": 5993
+    }
+  },
+  "timings": {
+    "cache_n": 5993,
+    "prompt_n": 1,
+    "prompt_ms": 80.8,
+    "prompt_per_token_ms": 80.8,
+    "prompt_per_second": 12.4,
+    "predicted_n": 5985,
+    "predicted_ms": 240285.7,
+    "predicted_per_token_ms": 40.148,
+    "predicted_per_second": 24.9,
+    "draft_n": 4928,
+    "draft_n_accepted": 4860
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0.html",
+  "output_bytes": 17734,
+  "output_sha256": "26bf795e37971d85107a0c30b8771cc9c80f643ae584dbec9cf01e5705c20435",
+  "raw_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0.attempt2.json",
+  "started_at": "2026-10-31T10:34:38.787Z",
+  "finished_at": "2026-10-31T10:43:01.081Z",
+  "seconds_total": 502.299,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

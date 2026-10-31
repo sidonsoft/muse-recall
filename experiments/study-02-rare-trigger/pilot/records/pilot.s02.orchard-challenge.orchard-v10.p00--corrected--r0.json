@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0",
+  "scenario_id": "pilot.s02.orchard-challenge.orchard-v10.p00",
+  "stratum": "orchard-challenge",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 578489918,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v10.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3985229158,
+  "order_key": "d2dde72db25538ba6a1bf5d62cd6b6a4eb0fcb6668c7566b0cc5d918e200ca0c",
+  "variant_id": "orchard-v10",
+  "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0.txt",
+  "prompt_sha256": "4f2deb6d2b0276aecb99205746336b33a2004b30bf20d0cbe28d944816151ec8",
+  "prompt_bytes": 18815,
+  "request_sha256": "fa542f43ceaa9be147773c6392b6d7732636de57b2490e9a78e504be40caa64f",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "640fcda3-fd80-462b-80ef-4709c113f56b",
+    "2d0e4968-2430-43e9-ab10-44d4e29684bf"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "bd18baf3-3406-445d-8ff4-66543f9b0e62",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "2d0e4968-2430-43e9-ab10-44d4e29684bf",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": {
+    "superseded_id": "bd18baf3-3406-445d-8ff4-66543f9b0e62",
+    "replacement_id": "640fcda3-fd80-462b-80ef-4709c113f56b"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 750,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T14:41:41.063Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 242.192,
+      "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0.attempt1.sse.txt",
+      "response_sha256": "d02695959e3a2c957a9ee4b2dd1e6f769d83458e2fc053e91fd654ff946ce752"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6008,
+    "completion_tokens": 5488,
+    "total_tokens": 11496,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6008,
+    "prompt_ms": 15536.7,
+    "prompt_per_token_ms": 2.586,
+    "prompt_per_second": 386.7,
+    "predicted_n": 5488,
+    "predicted_ms": 223581.9,
+    "predicted_per_token_ms": 40.74,
+    "predicted_per_second": 24.5,
+    "draft_n": 4418,
+    "draft_n_accepted": 4400
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0.html",
+  "output_bytes": 16372,
+  "output_sha256": "4b768cdd76716ed89b131cf723f508593db311c56a2874cff1da81dd54cf84c0",
+  "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0.attempt1.json",
+  "started_at": "2026-10-31T14:41:41.063Z",
+  "finished_at": "2026-10-31T14:45:48.259Z",
+  "seconds_total": 247.196,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0",
+  "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+  "stratum": "orchard-arcade",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1117048913,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 2381185685,
+  "order_key": "37e7461303a610b88d4dc195012f4c6e4b95c7629133169874878d06ac913edd",
+  "variant_id": "orchard-v01",
+  "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0.txt",
+  "prompt_sha256": "25f23c5e186a5920cfcb59619d75df4c6c478f4a18dbb43f13e3bb0949aa9caa",
+  "prompt_bytes": 21206,
+  "request_sha256": "4f2143bb163a403e61bcd62819ced1b2a529cfe66ea3222adee93ceb5ab92879",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "1a84014d-6752-4f29-8512-1b3a7104229b",
+    "2ca4b2c9-cf33-48c7-aa8f-88e6ca66be7a"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "2df400b1-4dbf-44b9-b905-0083599616f9",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "2ca4b2c9-cf33-48c7-aa8f-88e6ca66be7a",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": {
+    "superseded_id": "2df400b1-4dbf-44b9-b905-0083599616f9",
+    "replacement_id": "1a84014d-6752-4f29-8512-1b3a7104229b"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 750,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T07:25:45.005Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 281.418,
+      "raw_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0.attempt1.sse.txt",
+      "response_sha256": "7e71564f0cc09a84788bcb0fc50d200afadc692523b0e59f69b4e81c54b0b581"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6849,
+    "completion_tokens": 6368,
+    "total_tokens": 13217,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6849,
+    "prompt_ms": 17732.4,
+    "prompt_per_token_ms": 2.589,
+    "prompt_per_second": 386.2,
+    "predicted_n": 6368,
+    "predicted_ms": 260612.6,
+    "predicted_per_token_ms": 40.925,
+    "predicted_per_second": 24.4,
+    "draft_n": 5281,
+    "draft_n_accepted": 5220
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0.html",
+  "output_bytes": 19087,
+  "output_sha256": "408d13426c7405c43708f42aa9bbab100f861b1551ea18f68498af75b2aae543",
+  "raw_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0.attempt1.json",
+  "started_at": "2026-10-31T07:25:45.005Z",
+  "finished_at": "2026-10-31T07:30:31.428Z",
+  "seconds_total": 286.423,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

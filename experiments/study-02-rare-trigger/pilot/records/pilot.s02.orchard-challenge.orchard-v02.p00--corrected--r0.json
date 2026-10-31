@@ -1,0 +1,120 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0",
+  "scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+  "stratum": "orchard-challenge",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 97945623,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v02.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 603310285,
+  "order_key": "e788ba79a09b26de7dd19d30821482d8f3a4cad5a4e813481345c73715788b4b",
+  "variant_id": "orchard-v02",
+  "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0.txt",
+  "prompt_sha256": "29b6595561dfade60c23c637f00d81d692c982918c151426eb192fc418982049",
+  "prompt_bytes": 21260,
+  "request_sha256": "f0f52a65777c5f738f862d78293da3f83cca77705f7ce02e46dd48b1c81de297",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "cfb80f2c-6fc4-4ecc-bee0-97b60924354b",
+    "1e503c23-dfd0-4e2b-a5a4-4bc5ceb42032"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "522d6e00-fc01-42a7-807e-2521f1d92c1d",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "1e503c23-dfd0-4e2b-a5a4-4bc5ceb42032",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": {
+    "superseded_id": "522d6e00-fc01-42a7-807e-2521f1d92c1d",
+    "replacement_id": "cfb80f2c-6fc4-4ecc-bee0-97b60924354b"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 750,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T15:55:14.460Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 268.02
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T16:00:12.482Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 251.473,
+      "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0.attempt2.sse.txt",
+      "response_sha256": "916ef351ea8e32888f58792f939109bb7a0210d9473ab0cb593ee186fddae1f5"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6837,
+    "completion_tokens": 6554,
+    "total_tokens": 13391,
+    "prompt_tokens_details": {
+      "cached_tokens": 6836
+    }
+  },
+  "timings": {
+    "cache_n": 6836,
+    "prompt_n": 1,
+    "prompt_ms": 101.2,
+    "prompt_per_token_ms": 101.2,
+    "prompt_per_second": 9.9,
+    "predicted_n": 6554,
+    "predicted_ms": 248259.1,
+    "predicted_per_token_ms": 37.879,
+    "predicted_per_second": 26.4,
+    "draft_n": 5344,
+    "draft_n_accepted": 5267
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0.html",
+  "output_bytes": 19580,
+  "output_sha256": "88e18126f8bf6677e90d8ad41650f97b6813ae1509ae0b721ff2c25b9a770434",
+  "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0.attempt2.json",
+  "started_at": "2026-10-31T15:55:14.460Z",
+  "finished_at": "2026-10-31T16:04:28.961Z",
+  "seconds_total": 554.501,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

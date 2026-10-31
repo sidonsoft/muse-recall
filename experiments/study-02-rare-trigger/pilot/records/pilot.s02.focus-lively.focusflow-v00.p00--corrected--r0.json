@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+  "stratum": "focus-lively",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 587962949,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v00.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 2691958842,
+  "order_key": "745aa4dcf5539d9eb83d2ad77c2b99605c1e0e9593b552228c8e729cc93aad19",
+  "variant_id": "focusflow-v00",
+  "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+  "request_text": "Make the planner feel lively and engaging.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0.txt",
+  "prompt_sha256": "e9a27a7fafb2650de64a53add854cc6a2c1ee909f01e5e34eb7080cef306e32b",
+  "prompt_bytes": 22624,
+  "request_sha256": "25cadb6be7c49f9c1fcc7c341b0e6d85ee2858cda1f5f6d8b19695cfdebc64c4",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "4177e4ec-b7aa-4506-a68a-5e46fa44343e",
+    "340d5011-ad70-410f-924d-48765285e94e"
+  ],
+  "memory_contents": [
+    "Design direction changed: FocusFlow may now use lively animation where it improves feedback; the earlier no-animation restriction no longer applies.",
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "9fd93e06-4ffc-48ab-a85e-265b9665cb69",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "340d5011-ad70-410f-924d-48765285e94e",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": {
+    "superseded_id": "9fd93e06-4ffc-48ab-a85e-265b9665cb69",
+    "replacement_id": "4177e4ec-b7aa-4506-a68a-5e46fa44343e"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 802,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T10:16:10.963Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 274.326,
+      "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0.attempt1.sse.txt",
+      "response_sha256": "bac84c2bcae66b56f026eb72bdbf22a870f9148779948a4587f719c178bf32a1"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6758,
+    "completion_tokens": 6197,
+    "total_tokens": 12955,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6758,
+    "prompt_ms": 17602.7,
+    "prompt_per_token_ms": 2.605,
+    "prompt_per_second": 383.9,
+    "predicted_n": 6197,
+    "predicted_ms": 253632.3,
+    "predicted_per_token_ms": 40.928,
+    "predicted_per_second": 24.4,
+    "draft_n": 5125,
+    "draft_n_accepted": 5088
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0.html",
+  "output_bytes": 19931,
+  "output_sha256": "30068acf13d0a9ec850334ff68819e827b51c85f462a63fbcfd3be090139eacc",
+  "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0.attempt1.json",
+  "started_at": "2026-10-31T10:16:10.963Z",
+  "finished_at": "2026-10-31T10:20:50.294Z",
+  "seconds_total": 279.331,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

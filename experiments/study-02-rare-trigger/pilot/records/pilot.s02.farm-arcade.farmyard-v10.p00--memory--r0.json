@@ -1,0 +1,93 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--memory--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+  "stratum": "farm-arcade",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 345091751,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v10.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 1705950848,
+  "order_key": "5b720314d48a14fcf24b719da2d0c1e1ddb64628af7995e335c7d949f5c05f88",
+  "variant_id": "farmyard-v10",
+  "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v10.p00--memory--r0.txt",
+  "prompt_sha256": "5b725d22c87f4fc7aeea926434e8891c38c45fe8f8936839a3f6f37c54e44683",
+  "prompt_bytes": 18597,
+  "request_sha256": "df70d87bec4439fdb5cd8799293aeb38e8be64a6f3d0dcc97b83181495258657",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [
+    "b43754b5-f6e3-4965-9a79-18cca04bd6b6",
+    "3ef21724-5c88-42af-baad-78777069776c"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "b43754b5-f6e3-4965-9a79-18cca04bd6b6",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "3ef21724-5c88-42af-baad-78777069776c",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 723,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T09:22:14.179Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 220.832
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T09:25:58.014Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 274.045
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "request timeout after 1800000 ms",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T09:22:14.179Z",
+  "finished_at": "2026-10-31T09:30:32.060Z",
+  "seconds_total": 497.883,
+  "attempt_count": 2,
+  "failure_kind": "timeout"
+}

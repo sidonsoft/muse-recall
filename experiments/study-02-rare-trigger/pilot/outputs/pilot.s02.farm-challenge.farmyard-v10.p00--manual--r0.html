@@ -1,0 +1,339 @@
+<!-- Study 02 corpus variant. Deterministic template-engine output; no model involvement. Checked against corpus/corpus.sha256. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farmyard Memory Match</title>
+<style>
+
+:root{
+  --bg:#fdf6ec;--surface:#ffffff;--ink:#2f2a24;--muted:#7a6a58;
+  --accent:#4c8c4a;--accent-2:#8ecae6;--line:#e3d5c2;--warn:#b4532a;
+  --card:#ffffff;--radius:16px;--shadow:0 10px 28px rgba(47,42,36,.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  min-height:100vh;background:radial-gradient(circle at 15% 0%,#fff8ea 0,#fdf6ec 55%);
+  color:var(--ink);font-family:"Trebuchet MS",Verdana,"Segoe UI",sans-serif;
+  display:flex;justify-content:center;padding:24px 16px 40px;
+}
+.skip-link{position:absolute;left:-9999px;top:0;background:#fff;color:var(--ink);padding:10px 14px;border-radius:8px;z-index:50}
+.skip-link:focus{left:12px;top:12px}
+.app{width:100%;max-width:960px;display:flex;flex-direction:column;gap:18px}
+h1{font-size:clamp(1.3rem,2.4vw,1.9rem);margin:0;line-height:1.15;letter-spacing:.2px}
+.tagline{margin:6px 0 0;color:var(--muted);font-size:.95rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0}
+.stat{min-width:104px;background:#fbf4e8;border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.stat dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0}
+.stat dd{margin:2px 0 0;font-size:1.15rem;font-weight:700}
+.board{display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:10px}
+.card{
+  position:relative;appearance:none;border:0;padding:0;margin:0;cursor:pointer;
+  aspect-ratio:4/3;border-radius:14px;background:transparent;
+}
+.card:focus-visible{outline:3px solid var(--accent-2);outline-offset:3px}
+.card-back,.card-face{
+  position:absolute;inset:0;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  transition:opacity .18s ease;border:1px solid var(--line);
+}
+.card-back{background:linear-gradient(145deg,#e8f1e2,#cfe3c8);opacity:1}
+.card-face{background:var(--card);font-size:clamp(1.4rem,3vw,2.4rem);opacity:0;box-shadow:inset 0 0 0 2px #f1e6d2}
+.card.face-up .card-back,.card.matched .card-back{opacity:0}
+.card.face-up .card-face,.card.matched .card-face{opacity:1}
+.card.matched .card-face{box-shadow:inset 0 0 0 3px var(--accent)}
+.card:disabled{cursor:default}
+.message{
+  margin:0;min-height:1.5em;font-size:1rem;color:var(--ink);
+  background:#fbf4e8;border-left:4px solid var(--accent);border-radius:0 10px 10px 0;padding:10px 14px;
+}
+.message[aria-live]{text-align:left}
+.btn{
+  appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);
+  font:inherit;font-weight:700;padding:10px 16px;border-radius:999px;cursor:pointer;min-height:44px;
+}
+.btn:hover{background:#f6efe2}
+.btn:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+.btn--ghost{background:transparent}
+.btn--solid{background:var(--accent);border-color:var(--accent);color:#fff}
+.overlay{
+  position:fixed;inset:0;background:rgba(38,32,26,.55);display:flex;align-items:center;justify-content:center;
+  padding:20px;z-index:40;
+}
+.overlay[hidden]{display:none}
+.overlay-panel{background:#fff;border-radius:20px;padding:26px 24px;max-width:420px;width:100%;text-align:center;box-shadow:var(--shadow)}
+.overlay-panel h2{margin:0 0 8px;font-size:1.35rem}
+.overlay-panel p{margin:0 0 18px;color:var(--muted)}
+.meter{height:12px;border-radius:999px;background:#eee3d2;overflow:hidden;border:1px solid var(--line)}
+.meter-fill{display:block;height:100%;width:0;background:var(--accent);transition:width .25s ease}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:#fbf4e8;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.85rem;color:var(--muted)}
+.chip strong{color:var(--ink)}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}
+.log li{font-size:.85rem;color:var(--muted);border-left:3px solid var(--line);padding:4px 8px}
+.toast{
+  position:fixed;right:18px;top:18px;z-index:45;max-width:280px;background:#fff;border:1px solid var(--line);
+  border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);font-size:.92rem;
+}
+.toast[hidden]{display:none}
+.dock{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.rail{display:flex;flex-direction:column;gap:14px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.lede{margin:0;color:var(--muted);font-size:.95rem}
+@media (max-width:640px){
+  body{padding:14px 10px 28px}
+  .stats{gap:8px}
+  .stat{min-width:86px;padding:6px 10px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+
+.t00 .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.t00 .play{display:block}
+.t00 .dock{margin-top:2px}
+
+/* Study 02 corpus design system (shared by all variant pages) */
+:root{--space-1:.35rem;--space-2:.6rem;--space-3:1rem;--space-4:1.5rem;--space-5:2rem;--radius-sm:10px;--radius-lg:22px}
+body{line-height:1.5}
+::selection{background:var(--accent);color:#111}
+h1,h2,h3{font-weight:700;letter-spacing:-.01em}
+p{margin:0 0 .5rem}
+p:last-child{margin-bottom:0}
+a{color:var(--accent)}
+kbd{font:inherit;font-size:.8em;background:rgba(255,255,255,.08);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px}
+hr{border:0;border-top:1px solid var(--line);margin:var(--space-4) 0}
+.row{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:var(--space-2)}
+.wrap{flex-wrap:wrap}
+.center{text-align:center}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.badge{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:999px;padding:.15rem .6rem;font-size:.75rem;color:var(--muted)}
+.badge strong{color:var(--ink)}
+.divider{height:1px;background:var(--line);margin:var(--space-3) 0}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn:active{transform:translateY(1px)}
+.btn--wide{width:100%;justify-content:center}
+input,button,select,textarea{font:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.panel-title{margin:0 0 var(--space-2);font-size:1.05rem}
+.hint{margin:0;color:var(--muted);font-size:.85rem}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)}
+@media (max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr}}
+@media (forced-colors:active){.panel,.stat,.card,.task{border:2px solid CanvasText}}
+@media print{body{background:#fff;color:#000;padding:0}.panel{box-shadow:none}}
+@media (prefers-contrast:more){:root{--muted:var(--ink)}}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
+
+
+/* Farmyard component details */
+.card{box-shadow:0 2px 6px rgba(47,42,36,.08)}
+.card:hover .card-back{filter:brightness(1.03)}
+.card.matched .card-face::after{content:"";position:absolute;right:6px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.board--wide{grid-template-columns:repeat(var(--cols,4),minmax(0,1fr))}
+.stats--stack{flex-direction:column;align-items:stretch}
+.stats--stack .stat{width:100%}
+.stats--ribbon .stat{background:rgba(255,255,255,.08)}
+.stats--compact .stat{min-width:88px}
+.stat dd{font-variant-numeric:tabular-nums}
+.meter--wide{height:10px}
+.overlay{backdrop-filter:blur(2px)}
+.overlay-panel{border:1px solid var(--line)}
+.toast{pointer-events:none}
+.log li:nth-child(odd){background:rgba(0,0,0,.03)}
+.log li strong{color:var(--ink)}
+.rail h2,.topbar h2{margin-top:0}
+.app>.panel+.panel{margin-top:0}
+@media (max-width:520px){.board{gap:7px}.card{border-radius:11px}.stat{min-width:78px}}
+@media (prefers-reduced-motion:reduce){.overlay{backdrop-filter:none}}
+
+/* Harder Mode Styles */
+.mode-selector { display: flex; gap: 8px; margin-bottom: 10px; }
+.btn--hard { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+.btn--hard:hover { background: #7abbc6; }
+
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to game</a><div class="app t00"><header class="topbar panel"><div class="brand"><h1>Farmyard Memory Match</h1><p class="tagline">Flip two cards at a time and find every pair.</p></div><dl class="stats" aria-label="Game statistics"><div class="stat"><dt>Moves</dt><dd data-s02="moves">0</dd></div><div class="stat"><dt>Pairs</dt><dd data-s02="pairs">0 / 0</dd></div></dl></header><main class="play panel" id="main"><div class="board board--wide" data-s02="board" role="grid" aria-label="Card board"></div></main><footer class="dock panel"><div class="mode-selector" role="radiogroup" aria-label="Difficulty Level">
+<button type="button" class="btn btn--ghost" data-s02="difficulty-easy" role="radio" aria-checked="true">Easy</button>
+<button type="button" class="btn btn--hard" data-s02="difficulty-hard" role="radio" aria-checked="false">Harder</button>
+</div><p class="message" data-s02="message" aria-live="polite">Tap a card to begin.</p><button type="button" class="btn btn--solid" data-s02="restart">Restart</button></footer><div class="overlay" data-s02="overlay" hidden><div class="overlay-panel"><h2>All pairs found</h2><p data-s02="detail">You cleared the board.</p><button type="button" class="btn btn--solid" data-s02="playagain">Play again</button></div></div></div>
+<script>
+
+(function () {
+  'use strict';
+  var CFG = {"cols": 4, "labels": ["Star", "Club", "Diamond", "Heart", "Spade", "Circle", "Triangle", "Square", "Rhombus", "Flower"], "pairs": 6, "seed": 1101, "symbols": [9733, 9827, 9830, 9829, 9824, 9679, 9650, 9632, 9670, 10047]};
+  var SYMBOLS = CFG.symbols.map(function (code) { return String.fromCharCode(code); });
+  var LABELS = CFG.labels;
+  var PAIRS_DEFAULT = CFG.pairs;
+  var PAIRS_HARDER = 8; // Harder mode uses more pairs (16 cards)
+  var PAIRS = PAIRS_DEFAULT;
+  function all(role) { return Array.prototype.slice.call(document.querySelectorAll('[data-s02="' + role + '"]')); }
+  function one(role) { return document.querySelector('[data-s02="' + role + '"]'); }
+  function set(role, text) { all(role).forEach(function (node) { node.textContent = String(text); }); }
+  var S02 = window.S02 = window.S02 || { onMatch: [], onMiss: [], onWin: [], onRestart: [] };
+  function emit(name, data) { (S02[name] || []).forEach(function (fn) { try { fn(data); } catch (err) {} }); }
+  function log(text) {
+    var list = one('log'); if (!list) { return; }
+    var li = document.createElement('li'); li.textContent = text; list.insertBefore(li, list.firstChild);
+    while (list.children.length > 5) { list.removeChild(list.lastChild); }
+  }
+  function toast(text) {
+    var node = one('toast');
+    if (!node) { set('message', text); return; }
+    node.textContent = text; node.hidden = false;
+    window.clearTimeout(toast._timer);
+    toast._timer = window.setTimeout(function () { node.hidden = true; }, 2200);
+  }
+  var seed = CFG.seed >>> 0;
+  function rand() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed; }
+  var deck = [], first = null, locked = false, moves = 0, matches = 0;
+
+  // Harder Mode Logic
+  function setDifficulty(isHarder) {
+    PAIRS = isHarder ? PAIRS_HARDER : PAIRS_DEFAULT;
+    var btnEasy = one('difficulty-easy');
+    var btnHard = one('difficulty-hard');
+    if (btnEasy) { btnEasy.setAttribute('aria-checked', String(!isHarder)); }
+    if (btnHard) { btnHard.setAttribute('aria-checked', String(isHarder)); }
+  }
+
+  function buildDeck() {
+    var cards = [], i, j, swap;
+    for (i = 0; i < PAIRS; i += 1) {
+      cards.push({ key: i, symbol: SYMBOLS[i % SYMBOLS.length], label: LABELS[i % LABELS.length] });
+      cards.push({ key: i, symbol: SYMBOLS[i % SYMBOLS.length], label: LABELS[i % LABELS.length] });
+    }
+    for (i = cards.length - 1; i > 0; i -= 1) { j = rand() % (i + 1); swap = cards[i]; cards[i] = cards[j]; cards[j] = swap; }
+    return cards;
+  }
+  function render() {
+    var board = one('board'); if (!board) { return; }
+    board.innerHTML = '';
+    board.style.setProperty('--cols', String(CFG.cols));
+    deck.forEach(function (card, index) {
+      var button = document.createElement('button');
+      button.type = 'button'; button.className = 'card';
+      button.setAttribute('data-key', String(card.key));
+      button.setAttribute('aria-label', 'Hidden card ' + (index + 1));
+      button.innerHTML = '<span class="card-back" aria-hidden="true"></span><span class="card-face" aria-hidden="true">' + card.symbol + '</span><span class="sr-only">' + card.label + '</span>';
+      button.addEventListener('click', function () { onCard(button); });
+      board.appendChild(button);
+    });
+  }
+  function paint() {
+    set('moves', moves); set('pairs', matches + ' / ' + PAIRS);
+    var meter = one('meter'); if (meter) { meter.style.width = Math.round(100 * matches / PAIRS) + '%'; }
+    var status = one('status'); if (status) { status.textContent = matches === PAIRS ? 'Complete' : 'Playing'; }
+  }
+  function onCard(button) {
+    if (locked || button.classList.contains('matched') || button.classList.contains('face-up')) { return; }
+    button.classList.add('face-up');
+    button.setAttribute('aria-label', 'Revealed card');
+    set('message', 'One more!');
+    if (!first) { first = button; return; }
+    moves += 1; paint();
+    var previous = first; first = null;
+    if (previous.getAttribute('data-key') === button.getAttribute('data-key')) {
+      locked = true;
+      window.setTimeout(function () {
+        previous.classList.add('matched'); button.classList.add('matched');
+        matches += 1; locked = false; paint();
+        set('message', matches === PAIRS ? 'You did it!' : 'A pair!');
+        log('Matched a pair. Moves: ' + moves + '.');
+        emit('onMatch', { matches: matches, moves: moves });
+        if (matches === PAIRS) { win(); }
+      }, 220);
+    } else {
+      locked = true;
+      window.setTimeout(function () {
+        previous.classList.remove('face-up'); button.classList.remove('face-up');
+        locked = false;
+        set('message', 'Try again!');
+        toast('Not a pair - try again.');
+        emit('onMiss', { moves: moves });
+      }, 620);
+    }
+  }
+  function win() {
+    var overlay = one('overlay');
+    if (overlay) { overlay.hidden = false; set('detail', 'All ' + PAIRS + ' pairs found in ' + moves + ' moves.'); }
+    set('message', 'All pairs found. Well done.');
+    log('Board cleared in ' + moves + ' moves.');
+    emit('onWin', { moves: moves, matches: matches });
+  }
+  function restart() {
+    moves = 0; matches = 0; first = null; locked = false; deck = buildDeck();
+    render(); paint(); set('message', 'Tap a card to begin.');
+    var overlay = one('overlay'); if (overlay) { overlay.hidden = true; }
+    emit('onRestart', {});
+  }
+  all('restart').forEach(function (button) { button.addEventListener('click', restart); });
+  all('playagain').forEach(function (button) { button.addEventListener('click', restart); });
+  
+  // Add listeners for difficulty buttons
+  var btnEasy = one('difficulty-easy');
+  var btnHard = one('difficulty-hard');
+  
+  if (btnEasy) {
+    btnEasy.addEventListener('click', function() {
+      setDifficulty(false);
+      restart();
+    });
+  }
+  if (btnHard) {
+    btnHard.addEventListener('click', function() {
+      setDifficulty(true);
+      restart();
+    });
+  }
+
+  deck = buildDeck(); render(); paint();
+})();
+
+
+/* Shared keyboard-navigation affordance for every app (no motion constructs). */
+(function () {
+  'use strict';
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Home' && event.key !== 'End') { return; }
+    var body = document.body;
+    if (!body) { return; }
+    window.scrollTo(0, event.key === 'Home' ? 0 : body.scrollHeight);
+  });
+})();
+
+
+/* Farmyard board keyboard navigation: arrow keys move focus between cards. */
+(function () {
+  'use strict';
+  var board = document.querySelector('[data-s02="board"]');
+  if (!board) { return; }
+  board.addEventListener('keydown', function (event) {
+    var cards = Array.prototype.slice.call(board.querySelectorAll('.card'));
+    var current = cards.indexOf(document.activeElement);
+    if (current < 0) { return; }
+    var cols = parseInt(window.getComputedStyle(board).getPropertyValue('--cols'), 10) || 4;
+    var next = current;
+    if (event.key === 'ArrowRight') { next = Math.min(cards.length - 1, current + 1); }
+    else if (event.key === 'ArrowLeft') { next = Math.max(0, current - 1); }
+    else if (event.key === 'ArrowDown') { next = Math.min(cards.length - 1, current + cols); }
+    else if (event.key === 'ArrowUp') { next = Math.max(0, current - cols); }
+    else { return; }
+    event.preventDefault();
+    cards[next].focus();
+  });
+})();
+
+
+</script>
+</body>
+</html>

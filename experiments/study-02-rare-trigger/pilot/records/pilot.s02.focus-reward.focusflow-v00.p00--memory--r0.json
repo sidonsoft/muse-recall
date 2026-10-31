@@ -1,0 +1,117 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--memory--r0",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+  "stratum": "focus-reward",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 366710044,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 1559410599,
+  "order_key": "742344b5b5f4a1c999e31909fde3700b407ec70afbe5bfd166620d734296487e",
+  "variant_id": "focusflow-v00",
+  "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v00.p00--memory--r0.txt",
+  "prompt_sha256": "a649358720d7262307d22b7b4f74242f5391e4dfe767fbaea025bf3ae1370c8e",
+  "prompt_bytes": 22683,
+  "request_sha256": "1c96c24d4c546d3ab8cf034194bca46bc441ff159a6dd04f527464f34370d6d7",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "0b3768c1-5a75-4b39-81eb-eec742deae98",
+    "9c1f7d97-094e-4126-87da-22a16ca1ecab"
+  ],
+  "memory_contents": [
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients.",
+    "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+  ],
+  "seeded": [
+    {
+      "id": "9c1f7d97-094e-4126-87da-22a16ca1ecab",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "0b3768c1-5a75-4b39-81eb-eec742deae98",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 847,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T10:05:10.225Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Failed to connect to 192.168.86.39 port 8080 after 7792 ms: Couldn't connect to server)",
+      "timeout_ms": 1800000,
+      "seconds": 10.848
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T10:05:51.075Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 276.176,
+      "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--memory--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--memory--r0.attempt2.sse.txt",
+      "response_sha256": "9f7ff89a66ce5eeb6f6ecfc01c0b8804c00209442d1b95a38909854bcf1fe68c"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6773,
+    "completion_tokens": 6287,
+    "total_tokens": 13060,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6773,
+    "prompt_ms": 17577.7,
+    "prompt_per_token_ms": 2.595,
+    "prompt_per_second": 385.3,
+    "predicted_n": 6287,
+    "predicted_ms": 255513.5,
+    "predicted_per_token_ms": 40.642,
+    "predicted_per_second": 24.6,
+    "draft_n": 5191,
+    "draft_n_accepted": 5147
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-reward.focusflow-v00.p00--memory--r0.html",
+  "output_bytes": 20133,
+  "output_sha256": "9e9b8f794239f40b887462fdba31d8ad4c674fab18ae4f93062db2d21b5d575c",
+  "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--memory--r0.attempt2.json",
+  "started_at": "2026-10-31T10:05:10.225Z",
+  "finished_at": "2026-10-31T10:10:32.255Z",
+  "seconds_total": 322.03,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

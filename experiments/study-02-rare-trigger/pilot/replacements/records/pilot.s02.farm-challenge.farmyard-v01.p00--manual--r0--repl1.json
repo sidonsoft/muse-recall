@@ -1,0 +1,107 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+  "stratum": "farm-challenge",
+  "arm": "manual",
+  "rep": 0,
+  "repeat_id": "replacement-1",
+  "repeat_of": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0",
+  "seed_mode": "replacement-same-seed",
+  "seed": 823070651,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:manual:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3915963493,
+  "order_key": "8895621a2ddbce14f31a21d1c03c19caba5d034a06a277410d5fbef9dddc3286",
+  "variant_id": "farmyard-v01",
+  "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+  "prompt_file": "pilot/replacements/prompts/pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1.txt",
+  "prompt_sha256": "8e958a834c33c4491af3791bc293e2482571e075360e6338cad417a17658127e",
+  "prompt_bytes": 20861,
+  "request_sha256": "3f78fda6e1bc239603c732f06e70336c79fa6bddccd8713c2a65f7447988fffa",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "982d857a-da39-4ee3-909e-56cb5411caf3"
+  ],
+  "memory_contents": [
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "982d857a-da39-4ee3-909e-56cb5411caf3",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 1,
+    "characters_used": 509,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 1,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T17:10:04.673Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 308.91,
+      "raw_file": "pilot/replacements/raw/pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1.attempt1.json",
+      "sse_file": "pilot/replacements/raw/pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1.attempt1.sse.txt",
+      "response_sha256": "3e9b991f121cdd9fd0580028cf63a8c91fb576a1da3d6ad9a7c8f58ccf1a0405"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6597,
+    "completion_tokens": 6985,
+    "total_tokens": 13582,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6597,
+    "prompt_ms": 17301.1,
+    "prompt_per_token_ms": 2.623,
+    "prompt_per_second": 381.3,
+    "predicted_n": 6985,
+    "predicted_ms": 288545.1,
+    "predicted_per_token_ms": 41.309,
+    "predicted_per_second": 24.2,
+    "draft_n": 5675,
+    "draft_n_accepted": 5584
+  },
+  "http": 200,
+  "output_file": "pilot/replacements/outputs/pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1.html",
+  "output_bytes": 21693,
+  "output_sha256": "5683c626e8d1e89691412251e0fafd0815f8ea6626f2b7f7350469d204d50903",
+  "raw_file": "pilot/replacements/raw/pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1.attempt1.json",
+  "started_at": "2026-10-31T17:10:04.673Z",
+  "finished_at": "2026-10-31T17:15:18.588Z",
+  "seconds_total": 313.915,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null,
+  "replacement_for": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0",
+  "replacement_reason": "timeout",
+  "replacement_rule": "one replacement per unusable pilot run; original failure retained; pilot-only"
+}
