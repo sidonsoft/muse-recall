@@ -308,7 +308,7 @@ pnpm bench:retrieval        # retrieval latency, selectivity, accuracy, stale ra
 pnpm bench:muse-overhead    # repeated real Muse calls; token variance and memory cost
 pnpm demo:sessions          # Demo A + B against real Muse, writes evidence JSON
 pnpm bench:context          # Demo C: baseline history vs retrieved memory
-pnpm eval:retrieval         # 22 retrieval questions, optional real Muse answers
+pnpm eval:retrieval         # 22 retrieval questions vs a RUNNING server; optional real Muse answers
 pnpm demo:tools             # real Muse plans tools; writes approved through the API
 pnpm demo:showcase          # Demos A, B, D, E end to end (fresh database recommended)
 pnpm eval:comparison        # persistent memory vs inline facts (n=4 per configuration)
