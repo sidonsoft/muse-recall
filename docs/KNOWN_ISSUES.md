@@ -509,3 +509,18 @@ app's own runtime does not use vite at all. The workspace itself audits CLEAN
 (`pnpm audit`, prod+dev, 31 Oct). Frozen path + semver-major: the bump is queued
 post-judging (website/ unfreezes first), as part of the supply-chain tier with
 action-register item 6.
+
+### KI-47 - On the frozen `main`, CONTRIBUTING's SECURITY.md link 404s; the security-policy indicator is unset (same shape as KI-44)
+
+**Severity:** Cosmetic-to-judges (one dead docs link + one missing repo indicator; no functional impact)
+**Detail:** raw-URL probes (31 Oct, case-sensitive like GitHub's Linux side):
+`main/SECURITY.md` -> **404**, `integration/SECURITY.md` -> 200, `main/CONTRIBUTING.md` -> 200.
+The root `SECURITY.md` (37-line security policy: private disclosure channel, scope, supported
+versions) was added on `integration` (9bb0770) AFTER the `main` cut, so on the frozen default
+branch (a) CONTRIBUTING.md:33's `[SECURITY.md](SECURITY.md)` link lands on a 404, and (b) GitHub's
+security-policy community indicator stays unset (it reads default-branch files). The 264-line threat
+model is tracked lowercase `docs/security.md` and resolves 200 on both branches - its links are fine.
+Fix: NONE needed as new work - promoting `integration` to `main` post-judging lands the root policy
+and repairs the link in one merge. Owner decision at tag time mirrors KI-44: (i) promote the
+docs-only lines to `main` before tagging (changes the shipped SHA) or (ii) ship as-is with the
+404 recorded here. Both files are also inside the frozen tree, so nothing acts before judging.
