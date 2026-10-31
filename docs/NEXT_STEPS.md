@@ -739,6 +739,48 @@ now is maintenance honesty, not new surface:
   the schema comment. Owner call; either way code+catalogue+migration in
   lockstep per D042, no silent half-removal.
 
+## Post-judging action register (consolidated 31 Oct)
+
+An INDEX, not a source of truth: each action's authoritative wording lives in its
+home (cited). Nothing here authorizes acting before judging closes; ordering is
+by trigger, newest obligation first. Conflicts resolve toward the home doc.
+
+**A. Owner actions at submission (Nov 4, owner-only - never agent-side):**
+1. Cut tag `submission-2026-11-04` from the shipped tree (auto-covered by ruleset
+   26184029); Release + archive per SUBMISSION_PRESERVATION.md owner-act list.
+2. KI-44 decision: promote the two docs-only 2:46-pointer fix lines to `main`
+   pre-tag (changes the SHA judges see) or ship as-is with one dead pointer.
+3. Record submitted SHA, tag derefs, and form fields in SUBMISSION_PRESERVATION.md.
+
+**B. Immediately after judging closes (mechanical, no owner judgment needed):**
+4. KI-43 + KI-45 lockstep PR: five inline codes into the catalogue (version 2→3)
+   AND statusCode-400 parse failures -> `bad_request` + mirror probes (KI-43, KI-45).
+5. PR #28: fetch `refs/pull/28/head` (f1a16f791e49...), recreate branch, merge or
+   close with reason (SUBMISSION_PRESERVATION.md recovery block).
+6. SHA-pin the 17 floating `uses:` steps (9 actions) + per-file `permissions:`
+   completion; website.yml pinning included once unfrozen (#162/#195 scope).
+7. Test-typecheck tsconfig in CI (documented trade, #161).
+8. Archive this cadence register into a dated log file; freeze-era watch bullets
+   retire with it.
+
+**C. Owner calls after judging (judgment required, evaluated already):**
+9. Ruleset 26184025 Firefox asymmetry: add third required context to Protect-main
+   or record the reason (NEXT_STEPS queue, API-re-read 31 Oct).
+10. `'purged'` enum: remove (migration+contract lockstep, D042) or document
+    deadness in the schema comment (NEXT_STEPS contract-completion bullet).
+11. 39-41 historical remote heads: per-branch ancestry checks, then prune or
+    keep-with-purpose (SUBMISSION_PRESERVATION.md).
+12. Optional live rejection-probe of ruleset 26245608 shape (read-only API
+    verification was sufficient so far; live probe needs post-judging freedom).
+
+**D. Roadmap horizons (POST_HACKATHON_ROADMAP.md owns these; index-only):**
+13. G-6 identity/scoping/rotation; 14. G-2 provisioning follow-up;
+15. ConfidenceSchema relabel (roadmap G1); 16. G-1/G-3+ per roadmap sequence.
+
+Dedup note: every entry existed in a home doc first; this register adds ORDER and
+a single view, and was checked against KI-43/KI-45/preservation/roadmap texts,
+not memory. No new actions invented here.
+
 ## Historical plan (Phase 6, kept for the development record)
 
 > This section is superseded by the backlog above. It is retained so the earlier
