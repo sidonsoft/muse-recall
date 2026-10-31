@@ -951,6 +951,15 @@ now is maintenance honesty, not new surface:
     as its current-wire baseline instead of re-probing from
     scratch; consolidation, not new claims - every row was a
     witness line first, table second.
+  - Parallel-actor drift census (31 Oct): the shared repo keeps
+    living outside my lane and that is FINE - study02's PR #187 is
+    OPEN with head advanced to 2f05954 (they're working; their
+    biome leg is theirs, never touched), remote heads 41->42 (a
+    new foreign branch appeared; not mine to evaluate or delete),
+    while PR #28's pinned pull-ref is still f1a16f791e49 (the
+    frozen-hold recovery handle holds). My cadence's latest is
+    integration @ 2d649b6 with main still c32d03b. The register's
+    job: record what moved, do not act on what is not mine.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
