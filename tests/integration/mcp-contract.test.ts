@@ -74,6 +74,26 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
     expect(Object.keys(inputSchema.properties ?? {})).toEqual(['query', 'limit']);
   });
 
+  it('write-tool descriptions advertise THIS surface: no per-write review myth', async () => {
+    const readOnly = await connect();
+    const { tools: defaultTools } = await readOnly.client.listTools();
+    for (const name of ['memory_create', 'project_update', 'task_create']) {
+      const tool = defaultTools.find((candidate) => candidate.name === name);
+      expect(tool?.description, name).toMatch(/refuses write calls/);
+      expect(tool?.description, name).not.toMatch(/Requires user approval/);
+    }
+    const search = defaultTools.find((tool) => tool.name === 'memory_search');
+    expect(search?.description).not.toMatch(/write tool|refuses/i);
+
+    const open = await connect({ allowWrites: true });
+    const { tools: openTools } = await open.client.listTools();
+    for (const name of ['memory_create', 'project_update', 'task_create']) {
+      const tool = openTools.find((candidate) => candidate.name === name);
+      expect(tool?.description, name).toMatch(/executes writes immediately/);
+      expect(tool?.description, name).toMatch(/no per-write review/);
+    }
+  });
+
   it('publishes the contract resource pinning version, scope, and write policy', async () => {
     const { client, ids } = await connect({ allowWrites: true });
     const resource = await client.readResource({ uri: CONTRACT_RESOURCE_URI });
@@ -81,12 +101,25 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
       contract_version: string;
       project_id: string | null;
       write_policy: string;
+      write_execution: string;
+      per_write_review: boolean;
       tools: Array<{ id: string; mcp_name: string; side_effect: string }>;
     };
     expect(document.contract_version).toBe(TOOL_CONTRACT_VERSION);
     expect(document.project_id).toBe('demo');
     expect(document.write_policy).toBe('enabled-at-startup');
+    // The startup switch authorizes everything: no per-write review, period.
+    expect(document.per_write_review).toBe(false);
+    expect(document.write_execution).toBe('immediate-under-startup-policy');
     expect(document.tools.map((tool) => tool.id).sort()).toEqual([...ids].sort());
+
+    const closed = await connect();
+    const closedDoc = JSON.parse(
+      (await closed.client.readResource({ uri: CONTRACT_RESOURCE_URI })).contents[0]?.text ?? '{}',
+    ) as { write_policy: string; write_execution: string; per_write_review: boolean };
+    expect(closedDoc.write_policy).toBe('disabled-at-startup');
+    expect(closedDoc.write_execution).toBe('refused-at-startup');
+    expect(closedDoc.per_write_review).toBe(false);
   });
 
   it('executes reads end to end with structured content matching the tool output', async () => {
@@ -125,7 +158,10 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
       arguments: { content: 'A write the model attempted anyway.' },
     });
     expect(denied.isError).toBe(true);
-    expect((denied.content as Array<{ text: string }>)[0]?.text).toMatch(/writes disabled/);
+    const denial = (denied.content as Array<{ text: string }>)[0]?.text ?? '';
+    expect(denial).toMatch(/read-only/);
+    expect(denial).toMatch(/no per-write review/);
+    expect(denial).toMatch(/STARTUP switch/);
     await cleanup.shift()?.();
 
     const open = await connect({ allowWrites: true });

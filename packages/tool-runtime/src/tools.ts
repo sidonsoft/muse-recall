@@ -186,8 +186,7 @@ export function createDefaultToolRegistry(): ToolRegistry {
   registry.register(
     defineTool({
       id: 'memory.create',
-      description:
-        'Store a fact in project memory. Requires user approval; duplicates are deduplicated.',
+      description: 'Store a fact in project memory; duplicates are deduplicated.',
       sideEffect: 'write',
       requiresConfirmation: true,
       input: MemoryCreateInput,
@@ -260,8 +259,7 @@ export function createDefaultToolRegistry(): ToolRegistry {
   registry.register(
     defineTool({
       id: 'project.update',
-      description:
-        'Update the project name or description. Requires user approval. At least one field is required.',
+      description: 'Update the project name or description. At least one field is required.',
       sideEffect: 'write',
       requiresConfirmation: true,
       input: ProjectUpdateInput,
@@ -302,8 +300,7 @@ export function createDefaultToolRegistry(): ToolRegistry {
   registry.register(
     defineTool({
       id: 'task.create',
-      description:
-        'Create a task in the current project. Requires user approval; use one call per task.',
+      description: 'Create a task in the current project; use one call per task.',
       sideEffect: 'write',
       requiresConfirmation: true,
       input: TaskCreateInput,

@@ -324,14 +324,19 @@ pnpm ops:alert-prober [url] # cron-ready consumer of /api/health alert states (e
 `pnpm mcp:serve --project <project-id> --db <path>` (or `DATABASE_PATH`) exposes the same
 seven bounded tools the session runtime enforces — over stdio, from the **same tool
 registry**, with input *and* output JSON Schemas and a `mcp-recall://contract` resource
-that publishes the contract version, project scope, and write policy. Scope and the
-writes policy are fixed at startup: a model sharing this endpoint cannot retarget the
-project or self-confirm a write (`--allow-writes` is the operator's switch). Point any
+that publishes the contract version, project scope, and write policy (including
+`per_write_review: false`, so clients never have to guess). Scope and write policy are
+fixed at startup, and they mean exactly what they say: a model cannot retarget the
+project, writes are **refused by default** (read-only endpoint), and `--allow-writes` is
+a **startup authorization** — when set, every write call executes immediately for the
+process lifetime. **This endpoint performs no per-write review**; the session runtime's
+approve-each-write flow is a property of the session surface, not of MCP. If your client
+needs per-write human review, that review belongs to your client. Point any
 MCP client at the command; the beta ships the server, not an in-product MCP client.
 
 ```bash
 pnpm mcp:serve --project demo --db ./data/muse-recall.db            # reads only (default)
-pnpm mcp:serve --project demo --db ./data/muse-recall.db --allow-writes
+pnpm mcp:serve --project demo --db ./data/muse-recall.db --allow-writes  # ALL writes authorized for this process
 ```
 
 `verify:studio-workflow` needs a production build and the Playwright-managed Chromium

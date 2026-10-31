@@ -595,6 +595,11 @@ structuredContent, writes refuse without the flag, invalid args error
 loudly. A second test pins the REST surface's version stamp. Cost: the SDK
 stays a thin transport layer (low-level request handlers, no zod coupling
 into the SDK), which keeps zod-version drift out of the protocol surface.
+**[Amended for the local beta (D058): the phrase "the operator's
+confirmation" overstated the flag. `--allow-writes` authorizes every write
+for the process lifetime at startup; MCP performs no per-write review.
+Descriptions, the contract resource, tests and README now say exactly
+that — see D058.]**
 
 ---
 
@@ -926,3 +931,32 @@ removed; ACL support stays queued as C-13).
 execute early, with dates and the override recorded at each home doc.
 Judges, the frozen tree, and the promotion rule are unaffected; the
 beta-cut decision remains an explicit later owner act.
+
+---
+
+### D058 — MCP write policy stated as startup authorization; no per-write-review claims
+
+**Context:** The beta review caught a three-way mismatch: the shared tool
+descriptions said write tools "Require user approval", the README said a
+model "cannot self-confirm a write" (implying a per-write review flow that
+MCP does not have), while `--allow-writes` actually executes every write
+immediately (headless MCP has no interactive channel — D043's own
+constraint). Clients reading the advertised descriptions would believe a
+safety property the endpoint does not provide.
+**Decision:** Keep the behavior (startup authorization; read-only default
+stays the strongest posture), and make every surface state the ONE truth:
+write-class tools carry no approval sentence in the shared description
+(the write class is machine-visible via `side_effect`); each write tool's
+MCP description additionally advertises THIS surface's policy (executes
+immediately under the startup switch / refuses by default); the
+contract resource gains `write_execution` and `per_write_review: false`;
+MCP_INSTRUCTIONS and the refusal text say startup-authorization,
+no-per-write-review; README says `--allow-writes` authorizes every write
+for the process lifetime and per-write review, if wanted, belongs to the
+client. D043 gets an amendment line rather than a rewritten body.
+**Conformance:** mcp-contract pins both description shapes per policy, the
+contract fields (default and enabled), and the refusal text; write
+execution still refuses without the flag and persists with it. The
+session runtime's per-write approval flow is untouched — that surface
+keeps the property honestly, and `requiresConfirmation`'s doc now names
+which surface enforces what.

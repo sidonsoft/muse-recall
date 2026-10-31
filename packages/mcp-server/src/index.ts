@@ -1,4 +1,4 @@
-import { TOOL_CONTRACT_VERSION } from '@mml/shared';
+import { TOOL_CONTRACT_VERSION, type ToolInfo } from '@mml/shared';
 import type { ToolContext, ToolRegistry } from '@mml/tool-runtime';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
@@ -18,16 +18,22 @@ import { z } from 'zod';
  * pins that. JSON Schemas come from the tools' zod contracts (input and
  * output), so clients can validate structured results, not just text.
  *
- * Scope and confirmation semantics mirror the beta's threat model:
+ * Scope and write policy are STARTUP bindings (D043, as amended for the local
+ * beta):
  *  - the project scope is bound when the server starts (operator choice),
  *    never taken from model arguments;
- *  - write tools run only when the operator started the server with writes
- *    allowed; a model cannot self-confirm, mirroring the session flow where a
- *    human approves pending writes.
+ *  - writes are REFUSED by default — the endpoint is read-only unless the
+ *    operator starts it with --allow-writes;
+ *  - when writes are enabled, that startup switch authorizes EVERY write call
+ *    for the process lifetime. This surface performs NO per-write review:
+ *    there is no pending-write queue and nothing to approve per call. Any
+ *    human review at this surface is the operator's MCP client's job. The
+ *    session runtime's per-write approval flow (D032) lives on the session
+ *    surface, not here.
  */
 
 export const MCP_INSTRUCTIONS =
-  'Muse Recall memory tools over the shared tool contract. Project scope is fixed when this server starts; tool arguments never change it. Write tools run only if the operator started this endpoint with writes enabled.';
+  "Muse Recall memory tools over the shared tool contract. Project scope is fixed when this server starts; tool arguments never change it. Write tools are refused unless the operator started this endpoint with writes enabled (--allow-writes). When enabled, that startup switch authorizes every write for the process lifetime: this endpoint performs no per-write review, so any human review is the connected MCP client's responsibility.";
 
 export const CONTRACT_RESOURCE_URI = 'mcp-recall://contract';
 
@@ -36,7 +42,9 @@ export interface McpServerOptions {
   projectId: string | null;
   /**
    * When false (the default), write-class tools are advertised but every
-   * call returns an isError explaining the operator policy.
+   * call returns an isError explaining the operator policy. When true, the
+   * switch authorizes EVERY write call for the process lifetime — this
+   * surface performs no per-write review either way (see MCP_INSTRUCTIONS).
    */
   allowWrites?: boolean;
   /** Audit identity recorded on records created through this surface. */
@@ -78,7 +86,7 @@ export function buildMcpServer(
       return {
         name: mcpToolName(tool.id),
         title: tool.id,
-        description: tool.description,
+        description: tool.description + writePolicyNote(tool, allowWrites),
         inputSchema: tool.input_schema as { type: 'object'; [k: string]: unknown },
         ...(outputSchema ? { outputSchema } : {}),
         annotations: {
@@ -105,9 +113,10 @@ export function buildMcpServer(
           {
             type: 'text',
             text:
-              `Tool "${info.id}" is a write and this MCP endpoint was started with writes ` +
-              'disabled. The operator must enable writes when launching this server; a model ' +
-              'cannot self-confirm.',
+              `Tool "${info.id}" is a write and this MCP endpoint is read-only: writes were not ` +
+              'enabled when the operator launched it (--allow-writes is a STARTUP switch that, ' +
+              'when set, authorizes every write for the process lifetime). A model cannot enable ' +
+              'writes at runtime, and this endpoint performs no per-write review either way.',
           },
         ],
         isError: true,
@@ -143,6 +152,13 @@ export function buildMcpServer(
     contract_version: contractVersion,
     project_id: options.projectId,
     write_policy: allowWrites ? 'enabled-at-startup' : 'disabled-at-startup',
+    // Per-surface truth (beta fix): MCP has no interactive approval channel,
+    // so write policy is enforced ONCE at startup and every allowed write
+    // executes immediately. The per-tool requires_confirmation below is the
+    // shared registry's session-runtime gate — read write_execution and
+    // per_write_review for what THIS surface actually does.
+    write_execution: allowWrites ? 'immediate-under-startup-policy' : 'refused-at-startup',
+    per_write_review: false,
     tools: tools.map((tool) => ({
       id: tool.id,
       mcp_name: mcpToolName(tool.id),
@@ -186,4 +202,16 @@ function safeOutputSchema(output: unknown): Record<string, unknown> | undefined 
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Write-class tools advertise THIS surface's policy in their description, so
+ * no MCP client can mistake the shared description for a per-write approval
+ * flow that does not exist here. Read-tool descriptions stay verbatim.
+ */
+function writePolicyNote(tool: ToolInfo, allowWrites: boolean): string {
+  if (tool.side_effect !== 'write') return '';
+  return allowWrites
+    ? " Write tool: this endpoint executes writes immediately under the operator's startup authorization (--allow-writes); there is no per-write review at this surface."
+    : " Write tool: this endpoint refuses write calls (read-only default; --allow-writes is the operator's startup switch).";
 }
