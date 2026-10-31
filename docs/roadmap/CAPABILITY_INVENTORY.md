@@ -264,7 +264,17 @@ durability) closed 2026-10-30.**
   **Re-refresh (31 Oct, after the approved-version containment and owner-only
   layout witnesses): 76 test files, 922 passed, 3 skipped (925).** The 5 new
   tests extend the existing `forge-workspace.test.ts` (file census unchanged
-  at 76); skips remain the opt-in live suite, green at head (#102). Full
+  at 76); skips remain the opt-in live suite, green at head (#102). Test
+  TOPOLOGY (censed 31 Oct): all 76 files live in the central `tests/` tree
+  (45 unit / 25 integration / 5 evaluation+research), importing directly
+  from `apps/*` and `packages/*` - no tests hide inside packages. The web
+  app has ZERO unit tests by design: its coverage is the managed-browser
+  workflow (48 checks local, 49 with the CI visual slots) plus the API
+  suites it drives; the opt-in live-Muse trio guards the real-provider
+  path. Layer map: packages+server modules -> unit; wire contracts +
+  auth + pagination -> integration HTTP; UI -> browser workflows;
+  provider reality -> opt-in live.
+  Full
   `pnpm run verify` (lint → `tsc` per package → tests) re-run green end-to-
   end, exit 0, at the 65-PR milestone head `dec4d24` on 31 Oct.
   **Updated baseline (2026-10-31, after the stored-JSON integrity matrix): 76 files,
