@@ -703,6 +703,17 @@ now is maintenance honesty, not new surface:
     pinning, not a pre-Nov-4 change. SECURITY.md gains a dated
     Dependency posture section carrying today's dated results. KI
     validator: 46 ids, zero dups.
+  - KI-46 range corroboration + app stack claims verified (31 Oct):
+    website's lock and manifest are in sync (npm ls
+    --package-lock-only, no errors) and its vite resolves to
+    5.4.21 - inside the advisory's <=6.4.3 range, so KI-46's range
+    text is corroborated by resolution, not just the audit header;
+    the APP side by contrast: apps/web runs vite ^7.1.12 - outside
+    that range entirely - and React ^19.2 / Tailwind ^4.1.16 make
+    the guide's and README's "React 19 · Vite 7 · Tailwind 4"
+    precise. One advisory, two projects, both facts instrumented:
+    the affected tree is only the landing-page toolchain, exactly
+    as KI-46 bounds it.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
