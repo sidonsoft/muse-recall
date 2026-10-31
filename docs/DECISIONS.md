@@ -314,9 +314,15 @@ message after a cancellation.
 ---
 
 > **Note on numbering:** D027 was never used — the number was skipped during
-> an early renumbering, no decision exists under it, and the whole repo
-> (docs and code) contains zero references to it. Verified by audit 31 Oct
-> 2026: 54 defined, 54 referenced, zero dangling references anywhere.
+> an early renumbering, and no decision exists under it. The zero-references
+> claim below was overstated: two meta-references exist (this note itself and
+> the cadence register's "documented skip" mention); zero references treat D027
+> as if a decision existed under it. Corrected 31 Oct by the reference census
+> that flagged its own
+> instrument's imprecision (the audit line beneath it said "54 defined, 54
+> referenced" — also stale: 55 decisions are defined, and the fresh census
+> finds every D0NN reference in the audited docs resolving to a defined
+> decision; zero dangling, with D027 the single documented skip).
 
 ### D028 — Model output is a declarative spec, not markup
 
