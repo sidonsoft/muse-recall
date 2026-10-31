@@ -8,9 +8,11 @@ scope and corrections.
 
 ## Deployment and security
 
-- **Single-user and loopback-only.** The API binds `127.0.0.1` by default. There is no
-  authentication, account model, per-user namespace, rate limiting or CSRF token. Do not expose this
-  build to a network or the public internet.
+- **Single-user and loopback-only.** The API binds `127.0.0.1` by default. A non-loopback bind
+  requires an `ACCESS_TOKEN`; with one set, every `/api` route except the open `GET /api/health`
+  liveness probe demands the bearer header (see [security](../SECURITY.md)). There is no account
+  model, per-user namespace, rate limiting or CSRF token: the token is one shared secret for the
+  whole instance, not identity. Do not expose this build to the public internet.
 - The Host and Origin guards are browser-confusion controls, not authentication. A non-browser
   client can send no `Origin` or forge one; a compromised local process or extension is outside the
   threat model.
@@ -19,6 +21,8 @@ scope and corrections.
   does not own a container, VM or separate OS user. `--workspace` is not an OS isolation boundary.
 - The API key stays server-side and is delivered to the CLI over stdin. There is no browser provider
   path. This does not make a compromised local machine safe.
+- Request bodies are capped at 1 MiB at the HTTP layer (`bodyLimit` in the Fastify constructor);
+  oversized payloads are refused before any route handler runs.
 - There is no hosted deployment. The application is not reachable at a public URL. The
   recorded 2:50 submission cut is committed under [`docs/demo/video/`](../demo/video/). See the
   [demo note](../demo/CORRECTABLE_MEMORY_DEMO.md).
