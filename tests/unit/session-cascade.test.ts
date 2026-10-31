@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { SessionStore } from '@mml/agent-core';
 import { openDatabase } from '@mml/memory-engine';
 import { describe, expect, it } from 'vitest';
+import { defined } from '../helpers/defined';
 
 /**
  * Schema-level promises of the session stack, none of which had a witness:
@@ -21,14 +22,6 @@ import { describe, expect, it } from 'vitest';
  */
 
 const NOW = '2026-06-01T00:00:00.000Z';
-
-// Narrowing helper: biome's noNonNullAssertion bans `!` (repo lint rule,
-// error severity), and an explicit check ALSO gives a better failure message
-// than undefined.id would - behavior preserved, fixture assumptions named.
-function defined<T>(value: T | undefined, what: string): T {
-  if (value === undefined) throw new Error(`fixture missing: ${what}`);
-  return value;
-}
 
 // Structural hand-typed parameter could not accept the real DatabaseSync
 // (StatementSync.get's parameter types are narrower than unknown[] under
