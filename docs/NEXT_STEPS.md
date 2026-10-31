@@ -783,6 +783,17 @@ now is maintenance honesty, not new surface:
     ever render as the 404 it describes. A scanner's lookbehind
     for backticks misfired and reported those two as live - the
     flagger got flaged: eyeball what a regex claims before filing.
+  - Fresh-entry line-cites + wire re-probed at head (31 Oct): the
+    only two file:line citations in the newest KI/register text -
+    CONTRIBUTING.md:33 (the SECURITY link line) and runtime-check.
+    ts:60 (the FORGE_RUNTIME_BROWSER read) - both verified pointing
+    exactly where claimed; KI-45/46/47 deliberately cite sources by
+    name without line numbers where the anchor would age fast.
+    Wire probes on a fresh server (echo provider, temp DB): /api/
+    health returns the ok:true envelope, version 0.1.0; /api/errors
+    serves catalog_version 2 with 5 groups and 46 published entries
+    (45 unique codes, invalid_request's designed double-publish) -
+    the 45/46 doctrine holds live, not just on paper.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
