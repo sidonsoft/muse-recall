@@ -446,3 +446,25 @@ catalogue-visible), replace the inline sends with `apiFailure()` at those
 five sites, and extend the mirror suite to probe all five — code,
 catalogue, tests, version in one PR, per the D048/D051 discipline.
 Pre-Nov-4 rule: contract bumps wait for the judging window to close.
+
+### KI-44 — Two committed docs promise a "2:46 fallback video" that no tree contains
+
+**Severity:** Low (a dead pointer on a judge-facing index), but it is a
+**defect inside the frozen entry**, not just integration.
+**Detail (found 31 Oct 2026):** `docs/README.md` (the documentation index
+judges are routed to) describes the Phase 16 evidence card as research
+"shown in the 2:46 fallback video", and `SUBMISSION_CHECKLIST.md` says the
+"2:46 cut is retained as the fallback". Exhaustive check: the only video
+files in ANY tree - integration AND frozen `main` - are the 2:50 V21 demo
+and its website copy; `git log --all --diff-filter=D` finds no deleted mp4,
+so the 2:46 cut was never committed. The research itself IS shown at the
+END of the committed 2:50 video (the evidence card says so) - the promise
+is wrong about the file, not the content.
+**State on integration:** both lines corrected 31 Oct to describe what the
+committed files support. **State on `main`:** both stale lines are inside
+the frozen submission surface; the freeze forbids touching them.
+**Owner action for the 4 Nov submission acts:** either promote the two
+docs-only lines to `main` before cutting the submission tag (they change
+no code, but they DO change the SHA judges currently see), or ship as-is
+knowing one index line points at a nonexistent file. Recorded in the
+preservation doc's owner-act list.

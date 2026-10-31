@@ -195,6 +195,16 @@ carry integration-only surfaces — `GET /api/memories/graph` (added to
 absorbed by the `:id` route's id-pattern guard. Nothing leaked into the
 entry, and the guard failed it closed, not open.
 
+### Owner-act addendum (found 31 Oct): the "2:46 fallback video" lines on `main`
+
+`docs/README.md:11` and `SUBMISSION_CHECKLIST.md:3` on `main` reference a "2:46
+cut / fallback video" that exists in NO tree ever (only video files anywhere:
+the 2:50 V21 demo + website copy). Integration fixed both lines 31 Oct
+(KI-44). Before cutting the 4 Nov submission tag, the owner chooses:
+promote the two docs-only lines to `main` first (SHA changes; no code moves)
+or submit as-is with one dead index pointer. Decision belongs to the
+submission acts; the freeze keeps `main` untouched until then.
+
 ## While judging is open
 
 - Nothing is promoted to `main`, so the README, website and Codespaces stay as submitted.

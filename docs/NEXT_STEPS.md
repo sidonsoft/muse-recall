@@ -325,6 +325,16 @@ now is maintenance honesty, not new surface:
     `process.env.X` - a process.env-only regex reports ten false
     phantoms; same false-positive family the docs-link audits learned
     from `?raw=true`.
+  - Video-promise census (31 Oct, at head): every video claim in live docs
+    now maps to a committed file (ffprobe: the 2:50 demo 170.474s; website
+    copy same content). Found-and-fixed on integration: docs/README "2:46
+    fallback video" (research is actually at the END of the committed 2:50
+    cut) and the checklist's "retained" claim - the 2:46 cut was NEVER
+    committed to any tree, ever (no deleted-mp4 history). Found-and-
+    FLAGGED on frozen main (same two stale lines inside the submission
+    surface): KI-44 + a preservation-doc owner-act entry for the 4 Nov
+    tag-cut decision. A dead pointer inside a frozen entry is documented,
+    not silently fixed.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
