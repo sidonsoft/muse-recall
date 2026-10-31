@@ -22,6 +22,14 @@ import type { DatabaseSync } from 'node:sqlite';
 
 const NOW = '2026-06-01T00:00:00.000Z';
 
+// Narrowing helper: biome's noNonNullAssertion bans `!` (repo lint rule,
+// error severity), and an explicit check ALSO gives a better failure message
+// than undefined.id would - behavior preserved, fixture assumptions named.
+function defined<T>(value: T | undefined, what: string): T {
+  if (value === undefined) throw new Error(`fixture missing: ${what}`);
+  return value;
+}
+
 // Structural hand-typed parameter could not accept the real DatabaseSync
 // (StatementSync.get's parameter types are narrower than unknown[] under
 // strictFunctionTypes). Name the actual type - type-level only.
@@ -59,7 +67,7 @@ describe('session cascade + no-FK design guarantees', () => {
       db.prepare(
         `INSERT INTO turn_memories (message_id, memory_id, score, evidence, memory_type, scope, created_at)
          VALUES (?, 'mem-xyz', 0.5, 'e', 'constraint', 'global', ?)`,
-      ).run(store.listMessages(doomed.id)[0]!.id, NOW);
+      ).run(defined(store.listMessages(doomed.id)[0], 'doomed session message').id, NOW);
 
       store.deleteSession(doomed.id);
 
@@ -103,7 +111,7 @@ describe('session cascade + no-FK design guarantees', () => {
       db.prepare(
         `INSERT INTO turn_memories (message_id, memory_id, score, evidence, memory_type, scope, created_at)
          VALUES (?, 'mem-keep', 0.7, 'because', 'constraint', 'global', ?)`,
-      ).run(message!.id, NOW);
+      ).run(defined(message, 'keeper session message').id, NOW);
 
       // Promise 2: purging the memory (below the engine) must not erase the
       // influence record — turn_memories.memory_id has no FK by design.
