@@ -971,6 +971,17 @@ now is maintenance honesty, not new surface:
     push, and deletion/non_fast_forward are blocked on
     integration. Template prose and GitHub policy agree line for
     line at this head.
+  - All four rulesets re-read with full config (31 Oct): the tag
+    freezes (26184029, 26245608) carry bypass_actors: [] - nobody,
+    not even admins, is exempt from the deletion/non_fast_forward/
+    update blocks on the tags; that is what bypass-proof by
+    settings means, witnessed as an empty list. The two branch
+    protections carry exactly one registered bypass: RepositoryRole
+    admin in pull_request mode - the open, nameable route my
+    --admin squash merges travel, not a hidden hole. Rules per
+    ruleset match the preservation doc's table; the doc's
+    "bypass actors unchanged" claim now has its first full-list
+    witness.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
