@@ -278,6 +278,15 @@ now is maintenance honesty, not new surface:
     only INSIDE the tree's mutation registry (mkdtemp under os.tmpdir,
     including its "must not clobber" guard test) - an exposed command
     that can never dirty tracked files, now recorded as such.
+  - Phantom-settings check (31 Oct, at head): every `ENV_NAME` token in
+    README + OPERATOR_RUNBOOKS is genuinely read by the code - 16/16
+    resolve to config schema keys or direct process.env reads; zero
+    settings a reader could dutifully set and accomplish nothing with.
+    Scanner gotcha named for the next sweep: env names live as ZOD
+    SCHEMA KEYS (`MODEL_PROVIDER: z.enum(...)`), not only as
+    `process.env.X` - a process.env-only regex reports ten false
+    phantoms; same false-positive family the docs-link audits learned
+    from `?raw=true`.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
