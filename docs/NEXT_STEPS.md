@@ -1129,6 +1129,20 @@ now is maintenance honesty, not new surface:
     further, not my authority either way. #187 remains OPEN;
     C-11's census numbers carry the "as-censused" date for just
     this reason.
+  - Mass head prune by another actor, witnessed whole (31 Oct):
+    40 -> 9 remote heads between two of my own counts, minutes
+    apart. Every vanished head was, per that morning's ancestry
+    census, an ancestor of main - content ships inside main
+    whatever the branch refs say, so the prune destroyed nothing.
+    Survivors: main, integration, and EXACTLY the seven divergent
+    heads from the C-11 census - first-time SHAs recorded,
+    still-divergent re-verified - the foreign trio plus the
+    agent/* quartet awaiting post-judging content diffs. Actor
+    not attributable from available records (DeleteEvents absent
+    from the events API); recorded as unknown and left alone -
+    attribution is honest when present and declared-absent when
+    not. Tag derefs exact (6640e83f/71416ae7/5e83616e), #28 pin
+    intact, #187 head alive at 7a6cacf5. Frozen entry: untouched.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -1265,7 +1279,16 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    or record the reason (NEXT_STEPS queue, API-re-read 31 Oct).
 10. `'purged'` enum: remove (migration+contract lockstep, D042) or document
     deadness in the schema comment (NEXT_STEPS contract-completion bullet).
-11. 39-41 historical remote heads: ancestry PRE-CENSUSED 31 Oct (read-only):
+11. Historical remote heads - POST-PRUNE STATE (31 Oct, minutes apart):
+    remote heads went 40 -> 9 in an actor-not-this-session event. ALL 32 vanished
+    heads were ancestors of main per the same-day census (zero content lost -
+    their commits ship inside main's history); survivors are exactly integration +
+    main + the SEVEN divergent heads (4 agent/* + 2 claude/* + study02/
+    checkpoint-1), SHAs on record (a806145b/4680ad34/84e6a8ce/e8fe9df7/
+    6640e83f/50ec1fca/7a6cacf5), all re-verified still-divergent. Actor not
+    attributable from available records (no DeleteEvents in the events API).
+    Tags and refs/pull/28 re-verified intact. The review set IS now exactly the
+    4 real content-diff reviews (agent/* quartet); the foreign trio stays foreign.
     32/39 are ancestors of main c32d03b (history fully merged); 7 DIVERGED -
     agent/phase11-release, agent/strata-phase12d-guard-audit, agent/
     strata-phase13-submission, agent/strata-phase14b-submission-audit (PHASE-era,
