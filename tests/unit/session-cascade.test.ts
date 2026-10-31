@@ -1,7 +1,7 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { SessionStore } from '@mml/agent-core';
 import { openDatabase } from '@mml/memory-engine';
 import { describe, expect, it } from 'vitest';
-import type { DatabaseSync } from 'node:sqlite';
 
 /**
  * Schema-level promises of the session stack, none of which had a witness:
