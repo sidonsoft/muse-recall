@@ -264,7 +264,9 @@ durability) closed 2026-10-30.**
   **Re-refresh (31 Oct, after the approved-version containment and owner-only
   layout witnesses): 76 test files, 922 passed, 3 skipped (925).** The 5 new
   tests extend the existing `forge-workspace.test.ts` (file census unchanged
-  at 76); skips remain the opt-in live suite, green at head (#102). Test
+  at 76); skips remain the opt-in live suite - re-run green against the
+  newer Muse Code 1.4.14 on 31 Oct (real round-trip / structured schema /
+  streaming deltas, 3/3). Test
   TOPOLOGY (censed 31 Oct): all 76 files live in the central `tests/` tree
   (45 unit / 25 integration / 5 evaluation+research), importing directly
   from `apps/*` and `packages/*` - no tests hide inside packages. The web
