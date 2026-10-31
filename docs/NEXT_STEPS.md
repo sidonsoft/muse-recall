@@ -146,6 +146,43 @@ repository's working backlog; completed items stay for the audit trail.
 
 ---
 
+## Cadence retrospective — 87 PRs in one day (consolidated 31 Oct)
+
+The register below lists findings newest-first; this block is the
+index a post-judging maintainer can read instead. Scope: PRs #68–#154,
+all merged into `integration` (zero closed-unmerged), from the 30 Oct
+evening through 31 Oct.
+
+- **Guards:** 17 invariant rows, each with an adversarial test written
+  to the promise - behavior was never changed to pass a test; when a
+  guard's expectation was wrong, the guard was fixed openly.
+- **Witnesses:** every operator-facing claim re-run at head with dated
+  evidence: judge quickstarts (both faces), seeded demo ×3, dev mode,
+  live Pages site, MCP stdio, SSE + bearer token, alert chain
+  green/amber/red, Codespaces origin replay, media census, bench +
+  eval cores (20/22 retrieval re-observed offline; live-Muse artifacts
+  protected from offline overwrite - see the mutation registry).
+- **Found and fixed:** phase17 tag's missing ruleset (gap the
+  `submission-*` glob silently missed) → ruleset 26245608; freeze
+  table missing its fourth row; appendix staleness (test count 54→76,
+  a loose glob counting snapshots as tests, a route grep mislabeled as
+  a counting instrument); README eval precondition; repo About
+  homepage null while the site was LIVE (owner settings fix,
+  disclosed).
+- **Found and queued (not acted pre-Nov-4):** KI-43 - five inline wire
+  codes outside the versioned catalogue; fix planned as one lockstep
+  contract PR after judging.
+- **Method findings:** scanner traps named as reusable knowledge
+  (`?raw=true` links, zod-schema env names vs process.env regex,
+  heading-depth-limited register ids, snapshot artifacts in glob
+  counts); offline reruns can destroy richer live evidence.
+- **Self-corrections shipped as visible PRs, never quiet amends:**
+  #77, #100, #113, #91→#92, #136→#137 (KI id collision), plus wrong
+  check-watch PR numbers twice and anchor-assert saves ~6 times.
+- **Untouched, by design:** zero product-surface changes, zero schema/
+  contract moves, zero frozen-path touches; `main` `c32d03b`, three
+  tags, four rulesets, PR #28 held open - sentinel green throughout.
+
 ## Cadence — after the build-out, until judging locks the entry
 
 The P0/P1 lists are executed (gap ledger: everything open is G-2, an operator
