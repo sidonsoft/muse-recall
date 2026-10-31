@@ -561,6 +561,18 @@ now is maintenance honesty, not new surface:
     reconcile arithmetically: 480 = 2 models x 6 strata x 4 arms x
     10 runs, straight from RESULTS.md's design line. No edits
     needed; clean numbers get dated too.
+  - Guide number-claims closed out (31 Oct, count dimension continued):
+    html-studio.md and architecture.md prose verified at the source -
+    "at most two active jobs (queued/running)" is literally
+    runner.ts:835 (`active >= 2` -> ForgeError too_many_jobs, a
+    catalogued code); the stated job defaults match config.ts
+    exactly (600_000 ms / 25 calls / 1_500_000 input tokens); the
+    four-row assessment table equals DECISION_GUARD_ASSESSMENTS 1:1
+    (violation_detected, no_violation_detected, not_verified,
+    evaluation_unavailable) including the not-a-certificate
+    disclaimer; "Four surfaces" matches App.tsx's view branches and
+    the four legs the browser gate walks at every merge. Zero guide
+    edits due; every number now carries an instrument cite.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
