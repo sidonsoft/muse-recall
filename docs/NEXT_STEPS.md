@@ -941,6 +941,16 @@ now is maintenance honesty, not new surface:
     socket level for the first time. One stray python fragment in
     the scratch command tracebacked harmlessly - probe hygiene
     note: paste-no-more leftovers get deleted, not shipped.
+  - Wire-probe ledger opened (31 Oct consolidation): the scattered
+    live-probe witnesses (malformed body, oversized body, errors
+    envelope, health envelope, bind interlock, bearer gate, meta
+    posture, replay header, error-path envelopes) now sit in one
+    dated index table at the end of the cadence section - rows say
+    probe -> observed -> owner (KI-45/KI-48/D049/SECURITY). The
+    post-judging lockstep PR (KI-43+45+48) starts from this table
+    as its current-wire baseline instead of re-probing from
+    scratch; consolidation, not new claims - every row was a
+    witness line first, table second.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -1022,6 +1032,25 @@ now is maintenance honesty, not new surface:
   validation accepts it today), or (b) keep it and document the deadness in
   the schema comment. Owner call; either way code+catalogue+migration in
   lockstep per D042, no silent half-removal.
+
+## Wire-probe ledger (consolidated 31 Oct)
+
+What has been probed LIVE at head, with the dated witness line in the register above as its home.
+Index only: each row says probe -> observed -> KI/section that owns the follow-up. Fresh servers,
+echo provider, temp DBs, deleted after.
+
+| Probed (all 31 Oct unless noted) | Observed at head | Owner |
+| --- | --- | --- |
+| malformed JSON body | 400 `internal_error` vs catalogue `bad_request` | KI-45 (fix queued) |
+| oversized body (~1.1 MB > 1 MiB limit) | 413 `internal_error`, no 413 catalogue entry | KI-48 (fix queued) |
+| `/api/errors` envelope | catalog_version 2, 5 groups, 46 entries / 45 codes | inventory §4 |
+| `/api/health` | ok:true envelope, version 0.1.0 | security.md |
+| HOST=0.0.0.0 without token | boot REFUSED, error restates invariant | SECURITY posture |
+| HOST=0.0.0.0 + token | listens (auth required) | SECURITY posture |
+| bearer gate (/api/projects, /api/live era) | 401/401/200; /api/health exempt; <16-char token boot-refused | SECURITY remote-access |
+| `/api/meta` posture self-report | loopback-only / shared-token per mode | SECURITY groundwork |
+| idempotent replay (socket level) | 201 replay byte-identical + `idempotent-replayed: 1` header | D049 |
+| error envelopes (404/validation_failed) | not_found names METHOD+path; details[] path-level | inventory §4 |
 
 ## Post-judging action register (consolidated 31 Oct)
 
