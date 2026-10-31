@@ -210,10 +210,11 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    build-tooling only; re-audit clean after).
 7. Test-typecheck tsconfig in CI (documented trade, #161). MEASURED 31 Oct: config
    staged as tsconfig.tests.json (unwired, gates unaffected); first honest run 270
-   errors, 261 after the config's own module mappings were completed (agent-core,
-   ui-protocol, fastify via apps/server) - zero unresolved modules remain. Top:
-   TS2739 x87 partial fixtures, TS2345 x53, undefined-access x43 (TS18048/2532),
-   TS5097 x7 .ts-extension imports. The 87 fixture-vs-interface cases
+   errors, 261 after module mappings (agent-core, ui-protocol, fastify via
+   apps/server), 254 with allowImportingTsExtensions (the config is noEmit-only;
+   tests and web sources use .ts specifiers as their vite/tsx convention). Zero
+   plumbing noise left; all 254 are real fix work: TS2739 x87 partial fixtures,
+   TS2345 x53, undefined-access x43 (TS18048/2532). The 87 fixture-vs-interface cases
    are a design decision (Partial<> types vs explicit fields), not mechanical;
    B-7 is now a scoped plan with a number, not a vague trade.
 8. ~~Archive this cadence register into a dated log file~~ DONE 31 Oct: journal
