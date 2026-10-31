@@ -1054,6 +1054,19 @@ now is maintenance honesty, not new surface:
     force anywhere). Drill banked: cut the branch BEFORE the
     commit; diffstat-vs-claim already saved the ship, the reset
     kept ff-only pulls honest.
+  - Count-freshness sweep passes everywhere, and the watch drill
+    gets its event filter (31 Oct): 76 files / 922 passed / 3
+    skipped (925) verified identical across README, inventory
+    (:22/:265/:287/:421), DEVELOPMENT_LOG (:211/:215) and the
+    register; 76 test files counted on disk - no number drifted
+    across a dozen doc edits this week. Watch-family correction
+    (variant 5 materialised): "watch the post-merge run" resolved
+    to the TOP of gh run list --branch integration, which can be
+    the PR's own already-completed run - the true post-merge
+    witness must be taken with --event push. For #232 the real
+    push run on 64a27c2 was then awaited to SUCCESS (05:5xZ), so
+    the double gate holds; the drill line now reads: after merge,
+    `gh run list --event push --limit 1` THEN watch.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
