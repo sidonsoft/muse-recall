@@ -222,7 +222,7 @@ wording replaced with "shown at the END of the committed 2:50 demo video"
 (integration@017d4c5; `git diff main integration -- docs/README.md` is exactly
 this one hunk);
 (ii) `docs/SUBMISSION_CHECKLIST.md`: the 2:46 wording lines (same commit;
-5 changed lines);
+measured 9 insertions / 5 deletions);
 (iii) root `SECURITY.md`: whole 37-line file, as landed integration@9bb0770,
 byte-current on integration (also repairs CONTRIBUTING.md:33 and sets the
 GitHub policy indicator on the default branch).
