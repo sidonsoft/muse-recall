@@ -431,6 +431,14 @@ now is maintenance honesty, not new surface:
     "45 codes" count uniques and stay true; an entry count would read
     46, so the distinction is now on record. /api/meta's errors
     pointer agrees (catalog_version 2 + endpoint).
+  - All live #L line-anchors re-verified at head (31 Oct): the ten in
+    LIVE_MUSE_CONFIGURATION (the #127 refresh holds - config schema
+    lines, quota regex, token accounting, quotaFailure, app wiring all
+    still land on exactly their claimed lines) plus the two inventory
+    anchors from #173; zero out-of-range, zero text-vs-fragment drift.
+    Scanner dialect noted: these anchors wrap their text in backticks
+    ([`config.ts:54`](path#L54)) - a regex that misses the backtick
+    sees ten anchors as zero, the census equivalent of a silent miss.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
