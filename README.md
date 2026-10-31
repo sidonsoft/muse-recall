@@ -538,7 +538,7 @@ interaction.
 | `POST` | `/api/memories/:id/accept` / `/api/memories/:id/reject` | Proposal decisions |
 | `GET` | `/api/memories/export` · `POST` `/api/memories/import` | Versioned envelope; import supports dry-run (D039) |
 | `GET` | `/api/errors` | Versioned error catalogue; `/api/meta.errors` points here (D048) |
-| `GET` | `/api/tools` | Tool contract — same registry the MCP server serves (G-5) |
+| `GET` | `/api/tools` | Tool contract — same registry the MCP server serves, with JSON input schemas (G-5) |
 | `GET` | `/api/projects` | Scope anchors |
 | `POST` | `/api/forge/projects` | Create/open an HTML Studio project |
 | `GET` | `/api/forge/projects/:id` | Project state, version history, jobs |
@@ -557,10 +557,6 @@ interaction.
 | `GET` | `/api/forge/projects/:id/preview` | Sandboxed preview document (opaque origin) |
 | `POST` | `/api/retrieval/preview` | Ranking + evidence + the exact prompt block |
 
-Notes: `POST /api/memories` and `POST /api/forge/projects/:id/generate` accept an
-`Idempotency-Key` header (24h replay window — D049). In token mode, every `/api` route
-requires the bearer header **except** the open liveness probe `GET /api/health`;
-`GET /api/live` and everything else need the token.
 | `POST` | `/api/sessions` | Create a conversation (optional project scope) |
 | `GET` | `/api/sessions` | List conversations |
 | `GET` | `/api/sessions/:id` | Transcript with per-turn retrieval evidence |
@@ -571,9 +567,13 @@ requires the bearer header **except** the open liveness probe `GET /api/health`;
 | `GET` | `/api/sessions/:id/ui` | Generated interfaces and their submissions |
 | `POST` | `/api/sessions/:id/ui` | Generate a validated interface for an intent |
 | `POST` | `/api/sessions/:id/ui/:surfaceId/events` | Submit an interface; the agent continues |
-| `GET` | `/api/tools` | The tool registry with JSON input schemas |
 | `GET` | `/api/sessions/:id/tools` | Tool-call audit for a conversation |
 | `POST` | `/api/sessions/:id/tools/:callId/decision` | Approve or deny a pending write |
+
+Notes: `POST /api/memories` and `POST /api/forge/projects/:id/generate` accept an
+`Idempotency-Key` header (24h replay window — D049). In token mode, every `/api` route
+requires the bearer header **except** the open liveness probe `GET /api/health`;
+`GET /api/live` and everything else need the token.
 
 Every route returns `{ ok: true, data }` or `{ ok: false, error: { code, message } }`.
 

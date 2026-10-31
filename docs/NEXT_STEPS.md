@@ -1006,6 +1006,19 @@ now is maintenance honesty, not new surface:
     rule working as designed, not drift. Tag derefs re-read exact
     (5e83616e/71416ae7/6640e83f). Method rule: a zero-touch claim
     is only honest with its scanned window declared.
+  - README REST table repaired mid-freeze (31 Oct): a Notes
+    paragraph (D049 idempotency + token-mode wording) sat IN THE
+    MIDDLE of the API route table - every GitHub markdown renderer
+    shows the following dozen rows as a wall of literal pipes, and
+    the same insertion had left /api/tools listed TWICE with
+    different descriptions. Fix is docs-only layout: table made
+    contiguous again, Notes moved below it, duplicate row merged
+    (schemas note folded in). The frozen main never had the defect
+    (its README predates the insertion - paragraph absent, single
+    clean table) - so judges saw no broken wall; the integration
+    tree did, and integration's README is what contributors read.
+    Rendering classes are audited like content now: the idempotent
+    + health-exemption wording itself verified exact.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
