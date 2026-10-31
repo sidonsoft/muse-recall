@@ -215,6 +215,21 @@ already promotes docs-only lines for KI-44, these lines can ride the same
 promotion. One decision, two blemishes — recorded together in the action
 register (NEXT_STEPS, line 2 of tier A).
 
+**Turnkey promote set (measured 31 Oct, read-only):** the WHOLE judge-facing delta
+of this decision is three pieces, no more:
+(i) `docs/README.md`: ONE line - the EVIDENCE_CARD row's "2:46 fallback video"
+wording replaced with "shown at the END of the committed 2:50 demo video"
+(integration@017d4c5; `git diff main integration -- docs/README.md` is exactly
+this one hunk);
+(ii) `docs/SUBMISSION_CHECKLIST.md`: the 2:46 wording lines (same commit;
+5 changed lines);
+(iii) root `SECURITY.md`: whole 37-line file, as landed integration@9bb0770,
+byte-current on integration (also repairs CONTRIBUTING.md:33 and sets the
+GitHub policy indicator on the default branch).
+Cherry-picks are docs-only and touch no shared lines with code, so order does
+not matter; if promoted, the candidate SHA at the top of this file is stale by
+design and must be re-recorded from the promoted tree BEFORE cutting the tag.
+
 ## While judging is open
 
 - Nothing is promoted to `main`, so the README, website and Codespaces stay as submitted.
