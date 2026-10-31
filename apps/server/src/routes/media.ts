@@ -99,7 +99,13 @@ export function registerMediaRoutes(app: FastifyInstance, deps: { service: Media
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
       const loaded = await service.listJobs(id);
-      return envelope(MediaJobListSchema.parse(loaded));
+      // The store reports {jobs, issues}; the list contract is {items, issues}.
+      return envelope(
+        MediaJobListSchema.parse({
+          items: loaded.jobs,
+          ...(loaded.issues.length > 0 ? { issues: loaded.issues } : {}),
+        }),
+      );
     });
   });
 

@@ -236,6 +236,31 @@ describe('media HTTP surface (Batch B4)', () => {
     expect(response.json().error.code).toBe('media_unconfigured');
   });
 
+  it('lists media jobs in the items contract the Studio panel consumes', async () => {
+    const { app } = await harness(imageOperations());
+    const empty = await app.inject({
+      method: 'GET',
+      url: `/api/forge/projects/${PROJECT}/media/jobs`,
+    });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json().data).toMatchObject({ items: [] });
+
+    const queued = await app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${PROJECT}/media/generate`,
+      payload: { prompt: 'a small dot', size: '512x512' },
+    });
+    expect(queued.statusCode).toBe(202);
+    const listed = await app.inject({
+      method: 'GET',
+      url: `/api/forge/projects/${PROJECT}/media/jobs`,
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().data.items.map((job: { id: string }) => job.id)).toContain(
+      queued.json().data.id,
+    );
+  });
+
   it('constructs media with the image model even when Forge has a coding model', async () => {
     const calls: Array<{ url: string; body: unknown }> = [];
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
