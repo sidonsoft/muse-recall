@@ -836,8 +836,24 @@ now is maintenance honesty, not new surface:
     found P1 #6 header "Partial" contradicting its own body ("the
     remaining piece landed the same day") and the G-table's
     G-10=Closed - status marker fixed with a dated correction note;
-    P1 #4 stays honestly Partial (G-6 identity work waits for
-    judging), a live partial, not a stale one.
+    P1 #4 stays honestly Partial (its open half is operator
+    provisioning = G-2, queued post-judging), a live partial, not a
+    stale one. [Self-correction 31 Oct, same round family: this line
+    first said "G-6 identity work" - wrong gap id for P1 #4; the
+    cross-check below proves P1 #4 pairs with G-2, and G-6 is the
+    separate identity/bearer-token gap whose Partial status has its
+    own queue. The pattern again: narration wrote an id before
+    checking it.]
+  - G<->P cross-consistency audit (31 Oct): all 12 G-table statuses
+    walked against their paired P-item markers - 10 Closed rows
+    every one paired to a Done P item (G-1<->P0 #3, G-8<->P1 #5,
+    G-10<->P1 #6 after the marker fix, G-11<->P1 #7, G-12<->P1 #8,
+    and the closed-era rest); the two Partial rows (G-2 worker
+    provisioning, G-6 identity/bearer) both correspond to queued
+    post-judging policy, not neglect. Zero remaining contradictions
+    across the two registers - and the audit caught its own author:
+    this section's previous entry had P1 #4 paired to G-6, corrected
+    in place above.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
