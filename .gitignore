@@ -38,6 +38,12 @@ runs/
 .idea/
 .DS_Store
 *.log
+# Evidence logs are deliberately part of the record (14 are tracked in
+# docs/hackathon-evidence/**); without this negation, `git add -A` would
+# silently SKIP new evidence logs added after this rule. Added 31 Oct after
+# a tracked-vs-ignored census found exactly that trap; touches no tracked
+# file's content.
+!docs/hackathon-evidence/**/*.log
 
 # Generated Forge game workspaces
 apps/server/workspaces/
