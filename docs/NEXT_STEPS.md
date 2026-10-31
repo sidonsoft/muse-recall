@@ -610,6 +610,16 @@ now is maintenance honesty, not new surface:
     factored. A count census without a declared file set is
     unfinishable; with one, it converges: three stale-home rounds,
     this one likely the last.
+  - Count dimension CLOSED at zero new findings (31 Oct): the
+    seven-tools/seven-rules claims now agree 10/10 across README x3,
+    guide x3, SECURITY, ARCHITECTURE_OVERVIEW, CAPABILITY_INVENTORY
+    (and the wire: /api/tools + MCP both serve seven) - the
+    three-round hunt (#185 guide, #190 SECURITY, #191 declared set)
+    now re-verifies with NOTHING found, which is what closing looks
+    like. Sentinel mini-sweep same round: all six invariants green
+    (main c32d03b, 3 tags, 4 rulesets, 0 site pushes, PR #28 OPEN,
+    0 frozen touches) and the Pages site still 200 with submitted
+    title.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
