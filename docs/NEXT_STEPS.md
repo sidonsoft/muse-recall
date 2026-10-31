@@ -812,6 +812,17 @@ now is maintenance honesty, not new surface:
     file at all (mcp-server is integration-only, main's README
     never mentions MCP) - so no frozen-entry blemish, just a
     head-only stale comment with era-consistent absence on main.
+  - Numeric source-comment census closed (31 Oct): every count-
+    bearing code comment re-read at head. app.ts:423 "Bounded to
+    five issues" matches its code exactly (issues.slice(0, 5) at
+    :434); tool.ts:38's "v1 was the six-tool baseline" is correct
+    HISTORY, not a stale count - the comment dates the contract
+    version, and '2' adding memory.graph is exactly right; the
+    catalogue version constant carries no prose count. With
+    mcp-server's header fixed last round, source comments are now
+    fully verified: era statements stay (honest history), live
+    claims match (slice witness), one stale claim was fixed rather
+    than trusted.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
