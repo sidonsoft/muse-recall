@@ -397,6 +397,16 @@ now is maintenance honesty, not new surface:
     no license-field sprawl or contradiction; and the live Pages site
     re-witnessed this round: 200 + the exact submitted title. Clean
     surfaces, dated.
+  - Launch-count disclosure verified against the code (31 Oct): the
+    .devcontainer README's privacy promises match setup.sh line by line -
+    codespace-gated, one GET, 3s cap, non-fatal (`|| true`), same URL.
+    Width found: setup opts out on EITHER variable being set to ANY
+    non-empty value, a shade wider than the README's `=1` spelling - the
+    README now says so, and notes the owner-counter separation visible in
+    the code. These two codespace-scoped vars (DO_NOT_TRACK,
+    MUSE_RECALL_NO_COUNT) live in setup.sh, not config.ts, which is why
+    the config-centric env census never listed them; the census scope is
+    now annotated rather than silently widened.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
