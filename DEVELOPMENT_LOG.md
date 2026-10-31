@@ -229,4 +229,4 @@ outstanding. What happened after, with pointers instead of re-narration:
   action register (#196) so the queue survives judging week. My own failure
   modes - a duplicated bullet, a phantom claim, an invented mechanism, a
   stale second write - each got a dated own-it PR (#170, #172, #195, #201),
-  because the register that only records other people's mistakes is PR.
+  because a register that only records other people's mistakes is public relations.
