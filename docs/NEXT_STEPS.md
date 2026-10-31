@@ -1067,6 +1067,23 @@ now is maintenance honesty, not new surface:
     push run on 64a27c2 was then awaited to SUCCESS (05:5xZ), so
     the double gate holds; the drill line now reads: after merge,
     `gh run list --event push --limit 1` THEN watch.
+  - 49-check receipts fresh from today's push runs, and drift
+    census pays for itself by catching MY OWN leftover (31 Oct):
+    both managed-engine legs printed "Automated Studio workflow:
+    49 checks passed" in the a80d975 push run (gate of record,
+    quoted with timestamps, not re-run locally). Head census said
+    42: the extra is feature/ki47-preservation-pairing - MY stale
+    branch from #211's interrupted-ship chain. The recovery read
+    PR state (MERGED) and the tree but missed the delete-branch
+    step's aftermath; GitHub's merge record (squash f50248d0,
+    mergedAt 03:44Z) proved the branch content landed, so the
+    head was my own merged residue in my own lane - deleted,
+    back to 41, matching the preservation census band. Sixth
+    interrupted-chain aftermath detail banked: after a partial
+    merge, the checklist is EVERY step re-verified against
+    external state - checks, merge, branch DELETE, pull - branch
+    deletion is a step, not a footnote; the periodic head census
+    is the net that caught it.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
