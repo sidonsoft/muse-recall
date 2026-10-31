@@ -130,24 +130,31 @@ that target is untested and effectively unassigned until a deployment exists.
 
 The code-side seam (D042): set `FORGE_WORKER_WRAPPER` to an **absolute executable path**; every
 Forge CLI launch becomes `<wrapper> <museBin> <args...>` with `cwd=<job staging dir>`, and the
-server refuses boot unless `<wrapper> node -e 0` exits 0 (pass-through proven at startup, not
-assumed). The child env is an allowlist (`@mml/shared` child policy + three test seams); no
-credentials are inherited - the provider API key goes to the child over stdin.
+server gates boot on TWO real probes of the wrapper — pass-through (`<wrapper> node -e 0`) AND,
+since the beta fix (KI-49), a **staging-access probe**: it creates a 0700 scratch dir + 0600
+prompt file inside `<WORKSPACE_ROOT>/forge/.wrapper-probe/`, then runs the wrapper with
+cwd = that dir to read the prompt and write inside it — the exact accesses every generation
+performs. A wrapper failing either probe refuses boot with the wrapper path in the error
+(pass-through and staging access proven at startup, not assumed). The child env is an
+allowlist (`@mml/shared` child policy + three test seams); no credentials are inherited -
+the provider API key goes to the child over stdin.
 
-What the child must be able to do, verified from the launch path (runner.ts:1223/1268,
-workspace.ts:510): **read+execute** the muse CLI and node, **read** `prompt.txt` (mode 0600,
-server-owned), **write** inside the job staging dir (mode **0700**, server-owned). That last
-line is why a naive `setpriv --reuid <other-user>` wrapper fails: boot succeeds (the probe
-touches none of it) but the first generation dies EACCES inside the CLI and the job surfaces as
-interrupted - recorded as KI-49; server-side worker-group ACL support is queued post-judging.
+What the child must be able to do, verified from the launch path (runner.ts prompt-file/staging
+calls, fs-utils `ensurePrivateDirectory`/`writePrivateFile`): **read+execute** the muse CLI and
+node, **read** `prompt.txt` (mode 0600, server-owned), **write** inside the job staging dir
+(mode **0700**, server-owned). A naive `setpriv --reuid <other-user>` wrapper cannot do the
+last two — historically that booted and died EACCES mid-job (KI-49); the staging probe now
+**refuses such a wrapper at boot** instead. The published security.md no longer carries that
+recipe; server-side worker-group ACL support stays queued (KI-49 / register C-13, owner call).
 
 Provisioning paths that work today (no code change):
 
 1. **Container-launcher wrapper (strongest).** The wrapper `exec`s your container runtime with
    the staging path bind-mounted and the container uid **mapped to the server euid** (same-uid
    bind-mount keeps the 0700/0600 tree writable while the namespace isolates everything else:
-   read-only root, dropped capabilities, no host network). The startup probe exercises the whole
-   launcher (it must run `node -e 0` to completion), so a misconfigured runtime refuses boot.
+   read-only root, dropped capabilities, no host network). The startup probes exercise the whole
+   launcher end to end — `node -e 0` AND staging read/write inside the real workspace tree —
+   so a misconfigured runtime refuses boot, not the first generation.
 2. **`systemd-run` scope wrapper (partial, no uid change).**
    `#!/bin/sh` + `exec systemd-run --wait --pipe --user-slice ... --property=... "$@"` per your
    policy (cgroup/limits/temp isolation). Same uid, so the staging tree stays writable - this
@@ -155,11 +162,13 @@ Provisioning paths that work today (no code change):
    user-isolation goal. State that honestly in your deployment notes.
 
 Verification after wiring either path:
-- restart the server and confirm it booted (a failed wrapper probe aborts boot with the wrapper
-  path in the error - that is the fail-fast contract working, see `resolveWorkerWrapper`);
+- restart the server and confirm it booted (a failed pass-through OR staging-access probe
+  aborts boot with the wrapper path in the error - that is the fail-fast contract working,
+  see `resolveWorkerWrapper` + `probeWorkerStagingAccess`);
 - run one generation end to end; job completes, promoted version lands, staging removed;
 - confirm the worker's actual identity from outside: `ps -o user=,uid= -p $(pgrep -f <museBin>)`
-  during a generation - expect the mapped/container identity, not a surprise;
+  during a generation - expect the mapped/container identity, not a surprise (same-uid scope
+  wrappers show the server uid - that is the honest partial posture, see 2);
 - misconfiguration is loud by design: interrupted job + the recovery banner (P0 #3), never a
   silently unwrapped child.
 

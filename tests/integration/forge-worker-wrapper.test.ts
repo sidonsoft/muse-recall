@@ -96,6 +96,18 @@ describe('Forge worker wrapper (G-2 isolation seam)', () => {
     await expect(setup(wrapper)).rejects.toThrow(/failed the pass-through probe with exit code 3/);
   });
 
+  it('refuses boot when the wrapper passes argv but cannot touch the staging contract (KI-49)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'forge-wrapper-bad-'));
+    roots.push(dir);
+    // Passes `node -e 0` (the pre-beta probe) yet revokes the 0600 prompt the
+    // staging probe reads - the cross-uid EACCES shape (KI-49) without
+    // needing setuid. Pre-beta this booted and died mid-job.
+    const wrapper = await writeWrapper(dir, 'revoke.sh', 'chmod 000 "$4" 2>/dev/null\nexec "$@"');
+    await expect(setup(wrapper)).rejects.toThrow(
+      /failed the staging-access probe[\s\S]*container launcher/,
+    );
+  });
+
   it('refuses boot for a relative wrapper path', async () => {
     await expect(setup('relative/wrapper')).rejects.toThrow(/must be an absolute path/);
   });

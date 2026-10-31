@@ -17,7 +17,7 @@ product.
 | T5 | Malformed or hostile HTTP input crashes the server | Denial of service | **Handled**: Zod validation + envelope + safe error mapping |
 | T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated by default**: with `ACCESS_TOKEN` unset, startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app). An operator MAY set `ACCESS_TOKEN` for a deliberate off-loopback bind — see “Remote-access groundwork” below |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
-| T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; operator-owned OS isolation is available via the probed `FORGE_WORKER_WRAPPER` launch seam (default local beta still runs as the server user) |
+| T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; operator-owned OS isolation available via the boot-probed `FORGE_WORKER_WRAPPER` seam (probe exercises the real staging accesses, beta); default local beta still runs as the server user |
 | T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job and version promotion, schema validation, explicit recovery issues, no silent state reset, verified version hashes |
 | T10 | A restart silently re-runs an unfinished model job or promotes unreviewed bytes | Duplicate spend / unreviewed publish | **Mitigated**: queued/running jobs become `interrupted`; approval still requires exact-byte SHA-256 and runtime verification |
 
@@ -63,35 +63,40 @@ the full server environment. It now receives:
   `--preset empty` because it needs file-write tools.
 
 **What this does not establish.** `--workspace` roots the CLI's policy-gated tools; it is
-not a container, VM, or OS user boundary. The child runs as the same local user as the
-server and could read files that user can read if the CLI's own sandbox/approval layer were
-bypassed. The app does not claim to sandbox that process. A stronger boundary — running
-Forge in a dedicated OS user/container with only the workspace mounted — is an operator
-deployment step, and the server now provides the code-side seam for it: when
-`FORGE_WORKER_WRAPPER` names an absolute executable, every Forge CLI launch goes through
-that pass-through wrapper (`wrapper <cli> <args...>`). The wrapper is verified at startup
-by actually running it (`<wrapper> node -e 0`); a wrapper that fails validation or the
-probe refuses boot rather than silently reverting to direct execution. Linux example:
+not a container, VM, or OS user boundary. **The default local-beta posture, stated plainly:**
+the Forge child runs as the same user as the server, with the server's own permissions —
+staging is 0700 and the prompt file 0600, both server-owned. The app does not claim to
+sandbox that process.
 
-```sh
-# /usr/local/bin/forge-setpriv: run the worker as user `forge`, only the
-# workspace readable; argv passthrough keeps the CLI contract unchanged.
-#!/bin/sh
-exec setpriv --reuid forge --regid forge --clear-groups "$@"
-```
+A stronger boundary is an operator deployment step, and the server provides the code-side
+seam for it: when `FORGE_WORKER_WRAPPER` names an absolute executable, every Forge CLI
+launch goes through that pass-through wrapper (`wrapper <cli> <args...>`). The wrapper is
+verified at startup by executing the real access pattern, two probes, both gating boot:
 
-Set `FORGE_WORKER_WRAPPER=/usr/local/bin/forge-setpriv` for the server process. The
-wrapper concept also composes with systemd-run scopes or container launchers. The default
-single-user local beta still runs the child directly.
+1. pass-through: `<wrapper> node -e 0`;
+2. staging access (beta fix for KI-49's trap): with cwd = a 0700 scratch dir created with
+   the same semantics as production, read a 0600 prompt file inside it and write a file
+   into the directory — the exact accesses every generation performs.
 
-**Permission caveat (KI-49):** the server creates the job staging tree mode 0700 and the
-prompt file mode 0600, owned by the server user, and the CLI writes files inside staging -
-so a uid-CHANGING wrapper like the `setpriv` example above fails at the first real
-generation (EACCES), even though the startup pass-through probe succeeds. Proven paths
-today: a container-launcher wrapper with a uid-mapped staging bind-mount, or a
-`systemd-run` scope wrapper (isolation without uid change, partial). True uid isolation
-needs server-side worker-group ACL support, tracked as KI-49 and queued post-judging.
-Operator step-by-step: docs/ops/OPERATOR_RUNBOOKS.md (Forge worker isolation).
+A wrapper that fails either probe refuses boot rather than silently reverting to direct
+execution — or, worse, dying with EACCES inside the first paid generation.
+
+**No uid-changing recipe is published here (KI-49).** A `setpriv`-style wrapper cannot
+read the server-owned 0600 prompt or write inside the server-owned 0700 staging tree; the
+beta review removed that example, and the staging probe now refuses such wrappers AT BOOT.
+Proven paths with no code change:
+
+- **container launcher with the staging tree bind-mounted and the container uid mapped to
+  the server euid** — same-uid bind-mount keeps the 0700/0600 tree writable while the
+  namespace isolates the rest (read-only root, dropped caps, no host network);
+- **same-uid scope wrappers** (`systemd-run --user-slice`, a `sandbox-exec` profile):
+  cgroup/limits/mount-view hardening without a uid change — partial isolation, stated as
+  such.
+
+True uid isolation needs server-side worker-group ACL support (staging 0750, prompt 0640,
+dedicated group — contract-visible), tracked as KI-49 / action register C-13 and queued as
+an owner call. Operator step-by-step: docs/ops/OPERATOR_RUNBOOKS.md (Forge worker
+isolation).
 
 ## Durable jobs and restart recovery
 

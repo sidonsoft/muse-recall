@@ -1,9 +1,10 @@
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   applyWorkerWrapper,
+  probeWorkerStagingAccess,
   probeWorkerWrapper,
   resolveWorkerWrapper,
 } from '../../apps/server/src/forge/worker-wrapper.js';
@@ -67,6 +68,42 @@ describe('worker wrapper probe (G-2)', () => {
   it('reports a wrapper that cannot start at all', async () => {
     const path = join(await mkdtemp(join(tmpdir(), 'worker-wrapper-unit-')), 'gone.sh');
     expect(probeWorkerWrapper({ path })).toMatch(/could not start/);
+  });
+});
+
+describe('worker wrapper staging-access probe (KI-49 beta fix)', () => {
+  it('passes a pass-through wrapper and cleans its scratch tree', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'worker-wrapper-staging-'));
+    dirs.push(dir);
+    const path = await executable(dir, 'wrap.sh', 'exec "$@"');
+    const scratchRoot = join(dir, 'workspace');
+    expect(probeWorkerStagingAccess({ path }, { scratchRoot })).toBeNull();
+    // The probe created its scratch tree INSIDE the provided root (proven by
+    // the two negative controls below flipping this exact call to failure)
+    // and removed every scratch it made, leaving only the empty root.
+    expect(await readdir(scratchRoot)).toEqual([]);
+  });
+
+  it('fails with an actionable KI-49 message when the prompt becomes unreadable', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'worker-wrapper-staging-'));
+    dirs.push(dir);
+    // Simulates the cross-uid EACCES shape (KI-49) without needing setuid:
+    // the wrapper revokes the 0600 prompt before exec'ing node.
+    const path = await executable(dir, 'revoke.sh', 'chmod 000 "$4" 2>/dev/null\nexec "$@"');
+    expect(probeWorkerStagingAccess({ path })).toMatch(/failed the staging-access probe/);
+  });
+
+  it('fails when the staging directory refuses writes', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'worker-wrapper-staging-'));
+    dirs.push(dir);
+    // Two-stage (no exec) so the wrapper can restore the directory mode
+    // before the probe cleans up: revoke write in cwd, run, restore, report.
+    const path = await executable(
+      dir,
+      'readonly.sh',
+      'parent=$(dirname "$4"); chmod 500 "$parent" 2>/dev/null; "$@"; rc=$?; chmod 700 "$parent"; exit $rc',
+    );
+    expect(probeWorkerStagingAccess({ path })).toMatch(/failed the staging-access probe/);
   });
 });
 

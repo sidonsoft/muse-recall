@@ -577,3 +577,13 @@ end to end), or (b) a `systemd-run` scope wrapper (cgroup/temp isolation, no uid
 **Fix plan (post-judging, owner call):** small server-side ACL support - create staging
 (0750) and prompt (0640) group-accessible for a dedicated worker group named by a new env;
 contract-visible (new env + permission model), hence tier-C of the action register (item 13).
+**Status (beta integration, 31 Oct):** the trap is defused, the recipe is gone, the ACL
+work stays queued. The startup probe is no longer just `node -e 0`: `probeWorkerStagingAccess`
+creates a 0700 scratch dir + 0600 prompt INSIDE `<WORKSPACE_ROOT>/forge/.wrapper-probe/` and
+runs the wrapper through the exact generation accesses (read prompt, write inside cwd). A
+uid-changing wrapper now REFUSES BOOT with a KI-49-naming error instead of dying mid-job;
+pinned by unit tests (prompt-revoke and dir-revoke controls simulate the EACCES shape
+without setuid) and an integration boot-refusal test. The misleading setpriv example is
+removed from security.md; the default posture (same-uid child, 0700/0600 server-owned) is
+now stated plainly there and in the runbook. True uid isolation still waits on C-13 ACL
+support (owner call) - the beta deliberately did NOT weaken permissions to paper over it.

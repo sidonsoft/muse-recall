@@ -32,6 +32,7 @@ import { checkGameRuntime } from './runtime-check.js';
 import {
   applyWorkerWrapper,
   type ForgeWorkerWrapper,
+  probeWorkerStagingAccess,
   probeWorkerWrapper,
   resolveWorkerWrapper,
 } from './worker-wrapper.js';
@@ -196,7 +197,14 @@ export class ForgeJobManager {
           : resolveWorkerWrapper();
     if (wrapperResolution.error) throw new Error(wrapperResolution.error);
     if (wrapperResolution.wrapper) {
-      const probeFailure = probeWorkerWrapper(wrapperResolution.wrapper);
+      // Both probes gate boot. The staging probe runs INSIDE the real
+      // workspace tree so a container launcher whose bind-mount covers the
+      // staging tree sees exactly what production will see.
+      const probeFailure =
+        probeWorkerWrapper(wrapperResolution.wrapper) ??
+        probeWorkerStagingAccess(wrapperResolution.wrapper, {
+          scratchRoot: join(this.workspace.getRoot(), '.wrapper-probe'),
+        });
       if (probeFailure) throw new Error(probeFailure);
     }
     this.workerWrapper = wrapperResolution.wrapper;

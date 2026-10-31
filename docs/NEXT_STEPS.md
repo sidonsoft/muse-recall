@@ -18,14 +18,16 @@ DEVELOPMENT_LOG.md and the decision records.
    damaged bytes and rebuilds from surviving approved versions (PR #32). Studio banner
    wired; the managed browser workflow corrupts and repairs through the UI as a standing
    gate (PR #33). Repair refuses on a valid state (`state_valid`, 409).
-4. **Isolate the Forge worker from the server user.** — **Partial (2026-10-30).**
+4. **Isolate the Forge worker from the server user.** — **Partial (2026-10-30; probe hardened 2026-10-31).**
    Code seam landed: `FORGE_WORKER_WRAPPER` routes every Forge CLI launch through an
-   operator wrapper (boot refused on probe failure, D042). Working provisioning paths
-   + verification: [ops runbook](ops/OPERATOR_RUNBOOKS.md) "Forge worker isolation".
-   KI-49 (31 Oct): the naive `setpriv --reuid` example cannot write the 0700 staging
-   tree / read the 0600 prompt - TRUE uid isolation also needs the small ACL change
-   (register C-13), not just deployment. Remaining: operator provisioning via one of
-   the runbook paths, then ACL support post-judging.
+   operator wrapper (boot refused on probe failure, D042). Beta (KI-49): the boot probe now
+   exercises the REAL staging accesses (0700 dir write + 0600 prompt read inside the actual
+   workspace tree, `probeWorkerStagingAccess`) - uid-changing wrappers refuse boot instead of
+   dying mid-generation; the unusable setpriv recipe is removed from security.md and the
+   default same-uid posture is stated plainly. Working provisioning paths + verification:
+   [ops runbook](ops/OPERATOR_RUNBOOKS.md) "Forge worker isolation". Remaining: operator
+   provisioning via one of the runbook paths; true uid isolation still needs the small ACL
+   change (register C-13 - still an owner call, NOT weakened for the beta).
 
 ## P1 — next hardening
 
@@ -183,6 +185,11 @@ toward the home doc.
     group named by a new env, enabling setpriv-style uid isolation; contract-visible (new env +
     permission model), so this is an owner call first, then a small PR - the runbook already
     documents two wrapper paths that work without it.
+    **Beta (31 Oct, KI-49 trap defused without weakening permissions):** the boot probe now
+    runs staging write + prompt read THROUGH the wrapper (`probeWorkerStagingAccess`, inside
+    the real workspace tree) and REFUSES uid-changing wrappers at boot; the unusable setpriv
+    recipe is gone from security.md and the default same-uid posture is stated plainly.
+    ACL support itself remains an owner call (D057 override covered the probe, not C-13).
 
 **D. Roadmap horizons (POST_HACKATHON_ROADMAP.md owns these; index-only):**
 14. G-6 identity/scoping/rotation; 15. G-2 provisioning follow-up;
