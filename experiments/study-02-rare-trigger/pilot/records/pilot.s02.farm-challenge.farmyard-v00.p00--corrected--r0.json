@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+  "stratum": "farm-challenge",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 235832847,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v00.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 806900782,
+  "order_key": "32af74ebf525c2e0ae35e0f60942699c43f38b184c2233d10fc15a07234437ba",
+  "variant_id": "farmyard-v00",
+  "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0.txt",
+  "prompt_sha256": "027bfbf3317a7b71ef31379ac451ba39357d40a06353ca90fbda205910e7f1d7",
+  "prompt_bytes": 20983,
+  "request_sha256": "800a5e59e01366ef70afb79ceecbad2bb3109c50d009bd09169ca140d5cb87de",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "91a9c1a3-9fa7-4edb-8349-3323743dd26c",
+    "401ff827-e6b6-4ac3-bfd0-90e43ecdc6a9"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "77390286-52c7-4cd5-a6f4-81aaaffb0144",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "401ff827-e6b6-4ac3-bfd0-90e43ecdc6a9",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": {
+    "superseded_id": "77390286-52c7-4cd5-a6f4-81aaaffb0144",
+    "replacement_id": "91a9c1a3-9fa7-4edb-8349-3323743dd26c"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 755,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T06:44:49.561Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 295.629,
+      "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0.attempt1.sse.txt",
+      "response_sha256": "d6de5e621a29100af453833c2d4f9a0a1a4d31f86397009c463332fca4ed73cd"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6644,
+    "completion_tokens": 6622,
+    "total_tokens": 13266,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6644,
+    "prompt_ms": 17350.1,
+    "prompt_per_token_ms": 2.611,
+    "prompt_per_second": 382.9,
+    "predicted_n": 6622,
+    "predicted_ms": 275211.4,
+    "predicted_per_token_ms": 41.56,
+    "predicted_per_second": 24.1,
+    "draft_n": 5393,
+    "draft_n_accepted": 5312
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0.html",
+  "output_bytes": 20286,
+  "output_sha256": "25608c46f79b0507c0d5b11244944cfa5be295108a85b2c7a1debe3cd8b03409",
+  "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0.attempt1.json",
+  "started_at": "2026-10-31T06:44:49.561Z",
+  "finished_at": "2026-10-31T06:49:50.194Z",
+  "seconds_total": 300.633,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

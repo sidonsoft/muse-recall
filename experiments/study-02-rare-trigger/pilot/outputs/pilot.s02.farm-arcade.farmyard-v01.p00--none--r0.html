@@ -1,0 +1,420 @@
+<!-- Study 02 corpus variant. Deterministic template-engine output; no model involvement. Checked against corpus/corpus.sha256. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farmyard Rush</title>
+<style>
+
+:root{
+  /* Arcade Theme */
+  --bg:#0b0c15;--surface:#1a1c29;--ink:#e0e6ed;--muted:#8b9bb4;
+  --accent:#39ff14;--accent-glow:rgba(57, 255, 20, 0.4);
+  --warn:#ff073a;--warn-glow:rgba(255, 7, 58, 0.4);
+  --line:#2d3748;--card-bg:#151621;--radius:12px;--shadow:0 4px 0 rgba(0,0,0,0.5);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  min-height:100vh;background:var(--bg);
+  color:var(--ink);font-family:"Courier New", monospace; /* Arcade font */
+  display:flex;justify-content:center;padding:16px;
+  overflow-x:hidden;
+}
+.skip-link{position:absolute;left:-9999px;top:0;background:var(--accent);color:#000;padding:10px 14px;border-radius:8px;z-index:50}
+.skip-link:focus{left:12px;top:12px}
+.app{width:100%;max-width:800px;display:flex;flex-direction:column;gap:16px}
+h1{font-size:clamp(1.5rem,3vw,2.5rem);margin:0;line-height:1;text-transform:uppercase;letter-spacing:-1px;color:var(--accent);text-shadow: 0 0 10px var(--accent-glow)}
+.tagline{margin:4px 0 8px;color:var(--muted);font-size:0.9rem;font-weight:bold}
+.panel{background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.brand{display:flex;flex-direction:column;gap:4px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:0;justify-content:space-between}
+.stat{min-width:80px;background:#000;border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-align:center}
+.stat dt{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0}
+.stat dd{margin:2px 0 0;font-size:1.3rem;font-weight:bold;color:#fff}
+
+/* Timer Bar */
+.timer-wrap { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.timer-fill { height: 100%; background: var(--accent); width: 100%; transition: width 0.2s linear, background-color 0.3s; box-shadow: 0 0 8px var(--accent-glow); }
+.timer-fill.critical { background: var(--warn); box-shadow: 0 0 8px var(--warn-glow); animation: pulse-red 0.5s infinite alternate; }
+
+.board{display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:10px}
+.card{
+  position:relative;appearance:none;border:2px solid var(--line);padding:0;margin:0;cursor:pointer;
+  aspect-ratio:1;border-radius:var(--radius);background:transparent;
+  transform-style: preserve-3d; transition: transform 0.3s, border-color 0.2s;
+}
+.card:focus-visible{outline:3px solid var(--accent);outline-offset:4px;z-index:10}
+.card:hover{border-color:var(--muted)}
+.card-back,.card-face{
+  position:absolute;inset:0;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+  backface-visibility: hidden; transform: rotateY(180deg);
+}
+.card-back{
+  background:repeating-linear-gradient(45deg, var(--card-bg), var(--card-bg) 10px, #23263b 10px, #23263b 20px);
+  transform: rotateY(0deg); border: 2px solid var(--line);
+}
+.card-back::after { content:"?"; font-size:2rem; color:var(--muted); opacity:0.5; }
+.card-face{background:var(--ink);font-size:clamp(1.8rem,4vw,3rem);color:#000; transform: rotateY(180deg); box-shadow:inset 0 0 0 2px #000}
+.card.face-up{transform: rotateY(180deg)}
+.card.matched .card-face{background:var(--accent);box-shadow: 0 0 15px var(--accent-glow); border-color: var(--accent)}
+.card.matched { opacity: 0.6; cursor: default; pointer-events: none;}
+.card:disabled{cursor:default}
+
+.message{
+  margin:0;min-height:2em;font-size:1.1rem;color:var(--accent);font-weight:bold;text-align:center;
+  background:#000;border:1px solid var(--line);border-radius:8px;padding:8px;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.message[aria-live]{text-align:left}
+
+.btn{
+  appearance:none;border:2px solid var(--ink);background:#000;color:var(--ink);
+  font:inherit;font-weight:bold;padding:12px 24px;border-radius:4px;cursor:pointer;min-height:48px;text-transform:uppercase;letter-spacing:1px;
+}
+.btn:hover{background:var(--ink);color:#000}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn--ghost{border-color:var(--muted);color:var(--muted)}
+.btn--solid{background:var(--accent);border-color:var(--accent);color:#000;box-shadow: 0 4px 0 #268a0b}
+.btn--solid:hover{background:#39ff14; transform: translateY(2px); box-shadow: 0 2px 0 #268a0b;}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:20px;z-index:40;
+}
+.overlay[hidden]{display:none}
+.overlay-panel{background:#111;border:2px solid var(--accent);border-radius:16px;padding:30px;max-width:400px;width:100%;text-align:center;box-shadow: 0 0 30px rgba(57, 255, 20, 0.2)}
+.overlay-panel h2{margin:0 0 10px;font-size:2rem;color:var(--accent);text-transform:uppercase}
+.overlay-panel p{margin:0 0 24px;color:#fff;font-size:1.1rem;line-height:1.4}
+
+.hook-zone{background:#000;border:1px solid var(--line);border-radius:8px;padding:10px; margin-top: 10px;}
+.hook-grid{display:flex;justify-content:space-around;gap:10px}
+.hook-card{text-align:center}
+.hook-label{display:block;font-size:.7rem;text-transform:uppercase;color:var(--muted)}
+.hook-value{font-size:1.4rem;display:block;line-height:1.2}
+.combo-active { color: var(--warn); text-shadow: 0 0 5px var(--warn-glow); animation: shake 0.3s; }
+
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:45;background:var(--warn);color:#fff;
+  border-radius:8px;padding:12px 20px;font-weight:bold;text-transform:uppercase;box-shadow:0 4px 10px rgba(0,0,0,0.5);
+}
+.toast[hidden]{display:none}
+
+/* s02:hook:css */
+.hook-zone{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.hook-grid{display:flex;gap:10px;flex-wrap:wrap}
+.hook-card{min-width:96px;background:#fbf4e8;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.hook-label{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.hook-value{font-size:1.05rem}
+.hook-sub{display:block;font-size:.75rem;color:var(--muted)}
+/* /s02:hook:css */
+
+@keyframes pulse-red { from { opacity: 1; } to { opacity: 0.6; } }
+@keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to game</a><div class="app t01"><aside class="rail panel" aria-label="Game controls and statistics"><div class="brand"><h1>Farmyard Rush</h1><p class="tagline">Match fast. Don't run out of time.</p></div><dl class="stats stats--stack" aria-label="Game statistics"><div class="stat"><dt>Time</dt><dd data-s02="timer">60</dd></div><div class="stat"><dt>Moves</dt><dd data-s02="moves">0</dd></div><div class="stat"><dt>Pairs</dt><dd data-s02="pairs">0 / 0</dd></div></dl><p class="message" data-s02="message" aria-live="polite">Start the timer!</p><button type="button" class="btn btn--solid" data-s02="restart">Start Game</button><!-- s02:hook:html -->
+<section class="hook-zone" aria-label="Points, streak and pacing feedback">
+  <div class="hook-grid">
+    <div class="hook-card"><span class="hook-label">Score</span><strong class="hook-value" data-s02="points">0</strong></div>
+    <div class="hook-card"><span class="hook-label">Combo</span><strong class="hook-value" data-s02="streak">x1</strong></div>
+    <div class="hook-card"><span class="hook-label">Round</span><strong class="hook-value" data-s02="round">1</strong></div>
+  </div>
+</section>
+<!-- /s02:hook:html --></aside><main class="play" id="main"><div class="board" data-s02="board" role="grid" aria-label="Card board"></div></main><div class="overlay" data-s02="overlay" hidden><div class="overlay-panel"><h2 data-s02="end-title">GAME OVER</h2><p data-s02="detail">Time's up!</p><button type="button" class="btn btn--solid" data-s02="playagain">Try Again</button></div></div></div>
+<script>
+
+(function () {
+  'use strict';
+  // Arcade Config: 5x4 grid = 20 cards = 10 pairs. Timer 60s.
+  var CFG = {"cols": 5, "labels": ["Star", "Club", "Diamond", "Heart", "Spade", "Circle", "Triangle", "Square", "Rhombus", "Flower"], "pairs": 10, "seed": 1102, "symbols": [9733, 9827, 9830, 9829, 9824, 9679, 9650, 9632, 9670, 10047]};
+  var SYMBOLS = CFG.symbols.map(function (code) { return String.fromCharCode(code); });
+  var LABELS = CFG.labels;
+  var PAIRS = CFG.pairs;
+  
+  // Audio Context
+  var audioCtx = null;
+  function playTone(freq, type, duration) {
+    if (!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  function all(role) { return Array.prototype.slice.call(document.querySelectorAll('[data-s02="' + role + '"]')); }
+  function one(role) { return document.querySelector('[data-s02="' + role + '"]'); }
+  function set(role, text) { all(role).forEach(function (node) { node.textContent = String(text); }); }
+  
+  // S02 Hooks
+  var S02 = window.S02 = window.S02 || { onMatch: [], onMiss: [], onWin: [], onRestart: [] };
+  function emit(name, data) { (S02[name] || []).forEach(function (fn) { try { fn(data); } catch (err) {} }); }
+  
+  var seed = CFG.seed >>> 0;
+  function rand() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed; }
+  var deck = [], first = null, locked = false, moves = 0, matches = 0;
+  
+  // Game State
+  var timeLeft = 60;
+  var timerInterval = null;
+  var gameActive = false;
+
+  function buildDeck() {
+    var cards = [], i, j, swap;
+    for (i = 0; i < PAIRS; i += 1) {
+      cards.push({ key: i, symbol: SYMBOLS[i % SYMBOLS.length], label: LABELS[i % LABELS.length] });
+      cards.push({ key: i, symbol: SYMBOLS[i % SYMBOLS.length], label: LABELS[i % LABELS.length] });
+    }
+    for (i = cards.length - 1; i > 0; i -= 1) { j = rand() % (i + 1); swap = cards[i]; cards[i] = cards[j]; cards[j] = swap; }
+    return cards;
+  }
+
+  function render() {
+    var board = one('board'); if (!board) { return; }
+    board.innerHTML = '';
+    board.style.setProperty('--cols', String(CFG.cols));
+    deck.forEach(function (card, index) {
+      var button = document.createElement('button');
+      button.type = 'button'; button.className = 'card';
+      button.setAttribute('data-key', String(card.key));
+      button.setAttribute('aria-label', 'Hidden card ' + (index + 1));
+      // Arcade styling: distinct back and face
+      button.innerHTML = '<span class="card-back" aria-hidden="true"></span><span class="card-face" aria-hidden="true">' + card.symbol + '</span>';
+      button.addEventListener('click', function () { onCard(button); });
+      board.appendChild(button);
+    });
+  }
+
+  function paint() {
+    set('moves', moves); 
+    set('pairs', matches + ' / ' + PAIRS);
+    // Visual feedback for timer
+    var timerEl = one('timer');
+    if(timerEl) {
+        var pct = (timeLeft / 60) * 100;
+        timerEl.style.width = Math.max(0, pct) + '%';
+        if(pct < 20) timerEl.classList.add('critical');
+        else timerEl.classList.remove('critical');
+    }
+  }
+
+  function onCard(button) {
+    // Init Audio on first interaction
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (!gameActive || locked || button.classList.contains('matched') || button.classList.contains('face-up')) { return; }
+    
+    // Sound: Flip
+    playTone(300, 'square', 0.1);
+
+    button.classList.add('face-up');
+    button.setAttribute('aria-label', 'Revealed card');
+    
+    if (!first) { 
+      first = button; 
+      set('message', 'Find the match!'); 
+      return; 
+    }
+    
+    moves += 1; paint();
+    var previous = first; first = null;
+
+    // Check Match
+    if (previous.getAttribute('data-key') === button.getAttribute('data-key')) {
+      locked = true;
+      // Sound: Success
+      playTone(600, 'sine', 0.1); setTimeout(() => playTone(900, 'sine', 0.2), 100);
+
+      window.setTimeout(function () {
+        previous.classList.add('matched'); button.classList.add('matched');
+        matches += 1; locked = false; paint();
+        set('message', 'MATCHED!');
+        emit('onMatch', { matches: matches, moves: moves });
+        if (matches === PAIRS) { win(); }
+      }, 250);
+    } else {
+      // Sound: Error
+      playTone(150, 'sawtooth', 0.3);
+      
+      locked = true;
+      set('message', 'MISSED!');
+      window.setTimeout(function () {
+        previous.classList.remove('face-up'); button.classList.remove('face-up');
+        locked = false;
+        emit('onMiss', { moves: moves });
+      }, 600);
+    }
+  }
+
+  function win() {
+    gameActive = false;
+    clearInterval(timerInterval);
+    var overlay = one('overlay');
+    if (overlay) { 
+        overlay.hidden = false; 
+        set('end-title', 'YOU WIN!');
+        set('detail', 'Score: ' + getScore()); 
+    }
+    set('message', 'Board Cleared!');
+    playTone(400, 'square', 0.1); setTimeout(() => playTone(500, 'square', 0.1), 100); setTimeout(() => playTone(600, 'square', 0.3), 200);
+    emit('onWin', { moves: moves, matches: matches });
+  }
+
+  function gameOver() {
+    gameActive = false;
+    clearInterval(timerInterval);
+    var overlay = one('overlay');
+    if (overlay) { 
+        overlay.hidden = false; 
+        set('end-title', 'GAME OVER');
+        set('detail', 'Time ran out.'); 
+    }
+    set('message', 'TIME OUT!');
+    playTone(100, 'sawtooth', 0.5); setTimeout(() => playTone(80, 'sawtooth', 0.5), 400);
+    emit('onWin', { moves: moves, matches: matches }); // Emit onWin to trigger score hooks even if lost
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 60;
+    paint();
+    gameActive = true;
+    set('message', 'Go!');
+    timerInterval = setInterval(function () {
+      if (!gameActive) return;
+      timeLeft -= 1;
+      set('timer', timeLeft);
+      paint(); // Update bar color
+      
+      if (timeLeft <= 0) {
+        gameOver();
+      }
+    }, 1000);
+  }
+
+  function restart() {
+    moves = 0; matches = 0; first = null; locked = false; deck = buildDeck();
+    gameActive = false;
+    clearInterval(timerInterval);
+    
+    render(); paint(); set('timer', 60); 
+    set('message', 'Tap Start Game.');
+    var overlay = one('overlay'); if (overlay) { overlay.hidden = true; }
+    emit('onRestart', {});
+  }
+
+  all('restart').forEach(function (button) { button.addEventListener('click', function() { startTimer(); }); });
+  all('playagain').forEach(function (button) { button.addEventListener('click', restart); });
+  
+  deck = buildDeck(); render(); paint();
+})();
+
+
+/* Shared keyboard-navigation affordance for every app (no motion constructs). */
+(function () {
+  'use strict';
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Home' && event.key !== 'End') { return; }
+    var body = document.body;
+    if (!body) { return; }
+    window.scrollTo(0, event.key === 'Home' ? 0 : body.scrollHeight);
+  });
+})();
+
+
+/* Farmyard board keyboard navigation: arrow keys move focus between cards. */
+(function () {
+  'use strict';
+  var board = document.querySelector('[data-s02="board"]');
+  if (!board) { return; }
+  board.addEventListener('keydown', function (event) {
+    var cards = Array.prototype.slice.call(board.querySelectorAll('.card'));
+    var current = cards.indexOf(document.activeElement);
+    if (current < 0) { return; }
+    var cols = parseInt(window.getComputedStyle(board).getPropertyValue('--cols'), 10) || 4;
+    var next = current;
+    if (event.key === 'ArrowRight') { next = Math.min(cards.length - 1, current + 1); }
+    else if (event.key === 'ArrowLeft') { next = Math.max(0, current - 1); }
+    else if (event.key === 'ArrowDown') { next = Math.min(cards.length - 1, current + cols); }
+    else if (event.key === 'ArrowUp') { next = Math.max(0, current - cols); }
+    else { return; }
+    event.preventDefault();
+    cards[next].focus();
+  });
+})();
+
+/* s02:hook:js */
+(function () {
+  'use strict';
+  var points = 0, streak = 0, ticks = 0, round = 1;
+  
+  function set(role, text) {
+    var nodes = document.querySelectorAll('[data-s02="' + role + '"]');
+    for (var i = 0; i < nodes.length; i += 1) { 
+        nodes[i].textContent = String(text); 
+        if(role === 'streak') {
+            if(text > 1) nodes[i].classList.add('combo-active');
+            else nodes[i].classList.remove('combo-active');
+        }
+    }
+  }
+  
+  function getScore() {
+      // Arcade scoring: Base 100 + (Streak * ComboMultiplier)
+      return Math.max(0, points);
+  }
+
+  if (!window.S02) { return; }
+  window.S02.onMatch = window.S02.onMatch || [];
+  window.S02.onCatch = window.S02.onCatch || [];
+  window.S02.onMiss = window.S02.onMiss || [];
+  window.S02.onWin = window.S02.onWin || [];
+  window.S02.onRestart = window.S02.onRestart || [];
+
+  // Combo Logic: Increase streak on match, reset on miss.
+  window.S02.onMatch.push(function () { 
+      streak += 1; 
+      points += (10 * streak); // Exponential scoring
+      set('points', getScore()); 
+      set('streak', streak); 
+  });
+
+  window.S02.onCatch.push(function () { 
+      points += 10; 
+      streak += 1; 
+      set('points', points); 
+      set('streak', streak); 
+  });
+
+  window.S02.onMiss.push(function () { 
+      streak = 0; 
+      set('streak', streak); 
+  });
+
+  window.S02.onWin.push(function () { 
+      round += 1; 
+      set('round', 'Round ' + round); 
+  });
+  
+  window.S02.onRestart.push(function () { 
+      points = 0; 
+      streak = 0;
+      round = 1; 
+      set('round', 'Round 1'); 
+      set('points', 0);
+      set('streak', 0);
+  });
+
+  window.setInterval(function () { ticks += 1; }, 1000);
+})();
+/* /s02:hook:js */
+</script>
+</body>
+</html>

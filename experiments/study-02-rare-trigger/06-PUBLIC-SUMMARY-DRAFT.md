@@ -95,8 +95,9 @@ compares with typing the same rule into every request. It will not support:
 - Scoring: deterministic frozen-detector harness, validated against the Phase 17 committed outputs
   (`09-SCORING.md`). No human validation has occurred.
 - Revised power: complete (`04b-ANALYSIS-PLAN-REV2.md`), simulation only.
-- Pilot (30 scenarios, 120 + 12 executions): executing on the Dell endpoint; results will be
-  reported separately and excluded from confirmatory data.
+- Pilot (30 scenarios, 120 + 12 executions): **complete** (123/132 usable, 9 unusable counted,
+  9/9 pilot-only replacements); results are descriptive only and excluded from confirmatory data.
+  They are not published here yet.
 - Confirmatory experiment: **not started**. Confirmatory model/endpoint: **deferred to review**.
 - Open items: confirmatory endpoint/model, the human-coding resource, corpus-diversity decision,
   and pilot-derived protocol fixes (`PILOT-CHANGES.md`).

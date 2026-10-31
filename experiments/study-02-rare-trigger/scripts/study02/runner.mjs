@@ -86,7 +86,7 @@ export function writeAtomic(file, data) {
   renameSync(tmp, file);
 }
 
-function writeJsonAtomic(file, value) {
+export function writeJsonAtomic(file, value) {
   writeAtomic(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
@@ -768,7 +768,11 @@ export function streamChat(url, body, timeoutMs = TIMEOUT_MS_DEFAULT) {
   try {
     writeFileSync(bodyFile, JSON.stringify(body));
     const args = [
-      '-sS', '-N', '--max-time', String(Math.ceil(timeoutMs / 1000)),
+      '-sS', '-N',
+      '--max-time', String(Math.ceil(timeoutMs / 1000)),
+      // Abort if the SSE stream goes silent for 120 s (observed server stall:
+      // engine idle mid-generation, socket left open, curl would wait 30 min).
+      '--speed-time', '120', '--speed-limit', '1',
       '-o', sseFile, '-w', '%{http_code}', '-X', 'POST',
       '-H', 'content-type: application/json',
       '--data-binary', `@${bodyFile}`,
@@ -785,7 +789,7 @@ export function streamChat(url, body, timeoutMs = TIMEOUT_MS_DEFAULT) {
     return { status: Number.isFinite(status) ? status : 0, ok: status >= 200 && status < 300, body: parsed.body, sse };
   } catch (err) {
     if (err && (err.status === 28 || err.code === 28)) {
-      throw new Error(`request timeout after ${timeoutMs} ms`);
+      throw new Error(`request timeout/stream inactivity abort after ${timeoutMs} ms (curl 28: ${String((err.stderr || '').trim()).slice(0, 120)})`);
     }
     if (err && err.signal === 'SIGTERM') throw new Error(`request timeout after ${timeoutMs} ms`);
     const detail = err && err.stderr ? String(err.stderr).slice(0, 300) : String(err && err.message);
@@ -793,6 +797,36 @@ export function streamChat(url, body, timeoutMs = TIMEOUT_MS_DEFAULT) {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/** Slots URL derived from the chat-completions endpoint. */
+function slotsUrl(endpoint) {
+  return endpoint.replace(/\/v1\/chat\/completions\/?$/, '/slots');
+}
+
+/**
+ * Wait until the Dell single generation slot reports idle. The endpoint is not
+ * a managed service and has shown mid-generation stalls when a new request is
+ * sent while it is still cleaning up the previous one; a short idle gate before
+ * each execution reduces that class of failure (observed 2026-10-31: two
+ * attempts per run stalled mid-stream at ~120-180 s, then a fresh request
+ * succeeded). Bounded: never waits longer than the timeout.
+ */
+async function waitForIdle(endpoint, timeoutMs = 90_000) {
+  const url = slotsUrl(endpoint);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetchJson(url, { method: 'GET' }, 8_000);
+      const slots = Array.isArray(res.body) ? res.body : [];
+      const busy = slots.some((slot) => slot && slot.is_processing === true);
+      if (!busy) return true;
+    } catch {
+      // transient; retry until deadline
+    }
+    await sleep(5_000);
+  }
+  return false;
 }
 
 /** GET /v1/models; assert the configured model id equals the served id. */
@@ -908,6 +942,8 @@ export async function executeRun(spec, promptInfo, options) {
     const attemptStarted = Date.now();
     const attemptRecord = { attempt, started_at: new Date().toISOString() };
     try {
+      await waitForIdle(endpoint, 90_000);
+      await sleep(3_000);
       const res = await streamChat(endpoint, body, timeoutMs);
       attemptRecord.http = res.status;
       attemptRecord.ok = res.ok;
@@ -974,6 +1010,7 @@ export async function executeRun(spec, promptInfo, options) {
       record.error = null;
       record.extraction = method;
       lastKind = 'ok';
+      await sleep(5_000);
       break;
     } catch (err) {
       const timeout = err?.name === 'TimeoutError' || /aborted|timeout/i.test(String(err?.message));
@@ -984,7 +1021,7 @@ export async function executeRun(spec, promptInfo, options) {
       record.attempts.push(attemptRecord);
       record.error = attemptRecord.error;
       if (attempt < 1 + MAX_RETRIES) {
-        await sleep(3_000);
+        await sleep(30_000);
         continue;
       }
       break;

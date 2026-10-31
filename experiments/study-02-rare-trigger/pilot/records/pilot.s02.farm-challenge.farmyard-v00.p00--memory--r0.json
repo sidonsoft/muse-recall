@@ -1,0 +1,110 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+  "stratum": "farm-challenge",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 437555411,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v00.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 4059834954,
+  "order_key": "754f33a45d8dd4a7c16e7f2122bdee73ea946430462ccb3d436cfda3fd2a9e03",
+  "variant_id": "farmyard-v00",
+  "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0.txt",
+  "prompt_sha256": "cdee4baeceeb21cb062369c4b74b36f669cf65b27ddabf1658497c9e62e46486",
+  "prompt_bytes": 20951,
+  "request_sha256": "9b4bb0a2505e1760d4376d8ba172d31e52bb9ac1fbdcb49593b18d1b9bc83494",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "1bb9ac01-8789-4b84-b042-de71ea168ead",
+    "23417bbb-1e21-4aa7-bb83-f260cb119fb8"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "1bb9ac01-8789-4b84-b042-de71ea168ead",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "23417bbb-1e21-4aa7-bb83-f260cb119fb8",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 723,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T10:20:50.296Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 281.602,
+      "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0.attempt1.sse.txt",
+      "response_sha256": "0c93444dbb2f1589eebd2f7a10c46017158401fd1f5dfbb7ed1e1ea755ea7aa9"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6629,
+    "completion_tokens": 6373,
+    "total_tokens": 13002,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6629,
+    "prompt_ms": 17334.8,
+    "prompt_per_token_ms": 2.615,
+    "prompt_per_second": 382.4,
+    "predicted_n": 6373,
+    "predicted_ms": 261194,
+    "predicted_per_token_ms": 40.984,
+    "predicted_per_second": 24.4,
+    "draft_n": 5112,
+    "draft_n_accepted": 5037
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0.html",
+  "output_bytes": 19431,
+  "output_sha256": "b86b900e5d09dc645fcc53621b8bdeeb56718c038ed9158cc8472ba275525f3b",
+  "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0.attempt1.json",
+  "started_at": "2026-10-31T10:20:50.296Z",
+  "finished_at": "2026-10-31T10:25:36.902Z",
+  "seconds_total": 286.608,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

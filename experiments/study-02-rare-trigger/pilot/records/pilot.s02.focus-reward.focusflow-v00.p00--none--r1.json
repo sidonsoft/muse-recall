@@ -1,0 +1,95 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--none--r1",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+  "stratum": "focus-reward",
+  "arm": "none",
+  "rep": 1,
+  "repeat_id": "repeat-05",
+  "repeat_of": "pilot.s02.focus-reward.focusflow-v00.p00--none--r0",
+  "seed_mode": "same",
+  "seed": 1392918688,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:none:0\")[0:8])",
+  "seed_source": "plan_repeat_seed",
+  "derived_seed": 3497266710,
+  "order_key": "dae2820bf99f8222b33269f3a02f03b715a2fba73cb5caf49d7e27059993c76c",
+  "variant_id": "focusflow-v00",
+  "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v00.p00--none--r1.txt",
+  "prompt_sha256": "1207cbdbd5b8c223fa8075db95bb68afc7e7ad407a0d5453c36cc85ffec75c80",
+  "prompt_bytes": 21648,
+  "request_sha256": "cc8a79bff7c3ede72b4ba87e393fc905c62044af4766ddd8bc7068c942804186",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T15:19:22.615Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 304.549,
+      "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--none--r1.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--none--r1.attempt1.sse.txt",
+      "response_sha256": "37f3c6c1dd9bad95433d516ed4eac7735c731192801e6c259b772917eba84bd3"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6495,
+    "completion_tokens": 6883,
+    "total_tokens": 13378,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6495,
+    "prompt_ms": 17158.1,
+    "prompt_per_token_ms": 2.642,
+    "prompt_per_second": 378.5,
+    "predicted_n": 6883,
+    "predicted_ms": 284316.4,
+    "predicted_per_token_ms": 41.307,
+    "predicted_per_second": 24.2,
+    "draft_n": 5598,
+    "draft_n_accepted": 5503
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-reward.focusflow-v00.p00--none--r1.html",
+  "output_bytes": 22569,
+  "output_sha256": "fe2f76aeb7d39da1fe95df4841713fd3eadbb6328aa337acaf0c975d787298f8",
+  "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--none--r1.attempt1.json",
+  "started_at": "2026-10-31T15:19:22.615Z",
+  "finished_at": "2026-10-31T15:24:32.173Z",
+  "seconds_total": 309.563,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

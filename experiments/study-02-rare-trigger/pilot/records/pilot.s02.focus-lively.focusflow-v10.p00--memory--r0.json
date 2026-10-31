@@ -1,0 +1,110 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v10.p00--memory--r0",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v10.p00",
+  "stratum": "focus-lively",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 516408234,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v10.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3315894663,
+  "order_key": "51ba6fc8c8df76815b60c011d69a4e7dc38440439509ec6ac10b7be75e657986",
+  "variant_id": "focusflow-v10",
+  "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+  "request_text": "Make the planner feel lively and engaging.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-lively.focusflow-v10.p00--memory--r0.txt",
+  "prompt_sha256": "7829541151b6e0f43187fb9628dad539e7b5b8160842a1c286b8cf63a6eeda0a",
+  "prompt_bytes": 20100,
+  "request_sha256": "8c811c2a5c17002a6525ab5e48d0aa968fd825135e850c694a9bce6b432be0a4",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "e774b5b6-5526-4029-88b1-250a3540be4c",
+    "8fff2881-0939-4363-ba8e-d9c20ed705a8"
+  ],
+  "memory_contents": [
+    "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "e774b5b6-5526-4029-88b1-250a3540be4c",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "8fff2881-0939-4363-ba8e-d9c20ed705a8",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 847,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T08:45:09.572Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 266.238,
+      "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v10.p00--memory--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v10.p00--memory--r0.attempt1.sse.txt",
+      "response_sha256": "f0a9762f23dfdf2b0edbdc2144fc8b9dcb830139c39d142d08a611f6025a9cdb"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5984,
+    "completion_tokens": 5999,
+    "total_tokens": 11983,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 5984,
+    "prompt_ms": 15513.8,
+    "prompt_per_token_ms": 2.593,
+    "prompt_per_second": 385.7,
+    "predicted_n": 5999,
+    "predicted_ms": 247648.6,
+    "predicted_per_token_ms": 41.282,
+    "predicted_per_second": 24.2,
+    "draft_n": 4319,
+    "draft_n_accepted": 4205
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-lively.focusflow-v10.p00--memory--r0.html",
+  "output_bytes": 18868,
+  "output_sha256": "f1d544a121bcc9dbc5daa21260db525969bb48de2ef73f4e2d3d1d5594c1d68c",
+  "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v10.p00--memory--r0.attempt1.json",
+  "started_at": "2026-10-31T08:45:09.572Z",
+  "finished_at": "2026-10-31T08:49:40.819Z",
+  "seconds_total": 271.251,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

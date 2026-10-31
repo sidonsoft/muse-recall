@@ -5,493 +5,423 @@
   "scored_with": "scoring/frozen.py (frozen Phase 17/16 detector copies) + scoring/trigger_zones.py",
   "accounting": {
     "planned": 132,
-    "recorded": 3,
-    "missing": [
-      "pilot.s02.orchard-challenge.orchard-v11.p00--manual--r0",
-      "pilot.s02.farm-challenge.farmyard-v01.p00--none--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--manual--r1",
-      "pilot.s02.orchard-arcade.orchard-v02.p00--corrected--r0",
-      "pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0",
-      "pilot.s02.farm-challenge.farmyard-v00.p00--manual--r0",
-      "pilot.s02.focus-lively.focusflow-v11.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v10.p00--memory--r0",
-      "pilot.s02.farm-arcade.farmyard-v02.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v01.p00--corrected--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r0",
-      "pilot.s02.farm-arcade.farmyard-v02.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v01.p00--none--r0",
-      "pilot.s02.orchard-arcade.orchard-v02.p00--none--r0",
-      "pilot.s02.focus-lively.focusflow-v02.p00--memory--r0",
-      "pilot.s02.farm-challenge.farmyard-v11.p00--none--r0",
-      "pilot.s02.focus-lively.focusflow-v11.p00--manual--r0",
-      "pilot.s02.focus-lively.focusflow-v01.p00--memory--r0",
-      "pilot.s02.orchard-challenge.orchard-v02.p00--manual--r0",
-      "pilot.s02.farm-challenge.farmyard-v10.p00--manual--r0",
-      "pilot.s02.focus-lively.focusflow-v00.p00--none--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r1",
-      "pilot.s02.farm-challenge.farmyard-v10.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0",
-      "pilot.s02.orchard-arcade.orchard-v02.p00--memory--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v10.p00--manual--r0",
-      "pilot.s02.orchard-arcade.orchard-v11.p00--memory--r0",
-      "pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r1",
-      "pilot.s02.focus-reward.focusflow-v02.p00--memory--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v01.p00--none--r0",
-      "pilot.s02.focus-reward.focusflow-v02.p00--manual--r0",
-      "pilot.s02.focus-reward.focusflow-v10.p00--corrected--r0",
-      "pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0",
-      "pilot.s02.farm-arcade.farmyard-v10.p00--none--r0",
-      "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0",
-      "pilot.s02.orchard-challenge.orchard-v01.p00--memory--r0",
-      "pilot.s02.focus-lively.focusflow-v10.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v01.p00--corrected--r0",
-      "pilot.s02.orchard-challenge.orchard-v11.p00--memory--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r1",
-      "pilot.s02.focus-reward.focusflow-v00.p00--memory--r1",
-      "pilot.s02.focus-reward.focusflow-v10.p00--none--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--none--r0",
-      "pilot.s02.orchard-arcade.orchard-v00.p00--none--r0",
-      "pilot.s02.farm-arcade.farmyard-v11.p00--none--r0",
-      "pilot.s02.farm-challenge.farmyard-v01.p00--corrected--r0",
-      "pilot.s02.focus-lively.focusflow-v10.p00--memory--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r1",
-      "pilot.s02.orchard-challenge.orchard-v02.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r1",
-      "pilot.s02.focus-reward.focusflow-v02.p00--none--r0",
-      "pilot.s02.farm-arcade.farmyard-v10.p00--memory--r0",
-      "pilot.s02.orchard-arcade.orchard-v10.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r0",
-      "pilot.s02.focus-lively.focusflow-v00.p00--manual--r0",
-      "pilot.s02.orchard-arcade.orchard-v00.p00--memory--r0",
-      "pilot.s02.farm-challenge.farmyard-v11.p00--corrected--r0",
-      "pilot.s02.orchard-arcade.orchard-v11.p00--corrected--r0",
-      "pilot.s02.focus-reward.focusflow-v11.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--memory--r0",
-      "pilot.s02.focus-lively.focusflow-v02.p00--none--r0",
-      "pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0",
-      "pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v01.p00--memory--r0",
-      "pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v11.p00--none--r0",
-      "pilot.s02.farm-challenge.farmyard-v11.p00--memory--r0",
-      "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0",
-      "pilot.s02.orchard-challenge.orchard-v01.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--none--r0",
-      "pilot.s02.focus-lively.focusflow-v01.p00--none--r0",
-      "pilot.s02.orchard-arcade.orchard-v00.p00--corrected--r0",
-      "pilot.s02.farm-arcade.farmyard-v02.p00--corrected--r0",
-      "pilot.s02.orchard-arcade.orchard-v01.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v11.p00--none--r0",
-      "pilot.s02.focus-lively.focusflow-v11.p00--corrected--r0",
-      "pilot.s02.focus-lively.focusflow-v10.p00--manual--r0",
-      "pilot.s02.focus-reward.focusflow-v10.p00--memory--r0",
-      "pilot.s02.farm-challenge.farmyard-v02.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--none--r1",
-      "pilot.s02.farm-challenge.farmyard-v10.p00--corrected--r0",
-      "pilot.s02.focus-reward.focusflow-v02.p00--corrected--r0",
-      "pilot.s02.orchard-arcade.orchard-v00.p00--manual--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1",
-      "pilot.s02.orchard-arcade.orchard-v10.p00--corrected--r0",
-      "pilot.s02.orchard-challenge.orchard-v10.p00--manual--r0",
-      "pilot.s02.farm-challenge.farmyard-v02.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v01.p00--none--r0",
-      "pilot.s02.orchard-challenge.orchard-v11.p00--corrected--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--none--r1",
-      "pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0",
-      "pilot.s02.farm-challenge.farmyard-v02.p00--corrected--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v01.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v02.p00--none--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1",
-      "pilot.s02.orchard-arcade.orchard-v11.p00--none--r0",
-      "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0",
-      "pilot.s02.farm-challenge.farmyard-v11.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0",
-      "pilot.s02.farm-arcade.farmyard-v11.p00--corrected--r0",
-      "pilot.s02.focus-lively.focusflow-v02.p00--corrected--r0",
-      "pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0",
-      "pilot.s02.orchard-arcade.orchard-v11.p00--manual--r0",
-      "pilot.s02.focus-lively.focusflow-v10.p00--corrected--r0",
-      "pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0",
-      "pilot.s02.focus-reward.focusflow-v11.p00--manual--r0",
-      "pilot.s02.focus-lively.focusflow-v02.p00--manual--r0",
-      "pilot.s02.farm-challenge.farmyard-v02.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v01.p00--corrected--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--none--r0",
-      "pilot.s02.focus-lively.focusflow-v00.p00--memory--r0",
-      "pilot.s02.orchard-challenge.orchard-v10.p00--none--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--none--r1",
-      "pilot.s02.orchard-arcade.orchard-v02.p00--manual--r0",
-      "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0",
-      "pilot.s02.farm-challenge.farmyard-v01.p00--memory--r0",
-      "pilot.s02.focus-reward.focusflow-v01.p00--manual--r0",
-      "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r0",
-      "pilot.s02.orchard-arcade.orchard-v10.p00--manual--r0",
-      "pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0",
-      "pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0",
-      "pilot.s02.focus-reward.focusflow-v11.p00--corrected--r0",
-      "pilot.s02.orchard-arcade.orchard-v01.p00--manual--r0",
-      "pilot.s02.farm-arcade.farmyard-v10.p00--manual--r0",
-      "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r0"
-    ],
-    "usable": 3,
-    "unusable": 0,
-    "unusable_causes": {},
+    "recorded": 132,
+    "missing": [],
+    "usable": 123,
+    "unusable": 9,
+    "unusable_causes": {
+      "request timeout after 1800000 ms": 4,
+      "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)": 4,
+      "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Failed to connect to 192.168.86.39 port 8080 after 7831 ms: Couldn't connect to server)": 1
+    },
     "cells": {
       "farm-arcade|corrected": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       },
       "farm-arcade|manual": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 6,
+        "usable": 5,
+        "unusable": 1
       },
       "farm-arcade|memory": {
         "planned": 6,
-        "recorded": 1,
-        "usable": 1,
-        "unusable": 0
+        "recorded": 6,
+        "usable": 5,
+        "unusable": 1
       },
       "farm-arcade|none": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 6,
+        "usable": 5,
+        "unusable": 1
       },
       "farm-challenge|corrected": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "farm-challenge|manual": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 5,
+        "usable": 3,
+        "unusable": 2
       },
       "farm-challenge|memory": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "farm-challenge|none": {
         "planned": 5,
-        "recorded": 1,
-        "usable": 1,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "focus-lively|corrected": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "focus-lively|manual": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 5,
+        "usable": 4,
+        "unusable": 1
       },
       "focus-lively|memory": {
         "planned": 5,
-        "recorded": 1,
-        "usable": 1,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "focus-lively|none": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "focus-reward|corrected": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       },
       "focus-reward|manual": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       },
       "focus-reward|memory": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 6,
+        "usable": 5,
+        "unusable": 1
       },
       "focus-reward|none": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 6,
+        "usable": 5,
+        "unusable": 1
       },
       "orchard-arcade|corrected": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "orchard-arcade|manual": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "orchard-arcade|memory": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
-        "unusable": 0
+        "recorded": 5,
+        "usable": 4,
+        "unusable": 1
       },
       "orchard-arcade|none": {
         "planned": 5,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 5,
+        "usable": 5,
         "unusable": 0
       },
       "orchard-challenge|corrected": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       },
       "orchard-challenge|manual": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       },
       "orchard-challenge|memory": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       },
       "orchard-challenge|none": {
         "planned": 6,
-        "recorded": 0,
-        "usable": 0,
+        "recorded": 6,
+        "usable": 6,
         "unusable": 0
       }
     }
   },
   "timing": {
     "planned_total_executions": 132,
-    "recorded": 3,
+    "recorded": 132,
     "wall_s": {
-      "n": 3,
-      "mean": 282.44,
-      "median": 281.32,
-      "min": 245.92,
-      "max": 320.08,
-      "p95": 320.08,
-      "total_s": 847.31
+      "n": 132,
+      "mean": 345.81,
+      "median": 296.01,
+      "min": 222.61,
+      "max": 736.72,
+      "p95": 624.08,
+      "total_s": 45647.44
     },
     "prompt_tokens": {
-      "n": 3,
-      "mean": 6380.67,
-      "median": 6380,
-      "min": 6108,
-      "max": 6654,
-      "p95": 6654,
-      "total_s": 19142
+      "n": 123,
+      "mean": 6389.6,
+      "median": 6574,
+      "min": 5576,
+      "max": 6892,
+      "p95": 6849,
+      "total_s": 785921
     },
     "completion_tokens": {
-      "n": 3,
-      "mean": 6512.67,
-      "median": 6427,
-      "min": 5622,
-      "max": 7489,
+      "n": 123,
+      "mean": 6386.23,
+      "median": 6348,
+      "min": 5298,
+      "max": 7999,
       "p95": 7489,
-      "total_s": 19538
+      "total_s": 785506
     },
     "output_bytes": {
-      "n": 3,
-      "mean": 19818.67,
-      "median": 19541,
-      "min": 18036,
-      "max": 21879,
-      "p95": 21879,
-      "total_s": 59456
+      "n": 123,
+      "mean": 19579.04,
+      "median": 19693,
+      "min": 16372,
+      "max": 23612,
+      "p95": 22783,
+      "total_s": 2408222
     },
     "end_to_end_decode_tok_s": {
-      "n": 3,
-      "mean": 23.03,
-      "median": 22.86,
-      "min": 22.85,
-      "max": 23.4,
-      "p95": 23.4,
-      "total_s": 69.1
+      "n": 123,
+      "mean": 20.49,
+      "median": 22.18,
+      "min": 7.67,
+      "max": 24.03,
+      "p95": 23.25,
+      "total_s": 2519.93
     },
     "by_arm_wall_s": {
+      "corrected": {
+        "n": 33,
+        "mean": 345.57,
+        "median": 296.59,
+        "min": 247.2,
+        "max": 690.99,
+        "p95": 563.22,
+        "total_s": 11403.68
+      },
+      "manual": {
+        "n": 33,
+        "mean": 338.68,
+        "median": 291.01,
+        "min": 222.61,
+        "max": 640.46,
+        "p95": 624.08,
+        "total_s": 11176.48
+      },
       "memory": {
-        "n": 2,
-        "mean": 283.0,
-        "median": 283.0,
-        "min": 245.92,
-        "max": 320.08,
-        "p95": 320.08,
-        "total_s": 566.0
+        "n": 33,
+        "mean": 341.64,
+        "median": 306.8,
+        "min": 243.58,
+        "max": 628.44,
+        "p95": 541.87,
+        "total_s": 11274.02
       },
       "none": {
-        "n": 1,
-        "mean": 281.32,
-        "median": 281.32,
-        "min": 281.32,
-        "max": 281.32,
-        "p95": 281.32,
-        "total_s": 281.32
+        "n": 33,
+        "mean": 357.37,
+        "median": 304.1,
+        "min": 247.52,
+        "max": 736.72,
+        "p95": 577.96,
+        "total_s": 11793.26
       }
     },
     "by_arm_output_bytes": {
+      "corrected": {
+        "n": 33,
+        "mean": 19691.73,
+        "median": 19496,
+        "min": 16372,
+        "max": 23379,
+        "p95": 22783,
+        "total_s": 649827
+      },
+      "manual": {
+        "n": 29,
+        "mean": 19298.55,
+        "median": 19632,
+        "min": 17069,
+        "max": 23210,
+        "p95": 20910,
+        "total_s": 559658
+      },
       "memory": {
-        "n": 2,
-        "mean": 19957.5,
-        "median": 19957.5,
-        "min": 18036,
-        "max": 21879,
+        "n": 30,
+        "mean": 19398.47,
+        "median": 19704.5,
+        "min": 16420,
+        "max": 22055,
         "p95": 21879,
-        "total_s": 39915
+        "total_s": 581954
       },
       "none": {
-        "n": 1,
-        "mean": 19541,
-        "median": 19541,
-        "min": 19541,
-        "max": 19541,
-        "p95": 19541,
-        "total_s": 19541
+        "n": 31,
+        "mean": 19896.23,
+        "median": 20266,
+        "min": 16375,
+        "max": 23612,
+        "p95": 23303,
+        "total_s": 616783
       }
     },
     "by_arm_completion_tokens": {
+      "corrected": {
+        "n": 33,
+        "mean": 6409.06,
+        "median": 6368,
+        "min": 5298,
+        "max": 7735,
+        "p95": 7168,
+        "total_s": 211499
+      },
+      "manual": {
+        "n": 29,
+        "mean": 6296.17,
+        "median": 6285,
+        "min": 5382,
+        "max": 7836,
+        "p95": 6965,
+        "total_s": 182589
+      },
       "memory": {
-        "n": 2,
-        "mean": 6555.5,
-        "median": 6555.5,
-        "min": 5622,
+        "n": 30,
+        "mean": 6329.47,
+        "median": 6296.5,
+        "min": 5503,
         "max": 7489,
-        "p95": 7489,
-        "total_s": 13111
+        "p95": 7318,
+        "total_s": 189884
       },
       "none": {
-        "n": 1,
-        "mean": 6427,
-        "median": 6427,
-        "min": 6427,
-        "max": 6427,
-        "p95": 6427,
-        "total_s": 6427
+        "n": 31,
+        "mean": 6501.1,
+        "median": 6429,
+        "min": 5538,
+        "max": 7999,
+        "p95": 7497,
+        "total_s": 201534
       }
     },
-    "observed_elapsed_s": 847.3,
-    "projected_132_from_mean_s": 37282
+    "observed_elapsed_s": 45647.4,
+    "projected_132_from_mean_s": 45647
   },
   "manipulation": {
-    "memory|True": 2,
-    "none|True": 1
+    "corrected|True": 33,
+    "manual|True": 33,
+    "memory|True": 33,
+    "none|True": 33
   },
   "manipulation_failures": [],
   "results_descriptive_only": {
     "primary_120_all": {
       "none": {
-        "n": 1,
-        "selected": 1,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": 0.0
+        "n": 28,
+        "selected": 28,
+        "violations": 9,
+        "exposed": 14,
+        "cvr_violation_rate_selected": 0.32142857142857145
       },
       "memory": {
-        "n": 2,
-        "selected": 2,
+        "n": 27,
+        "selected": 27,
         "violations": 0,
-        "exposed": 1,
+        "exposed": 10,
         "cvr_violation_rate_selected": 0.0
       },
       "manual": {
-        "n": 0,
-        "selected": 0,
+        "n": 26,
+        "selected": 26,
         "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
+        "exposed": 4,
+        "cvr_violation_rate_selected": 0.0
       },
       "corrected": {
-        "n": 0,
-        "selected": 0,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
+        "n": 30,
+        "selected": 30,
+        "violations": 10,
+        "exposed": 16,
+        "cvr_violation_rate_selected": 0.3333333333333333
       }
     },
     "primary_high_opportunity": {
       "none": {
-        "n": 1,
-        "selected": 1,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": 0.0
+        "n": 16,
+        "selected": 16,
+        "violations": 6,
+        "exposed": 9,
+        "cvr_violation_rate_selected": 0.375
       },
       "memory": {
-        "n": 1,
-        "selected": 1,
+        "n": 16,
+        "selected": 16,
         "violations": 0,
-        "exposed": 0,
+        "exposed": 6,
         "cvr_violation_rate_selected": 0.0
       },
       "manual": {
-        "n": 0,
-        "selected": 0,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
-      },
-      "corrected": {
-        "n": 0,
-        "selected": 0,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
-      }
-    },
-    "primary_low_opportunity": {
-      "none": {
-        "n": 0,
-        "selected": 0,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
-      },
-      "memory": {
-        "n": 1,
-        "selected": 1,
+        "n": 15,
+        "selected": 15,
         "violations": 0,
         "exposed": 1,
         "cvr_violation_rate_selected": 0.0
       },
-      "manual": {
-        "n": 0,
-        "selected": 0,
+      "corrected": {
+        "n": 18,
+        "selected": 18,
+        "violations": 5,
+        "exposed": 9,
+        "cvr_violation_rate_selected": 0.2777777777777778
+      }
+    },
+    "primary_low_opportunity": {
+      "none": {
+        "n": 12,
+        "selected": 12,
+        "violations": 3,
+        "exposed": 5,
+        "cvr_violation_rate_selected": 0.25
+      },
+      "memory": {
+        "n": 11,
+        "selected": 11,
         "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
+        "exposed": 4,
+        "cvr_violation_rate_selected": 0.0
+      },
+      "manual": {
+        "n": 11,
+        "selected": 11,
+        "violations": 0,
+        "exposed": 3,
+        "cvr_violation_rate_selected": 0.0
       },
       "corrected": {
-        "n": 0,
-        "selected": 0,
-        "violations": 0,
-        "exposed": 0,
-        "cvr_violation_rate_selected": null
+        "n": 12,
+        "selected": 12,
+        "violations": 5,
+        "exposed": 7,
+        "cvr_violation_rate_selected": 0.4166666666666667
       }
     },
     "violations_without_exposure": [],
@@ -499,30 +429,249 @@
   },
   "repeat_probes": {
     "note": "The Dell endpoint is not seed-deterministic at temperature 0.7 (measured in 07-ENDPOINT-QUALIFICATION.md \u00a74). These 12 repeats are therefore reported as repeatability/variability probes, NOT as a determinism test; a byte-identical repeat is an observation.",
-    "total": 0,
-    "by_mode": {}
+    "total": 12,
+    "by_mode": {
+      "new": {
+        "n": 4,
+        "byte_identical_to_primary": 0,
+        "rows": [
+          {
+            "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r1",
+            "repeat_id": "repeat-10",
+            "mode": "new",
+            "repeats_run": "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r1",
+            "repeat_id": "repeat-09",
+            "mode": "new",
+            "repeats_run": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1",
+            "repeat_id": "repeat-12",
+            "mode": "new",
+            "repeats_run": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r1",
+            "repeat_id": "repeat-11",
+            "mode": "new",
+            "repeats_run": "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          }
+        ]
+      },
+      "same": {
+        "n": 8,
+        "byte_identical_to_primary": 0,
+        "rows": [
+          {
+            "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r1",
+            "repeat_id": "repeat-02",
+            "mode": "same",
+            "repeats_run": "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r1",
+            "repeat_id": "repeat-01",
+            "mode": "same",
+            "repeats_run": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r0",
+            "same_output_sha256": false,
+            "primary_violation": null,
+            "repeat_violation": true
+          },
+          {
+            "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--memory--r1",
+            "repeat_id": "repeat-06",
+            "mode": "same",
+            "repeats_run": "pilot.s02.focus-reward.focusflow-v00.p00--memory--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r1",
+            "repeat_id": "repeat-03",
+            "mode": "same",
+            "repeats_run": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r0",
+            "same_output_sha256": false,
+            "primary_violation": null,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1",
+            "repeat_id": "repeat-08",
+            "mode": "same",
+            "repeats_run": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r0",
+            "same_output_sha256": false,
+            "primary_violation": true,
+            "repeat_violation": true
+          },
+          {
+            "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r1",
+            "repeat_id": "repeat-04",
+            "mode": "same",
+            "repeats_run": "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--manual--r1",
+            "repeat_id": "repeat-07",
+            "mode": "same",
+            "repeats_run": "pilot.s02.focus-reward.focusflow-v00.p00--manual--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": false
+          },
+          {
+            "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--none--r1",
+            "repeat_id": "repeat-05",
+            "mode": "same",
+            "repeats_run": "pilot.s02.focus-reward.focusflow-v00.p00--none--r0",
+            "same_output_sha256": false,
+            "primary_violation": false,
+            "repeat_violation": true
+          }
+        ]
+      }
+    }
+  },
+  "replacements": {
+    "policy": "one replacement execution per unusable pilot run, same scenario/arm/repetition, same prompt/seed policy; originals retained; never used in confirmatory analysis",
+    "originals_unusable": 9,
+    "replacements_recorded": 9,
+    "replacements_usable": 9,
+    "rows": [
+      {
+        "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r0--repl1",
+        "replacement_for": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 289.624,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": false
+      },
+      {
+        "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r0--repl1",
+        "replacement_for": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 350.09,
+        "failure_kind": null,
+        "violation": true,
+        "exposed": true
+      },
+      {
+        "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--memory--r0--repl1",
+        "replacement_for": "pilot.s02.farm-arcade.farmyard-v10.p00--memory--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 261.021,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": false
+      },
+      {
+        "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0--repl1",
+        "replacement_for": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 313.915,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": false
+      },
+      {
+        "run_id": "pilot.s02.farm-challenge.farmyard-v11.p00--manual--r0--repl1",
+        "replacement_for": "pilot.s02.farm-challenge.farmyard-v11.p00--manual--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 260.3,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": false
+      },
+      {
+        "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1",
+        "replacement_for": "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 278.255,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": false
+      },
+      {
+        "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--memory--r0--repl1",
+        "replacement_for": "pilot.s02.focus-reward.focusflow-v01.p00--memory--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 279.87,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": false
+      },
+      {
+        "run_id": "pilot.s02.focus-reward.focusflow-v02.p00--none--r0--repl1",
+        "replacement_for": "pilot.s02.focus-reward.focusflow-v02.p00--none--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 698.793,
+        "failure_kind": null,
+        "violation": true,
+        "exposed": true
+      },
+      {
+        "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1",
+        "replacement_for": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0",
+        "status": "succeeded",
+        "usable": true,
+        "seconds_total": 296.343,
+        "failure_kind": null,
+        "violation": false,
+        "exposed": true
+      }
+    ]
   },
   "defects": [],
   "violation_counts_primary_120": {
     "none": {
-      "violations": 0,
-      "usable": 1,
-      "exposed": 0
+      "violations": 9,
+      "usable": 28,
+      "exposed": 14
     },
     "memory": {
       "violations": 0,
-      "usable": 2,
-      "exposed": 1
+      "usable": 27,
+      "exposed": 10
     },
     "manual": {
       "violations": 0,
-      "usable": 0,
-      "exposed": 0
+      "usable": 26,
+      "exposed": 4
     },
     "corrected": {
-      "violations": 0,
-      "usable": 0,
-      "exposed": 0
+      "violations": 10,
+      "usable": 30,
+      "exposed": 16
     }
   }
 }

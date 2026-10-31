@@ -216,3 +216,49 @@ no determinism claim (the Dell endpoint is not seed-deterministic at temperature
 `qualification/` holds the six real generations (prompts, requests, raw responses, extracted HTML,
 records, measurements and the seed probes). The machine-readable summary is the JSON block in
 `07-ENDPOINT-QUALIFICATION.md` §0; the raw per-run records are `qualification/records.json`.
+
+---
+
+# Checkpoint 2 final additions (pilot complete)
+
+## 17. Verify the checkpoint-2 artefact manifest
+
+```bash
+cd experiments/study-02-rare-trigger
+sha256sum -c MANIFEST-checkpoint2.sha256 | grep -v OK   # expect no output
+sha256sum -c MANIFEST-checkpoint2.sha256 | grep -c OK   # 705/705 OK
+```
+
+The manifest covers every committed study file. Raw SSE stream transcripts
+(`pilot/raw/*.sse.txt`, `pilot/replacements/raw/*.sse.txt`, 116 files, ~152 MB) are retained on the
+authoring machine but **not committed** because of size; their SHA-256 values are committed in
+`pilot/raw/SHA256SUMS-sse.txt`, and the parsed per-attempt responses, final HTML outputs, prompts and
+records they produced are committed and covered by the manifest. Verify the local SSE transcripts
+with `sha256sum -c pilot/raw/SHA256SUMS-sse.txt` on a machine that has them.
+
+## 18. Verify the replacement executions
+
+```bash
+python3 - <<'PY'
+import json, glob
+prim = [json.load(open(f)) for f in glob.glob('pilot/records/*.json')]
+repl = [json.load(open(f)) for f in glob.glob('pilot/replacements/records/*.json')]
+fails = [r for r in prim if not r['usable']]
+assert len(prim) == 132 and len(fails) == 9
+assert len(repl) == len(fails) and all(r['usable'] for r in repl)
+assert all(r['replacement_for'] for r in repl)
+assert {r['replacement_for'] for r in repl} == {r['run_id'] for r in fails}
+print('replacement policy consistent:', len(repl), 'replacements for', len(fails), 'originals')
+PY
+```
+
+## 19. Recompute the final pilot analysis
+
+```bash
+python3 scripts/study02/analyze_pilot.py
+# writes pilot/scores.jsonl, pilot/pilot-analysis.json, pilot/pilot-tables.md,
+# pilot/replacements-scores.jsonl (replacements reported separately)
+```
+
+The analysis is descriptive only and explicitly excludes itself from the confirmatory dataset; the
+endpoint is not seed-deterministic at temperature 0.7, so no determinism claim is made.

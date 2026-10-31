@@ -1,7 +1,7 @@
 # Study 02 — checkpoint 2 report
 
-**Date:** 2026-10-31 (Australia/Brisbane) · **Branch:** `integration` / study branch
-`study02/checkpoint-1` (PR #187) · **Status: checkpoint 2 in progress — pilot executing.**
+**Date:** 2026-10-31 → 2026-11-01 (Australia/Brisbane) · **Branch:** `integration` / study branch
+`study02/checkpoint-1` (PR #187) · **Status: checkpoint 2 complete (report for user review).**
 
 **Gates:** the confirmatory experiment has **not** started and is still blocked. The preregistration
 is **not frozen**. No paid API calls were made. The final confirmatory model/endpoint decision is
@@ -225,13 +225,126 @@ and v10, v11 = L twins, pilot-only paraphrase `p00`), all 4 arms, 1 rep = 120 pr
 
 ### 7.2 Pilot results
 
-<!-- PILOT_RESULTS_SECTION -->
+### 7.2 Pilot results (descriptive only — pilot data are excluded from confirmatory analysis)
+
+**Execution accounting.** All **132/132** planned primary records exist: **123 usable (93.2 %)** and
+**9 unusable**, all nine from transport-side stream stalls / one endpoint shutdown (no scoring
+failures). The 9 failed runs were followed by a **user-approved, pre-declared replacement pass**:
+exactly one replacement per unusable run, same scenario/arm/rep, same prompt and seed policy,
+originals retained. **9/9 replacements succeeded**; they are stored under `pilot/replacements/` and
+are reported separately, never merged into the primary dataset. Unusable runs by arm: `none` 2,
+`memory` 3, `manual` 3, `corrected` 1; by stratum: farm-arcade 3, farm-challenge 2, orchard-arcade 1,
+focus-reward 2, focus-lively 1, orchard-challenge 0. The failures are spread across arms/strata; no
+cell lost more than two runs.
+
+| Quantity | Primary pilot | After replacement pass |
+|---|---:|---:|
+| Planned executions | 132 | 132 + 9 replacements |
+| Usable | 123 (93.2 %) | 132 / 132 (primary+replacement, reported separately) |
+| Unusable | 9 | — (originals retained) |
+| Manipulation checks passed | **132/132** | — |
+
+**Measured timing / throughput [OBSERVED]** (primary records):
+
+| Metric | Value |
+|---|---:|
+| Wall time per run, mean / median | **345.8 s / 296.0 s** |
+| Wall time p95 / max | **624.1 s / 736.7 s** |
+| Total run-time (sum of runs) | 45,647 s ≈ **12.7 h** |
+| Wall clock, first → last record | ≈13.8 h (including restarts/retries) |
+| Prompt tokens, mean | 6,390 |
+| Completion tokens, mean / max | 6,386 / 7,999 |
+| Output HTML bytes, mean / max | 19,579 / 23,612 |
+| End-to-end decode (completion/wall), mean | 20.5 tok/s |
+| Per-arm wall means | none 357.4 s, memory 341.6 s, manual 338.7 s, corrected 345.6 s |
+
+The pilot ran ~46 % slower than the 8.73 h qualification projection because ~25 % of runs hit a
+server-side mid-stream stall and needed a retry; that is exactly the kind of defect the pilot was
+designed to find. **4,800 confirmatory executions on this single slot at the measured mean would be
+≈460 h (~19 days) serial**, reinforcing the recommendation not to use Dell for confirmatory.
+
+**Condition assignment.** All 132 primary runs passed the manipulation checks (0/2/1/2 retrieved
+memories in `none`/`memory`/`manual`/`corrected`; rule-in-prompt F/T/T/F; correction present and
+superseded rule absent in `corrected`); 0 failures. Replacement runs pass the same checks.
+
+**Detector and trigger-exposure descriptives (primary 120, rep 0, usable runs only, frozen
+detectors; NO hypothesis test and NO effect-size claim):**
+
+| Arm | Usable | Violations | Detector rate | Exposed (any) | Exposure rate |
+|---|---:|---:|---:|---:|---:|
+| `none` | 28 | 9 | 32.1 % | 14 | 50.0 % |
+| `memory` | 27 | 0 | 0.0 % | 10 | 37.0 % |
+| `manual` | 26 | 0 | 0.0 % | 4 | 15.4 % |
+| `corrected` | 30 | 10 | 33.3 % | 16 | 53.3 % |
+
+High-opportunity subset (pre-registered class, 18 scenarios/arm before exclusions):
+
+| Arm | Usable | Violations | CVR (violations/usable) | Exposed | Violations / exposed |
+|---|---:|---:|---:|---:|---:|
+| `none` | 16 | 6 | 37.5 % | 9 | 6/9 |
+| `memory` | 16 | 0 | 0.0 % | 6 | 0/6 |
+| `manual` | 15 | 0 | 0.0 % | 1 | 0/1 |
+| `corrected` | 18 | 5 | 27.8 % | 9 | 5/9 |
+
+Low-opportunity subset: `none` 3/12 (25.0 %), `memory` 0/11, `manual` 0/11, `corrected` 5/12
+(41.7 %). The pattern is directionally the same as Phase 17 (`memory`/`manual` at zero observable
+violations, `none`/`corrected` above it), but the pilot is small, unblinded, single-endpoint and
+**deliberately not analysed inferentially**.
+
+**Trigger-exposure validation finding.** Exposure is low and uneven (15–53 %), and in the
+high-opportunity subset the `manual` arm shows only 1/15 exposed vs 6/16 in `memory`. That is a
+red flag for the static-source exposure instrument, not an effect claim: the instrument may
+undercount edits (it sees only construct-key changes, not behaviour) and is arm-sensitive. It must
+be human-validated on a stratified sample before the confirmatory freeze; no human validation has
+occurred and none is claimed.
+
+**Consistency checks.** 0 violations without a novel trigger-zone construct and 0 scoring-consistency
+failures across all scored runs; every detector/stratum pairing was as labelled.
+
+**Repeat behaviour (12 repeats; recall the endpoint is not seed-deterministic at temperature 0.7).**
+- Same-seed repeats (8): **0/8 byte-identical to their primary**; one same-seed repeat changed the
+  detector verdict (`focus-reward` `none`: primary no-violation, repeat violation). This confirms the
+  D-P1 finding at full-file scale and justifies the confirmatory design's 3 stochastic reps.
+- New-seed repeats (4): 0/4 byte-identical; detector verdicts unchanged in this small sample.
+- No determinism claim is made; output hashes are not used as integrity evidence.
+
+**Pilot objective checklist.** API reliability: qualified but stalls/retries are a real cost
+(93.2 % usability). Condition assignment: 132/132. Trigger classification: deterministic and
+self-consistent, but the exposure instrument needs human validation. Deterministic scoring: verified
+offline against the Phase 17 committed outputs; 0 scoring defects in the pilot. Output logging:
+prompts, raw SSE, parsed responses, outputs and records complete for all usable runs; failed runs
+have attempt records but no output. Reproducibility: scoring/analysis reproducible; generation is
+not seed-reproducible. Exclusion handling: 9 failures counted and reported, replaced only under the
+declared pilot-only rule, and never used in confirmatory data.
 
 ---
 
 ## 8. Defects found (checkpoint 2)
 
-<!-- DEFECTS_SECTION -->
+| ID | Defect | Status | Where documented |
+|---|---|---|---|
+| D-P1 | Endpoint not seed-deterministic at temp 0.7; repeats cannot demonstrate determinism | **Open — protocol relabel required** | `PILOT-CHANGES.md`, `07-ENDPOINT-QUALIFICATION.md` §2.2 |
+| D-P2 | Node `fetch` 300 s body timeout killed valid ~5-min generations | **Fixed** (curl transport) | `PILOT-CHANGES.md`, `_internal/PILOT-LOG.md` |
+| D-P3 | Post-restart `EHOSTUNREACH` for Node/Python sockets while curl worked | **Fixed** (curl transport) | `PILOT-CHANGES.md`, `_internal/PILOT-LOG.md` |
+| D-P4 | Client abort ≠ server abort; new requests queue behind orphaned generations | **Process fixed** (supervisor idle-wait; never kill a running client) | `PILOT-CHANGES.md`, `_internal/PILOT-LOG.md` |
+| D-P5 | Production `buildForgePrompt` drift vs Phase 17; prompt-level identity not established | **Open — document + pin prompt version at freeze** | `PILOT-CHANGES.md`, `07-ENDPOINT-QUALIFICATION.md` |
+| D-P6 | `corpus.json` rows lack explicit `template_id`/`twin_id` | **Open — pre-freeze corpus fix** | `PILOT-CHANGES.md`, `04b` cross-check |
+| D-P7 | Corpus raw-text diversity limited (shared family engine; token Jaccard ≈0.97) | **Open — decided/reported as a generalisation limit** | `08-CORPUS-DIVERSITY.md` |
+| D-P8 | No independent human validation of labels/exposure | **Blocker for freeze** (resource) | `09-SCORING.md`, `PILOT-CHANGES.md` |
+| D-P9 | Non-streaming long generations lost the connection (780 s/660 s failures) | **Fixed** (SSE streaming) | `PILOT-CHANGES.md`, `_internal/PILOT-LOG.md` |
+| D-P10 | Server-side mid-generation SSE stall left socket open | **Fixed** (120 s inactivity abort + retry; partial streams never scored) | `PILOT-CHANGES.md`, `_internal/PILOT-LOG.md` |
+| D-P11 | Sustained-load degradation: run times 500–737 s, ~25 % retries, 9/132 unusable | **Counted, not hidden**; throughput reported; Dell not viable for confirmatory | `_internal/PILOT-LOG.md`, §7.2 |
+| — | Endpoint shutdown mid-pilot (user action) | One in-flight run lost, counted unusable, replaced; no data loss to prior records | `_internal/PILOT-LOG.md` |
+
+**Pilot defects in scoring:** none. The frozen scorer produced 0 consistency failures and reproduced
+the Phase 17 committed counts exactly in its validation suite. All pilot "defects" are transport /
+environment / protocol-design issues, not scoring-rule failures.
+
+**Minimum fix list before the confirmatory freeze:** relabel repeats (D-P1); pin the production
+prompt version and state comparability (D-P5); add `template_id`/`twin_id` and decide on corpus
+diversity (D-P6/D-P7); complete independent human validation of opportunity labels and the exposure
+instrument (D-P8 — blocker); adopt the transport/idle/streaming rules in the frozen harness; and
+re-run the power simulation with pilot-calibrated usability (~93 %) and stall/retry costs.
 
 ---
 
@@ -244,7 +357,7 @@ Recommended: **4,800 executions, one model, full-file outputs**, with ~10 % exec
 |---|---:|---:|---|---|
 | Hosted Muse Spark Open (Baseten), Phase-17 per-run mean | 12 | ≈5.8 h | **7–8 h** | Restores Phase-17 continuity; paid calls require approval; rate-limit serialisation not modelled |
 | Hosted Muse Spark (Forge), Phase-17 per-run mean | 24 | ≈14.3 h | 16–18 h | Closest runtime continuity; paid |
-| Dell PolyStrata single slot, full-file outputs | 1 | ≈318 h (13.2 d) | not recommended | Free but not executable within a reasonable window; would need sharding/throughput replanning or a different output format (rejected: condition 5) |
+| Dell PolyStrata single slot, full-file outputs | 1 | **≈460 h (19.2 d)** measured pilot mean (345.8 s/run; qualification-based estimate was ≈318 h) | not recommended | Free but not executable within a reasonable window; would need sharding/throughput replanning or a different output format (rejected: condition 5) |
 | Both models | — | 2× the chosen column | — | Replication claim; 9,600 executions |
 
 Token/cost snapshot (Phase-17 scaling): Muse Spark ≈5.7 B input / 57 M output; Muse Spark Open ≈24 M

@@ -1,0 +1,78 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v02.p00--none--r0",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v02.p00",
+  "stratum": "focus-reward",
+  "arm": "none",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 83194284,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v02.p00:none:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 1675968915,
+  "order_key": "5b6bc6cdc7537f4444617b89d0e733bfee09e13bdf13ba852c74562705949eb2",
+  "variant_id": "focusflow-v02",
+  "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v02.p00--none--r0.txt",
+  "prompt_sha256": "e7c3c7e122ec7b52aff682eccea835953a5bbfa03fe720bd0af0bf8e6e637be5",
+  "prompt_bytes": 21849,
+  "request_sha256": "7bdc4ee75f3d08878c393bbe474d4f5950eb8f77b00534cc20f56c06bd8255e7",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T09:09:57.452Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 385.426
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T09:16:25.880Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 348.288
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "request timeout after 1800000 ms",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T09:09:57.452Z",
+  "finished_at": "2026-10-31T09:22:14.168Z",
+  "seconds_total": 736.718,
+  "attempt_count": 2,
+  "failure_kind": "timeout"
+}

@@ -94,3 +94,49 @@ free/local calls; the confirmatory experiment is not started and nothing is froz
   successful record for each run id.
 - Request timeout default raised to 1800 s (streaming removes the idle-socket failure mode; this is a
   safety bound, not an expected runtime).
+
+### D-P10 — server-side mid-generation stall with SSE (inactivity abort added)
+
+- A streaming execution produced 5,160 SSE delta chunks (17,119 content chars) and then the stream
+  stopped mid-generation: the SSE file's mtime froze, `/slots` reported `is_processing: false`, and
+  the HTTP socket stayed open (curl would have waited until the 1800 s cap). The engine log showed
+  no request-level error; the cause is not diagnosed beyond "engine stopped mid-generation".
+- Fix: curl now aborts a stream that carries < 1 byte/s for 120 s (`--speed-time 120
+  --speed-limit 1`); the attempt is recorded as a timeout and retried. This bounds a stall to
+  ~2 min instead of 30 min. A partial stream is never scored as usable.
+- No record was written for the stalled attempt, so no quarantine was needed; the run is
+  re-executed under the bounded-stream transport.
+
+### D-P11 — sustained-load degradation and retry cooldown
+
+- After ~6 h of continuous CPU-heavy inference the measured pace worsened: some full-file runs took
+  500-630 s (vs 240-450 s earlier), and a few runs failed both attempts with the 120 s stream
+  inactivity abort, producing usable-rate loss (3 unusable by 19:31 of 58 recorded).
+- No Dell restart/configuration change was made (the endpoint is a manually launched process and the
+  user forbade modifying the Natasia installation; PolyStrata is not a managed service). The pilot
+  continues with the failure rate counted, not hidden.
+- Harness change: the inter-attempt cooldown was raised from 3 s to 30 s to give the single engine
+  slot time to recover between attempts; the curl-28 error message now states that the failure was a
+  stream inactivity abort rather than a request-size timeout.
+- Consequence for the checkpoint: the pilot is taking materially longer than the qualification
+  projection (which assumed no stalls). Actual throughput and usability are reported from the
+  records; the confirmatory-budget section treats the Dell single-slot option as infeasible.
+
+## Replacement policy for unusable pilot executions (user-approved 2026-10-31)
+
+The user asked whether unusable pilot runs can be replaced. Decision: **pilot-only, bounded,
+pre-declared, non-cherry-picking**:
+
+- For each unusable **pilot** record, exactly **one** replacement execution of the same
+  scenario/arm/repetition, same prompt construction and seed policy, is run after the primary pilot
+  completes. Original failed records are kept and reported; replacements are stored separately under
+  `pilot/replacements/` and never overwrite primary records.
+- No replacement is attempted more than once per run, and no run is repeated until success.
+- Replacements are **never** used in the confirmatory study: there, unusable runs remain excluded
+  under the pre-declared exclusions (per-protocol primary + worst-case ITT), with no post-hoc
+  replacement.
+- Tooling: `scripts/study02/run_replacements.mjs` (refuses `--confirmatory`, one pass at a time,
+  resumable, uses the same curl/SSE transport and idle gate). Dry-run verified: 4 targets, prompt
+  construction check passed (manual arm: 1 memory, rule in prompt).
+- The pilot analysis reports primary usability (including failures) and replacement outcomes
+  separately.

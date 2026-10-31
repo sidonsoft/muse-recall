@@ -288,6 +288,48 @@ def main() -> int:
     for r in results['violations_without_exposure']:
         defects.append({'run_id': r, 'kind': 'violation_without_exposure'})
 
+    # --------------------------- replacement executions (pilot-only, separate)
+    repl_dir = PILOT / 'replacements' / 'records'
+    repl_records = {}
+    for f in sorted(repl_dir.glob('*.json')) if repl_dir.exists() else []:
+        rec = load_json(f)
+        repl_records[rec.get('run_id', f.stem)] = rec
+    replacements = {
+        'policy': ('one replacement execution per unusable pilot run, same scenario/arm/repetition, '
+                   'same prompt/seed policy; originals retained; never used in confirmatory analysis'),
+        'originals_unusable': len(unusable),
+        'replacements_recorded': len(repl_records),
+        'replacements_usable': sum(1 for r in repl_records.values() if r.get('usable')),
+        'rows': [],
+    }
+    if repl_records:
+        repl_scores_file = PILOT / 'replacements-scores.jsonl'
+        repl_cmd = [
+            sys.executable, str(SCORER),
+            '--records-dir', str(repl_dir),
+            '--pilot-plan', str(PILOT / 'pilot-plan.json'),
+            '--variants-dir', str(CORPUS / 'variants'),
+            '--out', str(repl_scores_file),
+        ]
+        repl_out = subprocess.run(repl_cmd, capture_output=True, text=True)
+        if repl_out.returncode == 0:
+            repl_scores = {json.loads(line)['run_id']: json.loads(line)
+                           for line in repl_scores_file.read_text(encoding='utf-8').splitlines() if line.strip()}
+            for rid, rec in sorted(repl_records.items()):
+                sc = repl_scores.get(rid, {})
+                replacements['rows'].append({
+                    'run_id': rid,
+                    'replacement_for': rec.get('replacement_for'),
+                    'status': rec.get('status'),
+                    'usable': rec.get('usable'),
+                    'seconds_total': rec.get('seconds_total'),
+                    'failure_kind': rec.get('failure_kind'),
+                    'violation': sc.get('violation'),
+                    'exposed': sc.get('exposed'),
+                })
+        else:
+            replacements['scoring_error'] = (repl_out.stdout + repl_out.stderr)[-500:]
+
     analysis = {
         'kind': 'study02-pilot-analysis',
         'pilot_only': True,
@@ -307,6 +349,7 @@ def main() -> int:
         'manipulation_failures': manip_fail,
         'results_descriptive_only': results,
         'repeat_probes': repeat_probe,
+        'replacements': replacements,
         'defects': defects,
         'violation_counts_primary_120': {
             arm: {
@@ -343,6 +386,15 @@ def main() -> int:
     for mode, c in repeat_probe['by_mode'].items():
         lines.append(f"| `{mode}` | {c['n']} | {c['byte_identical_to_primary']} |")
     lines.append('')
+    lines.append('## Replacement executions (pilot-only; originals retained)\n')
+    rep = analysis['replacements']
+    lines.append(f"Unusable primary runs: {rep['originals_unusable']}; replacements recorded: {rep['replacements_recorded']}; replacements usable: {rep['replacements_usable']}.\n")
+    if rep['rows']:
+        lines.append('| Original → replacement | status | seconds | violation | exposed |')
+        lines.append('|---|---|---:|---|---|')
+        for row in rep['rows']:
+            lines.append(f"| `{row['replacement_for']}` | {row['status']} | {row['seconds_total']} | {row['violation']} | {row['exposed']} |")
+        lines.append('')
     lines.append('## Defects found\n')
     if analysis['defects']:
         for d in analysis['defects']:

@@ -1,0 +1,86 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v11.p00--manual--r0",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v11.p00",
+  "stratum": "farm-challenge",
+  "arm": "manual",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 34408322,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v11.p00:manual:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 1403108317,
+  "order_key": "c228f97e6053f888bbe451e95666e43590e65c6835e99f9a2025ee9cffefce21",
+  "variant_id": "farmyard-v11",
+  "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-challenge.farmyard-v11.p00--manual--r0.txt",
+  "prompt_sha256": "65890d41c1a90bae0cdc0ed2430fd99eb4c3471c9a81c526478346ecfc284b75",
+  "prompt_bytes": 18522,
+  "request_sha256": "c68cf47b5bc3d16d240d6b23af72da0321848f4dc6e6b48c47b2fa50acfc6073",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [
+    "8bdf0d94-1300-46b3-866a-6bdcc3ae8515"
+  ],
+  "memory_contents": [
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "8bdf0d94-1300-46b3-866a-6bdcc3ae8515",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 1,
+    "characters_used": 509,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 1,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T14:07:23.050Z",
+      "error": "curl stream transport failed: curl: (56) Recv failure: Connection reset by peer\n",
+      "seconds": 79.281
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T14:09:12.336Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Failed to connect to 192.168.86.39 port 8080 after 7831 ms: Couldn't connect to server)",
+      "timeout_ms": 1800000,
+      "seconds": 113.327
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Failed to connect to 192.168.86.39 port 8080 after 7831 ms: Couldn't connect to server)",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T14:07:23.050Z",
+  "finished_at": "2026-10-31T14:11:05.663Z",
+  "seconds_total": 222.613,
+  "attempt_count": 2,
+  "failure_kind": "timeout"
+}

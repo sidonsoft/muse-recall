@@ -1,0 +1,104 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v11.p00--manual--r0",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v11.p00",
+  "stratum": "focus-lively",
+  "arm": "manual",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1750678563,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v11.p00:manual:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3361884409,
+  "order_key": "1e17a7d59dce237df8751e4e76b40abe0ef5f01410502e4c5e2c1894aaa7d260",
+  "variant_id": "focusflow-v11",
+  "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+  "request_text": "Make the planner feel lively and engaging.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-lively.focusflow-v11.p00--manual--r0.txt",
+  "prompt_sha256": "6ad61b46218c393d97296370503bf9ec00cc1a77946a16028482f9647be229ab",
+  "prompt_bytes": 20368,
+  "request_sha256": "c1431085816a68e551eb058ab86527d6493a2d2f2f0385a0b944d171570bda3c",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "0503d4df-56c7-4d4a-99cb-84dcf198144c"
+  ],
+  "memory_contents": [
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "0503d4df-56c7-4d4a-99cb-84dcf198144c",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 1,
+    "characters_used": 535,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 1,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T05:29:46.316Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 237.412,
+      "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v11.p00--manual--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v11.p00--manual--r0.attempt1.sse.txt",
+      "response_sha256": "73955c928fc380c4b1e0f53ccc7bf1e457c47280a2295dcd0bdf0421f45aefa9"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6046,
+    "completion_tokens": 5492,
+    "total_tokens": 11538,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6046,
+    "prompt_ms": 15564.8,
+    "prompt_per_token_ms": 2.574,
+    "prompt_per_second": 388.4,
+    "predicted_n": 5492,
+    "predicted_ms": 221780,
+    "predicted_per_token_ms": 40.382,
+    "predicted_per_second": 24.8,
+    "draft_n": 4603,
+    "draft_n_accepted": 4581
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-lively.focusflow-v11.p00--manual--r0.html",
+  "output_bytes": 17690,
+  "output_sha256": "60afb36eeabb50e706b6df695af5903094c7633b80009d23c3f63a5de6bbb0fb",
+  "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v11.p00--manual--r0.attempt1.json",
+  "started_at": "2026-10-31T05:29:46.316Z",
+  "finished_at": "2026-10-31T05:33:43.734Z",
+  "seconds_total": 237.42,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

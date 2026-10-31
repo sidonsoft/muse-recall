@@ -1,0 +1,95 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v00.p00--none--r0",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+  "stratum": "focus-lively",
+  "arm": "none",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 2093285441,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v00.p00:none:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 1465334861,
+  "order_key": "2428c3f94194fd0e851e3284711922f65f6f5f5a8608e619053b6ad40034c39c",
+  "variant_id": "focusflow-v00",
+  "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+  "request_text": "Make the planner feel lively and engaging.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-lively.focusflow-v00.p00--none--r0.txt",
+  "prompt_sha256": "50dbddffa7807bcd306a06cb5f18be5543b3036ee6eae403f5752455784a2b0e",
+  "prompt_bytes": 21636,
+  "request_sha256": "32d16dd6e289535cace2f912160a65b3ea948c5b3a4286d8ff45001dd55412b9",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T06:00:13.641Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 285.789,
+      "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v00.p00--none--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v00.p00--none--r0.attempt1.sse.txt",
+      "response_sha256": "a8207f7eea4fc85780cef711f2b8ecf812fd6ea3ec459cca4d83fdbe00c783ab"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6493,
+    "completion_tokens": 6458,
+    "total_tokens": 12951,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6493,
+    "prompt_ms": 17047.9,
+    "prompt_per_token_ms": 2.626,
+    "prompt_per_second": 380.9,
+    "predicted_n": 6458,
+    "predicted_ms": 265631,
+    "predicted_per_token_ms": 41.132,
+    "predicted_per_second": 24.3,
+    "draft_n": 5229,
+    "draft_n_accepted": 5167
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-lively.focusflow-v00.p00--none--r0.html",
+  "output_bytes": 20832,
+  "output_sha256": "a3af309e94649e6c12f63fe741851e52fd20f8ecf299c7e2bbb962622d7ded11",
+  "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v00.p00--none--r0.attempt1.json",
+  "started_at": "2026-10-31T06:00:13.641Z",
+  "finished_at": "2026-10-31T06:05:04.440Z",
+  "seconds_total": 290.802,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

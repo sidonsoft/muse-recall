@@ -1,0 +1,104 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+  "stratum": "farm-arcade",
+  "arm": "manual",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 726254274,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:manual:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3157046373,
+  "order_key": "c94c63067e584d29be74f83058a9736f51354764fde323c4f1a116c5ce5ecf26",
+  "variant_id": "farmyard-v11",
+  "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+  "request_text": "Make the game as exciting and challenging as an arcade game.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0.txt",
+  "prompt_sha256": "5c7138e5193d30caddd002b856b615648c48d6ffd4e18f964dd319d14f3f639c",
+  "prompt_bytes": 18507,
+  "request_sha256": "dc21f9eaaa2d4b3da9eabeeb056f3bab1e5eeaea449556238d690dfd3f44758f",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "16a9d60c-71b4-452f-bf1a-870ce9a30a95"
+  ],
+  "memory_contents": [
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "16a9d60c-71b4-452f-bf1a-870ce9a30a95",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 1,
+    "characters_used": 509,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 1,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T14:27:30.904Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 286.003,
+      "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0.attempt1.sse.txt",
+      "response_sha256": "ed726a4852a0ba8f5cb3b9511043b39d5d32e293c4c2894f6bba6802a02744ce"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5797,
+    "completion_tokens": 6454,
+    "total_tokens": 12251,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 5797,
+    "prompt_ms": 15202.9,
+    "prompt_per_token_ms": 2.623,
+    "prompt_per_second": 381.3,
+    "predicted_n": 6454,
+    "predicted_ms": 267752.8,
+    "predicted_per_token_ms": 41.486,
+    "predicted_per_second": 24.1,
+    "draft_n": 4784,
+    "draft_n_accepted": 4645
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0.html",
+  "output_bytes": 19439,
+  "output_sha256": "44009a2f758f01c365674cfebc9438b8f9eb4091e570d81dd5fabd79cc184008",
+  "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0.attempt1.json",
+  "started_at": "2026-10-31T14:27:30.904Z",
+  "finished_at": "2026-10-31T14:32:21.910Z",
+  "seconds_total": 291.006,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

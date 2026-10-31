@@ -1,0 +1,110 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v10.p00--memory--r0",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v10.p00",
+  "stratum": "focus-reward",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1326337380,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v10.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3306735417,
+  "order_key": "98df80becb517bfd264f618ad7c0f926a09914e2cd78e35426e0f75d0db9de8e",
+  "variant_id": "focusflow-v10",
+  "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v10.p00--memory--r0.txt",
+  "prompt_sha256": "898c750673ef9d7bf1575eeabd354734b19dae58d9126c9a61cb04d6192962b4",
+  "prompt_bytes": 20112,
+  "request_sha256": "921329fff8a619ea3d5402f0f3d4a46682d6a824938bdaca2711fab75e4d3ce8",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "1c775f64-cca0-4793-8562-1e91d25d05a4",
+    "ab344c55-3348-48ca-b50a-1e6d299390be"
+  ],
+  "memory_contents": [
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients.",
+    "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+  ],
+  "seeded": [
+    {
+      "id": "ab344c55-3348-48ca-b50a-1e6d299390be",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "1c775f64-cca0-4793-8562-1e91d25d05a4",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 847,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T12:03:29.741Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 264.385,
+      "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v10.p00--memory--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v10.p00--memory--r0.attempt1.sse.txt",
+      "response_sha256": "782ce1ebe3cf56c38375bc33f7176232ea9d1ff2dc304746716e2dd6b6efc00f"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5987,
+    "completion_tokens": 5992,
+    "total_tokens": 11979,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 5987,
+    "prompt_ms": 15464.9,
+    "prompt_per_token_ms": 2.583,
+    "prompt_per_second": 387.1,
+    "predicted_n": 5992,
+    "predicted_ms": 245821.3,
+    "predicted_per_token_ms": 41.025,
+    "predicted_per_second": 24.4,
+    "draft_n": 4869,
+    "draft_n_accepted": 4822
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-reward.focusflow-v10.p00--memory--r0.html",
+  "output_bytes": 19208,
+  "output_sha256": "3b7b136b55e310615390cee4385b32390f31683c375b1bccba20cd1b850b1950",
+  "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v10.p00--memory--r0.attempt1.json",
+  "started_at": "2026-10-31T12:03:29.740Z",
+  "finished_at": "2026-10-31T12:07:59.133Z",
+  "seconds_total": 269.393,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

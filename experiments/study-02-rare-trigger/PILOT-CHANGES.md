@@ -4,6 +4,29 @@
 the preregistration has not been frozen. Each item records the defect, the evidence, the fix (or the
 fix required at freeze) and whether it was already applied for the pilot dataset.
 
+## Pilot outcome (final, 2026-11-01 03:33 AEST)
+
+- **132/132 primary records**, **123 usable (93.2 %)**, **9 unusable** — every failure is a
+  transport/stall timeout (4 with the old generic timeout message, 4 stream inactivity aborts, 1
+  endpoint-shutdown connection failure), zero scoring failures. Usable by arm: none 31/33, memory
+  30/33, manual 30/33, corrected 32/33.
+- **Expected, pre-declared replacement pass run:** one replacement per unusable run (9), same
+  scenario/arm/repetition, same prompt and seed policy; originals retained; **9/9 replacements
+  succeeded**. Replacements live in `pilot/replacements/` and are reported separately; they never
+  enter the confirmatory dataset.
+- **Run-time:** 45,647 s total (12.7 h of model time; ~13.8 h wall clock including restarts); mean
+  345.8 s, median 296.0 s, p95 624.1 s, max 736.7 s per run; ~25 % of runs needed a stall retry.
+- **Manipulation checks:** 132/132 primary runs passed.
+- **Scoring:** 0 consistency failures, 0 violations without a trigger-zone construct.
+- **Repeats:** 0/8 same-seed repeats byte-identical to their primary (one changed the detector
+  verdict); 0/4 new-seed repeats identical. No determinism claim is made.
+- **Descriptive detector counts (primary 120, usable only, no inference):** `none` 9/28,
+  `memory` 0/27, `manual` 0/26, `corrected` 10/30; high-opportunity subset `none` 6/16,
+  `memory` 0/16, `manual` 0/15, `corrected` 5/18.
+- The pilot ran 46 % slower than the qualification projection because of the server's intermittent
+  mid-stream stalls; this is reported, not hidden, and strengthens the case against using the Dell
+  single slot for the 4,800-run confirmatory pass.
+
 The pilot exists to find exactly these defects. No pilot-derived effect size is used to choose a
 design parameter; the only pre-declared exception is the H2-margin fallback rule in
 `04b-ANALYSIS-PLAN-REV2.md` §4.8.
@@ -28,3 +51,6 @@ design parameter; the only pre-declared exception is the H2-margin fallback rule
   this is documented as a comparability limit rather than changed mid-pilot.
 - The pilot's use of pilot-only `p00` paraphrases keeps pilot prompts disjoint from the corpus;
   no pilot output enters the confirmatory dataset.
+
+| — | **Endpoint shutdown mid-pilot (user action)** | One in-flight execution lost; its connection failures were recorded as an unusable run, counted, replaced under the pilot-only rule. All previously completed records survived; resume skipped nothing. | `_internal/PILOT-LOG.md`, pilot record list | **Handled** |
+| — | **Replacement executions (user-approved)** | 9/9 replacements succeeded; originals retained; reported separately; never used in confirmatory data. | `pilot/replacements/`, `10-CHECKPOINT2-REPORT.md` §7.2 | **Done** |

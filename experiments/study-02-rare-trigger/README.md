@@ -1,8 +1,9 @@
 # Study 02 — Rare-Trigger Reliability
 
-**Status: CHECKPOINT 2 IN PROGRESS.** Endpoint qualification, the expanded matched-twin corpus,
-deterministic scoring and the revised power analysis are complete; the approved 30-scenario Dell
-pilot (120 primary + 12 repeat executions) is executing. **The confirmatory experiment has NOT
+**Status: CHECKPOINT 2 COMPLETE — report for user review.** Endpoint qualification, the expanded
+matched-twin corpus, deterministic scoring, the revised power analysis and the approved 30-scenario
+Dell pilot (120 primary + 12 repeat executions, plus a pre-declared pilot-only replacement pass) are
+complete. **No confirmatory data exist.** **The confirmatory experiment has NOT
 started, the preregistration is NOT frozen, and the confirmatory model/endpoint is NOT decided.**
 Nothing here is a confirmatory result.
 
@@ -46,12 +47,12 @@ qualification data are excluded from any confirmatory dataset.
 | Corpus diversity analysis | [`08-CORPUS-DIVERSITY.md`](08-CORPUS-DIVERSITY.md) | **Complete, with candid limits** |
 | Deterministic scoring (frozen detectors + exposure classifier + validation) | [`09-SCORING.md`](09-SCORING.md), [`scoring/`](scoring/), [`scripts/study02/score.py`](scripts/study02/score.py), [`scripts/study02/test_scoring.py`](scripts/study02/test_scoring.py) | **Complete and validated against Phase 17** |
 | Resumable full-file pilot runner | [`scripts/study02/runner.mjs`](scripts/study02/runner.mjs), [`scripts/study02/run_pilot.mjs`](scripts/study02/run_pilot.mjs), [`scripts/study02/supervise_pilot.sh`](scripts/study02/supervise_pilot.sh) | **Complete; pilot-only (refuses confirmatory)** |
-| 30-scenario pilot (120 + 12 executions) | [`pilot/`](pilot/) | **Executing** |
-| Pilot analysis | [`scripts/study02/analyze_pilot.py`](scripts/study02/analyze_pilot.py), [`pilot/pilot-analysis.json`](pilot/pilot-analysis.json), [`pilot/pilot-tables.md`](pilot/pilot-tables.md) | **Pipeline ready; final numbers after completion** |
+| 30-scenario pilot (120 + 12 executions + 9 replacements) | [`pilot/`](pilot/), [`pilot/replacements/`](pilot/replacements/) | **Complete (123/132 usable; 9/9 replacements)** |
+| Pilot analysis | [`scripts/study02/analyze_pilot.py`](scripts/study02/analyze_pilot.py), [`pilot/pilot-analysis.json`](pilot/pilot-analysis.json), [`pilot/pilot-tables.md`](pilot/pilot-tables.md) | **Complete (descriptive only; excluded from confirmatory data)** |
 | Revised analysis plan + power (matched-twin design) | [`04b-ANALYSIS-PLAN-REV2.md`](04b-ANALYSIS-PLAN-REV2.md), [`analysis/power_study2_rev2.py`](analysis/power_study2_rev2.py), [`analysis/power_study2_rev2.txt`](analysis/power_study2_rev2.txt) | **Complete (SIM only)** |
 | Protocol revision notice v0.2 | [`02b-PROTOCOL-REVISION-V2.md`](02b-PROTOCOL-REVISION-V2.md) | **Draft** |
 | Pilot changes / defect list (pre-freeze) | [`PILOT-CHANGES.md`](PILOT-CHANGES.md) | **Live** |
-| Checkpoint-2 report (endpoint, corpus, pilot, defects, power, budget) | [`10-CHECKPOINT2-REPORT.md`](10-CHECKPOINT2-REPORT.md) | **In progress** |
+| Checkpoint-2 report (endpoint, corpus, pilot, defects, power, budget) | [`10-CHECKPOINT2-REPORT.md`](10-CHECKPOINT2-REPORT.md) | **Complete** |
 | Reproduction instructions | [`REPRODUCTION.md`](REPRODUCTION.md) | Checkpoint-1 + checkpoint-2 commands |
 | Public technical summary for Meridian | [`06-PUBLIC-SUMMARY-DRAFT.md`](06-PUBLIC-SUMMARY-DRAFT.md) | **Draft, no results** |
 | Checkpoint-1 documents | `01-AUDIT.md`, `02-PROTOCOL-DRAFT.md`, `03-DELL-ENDPOINT.md`, `04-ANALYSIS-PLAN.md`, `05-CHECKPOINT-REPORT.md`, `design/corpus-spec.md`, `design/design-draft.json` | Preserved unchanged as the checkpoint-1 record |
@@ -96,11 +97,13 @@ qualification data are excluded from any confirmatory dataset.
 4. **Power revised.** 400 × 3 remains adequate (H1/H3 saturated; H2@10 min 0.910 at arm parity under
    the worst clustering cell); recommended margin +10 pp with a coarse pre-declared pilot fallback.
    The revision is a confound fix, not a power gain.
-5. **Pilot defects found and handled** (see `PILOT-CHANGES.md`): Node fetch 300 s body timeout (fixed
-   with a curl transport), a post-restart LAN reachability quirk (curl used), client-abort ≠
-   server-abort queueing (idle-slot supervisor), seed non-determinism (protocol relabel required),
-   production prompt-builder drift (comparability caveat), corpus `template_id` field to add, and
-   the missing human-coding resource (blocker for freeze).
+5. **Pilot executed, excluded from confirmatory data.** 132/132 records: 123 usable (93.2 %), 9
+   unusable (all transport/stall timeouts) + 9/9 pilot-only replacements; 132/132 manipulation
+   checks; run-time 12.7 h (mean 345.8 s/run, p95 624 s) — 46 % slower than the qualification
+   projection due to server mid-stream stalls. Descriptive counts: `none` 9/28, `memory` 0/27,
+   `manual` 0/26, `corrected` 10/30 (no inference; pilot not powered). No seed determinism (0/8
+   same-seed identical). Exposure instrument caught only 15–53 % of runs → needs human validation
+   (blocker). Defects D-P1–D-P11 logged; transport fixes applied and recorded.
 
 ---
 
