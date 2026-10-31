@@ -449,6 +449,16 @@ now is maintenance honesty, not new surface:
     `pnpm 10` (version prose) and `4000` (a character budget, not a
     port) - four-digit numbers are not ports, and version prose is
     not a script name.
+  - Public counter endpoint probed (31 Oct): the README's "anyone can
+    read the total" GET currently answers {"error":"Key not found"} -
+    consistent with abacus creating keys on first hit, and with owner
+    test launches going to the separate `-owner` counter by design:
+    Key-not-found therefore means "no real launch yet", not dead link.
+    The README now states that reading so nobody mistakes an absent
+    key for the counter being broken; hit/get keys verified to be the
+    same string. Full sentinel sweep same round: all six invariants
+    green (main c32d03b, 3 tags, 4 rulesets, 0 site pushes, PR #28
+    pinned, 0 frozen-path touches).
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
