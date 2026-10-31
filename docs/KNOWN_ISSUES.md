@@ -539,3 +539,23 @@ Fix plan (post-judging, rides the KI-43 lockstep PR): handler maps Fastify's 413
 new `payload_too_large` (413) catalogue entry + mirror probe; catalogue +1 entry => ERROR_CATALOG_VERSION
 2->3 in the same PR as KI-43's five codes and KI-45's bad_request mapping - one version bump, three
 code-honesty fixes. Pre-Nov-4: behavior+contract change, not judge-visible, so documented and queued.
+
+### KI-49 - security.md's uid-change wrapper recipe cannot write the staging tree - G-2 provisioning gap (found while building the operator runbook)
+
+**Severity:** Low (the G-2 seam is unset in the default beta, so the shipped example fails only for
+operators who follow it; nothing judge-visible)
+**Detail (found 31 Oct 2026 by code-reading the launch path; no live experiment yet):**
+docs/security.md recommends `setpriv --reuid forge` behind `FORGE_WORKER_WRAPPER`. But the child
+needs two OS permissions the server grants only to the server user: the staging directory
+`<project data>/staging/<job-id>` is created mode **0700** server-owned (workspace.ts:510
+`ensurePrivateDirectory`) and the Forge CLI file-write tools run with `cwd=staging`
+(runner.ts:1268); `prompt.txt` is written mode **0600** (runner.ts:1224 `writePrivateFile`) and
+passed as `--prompt-file`. A uid-changing wrapper boots fine (the startup probe only runs
+`<wrapper> node -e 0` - worker-wrapper.ts) but the first real generation hits EACCES inside the
+CLI, surfacing as an interrupted job. The example as written promises isolation it cannot deliver.
+**Working today without code changes:** (a) a container-launcher wrapper whose staging bind-mount
+is uid-mapped to the server euid (strongest isolation; the startup probe exercises the launcher
+end to end), or (b) a `systemd-run` scope wrapper (cgroup/temp isolation, no uid change - partial).
+**Fix plan (post-judging, owner call):** small server-side ACL support - create staging
+(0750) and prompt (0640) group-accessible for a dedicated worker group named by a new env;
+contract-visible (new env + permission model), hence tier-C of the action register (item 13).

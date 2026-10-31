@@ -84,6 +84,15 @@ Set `FORGE_WORKER_WRAPPER=/usr/local/bin/forge-setpriv` for the server process. 
 wrapper concept also composes with systemd-run scopes or container launchers. The default
 single-user local beta still runs the child directly.
 
+**Permission caveat (KI-49):** the server creates the job staging tree mode 0700 and the
+prompt file mode 0600, owned by the server user, and the CLI writes files inside staging -
+so a uid-CHANGING wrapper like the `setpriv` example above fails at the first real
+generation (EACCES), even though the startup pass-through probe succeeds. Proven paths
+today: a container-launcher wrapper with a uid-mapped staging bind-mount, or a
+`systemd-run` scope wrapper (isolation without uid change, partial). True uid isolation
+needs server-side worker-group ACL support, tracked as KI-49 and queued post-judging.
+Operator step-by-step: docs/ops/OPERATOR_RUNBOOKS.md (Forge worker isolation).
+
 ## Durable jobs and restart recovery
 
 - Jobs are written as one JSON file per job, using a same-directory temp file and atomic

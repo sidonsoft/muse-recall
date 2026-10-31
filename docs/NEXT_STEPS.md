@@ -167,9 +167,14 @@ toward the home doc.
     prune (SUBMISSION_PRESERVATION.md census).
 12. Optional live rejection-probe of ruleset 26245608 (read-only verification done).
 
+13. G-2 worker-group ACL support (KI-49): create staging 0750 + prompt 0640 for a dedicated
+    group named by a new env, enabling setpriv-style uid isolation; contract-visible (new env +
+    permission model), so this is an owner call first, then a small PR - the runbook already
+    documents two wrapper paths that work without it.
+
 **D. Roadmap horizons (POST_HACKATHON_ROADMAP.md owns these; index-only):**
-13. G-6 identity/scoping/rotation; 14. G-2 provisioning follow-up;
-15. ConfidenceSchema relabel (roadmap G1); 16. G-1/G-3+ per roadmap sequence.
+14. G-6 identity/scoping/rotation; 15. G-2 provisioning follow-up;
+16. ConfidenceSchema relabel (roadmap G1); 17. G-1/G-3+ per roadmap sequence.
 
 ## Historical plan (Phase 6, kept for the development record)
 
