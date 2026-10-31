@@ -68,7 +68,9 @@ memory-core remainder in §3 is now closed (traversal, error catalogue, idempote
 tool contract, and an MCP (stdio) surface over the SAME registry exist. List traversal is
 uniform (`limit`/`offset` + filter-wide `total` on memories, review queue, and sessions —
 the sessions `total` was fixed from page-length to a real COUNT, 2026-10-30), and errors are
-machine-readable via a versioned catalogue (`GET /api/errors`, `catalog_version: 2`, mirrored
+machine-readable via a versioned catalogue (`GET /api/errors`, `catalog_version: 3` — the
+beta lockstep bump of 31 Oct added the KI-43 inline codes plus the sixth found live,
+the 413 class, and the `bad_request` parse fix, one bump; 53 entries / 52 codes, mirrored
 in `/api/meta.errors`; tests compare live responses against published entries, so mapping
 drift fails CI — D048, and the two v1 asymmetries were fixed with v2 the same week — D054). `Idempotency-Key` replay (24h window, SQLite-backed, first-wins)
 covers `POST /api/memories` and Forge generation — D049; §3's named remainders are closed.

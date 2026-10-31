@@ -37,6 +37,7 @@ export const API_ERROR_CODES = {
   badRequest: 'bad_request',
   invalidHost: 'invalid_host',
   forbiddenOrigin: 'forbidden_origin',
+  payloadTooLarge: 'payload_too_large',
   notFound: 'not_found',
   unauthorized: 'unauthorized',
   validationFailed: 'validation_failed',
@@ -50,10 +51,14 @@ export const API_ERROR_CODES = {
  * reality. The two known asymmetries (storage failures on a generic 400, and
  * Forge schema failures as invalid_request) were FIXED on 2026-10-31, which
  * is version 2: clients that pinned the old shapes must re-read the
- * catalogue. When any mapping changes, the catalogue and the boundary tests
+ * catalogue. Version 3 (beta integration, KI-43 + KI-45 + KI-48 lockstep)
+ * added the five session codes that were returned but never published, the
+ * 413 `payload_too_large` transport entry, and fixed malformed-JSON bodies
+ * to answer their published `bad_request` code instead of internal_error.
+ * When any mapping changes, the catalogue and the boundary tests
  * move together; CI compares live responses against these entries.
  */
-export const ERROR_CATALOG_VERSION = 2;
+export const ERROR_CATALOG_VERSION = 3;
 
 export const ErrorCatalogEntrySchema = z.object({
   code: z.string().min(1).max(64),
@@ -97,6 +102,11 @@ export const API_ERROR_CATALOG: ErrorCatalog = {
         code: 'bad_request',
         http_status: 400,
         when: 'Request body is not valid JSON, or the Idempotency-Key header is malformed (must be one 8-128 char string).',
+      },
+      {
+        code: 'payload_too_large',
+        http_status: 413,
+        when: 'Request body exceeds the server bodyLimit (1 MiB); rejected before parsing. (Catalogue v3: was internal_error in v2.)',
       },
       {
         code: 'idempotency_in_progress',
@@ -147,6 +157,38 @@ export const API_ERROR_CATALOG: ErrorCatalog = {
         code: 'provider_failure',
         http_status: 502,
         when: 'The model provider call failed during a turn.',
+      },
+      // v3 (KI-43): five codes the session routes already returned inline but
+      // the catalogue never published; behavior unchanged, entries added.
+      {
+        code: 'ui_generation_failed',
+        http_status: 502,
+        when: 'Interface generation: the model did not return a schema-valid planning form after the allowed retry.',
+      },
+      {
+        code: 'surface_not_found',
+        http_status: 404,
+        when: 'No such generated interface in this session (unknown or foreign surface id).',
+      },
+      {
+        code: 'surface_already_submitted',
+        http_status: 409,
+        when: 'The interface was already submitted; submission is one-time.',
+      },
+      {
+        code: 'invalid_submission',
+        http_status: 400,
+        when: 'Interface submission failed the stored spec (required field missing, unknown field/option, wrong type); details list field paths. Found live during the v3 lockstep — KI-43 counted five, this was a sixth.',
+      },
+      {
+        code: 'tool_call_not_found',
+        http_status: 404,
+        when: 'No such tool call in this session (unknown or foreign call id).',
+      },
+      {
+        code: 'tool_call_not_pending',
+        http_status: 409,
+        when: 'The tool call already has a decision (approve/deny is once per call).',
       },
     ],
     memory: [

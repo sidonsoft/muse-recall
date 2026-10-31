@@ -262,9 +262,15 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     try {
       done(null, JSON.parse(raw));
     } catch {
-      // Malformed JSON is a client error, not a server fault.
+      // Malformed JSON is a client error, not a server fault: tag it with the
+      // published code (KI-45) so the handler answers bad_request, exactly as
+      // the catalogue documents. mmlCode is our own field — Fastify's internal
+      // errors use a different `code`, which must never reach the wire.
       const failure = new Error('Request body is not valid JSON.');
-      done(Object.assign(failure, { statusCode: 400 }), undefined);
+      done(
+        Object.assign(failure, { statusCode: 400, mmlCode: API_ERROR_CODES.badRequest }),
+        undefined,
+      );
     }
   });
 
@@ -315,7 +321,12 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         );
     }
 
-    const fastifyError = error as { statusCode?: number; validation?: unknown; message?: string };
+    const fastifyError = error as {
+      statusCode?: number;
+      validation?: unknown;
+      message?: string;
+      mmlCode?: string;
+    };
 
     if (fastifyError.validation) {
       return reply
@@ -330,11 +341,21 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
     const statusCode =
       fastifyError.statusCode && fastifyError.statusCode >= 400 ? fastifyError.statusCode : 500;
+    // Transport-level codes (KI-45 + KI-48): a tagged parse failure carries its
+    // own published code; Fastify's body-limit refusal answers the published
+    // 413 class. Anything else keeps the old shape.
+    const code =
+      fastifyError.mmlCode ??
+      (statusCode === 413
+        ? API_ERROR_CODES.payloadTooLarge
+        : statusCode === 404
+          ? API_ERROR_CODES.notFound
+          : API_ERROR_CODES.internal);
     return reply
       .status(statusCode)
       .send(
         apiFailure(
-          statusCode === 404 ? API_ERROR_CODES.notFound : API_ERROR_CODES.internal,
+          code,
           statusCode >= 500
             ? 'An internal error occurred.'
             : (fastifyError.message ?? 'Request failed.'),

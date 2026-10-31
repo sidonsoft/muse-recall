@@ -91,9 +91,9 @@ in the archived journal. Each row: probe -> observed -> owner of the follow-up.
 
 | Probed | Observed at head | Owner |
 | --- | --- | --- |
-| malformed JSON body | 400 `internal_error` vs catalogue `bad_request` | KI-45 (fix queued) |
-| oversized body (~1.1 MB > 1 MiB limit) | 413 `internal_error`, no 413 catalogue entry | KI-48 (fix queued) |
-| `/api/errors` envelope | catalog_version 2, 5 groups, 46 entries / 45 codes | inventory §4 |
+| malformed JSON body | 400 `bad_request` — fixed by the v3 lockstep (beta, 31 Oct) | KI-45 (closed) |
+| oversized body (~1.1 MB > 1 MiB limit) | 413 `payload_too_large` — fixed by the v3 lockstep (beta, 31 Oct) | KI-48 (closed) |
+| `/api/errors` envelope | catalog_version 3, 5 groups, 53 entries / 52 codes (beta bump) | inventory §4 |
 | `/api/health` | ok:true envelope, version 0.1.0 | security.md |
 | HOST=0.0.0.0 without token | boot REFUSED, error restates invariant | SECURITY posture |
 | HOST=0.0.0.0 + token | listens (auth required) | SECURITY posture |
@@ -102,7 +102,8 @@ in the archived journal. Each row: probe -> observed -> owner of the follow-up.
 | idempotent replay (socket level) | 201 replay byte-identical + `idempotent-replayed: 1` header | D049 |
 | error envelopes (404/validation_failed) | not_found names METHOD+path; details[] path-level | inventory §4 |
 
-Characterization pins for the two queued fixes exist: `tests/integration/error-envelope-pins.test.ts`.
+Characterization pins `tests/integration/error-envelope-pins.test.ts` were flipped by the v3
+lockstep itself (beta, 31 Oct, owner-directed) — code + catalogue + pins in one bump, as pinned.
 
 ## Post-judging action register
 
@@ -123,6 +124,11 @@ toward the home doc.
    failures -> `bad_request`, Fastify 413 -> `payload_too_large` entry - ONE
    catalogue bump 2→3, and flip the two pins in error-envelope-pins.test.ts in the same
    bump. The wire-probe ledger above is the baseline table.
+   **DONE (beta, 31 Oct, owner-directed):** executed on `integration` only — the frozen
+   judge tree (`main` @ c32d03b + submission tag) is untouched, promotion stays
+   post-judging. A SIXTH unmirrored code (`invalid_submission`, 400) was found live while
+   writing the mirror probes and shipped in the same bump: catalogue v3 = 53 entries /
+   52 codes, ten new live probes wired into the drift gate.
 5. PR #28: fetch `refs/pull/28/head` (f1a16f791e49...), recreate branch, merge or close
    with reason (SUBMISSION_PRESERVATION.md recovery block).
 6. Finish SHA-pinning: the 8 `website.yml` steps once unfrozen; periodic re-check of

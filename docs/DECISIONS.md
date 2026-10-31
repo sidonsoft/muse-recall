@@ -897,3 +897,32 @@ against artifacts and each other, and a post-judging queue whose entries
 carry evaluations rather than mysteries. The repo enters judging week
 with its evidence fresh, its freeze double-observed, and its known gaps
 named instead of discovered.
+
+---
+
+### D057 — Beta-prep override: beta 0.1 work executes early on `integration` only
+
+**Context:** The beta review (31 Oct) reproduced a destructive restore
+failure and confirmed three queued contract/policy gaps (KI-43/45/48, the
+MCP write-policy mismatch, KI-49's broken wrapper recipe). The owner
+directed that the beta 0.1 preparation happen NOW, while D056's pre-
+judging rules said contract bumps and behavior changes wait until the
+judging window closes (4–8 Nov).
+**Decision:** Owner override, scoped hard: beta fixes land on
+`integration` ONLY. The judge-facing surface stays exactly as D056 left
+it — `main` @ c32d03b, the `submission-*` tag and its Release, evidence
+docs, and the website are untouched; promotion to `main` remains
+post-judging per the CONTRIBUTING exception. No beta branch/tag/publish
+until the owner asks. Under this override ship: (1) the restore safety
+rewrite (destructive on both reproduced paths — a local-beta data-loss
+bug, the one shape D056 itself allowed: a defect demands a fix);
+(2) catalogue v3 lockstep (KI-43 + KI-45 + KI-48 + the sixth live-found
+`invalid_submission`); (3) MCP write-policy honesty (startup
+authorization stated as such; no per-write-review claims);
+(4) the staging-aware Forge worker-wrapper boot probe (KI-49's probe now
+exercises real staging writes/prompt reads; unusable setpriv recipe
+removed; ACL support stays queued as C-13).
+**Consequence:** The queued post-judging items B4 and parts of P0 #4
+execute early, with dates and the override recorded at each home doc.
+Judges, the frozen tree, and the promotion rule are unaffected; the
+beta-cut decision remains an explicit later owner act.

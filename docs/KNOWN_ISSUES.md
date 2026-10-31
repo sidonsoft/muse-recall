@@ -452,6 +452,15 @@ catalogue-visible), replace the inline sends with `apiFailure()` at those
 five sites, and extend the mirror suite to probe all five — code,
 catalogue, tests, version in one PR, per the D048/D051 discipline.
 Pre-Nov-4 rule: contract bumps wait for the judging window to close.
+**Status (beta integration, 31 Oct):** FIXED on `integration` by owner
+direction ahead of beta 0.1 — the pre-Nov-4 queuing applied to what the
+judges see, and `main` @ c32d03b + the submission tag are untouched;
+promotion stays post-judging. Catalogue v3 published the five codes AND a
+SIXTH (`invalid_submission`, 400) discovered live while writing the mirror
+probes: 53 entries / 52 unique codes. The five sites now send via
+`apiFailure()` (shapes unchanged); ten new live probes (five session codes,
+invalid_submission, bad_request body half, payload_too_large) run in the
+drift gate.
 
 ### KI-44 — Two committed docs promise a "2:46 fallback video" that no tree contains
 
@@ -495,6 +504,11 @@ demo path. **Fix plan:** handler maps statusCode-400 parse failures to
 catalogue text needs NO change (the docs are the truth being caught up to), so
 `ERROR_CATALOG_VERSION` stays 2 - fits naturally in KI-43's post-judging
 lockstep PR as a second code-honesty item.
+**Status (beta integration, 31 Oct):** FIXED with the KI-43 v3 bump (same PR,
+same bump — the version moved for the ADDED entries; this entry's text stayed
+as written, which it was). The parse failure now carries `mmlCode`
+`bad_request` end to end; mirror probe + the characterization pin flipped in
+lockstep.
 
 ### KI-46 - Landing-page build tooling carries two dev-server advisories (website/ vite high, esbuild moderate)
 
@@ -539,6 +553,10 @@ Fix plan (post-judging, rides the KI-43 lockstep PR): handler maps Fastify's 413
 new `payload_too_large` (413) catalogue entry + mirror probe; catalogue +1 entry => ERROR_CATALOG_VERSION
 2->3 in the same PR as KI-43's five codes and KI-45's bad_request mapping - one version bump, three
 code-honesty fixes. Pre-Nov-4: behavior+contract change, not judge-visible, so documented and queued.
+**Status (beta integration, 31 Oct):** FIXED exactly as planned, in the KI-43 bump
+(executed pre-Nov-4 on `integration` only by owner direction; frozen judge tree
+untouched). Fastify bodyLimit refusals answer 413 `payload_too_large`; entry
+published; mirror probe + characterization pin flipped in the same bump.
 
 ### KI-49 - security.md's uid-change wrapper recipe cannot write the staging tree - G-2 provisioning gap (found while building the operator runbook)
 
