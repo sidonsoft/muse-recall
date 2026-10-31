@@ -1109,6 +1109,16 @@ now is maintenance honesty, not new surface:
     work is now 7 content-diff reviews, not 39 branch guesses.
     Register C-11 updated with the census; decision still parked
     behind judging exactly as tier C requires.
+  - C-11 census sharpened by merge records (31 Oct): the 4
+    divergent agent/* heads have NO merged PR from their refs -
+    they predate PR discipline, so ancestry absence AND record
+    absence stack: content-landing is genuinely unproven, which
+    makes them real post-judging content-diff reviews (phase-era
+    process docs possibly exist nowhere else - keep-with-purpose
+    is the likely outcome, not prune). The 32 merged heads need no
+    such review. Census honesty: yesterday's "content likely
+    landed via other routes" was a hypothesis; the records say
+    unproven - hypothesis retired, review task specified.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -1251,8 +1261,13 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
     strata-phase13-submission, agent/strata-phase14b-submission-audit (PHASE-era,
     content likely landed via later squash merges - diff-review to confirm), and
     3 foreign-lane heads (2 claude/*, study02/checkpoint-1) that are NOT mine to
-    prune. Post-judging scope shrinks to 7 content-diff reviews + owner keep/prune
-    calls (SUBMISSION_PRESERVATION.md).
+    prune. Merge-record check (31 Oct): the 4 agent/* divergent heads have NO
+    merged-PR record from their refs - pre-PR-discipline era branches; their
+    content-landing is NOT proven by GitHub's records, so their review is a real
+    content diff vs main (process/phase docs may exist only there - expect
+    keep-with-purpose). Post-judging scope: 4 real content-diff reviews +
+    3 foreign heads left alone + 32 merged heads are free calls
+    (SUBMISSION_PRESERVATION.md).
 12. Optional live rejection-probe of ruleset 26245608 shape (read-only API
     verification was sufficient so far; live probe needs post-judging freedom).
 
