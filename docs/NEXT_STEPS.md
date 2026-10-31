@@ -538,6 +538,19 @@ now is maintenance honesty, not new surface:
     "settings change only if protective" bar applied to the
     cadence's own tooling, and the PR's three CI legs are the
     live proof the block is complete.
+  - Number-claims census across the guide (31 Oct): word-numbers
+    (six/seven/ten...) grepped against their sources - the guard's
+    "seven rules" checks out against RULE_ORDER (seven, with
+    none-applicable a verdict sentinel, not an eighth rule); the
+    Phase-17 "four-arm trial" cite is era-correct frozen history;
+    but architecture.md said "Six bounded project/memory tools" -
+    STALE at head, the registry publishes SEVEN since the task tools
+    landed. Guide fixed to seven + named, and the same file's tree
+    and table had silently OMITTED packages/mcp-server entirely -
+    the one workspace with an external protocol surface - now added
+    (stdio front over the same seven-tool registry, G-5). Lesson: an
+    earlier guide census covered commands/ports/env but not COUNT
+    claims; cross-doc numeric agreement is its own census dimension.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
