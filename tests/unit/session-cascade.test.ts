@@ -1,6 +1,7 @@
 import { SessionStore } from '@mml/agent-core';
 import { openDatabase } from '@mml/memory-engine';
 import { describe, expect, it } from 'vitest';
+import type { DatabaseSync } from 'node:sqlite';
 
 /**
  * Schema-level promises of the session stack, none of which had a witness:
@@ -21,7 +22,10 @@ import { describe, expect, it } from 'vitest';
 
 const NOW = '2026-06-01T00:00:00.000Z';
 
-function count(db: { prepare: (s: string) => { get: (...p: unknown[]) => unknown } }, sql: string) {
+// Structural hand-typed parameter could not accept the real DatabaseSync
+// (StatementSync.get's parameter types are narrower than unknown[] under
+// strictFunctionTypes). Name the actual type - type-level only.
+function count(db: DatabaseSync, sql: string) {
   return (db.prepare(sql).get() as { c: number }).c;
 }
 
@@ -55,7 +59,7 @@ describe('session cascade + no-FK design guarantees', () => {
       db.prepare(
         `INSERT INTO turn_memories (message_id, memory_id, score, evidence, memory_type, scope, created_at)
          VALUES (?, 'mem-xyz', 0.5, 'e', 'constraint', 'global', ?)`,
-      ).run(store.listMessages(doomed.id)[0].id, NOW);
+      ).run(store.listMessages(doomed.id)[0]!.id, NOW);
 
       store.deleteSession(doomed.id);
 
@@ -99,7 +103,7 @@ describe('session cascade + no-FK design guarantees', () => {
       db.prepare(
         `INSERT INTO turn_memories (message_id, memory_id, score, evidence, memory_type, scope, created_at)
          VALUES (?, 'mem-keep', 0.7, 'because', 'constraint', 'global', ?)`,
-      ).run(message.id, NOW);
+      ).run(message!.id, NOW);
 
       // Promise 2: purging the memory (below the engine) must not erase the
       // influence record — turn_memories.memory_id has no FK by design.
