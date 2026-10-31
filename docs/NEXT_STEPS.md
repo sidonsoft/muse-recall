@@ -188,7 +188,14 @@ evening through 31 Oct.
   merge then rides the post-merge leg; the rule completes to: empty
   checks means UNVERIFIED, never pass - wait for legs to appear or
   watch the merged tree's own run to success before declaring the
-  round green), anchor-assert saves now >8, and two commit-message/content
+  round green) - and the interrupted-command variant (#211: a
+  watch-merge chain died mid-call with the outcome unrecorded;
+  the recovery was inspection, not retry - gh reported MERGED, the
+  local branch was left mid-sync, and the post-merge run was then
+  watched to success on the merged tree: 76/76 files, 922 passed
+  | 3 skipped (925), 49 workflow checks). Rule: a half-observed
+  ship is finished by reading external state, never by repeating
+  the side-effecting call blind), anchor-assert saves now >8, and two commit-message/content
   mismatches caught by merge diffstats (#169->#170, #172 mid-branch).
   Failure modes in MY process get the same register treatment as the
   repo's.
