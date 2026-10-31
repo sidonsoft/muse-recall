@@ -1099,6 +1099,16 @@ now is maintenance honesty, not new surface:
     first pass called 20 heads UNKNOWN because my regex wrote
     "experiments/" (the repo says experiment/) and forgot the
     agent/ family - census FPs are my naming, not the repo's.
+  - C-11 pre-census, read-only and judgment-free (31 Oct): every
+    historical remote head's ancestry computed against the two
+    live refs: 32/39 sit IN main's history (merged, safe to prune
+    or keep - content already ships); 7 diverge - 4 PHASE-era
+    agent/* heads (squash-workflow signature: content landed by
+    other routes, ancestry did not) and 3 foreign-lane heads whose
+    keep/prune is NOT mine. Diverged != unmerged: the post-judging
+    work is now 7 content-diff reviews, not 39 branch guesses.
+    Register C-11 updated with the census; decision still parked
+    behind judging exactly as tier C requires.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -1235,8 +1245,14 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    or record the reason (NEXT_STEPS queue, API-re-read 31 Oct).
 10. `'purged'` enum: remove (migration+contract lockstep, D042) or document
     deadness in the schema comment (NEXT_STEPS contract-completion bullet).
-11. 39-41 historical remote heads: per-branch ancestry checks, then prune or
-    keep-with-purpose (SUBMISSION_PRESERVATION.md).
+11. 39-41 historical remote heads: ancestry PRE-CENSUSED 31 Oct (read-only):
+    32/39 are ancestors of main c32d03b (history fully merged); 7 DIVERGED -
+    agent/phase11-release, agent/strata-phase12d-guard-audit, agent/
+    strata-phase13-submission, agent/strata-phase14b-submission-audit (PHASE-era,
+    content likely landed via later squash merges - diff-review to confirm), and
+    3 foreign-lane heads (2 claude/*, study02/checkpoint-1) that are NOT mine to
+    prune. Post-judging scope shrinks to 7 content-diff reviews + owner keep/prune
+    calls (SUBMISSION_PRESERVATION.md).
 12. Optional live rejection-probe of ruleset 26245608 shape (read-only API
     verification was sufficient so far; live probe needs post-judging freedom).
 
