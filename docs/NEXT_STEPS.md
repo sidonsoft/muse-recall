@@ -1119,6 +1119,16 @@ now is maintenance honesty, not new surface:
     such review. Census honesty: yesterday's "content likely
     landed via other routes" was a hypothesis; the records say
     unproven - hypothesis retired, review task specified.
+  - Post-ship head drift, attributed honestly (31 Oct): remote
+    heads 41 -> 40 after #237. My session's deletions were exactly
+    two (the #234 ki47 residue and each PR's own delete-on-merge,
+    current branch included); the THIRD disappearance -
+    agent/muse-recall-product-positioning, a PHASE-era foreign
+    head - happened outside this session. Foreign actors prune
+    their own history too: recorded as drift, not investigated
+    further, not my authority either way. #187 remains OPEN;
+    C-11's census numbers carry the "as-censused" date for just
+    this reason.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
