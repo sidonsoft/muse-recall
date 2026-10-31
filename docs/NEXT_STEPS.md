@@ -551,6 +551,16 @@ now is maintenance honesty, not new surface:
     (stdio front over the same seven-tool registry, G-5). Lesson: an
     earlier guide census covered commands/ports/env but not COUNT
     claims; cross-doc numeric agreement is its own census dimension.
+  - README number-claims census (31 Oct, continuing the count
+    dimension): the checkable-present ones all match instrument -
+    "seven rule families" enumerates exactly RULE_ORDER's seven
+    ids; "seven tools" holds post-#185; the seed prose "three
+    decisions (one superseded)" matches the 3-memory fresh-clone
+    seed; "one workflow with five capabilities" matches its own
+    list. The historic ones quote frozen evidence era-correctly and
+    reconcile arithmetically: 480 = 2 models x 6 strata x 4 arms x
+    10 runs, straight from RESULTS.md's design line. No edits
+    needed; clean numbers get dated too.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
