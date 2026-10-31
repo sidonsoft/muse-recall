@@ -854,6 +854,19 @@ now is maintenance honesty, not new surface:
     across the two registers - and the audit caught its own author:
     this section's previous entry had P1 #4 paired to G-6, corrected
     in place above.
+  - Reference-resolution census (31 Oct): every KI-NN, D0NN and
+    G-NN mention in the audited doc set resolved against the
+    registers that define them - KI: zero unresolved (47 ids);
+    G: zero unresolved; D: every reference resolves to a defined
+    decision, D027 the single documented skip. The census then hit
+    its own instrument's imprecision twice: the D027 note claimed
+    "the whole repo contains zero references to it" (two
+    meta-references exist - the note itself and this register's
+    skip mention - while zero treat it as a real decision) and
+    "54 defined, 54 referenced" (55 defined at head). Both
+    corrected in place with dated notes; the corrected text now
+    states the true distinction: zero REAL references, two honest
+    meta-mentions.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
