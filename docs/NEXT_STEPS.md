@@ -631,6 +631,18 @@ now is maintenance honesty, not new surface:
     runtime-execution truth in one probe. Catalogue-count claims
     also now consistent across KI-43/register since #172's wire
     re-witness (45 unique / 46 entries phrasing everywhere).
+  - Wire probe found KI-45, filed not fixed (31 Oct): malformed JSON
+    body answers 400 + `internal_error` while the catalogue's own
+    `bad_request` entry claims that exact sentence and app.ts's own
+    comment says "client error, not a server fault" - code contradicts
+    both, status is right, only the code lies. The header half of
+    that entry IS mirror-tested, the body half is the untested twin.
+    KI-45 records repro + fix plan (map statusCode-400 parse
+    failures to bad_request + mirror probe; catalogue text needs NO
+    edit, so ERROR_CATALOG_VERSION stays 2) and joins KI-43's
+    post-judging lockstep PR as its second code-honesty item.
+    Pre-Nov 4: documented, never silently patched - the KI-43/KI-44
+    pattern for real defects found at head.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
