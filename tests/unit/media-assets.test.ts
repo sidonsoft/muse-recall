@@ -251,6 +251,27 @@ describe('media assets', () => {
     expect(versions.map((entry) => entry.status)).toEqual(['approved', 'candidate']);
   });
 
+  it('round-trips provider-reported model identity and strips unknown model fields', async () => {
+    const { assets } = await setup();
+    const record = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: png1x1(),
+      model: {
+        provider: 'meta',
+        model: 'muse-image-9',
+        observed: 'image-provider-reported',
+        injected: 'must-not-persist',
+      } as unknown as { provider: string; model: string; observed: string },
+    });
+    const versions = await assets.listVersions('demo', record.asset_id);
+    expect(versions[0]?.model).toEqual({
+      provider: 'meta',
+      model: 'muse-image-9',
+      observed: 'image-provider-reported',
+    });
+  });
+
   it('verifies project media for backup hash preservation', async () => {
     const { root, assets } = await setup();
     const record = await assets.createAsset('demo', {

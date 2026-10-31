@@ -576,8 +576,11 @@ export class ForgeWorkspace {
   }
 
   /**
-   * Structural and syntactic validation. Returns issues rather than throwing so
-   * the diff review can show exactly why a change is not applicable.
+   * File-level validation for a staged change: the staging file must exist,
+   * be a regular file, and stay contained by the project. Content checks run
+   * through `validateHtml` on the exact file bytes. Returns issues rather
+   * than throwing so the diff review can show exactly why a change is not
+   * applicable.
    */
   async validateStaged(projectId: string, jobId: string): Promise<ForgeValidation> {
     const issues: string[] = [];
@@ -597,8 +600,8 @@ export class ForgeWorkspace {
 
     if (stat.isSymbolicLink()) return { ok: false, issues: ['index.html is a symlink.'] };
     if (!stat.isFile()) return { ok: false, issues: ['index.html is not a regular file.'] };
-    if (stat.size < 100) issues.push('index.html is suspiciously small.');
-    if (stat.size > MAX_BYTES) issues.push(`index.html exceeds ${MAX_BYTES} bytes.`);
+    // Size bounds are enforced by validateHtml on the exact bytes below, so
+    // the file and resolved-snapshot paths report the same single issue.
 
     // Re-resolve after the fact: a symlinked parent would change realpath.
     const stagingDir = this.within(join(this.projectDir(projectId), 'staging'), jobId);
@@ -616,6 +619,24 @@ export class ForgeWorkspace {
     }
 
     const html = await readFile(file, 'utf8');
+    const content = await this.validateHtml(html);
+    issues.push(...content.issues);
+    return { ok: issues.length === 0, issues };
+  }
+
+  /**
+   * Structural and syntactic validation of exact document bytes. This is the
+   * gate approval and promotion enforce on the resolved snapshot (after
+   * approved images are embedded), not just on the raw staging file: the
+   * bytes checked here are the bytes that get promoted. Returns issues rather
+   * than throwing so the diff review can show exactly why a change is not
+   * applicable.
+   */
+  async validateHtml(html: string): Promise<ForgeValidation> {
+    const issues: string[] = [];
+    const bytes = Buffer.byteLength(html);
+    if (bytes < 100) issues.push('index.html is suspiciously small.');
+    if (bytes > MAX_BYTES) issues.push(`index.html exceeds ${MAX_BYTES} bytes.`);
     // Games keep the Phaser contract they were built with. Phaser may create its
     // canvas at runtime, so accept either a canvas element or an explicit
     // Phaser.Game initialisation. Every other request is a general browser
@@ -720,18 +741,21 @@ export class ForgeWorkspace {
     sha256: string;
     note: string | null;
   }> {
-    // When approval passes resolved bytes, the staged file is no longer the
-    // promotion source; the caller has already validated those bytes. Raw
-    // promotions keep the structural gate.
-    if (options.html === undefined) {
-      const validation = await this.validateStaged(projectId, jobId);
-      if (!validation.ok) {
-        throw new ForgeError(
-          'invalid_staged',
-          'The staged application failed validation.',
-          validation.issues,
-        );
-      }
+    // The structural gate always runs on the exact bytes being promoted.
+    // When approval passes resolved bytes (approved images embedded), the
+    // staged file is no longer the promotion source, so the resolved snapshot
+    // itself is validated — a staging rewrite after generation cannot bypass
+    // the size, body, and script checks. Raw promotions validate the file.
+    const resolvedValidation =
+      options.html !== undefined
+        ? await this.validateHtml(options.html)
+        : await this.validateStaged(projectId, jobId);
+    if (!resolvedValidation.ok) {
+      throw new ForgeError(
+        'invalid_staged',
+        'The staged application failed validation.',
+        resolvedValidation.issues,
+      );
     }
 
     const state = await this.state(projectId);

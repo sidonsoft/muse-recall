@@ -91,6 +91,8 @@ export interface MediaMemoryRef {
 export interface MediaModel {
   provider?: string;
   model?: string;
+  /** Model id the provider reported in its response, when it reported one. */
+  observed?: string;
 }
 
 export interface MediaUsage {
@@ -546,15 +548,17 @@ function validateModel(input: unknown): MediaModel | null {
   if (typeof input !== 'object' || Array.isArray(input)) {
     throw new MediaError('malformed_media', 'Malformed media metadata: model must be an object.');
   }
-  const candidate = input as { provider?: unknown; model?: unknown };
+  const candidate = input as { provider?: unknown; model?: unknown; observed?: unknown };
   const provider = cleanLabel(candidate.provider);
   const model = cleanLabel(candidate.model);
-  if (provider === undefined && model === undefined) return null;
-  // Closed shape: only the two bounded labels survive, so secrets placed in
+  const observed = cleanLabel(candidate.observed);
+  if (provider === undefined && model === undefined && observed === undefined) return null;
+  // Closed shape: only the three bounded labels survive, so secrets placed in
   // extra fields can never reach the manifest.
   return {
     ...(provider !== undefined ? { provider } : {}),
     ...(model !== undefined ? { model } : {}),
+    ...(observed !== undefined ? { observed } : {}),
   };
 }
 

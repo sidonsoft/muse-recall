@@ -91,6 +91,16 @@ export const MEDIA_IMAGE_SIZES = [
 export const MediaImageSizeSchema = z.enum(MEDIA_IMAGE_SIZES);
 export type MediaImageSize = z.infer<typeof MediaImageSizeSchema>;
 
+/**
+ * Documented default for the OpenAI-compatible image endpoints.
+ *
+ * This is the model the server targets when `FORGE_MEDIA_MODEL` is unset. It
+ * is deliberately separate from the Studio coding model: `/v1/images/*` and
+ * `/v1/chat/completions` do not accept the same model ids, and a coding model
+ * sent to the images endpoint is rejected (or worse, silently substituted).
+ */
+export const DEFAULT_MEDIA_IMAGE_MODEL = 'muse-image-1.0';
+
 export const MEDIA_ASSET_STATUSES = ['candidate', 'approved', 'rejected'] as const;
 export const MediaAssetStatusSchema = z.enum(MEDIA_ASSET_STATUSES);
 export type MediaAssetStatusName = z.infer<typeof MediaAssetStatusSchema>;
@@ -113,7 +123,10 @@ export const MediaSourceSchema = z
 export const MediaModelSchema = z
   .object({
     provider: z.string().max(120).optional(),
+    /** Model id the server explicitly requested (configured targeting). */
     model: z.string().max(120).optional(),
+    /** Model id the provider reported in its response, when it reported one. */
+    observed: z.string().max(120).optional(),
   })
   .nullable();
 

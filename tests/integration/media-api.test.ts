@@ -65,18 +65,46 @@ afterEach(async () => {
 });
 
 async function harness(operations: MediaOperations | null): Promise<Harness> {
+  return buildHarness({ mediaOperations: operations });
+}
+
+interface HarnessOptions {
+  mediaOperations?: MediaOperations | null;
+  mediaFetch?: typeof fetch;
+  mediaModel?: string;
+  forgeModel?: string | null;
+}
+
+async function buildHarness(options: HarnessOptions = {}): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'media-api-'));
   const database = openDatabase({ path: ':memory:', wal: false });
   const engine = new MemoryEngine(database.db);
+  const base = config(root);
+  const appConfig: AppConfig = {
+    ...base,
+    ...(options.mediaModel !== undefined ? { media: { model: options.mediaModel } } : {}),
+    forge: {
+      maxRuntimeMs: 600_000,
+      maxCalls: 25,
+      maxInputTokens: 1_500_000,
+      museBin: null,
+      apiKey: 'test-key',
+      model: options.forgeModel ?? null,
+      fallbackApiKey: null,
+      fallbackModel: null,
+      reasoningEffort: 'low',
+    },
+  };
   const app = await buildApp({
-    config: config(root),
+    config: appConfig,
     db: database.db,
     dbPath: ':memory:',
     provider: new EchoProvider(),
     engine,
     forgeWorkspace: new ForgeWorkspace(root),
     providerHealth: new ProviderHealthTracker(new EchoProvider(), 0),
-    mediaOperations: operations,
+    ...(options.mediaOperations !== undefined ? { mediaOperations: options.mediaOperations } : {}),
+    ...(options.mediaFetch !== undefined ? { mediaFetch: options.mediaFetch } : {}),
   });
   const instance: Harness = {
     app,
@@ -189,10 +217,10 @@ describe('media HTTP surface (Batch B4)', () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
     expect(finished.status).toBe('succeeded');
-    expect(finished.result.asset_id).toBeTruthy();
+    expect(finished.result?.asset_id).toBeTruthy();
     const versions = await app.inject({
       method: 'GET',
-      url: `/api/forge/projects/${PROJECT}/media/${finished.result.asset_id}`,
+      url: `/api/forge/projects/${PROJECT}/media/${finished.result?.asset_id}`,
     });
     expect(versions.json().data.items[0]).toMatchObject({ version: 1, status: 'candidate' });
   });
@@ -207,4 +235,118 @@ describe('media HTTP surface (Batch B4)', () => {
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe('media_unconfigured');
   });
+
+  it('constructs media with the image model even when Forge has a coding model', async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(input), body: init?.body });
+      return new Response(JSON.stringify({ data: [{ b64_json: PNG.toString('base64') }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const { app } = await buildHarness({
+      mediaFetch: fetchImpl as unknown as typeof fetch,
+      forgeModel: 'muse-spark-1.3-contributor',
+    });
+
+    const queued = await app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${PROJECT}/media/generate`,
+      payload: { prompt: 'a dot' },
+    });
+    const job = queued.json().data;
+    const finished = await waitForJob(app, job.id);
+    expect(finished.status).toBe('succeeded');
+
+    const generate = calls.find((call) => call.url.endsWith('/v1/images/generations'));
+    expect(generate).toBeDefined();
+    expect(JSON.parse(String(generate?.body))).toMatchObject({
+      model: 'muse-image-1.0',
+    });
+
+    const versions = await app.inject({
+      method: 'GET',
+      url: `/api/forge/projects/${PROJECT}/media/${finished.result?.asset_id}`,
+    });
+    expect(versions.json().data.items[0].model).toMatchObject({
+      provider: 'meta',
+      model: 'muse-image-1.0',
+    });
+
+    const created = await upload(app);
+    const edit = await app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${PROJECT}/media/edit`,
+      payload: { prompt: 'make it red', parent: { asset_id: created.asset_id } },
+    });
+    const edited = await waitForJob(app, edit.json().data.id);
+    expect(edited.status).toBe('succeeded');
+    const editCall = calls.find((call) => call.url.endsWith('/v1/images/edits'));
+    expect(editCall).toBeDefined();
+    expect(editCall?.body).toBeInstanceOf(FormData);
+    if (editCall?.body instanceof FormData) {
+      expect(editCall.body.get('model')).toBe('muse-image-1.0');
+    }
+  });
+
+  it('uses an explicitly configured media model in both requests', async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(input), body: init?.body });
+      return new Response(
+        JSON.stringify({
+          model: 'image-provider-reported',
+          data: [{ b64_json: PNG.toString('base64') }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const { app } = await buildHarness({
+      mediaFetch: fetchImpl as unknown as typeof fetch,
+      mediaModel: 'muse-image-9',
+      forgeModel: 'muse-spark-1.3-contributor',
+    });
+
+    const queued = await app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${PROJECT}/media/generate`,
+      payload: { prompt: 'a dot' },
+    });
+    const finished = await waitForJob(app, queued.json().data.id);
+    expect(finished.status).toBe('succeeded');
+
+    const generate = calls.find((call) => call.url.endsWith('/v1/images/generations'));
+    expect(JSON.parse(String(generate?.body))).toMatchObject({ model: 'muse-image-9' });
+
+    const versions = await app.inject({
+      method: 'GET',
+      url: `/api/forge/projects/${PROJECT}/media/${finished.result?.asset_id}`,
+    });
+    expect(versions.json().data.items[0].model).toMatchObject({
+      provider: 'meta',
+      model: 'muse-image-9',
+      observed: 'image-provider-reported',
+    });
+  });
 });
+
+interface MediaJobView {
+  id: string;
+  status: string;
+  result?: { asset_id?: string };
+}
+
+async function waitForJob(app: FastifyInstance, jobId: string): Promise<MediaJobView> {
+  let finished: MediaJobView = { id: jobId, status: 'unknown' };
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const poll = await app.inject({
+      method: 'GET',
+      url: `/api/forge/projects/${PROJECT}/media/jobs/${jobId}`,
+    });
+    finished = poll.json().data;
+    if (finished.status === 'succeeded' || finished.status === 'failed') return finished;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  return finished;
+}

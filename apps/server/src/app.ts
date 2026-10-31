@@ -9,6 +9,7 @@ import {
   API_ERROR_CODES,
   apiFailure,
   apiSuccess,
+  DEFAULT_MEDIA_IMAGE_MODEL,
   ERROR_CATALOG_VERSION,
   ErrorCatalogSchema,
   HealthResponseSchema,
@@ -69,6 +70,12 @@ export interface AppDependencies {
   mediaJobs?: MediaJobStore;
   mediaOperations?: MediaOperations | null;
   mediaService?: MediaService;
+  /**
+   * Injectable fetch used by the media adapter when the app constructs it.
+   * Tests use this to inspect the exact outgoing image requests; production
+   * leaves it unset so the adapter uses global fetch.
+   */
+  mediaFetch?: typeof fetch;
   /** Injectable so tests can share or reset the tracker. */
   providerHealth?: ProviderHealthTracker;
   /** Monotonic-ish process start time, used for uptime. */
@@ -118,19 +125,25 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   const forgeWorkspace = dependencies.forgeWorkspace ?? new ForgeWorkspace(config.workspaceRoot);
   const mediaAssets = dependencies.mediaAssets ?? new MediaAssetStore(forgeWorkspace);
   const mediaJobs = dependencies.mediaJobs ?? new MediaJobStore(forgeWorkspace);
+  const mediaModel = config.media?.model ?? DEFAULT_MEDIA_IMAGE_MODEL;
+  const mediaFetch = dependencies.mediaFetch;
   const mediaAdapter =
     dependencies.mediaOperations !== undefined
       ? null
       : new MediaAdapter({
           apiKey: config.forge?.apiKey ?? null,
-          ...(config.forge?.model ? { model: config.forge.model } : {}),
+          // Image generation/editing uses its own model. The Studio coding
+          // model is for /v1/chat/completions and must never be sent here.
+          model: mediaModel,
+          ...(mediaFetch ? { fetchImpl: mediaFetch } : {}),
         });
   const mediaOperations =
     dependencies.mediaOperations !== undefined
       ? dependencies.mediaOperations
       : mediaAdapter?.configured === true
         ? new MediaOperations(mediaAdapter, {
-            ...(config.forge?.model ? { model: config.forge.model } : {}),
+            model: mediaModel,
+            ...(mediaFetch ? { fetchImpl: mediaFetch } : {}),
           })
         : null;
   const mediaService =

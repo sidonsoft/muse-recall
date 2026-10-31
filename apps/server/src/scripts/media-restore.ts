@@ -16,6 +16,7 @@ async function main(): Promise<void> {
   console.log(`workspace: ${restored.target}`);
   console.log(`projects: ${restored.projects.join(', ')}`);
   console.log(`files: ${String(restored.files)} (${String(restored.bytes)} bytes)`);
+  for (const warning of restored.warnings) console.log(`warning: ${warning}`);
 }
 
 main().catch((error: unknown) => {

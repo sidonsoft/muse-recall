@@ -95,6 +95,37 @@ describe('MediaOperations (Batch B1)', () => {
     );
   });
 
+  it('sends the operations model explicitly instead of relying on the adapter', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        model: 'muse-image-2-actual',
+        data: [{ b64_json: PNG.toString('base64') }],
+      }),
+    );
+    const operations = new MediaOperations(adapter(fetchImpl as unknown as typeof fetch), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      model: 'muse-image-2',
+    });
+    const output = await operations.generate({ prompt: 'a cat' });
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toMatchObject({ model: 'muse-image-2' });
+    expect(output.model).toBe('muse-image-2');
+    expect(output.observed_model).toBe('muse-image-2-actual');
+  });
+
+  it('never reports a configured model as observed when the provider omits it', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ data: [{ b64_json: PNG.toString('base64') }] }),
+    );
+    const operations = new MediaOperations(adapter(fetchImpl as unknown as typeof fetch), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      model: 'muse-image-2',
+    });
+    const output = await operations.generate({ prompt: 'a cat' });
+    expect(output.model).toBe('muse-image-2');
+    expect(output.observed_model).toBeNull();
+  });
+
   it('edits with multipart form data carrying the source image', async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({ data: [{ b64_json: PNG.toString('base64') }] }),
@@ -110,6 +141,7 @@ describe('MediaOperations (Batch B1)', () => {
     const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(init.body).toBeInstanceOf(FormData);
     const form = init.body as FormData;
+    expect(form.get('model')).toBe('muse-image-1');
     expect(form.get('prompt')).toBe('make it blue');
     const image = form.get('image');
     expect(image).toBeInstanceOf(Blob);

@@ -14,7 +14,11 @@ import {
   PROVIDER_KINDS,
   type ProviderConfig,
 } from '@mml/muse-provider';
-import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
+import {
+  DEFAULT_MEDIA_IMAGE_MODEL,
+  DEFAULT_RETRIEVAL_BUDGET,
+  type RetrievalBudget,
+} from '@mml/shared';
 import { z } from 'zod';
 import { codespacesWebOrigins } from './codespaces.js';
 import { isLoopbackBindHost } from './host-guard.js';
@@ -124,6 +128,11 @@ const EnvSchema = z
     FORGE_MUSE_BIN: z.string().min(1).optional(),
     FORGE_MUSE_API_KEY: z.string().min(10).optional(),
     FORGE_MUSE_MODEL: z.string().min(2).optional(),
+    /**
+     * Image generation/editing model. Independent of FORGE_MUSE_MODEL: the
+     * images endpoints do not accept the Studio coding model ids.
+     */
+    FORGE_MEDIA_MODEL: z.string().min(2).max(200).optional(),
     FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
     FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
     FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
@@ -152,6 +161,17 @@ export interface AppConfig {
   wal: boolean;
   workspaceRoot: string;
   toolApprovalPolicy: 'always' | 'never';
+  /**
+   * Media provider settings, independent of the Studio coding provider.
+   *
+   * Optional so hand-built test configs keep compiling; runtime defaults the
+   * image model to DEFAULT_MEDIA_IMAGE_MODEL. The API key is still the shared
+   * Meta Model API key (`forge.apiKey`) because both endpoints authenticate
+   * against the same account.
+   */
+  media?: {
+    model: string;
+  };
   forge?: {
     maxRuntimeMs: number;
     maxCalls: number;
@@ -227,6 +247,9 @@ export function loadConfig(
     wal: value.SQLITE_WAL,
     workspaceRoot: resolve(projectRoot, value.WORKSPACE_ROOT),
     toolApprovalPolicy: value.TOOL_APPROVAL_POLICY,
+    media: {
+      model: value.FORGE_MEDIA_MODEL ?? DEFAULT_MEDIA_IMAGE_MODEL,
+    },
     forge: {
       maxRuntimeMs: value.FORGE_MAX_RUNTIME_MS,
       maxCalls: value.FORGE_MAX_CALLS,

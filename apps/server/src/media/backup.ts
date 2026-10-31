@@ -60,6 +60,22 @@ export interface MediaRestoreSummary {
   projects: string[];
   files: number;
   bytes: number;
+  /**
+   * Non-fatal problems after every subtree was committed, currently only a
+   * parked original that could not be deleted. Restoration itself succeeded.
+   */
+  warnings: string[];
+}
+
+/**
+ * Filesystem seam for restore tests, so a failure can be injected at each
+ * step (partial copy, park, swap) without mocking `node:fs` wholesale.
+ */
+export interface MediaRestoreFs {
+  cpSync?: typeof cpSync;
+  renameSync?: typeof renameSync;
+  rmSync?: typeof rmSync;
+  mkdirSync?: typeof mkdirSync;
 }
 
 const FILE_PATH = /^forge\/([a-z0-9][a-z0-9-]{1,63})\/(media|media-jobs)(\/[A-Za-z0-9._-]+)*$/;
@@ -231,7 +247,7 @@ interface Subtree {
 export async function restoreMedia(
   bundle: string,
   workspace: ForgeWorkspace,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; fs?: MediaRestoreFs } = {},
 ): Promise<MediaRestoreSummary> {
   const source = resolve(bundle);
   if (!existsSync(join(source, 'manifest.json'))) {
@@ -264,18 +280,70 @@ export async function restoreMedia(
   }
 
   const tag = `${process.pid}-${randomBytes(6).toString('hex')}`;
-  const done: Array<{ target: string; parked: string | null; temp: string }> = [];
+  const cp = options.fs?.cpSync ?? cpSync;
+  const move = options.fs?.renameSync ?? renameSync;
+  const remove = options.fs?.rmSync ?? rmSync;
+  const makeDir = options.fs?.mkdirSync ?? mkdirSync;
+  // Committed swaps, newest last. A parked original is deleted only after ALL
+  // swaps commit (see below); until then every entry here can be rolled back.
+  const done: Array<{ target: string; parked: string | null }> = [];
   const createdDirs: string[] = [];
-  const undo = (): void => {
-    for (const entry of [...done].reverse()) {
+  // The in-progress subtree. It is tracked BEFORE the first filesystem move
+  // so a failure at any stage — partial copy, park, or swap — undoes this
+  // subtree as well as the earlier committed ones. `parked` is null until the
+  // original has been moved aside; while it is null the target still holds
+  // the user's bytes and rollback must not touch it.
+  let current: { target: string; parked: string | null; temp: string } | null = null;
+  const recoveryProblems: string[] = [];
+  const undoEntry = (entry: { target: string; parked: string | null }): void => {
+    let removed = true;
+    try {
+      remove(entry.target, { recursive: true, force: true });
+    } catch {
+      // The target may never have been created; the parked restore below is
+      // what matters. A failure there is recorded with its recovery path.
+      removed = false;
+    }
+    if (entry.parked !== null && !existsSync(entry.target)) {
       try {
-        rmSync(entry.target, { recursive: true, force: true });
-        if (entry.parked) renameSync(entry.parked, entry.target);
+        move(entry.parked, entry.target);
       } catch {
-        // Best effort; the caller's error names the parked copy.
+        recoveryProblems.push(
+          `could not restore the parked original for ${entry.target}; recover it manually from ${entry.parked}`,
+        );
+      }
+    } else if (entry.parked !== null && existsSync(entry.target) && !removed) {
+      recoveryProblems.push(
+        `could not remove the failed restore at ${entry.target}; the parked original remains at ${entry.parked}`,
+      );
+    }
+  };
+  const undo = (): void => {
+    // Undo the failed in-progress swap first: its target path is the one the
+    // caller is most likely to inspect, and its temp copy must not leak.
+    if (current !== null) {
+      try {
+        remove(current.temp, { recursive: true, force: true });
+      } catch {
+        recoveryProblems.push(
+          `could not remove the temporary restore copy at ${current.temp}; delete it manually`,
+        );
+      }
+      if (current.parked !== null) {
+        undoEntry({ target: current.target, parked: current.parked });
+      }
+      // When nothing was parked the target still holds the user's original
+      // bytes (copy, hash, or park failed first); it is left untouched.
+      current = null;
+    }
+    for (const entry of [...done].reverse()) undoEntry(entry);
+    for (const dir of [...createdDirs].reverse()) {
+      try {
+        remove(dir, { recursive: true, force: true });
+      } catch {
+        recoveryProblems.push(`could not remove the created directory at ${dir}`);
       }
     }
-    for (const dir of [...createdDirs].reverse()) rmSync(dir, { recursive: true, force: true });
   };
 
   try {
@@ -283,11 +351,13 @@ export async function restoreMedia(
       const from = join(source, 'forge', subtree.project, subtree.sub);
       const projectDir = join(targetForge, subtree.project);
       if (!existsSync(projectDir)) {
-        mkdirSync(projectDir, { mode: 0o700, recursive: true });
+        makeDir(projectDir, { mode: 0o700, recursive: true });
         createdDirs.push(projectDir);
       }
+      const target = join(projectDir, subtree.sub);
       const temp = join(projectDir, `.restore-media-${tag}-${subtree.sub}`);
-      cpSync(from, temp, { recursive: true, errorOnExist: true, force: false });
+      current = { target, parked: null, temp };
+      cp(from, temp, { recursive: true, errorOnExist: true, force: false });
       // Re-hash the copy, not the source.
       const prefix = `forge/${subtree.project}/${subtree.sub}/`;
       for (const file of manifest.files) {
@@ -298,29 +368,44 @@ export async function restoreMedia(
           throw new Error(`Media restore copy failed its hash check: ${file.path}`);
         }
       }
-      const target = join(projectDir, subtree.sub);
-      let parked: string | null = null;
       if (existsSync(target)) {
-        parked = join(projectDir, `.restore-previous-${tag}-${subtree.sub}`);
-        renameSync(target, parked);
+        const parked = join(projectDir, `.restore-previous-${tag}-${subtree.sub}`);
+        move(target, parked);
+        if (current !== null) current.parked = parked;
       }
-      renameSync(temp, target);
-      done.push({ target, parked, temp });
+      move(temp, target);
+      done.push({ target, parked: current?.parked ?? null });
+      current = null;
     }
-    for (const entry of done) {
-      if (entry.parked) rmSync(entry.parked, { recursive: true, force: true });
-    }
-    return {
-      source,
-      target: targetForge,
-      projects: manifest.projects,
-      files: manifest.files.length,
-      bytes: manifest.totals.bytes,
-    };
   } catch (error) {
     undo();
-    throw error;
+    const detail = recoveryProblems.length > 0 ? ` ${recoveryProblems.join(' ')}` : '';
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${message}.${detail}`);
   }
+
+  // Commit boundary: every subtree is in place, so rollback is no longer
+  // attempted from here on. Parked originals are cleanup, not recovery
+  // material — a cleanup failure is a warning, never a restore failure.
+  const warnings: string[] = [];
+  for (const entry of done) {
+    if (entry.parked === null) continue;
+    try {
+      remove(entry.parked, { recursive: true, force: true });
+    } catch {
+      warnings.push(
+        `Restored ${entry.target}, but its parked original could not be deleted: ${entry.parked}`,
+      );
+    }
+  }
+  return {
+    source,
+    target: targetForge,
+    projects: manifest.projects,
+    files: manifest.files.length,
+    bytes: manifest.totals.bytes,
+    warnings,
+  };
 }
 
 /** Default bundle path beside the workspace root. */

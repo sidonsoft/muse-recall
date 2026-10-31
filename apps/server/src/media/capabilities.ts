@@ -1,5 +1,6 @@
 import { ProviderError } from '@mml/muse-provider';
 import {
+  DEFAULT_MEDIA_IMAGE_MODEL,
   MEDIA_CAPABILITIES,
   type MediaCapability,
   type MediaCapabilityName,
@@ -70,7 +71,7 @@ export type MediaProbeFn = (
 /** Documented default models per capability (dev.meta.ai/docs/models). */
 export const MEDIA_PROBE_MODELS: Record<MediaCapabilityName, string> = {
   // OpenAI-compatible images endpoint; the model id is a body field.
-  'image-generate': 'muse-image-1.0',
+  'image-generate': DEFAULT_MEDIA_IMAGE_MODEL,
   // Responses API vision-language model.
   'image-understand': 'muse-spark-1.3',
   // Responses API segmentation model.

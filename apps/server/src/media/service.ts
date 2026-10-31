@@ -60,8 +60,18 @@ interface EditParams extends GenerateParams {
   parent: { asset_id: string; version: number };
 }
 
-function providerModelName(model: string): { provider?: string; model?: string } {
-  return model.length > 0 ? { provider: 'meta', model } : {};
+function providerModelName(output: MediaImageOutput): {
+  provider?: string;
+  model?: string;
+  observed?: string;
+} {
+  return {
+    provider: 'meta',
+    // `model` is what we explicitly requested; `observed` is what the
+    // provider said it used, and is only present when the provider reported it.
+    ...(output.model.length > 0 ? { model: output.model } : {}),
+    ...(output.observed_model !== null ? { observed: output.observed_model } : {}),
+  };
 }
 
 export class MediaService {
@@ -281,7 +291,7 @@ export class MediaService {
     kind: 'generate' | 'edit',
     output: MediaImageOutput,
   ): Promise<MediaVersionRecord> {
-    const provider = providerModelName(output.model);
+    const provider = providerModelName(output);
     if (kind === 'generate') {
       return this.assets.createAsset(projectId, {
         kind: 'image',

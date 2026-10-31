@@ -1194,6 +1194,81 @@ describe('forge workflow', () => {
     expect(jobAfter.version).toBeNull();
   });
 
+  it('refuses approval when the staged source turned invalid after generation', async () => {
+    const h = await harness('auto', {}, async () => ({ ok: true, errors: [] }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+    // A post-generation rewrite replaces the validated file with a fragment
+    // that fails the structural gate (too small, no body). The stubbed
+    // runtime check would pass it, so only the resolved-bytes gate can stop it.
+    await writeFile(
+      join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html'),
+      '<h1>Unvalidated replacement</h1>',
+    );
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('invalid_staged');
+    expect(approve.json().error.issues.join(' ')).toMatch(/small|<body>/i);
+
+    // Nothing was promoted, and the job is left alone so a fixed staging
+    // file can still be approved later.
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+    const after = await job(h.app, generated);
+    expect(after.status).toBe('succeeded');
+    expect(after.version).toBeNull();
+  });
+
+  it('refuses approval when the resolved bytes exceed the inline script limit', async () => {
+    const h = await harness('auto', {}, async () => ({ ok: true, errors: [] }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+    const staged = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
+    const current = await readFile(staged, 'utf8');
+    await writeFile(staged, `${current}\n${'<script>const extra = 1;</script>\n'.repeat(40)}`);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('invalid_staged');
+    expect(approve.json().error.issues.join(' ')).toMatch(/Too many inline scripts/);
+
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('refuses approval when the resolved bytes exceed the HTML size limit', async () => {
+    const h = await harness('auto', {}, async () => ({ ok: true, errors: [] }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+    const staged = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
+    const current = await readFile(staged, 'utf8');
+    await writeFile(staged, `${current}\n<!-- ${'x'.repeat(1_600_000)} -->\n`);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('invalid_staged');
+    expect(approve.json().error.issues.join(' ')).toMatch(/exceeds/);
+
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
   it('serialises concurrent approvals so only one base wins', async () => {
     const h = await harness();
     await createProject(h.app);

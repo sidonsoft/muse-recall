@@ -64,7 +64,10 @@ export interface MediaImageOutput {
   bytes: Buffer;
   width: number;
   height: number;
+  /** Model id this operation explicitly requested (configured targeting). */
   model: string;
+  /** Model id the provider reported, if it reported one; never assumed. */
+  observed_model: string | null;
   latency_ms: number;
   usage: MediaUsage | null;
   /** Where the payload came from; useful for diagnostics, never for trust. */
@@ -148,6 +151,13 @@ interface ParsedImagesResponse {
   b64Json: string | null;
   url: string | null;
   usage: MediaUsage | null;
+  model: string | null;
+}
+
+function parseObservedModel(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed.slice(0, 120);
 }
 
 function parseUsage(value: unknown): MediaUsage | null {
@@ -188,7 +198,15 @@ function parseImagesResponse(body: string): ParsedImagesResponse {
       'Image response data[0] carried neither b64_json nor url.',
     );
   }
-  return { b64Json: b64, url, usage: parseUsage(json.usage) };
+  return {
+    b64Json: b64,
+    url,
+    usage: parseUsage(json.usage),
+    // The OpenAI-compatible images shape can report `model` at the top level
+    // or on the data item. Accept either, but never synthesize it from the
+    // request: observed identity must come from the provider.
+    model: parseObservedModel(json.model) ?? parseObservedModel(record.model),
+  };
 }
 
 function isAllowedDownloadUrl(raw: string, allowedHosts: readonly string[]): URL {
@@ -307,6 +325,10 @@ export class MediaOperations {
       {
         prompt,
         n: 1,
+        // Send the image model explicitly. Relying on the adapter to inject it
+        // made the request's identity depend on how the adapter was built and
+        // let a coding model configured for Studio leak into /v1/images/*.
+        model: this.model,
         ...(size !== undefined ? { size } : {}),
         response_format: 'b64_json',
       },
@@ -316,7 +338,7 @@ export class MediaOperations {
         timeoutMs: options.timeoutMs ?? this.generationTimeoutMs,
       },
     );
-    return this.toOutput(result.body, result.model ?? this.model, result.latency_ms, options);
+    return this.toOutput(result.body, result.latency_ms, options);
   }
 
   async edit(
@@ -361,12 +383,11 @@ export class MediaOperations {
         // Content-Type is intentionally omitted so fetch writes the multipart boundary.
       },
     );
-    return this.toOutput(result.body, result.model ?? this.model, result.latency_ms, options);
+    return this.toOutput(result.body, result.latency_ms, options);
   }
 
   private async toOutput(
     body: string,
-    model: string,
     latencyMs: number,
     options: MediaImageOperationOptions,
   ): Promise<MediaImageOutput> {
@@ -393,7 +414,8 @@ export class MediaOperations {
       bytes,
       width: inspected.width,
       height: inspected.height,
-      model,
+      model: this.model,
+      observed_model: parsed.model,
       latency_ms: latencyMs,
       usage: parsed.usage,
       payload_source: payloadSource,

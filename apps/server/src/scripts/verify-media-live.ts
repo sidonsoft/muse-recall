@@ -1,3 +1,4 @@
+import { DEFAULT_MEDIA_IMAGE_MODEL } from '@mml/shared';
 import { loadConfig, loadDotEnv } from '../config.js';
 import { MediaAdapter } from '../media/adapter.js';
 import { MediaOperations } from '../media/operations.js';
@@ -19,13 +20,14 @@ async function main(): Promise<void> {
     process.exitCode = 2;
     return;
   }
+  const model = config.media?.model ?? DEFAULT_MEDIA_IMAGE_MODEL;
   const adapter = new MediaAdapter({
     apiKey: key,
-    ...(config.forge?.model ? { model: config.forge.model } : {}),
+    model,
     maxRetries: 0,
   });
   const operations = new MediaOperations(adapter, {
-    ...(config.forge?.model ? { model: config.forge.model } : {}),
+    model,
     generationTimeoutMs: 180_000,
   });
 
@@ -34,7 +36,7 @@ async function main(): Promise<void> {
     size: '512x512',
   });
   console.log(
-    `generate: ok ${generated.mime} ${String(generated.width)}x${String(generated.height)} ${String(generated.bytes.length)} bytes (${generated.payload_source}, model ${generated.model})`,
+    `generate: ok ${generated.mime} ${String(generated.width)}x${String(generated.height)} ${String(generated.bytes.length)} bytes (${generated.payload_source}, requested model ${generated.model}, provider reported ${generated.observed_model ?? 'no model'})`,
   );
 
   const edited = await operations.edit({
@@ -43,7 +45,7 @@ async function main(): Promise<void> {
     image: { bytes: generated.bytes, mime: generated.mime },
   });
   console.log(
-    `edit: ok ${edited.mime} ${String(edited.width)}x${String(edited.height)} ${String(edited.bytes.length)} bytes (${edited.payload_source})`,
+    `edit: ok ${edited.mime} ${String(edited.width)}x${String(edited.height)} ${String(edited.bytes.length)} bytes (${edited.payload_source}, requested model ${edited.model}, provider reported ${edited.observed_model ?? 'no model'})`,
   );
 }
 

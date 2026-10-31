@@ -1022,6 +1022,23 @@ export class ForgeJobManager {
       // promotion refuses anything else.
       const snapshot = await this.workspace.stagedSnapshot(current.project_id, current.id);
       const staged = await this.resolveStagedMedia(current.project_id, snapshot);
+      // Structural validation runs on the exact resolved bytes (approved
+      // images already embedded) BEFORE the browser check: the generation-time
+      // record describes the raw staging file, which may have changed since,
+      // and a browser rendering a fragment is not proof of a valid document.
+      // Like staged_changed, this leaves the job alone — fixing the staging
+      // file unblocks a later approval.
+      const structural =
+        staged !== null
+          ? await this.workspace.validateHtml(staged.html)
+          : { ok: false, issues: ['The staged application is missing.'] };
+      if (!structural.ok) {
+        throw new ForgeError(
+          'invalid_staged',
+          'The staged application failed validation.',
+          structural.issues,
+        );
+      }
       const runtime = staged
         ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged application is missing.'] };
@@ -1105,7 +1122,9 @@ export class ForgeJobManager {
       const summary = versionSummary(current);
       const checkedAt = this.now().toISOString();
       const approvalVerification: ForgeApprovalVerification = {
-        syntax_structure: current.validation,
+        // The resolved-bytes validation, not the generation-time record: the
+        // bytes promoted here (images embedded) are what this check saw.
+        syntax_structure: structural,
         runtime: staged
           ? {
               ok: runtime.ok,
