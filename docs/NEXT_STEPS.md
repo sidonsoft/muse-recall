@@ -867,6 +867,15 @@ now is maintenance honesty, not new surface:
     corrected in place with dated notes; the corrected text now
     states the true distinction: zero REAL references, two honest
     meta-mentions.
+  - PR-number citation census (31 Oct): every #N citation in the
+    audited doc set checked against the repo's full PR list pulled
+    by paginated API - 217 PRs exist, 70 distinct numbers cited
+    across docs/README/devlog, ZERO nonexistent. Dialect applied:
+    hex colors (#102A43 not a PR), line anchors (#L24), heading
+    anchors (#letters) all excluded by context, not by hoping.
+    Together with the KI/D/G census this closes cross-reference
+    integrity for ALL four id families the docs lean on: KI, D, G,
+    and PR - nothing anywhere points at an entity that never was.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
