@@ -1143,6 +1143,12 @@ now is maintenance honesty, not new surface:
     attribution is honest when present and declared-absent when
     not. Tag derefs exact (6640e83f/71416ae7/5e83616e), #28 pin
     intact, #187 head alive at 7a6cacf5. Frozen entry: untouched.
+  - Prune settled: 9 heads stable across a re-check, SHAs unchanged;
+    SUBMISSION_PRESERVATION's branch-census block gets its dated
+    refresh in place (original text kept verbatim above it, doctrine
+    honored) so the doc no longer says "39 branches" to a reader
+    seeing 9. Preservation doc and cadence register now tell one
+    story with two dates.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
