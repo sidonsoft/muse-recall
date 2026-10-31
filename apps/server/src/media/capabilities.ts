@@ -51,6 +51,15 @@ export interface MediaProbeOptions {
   models?: Partial<Record<MediaCapabilityName, string>>;
   /** Passed through as `Idempotency-Key` so duplicate submits are deduped. */
   idempotencyKey?: string;
+  /**
+   * Deliberate video clip test: a `file_id` from an already-uploaded clip
+   * (uploads never happen inside a probe) plus its MIME for the documented
+   * `input_file` reference. Without this the video probe stays `unverified`:
+   * text-only reachability must never read as video-ready. Supplying a clip
+   * is an explicit, potentially billable inference call — never implied by
+   * opening Studio or by a default probe run.
+   */
+  videoClip?: { fileId: string; mime?: string };
 }
 
 export type MediaProbeFn = (
@@ -123,7 +132,19 @@ interface ProbeCheck {
   summary: string;
 }
 
-/** Safely parse JSON; null when the body is not JSON. */
+/** Result of parsing a Responses API envelope (shared by text/segment/video). */
+interface ResponsesEnvelope {
+  ok: boolean;
+  summary: string;
+  /** Complete output items when the envelope parsed; null otherwise. */
+  output: unknown[] | null;
+  /** Terminal status string when present (completed/incomplete/failed/...). */
+  status: string | null;
+  /** Error message when the envelope is an error result. */
+  error: string | null;
+}
+
+/** Safely parse JSON; null when the body is not a JSON object. */
 function parseJsonObject(body: string): Record<string, unknown> | null {
   let parsed: unknown;
   try {
@@ -134,6 +155,81 @@ function parseJsonObject(body: string): Record<string, unknown> | null {
   return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
     ? (parsed as Record<string, unknown>)
     : null;
+}
+
+/**
+ * Parse a Responses API envelope into typed parts. Never serializes-and-
+ * searches: output items are walked as structures. Error envelopes
+ * (`error` field or a failed status) and incomplete/truncated results are
+ * reported explicitly so callers can distinguish refusal from success.
+ */
+function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope {
+  const json = parseJsonObject(body);
+  if (!json) return { ok: false, summary: `non-JSON ${label} response`, output: null, status: null, error: null };
+  const errorField: unknown = json.error;
+  if (errorField !== undefined && errorField !== null) {
+    const message =
+      typeof errorField === 'string'
+        ? errorField
+        : typeof (errorField as Record<string, unknown>).message === 'string'
+          ? String((errorField as Record<string, unknown>).message)
+          : 'error result';
+    return { ok: false, summary: `${label} error result: ${message}`.slice(0, 120), output: null, status: null, error: message };
+  }
+  const status: unknown = json.status;
+  const statusText = typeof status === 'string' ? status : null;
+  if (statusText !== null && statusText !== 'completed') {
+    return {
+      ok: false,
+      summary: `${label} terminal status ${JSON.stringify(statusText)} (not completed)`,
+      output: null,
+      status: statusText,
+      error: null,
+    };
+  }
+  const output: unknown = json.output;
+  if (!Array.isArray(output) || output.length === 0) {
+    return { ok: false, summary: `${label} response without output[]`, output: null, status: statusText, error: null };
+  }
+  return { ok: true, summary: `${label} output[${output.length}]`, output, status: statusText, error: null };
+}
+
+interface TextPart {
+  kind: 'text';
+  text: string;
+}
+
+interface RefusalPart {
+  kind: 'refusal';
+  text: string;
+}
+
+/** Walk output items and collect typed text/refusal parts (parsed, not grepped). */
+function collectOutputParts(output: unknown[]): { texts: TextPart[]; refusals: RefusalPart[] } {
+  const texts: TextPart[] = [];
+  const refusals: RefusalPart[] = [];
+  for (const item of output) {
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) continue;
+    const record = item as Record<string, unknown>;
+    const content: unknown = record.content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (part === null || typeof part !== 'object' || Array.isArray(part)) continue;
+      const typed = part as { type?: unknown; text?: unknown; refusal?: unknown };
+      if (typed.type === 'output_text' || typed.type === 'text') {
+        if (typeof typed.text === 'string') texts.push({ kind: 'text', text: typed.text });
+      } else if (typed.type === 'refusal') {
+        const message =
+          typeof typed.refusal === 'string'
+            ? typed.refusal
+            : typeof typed.text === 'string'
+              ? typed.text
+              : 'refused';
+        refusals.push({ kind: 'refusal', text: message });
+      }
+    }
+  }
+  return { texts, refusals };
 }
 
 /** image-generate: ImagesResponse must carry at least one image payload. */
@@ -156,36 +252,123 @@ function checkImagesResponse(body: string): ProbeCheck {
     : { ok: false, summary: 'ImagesResponse data[0] without b64_json/url' };
 }
 
-/** Responses API: must carry output with a text-bearing item. */
-function checkResponsesText(body: string, label: string): ProbeCheck {
-  const json = parseJsonObject(body);
-  if (!json) return { ok: false, summary: `non-JSON ${label} response` };
-  const output: unknown = json.output;
-  if (!Array.isArray(output) || output.length === 0) {
-    return { ok: false, summary: `${label} response without output[]` };
+/** image-understand: requires a text part with actual non-empty content. */
+function checkUnderstandResponse(body: string): ProbeCheck {
+  const envelope = parseResponsesEnvelope(body, 'understand');
+  if (!envelope.ok || envelope.output === null) return envelope;
+  const { texts, refusals } = collectOutputParts(envelope.output);
+  if (refusals.length > 0) {
+    return { ok: false, summary: `understand refusal: ${refusals[0]?.text.slice(0, 80)}` };
   }
-  const serialized = JSON.stringify(output);
-  const hasText =
-    serialized.includes('output_text') ||
-    serialized.includes('"text"') ||
-    serialized.includes('"content"');
-  return hasText
-    ? { ok: true, summary: `${label} output[${output.length}]` }
-    : { ok: false, summary: `${label} output without text content` };
+  const answered = texts.find((part) => part.text.trim().length > 0);
+  return answered
+    ? { ok: true, summary: `understand text[${answered.text.trim().length} chars]` }
+    : { ok: false, summary: 'understand output without text content' };
 }
 
-/** transcribe: ASR response must carry transcript text. */
+/**
+ * SAM segmentation: validate the documented geometry lane. Per
+ * dev.meta.ai/docs/sam/reading-segmentation the stream carries one
+ * `output_text` lane with one line per frame:
+ * `<Nf>id<|box;x1=..;y1=..;x2=..;y2=..;w=..;h=..[;c=..]|><|mask;x=0;y=0[;c=..];data=H,W,PAYLOAD|>,...`
+ * Zero matches is VALID (empty `output_text` + completed response): the
+ * probe proves the geometry path works, it does not require a match on a
+ * 1x1 probe image. A fixture with a known object can additionally assert a
+ * match; the default probe accepts the valid empty shape explicitly.
+ */
+const SAM_FRAME_MARKER = /<\d+f>/;
+const SAM_BOX_TOKEN = /<\|box;x1=\d+;y1=\d+;x2=\d+;y2=\d+;w=\d+;h=\d+(;c=\d+(?:\.\d+)?)?\|>/;
+const SAM_MASK_TOKEN = /<\|mask;x=\d+;y=\d+(;c=\d+(?:\.\d+)?)?;data=\d+,\d+,[^|]+\|>/;
+
+function checkSegmentResponse(body: string): ProbeCheck {
+  const envelope = parseResponsesEnvelope(body, 'segment');
+  if (!envelope.ok || envelope.output === null) return envelope;
+  const { texts, refusals } = collectOutputParts(envelope.output);
+  if (refusals.length > 0) {
+    return { ok: false, summary: `segment refusal: ${refusals[0]?.text.slice(0, 80)}` };
+  }
+  if (texts.length === 0) {
+    // No text lane at all: genuinely missing geometry (not a zero-match,
+    // which still carries an empty output_text lane).
+    return { ok: false, summary: 'segment output without an output_text lane' };
+  }
+  const lane = texts.map((part) => part.text).join('\n');
+  if (lane.trim().length === 0) {
+    return { ok: true, summary: 'segment zero matches (empty output_text, completed)' };
+  }
+  const lines = lane.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+  const valid = lines.filter(
+    (line) => SAM_FRAME_MARKER.test(line) && SAM_BOX_TOKEN.test(line) && SAM_MASK_TOKEN.test(line),
+  );
+  return valid.length > 0
+    ? { ok: true, summary: `segment geometry ${valid.length}/${lines.length} frame lines` }
+    : { ok: false, summary: 'segment output_text without box/mask geometry' };
+}
+
+/** One validated transcript turn: turn-level text plus numeric timing. */
+interface TranscriptTurn {
+  text: string;
+}
+
+/**
+ * transcribe: validate the documented buffered shape. PUSH_TO_TALK returns a
+ * single-turn `{text}` (empty string is legitimate silence);
+ * ENDPOINTING/DIARIZATION return `{turns: [...]}` where each turn carries a
+ * string transcript — and `turns: []` is legitimate silence, reported as
+ * available with a no-speech detail, not as failure. Error-result envelopes
+ * (`type: 'error'`) fail. Unknown shapes (`results: []`, bare arrays) fail:
+ * an unrecognized contract is not evidence of compatibility.
+ */
 function checkTranscribeResponse(body: string): ProbeCheck {
   const json = parseJsonObject(body);
   if (!json) return { ok: false, summary: 'non-JSON transcribe response' };
-  const text: unknown = json.text ?? json.transcript ?? json.results;
-  if (typeof text === 'string' && text.length > 0) {
-    return { ok: true, summary: 'transcript text' };
+  const envelopeType: unknown = json.type;
+  if (envelopeType === 'error') {
+    const message: unknown = json.message;
+    return {
+      ok: false,
+      summary: `transcribe error result: ${typeof message === 'string' ? message.slice(0, 80) : 'refused'}`,
+    };
   }
-  if (text !== undefined && text !== null) {
-    return { ok: true, summary: 'transcript results' };
+  if (typeof json.text === 'string') {
+    return json.text.trim().length > 0
+      ? { ok: true, summary: `transcript text[${json.text.trim().length} chars]` }
+      : { ok: true, summary: 'transcript empty (silence)' };
   }
-  return { ok: false, summary: 'transcribe response without transcript' };
+  const turns: unknown = json.turns;
+  if (!Array.isArray(turns)) {
+    return { ok: false, summary: 'transcribe response without text/turns' };
+  }
+  const parsed: TranscriptTurn[] = [];
+  for (const turn of turns) {
+    if (turn === null || typeof turn !== 'object' || Array.isArray(turn)) {
+      return { ok: false, summary: 'transcribe turn with invalid shape' };
+    }
+    const record = turn as Record<string, unknown>;
+    const text: unknown = record.transcript ?? record.text;
+    if (typeof text !== 'string') {
+      return { ok: false, summary: 'transcribe turn without string transcript' };
+    }
+    parsed.push({ text });
+  }
+  const spoken = parsed.filter((turn) => turn.text.trim().length > 0);
+  return spoken.length > 0
+    ? { ok: true, summary: `transcript ${spoken.length}/${parsed.length} turns with speech` }
+    : { ok: true, summary: `transcript ${parsed.length} turns, no speech (silence)` };
+}
+
+/** video-path reachability: text-only turn proves endpoint+model only. */
+function checkVideoReachability(body: string): ProbeCheck {
+  const envelope = parseResponsesEnvelope(body, 'video-path');
+  if (!envelope.ok || envelope.output === null) return envelope;
+  const { texts, refusals } = collectOutputParts(envelope.output);
+  if (refusals.length > 0) {
+    return { ok: false, summary: `video-path refusal: ${refusals[0]?.text.slice(0, 80)}` };
+  }
+  const answered = texts.find((part) => part.text.trim().length > 0);
+  return answered
+    ? { ok: true, summary: 'video-path endpoint reachable (text turn only)' }
+    : { ok: false, summary: 'video-path output without text content' };
 }
 
 interface ProbeRequest {
@@ -194,10 +377,20 @@ interface ProbeRequest {
   rawBody?: RequestInit['body'];
   contentType?: string;
   check: (body: string) => ProbeCheck;
+  /**
+   * When true, a passing check reports `unverified` (reachability only)
+   * instead of `available`. Used by the text-only video probe: the endpoint
+   * answers, but the capability-specific input was not exercised.
+   */
+  reachabilityOnly?: boolean;
 }
 
 /** Build the documented minimal request + validator for one capability. */
-function requestFor(capability: MediaCapabilityName, model: string): ProbeRequest {
+function requestFor(
+  capability: MediaCapabilityName,
+  model: string,
+  options: MediaProbeOptions,
+): ProbeRequest {
   switch (capability) {
     case 'image-generate':
       return {
@@ -221,9 +414,12 @@ function requestFor(capability: MediaCapabilityName, model: string): ProbeReques
           ],
           max_output_tokens: 16,
         },
-        check: (result) => checkResponsesText(result, 'understand'),
+        check: checkUnderstandResponse,
       };
     case 'segment':
+      // Short noun-phrase concept prompt per the documented prompting rules
+      // (no commands, no questions, one concept). max_output_tokens bounds
+      // the geometry lane; a zero-match empty lane is a valid pass.
       return {
         path: '/v1/responses',
         body: {
@@ -232,21 +428,24 @@ function requestFor(capability: MediaCapabilityName, model: string): ProbeReques
             {
               role: 'user',
               content: [
-                { type: 'input_text', text: 'the square' },
+                { type: 'input_text', text: 'red square' },
                 { type: 'input_image', image_url: TINY_PNG_DATA_URL },
               ],
             },
           ],
           max_output_tokens: 256,
         },
-        check: (result) => checkResponsesText(result, 'segment'),
+        check: checkSegmentResponse,
       };
     case 'transcribe': {
       const wav = tinyWav();
       const form = new FormData();
-      form.append('model', model);
-      form.append('file', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), 'probe.wav');
-      form.append('mode', 'PUSH_TO_TALK');
+      // Documented multipart shape: `request` (JSON settings) + `audio`.
+      form.append(
+        'request',
+        JSON.stringify({ model, audioEncoding: 'WAV', mode: 'PUSH_TO_TALK' }),
+      );
+      form.append('audio', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), 'probe.wav');
       return {
         path: '/v1/asr/transcribe',
         body: {},
@@ -256,10 +455,33 @@ function requestFor(capability: MediaCapabilityName, model: string): ProbeReques
         check: checkTranscribeResponse,
       };
     }
-    case 'video':
-      // Probe the exact Responses inference path used for video (same
-      // endpoint + model) with a text-only turn: proves reachability without
-      // uploading media or triggering billable video processing.
+    case 'video': {
+      const clip = options.videoClip;
+      if (clip) {
+        // Deliberate clip test only: the caller uploaded the clip already
+        // (probes never upload) and passes its file_id. The documented
+        // video-understanding shape references the file by id.
+        return {
+          path: '/v1/responses',
+          body: {
+            model,
+            input: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'input_text', text: 'Describe this clip in one sentence.' },
+                  { type: 'input_file', file_id: clip.fileId },
+                ],
+              },
+            ],
+            max_output_tokens: 64,
+          },
+          check: checkUnderstandResponse,
+        };
+      }
+      // Default: text-only reachability. Proves the exact endpoint + model
+      // answer, but exercises no video upload, decode, or understanding —
+      // so a pass reports `unverified`, never `available`.
       return {
         path: '/v1/responses',
         body: {
@@ -267,8 +489,10 @@ function requestFor(capability: MediaCapabilityName, model: string): ProbeReques
           input: 'Reply with the single word "ready".',
           max_output_tokens: 8,
         },
-        check: (result) => checkResponsesText(result, 'video-path'),
+        check: checkVideoReachability,
+        reachabilityOnly: true,
       };
+    }
   }
 }
 
@@ -292,7 +516,7 @@ async function probeOne(
     return { capability, status: 'unconfigured', model, detail: null, latency_ms: null };
   }
   const started = Date.now();
-  const probe = requestFor(capability, model);
+  const probe = requestFor(capability, model, options);
   try {
     const result = await adapter.call(
       probe.path,
@@ -316,6 +540,19 @@ async function probeOne(
         status: 'failed',
         model: result.model ?? model,
         detail: boundedRedacted(`ok ${result.status} but invalid: ${check.summary}`),
+        latency_ms: Date.now() - started,
+      };
+    }
+    if (probe.reachabilityOnly === true) {
+      // Endpoint + model answer, but the capability input was not exercised:
+      // reachable yet explicitly NOT video-ready.
+      return {
+        capability,
+        status: 'unverified',
+        model: result.model ?? model,
+        detail: boundedRedacted(
+          `ok ${result.status} ${check.summary}; video upload/decode/understanding untested — pass videoClip for a clip test`,
+        ),
         latency_ms: Date.now() - started,
       };
     }
