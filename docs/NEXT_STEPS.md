@@ -335,6 +335,16 @@ now is maintenance honesty, not new surface:
     surface): KI-44 + a preservation-doc owner-act entry for the 4 Nov
     tag-cut decision. A dead pointer inside a frozen entry is documented,
     not silently fixed.
+  - Backticked-path census across 83 live-surface docs (31 Oct, at head):
+    every `path/to/file.ext` reference checked against the tree - 7
+    reference files that no longer exist, and ALL SEVEN sit inside
+    explicitly historical documents or "kept for the record" blocks
+    (video-planning files added 83fbae3 and deleted f296dc1 on 28 Oct;
+    ForgeView.tsx added with 3af6e0b, later removed). Zero live docs
+    point at dead paths. Method note: path rot in HISTORICAL docs is
+    expected and correct - history cites the tree as it was; only
+    live-surface pointers must resolve, so path scans must classify
+    each citing doc by era before flagging anything as drift.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
