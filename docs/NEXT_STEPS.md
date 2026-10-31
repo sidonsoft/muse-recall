@@ -644,15 +644,19 @@ now is maintenance honesty, not new surface:
     Pre-Nov 4: documented, never silently patched - the KI-43/KI-44
     pattern for real defects found at head.
   - Supply-chain pin count self-corrected (31 Oct): the #162 census
-    line said "all 18 uses: steps float"; re-count at head: 17 -
-    9 in ci.yml + 8 in website.yml, across 9 distinct actions. The
-    18 was true at #162's own head (verified by re-counting that
-    commit's files); something since... (the delta sits in the
-    historical browser-check consolidation)... Regardless, the
-    register line now carries its refreshed count rather than an
-    unchecked one - understating drift is drift; so is overstating
-    a count five PRs after it moved. Pin-ladder scope restated:
-    17 steps, 9 distinct actions, still all floating @v4/@v3.
+    line said "all 18 uses: steps float". Re-count, then-line-by-
+    line: ci.yml had NINE uses: at #162's own commit and has nine
+    now; website.yml eight both times; the total is - and always
+    was at this cadence - SEVENTEEN. The "18" was BORN wrong in my
+    #162 count, and my first draft of THIS entry invented a
+    mechanism ("a step consolidation removed one") that the diff
+    proves never happened. Two errors, both mine, both now on
+    record: an off-by-one census AND a fabricated causal story
+    covering for it - caught by the same rule that catches all of
+    them: count the lines, read the diff, before narrating.
+    Register line carries an in-place [count refreshed: 17]
+    marker; pin-ladder scope exact: 17 steps, 9 distinct actions,
+    all floating @v4/@v3.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
