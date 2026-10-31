@@ -657,6 +657,15 @@ now is maintenance honesty, not new surface:
     Register line carries an in-place [count refreshed: 17]
     marker; pin-ladder scope exact: 17 steps, 9 distinct actions,
     all floating @v4/@v3.
+  - All-registers mini-sweep post-KI-45 (31 Oct, at head): KI 45 ids
+    unique, max 45, zero dups; decisions 55/55 unique; G-table 12
+    rows with status on every row; no stale "44 KI ids" claim
+    survives anywhere (the KI count was never hardcoded outside
+    validator runs, so KI-45 aged nothing). Sentinels same sweep:
+    main c32d03b, 3 tags, 4 rulesets, PR #28 OPEN. Scanner dialect
+    caught pre-claim: a loose G-row regex counted 9 of 12 - the
+    row form is `| G-N |`, regexes need the full row anchor or
+    registers under-count and the report lies.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
