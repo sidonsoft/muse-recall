@@ -1039,6 +1039,21 @@ now is maintenance honesty, not new surface:
     fenced sh block; escaped \| cells) - scanner upgraded to be
     fence-aware and escape-aware, which is why the re-run is
     trustworthy. Convergence: 399 blocks, ZERO findings, dated.
+  - Heading-skip audit + a process slip, both triaged honestly
+    (31 Oct): (a) heading-level scan over non-era .md found exactly
+    2 h1->h3 skips - DECISIONS.md is a UNIFORM convention (all 55
+    entries are ### under one #; changing one style point across a
+    55-entry file for symmetry is doc churn, declined with reason)
+    and README's lone ### tagline at :3 stays as-is by judgment -
+    no TOC, no renderer cares, and an edit for edit's sake is its
+    own defect class. Audit ships with reasoned exemptions, not
+    reflex patches. (b) Own-it, process: this week's table-audit
+    commit briefly landed on LOCAL integration before the feature
+    branch was cut - fixed by resetting local to origin/integration
+    BEFORE merging (nothing was ever pushed to integration, no
+    force anywhere). Drill banked: cut the branch BEFORE the
+    commit; diffstat-vs-claim already saved the ship, the reset
+    kept ff-only pulls honest.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
