@@ -178,8 +178,13 @@ evening through 31 Oct.
   counts); offline reruns can destroy richer live evidence.
 - **Self-corrections shipped as visible PRs, never quiet amends:**
   #77, #100, #113, #91→#92, #136→#137 (KI id collision), plus wrong
-  check-watch PR numbers twice, and anchor-assert saves now >6 - the
-  last one while writing this very retrospective block.
+  check-watch PR numbers twice, three stale-watch reads after fix-pushes
+  (a stale watch shows the PREVIOUS run's jobs - the adopted rule is a
+  fresh `gh pr checks` query plus run-id comparison against the new
+  push), anchor-assert saves now >8, and two commit-message/content
+  mismatches caught by merge diffstats (#169->#170, #172 mid-branch).
+  Failure modes in MY process get the same register treatment as the
+  repo's.
 - **Untouched, by design:** zero product-surface changes, zero schema/
   contract moves, zero frozen-path touches; `main` `c32d03b`, three
   tags, four rulesets, PR #28 held open - sentinel green throughout.
