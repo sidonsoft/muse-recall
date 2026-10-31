@@ -345,6 +345,14 @@ now is maintenance honesty, not new surface:
     expected and correct - history cites the tree as it was; only
     live-surface pointers must resolve, so path scans must classify
     each citing doc by era before flagging anything as drift.
+  - Tracked-JSON validity sweep (31 Oct, at head): all 403 tracked .json
+    files parse - benchmark artifacts, manifests, configs, fixtures.
+    The single strict-parser failure was the scanner's, not the repo's:
+    devcontainer.json is JSONC by spec (comments allowed), parses clean
+    once comments are stripped; the other 402 are strict-valid. Method
+    family extended: file formats have DIALECTS (JSONC here, `?raw=true`
+    links, zod-key env names) - a census that ignores the dialect
+    manufactures its own findings.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
