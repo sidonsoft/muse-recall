@@ -353,6 +353,21 @@ now is maintenance honesty, not new surface:
     family extended: file formats have DIALECTS (JSONC here, `?raw=true`
     links, zod-key env names) - a census that ignores the dialect
     manufactures its own findings.
+  - CI token + action-pinning census (31 Oct, at head): the repo's
+    default workflow-token permission is READ (API-confirmed, PR
+    approvals by token disabled) - so ci.yml, which declares no
+    `permissions:` block, still runs under a read-only ceiling: least
+    privilege is structurally enforced at the repo layer, not per-file.
+    website.yml scopes permissions explicitly where Pages deploy needs
+    write. All 18 `uses:` steps reference floating major tags (@v4/
+    @v3), no SHA pins - standard for the project's scale; SHA pinning
+    queued post-judging (it would touch website.yml, inside the freeze,
+    and the required-check surface).
+  - Post-judging CI hardening - evaluated, not acted (pre-Nov-4 rule):
+    pin every `uses:` to a full commit SHA with a Dependabot-style
+    refresh note; also consider per-file `permissions:` blocks in
+    ci.yml to make the read-only ceiling locally visible, not just
+    repo-default. Both need the freeze lifted for website.yml.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
