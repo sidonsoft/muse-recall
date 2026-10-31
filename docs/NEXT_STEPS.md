@@ -1084,6 +1084,21 @@ now is maintenance honesty, not new surface:
     external state - checks, merge, branch DELETE, pull - branch
     deletion is a step, not a footnote; the periodic head census
     is the net that caught it.
+  - Branch hygiene census closes both directions (31 Oct):
+    forward - the 100 most recent merged PRs' headRefNames crossed
+    against live remote heads: ZERO survivors (after yesterday's
+    #234 residue, every merged branch is gone; my cadence's
+    delete-on-merge is complete for its era). Backward - all 41
+    remote heads classified: 12 claude/* (foreign actor), 18
+    agent/* (PHASE-era historical lanes, the SUBMISSION_
+    PRESERVATION 39-41 band, ancestry checks queued in action-
+    register C-11), 2 experiment/* + 1 study02/* (foreign study
+    lanes), integration+main, and 6 own-lane fix/feature/harden/
+    release heads from the pre-cadence era - also C-11 material.
+    41/41 accounted, zero unknowns. Scanner family miss owned:
+    first pass called 20 heads UNKNOWN because my regex wrote
+    "experiments/" (the repo says experiment/) and forgot the
+    agent/ family - census FPs are my naming, not the repo's.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
