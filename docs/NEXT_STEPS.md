@@ -527,6 +527,17 @@ now is maintenance honesty, not new surface:
     timing; and the dev-server browser path was not re-opened, its
     leg being the managed-browser CI gate (green at every merge).
     Clone and scratch DBs removed after; repo untouched.
+  - ci.yml declares its own permissions block (31 Oct): `contents:
+    read` + `actions: read` - the exact consumption of its jobs
+    (checkout + two artifact uploads), matching the repo-wide
+    default_workflow_permissions=read already API-confirmed, so it
+    changes NO effective privilege; it stops the file silently
+    inheriting if repo settings ever drift. website.yml already
+    carried its own block - the census: 2/2 workflows now state
+    permissions at the file level. This is the cadence's
+    "settings change only if protective" bar applied to the
+    cadence's own tooling, and the PR's three CI legs are the
+    live proof the block is complete.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
