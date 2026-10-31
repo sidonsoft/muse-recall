@@ -439,6 +439,16 @@ now is maintenance honesty, not new surface:
     Scanner dialect noted: these anchors wrap their text in backticks
     ([`config.ts:54`](path#L54)) - a regex that misses the backtick
     sees ten anchors as zero, the census equivalent of a silent miss.
+  - Judge user-guide censed against code (31 Oct, at head): all six
+    docs/guide files' `pnpm <name>` commands resolve to real scripts;
+    no stray port claims (only 5173/8787 appear); the env table's
+    defaults verified value-for-value at the source - MEMORY_MAX_*
+    8/4000 from DEFAULT_RETRIEVAL_BUDGET (retrieval.ts:51-55),
+    MUSE_MODEL default `muse-wonder-1.0`, FORGE_RUNTIME_BROWSER
+    `managed` with no fallback. Two scanner FPs named for the record:
+    `pnpm 10` (version prose) and `4000` (a character budget, not a
+    port) - four-digit numbers are not ports, and version prose is
+    not a script name.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
