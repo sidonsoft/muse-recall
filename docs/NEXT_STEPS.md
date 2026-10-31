@@ -384,6 +384,12 @@ now is maintenance honesty, not new surface:
     embeddings) and the Decision Guard row's v1.5.0 extension is still
     the newest substantive src change (ef72895, 30 Oct - git log proves
     the register neither lags nor leads reality).
+  - Decision ledger re-validated (31 Oct, at head): 55 entries, ZERO
+    duplicate ids (the KI-43 collision lesson applied to this register
+    preemptively), the single gap D027 is the documented skip
+    (DECISIONS.md numbering note), and every D-number cited in every
+    other doc resolves to a defined decision - zero true dangling
+    references across 55 ids x the whole docs tree.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
