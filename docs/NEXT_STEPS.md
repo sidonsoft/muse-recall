@@ -196,8 +196,8 @@ evening through 31 Oct.
   watch-merge chain died mid-call with the outcome unrecorded;
   the recovery was inspection, not retry - gh reported MERGED, the
   local branch was left mid-sync, and the post-merge run was then
-  watched to success on the merged tree: 76/76 files, 922 passed
-  | 3 skipped (925), 49 workflow checks). Rule: a half-observed
+  watched to success on the merged tree: 76/76 files, 922 passed /
+  3 skipped (925), 49 workflow checks). Rule: a half-observed
   ship is finished by reading external state, never by repeating
   the side-effecting call blind), anchor-assert saves now >8, and two commit-message/content
   mismatches caught by merge diffstats (#169->#170, #172 mid-branch).
@@ -1019,6 +1019,26 @@ now is maintenance honesty, not new surface:
     tree did, and integration's README is what contributors read.
     Rendering classes are audited like content now: the idempotent
     + health-exemption wording itself verified exact.
+  - Markdown table integrity audit, whole repo, fence-aware (31
+    Oct) - and an own-it on #230: the README REST table was only
+    HALF fixed - the paragraph moved out but a BLANK LINE still
+    split the table, leaving 12 sessions rows rendered as a
+    literal wall of pipes; contiguity now means SAME BLOCK under
+    GFM (a blank line ends a table), and #230's "unbroken" claim
+    was half-true - caught by the very audit its lesson motivated.
+    Audit ran over every git-tracked .md (399 pipe-blocks):
+    findings - (1) README split, fixed by merging the blocks;
+    (2) FINAL_INTEGRATION_REPORT table cell contained an
+    UNESCAPED pipe inside a code span (`<true|false>`,
+    `seed || index`) - GFM splits cells before inline parsing, so
+    code spans do not protect pipes; escaped both; (3) a register
+    bullet's wrap put `| 3 skipped` at line start - re-wrapped to
+    `/ 3 skipped` so no scanner re-trips and no renderer ever
+    wonders; (4) earlier findings at SUBMISSION_PRESERVATION and
+    memory-design were scanner false positives (pipe inside a
+    fenced sh block; escaped \| cells) - scanner upgraded to be
+    fence-aware and escape-aware, which is why the re-run is
+    trustworthy. Convergence: 399 blocks, ZERO findings, dated.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the

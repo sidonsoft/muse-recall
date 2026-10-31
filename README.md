@@ -556,7 +556,6 @@ interaction.
 | `GET` | `/api/forge/projects/:id/artifact` | Approved or staged HTML as data (source/export) |
 | `GET` | `/api/forge/projects/:id/preview` | Sandboxed preview document (opaque origin) |
 | `POST` | `/api/retrieval/preview` | Ranking + evidence + the exact prompt block |
-
 | `POST` | `/api/sessions` | Create a conversation (optional project scope) |
 | `GET` | `/api/sessions` | List conversations |
 | `GET` | `/api/sessions/:id` | Transcript with per-turn retrieval evidence |
