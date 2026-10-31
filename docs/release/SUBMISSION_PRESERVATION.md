@@ -239,6 +239,19 @@ register (NEXT_STEPS, line 2 of tier A).
     earlier phases. None was touched during this cadence; deleting any of them
     awaits per-branch ancestry checks post-judging, since some may back phase
     history cited in docs.
+  - Refresh (31 Oct, same day as that census): the remote now holds **9**
+    branches — an actor outside this session pruned 31 heads minutes after the
+    ancestry census (witnessed in NEXT_STEPS' cadence register). The census did
+    the safety math: every vanished head was an ancestor of `main` `c32d03b`, so
+    their commits ship inside main's history regardless of the refs; nothing was
+    lost. Survivors are `main`, `integration`, and exactly the seven
+    still-divergent heads — `agent/phase11-release` (a806145b),
+    `agent/strata-phase12d-guard-audit` (4680ad34), `agent/strata-phase13-submission`
+    (84e6a8ce), `agent/strata-phase14b-submission-audit` (e8fe9df7),
+    `claude/admiring-kilby-7f7211` (6640e83f), `claude/project-thread-9uvtci`
+    (50ec1fca), `study02/checkpoint-1` (7a6cacf5). The foreign three stay
+    foreign; the agent/* quartet awaits post-judging content-diff review
+    (no merged-PR record exists for them, so landing is unproven, not absent).
 - The evidence under `docs/hackathon-evidence/` and `docs/demo/evidence/` is never edited.
 
 ### Freeze sentinel — six invariants, re-checked together 31 Oct 2026
