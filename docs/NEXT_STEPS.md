@@ -1149,6 +1149,18 @@ now is maintenance honesty, not new surface:
     honored) so the doc no longer says "39 branches" to a reader
     seeing 9. Preservation doc and cadence register now tell one
     story with two dates.
+  - C-11 evidence fully pre-staged, read-only (31 Oct): the quartet's
+    unique-file union is exactly 9 items - three long-superseded UI
+    components, three video-concept era docs, three submission-era
+    records including PHASE14B_INDEPENDENT_AUDIT.md, which exists
+    on no other ref anywhere (process evidence with a single home).
+    All four branch tips share one fork point (d35fa9d8, 27 Oct
+    11:44) - one era, one decision surface. First fetch attempt by
+    raw SHA failed ("couldn't find remote ref" - server doesn't
+    allow sha-in-want) and the stale FETCH_HEAD briefly poisoned
+    the comparison; caught before any claim, redone against
+    tracking refs with MATCH verified remote-vs-local. Post-judging
+    owner now decides on a 9-line list, not a 4-branch fog.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -1295,6 +1307,15 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
     attributable from available records (no DeleteEvents in the events API).
     Tags and refs/pull/28 re-verified intact. The review set IS now exactly the
     4 real content-diff reviews (agent/* quartet); the foreign trio stays foreign.
+    PRE-STAGED 31 Oct (read-only): all four quartet heads fork from the SAME era
+    point d35fa9d8 (27 Oct 11:44). Their union of files existing ONLY on the
+    branches is 9 items: 3 superseded web components (ContextInspector, Sidebar,
+    ForgeView - main's UI evolved past them) + 3 video-concept docs
+    (MUSE_FORGE_VIDEO_CONCEPT, VIDEO_CONCEPTS, VIDEO_STORYBOARD) + 3
+    submission-era records (DEMO_RUNBOOK, DEMO_SCRIPT_3MIN, PHASE14B_
+    INDEPENDENT_AUDIT - the last exists NOWHERE else in the repo). Owner's
+    post-judging call is keep/archive/let-go per file; evidence staged, no
+    branch touched.
     32/39 are ancestors of main c32d03b (history fully merged); 7 DIVERGED -
     agent/phase11-release, agent/strata-phase12d-guard-audit, agent/
     strata-phase13-submission, agent/strata-phase14b-submission-audit (PHASE-era,
