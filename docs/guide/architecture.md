@@ -25,6 +25,8 @@ Fastify API (apps/server)
   ├── packages/ui-protocol       closed declarative-UI schema · renderer data
   ├── packages/decision-guard    pure advisory source-pattern engine
   ├── packages/muse-provider     ModelProvider → `muse exec --json`
+  ├── packages/mcp-server        stdio MCP front (seven tools) over the SAME
+  │                              registry the web API serves
   └── packages/shared            Zod contracts + domain types
         │
         ├── SQLite file          memories, history, sessions, audit
@@ -45,7 +47,8 @@ conversation state and every action passing through the permission layer.
 | `packages/memory-engine` | `create`, `update`, `correct`, soft delete, retention, FTS5 retrieval, scoring, evidence, prompt rendering. |
 | `packages/muse-provider` | `muse-cli` adapter and deterministic `echo` provider behind `ModelProvider`. |
 | `packages/agent-core` | Sessions, turn processing, bounded history, memory capture, retrieval per turn, tool planning/execution. |
-| `packages/tool-runtime` | Six bounded project/memory tools, input validation, approval for writes, append-only audit. |
+| `packages/tool-runtime` | Seven bounded project/memory tools (search, graph, create; project get/update; task create/list), input validation, approval for writes, append-only audit. |
+| `packages/mcp-server` | stdio Model Context Protocol server exposing the same seven-tool registry to MCP clients - one shared contract, no second implementation (G-5). |
 | `packages/ui-protocol` | Closed JSON schema for generated planning forms. A fixed React registry renders it; no model-authored JavaScript. |
 | `packages/decision-guard` | Pure, dependency-free advisory engine over source text and active/superseded decisions. |
 | `tests/` + `scripts/` | Unit/integration tests, deterministic fixtures, live probes, browser verification and research verifiers. |
