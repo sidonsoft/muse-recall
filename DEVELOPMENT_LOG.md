@@ -188,3 +188,25 @@ and an audit log that includes invalid and denied calls. Verified with 263 tests
   `docs/VIDEO_STORYBOARD.md`.
 - Feature freeze. Outstanding items are administrative: repository visibility, video recording,
   and completing the submission form (owner actions, documented).
+
+## Post-freeze record (appended 31 Oct 2026, so the log doesn't end mid-story)
+
+The Phase 6 entry above is kept verbatim - at its writing the video was indeed
+outstanding. What happened after, with pointers instead of re-narration:
+
+- **Phases 7-17** ran as scoped batches, each with its own report under
+  `docs/` (release reports, phase docs); product decisions accumulated as 55
+  dated entries in `docs/DECISIONS.md`; the full as-is capability picture
+  lives in `docs/roadmap/CAPABILITY_INVENTORY.md`.
+- **The 2:50 demo** was recorded, QA'd, and published (site + this repo);
+  the `VIDEO_STORYBOARD.md` named above was removed in the 29 Oct
+  housekeeping (its plan superseded), which is exactly the kind of path
+  drift a historical entry is allowed to contain.
+- **Pre-judging audit cadence, 30-31 Oct:** ~90 scoped PRs into
+  `integration` - 17 adversarial guard witnesses, every judge-facing
+  surface re-witnessed at head, freeze sentinel (main `c32d03b`, three
+  tags, four rulesets) green throughout. Register + retrospective at the
+  top of `docs/NEXT_STEPS.md`; entry mechanics in
+  `docs/release/SUBMISSION_PRESERVATION.md`.
+- **Suite at the time of writing:** 76 files, 922 passed, 3 skipped
+  (923 total incl. the opt-in live trio, green at head).
