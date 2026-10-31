@@ -151,3 +151,33 @@ jobs:
           name: visual-diffs-${{ matrix.engine }}
           path: test-results/studio-after/visual-*.png
           if-no-files-found: ignore
+
+  research:
+    name: Research evidence re-verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The Phase 16/17 verify scripts assert their own bytes against hashes
+    # recorded in the locked research protocols - they are frozen artifacts
+    # (proven 31 Oct: a type-only edit to verify-phase17.ts made the chain
+    # fail with "protocol.sha256: hash mismatch"). This job runs the chain on
+    # every push/PR so any tampering with the evidence, analysis, or scripts
+    # fails CI instead of being discovered ad hoc. Node builtins + python3 only:
+    # no build step or workspace imports needed.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0 (v4 alias today; NOT the newest v4.4.0 - pinning matches today's resolution, zero drift)
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Re-verify the locked research chain
+        run: pnpm exec tsx scripts/verify-phase17.ts && pnpm exec tsx scripts/verify-phase17-sums.ts && pnpm exec tsx scripts/verify-phase17-strict.ts
