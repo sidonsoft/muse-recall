@@ -120,14 +120,26 @@ async function main() {
   const isolationSource = gameTask?.project ?? '';
   for (const task of TASKS) await seed(task);
 
-  const baseline: Record<string, number[]> & { correct: number[] } = {
+  // Concrete property types instead of Record<string, number[]>: the keys are
+  // fixed by construction below, and indexing a Record under
+  // noUncheckedIndexedAccess yields `number[] | undefined` for every access -
+  // the type now says what the data actually is (type-level only, zero runtime
+  // difference).
+  type MetricSeries = {
+    input_tokens: number[];
+    prompt_chars: number[];
+    app_chars: number[];
+    latency: number[];
+    correct: number[];
+  };
+  const baseline: MetricSeries = {
     input_tokens: [],
     prompt_chars: [],
     app_chars: [],
     latency: [],
     correct: [],
   };
-  const experimental: Record<string, number[]> & { correct: number[]; retrieval: number[] } = {
+  const experimental: MetricSeries & { retrieval: number[] } = {
     input_tokens: [],
     prompt_chars: [],
     app_chars: [],
