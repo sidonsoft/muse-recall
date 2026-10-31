@@ -403,7 +403,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | # | Gap | Evidence (this doc) | Roadmap ref | Size | Status |
 |---|---|---|---|---|---|
 | G-1 | `state_corrupt` user-facing export/repair flow | §6 | [NEXT_STEPS P0 #3](../NEXT_STEPS.md); §8 recovery | M | **Closed** (PRs #32/#33, 2026-10-30) |
-| G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | **Partial** (wrapper seam + fail-fast probe + setpriv recipe, D042; operator provisioning remains, 2026-10-30) |
+| G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | **Partial** (wrapper seam + fail-fast probe + setpriv recipe, D042; operator provisioning remains, 2026-10-30; KI-49 31 Oct: uid-changing wrapper blocked by staging-0700/prompt-0600 - runbook paths today, ACL fix queued post-judging) |
 | G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M | **Closed** (migration v7 + D038, 2026-10-30) |
 | G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | **Closed** (envelope + D039, 2026-10-30) |
 | G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | **Closed** (MCP stdio surface + TOOL_CONTRACT_VERSION + conformance tests, D043, 2026-10-30) |

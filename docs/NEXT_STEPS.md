@@ -20,9 +20,12 @@ DEVELOPMENT_LOG.md and the decision records.
    gate (PR #33). Repair refuses on a valid state (`state_valid`, 409).
 4. **Isolate the Forge worker from the server user.** — **Partial (2026-10-30).**
    Code seam landed: `FORGE_WORKER_WRAPPER` routes every Forge CLI launch through an
-   operator wrapper (boot refused on probe failure, D042; `setpriv` recipe in
-   [security.md](security.md)). Remaining: the operator-side provisioning itself
-   (dedicated uid, minimal mounts) - a deployment action, not a code change.
+   operator wrapper (boot refused on probe failure, D042). Working provisioning paths
+   + verification: [ops runbook](ops/OPERATOR_RUNBOOKS.md) "Forge worker isolation".
+   KI-49 (31 Oct): the naive `setpriv --reuid` example cannot write the 0700 staging
+   tree / read the 0600 prompt - TRUE uid isolation also needs the small ACL change
+   (register C-13), not just deployment. Remaining: operator provisioning via one of
+   the runbook paths, then ACL support post-judging.
 
 ## P1 — next hardening
 
