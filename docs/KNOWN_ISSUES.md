@@ -598,3 +598,9 @@ without setuid) and an integration boot-refusal test. The misleading setpriv exa
 removed from security.md; the default posture (same-uid child, 0700/0600 server-owned) is
 now stated plainly there and in the runbook. True uid isolation still waits on C-13 ACL
 support (owner call) - the beta deliberately did NOT weaken permissions to paper over it.
+**Second-review addendum (31 Oct):** the probes now spawn under `forgeChildEnv` - the
+identical scrubbed allowlist env the real generation launch uses - closing the gap where
+a wrapper requiring stripped server configuration (a `DOCKER_HOST`-style sentinel)
+passed boot and exited mid-job; a pinned sentinel regression refuses such wrappers at
+BOTH probes, and wrapper configuration is policy-stated as self-contained (no new
+env-forwarding surface).
