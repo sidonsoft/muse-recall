@@ -417,6 +417,15 @@ now is maintenance honesty, not new surface:
     sit in two different run-paths sections, consistently worded. The
     session's ~100 doc patches introduced exactly ONE unintended
     duplication (#169), and the sweep proves nothing else is hiding.
+  - Error-catalogue wire re-witness (31 Oct, at head, fresh throwaway-DB
+    server): GET /api/errors publishes version 2 with 46 group entries
+    over exactly 45 UNIQUE codes - `invalid_request` intentionally
+    appears twice (session/400 runtime rejection; provider/503 bench
+    request-bug), a deliberate D048-mirror shape, not drift: codes are
+    the taxonomy, entries are code+status+context triples. Docs saying
+    "45 codes" count uniques and stay true; an entry count would read
+    46, so the distinction is now on record. /api/meta's errors
+    pointer agrees (catalog_version 2 + endpoint).
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
