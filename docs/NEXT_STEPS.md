@@ -714,6 +714,18 @@ now is maintenance honesty, not new surface:
     precise. One advisory, two projects, both facts instrumented:
     the affected tree is only the landing-page toolchain, exactly
     as KI-46 bounds it.
+  - env<->.env.example two-way census, clean at head (31 Oct): every
+    key the config schema declares appears in .env.example - the
+    seven that first seemed absent are COMMENTED optional entries
+    (`# ACCESS_TOKEN=`, `# FORGE_MUSE_BIN=...`), documentation by
+    design, and a comment-blind regex invented them as phantoms;
+    the other direction: every example key has a real consumer,
+    including FORGE_RUNTIME_BROWSER which is read in
+    runtime-check.ts:60, outside config.ts - extending the known
+    annotation that the config-centric census never covered
+    non-config.ts readers (setup.sh's opt-out vars were the prior
+    instance). 36 example keys, 42 schema keys, zero orphans each
+    way once comments and consumers are counted honestly.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
