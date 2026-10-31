@@ -129,13 +129,15 @@ toward the home doc.
 7. Test typechecking in CI (trade documented in #161). Config staged at
    `tsconfig.tests.json`, deliberately unwired; measured run is down to 186 errors
    (three editable files fixed: evaluation-comparison, session-cascade,
-   stored-json-integrity). Remaining classes: ~50 TS2739 partial-fixture cases across
-   memory-engine-phase2/memory-context/agent-core/memory-record-contract - ONE design
-   decision (shared input type or fixture factory, not four separate grinds); plus
-   TS2345/undefined-access clusters; plus verify-phase17-strict's 17, which need the
-   `closeRelative` helper carved out of the protocol-locked script (its bytes are
-   asserted by the Phase 17 protocol - never edit them) before it can be excluded.
-   Then wire `typecheck:tests` into the verify leg.
+   stored-json-integrity). Plan (validated by a scratch-branch probe 31 Oct, reverted):
+   PR1 = widen engine.create/correct params to the z.input types already exported by
+   shared (MemoryCreateRequest, MemoryCorrectionRequestInput) - measured -74 errors,
+   the four fixture files 50->4, `pnpm -r typecheck` exit 0 under it; PR2 = residual
+   TS2345/undefined clusters (~60 sites, one helper annotation + three direct-contract
+   sites left over from PR1's scope); PR3 = carve `closeRelative` out of the
+   protocol-locked verify-phase17-strict (its bytes are asserted by the Phase 17
+   protocol - never edit them) and exclude the script (-17); then wire
+   `typecheck:tests` into the verify leg.
 8. Protocol-locked scripts (`verify-phase16/17/-strict/-sums`) assert their own bytes
    against recorded protocol hashes - permanently un-editable; CI now re-runs the whole
    research chain every push (job "Research evidence re-verification"), so tampering
@@ -150,8 +152,12 @@ toward the home doc.
     integration + 7 divergent. The 4 review candidates: `agent/phase11-release`
     (a806145b), `agent/strata-phase12d-guard-audit` (4680ad34),
     `agent/strata-phase13-submission` (84e6a8ce), `agent/strata-phase14b-submission-audit`
-    (e8fe9df7) - all fork at `d35fa9d8` (27 Oct), no merged-PR record, so review is a
-    real content diff vs main. Files existing only on them (union, 9): ContextInspector,
+    (e8fe9df7) - all fork at `d35fa9d8` (27 Oct), no merged-PR record. Verified 31 Oct:
+    the quartet is CONTENT-TWIN - branch-only files are byte-identical on every branch
+    carrying them (union 9; the phase14b head adds PHASE14B_INDEPENDENT_AUDIT) - so
+    this collapses to ONE review decision, not four: keep/archive the 9-file set once,
+    then all four heads are free to prune.
+    Files existing only on them (union, 9): ContextInspector,
     Sidebar, ForgeView (superseded web components); MUSE_FORGE_VIDEO_CONCEPT,
     VIDEO_CONCEPTS, VIDEO_STORYBOARD; DEMO_RUNBOOK, DEMO_SCRIPT_3MIN,
     PHASE14B_INDEPENDENT_AUDIT (exists nowhere else). Owner decides keep/archive/let-go
