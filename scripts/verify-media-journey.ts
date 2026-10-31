@@ -37,8 +37,37 @@ function step(label: string): void {
   console.log(`\n== ${label}`);
 }
 
-function sha256Hex(bytes: Buffer): string {
-  return createHash('sha256').update(bytes).digest('hex');
+function sha256Hex(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+/**
+ * Read the artifact endpoint and separate its two hashes: the sha256 of the
+ * raw API response bytes (envelope included) and the sha256 of the version's
+ * raw HTML inside the envelope. The server computes the latter over the
+ * stored bytes and refuses to serve drifted versions, so it is the
+ * version-identity hash; the former only proves the response was stable.
+ */
+async function artifactHtml(
+  base: string,
+  what: string,
+): Promise<{ html: string; versionSha: string; responseSha: string }> {
+  const result = await api(base, 'GET', `/api/forge/projects/${PROJECT}/artifact`);
+  if (result.status !== 200) fail(`could not read artifact (${what})`);
+  const responseSha = sha256Hex(result.bytes.toString('utf8'));
+  const body = result.json as {
+    ok: boolean;
+    data: { html?: unknown; sha256?: unknown; version?: unknown };
+  };
+  if (typeof body?.data?.html !== 'string' || typeof body?.data?.sha256 !== 'string') {
+    fail(`artifact response has no html/sha256 envelope (${what})`);
+  }
+  const html = body.data.html;
+  const versionSha = sha256Hex(html);
+  if (versionSha !== body.data.sha256) {
+    fail(`server artifact sha256 does not match the served HTML (${what})`);
+  }
+  return { html, versionSha, responseSha };
 }
 
 async function freePort(): Promise<number> {
@@ -298,28 +327,27 @@ async function main(): Promise<void> {
         `approve v1: HTTP ${approveV1.status}: ${approveV1.bytes.toString('utf8').slice(0, 500)}`,
       );
     }
-    const v1 = await api(base, 'GET', `/api/forge/projects/${PROJECT}/artifact`);
-    if (v1.status !== 200) fail('could not read v1 artifact');
-    const v1Html = v1.bytes.toString('utf8');
+    const v1 = await artifactHtml(base, 'v1');
+    const v1Html = v1.html;
     if (v1Html.includes('muse-asset://'))
       fail('v1 artifact still contains an unresolved asset reference');
     if (!v1Html.includes('data:image/')) fail('v1 artifact has no embedded image');
-    const v1Sha = sha256Hex(v1.bytes);
-    console.log(`v1 approved, sha256 ${v1Sha}, embedded image present`);
+    const v1Sha = v1.versionSha;
+    console.log(`v1 approved, version-HTML sha256 ${v1Sha}, embedded image present`);
 
     step('restart the server and confirm the artifact is byte-identical');
     await stopServer(server);
     server = startServer(env);
     await waitForHttp(`${base}/api/health`);
-    const revived = await api(base, 'GET', `/api/forge/projects/${PROJECT}/artifact`);
-    if (revived.status !== 200) fail('could not read artifact after restart');
-    if (sha256Hex(revived.bytes) !== v1Sha) fail('artifact changed across restart');
+    const revived = await artifactHtml(base, 'after restart');
+    if (revived.versionSha !== v1Sha) fail('version HTML changed across restart');
+    if (revived.responseSha !== v1.responseSha) fail('artifact response changed across restart');
     const stateAfterRestart = dataOf(
       await api(base, 'GET', `/api/forge/projects/${PROJECT}`),
       'read state after restart',
     ).state as { current_version: unknown };
     if (stateAfterRestart.current_version !== 1) fail('current_version is not 1 after restart');
-    console.log(`after restart: artifact sha256 matches v1, current_version 1`);
+    console.log(`after restart: version-HTML sha256 matches v1, current_version 1`);
 
     step('modify, approve v2, then roll back to v1');
     const modId = dataOf(
@@ -337,15 +365,14 @@ async function main(): Promise<void> {
         `approve v2: HTTP ${approveV2.status}: ${approveV2.bytes.toString('utf8').slice(0, 500)}`,
       );
     }
-    const v2 = await api(base, 'GET', `/api/forge/projects/${PROJECT}/artifact`);
-    if (sha256Hex(v2.bytes) === v1Sha) fail('v2 artifact is identical to v1; expected a change');
-    console.log(`v2 approved, sha256 ${sha256Hex(v2.bytes)} (differs from v1)`);
+    const v2 = await artifactHtml(base, 'v2');
+    if (v2.versionSha === v1Sha) fail('v2 version HTML is identical to v1; expected a change');
+    console.log(`v2 approved, version-HTML sha256 ${v2.versionSha} (differs from v1)`);
 
     dataOf(await api(base, 'POST', `/api/forge/projects/${PROJECT}/rollback`), 'rollback');
-    const rolled = await api(base, 'GET', `/api/forge/projects/${PROJECT}/artifact`);
-    if (rolled.status !== 200) fail('could not read artifact after rollback');
-    if (sha256Hex(rolled.bytes) !== v1Sha) fail('artifact after rollback is not v1');
-    const rolledHtml = rolled.bytes.toString('utf8');
+    const rolled = await artifactHtml(base, 'after rollback');
+    if (rolled.versionSha !== v1Sha) fail('version HTML after rollback is not v1');
+    const rolledHtml = rolled.html;
     if (!rolledHtml.includes('data:image/')) fail('rolled-back artifact lost the embedded image');
     const embeddedV1 = /data:image\/[^"']+/.exec(v1Html)?.[0] ?? '';
     const embeddedRolled = /data:image\/[^"']+/.exec(rolledHtml)?.[0] ?? '';
@@ -355,7 +382,8 @@ async function main(): Promise<void> {
     console.log('rollback returned byte-identical v1 with the exact embedded image');
 
     console.log('\nmedia journey: ok');
-    console.log(`v1 sha256: ${v1Sha}`);
+    console.log(`v1 version-HTML sha256: ${v1Sha} (server-recorded, recomputed match)`);
+    console.log(`v1 API-response sha256: ${v1.responseSha} (envelope stability only)`);
     console.log(
       `embedded image bytes: ${embeddedV1.length} chars of data URL, identical after rollback`,
     );
