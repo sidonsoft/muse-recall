@@ -1,9 +1,11 @@
 // Staged artifact for post-judging action B-7 (test typechecking in CI).
 // NOT wired: no script and no CI step references this yet, so current gates are
-// unaffected. Measured 31 Oct: 270 errors across 99 files (tests + scripts).
-// Top categories: TS2739 x87 (partial fixtures vs full interfaces), TS2345 x53,
-// TS18048 x24 / TS2532 x19 (strict undefined/index access), TS2307 x22 (missing
-// @mml/* mappings incl. agent-core), TS5097 x7 (.ts-extension imports).
+// unaffected. Measured 31 Oct: first run 270 errors; after completing module
+// mappings (@mml/agent-core, @mml/ui-protocol, fastify resolved via apps/server's
+// deps - pnpm does not hoist it to root) it is 261 with ZERO unresolved-module
+// errors. Remaining top categories: TS2739 x87 (partial fixtures vs full
+// interfaces), TS2345 x53, TS18048 x24 / TS2532 x19 (strict undefined/index
+// access), TS5097 x7 (.ts-extension imports).
 // B-7 plan: fix tests/scripts against this config, then add a "typecheck:tests"
 // script and a ci.yml step; decide whether partial fixtures get Partial<> types
 // or explicit fields (the 87 TS2739s are a design call, not busywork).
@@ -19,7 +21,11 @@
       "@mml/muse-provider": ["./packages/muse-provider/src/index.ts"],
       "@mml/tool-runtime": ["./packages/tool-runtime/src/index.ts"],
       "@mml/decision-guard": ["./packages/decision-guard/src/index.ts"],
-      "@mml/mcp-server": ["./packages/mcp-server/src/index.ts"]
+      "@mml/mcp-server": ["./packages/mcp-server/src/index.ts"],
+      "@mml/agent-core": ["./packages/agent-core/src/index.ts"],
+      "@mml/ui-protocol": ["./packages/ui-protocol/src/index.ts"],
+      "fastify": ["./apps/server/node_modules/fastify"],
+      "fastify/*": ["./apps/server/node_modules/fastify/*"]
     }
   },
   "include": ["tests/**/*.ts", "scripts/**/*.ts"],
