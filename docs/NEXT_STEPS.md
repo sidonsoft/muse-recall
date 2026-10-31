@@ -368,6 +368,14 @@ now is maintenance honesty, not new surface:
     refresh note; also consider per-file `permissions:` blocks in
     ci.yml to make the read-only ceiling locally visible, not just
     repo-default. Both need the freeze lifted for website.yml.
+  - Guard-for-the-guards pass (31 Oct, at head): every file reference in
+    the §7 invariant ledger resolves - 17 rows, zero dangling test,
+    source, or workflow pointers; the tests those rows cite are the
+    same suite that runs green every CI leg (922/3). Dialect note kept
+    because the FIRST check produced ~30 false positives: §7 cites
+    paths RELATIVE to docs/roadmap (`../../tests/...`) and sometimes by
+    bare filename - resolution must respect both notations before any
+    "broken guard row" claim is credible.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
