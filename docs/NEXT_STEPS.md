@@ -376,6 +376,14 @@ now is maintenance honesty, not new surface:
     paths RELATIVE to docs/roadmap (`../../tests/...`) and sometimes by
     bare filename - resolution must respect both notations before any
     "broken guard row" claim is credible.
+  - P0/P1/P2 status registers re-audited (31 Oct, at head): every item
+    label still matches the tree - P0: three Done-with-evidence, one
+    honestly Partial (operator provisioning = G-2, queued); P1 sample-
+    verified down to check number 46 and the opt-in live-model caveat;
+    P2's "out of scope" items are genuinely untouched (no auth work, no
+    embeddings) and the Decision Guard row's v1.5.0 extension is still
+    the newest substantive src change (ef72895, 30 Oct - git log proves
+    the register neither lags nor leads reality).
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
