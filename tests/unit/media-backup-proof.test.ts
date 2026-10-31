@@ -5,8 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
 import {
-  MediaAssetStore,
   embedAssetImages,
+  MediaAssetStore,
   mediaStoreToEmbedStore,
 } from '../../apps/server/src/media/index.js';
 
@@ -71,10 +71,7 @@ describe('media backup/restore hash-link proof (Batch A)', () => {
     const bytes = await store.readBytes(projectId, created.asset_id, 1);
     expect(readFileSync(manifest[0]?.bytes_path ?? '').equals(bytes)).toBe(true);
     const embedStore = mediaStoreToEmbedStore(projectId, [{ record: approved, bytes }]);
-    const doc = embedAssetImages(
-      `<img src="muse-asset://${created.asset_id}/v1">`,
-      embedStore,
-    );
+    const doc = embedAssetImages(`<img src="muse-asset://${created.asset_id}/v1">`, embedStore);
     expect(doc.embedded[0]?.sha256Hex).toBe(approved.sha256);
     expect(doc.embedded[0]?.bytes).toBe(ONE_BY_ONE_PNG.length);
     const raw = new DatabaseSync(':memory:');

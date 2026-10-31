@@ -20,6 +20,7 @@ import {
   ForgeJobSchema,
   type ForgeJobStatus,
   type ForgeJobSummary,
+  type ForgeMediaManifest,
   type ForgeRepairResult,
   type ForgeState,
   type ForgeStateFilePresence,
@@ -30,6 +31,7 @@ import {
   type ForgeVersionScanEntry,
   ForgeVersionSchema,
 } from '@mml/shared';
+import { verifyEmbeddedManifest } from '../media/embed.js';
 import { ensurePrivateDirectory, isMissingFile, syncDirectory, syncFile } from './fs-utils.js';
 
 /**
@@ -60,7 +62,8 @@ export type ForgeErrorCode =
   | 'state_valid'
   | 'persistence_failed'
   | 'shutting_down'
-  | 'decision_required';
+  | 'decision_required'
+  | 'invalid_media_reference';
 
 export class ForgeError extends Error {
   constructor(
@@ -489,6 +492,17 @@ export class ForgeWorkspace {
         `v${entry.version} no longer matches its recorded hash.`,
       );
     }
+    if (entry.media) {
+      // Combined artifact integrity: the HTML hash AND every embedded image
+      // hash recorded at approval time must still match.
+      const media = verifyEmbeddedManifest(bytes.toString('utf8'), entry.media);
+      if (!media.ok) {
+        throw new ForgeError(
+          'version_corrupt',
+          `v${entry.version} no longer matches its recorded media: ${media.issues.join(' ')}`,
+        );
+      }
+    }
   }
 
   /** Read a recorded version and verify it before using it as a base. */
@@ -691,6 +705,14 @@ export class ForgeWorkspace {
       expectedSha256?: string;
       /** Approval-time checks to record with this immutable version. */
       verification?: ForgeApprovalVerification;
+      /**
+       * Resolved document bytes to promote instead of the raw staging file
+       * (approval embeds approved images first). Its hash, not the staging
+       * hash, is what `expectedSha256` must match.
+       */
+      html?: string;
+      /** Images embedded in `html`, recorded on the immutable version. */
+      media?: ForgeMediaManifest;
     },
   ): Promise<{
     version: number;
@@ -698,13 +720,18 @@ export class ForgeWorkspace {
     sha256: string;
     note: string | null;
   }> {
-    const validation = await this.validateStaged(projectId, jobId);
-    if (!validation.ok) {
-      throw new ForgeError(
-        'invalid_staged',
-        'The staged application failed validation.',
-        validation.issues,
-      );
+    // When approval passes resolved bytes, the staged file is no longer the
+    // promotion source; the caller has already validated those bytes. Raw
+    // promotions keep the structural gate.
+    if (options.html === undefined) {
+      const validation = await this.validateStaged(projectId, jobId);
+      if (!validation.ok) {
+        throw new ForgeError(
+          'invalid_staged',
+          'The staged application failed validation.',
+          validation.issues,
+        );
+      }
     }
 
     const state = await this.state(projectId);
@@ -722,7 +749,10 @@ export class ForgeWorkspace {
       if (current) await this.requireVersionIntegrity(projectId, current);
     }
 
-    const staged = await this.readContainedBuffer(projectId, this.stagingFile(projectId, jobId));
+    const staged =
+      options.html !== undefined
+        ? Buffer.from(options.html, 'utf8')
+        : await this.readContainedBuffer(projectId, this.stagingFile(projectId, jobId));
     const sha256 = createHash('sha256').update(staged).digest('hex');
     // Bind promotion to the exact bytes runtime verification approved. Without
     // this, a staging rewrite between the browser check and approval would be
@@ -746,11 +776,19 @@ export class ForgeWorkspace {
     try {
       // Owner-only from creation; the rename keeps the mode on the version dir.
       await mkdir(temp, { mode: 0o700 });
-      await copyFile(
-        this.stagingFile(projectId, jobId),
-        join(temp, 'index.html'),
-        fsConstants.COPYFILE_EXCL,
-      );
+      if (options.html !== undefined) {
+        await writeFile(join(temp, 'index.html'), staged, {
+          encoding: 'utf8',
+          mode: 0o600,
+          flag: 'wx',
+        });
+      } else {
+        await copyFile(
+          this.stagingFile(projectId, jobId),
+          join(temp, 'index.html'),
+          fsConstants.COPYFILE_EXCL,
+        );
+      }
 
       const written = await readFile(join(temp, 'index.html'));
       if (createHash('sha256').update(written).digest('hex') !== sha256) {
@@ -794,6 +832,7 @@ export class ForgeWorkspace {
       job_id: options.jobId,
       sha256,
       ...(options.verification ? { approval_verification: options.verification } : {}),
+      ...(options.media ? { media: options.media } : {}),
     });
     await this.writeState(projectId, {
       current: next,

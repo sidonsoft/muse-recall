@@ -168,8 +168,9 @@ export interface MediaManifestEntry {
 
 const ASSET_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const ALLOWED_MIMES: readonly MediaMime[] = ['image/png', 'image/jpeg', 'image/webp'];
-const MAX_MEDIA_BYTES = 10_000_000;
+export const MEDIA_ALLOWED_MIMES: readonly MediaMime[] = ['image/png', 'image/jpeg', 'image/webp'];
+export const MAX_MEDIA_BYTES = 10_000_000;
+const ALLOWED_MIMES = MEDIA_ALLOWED_MIMES;
 const MAX_DIMENSION = 16_384;
 const MAX_MEMORY_REFS = 50;
 const MAX_TEXT = 2_000;
@@ -435,9 +436,14 @@ function parseWebpDimensions(bytes: Buffer): { width: number; height: number } {
   );
 }
 
-function validateMediaBytes(
+/**
+ * Validate magic bytes, markup refusal, MIME agreement and intrinsic
+ * dimensions. Exported for the generation/edit path, which receives bytes
+ * whose MIME is discovered rather than declared (`declared = null`).
+ */
+export function inspectMediaBytes(
   bytes: Buffer,
-  declared: MediaMime,
+  declared: MediaMime | null,
 ): { mime: MediaMime; width: number; height: number } {
   if (bytes.length === 0) {
     throw new MediaError('malformed_media', 'Malformed media: empty byte sequence refused.');
@@ -455,7 +461,7 @@ function validateMediaBytes(
       `Refused ${markup} media: SVG/HTML documents are not image assets.`,
     );
   }
-  if (!ALLOWED_MIMES.includes(declared)) {
+  if (declared !== null && !ALLOWED_MIMES.includes(declared)) {
     throw new MediaError(
       'unsupported_mime',
       `Unsupported media MIME ${declared}: only image/png, image/jpeg and image/webp are accepted; SVG/HTML are refused.`,
@@ -465,10 +471,10 @@ function validateMediaBytes(
   if (sniffed === null) {
     throw new MediaError(
       'malformed_media',
-      `Malformed ${declared} media: magic bytes do not identify a PNG, JPEG or WebP image.`,
+      `Malformed ${declared ?? 'media'}: magic bytes do not identify a PNG, JPEG or WebP image.`,
     );
   }
-  if (sniffed !== declared) {
+  if (declared !== null && sniffed !== declared) {
     throw new MediaError(
       'malformed_media',
       `Malformed media: declared MIME ${declared} disagrees with detected ${sniffed}; refusing mismatched bytes.`,
@@ -871,7 +877,7 @@ export class MediaAssetStore {
       throw new MediaError('unsupported_mime', 'Only image media assets are supported.');
     }
     const bytes = Buffer.isBuffer(input.bytes) ? input.bytes : Buffer.from(input.bytes);
-    const parsed = validateMediaBytes(bytes, input.mime);
+    const parsed = inspectMediaBytes(bytes, input.mime);
     const sha256 = createHash('sha256').update(bytes).digest('hex');
 
     let parent: MediaVersionRecord['parent'] = null;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ForgeProjectIdSchema } from './forge.js';
 
 /**
  * Media capability contracts (Batch A1).
@@ -66,3 +67,189 @@ export const MediaProbeReportSchema = z.object({
   capabilities: z.array(MediaCapabilitySchema).length(MEDIA_CAPABILITIES.length),
 });
 export type MediaProbeReport = z.infer<typeof MediaProbeReportSchema>;
+
+/**
+ * Batch B — image asset, generation-job and upload contracts.
+ *
+ * These mirror the server-side media store records exactly (snake_case) so the
+ * HTTP boundary can be validated with the same shape the store persists.
+ * Bytes never travel in a version record: callers fetch the binary endpoint,
+ * which re-verifies the sha256 before serving.
+ */
+
+export const MEDIA_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+export const MediaMimeSchema = z.enum(MEDIA_MIME_TYPES);
+export type MediaMimeName = z.infer<typeof MediaMimeSchema>;
+
+export const MEDIA_IMAGE_SIZES = [
+  '256x256',
+  '512x512',
+  '1024x1024',
+  '1024x1536',
+  '1536x1024',
+] as const;
+export const MediaImageSizeSchema = z.enum(MEDIA_IMAGE_SIZES);
+export type MediaImageSize = z.infer<typeof MediaImageSizeSchema>;
+
+export const MEDIA_ASSET_STATUSES = ['candidate', 'approved', 'rejected'] as const;
+export const MediaAssetStatusSchema = z.enum(MEDIA_ASSET_STATUSES);
+export type MediaAssetStatusName = z.infer<typeof MediaAssetStatusSchema>;
+
+/** Maximum decoded upload bytes accepted by the media asset route. */
+export const MEDIA_UPLOAD_MAX_BYTES = 12 * 1024 * 1024;
+/** Base64 expansion of the decoded upload cap, plus URL-scheme prefix room. */
+export const MEDIA_UPLOAD_MAX_BASE64_CHARS = Math.ceil(MEDIA_UPLOAD_MAX_BYTES / 3) * 4 + 64;
+/** Route body limit: the base64 payload plus a bounded JSON envelope. */
+export const MEDIA_UPLOAD_BODY_LIMIT_BYTES = MEDIA_UPLOAD_MAX_BASE64_CHARS + 16_384;
+
+export const MediaSourceSchema = z
+  .object({
+    kind: z.enum(['prompt', 'upload', 'edit']).optional(),
+    text: z.string().max(2_000).optional(),
+    job_id: z.uuid().optional(),
+  })
+  .nullable();
+
+export const MediaModelSchema = z
+  .object({
+    provider: z.string().max(120).optional(),
+    model: z.string().max(120).optional(),
+  })
+  .nullable();
+
+export const MediaUsageSchema = z
+  .object({
+    input_tokens: z.number().int().min(0).optional(),
+    output_tokens: z.number().int().min(0).optional(),
+    cost_usd: z.number().finite().min(0).optional(),
+  })
+  .nullable();
+export type MediaUsage = z.infer<typeof MediaUsageSchema>;
+
+export const MediaMemoryRefSchema = z.object({
+  memory_id: z.string().min(1).max(256),
+  revision: z.number().int().min(0).optional(),
+});
+
+export const MediaParentRefSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  project_id: ForgeProjectIdSchema,
+});
+
+export const MediaVersionRecordSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  project_id: ForgeProjectIdSchema,
+  kind: z.literal('image'),
+  mime: MediaMimeSchema,
+  width: z.number().int().min(1).max(16_384),
+  height: z.number().int().min(1).max(16_384),
+  duration_ms: z.null(),
+  byte_size: z.number().int().min(1).max(MEDIA_UPLOAD_MAX_BYTES),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  parent: MediaParentRefSchema.nullable(),
+  source: MediaSourceSchema,
+  job_id: z.uuid().nullable(),
+  memory_refs: z.array(MediaMemoryRefSchema).max(50),
+  model: MediaModelSchema,
+  usage: MediaUsageSchema,
+  status: MediaAssetStatusSchema,
+  created_at: z.iso.datetime(),
+});
+export type MediaVersionRecordView = z.infer<typeof MediaVersionRecordSchema>;
+
+export const MediaAssetSummarySchema = z.object({
+  asset_id: z.uuid(),
+  project_id: ForgeProjectIdSchema,
+  kind: z.literal('image'),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(),
+  latest_version: z.number().int().min(1),
+  version_count: z.number().int().min(1),
+  approved_versions: z.array(z.number().int().min(1)),
+});
+export type MediaAssetSummaryView = z.infer<typeof MediaAssetSummarySchema>;
+
+export const MediaAssetListSchema = z.object({ items: z.array(MediaAssetSummarySchema) });
+export type MediaAssetList = z.infer<typeof MediaAssetListSchema>;
+
+export const MediaVersionListSchema = z.object({ items: z.array(MediaVersionRecordSchema) });
+export type MediaVersionList = z.infer<typeof MediaVersionListSchema>;
+
+export const MEDIA_JOB_KINDS = ['generate', 'edit', 'upscale', 'describe'] as const;
+export const MediaJobKindSchema = z.enum(MEDIA_JOB_KINDS);
+export type MediaJobKindName = z.infer<typeof MediaJobKindSchema>;
+
+export const MEDIA_JOB_STATUSES = [
+  'queued',
+  'running',
+  'succeeded',
+  'failed',
+  'cancelled',
+  'interrupted',
+] as const;
+export const MediaJobStatusSchema = z.enum(MEDIA_JOB_STATUSES);
+export type MediaJobStatusName = z.infer<typeof MediaJobStatusSchema>;
+
+export const MediaJobResultSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+export const MediaJobSchema = z.object({
+  id: z.uuid(),
+  project_id: ForgeProjectIdSchema,
+  kind: MediaJobKindSchema,
+  status: MediaJobStatusSchema,
+  generation: z.number().int().min(0),
+  params: z.record(z.string(), z.unknown()),
+  result: MediaJobResultSchema.nullable(),
+  error: z.string().max(2_000).nullable(),
+  logs: z.array(z.string()).max(200),
+  created_at: z.iso.datetime(),
+  started_at: z.iso.datetime().nullable(),
+  finished_at: z.iso.datetime().nullable(),
+});
+export type MediaJobView = z.infer<typeof MediaJobSchema>;
+export type MediaJob = MediaJobView;
+
+export const MediaJobListSchema = z.object({
+  items: z.array(MediaJobSchema),
+  issues: z
+    .array(
+      z.object({
+        file: z.string(),
+        project_id: z.string(),
+        job_id: z.uuid().nullable(),
+        message: z.string(),
+      }),
+    )
+    .optional(),
+});
+export type MediaJobList = z.infer<typeof MediaJobListSchema>;
+
+export const MediaUploadRequestSchema = z.object({
+  mime: MediaMimeSchema,
+  /** Base64 (no data-URL prefix); the route rejects mismatched magic bytes. */
+  data_base64: z.string().min(1).max(MEDIA_UPLOAD_MAX_BASE64_CHARS),
+  source_text: z.string().max(2_000).optional(),
+});
+export type MediaUploadRequest = z.infer<typeof MediaUploadRequestSchema>;
+
+export const MediaGenerateRequestSchema = z.object({
+  prompt: z.string().min(1).max(2_000),
+  size: MediaImageSizeSchema.optional(),
+});
+export type MediaGenerateRequest = z.infer<typeof MediaGenerateRequestSchema>;
+
+export const MediaEditRequestSchema = z.object({
+  prompt: z.string().min(1).max(2_000),
+  size: MediaImageSizeSchema.optional(),
+  parent: z.object({
+    asset_id: z.uuid(),
+    version: z.number().int().min(1).optional(),
+  }),
+});
+export type MediaEditRequest = z.infer<typeof MediaEditRequestSchema>;

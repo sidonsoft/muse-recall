@@ -55,7 +55,11 @@
     "evidence:ux": "tsx scripts/ux-evidence.ts",
     "verify:formsandbox": "tsx scripts/verify-form-sandbox.ts",
     "verify:forge-workflow": "vitest run tests/integration/forge-api.test.ts",
-    "verify:studio-workflow": "tsx scripts/verify-studio-workflow.ts"
+    "verify:studio-workflow": "tsx scripts/verify-studio-workflow.ts",
+    "media:backup": "pnpm --filter @mml/server run media:backup",
+    "media:restore": "pnpm --filter @mml/server run media:restore",
+    "media:drill": "pnpm --filter @mml/server run media:drill",
+    "verify:media": "pnpm --filter @mml/server run verify:media"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

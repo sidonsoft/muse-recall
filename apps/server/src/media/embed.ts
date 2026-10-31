@@ -171,8 +171,12 @@ export function parseAssetPlaceholder(reference: string): {
   return { assetId: match[1] ?? '', version: Number(match[2]) };
 }
 
-/** Unique well-formed references in document order; malformed ones throw. */
-function collectPlaceholderReferences(html: string): string[] {
+/**
+ * Unique well-formed references in document order; malformed ones throw.
+ * Exported so approval/verification can prefetch exactly the referenced
+ * versions instead of loading an entire project's media store.
+ */
+export function collectAssetReferences(html: string): string[] {
   const references: string[] = [];
   const seen = new Set<string>();
   for (const match of html.matchAll(PLACEHOLDER_SCAN)) {
@@ -435,7 +439,7 @@ export function embedAssetImages(
   store: EmbedAssetStore,
   options?: EmbedOptions,
 ): EmbeddedDocument {
-  const references = collectPlaceholderReferences(html);
+  const references = collectAssetReferences(html);
   if (references.length > EMBED_MAX_REFERENCES_PER_DOCUMENT) {
     throw new EmbedError(
       'too_many_references',
@@ -461,6 +465,50 @@ export function embedAssetImages(
  * within the HTML size cap. Returns the UTF-8 byte length. Throws
  * `unresolved_placeholder` or `embedded_html_too_large`.
  */
+const EMBEDDED_DATA_URL_SCAN = /data:image\/(?:png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})/g;
+const MAX_MANIFEST_DATA_URLS = 64;
+
+/**
+ * Re-verify an immutable approved artifact against the manifest recorded at
+ * approval time. This is the media half of combined artifact verification:
+ * every manifest image must still be present in the HTML as a data URL whose
+ * decoded bytes hash to the recorded sha256 and length. It deliberately does
+ * not consult the asset store, so a later curation change cannot make an
+ * already-approved version unverifiable.
+ */
+export function verifyEmbeddedManifest(
+  html: string,
+  manifest: { readonly embedded: readonly EmbeddedImage[] },
+): { ok: boolean; issues: string[] } {
+  const issues: string[] = [];
+  if (html.includes(EMBED_PLACEHOLDER_SCHEME)) {
+    issues.push('Embedded HTML still contains an unresolved muse-asset:// placeholder.');
+  }
+  const candidates: Buffer[] = [];
+  EMBEDDED_DATA_URL_SCAN.lastIndex = 0;
+  for (;;) {
+    const match = EMBEDDED_DATA_URL_SCAN.exec(html);
+    if (match === null) break;
+    if (candidates.length >= MAX_MANIFEST_DATA_URLS) break;
+    const encoded = match[1];
+    if (encoded === undefined) continue;
+    candidates.push(Buffer.from(encoded, 'base64'));
+  }
+  for (const entry of manifest.embedded) {
+    const found = candidates.some(
+      (bytes) =>
+        bytes.length === entry.bytes &&
+        createHash('sha256').update(bytes).digest('hex') === entry.sha256Hex.toLowerCase(),
+    );
+    if (!found) {
+      issues.push(
+        `Embedded image ${entry.assetId} v${String(entry.version)} (${entry.sha256Hex.slice(0, 12)}…) is missing from the artifact or no longer matches its recorded hash.`,
+      );
+    }
+  }
+  return { ok: issues.length === 0, issues };
+}
+
 export function verifyEmbeddedHtml(html: string, options?: EmbedOptions): number {
   if (html.includes(EMBED_PLACEHOLDER_SCHEME)) {
     const at = html.indexOf(EMBED_PLACEHOLDER_SCHEME);

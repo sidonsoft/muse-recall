@@ -165,7 +165,14 @@ function parseJsonObject(body: string): Record<string, unknown> | null {
  */
 function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope {
   const json = parseJsonObject(body);
-  if (!json) return { ok: false, summary: `non-JSON ${label} response`, output: null, status: null, error: null };
+  if (!json)
+    return {
+      ok: false,
+      summary: `non-JSON ${label} response`,
+      output: null,
+      status: null,
+      error: null,
+    };
   const errorField: unknown = json.error;
   if (errorField !== undefined && errorField !== null) {
     const message =
@@ -174,7 +181,13 @@ function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope 
         : typeof (errorField as Record<string, unknown>).message === 'string'
           ? String((errorField as Record<string, unknown>).message)
           : 'error result';
-    return { ok: false, summary: `${label} error result: ${message}`.slice(0, 120), output: null, status: null, error: message };
+    return {
+      ok: false,
+      summary: `${label} error result: ${message}`.slice(0, 120),
+      output: null,
+      status: null,
+      error: message,
+    };
   }
   const status: unknown = json.status;
   const statusText = typeof status === 'string' ? status : null;
@@ -189,9 +202,21 @@ function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope 
   }
   const output: unknown = json.output;
   if (!Array.isArray(output) || output.length === 0) {
-    return { ok: false, summary: `${label} response without output[]`, output: null, status: statusText, error: null };
+    return {
+      ok: false,
+      summary: `${label} response without output[]`,
+      output: null,
+      status: statusText,
+      error: null,
+    };
   }
-  return { ok: true, summary: `${label} output[${output.length}]`, output, status: statusText, error: null };
+  return {
+    ok: true,
+    summary: `${label} output[${output.length}]`,
+    output,
+    status: statusText,
+    error: null,
+  };
 }
 
 interface TextPart {
@@ -296,7 +321,10 @@ function checkSegmentResponse(body: string): ProbeCheck {
   if (lane.trim().length === 0) {
     return { ok: true, summary: 'segment zero matches (empty output_text, completed)' };
   }
-  const lines = lane.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+  const lines = lane
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
   const valid = lines.filter(
     (line) => SAM_FRAME_MARKER.test(line) && SAM_BOX_TOKEN.test(line) && SAM_MASK_TOKEN.test(line),
   );
@@ -441,10 +469,7 @@ function requestFor(
       const wav = tinyWav();
       const form = new FormData();
       // Documented multipart shape: `request` (JSON settings) + `audio`.
-      form.append(
-        'request',
-        JSON.stringify({ model, audioEncoding: 'WAV', mode: 'PUSH_TO_TALK' }),
-      );
+      form.append('request', JSON.stringify({ model, audioEncoding: 'WAV', mode: 'PUSH_TO_TALK' }));
       form.append('audio', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), 'probe.wav');
       return {
         path: '/v1/asr/transcribe',
@@ -518,21 +543,17 @@ async function probeOne(
   const started = Date.now();
   const probe = requestFor(capability, model, options);
   try {
-    const result = await adapter.call(
-      probe.path,
-      probe.body,
-      {
-        ...(options.signal !== undefined ? { signal: options.signal } : {}),
-        ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
-        ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
-        ...(probe.rawBody !== undefined
-          ? {
-              rawBody: probe.rawBody,
-              ...(probe.contentType !== undefined ? { contentType: probe.contentType } : {}),
-            }
-          : {}),
-      },
-    );
+    const result = await adapter.call(probe.path, probe.body, {
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+      ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+      ...(probe.rawBody !== undefined
+        ? {
+            rawBody: probe.rawBody,
+            ...(probe.contentType !== undefined ? { contentType: probe.contentType } : {}),
+          }
+        : {}),
+    });
     const check = probe.check(result.body);
     if (!check.ok) {
       return {

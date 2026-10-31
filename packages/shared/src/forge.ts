@@ -86,6 +86,64 @@ export const ForgeApprovalVerificationSchema = z.object({
 export type ForgeApprovalVerification = z.infer<typeof ForgeApprovalVerificationSchema>;
 
 /**
+ * Batch B — media embedded into an approved artifact.
+ *
+ * Approval resolves every `muse-asset://<id>/v<version>` placeholder against
+ * the project's APPROVED image versions and promotes the resolved HTML. This
+ * manifest records exactly which image bytes became part of the immutable
+ * version, so artifact verification and rollback can re-check them later
+ * without depending on mutable curation status.
+ */
+export const ForgeMediaEmbeddedSchema = z.object({
+  assetId: z.uuid(),
+  version: z.number().int().min(1),
+  mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+  bytes: z.number().int().min(1),
+  sha256Hex: z.string().regex(/^[a-f0-9]{64}$/),
+  dataUrlLength: z.number().int().min(1),
+});
+export type ForgeMediaEmbedded = z.infer<typeof ForgeMediaEmbeddedSchema>;
+
+export const ForgeMediaManifestSchema = z.object({
+  version: z.literal(1),
+  embedded: z.array(ForgeMediaEmbeddedSchema).max(16),
+  total_bytes: z.number().int().min(0),
+  generated_at: z.iso.datetime(),
+});
+export type ForgeMediaManifest = z.infer<typeof ForgeMediaManifestSchema>;
+
+/** Pending (unresolved) media reference, shown before approval embeds it. */
+export const ForgeMediaReferenceSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  status: z.enum(['candidate', 'approved', 'rejected', 'missing']),
+});
+export type ForgeMediaReference = z.infer<typeof ForgeMediaReferenceSchema>;
+
+export const ForgeArtifactMediaSchema = z.object({
+  embedded: z.array(ForgeMediaEmbeddedSchema),
+  pending: z.array(ForgeMediaReferenceSchema),
+});
+export type ForgeArtifactMedia = z.infer<typeof ForgeArtifactMediaSchema>;
+
+/**
+ * Combined artifact verification: the HTML hash, every embedded image hash,
+ * and the absence of unresolved placeholders are checked together. `ok` is
+ * false when any one of them fails; `issues` names each failure.
+ */
+export const ForgeArtifactVerificationSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  job_id: z.uuid().nullable(),
+  version: z.number().int().min(1).nullable(),
+  staged: z.boolean(),
+  ok: z.boolean(),
+  html_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  embedded: z.array(ForgeMediaEmbeddedSchema),
+  issues: z.array(z.string().max(300)).max(50),
+});
+export type ForgeArtifactVerification = z.infer<typeof ForgeArtifactVerificationSchema>;
+
+/**
  * Phase 12C — Decision Guard advisory contract.
  *
  * Decision Guard is ADVISORY ONLY in this version. `engine_verdict` is the
@@ -258,6 +316,8 @@ export const ForgeVersionSchema = z.object({
     .optional(),
   /** Approval-time checks recorded with this immutable version. */
   approval_verification: ForgeApprovalVerificationSchema.optional(),
+  /** Images embedded into this version's bytes, when it referenced any. */
+  media: ForgeMediaManifestSchema.optional(),
 });
 export type ForgeVersion = z.infer<typeof ForgeVersionSchema>;
 
@@ -545,5 +605,10 @@ export const ForgeArtifactSchema = z.object({
   lines: z.number().int().nonnegative(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   html: z.string(),
+  /**
+   * Media state for the artifact being viewed: images embedded in an approved
+   * version, or references still pending in a staged document.
+   */
+  media: ForgeArtifactMediaSchema.optional(),
 });
 export type ForgeArtifact = z.infer<typeof ForgeArtifactSchema>;

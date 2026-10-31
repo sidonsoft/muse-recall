@@ -33,9 +33,15 @@ import { ForgeJobManager } from './forge/runner.js';
 import { ForgeWorkspace } from './forge/workspace.js';
 import { isAllowedHostHeader } from './host-guard.js';
 import { IdempotencyStore } from './idempotency.js';
+import { MediaAdapter } from './media/adapter.js';
+import { MediaAssetStore } from './media/assets.js';
+import { MediaJobStore } from './media/jobs.js';
+import { MediaOperations } from './media/operations.js';
+import { MediaService } from './media/service.js';
 import { evaluateRequestOrigin } from './origin-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { registerForgeRoutes } from './routes/forge.js';
+import { registerMediaRoutes } from './routes/media.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
 import { registerSessionRoutes } from './routes/sessions.js';
 import { registerToolRoutes } from './routes/tools.js';
@@ -58,6 +64,11 @@ export interface AppDependencies {
   /** Forge workspace/job manager; created under WORKSPACE_ROOT when omitted. */
   forgeWorkspace?: ForgeWorkspace;
   forgeManager?: ForgeJobManager;
+  /** Batch B media stores/service; created under the Forge workspace when omitted. */
+  mediaAssets?: MediaAssetStore;
+  mediaJobs?: MediaJobStore;
+  mediaOperations?: MediaOperations | null;
+  mediaService?: MediaService;
   /** Injectable so tests can share or reset the tracker. */
   providerHealth?: ProviderHealthTracker;
   /** Monotonic-ish process start time, used for uptime. */
@@ -105,6 +116,25 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       tools: { registry: toolRegistry, store: toolStore },
     });
   const forgeWorkspace = dependencies.forgeWorkspace ?? new ForgeWorkspace(config.workspaceRoot);
+  const mediaAssets = dependencies.mediaAssets ?? new MediaAssetStore(forgeWorkspace);
+  const mediaJobs = dependencies.mediaJobs ?? new MediaJobStore(forgeWorkspace);
+  const mediaAdapter =
+    dependencies.mediaOperations !== undefined
+      ? null
+      : new MediaAdapter({
+          apiKey: config.forge?.apiKey ?? null,
+          ...(config.forge?.model ? { model: config.forge.model } : {}),
+        });
+  const mediaOperations =
+    dependencies.mediaOperations !== undefined
+      ? dependencies.mediaOperations
+      : mediaAdapter?.configured === true
+        ? new MediaOperations(mediaAdapter, {
+            ...(config.forge?.model ? { model: config.forge.model } : {}),
+          })
+        : null;
+  const mediaService =
+    dependencies.mediaService ?? new MediaService(mediaAssets, mediaJobs, mediaOperations);
   const forgeManager =
     dependencies.forgeManager ??
     new ForgeJobManager({
@@ -115,6 +145,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       ...(config.forge?.model ? { model: config.forge.model } : {}),
       ...(config.forge?.fallbackApiKey ? { fallbackApiKey: config.forge.fallbackApiKey } : {}),
       ...(config.forge?.fallbackModel ? { fallbackModel: config.forge.fallbackModel } : {}),
+      mediaAssets,
       ...(config.forge
         ? {
             maxRuntimeMs: config.forge.maxRuntimeMs,
@@ -146,6 +177,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   // owned children with bounded escalation, await terminal persistence, then
   // flush any remaining writes.
   app.addHook('onClose', async () => {
+    mediaService.shutdown();
     await forgeManager.shutdown();
   });
 
@@ -174,6 +206,15 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       },
       'Forge recovery reported issues',
     );
+  }
+
+  // Media job records are recovered alongside Forge jobs. Queued/running
+  // records from a previous process become `interrupted`; malformed records
+  // are surfaced through the media jobs endpoint rather than treated as empty.
+  const mediaRecovery = await mediaJobs.loadAll();
+  await mediaJobs.recover();
+  if (mediaRecovery.issues.length > 0) {
+    app.log.warn({ issues: mediaRecovery.issues.length }, 'Media recovery reported issues');
   }
 
   // Reject requests whose Host header does not name a loopback host on an
@@ -380,7 +421,9 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     workspace: forgeWorkspace,
     engine,
     idempotency,
+    mediaAssets,
   });
+  registerMediaRoutes(app, { service: mediaService });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {

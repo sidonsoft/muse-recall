@@ -48,8 +48,7 @@ export function mediaStoreToEmbedStore(
   }
   return {
     projectId,
-    lookup: (assetId: string, version: number) =>
-      byKey.get(`${assetId}/v${version}`) ?? null,
+    lookup: (assetId: string, version: number) => byKey.get(`${assetId}/v${version}`) ?? null,
   };
 }
 

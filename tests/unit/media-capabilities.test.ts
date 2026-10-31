@@ -141,9 +141,9 @@ describe('media origin guard', () => {
       fetchImpl: impl,
       maxRetries: 0,
     });
-    await expect(
-      adapter.call('/v1/responses', { model: 'm', input: 'hi' }),
-    ).rejects.toMatchObject({ code: 'provider_unavailable' });
+    await expect(adapter.call('/v1/responses', { model: 'm', input: 'hi' })).rejects.toMatchObject({
+      code: 'provider_unavailable',
+    });
     expect(calls).toHaveLength(1);
     // The redirect target never appears in diagnostics (untrusted content).
     await expect(
@@ -240,13 +240,11 @@ describe('probeMediaCapabilities (documented contracts)', () => {
   it('sends documented requests and validates shapes (not just HTTP 200)', async () => {
     const { impl, calls } = fixtureFetch((call) => {
       const path = new URL(call.url).pathname;
-      const body = call.bodyText !== null ? (JSON.parse(call.bodyText) as Record<string, unknown>) : {};
+      const body =
+        call.bodyText !== null ? (JSON.parse(call.bodyText) as Record<string, unknown>) : {};
       // Route the segment probe's concept prompt to SAM grammar; other
       // Responses calls get text lanes.
-      if (
-        path === '/v1/responses' &&
-        JSON.stringify(body).includes('red square')
-      ) {
+      if (path === '/v1/responses' && JSON.stringify(body).includes('red square')) {
         return samSuccess();
       }
       return documentedSuccess(path);
@@ -470,9 +468,7 @@ describe('probeMediaCapabilities (documented contracts)', () => {
   });
 
   it('sends the duplicate-submission key as Idempotency-Key', async () => {
-    const { impl, calls } = fixtureFetch((call) =>
-      documentedSuccess(new URL(call.url).pathname),
-    );
+    const { impl, calls } = fixtureFetch((call) => documentedSuccess(new URL(call.url).pathname));
     const adapter = new MediaAdapter({ apiKey: 'test-key-12345', fetchImpl: impl });
     await adapter.call('/v1/responses', { input: 'hi' }, { idempotencyKey: 'dup-key-1' });
     expect(calls).toHaveLength(1);
@@ -491,11 +487,7 @@ describe('probeMediaCapabilities (documented contracts)', () => {
     const { impl } = fixtureFetch(() => pending);
     const adapter = new MediaAdapter({ apiKey: 'test-key-12345', fetchImpl: impl });
     const controller = new AbortController();
-    const attempt = adapter.call(
-      '/v1/responses',
-      { input: 'hi' },
-      { signal: controller.signal },
-    );
+    const attempt = adapter.call('/v1/responses', { input: 'hi' }, { signal: controller.signal });
     controller.abort();
     // The transport resolves late — after cancellation already won.
     gate.release(okJson({ ok: true }));

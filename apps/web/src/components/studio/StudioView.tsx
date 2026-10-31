@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
 import { humanizeId } from '../../lib/format.ts';
 import { Icon } from '../Icon.tsx';
+import { MediaPanel } from './MediaPanel.tsx';
 import { ProjectSwitcher } from './ProjectSwitcher.tsx';
 import { jobLabel, type PromptMode, PromptPanel } from './PromptPanel.tsx';
 import { ArtifactFooter, ReviewPanel } from './ReviewPanel.tsx';
@@ -979,6 +980,16 @@ export function StudioView({
             onCancel={() => void cancel()}
             engineLabel={engineLabel}
             cliMissing={forge?.cli_available === false}
+          />
+          <MediaPanel
+            projectId={projectId}
+            onInsert={(placeholder) =>
+              updateDraft(
+                'change',
+                `${change}${change.trim().length > 0 ? '\n' : ''}${placeholder}`,
+              )
+            }
+            onChanged={() => void loadProject(projectId, false)}
           />
           <StudioMemory
             key={projectId}

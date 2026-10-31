@@ -512,7 +512,10 @@ describe('restoreDatabase (roadmap §8)', () => {
     it('a v8 backup whose memories lack the v2 superseded_by column is refused', async () => {
       const dir = workspace();
       const backup = await v8Backup(dir, 'live.db');
-      mutate(backup, 'DROP INDEX IF EXISTS idx_memories_superseded_by; ALTER TABLE memories DROP COLUMN superseded_by');
+      mutate(
+        backup,
+        'DROP INDEX IF EXISTS idx_memories_superseded_by; ALTER TABLE memories DROP COLUMN superseded_by',
+      );
       const bytes = readFileSync(backup);
       const { target, before } = await existingTarget(dir);
 

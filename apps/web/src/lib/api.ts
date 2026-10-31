@@ -20,6 +20,14 @@ import {
   ForgeStateSchema,
   type HealthResponse,
   HealthResponseSchema,
+  type MediaAssetList,
+  MediaAssetListSchema,
+  type MediaJob,
+  MediaJobListSchema,
+  MediaJobSchema,
+  MediaVersionListSchema,
+  MediaVersionRecordSchema,
+  type MediaVersionRecordView,
   type Memory,
   type MemoryCorrectionRequestInput,
   type MemoryCorrectionResult,
@@ -477,6 +485,103 @@ export const api = {
 
   forgePreviewUrl: (projectId: string, jobId?: string) =>
     apiUrl(`/api/forge/projects/${projectId}/preview${jobId ? `?job=${jobId}` : ''}`),
+
+  // --- Media (Batch B) ----------------------------------------------------
+
+  mediaAssets: (projectId: string) =>
+    request<MediaAssetList>(`/api/forge/projects/${projectId}/media`, { method: 'GET' }, (data) =>
+      MediaAssetListSchema.parse(data),
+    ),
+
+  mediaVersions: (projectId: string, assetId: string) =>
+    request<MediaVersionRecordView[]>(
+      `/api/forge/projects/${projectId}/media/${assetId}`,
+      { method: 'GET' },
+      (data) => MediaVersionListSchema.parse(data).items,
+    ),
+
+  mediaUpload: (
+    projectId: string,
+    input: { mime: string; dataBase64: string; sourceText?: string },
+  ) =>
+    request<MediaVersionRecordView>(
+      `/api/forge/projects/${projectId}/media/upload`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          mime: input.mime,
+          data_base64: input.dataBase64,
+          ...(input.sourceText !== undefined ? { source_text: input.sourceText } : {}),
+        }),
+      },
+      (data) => MediaVersionRecordSchema.parse(data),
+    ),
+
+  mediaGenerate: (projectId: string, prompt: string, size?: string) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/generate`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ prompt, ...(size !== undefined ? { size } : {}) }),
+      },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaEdit: (
+    projectId: string,
+    input: { prompt: string; assetId: string; version?: number; size?: string },
+  ) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/edit`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: input.prompt,
+          parent: {
+            asset_id: input.assetId,
+            ...(input.version !== undefined ? { version: input.version } : {}),
+          },
+          ...(input.size !== undefined ? { size: input.size } : {}),
+        }),
+      },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaJobs: (projectId: string) =>
+    request<{ items: MediaJob[]; issues?: unknown[] }>(
+      `/api/forge/projects/${projectId}/media/jobs`,
+      { method: 'GET' },
+      (data) => MediaJobListSchema.parse(data),
+    ),
+
+  mediaJob: (projectId: string, jobId: string) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/jobs/${jobId}`,
+      { method: 'GET' },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaCancelJob: (projectId: string, jobId: string) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/jobs/${jobId}/cancel`,
+      { method: 'POST' },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaCurate: (
+    projectId: string,
+    assetId: string,
+    version: number,
+    action: 'approve' | 'reject',
+  ) =>
+    request<MediaVersionRecordView>(
+      `/api/forge/projects/${projectId}/media/${assetId}/versions/${version}/${action}`,
+      { method: 'POST' },
+      (data) => MediaVersionRecordSchema.parse(data),
+    ),
+
+  mediaBytesUrl: (projectId: string, assetId: string, version: number) =>
+    apiUrl(`/api/forge/projects/${projectId}/media/${assetId}/versions/${version}/bytes`),
 
   // --- Tools --------------------------------------------------------------
 

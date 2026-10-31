@@ -184,12 +184,7 @@ const REQUIRED_TABLE_COLUMNS: Record<string, readonly string[]> = {
   // memories gains columns in later migrations (v2 superseded_by; v7
   // record-contract revision/actor): the full anchor set applies at the
   // claimed version via the per-column map below, older claims skip them.
-  memories: [
-    ...(CORE_TABLE_COLUMNS.memories ?? []),
-    'superseded_by',
-    'revision',
-    'actor',
-  ],
+  memories: [...(CORE_TABLE_COLUMNS.memories ?? []), 'superseded_by', 'revision', 'actor'],
   memory_fts: ['content', 'tags', 'memory_id'],
   sessions: ['id', 'project_id', 'status', 'created_at', 'updated_at'],
   messages: ['id', 'session_id', 'sequence', 'role', 'content', 'status', 'created_at'],

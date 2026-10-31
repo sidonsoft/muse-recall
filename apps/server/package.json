@@ -14,7 +14,11 @@
     "db:restore": "node --import tsx src/scripts/db-restore.ts",
     "ops:alert-prober": "node --import tsx src/scripts/alert-prober.ts",
     "db:purge": "tsx src/scripts/purge.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "media:backup": "node --import tsx src/scripts/media-backup.ts",
+    "media:restore": "node --import tsx src/scripts/media-restore.ts",
+    "media:drill": "node --import tsx src/scripts/media-backup-drill.ts",
+    "verify:media": "node --import tsx src/scripts/verify-media-live.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

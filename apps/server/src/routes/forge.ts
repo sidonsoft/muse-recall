@@ -7,6 +7,7 @@ import {
   FORGE_SCREENSHOT_MAX_BYTES,
   ForgeApproveSchema,
   ForgeArtifactSchema,
+  ForgeArtifactVerificationSchema,
   ForgeCreateProjectSchema,
   ForgeDiffSchema,
   ForgeGenerateSchema,
@@ -24,6 +25,13 @@ import { z } from 'zod';
 import type { ForgeJobManager } from '../forge/runner.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
 import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
+import {
+  embedApprovedImages,
+  MediaArtifactError,
+  pendingMediaReferences,
+  verifyArtifact,
+} from '../media/artifact.js';
+import type { MediaAssetStore } from '../media/assets.js';
 
 const ProjectParams = z.object({ id: z.string().min(2).max(64) });
 const JobParams = z.object({ jobId: z.uuid() });
@@ -58,9 +66,12 @@ export function registerForgeRoutes(
     workspace: ForgeWorkspace;
     engine: MemoryEngine;
     idempotency: IdempotencyStore;
+    /** Null/absent disables staged preview media resolution. */
+    mediaAssets?: MediaAssetStore;
   },
 ): void {
   const { manager, workspace } = deps;
+  const mediaAssets = deps.mediaAssets ?? null;
 
   const projectView = async (projectId: string) =>
     ForgeProjectViewSchema.parse({
@@ -288,6 +299,21 @@ export function registerForgeRoutes(
         }
       }
 
+      const approvedVersion =
+        version !== null ? state.versions.find((entry) => entry.version === version) : undefined;
+      const media =
+        jobId !== null
+          ? {
+              embedded: [],
+              pending: mediaAssets
+                ? await pendingMediaReferences(mediaAssets, id, html).catch(() => [])
+                : [],
+            }
+          : {
+              embedded: approvedVersion?.media?.embedded ?? [],
+              pending: [],
+            };
+
       return envelope(
         ForgeArtifactSchema.parse({
           project_id: id,
@@ -300,6 +326,93 @@ export function registerForgeRoutes(
           lines: html.length === 0 ? 0 : html.split('\n').length,
           sha256,
           html,
+          media,
+        }),
+      );
+    });
+  });
+
+  /**
+   * Combined artifact verification (Batch B): HTML hash + every embedded
+   * image hash + no unresolved placeholders, checked together. Staged
+   * artifacts are resolved first; a reference that cannot be embedded makes
+   * `ok=false` with the resolver's explicit issue instead of a partial pass.
+   */
+  app.get('/api/forge/projects/:id/artifact/verification', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      const query = ArtifactQuery.parse(request.query ?? {});
+      const state = await workspace.state(id);
+
+      let html: string;
+      let sha256: string;
+      let jobId: string | null = null;
+      let version: number | null = state.current_version;
+      let manifest: import('@mml/shared').ForgeMediaManifest | null = null;
+
+      if (query.job) {
+        const job = manager.get(query.job);
+        if (!job || job.project_id !== id) return notFound(reply, 'Unknown review job.');
+        const snapshot = await workspace.stagedSnapshot(id, query.job);
+        if (!snapshot) return notFound(reply, 'This review has no staged HTML.');
+        jobId = query.job;
+        version = null;
+        try {
+          const resolved = mediaAssets
+            ? await embedApprovedImages(mediaAssets, id, snapshot.html)
+            : { html: snapshot.html, manifest: null, embedded: [] };
+          html = resolved.html;
+          manifest = resolved.manifest;
+        } catch (error) {
+          if (!(error instanceof MediaArtifactError)) throw error;
+          html = snapshot.html;
+          return envelope(
+            ForgeArtifactVerificationSchema.parse({
+              project_id: id,
+              job_id: jobId,
+              version,
+              staged: true,
+              ok: false,
+              html_sha256: snapshot.sha256,
+              embedded: [],
+              issues: [error.message, ...error.issues],
+            }),
+          );
+        }
+        sha256 = createHash('sha256').update(html, 'utf8').digest('hex');
+      } else {
+        html = (await workspace.currentHtml(id)) ?? '';
+        if (html.length === 0) return notFound(reply, 'No approved HTML yet.');
+        sha256 = createHash('sha256').update(html, 'utf8').digest('hex');
+        const recorded = state.versions.find((entry) => entry.version === state.current_version);
+        manifest = recorded?.media ?? null;
+        if (recorded?.sha256 && recorded.sha256 !== sha256) {
+          return envelope(
+            ForgeArtifactVerificationSchema.parse({
+              project_id: id,
+              job_id: null,
+              version,
+              staged: false,
+              ok: false,
+              html_sha256: sha256,
+              embedded: [],
+              issues: [`v${String(state.current_version)} no longer matches its recorded hash.`],
+            }),
+          );
+        }
+      }
+
+      const verified = verifyArtifact(html, manifest);
+      return envelope(
+        ForgeArtifactVerificationSchema.parse({
+          project_id: id,
+          job_id: jobId,
+          version,
+          staged: jobId !== null,
+          ok: verified.ok,
+          html_sha256: sha256,
+          embedded: verified.embedded,
+          issues: verified.issues,
         }),
       );
     });
@@ -314,10 +427,20 @@ export function registerForgeRoutes(
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
       const query = PreviewQuery.parse(request.query ?? {});
-      const html = query.job
+      let html = query.job
         ? await workspace.stagedHtml(id, query.job)
         : await workspace.currentHtml(id);
       if (html === null) return notFound(reply, 'No application to preview yet.');
+      if (query.job && mediaAssets) {
+        // Staged preview resolves APPROVED images only. An unusable reference
+        // is reported in a header and left visible as a placeholder; preview
+        // must never fail closed on a curation problem.
+        try {
+          html = (await embedApprovedImages(mediaAssets, id, html)).html;
+        } catch {
+          reply.header('x-forge-media-unresolved', '1');
+        }
+      }
       reply
         .header('content-type', 'text/html; charset=utf-8')
         .header(
@@ -520,7 +643,9 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
                       error.code === 'decision_required' ||
                       error.code === 'invalid_screenshot'
                     ? 400
-                    : 409;
+                    : error.code === 'invalid_media_reference'
+                      ? 422
+                      : 409;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message, issues: error.details },

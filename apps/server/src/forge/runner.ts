@@ -11,6 +11,7 @@ import {
   type ForgeJobKind,
   ForgeJobSchema,
   type ForgeJobStatus,
+  type ForgeMediaManifest,
   type ForgeRecoveryIssue,
   type ForgeRecoveryReport,
   type ForgeRecoveryStorage,
@@ -22,6 +23,8 @@ import {
   type RetrievedMemory,
   redactSecrets,
 } from '@mml/shared';
+import { embedApprovedImages, MediaArtifactError } from '../media/artifact.js';
+import type { MediaAssetStore } from '../media/assets.js';
 import { forgeChildEnv } from './child-env.js';
 import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
@@ -83,6 +86,12 @@ export interface ForgeManagerOptions {
    */
   workerWrapper?: string | null;
   now?: () => Date;
+  /**
+   * Asset store used to embed approved images before runtime verification.
+   * Null/absent preserves pre-Batch-B behavior (placeholders are not
+   * resolved); the app always injects it.
+   */
+  mediaAssets?: MediaAssetStore | null;
 }
 
 export interface StartJobInput {
@@ -115,6 +124,7 @@ export { FORGE_PINNED_TYPES };
 
 export class ForgeJobManager {
   readonly workspace: ForgeWorkspace;
+  private readonly mediaAssets: MediaAssetStore | null;
   private readonly engine: MemoryEngine;
   private readonly museBin: string;
   /**
@@ -187,6 +197,7 @@ export class ForgeJobManager {
 
   constructor(options: ForgeManagerOptions) {
     this.workspace = options.workspace;
+    this.mediaAssets = options.mediaAssets ?? null;
     this.engine = options.engine;
     this.museBin = options.museBin ?? process.env.FORGE_MUSE_BIN ?? 'muse';
     const wrapperResolution =
@@ -1009,7 +1020,8 @@ export class ForgeJobManager {
       // throw on load. Nothing is promoted until it renders cleanly. The
       // snapshot hash is the exact byte sequence the browser checked, and
       // promotion refuses anything else.
-      const staged = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      const snapshot = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      const staged = await this.resolveStagedMedia(current.project_id, snapshot);
       const runtime = staged
         ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged application is missing.'] };
@@ -1060,6 +1072,16 @@ export class ForgeJobManager {
           runtimeDetails,
         );
       }
+      // Runtime verification and the approval snapshot happened before this
+      // point. If staging changed meanwhile (for example a tampering check),
+      // refuse to promote bytes that were never the ones verified.
+      const confirmed = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      if (snapshot === null || confirmed?.sha256 !== snapshot.sha256) {
+        throw new ForgeError(
+          'staged_changed',
+          'The staged source changed after runtime verification. Request the change again.',
+        );
+      }
 
       // Decision Guard (Phase 12C) runs only after the blocking runtime check
       // passed. It is advisory metadata: do not add a separate durable write
@@ -1102,6 +1124,8 @@ export class ForgeJobManager {
         baseVersion: current.base_version,
         jobId: current.id,
         ...(staged ? { expectedSha256: staged.sha256 } : {}),
+        ...(staged ? { html: staged.html } : {}),
+        ...(staged?.media ? { media: staged.media } : {}),
         verification: approvalVerification,
       });
       if (promoted.note) this.log(current, promoted.note);
@@ -1145,6 +1169,34 @@ export class ForgeJobManager {
 
       return { job: approved, state: await this.workspace.state(current.project_id) };
     });
+  }
+
+  /**
+   * Resolve placeholders through approved asset versions before the blocking
+   * runtime check. The resolved bytes are what get promoted, so an approved
+   * version is self-contained and its images survive later curation changes.
+   * A missing/unapproved reference blocks approval (422) without touching the
+   * staged document or the job record.
+   */
+  private async resolveStagedMedia(
+    projectId: string,
+    staged: { html: string; sha256: string } | null,
+  ): Promise<{ html: string; sha256: string; media?: ForgeMediaManifest } | null> {
+    if (staged === null || this.mediaAssets === null) return staged;
+    try {
+      const resolved = await embedApprovedImages(this.mediaAssets, projectId, staged.html);
+      if (resolved.html === staged.html) return staged;
+      return {
+        html: resolved.html,
+        sha256: createHash('sha256').update(resolved.html).digest('hex'),
+        ...(resolved.manifest ? { media: resolved.manifest } : {}),
+      };
+    } catch (error) {
+      if (error instanceof MediaArtifactError) {
+        throw new ForgeError('invalid_media_reference', error.message, error.issues);
+      }
+      throw error;
+    }
   }
 
   async rollback(projectId: string): Promise<ForgeState> {

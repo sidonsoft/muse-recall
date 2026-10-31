@@ -13,6 +13,7 @@ import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js
 import { buildForgePrompt } from '../../apps/server/src/forge/prompt.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
+import { MediaAssetStore } from '../../apps/server/src/media/assets.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
 import {
   READING_NOOK_MEMORIES,
@@ -123,6 +124,7 @@ async function harness(
     maxRuntimeMs: limits.maxRuntimeMs ?? 10_000,
     maxCalls: limits.maxCalls ?? 10,
     maxInputTokens: 10_000_000,
+    mediaAssets: new MediaAssetStore(workspace),
     reasoningEffort: 'low',
     runtimeCheck,
     ...(fallback || extra.fallbackKey
@@ -225,6 +227,73 @@ function previewStorageShim(html: string): string {
 }
 
 describe('forge workflow', () => {
+  it('embeds approved media into the approved artifact and verifies it', async () => {
+    const h = await harness();
+    await createProject(h.app, 'media-forge');
+    const assets = new MediaAssetStore(new ForgeWorkspace(h.root));
+    const record = await assets.createAsset('media-forge', {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    });
+    await assets.approve('media-forge', record.asset_id, record.version);
+
+    const jobId = await startGenerate(h.app, 'media-forge');
+    expect((await waitForFinish(h.app, jobId)).status).toBe('succeeded');
+    await writeFile(
+      join(h.root, 'forge', 'media-forge', 'staging', jobId, 'index.html'),
+      `<html><body><h1>Media</h1><img alt="dot" src="muse-asset://${record.asset_id}/v${String(record.version)}"></body></html>`,
+    );
+
+    const approved = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${jobId}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approved.statusCode).toBe(200);
+
+    const stateResponse = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/media-forge',
+    });
+    const state = stateResponse.json().data.state as {
+      versions: Array<{
+        version: number;
+        media: { embedded: Array<{ assetId: string; sha256Hex: string }> } | null;
+      }>;
+    };
+    expect(state.versions[0]?.media?.embedded).toHaveLength(1);
+    expect(state.versions[0]?.media?.embedded[0]?.assetId).toBe(record.asset_id);
+
+    const artifact = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/media-forge/artifact',
+    });
+    expect(artifact.statusCode).toBe(200);
+    expect(artifact.body).not.toContain('muse-asset://');
+
+    const verification = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/media-forge/artifact/verification',
+    });
+    expect(verification.statusCode).toBe(200);
+    const report = verification.json().data as {
+      ok: boolean;
+      embedded: Array<{ assetId: string }>;
+      issues: string[];
+    };
+    expect(report.ok).toBe(true);
+    expect(report.issues).toEqual([]);
+    expect(report.embedded[0]?.assetId).toBe(record.asset_id);
+
+    const previewResponse = await preview(h.app, 'media-forge');
+    expect(previewResponse.statusCode).toBe(200);
+    expect(previewResponse.body).toContain('data:image/png;base64,');
+  });
+
   it('generates, previews, approves, modifies, and rolls back', async () => {
     const h = await harness();
     expect((await createProject(h.app)).statusCode).toBe(200);

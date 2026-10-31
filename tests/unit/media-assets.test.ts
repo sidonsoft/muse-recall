@@ -15,8 +15,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
-import { MediaAssetStore, MediaError } from '../../apps/server/src/media/assets.js';
-import { MediaJobError, MediaJobStore } from '../../apps/server/src/media/jobs.js';
+import { MediaAssetStore, type MediaError } from '../../apps/server/src/media/assets.js';
+import { type MediaJobError, MediaJobStore } from '../../apps/server/src/media/jobs.js';
 
 const roots: string[] = [];
 
@@ -30,7 +30,12 @@ async function setup() {
   const workspace = new ForgeWorkspace(root);
   await workspace.ensureProject('demo');
   await workspace.ensureProject('other');
-  return { root, workspace, assets: new MediaAssetStore(workspace), jobs: new MediaJobStore(workspace) };
+  return {
+    root,
+    workspace,
+    assets: new MediaAssetStore(workspace),
+    jobs: new MediaJobStore(workspace),
+  };
 }
 
 /** Minimal 1x1 PNG (IHDR width=1 height=1, 8-bit RGBA). */
@@ -49,18 +54,58 @@ function png1x1(): Buffer {
   const idatData = Buffer.from('789c626001000000ffff030000060005', 'hex');
   const idatCrc = Buffer.from('0d0a2db4', 'hex');
   const iend = Buffer.from('0000000049454e44ae426082', 'hex');
-  return Buffer.concat([header, ihdrLen, ihdrType, ihdrData, ihdrCrc, idatLen, idatType, idatData, idatCrc, iend]);
+  return Buffer.concat([
+    header,
+    ihdrLen,
+    ihdrType,
+    ihdrData,
+    ihdrCrc,
+    idatLen,
+    idatType,
+    idatData,
+    idatCrc,
+    iend,
+  ]);
 }
 
 /** Minimal JPEG with a SOF0 segment declaring 1x1. */
 function jpeg1x1(): Buffer {
   return Buffer.from([
-    0xff, 0xd8, // SOI
-    0xff, 0xe0, 0x00, 0x10, // APP0
-    0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
-    0xff, 0xc0, 0x00, 0x0b, // SOF0, length 11
-    0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00,
-    0xff, 0xd9, // EOI
+    0xff,
+    0xd8, // SOI
+    0xff,
+    0xe0,
+    0x00,
+    0x10, // APP0
+    0x4a,
+    0x46,
+    0x49,
+    0x46,
+    0x00,
+    0x01,
+    0x01,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0xff,
+    0xc0,
+    0x00,
+    0x0b, // SOF0, length 11
+    0x08,
+    0x00,
+    0x01,
+    0x00,
+    0x01,
+    0x01,
+    0x01,
+    0x11,
+    0x00,
+    0xff,
+    0xd9, // EOI
   ]);
 }
 
@@ -101,16 +146,24 @@ describe('media assets', () => {
     // Bytes live outside SQLite, 0600, manifests beside them.
     const binPath = join(workspace.projectDir('demo'), 'media', record.asset_id, '1.bin');
     expect((await stat(binPath)).mode & 0o777).toBe(0o600);
-    await expect(readFile(join(workspace.projectDir('demo'), 'media', record.asset_id, '1.json'), 'utf8')).resolves.toContain(
-      record.sha256,
-    );
+    await expect(
+      readFile(join(workspace.projectDir('demo'), 'media', record.asset_id, '1.json'), 'utf8'),
+    ).resolves.toContain(record.sha256);
   });
 
   it('parses JPEG and WebP dimensions', async () => {
     const { assets } = await setup();
-    const jpeg = await assets.createAsset('demo', { kind: 'image', mime: 'image/jpeg', bytes: jpeg1x1() });
+    const jpeg = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/jpeg',
+      bytes: jpeg1x1(),
+    });
     expect([jpeg.width, jpeg.height]).toEqual([1, 1]);
-    const webp = await assets.createAsset('demo', { kind: 'image', mime: 'image/webp', bytes: webp1x1() });
+    const webp = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/webp',
+      bytes: webp1x1(),
+    });
     expect([webp.width, webp.height]).toEqual([1, 1]);
   });
 
@@ -130,7 +183,11 @@ describe('media assets', () => {
   it('refuses truncated bytes and MIME mismatches with explicit errors', async () => {
     const { assets } = await setup();
     await expect(
-      assets.createAsset('demo', { kind: 'image', mime: 'image/png', bytes: Buffer.from('89504e47', 'hex') }),
+      assets.createAsset('demo', {
+        kind: 'image',
+        mime: 'image/png',
+        bytes: Buffer.from('89504e47', 'hex'),
+      }),
     ).rejects.toMatchObject({ code: 'malformed_media' });
 
     // Valid PNG bytes declared as JPEG.
@@ -145,7 +202,11 @@ describe('media assets', () => {
 
   it('rejects cross-project parent references', async () => {
     const { assets } = await setup();
-    const parent = await assets.createAsset('other', { kind: 'image', mime: 'image/png', bytes: png1x1() });
+    const parent = await assets.createAsset('other', {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: png1x1(),
+    });
     await expect(
       assets.createAsset('demo', {
         kind: 'image',
@@ -158,7 +219,11 @@ describe('media assets', () => {
 
   it('accepts same-project parent references and versions immutably', async () => {
     const { assets } = await setup();
-    const first = await assets.createAsset('demo', { kind: 'image', mime: 'image/png', bytes: png1x1() });
+    const first = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: png1x1(),
+    });
     const second = await assets.addVersion('demo', first.asset_id, {
       kind: 'image',
       mime: 'image/png',
@@ -166,7 +231,11 @@ describe('media assets', () => {
       parent: { asset_id: first.asset_id, version: 1, project_id: 'demo' },
     });
     expect(second.version).toBe(2);
-    expect(second.parent).toMatchObject({ asset_id: first.asset_id, version: 1, project_id: 'demo' });
+    expect(second.parent).toMatchObject({
+      asset_id: first.asset_id,
+      version: 1,
+      project_id: 'demo',
+    });
 
     // v1 bytes are untouched by the new version.
     const v1 = await assets.readBytes('demo', first.asset_id, 1);
@@ -184,7 +253,11 @@ describe('media assets', () => {
 
   it('verifies project media for backup hash preservation', async () => {
     const { root, assets } = await setup();
-    const record = await assets.createAsset('demo', { kind: 'image', mime: 'image/png', bytes: png1x1() });
+    const record = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: png1x1(),
+    });
     const manifest = await assets.collectMediaManifest('demo');
     expect(manifest).toHaveLength(1);
     expect(manifest[0]).toMatchObject({ asset_id: record.asset_id, sha256: record.sha256 });
@@ -224,9 +297,16 @@ describe('media jobs', () => {
 
     // Interrupted jobs cannot publish or restart: they are terminal records.
     await expect(
-      jobs.succeed('demo', running.id, { asset_id: randomUUID(), version: 1, sha256: 'abc' }, afterRunning.generation),
+      jobs.succeed(
+        'demo',
+        running.id,
+        { asset_id: randomUUID(), version: 1, sha256: 'abc' },
+        afterRunning.generation,
+      ),
     ).rejects.toMatchObject({ code: expect.stringMatching(/cancelled|invalid_job_state/) });
-    await expect(jobs.start('demo', queued.id)).rejects.toMatchObject({ code: 'invalid_job_state' });
+    await expect(jobs.start('demo', queued.id)).rejects.toMatchObject({
+      code: 'invalid_job_state',
+    });
   });
 
   it('refuses to resume after a simulated process restart (fresh store instance)', async () => {
@@ -256,10 +336,19 @@ describe('media jobs', () => {
     await jobs.cancel('demo', job.id);
 
     await expect(
-      jobs.publishResult('demo', job.id, generation, { asset_id: randomUUID(), version: 1, sha256: 'deadbeef' }),
+      jobs.publishResult('demo', job.id, generation, {
+        asset_id: randomUUID(),
+        version: 1,
+        sha256: 'deadbeef',
+      }),
     ).rejects.toMatchObject({ code: 'cancelled' });
     await expect(
-      jobs.succeed('demo', job.id, { asset_id: randomUUID(), version: 1, sha256: 'deadbeef' }, generation),
+      jobs.succeed(
+        'demo',
+        job.id,
+        { asset_id: randomUUID(), version: 1, sha256: 'deadbeef' },
+        generation,
+      ),
     ).rejects.toMatchObject({ code: 'cancelled' });
 
     const after = await jobs.get('demo', job.id);
@@ -268,7 +357,10 @@ describe('media jobs', () => {
 
     // No secrets persisted: scrubbed at enqueue time, in memory and on disk.
     expect(JSON.stringify(after.params)).not.toContain('should-never-persist');
-    const raw = await readFile(join(workspace.projectDir('demo'), 'media-jobs', `${job.id}.json`), 'utf8');
+    const raw = await readFile(
+      join(workspace.projectDir('demo'), 'media-jobs', `${job.id}.json`),
+      'utf8',
+    );
     expect(raw).not.toContain('should-never-persist');
   });
 
@@ -276,16 +368,26 @@ describe('media jobs', () => {
     const { workspace, jobs } = await setup();
     const job = await jobs.enqueue('demo', {
       kind: 'describe',
-      params: { nested: { api_key: 'sk-live-123', safe: 'yes' }, authorization: 'Bearer abcdefghijklmnop' },
+      params: {
+        nested: { api_key: 'sk-live-123', safe: 'yes' },
+        authorization: 'Bearer abcdefghijklmnop',
+      },
     });
     expect(JSON.stringify(job.params)).not.toContain('sk-live-123');
     // 250 lines collapse to the bounded tail of 200.
     for (let i = 0; i < 250; i += 1) {
-      await jobs.appendLog('demo', job.id, `line ${String(i)} with token secret=hunter2-${String(i)}`);
+      await jobs.appendLog(
+        'demo',
+        job.id,
+        `line ${String(i)} with token secret=hunter2-${String(i)}`,
+      );
     }
     const stored = await jobs.get('demo', job.id);
     expect(stored.logs).toHaveLength(200);
-    const raw = await readFile(join(workspace.projectDir('demo'), 'media-jobs', `${job.id}.json`), 'utf8');
+    const raw = await readFile(
+      join(workspace.projectDir('demo'), 'media-jobs', `${job.id}.json`),
+      'utf8',
+    );
     expect(raw).not.toContain('sk-live-123');
     expect(raw).not.toContain('hunter2');
   });
@@ -299,7 +401,12 @@ describe('media jobs', () => {
     const cancelled = await jobs.cancel('demo', job.id);
     expect(cancelled.status).toBe('cancelled');
     await expect(
-      jobs.succeed('demo', job.id, { asset_id: randomUUID(), version: 1, sha256: 'x' }, cancelled.generation - 1),
+      jobs.succeed(
+        'demo',
+        job.id,
+        { asset_id: randomUUID(), version: 1, sha256: 'x' },
+        cancelled.generation - 1,
+      ),
     ).rejects.toMatchObject({ code: 'cancelled' });
   });
 });
