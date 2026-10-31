@@ -503,6 +503,20 @@ now is maintenance honesty, not new surface:
     its own push run. Concurrency `cancel-in-progress: true` on the
     PR ref explains why older runs sometimes appear superseded
     mid-watch.
+  - Tracked-vs-ignored census + protective negation (31 Oct): 14
+    tracked files matched .gitignore's `*.log` - ALL deliberate
+    evidence logs inside the frozen docs/hackathon-evidence/** tree
+    (tracked-beats-ignored keeps them safe today); the census value is
+    the FORWARD trap it exposed: `git add -A` silently skips NEW
+    evidence logs matching that rule. One protective line answers it:
+    `!docs/hackathon-evidence/**/*.log` (pattern text in an
+    unfrozen file - zero bytes changed inside the frozen tree,
+    following the file's own negation precedents). Post-change census:
+    tracked-but-ignored now 0; the 15 ignored paths are exactly
+    node_modules/dist/test-results/workspaces; no hidden content
+    anywhere. Issue templates checked in the same pass: both form
+    YAMLs and config.yml parse with sane keys, blank issues policy
+    explicit.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
