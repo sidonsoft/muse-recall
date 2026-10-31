@@ -596,6 +596,20 @@ now is maintenance honesty, not new surface:
     preservation all check out against their subjects (four
     boundaries enumerated; one job JSON; one staged file; one
     shared secret = authentication-without-identity).
+  - Number census on an ENUMERATED 64-file set (31 Oct): 426
+    number-noun hits classified, not skimmed - four surviving stale
+    twins fixed at their homes (ARCHITECTURE_OVERVIEW present-tense
+    six->seven; SUBMISSION_CHECKLIST refreshed with its review-era
+    six preserved in parentheses; KI-30 gains an era note - Phase 5
+    really shipped six, and KI-30's real claim "no shell/fs/network"
+    stands untouched); the rest classify clean: HACKATHON_SUBMISSION
+    and PROJECT_STATUS wear explicit Historical-document banners
+    (era rule honored), Phase-17's "six strata" and "480 runs" are
+    frozen-evidence arithmetic, and NEXT_STEPS' own sixes/eights/
+    twelves are the sentinel, mutation-registry and guide counts as
+    factored. A count census without a declared file set is
+    unfinishable; with one, it converges: three stale-home rounds,
+    this one likely the last.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
