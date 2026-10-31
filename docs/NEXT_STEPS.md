@@ -480,6 +480,17 @@ now is maintenance honesty, not new surface:
     this very register's anchor-syntax example rendered as a real
     markdown link pointing at a file called `path`, now escaped.
     Final: 521 links, ZERO broken, in live docs at head.
+  - SHA provenance scan of live docs (31 Oct): every git-looking hex
+    token in context got object-checked and ancestry-checked - 57
+    unique tokens, ZERO phantoms. The 5 that failed "ancestor of
+    integration" are each explained, not excused: two README tokens
+    (one unique) are the phase17 tag OBJECT, exactly matching the
+    freeze sentinel's deref - annotated tags are objects, not commits;
+    three PHASE-doc tokens are pre-squash branch TIPS, real objects
+    that no lineage carries because merge policy changed under them -
+    the historical-era citation rule in action, and a fact about this
+    repo's own topology: the docs remember branch shapes that the
+    squash history no longer contains.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
