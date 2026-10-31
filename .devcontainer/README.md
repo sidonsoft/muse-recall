@@ -89,6 +89,10 @@ pnpm build     # production web + server build
   `MUSE_RECALL_NO_COUNT=1` as a
   [Codespaces secret](https://github.com/settings/codespaces) before you create the
   codespace. Anyone can read the total at
-  `https://abacus.jasoncameron.dev/get/sidonsoft-muse-recall/codespaces-launches`.
+  `https://abacus.jasoncameron.dev/get/sidonsoft-muse-recall/codespaces-launches`
+  (observed 31 Oct: until the first real launch the key does not exist yet and the
+  service answers `{"error":"Key not found"}` rather than `0` - owner test launches
+  deliberately increment a separate counter, so a missing key means "no real
+  launches yet", not a broken link; the key is created by the first matching `hit`).
 - To start over, stop `pnpm dev`, delete `data/` and `workspaces/`, then run
   `pnpm demo:seed` and `pnpm dev` again.
