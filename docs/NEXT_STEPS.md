@@ -898,6 +898,20 @@ now is maintenance honesty, not new surface:
     now names the exemption in place. The probe that was meant to
     catch the code lying instead caught the comment lying - and
     SECURITY.md came out of it corroborated on a second route.
+  - Envelope-probe family strikes again - KI-48 filed (31 Oct):
+    oversized body (~1.1 MB to /api/memories, limit is 1 MiB at
+    app.ts:137, code-only) -> 413 with code `internal_error` and
+    Fastify's default "Request body is too large" message: client
+    error wearing a server-fault code, KI-45's mechanism a second
+    time; and the catalogue holds NO 413 entry at all, so the fix
+    needs a new `payload_too_large` entry, not just a mapping.
+    All three code-honesty fixes (KI-43's five codes, KI-45's
+    bad_request, KI-48's 413) now queue as ONE lockstep PR with a
+    single version bump 2->3 - discipline: probe families keep
+    finding siblings, and queues consolidate instead of scattering.
+    Also witnessed this pass: /api/meta reports its own posture -
+    loopback-only tokenless, shared-token with the bearer -
+    matching SECURITY.md exactly. KI validator: 48 ids, zero dups.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -996,8 +1010,10 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
 3. Record submitted SHA, tag derefs, and form fields in SUBMISSION_PRESERVATION.md.
 
 **B. Immediately after judging closes (mechanical, no owner judgment needed):**
-4. KI-43 + KI-45 lockstep PR: five inline codes into the catalogue (version 2→3)
-   AND statusCode-400 parse failures -> `bad_request` + mirror probes (KI-43, KI-45).
+4. KI-43 + KI-45 + KI-48 lockstep PR: five inline codes into the catalogue,
+   statusCode-400 parse failures -> `bad_request`, Fastify 413 -> new
+   `payload_too_large` entry, + mirror probes - ONE version bump 2→3 carrying
+   all three code-honesty fixes (32 entries -> 33+).
 5. PR #28: fetch `refs/pull/28/head` (f1a16f791e49...), recreate branch, merge or
    close with reason (SUBMISSION_PRESERVATION.md recovery block).
 6. SHA-pin the 17 floating `uses:` steps (9 actions) + per-file `permissions:`

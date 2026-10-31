@@ -524,3 +524,18 @@ Fix: NONE needed as new work - promoting `integration` to `main` post-judging la
 and repairs the link in one merge. Owner decision at tag time mirrors KI-44: (i) promote the
 docs-only lines to `main` before tagging (changes the shipped SHA) or (ii) ship as-is with the
 404 recorded here. Both files are also inside the frozen tree, so nothing acts before judging.
+
+### KI-48 - Oversized request bodies answer 413 + `internal_error`; the catalogue has no 413 entry at all (KI-45's class, second instance)
+
+**Severity:** Low (status correct, code wrong, like KI-45; discovery value is the missing 413 class)
+**Detail:** `bodyLimit: 1_048_576` at apps/server/src/app.ts:137 (1 MiB, code-only - no doc claims the
+number). Wire probe (31 Oct, fresh server): POST ~1.1 MB to `/api/memories` ->
+`413 {"ok":false,"error":{"code":"internal_error","message":"Request body is too large"}}`.
+The message is Fastify's default body-limit rejection; the generic error handler re-maps it to
+`internal_error` - a CLIENT error wearing a server-fault code, exactly KI-45's mechanism. Worse
+for the catalogue: NO 413 entry exists anywhere in the 45-code versioned set, so even a corrected
+code would currently be uncatalogued (KI-43 territory).
+Fix plan (post-judging, rides the KI-43 lockstep PR): handler maps Fastify's 413 statusCode to a
+new `payload_too_large` (413) catalogue entry + mirror probe; catalogue +1 entry => ERROR_CATALOG_VERSION
+2->3 in the same PR as KI-43's five codes and KI-45's bad_request mapping - one version bump, three
+code-honesty fixes. Pre-Nov-4: behavior+contract change, not judge-visible, so documented and queued.
