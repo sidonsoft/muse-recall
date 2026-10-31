@@ -437,7 +437,9 @@ now is maintenance honesty, not new surface:
     still land on exactly their claimed lines) plus the two inventory
     anchors from #173; zero out-of-range, zero text-vs-fragment drift.
     Scanner dialect noted: these anchors wrap their text in backticks
-    ([`config.ts:54`](path#L54)) - a regex that misses the backtick
+    (\[`config.ts:54`\](path#L54) - escaped HERE so it stays a
+    teaching example instead of rendering as a broken link; link
+    census scanners then flag no phantom) - a regex that misses the backtick
     sees ten anchors as zero, the census equivalent of a silent miss.
   - Judge user-guide censed against code (31 Oct, at head): all six
     docs/guide files' `pnpm <name>` commands resolve to real scripts;
@@ -468,6 +470,16 @@ now is maintenance honesty, not new surface:
     catch: grepping for PR cites `#102` first hits FOUR hex colors
     (#102A43) - reference searches must word-anchor or false-positive
     palettes answer first.
+  - Whole-tree live-doc link census (31 Oct): 521 local links across
+    every non-frozen doc, resolved with three rules this census was
+    nearly defeated by - (1) resolve against the FILE'S DIRECTORY,
+    not the file path: getting that backwards once flagged
+    docs/README.md as 15/15 broken when it is 15/15 fine; (2) strip
+    query strings - `?raw=true` media links are four more false
+    "misses" against a file that exists; (3) meta-text needs escaping:
+    this very register's anchor-syntax example rendered as a real
+    markdown link pointing at a file called `path`, now escaped.
+    Final: 521 links, ZERO broken, in live docs at head.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
