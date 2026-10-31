@@ -982,6 +982,10 @@ export function StudioView({
             cliMissing={forge?.cli_available === false}
           />
           <MediaPanel
+            // Remount on project switch: without this the previous project's
+            // thumbnails render once under the new id, firing cross-project
+            // bytes requests (and leaking the old prompt draft).
+            key={projectId}
             projectId={projectId}
             onInsert={(placeholder) =>
               updateDraft(

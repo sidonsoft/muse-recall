@@ -349,6 +349,18 @@ async function main(): Promise<void> {
       if (message.type() === 'error' && !ignorable) errors.push(text);
     });
     page.on('pageerror', (error) => errors.push(error.message));
+    // Record the URL behind every failed resource load: the console text
+    // alone cannot tell a thumbnail 404 from an API conflict. Same
+    // allowlist as the console gate above (favicon, 404, damaged-state
+    // window) so the gate's meaning does not change.
+    page.on('response', (response) => {
+      if (response.url().toLowerCase().includes('favicon')) return;
+      if (response.status() === 404) return;
+      if (allowResourceErrors) return;
+      if (response.status() >= 400) {
+        errors.push(`HTTP ${response.status()} ${response.request().method()} ${response.url()}`);
+      }
+    });
 
     await page.goto(webBase, { waitUntil: 'networkidle', timeout: 30_000 });
     await assertStudio(page);
@@ -557,6 +569,69 @@ async function main(): Promise<void> {
       throw new Error('Generate change is enabled for an empty request');
     }
     check('change request starts empty with a neutral placeholder and disabled action');
+
+    // ---- Media controls (Batch B, deterministic: uploaded bytes) ---------
+    // Uploaded bytes need no provider, so the curate-and-insert loop runs
+    // offline: candidate -> approve -> insert the placeholder into the
+    // change draft -> edit-target toggle -> Generate enablement. The segment
+    // leaves the change draft empty, as the check above requires.
+    const media = page.getByRole('region', { name: 'Media assets' });
+    await media.scrollIntoViewIfNeeded();
+    await media.getByText('No images yet.').waitFor({ timeout: 10_000 });
+    const uploadPng = join(OUT, 'media-upload-1x1.png');
+    writeFileSync(
+      uploadPng,
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    );
+    const imagePrompt = media.getByLabel('Image prompt');
+    await imagePrompt.fill('a small dot');
+    const generateImage = media.getByRole('button', { name: 'Generate', exact: true });
+    if (!(await generateImage.isEnabled())) {
+      throw new Error('Generate image stays disabled with a prompt');
+    }
+    await imagePrompt.fill('');
+    if (await generateImage.isEnabled()) {
+      throw new Error('Generate image is enabled for an empty prompt');
+    }
+    check('media Generate arms on prompt text without submitting a provider job');
+    await media.locator('input[type="file"]').setInputFiles(uploadPng);
+    await media.getByTitle('Approve this version').waitFor({ timeout: 15_000 });
+    check('uploaded bytes appear as an approvable candidate');
+    await media.getByTitle('Approve this version').click();
+    await media.getByText('Approved: v1').waitFor({ timeout: 15_000 });
+    check('uploaded candidate approves to an embeddable v1');
+    await media.getByTitle('Edit this version into a new candidate').click();
+    await media.getByLabel('Image edit prompt').waitFor({ timeout: 10_000 });
+    await media.getByText(/editing .* v1/).waitFor({ timeout: 10_000 });
+    await media.getByRole('button', { name: 'cancel' }).click();
+    await media.getByLabel('Image prompt').waitFor({ timeout: 10_000 });
+    check('edit targeting toggles the prompt and cancels cleanly');
+    await media.getByTitle('Insert this reference into the instruction').click();
+    {
+      const deadline = Date.now() + 10_000;
+      let seen = '';
+      while (Date.now() < deadline) {
+        seen = await page.getByLabel('Change request').inputValue();
+        if (seen.includes('muse-asset://')) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      if (!seen.includes('muse-asset://')) {
+        throw new Error('Insert did not place a muse-asset placeholder in the change draft');
+      }
+    }
+    await page.screenshot({ path: join(OUT, 'after-media-insert.png'), fullPage: true });
+    check('Insert places the approved reference into the change draft');
+    await page.getByLabel('Change request').fill('');
+    if ((await page.getByLabel('Change request').inputValue()) !== '') {
+      throw new Error('change draft could not be cleared after Insert');
+    }
+    if (!(await page.getByRole('button', { name: 'Generate change' }).isDisabled())) {
+      throw new Error('Generate change is enabled after clearing the draft');
+    }
+    check('change draft returns to empty with a disabled action after Insert');
 
     // Version summary uses the recorded request, not a generic model phrase.
     await review
