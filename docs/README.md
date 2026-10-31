@@ -8,7 +8,7 @@ start with these:
 | [../README.md](../README.md) | What Muse Recall is, the evidence, and how to run it |
 | [hackathon-evidence/phase17/RESULTS.md](hackathon-evidence/phase17/RESULTS.md) | The current pre-registered four-arm trial, with its review and correction notes |
 | [demo/CORRECTABLE_MEMORY_DEMO.md](demo/CORRECTABLE_MEMORY_DEMO.md) | The 2:50 recorded correction cut: beats, narration, evidence and honest failure note; the video itself is in [demo/video/](demo/video/) |
-| [hackathon-evidence/phase16/EVIDENCE_CARD.md](hackathon-evidence/phase16/EVIDENCE_CARD.md) | The earlier two-model research shown in the 2:46 fallback video |
+| [hackathon-evidence/phase16/EVIDENCE_CARD.md](hackathon-evidence/phase16/EVIDENCE_CARD.md) | The earlier two-model research, shown at the END of the committed 2:50 demo video |
 | [guide/README.md](guide/README.md) | The user guide: setup (including Codespaces), project memory, HTML Studio, architecture, limits |
 | [submission/SUBMISSION_COPY.md](submission/SUBMISSION_COPY.md) | The submission text, limitations and roadmap |
 | [submission/EVIDENCE_MAP.md](submission/EVIDENCE_MAP.md) | Every claim mapped to its evidence, and the claims we do not make |

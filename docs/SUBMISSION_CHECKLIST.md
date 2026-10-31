@@ -1,8 +1,11 @@
 # Submission checklist
 
-Status: **submission cut recorded (2:50) and QA'd; the earlier 2:46 cut is retained as
-the fallback; repository aligned with the current evidence; not yet submitted.** This file records
-requirements, evidence, and the actions that still require the repository owner.
+Status: **submission cut recorded (2:50) and QA'd; the earlier 2:46 cut is a
+prose-recorded fallback that was NEVER committed to this repository (verified 31 Oct:
+the only videos in any tree, including frozen `main`, are the 2:50 demo and its
+website copy); repository aligned with the current evidence; not yet submitted.**
+This file records requirements, evidence, and the actions that still require the
+repository owner.
 
 ## Official requirements — what could and could not be verified
 
