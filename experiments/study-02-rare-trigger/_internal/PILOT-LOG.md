@@ -46,3 +46,35 @@ free/local calls; the confirmatory experiment is not started and nothing is froz
 
 (Updated by the Lead as the background job progresses; the analyser recomputes final numbers from
 `pilot/records/`.)
+
+### D-P3 — post-restart LAN reachability failure from Node/Python; curl transport + supervisor
+
+- After a harness/session restart mid-pilot, the pilot process was lost with 10 primary records
+  completed (resumable, no data loss; records 1-10 preserved).
+- Relaunch attempts then failed at preflight with `EHOSTUNREACH 192.168.86.39:8080`, while
+  `curl http://192.168.86.39:8080/health` from the same process tree returned 200 in ~2 ms. Raw
+  TCP sockets from Node and Python failed with "No route to host"; the system `curl` binary
+  connected. This is an environment/network-privilege quirk after the restart, not a Dell fault.
+- Fix: runner HTTP transport now shells out to `curl --max-time` (with a `node:http` fallback if
+  curl is absent); curl exit 28 maps to a recorded `timeout`. This also keeps the earlier D-P2 fix
+  (undici's 300 s body timeout).
+- Resilience: `scripts/study02/supervise_pilot.sh` (detached, new session) relaunches `--resume`
+  after any runner exit until all 132 records exist, so transient network failures cannot truncate
+  the pilot. The supervisor refuses to start if a runner is already active.
+- No record was skipped or re-executed against the resume rule; transient failures produced no
+  outputs.
+
+### D-P4 — "hung" transport was a queued request behind a killed client (no code defect)
+
+- After D-P3 the runner appeared to hang on a long generation: the request was sent at 13:48:44 and
+  no response arrived, while the Dell status showed a completed generation at 13:53:43.
+- Root cause: killing a client mid-generation does **not** stop the engine; the server keeps
+  generating the orphaned request to completion, and the next request is FIFO-queued behind it.
+  The runner's request had simply not started generating yet. A standalone verbose curl of the same
+  prompt then completed normally: **5 m 28.4 s, HTTP/1.0 200, Content-Length 25,659, Connection:
+  close** — curl transport is sound.
+- Fix (process, not code): the supervisor now waits for `/slots` `is_processing == false` before
+  launching the runner, and a running client is never killed to "free" the endpoint. The runner's
+  900 s per-request safety timeout is unaffected.
+- Lesson recorded for the confirmatory harness: never treat a client-side abort as a server-side
+  abort on this endpoint; always wait for the slot to drain before the next execution.

@@ -1,0 +1,93 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--none--r0",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+  "stratum": "farm-challenge",
+  "arm": "none",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1195512332,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:none:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 183189637,
+  "order_key": "0559aabde6f28f6860a367b547938ca0c1b9cbf8178576a7d2b859ebc5f7da9a",
+  "variant_id": "farmyard-v01",
+  "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-challenge.farmyard-v01.p00--none--r0.txt",
+  "prompt_sha256": "02a78d20705c196368dd90f40967e084f2c7d925489717b3cb5db4fbcfd728c7",
+  "prompt_bytes": 20072,
+  "request_sha256": "f23c086d3c865cf1dba3851587538306cf44cf44f904f93097b8db2cb8eca7f2",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T03:09:36.931Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 314.13,
+      "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v01.p00--none--r0.attempt1.json",
+      "response_sha256": "45f302322a05b20dcec86f3b1c8873c77b135aab40ad256630e75a41a8a7e2df"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6403,
+    "completion_tokens": 7159,
+    "total_tokens": 13562,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6403,
+    "prompt_ms": 16817.8,
+    "prompt_per_token_ms": 2.627,
+    "prompt_per_second": 380.7,
+    "predicted_n": 7159,
+    "predicted_ms": 297290.2,
+    "predicted_per_token_ms": 41.527,
+    "predicted_per_second": 24.1,
+    "draft_n": 5690,
+    "draft_n_accepted": 5553
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-challenge.farmyard-v01.p00--none--r0.html",
+  "output_bytes": 22038,
+  "output_sha256": "326cd847641d54829b1a6fa50bc6e03f91978e628a053cccb7b73f9963c7eb61",
+  "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v01.p00--none--r0.attempt1.json",
+  "started_at": "2026-10-31T03:09:36.931Z",
+  "finished_at": "2026-10-31T03:14:51.067Z",
+  "seconds_total": 314.136,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

@@ -86,9 +86,17 @@ compares with typing the same rule into every request. It will not support:
 ## 6. Current status (replace at publication)
 
 - Phase 1 audit: complete (`01-AUDIT.md`).
-- Protocol draft: complete but **not frozen** (`02-PROTOCOL-DRAFT.md`).
-- Dell endpoint: discovered and characterised (`03-DELL-ENDPOINT.md`).
-- Unit of analysis and power: resolved for the draft (`04-ANALYSIS-PLAN.md`).
-- Pilot: **not run**. Confirmatory experiment: **not started**.
-- Open items include the confirmatory model/endpoint, the human-coding resource, and an
-  opportunity-class design confound — see the checkpoint report.
+- Preregistration: **not frozen**. The protocol exists as a draft (`02-PROTOCOL-DRAFT.md`) plus the
+  checkpoint-2 revision notice (`02b-PROTOCOL-REVISION-V2.md`).
+- Opportunity-class design: revised to matched high/low template twins and a 400-scenario corpus
+  (`design/design-v2.json`, `corpus/`); diversity limits reported in `08-CORPUS-DIVERSITY.md`.
+- Dell endpoint: qualified for the pilot (`07-ENDPOINT-QUALIFICATION.md`); measured throughput makes
+  it unsuitable as the confirmatory endpoint for 4,800 full-file runs.
+- Scoring: deterministic frozen-detector harness, validated against the Phase 17 committed outputs
+  (`09-SCORING.md`). No human validation has occurred.
+- Revised power: complete (`04b-ANALYSIS-PLAN-REV2.md`), simulation only.
+- Pilot (30 scenarios, 120 + 12 executions): executing on the Dell endpoint; results will be
+  reported separately and excluded from confirmatory data.
+- Confirmatory experiment: **not started**. Confirmatory model/endpoint: **deferred to review**.
+- Open items: confirmatory endpoint/model, the human-coding resource, corpus-diversity decision,
+  and pilot-derived protocol fixes (`PILOT-CHANGES.md`).

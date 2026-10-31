@@ -22,9 +22,11 @@
  *   pnpm exec tsx experiments/study-02-rare-trigger/scripts/study02/runner.mjs \
  *     --plan experiments/study-02-rare-trigger/pilot/pilot-plan.json --dry-run
  */
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -584,58 +586,119 @@ export function checkManipulation({ arm, prompt, rule, memoryIds, correction }) 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * JSON-over-HTTP client built on `node:http`/`node:https`.
+ * JSON-over-HTTP client using the system `curl` binary.
  *
- * Node's global `fetch` (undici) applies a 300 s `bodyTimeout` by default.
- * The Dell engine sends no bytes until a full-file generation finishes
- * (~4-5 min), so a `fetch` request dies at ~301 s with "fetch failed" even
- * though the server is healthy — this was pilot defect D-P2, observed on the
- * first pilot execution (two attempts, 301.0 s and 306.0 s, no output).
- * `node:http` has no such default body timeout; we add an explicit socket
- * idle timeout equal to the per-request budget and destroy the request on
- * expiry (recorded as a `timeout` attempt, not a silent hang).
+ * Two environment facts forced this (both observed during the checkpoint-2
+ * pilot, 2026-10-31):
+ *
+ * 1. Node's global `fetch` (undici) applies a 300 s `bodyTimeout` by default.
+ *    The Dell engine sends no bytes until a full-file generation finishes
+ *    (~4-5 min), so a `fetch` request dies at ~301 s with "fetch failed" even
+ *    though the server is healthy (pilot defect D-P2: two attempts,
+ *    301.0 s / 306.0 s, no output).
+ * 2. After the harness process restarted, raw TCP sockets from Node and Python
+ *    to the Dell LAN address failed with EHOSTUNREACH ("No route to host"),
+ *    while the system `curl` binary connected immediately from the same
+ *    process tree. This is an environment/network-privilege quirk, not a
+ *    server problem (`curl http://192.168.86.39:8080/health` returns 200).
+ *    Using `curl` therefore also fixes the reachability failure.
+ *
+ * `curl --max-time` implements the per-request safety timeout; exit code 28 is
+ * mapped to a timeout error so the runner records it as `timeout` (not a
+ * silent hang, not a transport error). A `node:http` fallback is kept for
+ * environments without curl.
  */
-function fetchJson(url, options = {}, timeoutMs = 15_000) {
-  return new Promise((resolve, reject) => {
-    const target = new URL(url);
-    const transport = target.protocol === 'https:' ? https : http;
-    const payload = options.body == null ? null : String(options.body);
-    const headers = { ...(options.headers || {}) };
-    if (payload != null) headers['content-length'] = Buffer.byteLength(payload);
-    const req = transport.request(
-      {
-        protocol: target.protocol,
-        hostname: target.hostname,
-        port: target.port || (target.protocol === 'https:' ? 443 : 80),
-        path: `${target.pathname}${target.search}`,
-        method: options.method || 'GET',
-        headers,
-        agent: false,
-      },
-      (res) => {
-        const chunks = [];
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => {
-          const text = Buffer.concat(chunks).toString('utf8');
-          let body;
-          try {
-            body = JSON.parse(text);
-          } catch {
-            body = { raw: text.slice(0, 2_000) };
-          }
-          const status = res.statusCode ?? 0;
-          resolve({ status, ok: status >= 200 && status < 300, body });
-        });
-        res.on('error', reject);
-      },
-    );
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error(`request timeout after ${timeoutMs} ms`));
+function curlFetchJson(url, options = {}, timeoutMs = 15_000) {
+  const method = options.method || 'GET';
+  const payload = options.body == null ? null : String(options.body);
+  const dir = mkdtempSync(path.join(os.tmpdir(), 's02-http-'));
+  const bodyFile = path.join(dir, 'body');
+  const outFile = path.join(dir, 'out');
+  try {
+    const args = [
+      '-sS', '--max-time', String(Math.ceil(timeoutMs / 1000)),
+      '-o', outFile, '-w', '%{http_code}', '-X', method,
+    ];
+    for (const [k, v] of Object.entries(options.headers || {})) args.push('-H', `${k}: ${v}`);
+    if (payload != null) {
+      writeFileSync(bodyFile, payload);
+      args.push('--data-binary', `@${bodyFile}`);
+    }
+    args.push(url);
+    const stdout = execFileSync('curl', args, {
+      timeout: timeoutMs + 10_000,
+      maxBuffer: 8 * 1024 * 1024,
+      encoding: 'utf8',
     });
-    req.on('error', reject);
-    if (payload != null) req.write(payload);
-    req.end();
-  });
+    const status = Number.parseInt(String(stdout).trim(), 10);
+    const text = existsSync(outFile) ? readFileSync(outFile, 'utf8') : '';
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { raw: text.slice(0, 2_000) };
+    }
+    return { status: Number.isFinite(status) ? status : 0, ok: status >= 200 && status < 300, body };
+  } catch (err) {
+    if (err && (err.status === 28 || err.code === 28)) {
+      throw new Error(`request timeout after ${timeoutMs} ms`);
+    }
+    if (err && err.signal === 'SIGTERM') throw new Error(`request timeout after ${timeoutMs} ms`);
+    const detail = err && err.stderr ? String(err.stderr).slice(0, 300) : String(err && err.message);
+    throw new Error(`curl transport failed: ${detail}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+async function fetchJson(url, options = {}, timeoutMs = 15_000) {
+  try {
+    return curlFetchJson(url, options, timeoutMs);
+  } catch (err) {
+    if (!/ENOENT|not found/i.test(String(err && err.message))) throw err;
+    // Fallback for environments without curl: node:http with an explicit
+    // socket idle timeout (no undici 300 s body timeout).
+    return await new Promise((resolve, reject) => {
+      const target = new URL(url);
+      const transport = target.protocol === 'https:' ? https : http;
+      const payload = options.body == null ? null : String(options.body);
+      const headers = { ...(options.headers || {}) };
+      if (payload != null) headers['content-length'] = Buffer.byteLength(payload);
+      const req = transport.request(
+        {
+          protocol: target.protocol,
+          hostname: target.hostname,
+          port: target.port || (target.protocol === 'https:' ? 443 : 80),
+          path: `${target.pathname}${target.search}`,
+          method: options.method || 'GET',
+          headers,
+          agent: false,
+        },
+        (res) => {
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => {
+            const text = Buffer.concat(chunks).toString('utf8');
+            let body;
+            try {
+              body = JSON.parse(text);
+            } catch {
+              body = { raw: text.slice(0, 2_000) };
+            }
+            const status = res.statusCode ?? 0;
+            resolve({ status, ok: status >= 200 && status < 300, body });
+          });
+          res.on('error', reject);
+        },
+      );
+      req.setTimeout(timeoutMs, () => {
+        req.destroy(new Error(`request timeout after ${timeoutMs} ms`));
+      });
+      req.on('error', reject);
+      if (payload != null) req.write(payload);
+      req.end();
+    });
+  }
 }
 
 /** GET /v1/models; assert the configured model id equals the served id. */

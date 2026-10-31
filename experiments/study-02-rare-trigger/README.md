@@ -1,10 +1,10 @@
 # Study 02 — Rare-Trigger Reliability
 
-**Status: CHECKPOINT 1 COMPLETE — audit, protocol draft and Dell endpoint discovery. NOT
-preregistered, NOT frozen, NO experimental results.** The confirmatory experiment has not started
-and must not start until the statistical analyst's unit-of-analysis approval, the Phase 1 audit and
-a frozen preregistration are all in place (and the user approves). The Dell pilot may proceed
-earlier, but its data are kept separate from the confirmatory dataset.
+**Status: CHECKPOINT 2 IN PROGRESS.** Endpoint qualification, the expanded matched-twin corpus,
+deterministic scoring and the revised power analysis are complete; the approved 30-scenario Dell
+pilot (120 primary + 12 repeat executions) is executing. **The confirmatory experiment has NOT
+started, the preregistration is NOT frozen, and the confirmatory model/endpoint is NOT decided.**
+Nothing here is a confirmatory result.
 
 This directory is the working area for a preregistered follow-up to the Muse Recall Phase 17
 evaluation (`docs/hackathon-evidence/phase17/`). The follow-up answers a specific criticism:
@@ -14,7 +14,9 @@ evaluation (`docs/hackathon-evidence/phase17/`). The follow-up answers a specifi
 
 The study replaces the original marginal statistic (violations / usable runs) with a **conditional
 violation rate (CVR): violations among runs that had a valid trigger opportunity**, and reports
-trigger prevalence, trigger exposure and actual violations as three separate quantities.
+trigger prevalence, trigger exposure and actual violations as three separate quantities. See
+[`10-CHECKPOINT2-REPORT.md`](10-CHECKPOINT2-REPORT.md) for the checkpoint-2 report and
+[`05-CHECKPOINT-REPORT.md`](05-CHECKPOINT-REPORT.md) for the checkpoint-1 record.
 
 ---
 
@@ -23,100 +25,94 @@ trigger prevalence, trigger exposure and actual violations as three separate qua
 | | |
 |---|---|
 | Repository | `sidonsoft/muse-recall` |
-| Working branch | `integration` (this checkout `/Users/burnz/projects/muse-memory-lab`) |
+| Working branch | `integration`; study branch `study02/checkpoint-1` (draft PR #187) |
 | Study directory | `experiments/study-02-rare-trigger/` |
 | Original study | `docs/hackathon-evidence/phase17/` (locked; not modified) |
 | Frozen submission | tags `submission-v14`, `submission-v15` and `main` — **not modified** |
-| Target line | follow-up to Phase 17; does not replace or revise it |
+| Confirmatory gate | blocked until audit + unit-of-analysis approval + frozen preregistration + user approval |
 
-Nothing in this directory changes production application behaviour. No Phase 15B/17 locked artifact
-(`protocol.sha256`, `SHA256SUMS`, `out/`, `pilot/`, `LOCK.md`, `CORRECTIONS*`) is modified.
+Nothing here changes production application behaviour or any Phase 15B/17 locked artefact
+(`protocol.sha256`, `SHA256SUMS`, `out/`, `pilot/`, `LOCK.md`, `CORRECTIONS*`). Pilot and
+qualification data are excluded from any confirmatory dataset.
 
 ---
 
-## Deliverables (mission Phase 6 numbering)
+## Checkpoint-2 deliverables
 
-| # | Deliverable | File / directory | Status |
-|---|---|---|---|
-| 1 | Experimental protocol | [`02-PROTOCOL-DRAFT.md`](02-PROTOCOL-DRAFT.md) | **DRAFT** — 18 sections; not frozen |
-| 2 | Preregistration document | `design/protocol.sha256` + `LOCK` (future) | **NOT YET** — created only after pilot, fixes and approval |
-| 3 | Frozen scenario corpus | `design/corpus-spec.md` + future `corpus/` | **CONTRACT ONLY** — corpus does not exist yet |
-| 4 | Expected-outcome labels | schema in protocol §8 / `design/design-draft.json` | **SCHEMA ONLY** — 19-field label file not generated |
-| 5 | Reproducible execution harness | future `scripts/study02/` | **PENDING** — design + endpoint contract ready |
-| 6 | Pilot report | future `pilot/` | **PENDING** — pilot not executed |
-| 7 | Confirmatory results report | future `results/` | **PENDING** — not started (gate) |
-| 8 | Statistical analysis | [`04-ANALYSIS-PLAN.md`](04-ANALYSIS-PLAN.md) + [`analysis/`](analysis/) | **PLAN + SIMULATED POWER ONLY** — no observed data |
-| 9 | Reproduction instructions | [`REPRODUCTION.md`](REPRODUCTION.md) | Checkpoint scope documented; full run pending |
-| 10 | Public technical summary for Meridian | [`06-PUBLIC-SUMMARY-DRAFT.md`](06-PUBLIC-SUMMARY-DRAFT.md) | **DRAFT OUTLINE** — no results to summarise yet |
+| Artefact | Path | Status |
+|---|---|---|
+| Endpoint qualification (6 real generations, throughput, stop-rule decision) | [`07-ENDPOINT-QUALIFICATION.md`](07-ENDPOINT-QUALIFICATION.md), [`qualification/`](qualification/) | **Complete** |
+| Expanded matched-twin corpus (60 variants, 400 scenarios, 200/200, labels) | [`corpus/`](corpus/), [`design/design-v2.json`](design/design-v2.json), [`design/corpus-spec-v2.md`](design/corpus-spec-v2.md) | **Complete (draft, not frozen)** |
+| Corpus diversity analysis | [`08-CORPUS-DIVERSITY.md`](08-CORPUS-DIVERSITY.md) | **Complete, with candid limits** |
+| Deterministic scoring (frozen detectors + exposure classifier + validation) | [`09-SCORING.md`](09-SCORING.md), [`scoring/`](scoring/), [`scripts/study02/score.py`](scripts/study02/score.py), [`scripts/study02/test_scoring.py`](scripts/study02/test_scoring.py) | **Complete and validated against Phase 17** |
+| Resumable full-file pilot runner | [`scripts/study02/runner.mjs`](scripts/study02/runner.mjs), [`scripts/study02/run_pilot.mjs`](scripts/study02/run_pilot.mjs), [`scripts/study02/supervise_pilot.sh`](scripts/study02/supervise_pilot.sh) | **Complete; pilot-only (refuses confirmatory)** |
+| 30-scenario pilot (120 + 12 executions) | [`pilot/`](pilot/) | **Executing** |
+| Pilot analysis | [`scripts/study02/analyze_pilot.py`](scripts/study02/analyze_pilot.py), [`pilot/pilot-analysis.json`](pilot/pilot-analysis.json), [`pilot/pilot-tables.md`](pilot/pilot-tables.md) | **Pipeline ready; final numbers after completion** |
+| Revised analysis plan + power (matched-twin design) | [`04b-ANALYSIS-PLAN-REV2.md`](04b-ANALYSIS-PLAN-REV2.md), [`analysis/power_study2_rev2.py`](analysis/power_study2_rev2.py), [`analysis/power_study2_rev2.txt`](analysis/power_study2_rev2.txt) | **Complete (SIM only)** |
+| Protocol revision notice v0.2 | [`02b-PROTOCOL-REVISION-V2.md`](02b-PROTOCOL-REVISION-V2.md) | **Draft** |
+| Pilot changes / defect list (pre-freeze) | [`PILOT-CHANGES.md`](PILOT-CHANGES.md) | **Live** |
+| Checkpoint-2 report (endpoint, corpus, pilot, defects, power, budget) | [`10-CHECKPOINT2-REPORT.md`](10-CHECKPOINT2-REPORT.md) | **In progress** |
+| Reproduction instructions | [`REPRODUCTION.md`](REPRODUCTION.md) | Checkpoint-1 + checkpoint-2 commands |
+| Public technical summary for Meridian | [`06-PUBLIC-SUMMARY-DRAFT.md`](06-PUBLIC-SUMMARY-DRAFT.md) | **Draft, no results** |
+| Checkpoint-1 documents | `01-AUDIT.md`, `02-PROTOCOL-DRAFT.md`, `03-DELL-ENDPOINT.md`, `04-ANALYSIS-PLAN.md`, `05-CHECKPOINT-REPORT.md`, `design/corpus-spec.md`, `design/design-draft.json` | Preserved unchanged as the checkpoint-1 record |
 
-Checkpoint support documents:
+---
 
-| Document | Contents |
+## Revised design in one table (draft, not frozen)
+
+| Element | Design v0.2 |
 |---|---|
-| [`01-AUDIT.md`](01-AUDIT.md) | Phase 1 audit: artefacts, arms/trigger definitions, detector reproducibility, provenance gaps, reuse matrix |
-| [`03-DELL-ENDPOINT.md`](03-DELL-ENDPOINT.md) | Dell PolyStrata endpoint: machine metadata, API contract, measured throughput, pilot configuration |
-| [`05-CHECKPOINT-REPORT.md`](05-CHECKPOINT-REPORT.md) | Findings, verified-vs-unresolved, decisions required before freeze |
-| [`MANIFEST-checkpoint1.sha256`](MANIFEST-checkpoint1.sha256) | SHA-256 of every checkpoint artefact (integrity of this checkpoint, not a preregistration lock) |
-| [`_internal/BRIEF.md`](_internal/BRIEF.md) | Team working brief (internal, not an output for Meridian) |
+| Arms | `none`, `memory`, `manual`, `corrected` (Phase 17 semantics) |
+| Strata | `farm-arcade`, `farm-challenge`, `orchard-arcade`, `orchard-challenge`, `focus-reward`, `focus-lively` |
+| Corpus | 400 scenarios = 4 game strata × 60 (20 variants × 3 paraphrases) + 2 focus × 80 (20 × 4) |
+| Variants | 60 single-file apps: 3 families × 10 structural templates × matched H/L twins |
+| Opportunity | 200 high-opportunity / 200 low-opportunity, class crossed with template (matched pairs) |
+| Reps | 3 per scenario per arm; non-zero sampling (temperature 0.7 / top_p 0.8), thinking disabled |
+| Executions | 4,800 confirmatory (not executed) |
+| Primary metric | CVR on the 200 high-opportunity scenarios, equal-stratum weighted |
+| Unit of analysis | unique scenario; reps technical; **H2 clustered at the variant level** |
+| Primary tests | H1/H3 stratified paired sign-flip permutation (Holm); H2 variant-cluster bootstrap non-inferiority, **+10 pp** recommended margin |
+| Order | SHA-256 key, seed `0x02A2026` (confirmatory formula finalised at freeze) |
+| Pilot | 30 scenarios × 4 arms × 1 rep + 12 repeats = 132, Dell only, excluded from confirmatory data |
 
 ---
 
-## Study design in one table (draft, not frozen)
+## Headline checkpoint-2 findings
 
-| Element | Draft |
-|---|---|
-| Arms | `none`, `memory`, `manual`, `corrected` (identical semantics to Phase 17) |
-| Strata | `farm-arcade`, `farm-challenge`, `orchard-arcade`, `orchard-challenge`, `focus-reward`, `focus-lively` (Phase 17 continuity) |
-| Corpus | 400 unique scenarios = 4 game strata × 70 (10 variants × 7 paraphrases) + 2 focus strata × 60 (10 × 6) |
-| Opportunity | 200 high-opportunity / 200 low-opportunity scenarios, assigned by frozen corpus construction (pre-treatment) |
-| Repetitions | 3 per scenario per arm, non-zero sampling (0.7 / 0.8 draft) |
-| Executions | 4,800 confirmatory + 240 pilot (all executed; no optional stopping) |
-| Primary metric | CVR on the pre-registered high-opportunity subset, equal-stratum weighted |
-| Unit of analysis | the unique scenario (3 reps are technical replicates; arms paired within scenario) |
-| Primary tests | H1/H3 stratified paired sign-flip permutation (Holm); H2 cluster-bootstrap non-inferiority, +10 pp margin (draft) |
-| Order | SHA-256 key `sha256("2760742:<scenario_id>:<arm>:<rep>")`, seed `0x02A2026`, 8 deterministic shards |
-| Pilot | 30 pilot-only scenarios covering all six strata, Dell endpoint only, excluded from confirmatory data |
-
-See the protocol draft for the authoritative wording. No number in this table is frozen.
-
----
-
-## Headline checkpoint findings
-
-1. **The original detector and analysis are reproducible from committed evidence.** The Phase 17
-   detector fixtures pass 41/41, the lock manifest verifies 17/17, the output manifest 1205/1205, a
-   full independent re-score of the 472 committed HTML outputs matches all 96 analysis cells, and
-   the committed analysis JSON reproduces byte-for-byte. However, the *generation* step is not
-   reproducible (no model endpoint replay) and the verifiers are same-author.
-2. **Meridian's criticism is materially correct.** No Phase 17 artefact defines, measures or
-   conditions on trigger opportunity (`grep -rin 'opportunit'` over the evidence tree: 0 matches).
-   Two strata had zero `none`-arm violations and therefore "contribute nothing to H1"; the
-   `memory` arm's 0/58 and 1/60 are unconditional counts.
-3. **The Dell endpoint is usable for the pilot but not for the full 4,800-run confirmatory pass.**
-   `qwen3.6-35b-a3b-ud-q3_k_m` (Qwen3.6-35B-A3B, UD-Q3_K_M) on PolyStrata 0.1.45, OpenAI-compatible
-   `POST /v1/chat/completions`, no auth, single generation slot, ~25 tok/s decode / ~303 tok/s
-   prefill. Full-file HTML outputs (Phase 17 mean ≈ 6.2k tokens) imply ≈200–600 s/run and
-   ≈11–33 days of continuous serial execution for 4,800 runs. This is a freeze blocker, not a
-   harness-tuning detail.
-4. **The unit of analysis and power are resolved for the draft design** (scenario-level clustering;
-   3 reps technical; +10 pp H2 margin; power ≥0.99 at calibrated rates) but an independent second
-   implementation of the analysis is still required, and the opportunity-class design has a
-   variant-level confound that must be resolved before freeze.
-5. **Nothing is preregistered.** The protocol is a draft; the corpus, labels, harness and analysis
-   script do not exist yet; the pilot has not run; no confirmatory data exist.
+1. **Endpoint qualified.** Dell `qwen3.6-35b-a3b-ud-q3_k_m` (PolyStrata 0.1.45) serves full-file
+   generations at ~24 tok/s decode / ~365 tok/s prefill; projected 132 pilot executions 8.7 h
+   (central) vs the 10 h planning threshold, so the stop rule was not triggered. It **is not
+   seed-deterministic at temperature 0.7**, and 4,800 confirmatory runs on this single slot would
+   take ≈318 h — the confirmatory endpoint decision is deferred.
+2. **Opportunity-class confound resolved.** 10 templates/family each in high/low twin configurations,
+   class crossed with template; high-opportunity templates 15 → 30. Corpus validated: 60/60
+   detector-clean, twins differ only in hook blocks, 400 unique scenarios, 200/200, labels generated.
+   Diversity limit reported honestly: structural not from-scratch app diversity (raw-text Jaccard
+   ≈0.97 within family).
+3. **Scoring is deterministic and reproduced.** Frozen Phase 17/16 detector copies hash-pinned; a
+   full re-score of the committed Phase 17 outputs reproduces `phase17-analysis.json` exactly
+   (24/24 cells per model × reading); exposure classifier fixture-tested. No human validation
+   occurred — no human-validation claim is made.
+4. **Power revised.** 400 × 3 remains adequate (H1/H3 saturated; H2@10 min 0.910 at arm parity under
+   the worst clustering cell); recommended margin +10 pp with a coarse pre-declared pilot fallback.
+   The revision is a confound fix, not a power gain.
+5. **Pilot defects found and handled** (see `PILOT-CHANGES.md`): Node fetch 300 s body timeout (fixed
+   with a curl transport), a post-restart LAN reachability quirk (curl used), client-abort ≠
+   server-abort queueing (idle-slot supervisor), seed non-determinism (protocol relabel required),
+   production prompt-builder drift (comparability caveat), corpus `template_id` field to add, and
+   the missing human-coding resource (blocker for freeze).
 
 ---
 
-## Next gate (not executed in this checkpoint)
+## Next gate
 
-1. Resolve the decisions in [`05-CHECKPOINT-REPORT.md`](05-CHECKPOINT-REPORT.md) §6, especially the
-   confirmatory endpoint/model, output format/throughput plan, human-coding resource and the
-   opportunity-class design fix.
-2. Build the corpus + label generator, endpoint client, runner, scoring and order/verifier scripts.
-3. Run the 30-scenario Dell pilot; report it separately; fix defects; write `PILOT-CHANGES.md`.
-4. Freeze (protocol, design, corpus, labels, analysis, ordering, seeds, run config), hash into
-   `design/protocol.sha256`, commit and push a tag **before** the first confirmatory run.
-5. Only then execute the confirmatory experiment and publish results without suppressing negative
+1. Finish and analyse the pilot; record every defect (`PILOT-CHANGES.md`, `10-CHECKPOINT2-REPORT.md`).
+2. User review of checkpoint 2: confirmatory endpoint/model, human-coding resource, corpus-diversity
+   decision, and the remaining open items.
+3. Fold pilot changes into the consolidated protocol v0.3; generate spares/validation; freeze
+   (protocol, design, corpus, labels, scoring, runner, analysis, order, seeds) and push a tag
+   **before** the first confirmatory run.
+4. Only then execute the confirmatory experiment and publish results without suppressing negative
    findings.
 
-**No claims are made here that zero observed failures establish zero failure probability.**
+**No claim is made that zero observed failures establish zero failure probability.**
