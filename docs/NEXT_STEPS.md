@@ -678,6 +678,18 @@ now is maintenance honesty, not new surface:
     Dialect trap banked: `vitest list --files` answered zero in
     this harness - a silent-empty probe; a tool's zero must be
     confirmed to mean "nothing", not "I heard nothing".
+  - Workspace-topology census (31 Oct, at head): pnpm-workspace globs
+    (`apps/*`, `packages/*`) instantiate exactly the 10 documented
+    packages; every `@mml/*` import across every src tree resolves to
+    a declared name (zero unresolved); all 10 are private:true; and
+    ALL 19 internal dependency specifiers are `workspace:*` - no
+    versioned or floating internal deps, so an intra-repo package
+    can never silently resolve to npm-hosted code under the same
+    name. Leaf apps export nothing (nothing imports them); the eight
+    packages export through package.json - coherent leaf/library
+    split. CI typecheck already proves resolution at every merge;
+    this adds the private/workspace:* policy shape that typecheck
+    does not assert.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
