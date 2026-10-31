@@ -366,7 +366,7 @@ now is maintenance honesty, not new surface:
     `permissions:` block, still runs under a read-only ceiling: least
     privilege is structurally enforced at the repo layer, not per-file.
     website.yml scopes permissions explicitly where Pages deploy needs
-    write. All 18 `uses:` steps reference floating major tags (@v4/
+    write. All 18 `uses:` steps reference floating major tags (@v4/  [count refreshed 31 Oct: 17]
     @v3), no SHA pins - standard for the project's scale; SHA pinning
     queued post-judging (it would touch website.yml, inside the freeze,
     and the required-check surface).
@@ -643,6 +643,16 @@ now is maintenance honesty, not new surface:
     post-judging lockstep PR as its second code-honesty item.
     Pre-Nov 4: documented, never silently patched - the KI-43/KI-44
     pattern for real defects found at head.
+  - Supply-chain pin count self-corrected (31 Oct): the #162 census
+    line said "all 18 uses: steps float"; re-count at head: 17 -
+    9 in ci.yml + 8 in website.yml, across 9 distinct actions. The
+    18 was true at #162's own head (verified by re-counting that
+    commit's files); something since... (the delta sits in the
+    historical browser-check consolidation)... Regardless, the
+    register line now carries its refreshed count rather than an
+    unchecked one - understating drift is drift; so is overstating
+    a count five PRs after it moved. Pin-ladder scope restated:
+    17 steps, 9 distinct actions, still all floating @v4/@v3.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
