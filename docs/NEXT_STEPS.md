@@ -912,6 +912,21 @@ now is maintenance honesty, not new surface:
     Also witnessed this pass: /api/meta reports its own posture -
     loopback-only tokenless, shared-token with the bearer -
     matching SECURITY.md exactly. KI validator: 48 ids, zero dups.
+  - Envelope sweep on error paths + an honest non-completion (31 Oct):
+    404 answers `not_found` with "No route for METHOD path" - the
+    message names method AND path, consistent even for phantom
+    endpoints this probe invented; malformed bodies answered
+    `validation_failed` + details[] (path-level messages) three
+    times running, and one empty shell var was caught by the
+    schema itself ("Too small..."). Method misfires were ALL probe
+    side: POST /api/projects and /api/project do not exist (the
+    real family is /api/forge/projects), field is `type` not
+    `category`, enum has no "fact" - four probe fumbles, zero app
+    defects, every refusal honest. The socket-level idempotent-
+    replay probe did NOT complete this round (project-create body
+    kept refusing curl's guesses) - the behavior stays witnessed
+    by the inject-based mirror suite that runs every merge; the
+    log says what was NOT done rather than pretending otherwise.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
