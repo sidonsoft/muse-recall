@@ -1,37 +1,38 @@
 {
   "runner_version": "s02-runner-0.1",
-  "updated_at": "2026-10-31T04:08:49.688Z",
+  "updated_at": "2026-10-31T04:52:46.179Z",
   "planned": 132,
-  "recorded": 12,
-  "remaining": 120,
-  "usable": 12,
-  "unusable": 0,
+  "recorded": 17,
+  "remaining": 115,
+  "usable": 16,
+  "unusable": 1,
   "manipulation_failures": 0,
   "by_status": {
-    "succeeded": 12
+    "succeeded": 16,
+    "failed": 1
   },
   "by_arm": {
     "memory": {
-      "total": 3,
-      "usable": 3
+      "total": 5,
+      "usable": 5
     },
     "none": {
-      "total": 3,
-      "usable": 3
+      "total": 5,
+      "usable": 4
     },
     "manual": {
       "total": 4,
       "usable": 4
     },
     "corrected": {
-      "total": 2,
-      "usable": 2
+      "total": 3,
+      "usable": 3
     }
   },
   "by_stratum": {
     "farm-arcade": {
-      "total": 2,
-      "usable": 2
+      "total": 4,
+      "usable": 4
     },
     "farm-challenge": {
       "total": 3,
@@ -42,16 +43,16 @@
       "usable": 3
     },
     "orchard-challenge": {
-      "total": 2,
-      "usable": 2
+      "total": 3,
+      "usable": 3
     },
     "focus-reward": {
-      "total": 1,
+      "total": 2,
       "usable": 1
     },
     "orchard-arcade": {
-      "total": 1,
-      "usable": 1
+      "total": 2,
+      "usable": 2
     }
   }
 }

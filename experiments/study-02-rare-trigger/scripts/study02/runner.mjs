@@ -62,7 +62,7 @@ export const MAX_TOKENS_DEFAULT = 16384;
  * (observed max 282.8 s; recommend >=400 s, 900 s for headroom). This is a
  * *safety* bound, not an expected runtime: the measured pilot mean is ~4 min.
  */
-export const TIMEOUT_MS_DEFAULT = 900_000;
+export const TIMEOUT_MS_DEFAULT = 1_800_000;
 export const MAX_RETRIES = 1; // total attempts = 2 (Phase 17 R10: record, do not hide)
 
 export const EXPECTED_MEMORIES = { none: 0, memory: 2, manual: 1, corrected: 2 };
@@ -701,6 +701,100 @@ async function fetchJson(url, options = {}, timeoutMs = 15_000) {
   }
 }
 
+/**
+ * SSE chat-completion client (`stream: true`) via the system curl binary.
+ *
+ * Non-streaming full-file generations leave the TCP connection silent for the
+ * whole generation (~5-12 min). During the pilot, one such request failed with
+ * `curl: (56) Recv failure: Operation timed out` after ~11-13 min even though
+ * the engine finished — the idle long-lived connection was dropped before the
+ * single JSON response arrived. Streaming fixes this: the endpoint sends a first
+ * chunk immediately and `: keep-alive` comments every ~10 s, so the connection
+ * is never idle for long. The SSE content deltas are concatenated into the same
+ * response shape the non-streaming path returns, and the raw SSE text is kept
+ * for audit.
+ */
+export function parseSseChat(sse) {
+  let id = null;
+  let model = null;
+  let content = '';
+  let finishReason = null;
+  let usage = null;
+  let timings = null;
+  let chunks = 0;
+  let parseErrors = 0;
+  for (const rawLine of sse.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line.startsWith('data:')) continue;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+    let chunk;
+    try {
+      chunk = JSON.parse(payload);
+    } catch {
+      parseErrors += 1;
+      continue;
+    }
+    chunks += 1;
+    if (chunk.id) id = chunk.id;
+    if (chunk.model) model = chunk.model;
+    if (chunk.usage) usage = chunk.usage;
+    if (chunk.timings) timings = chunk.timings;
+    const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : null;
+    if (choice) {
+      if (choice.delta && typeof choice.delta.content === 'string') content += choice.delta.content;
+      else if (choice.message && typeof choice.message.content === 'string') content += choice.message.content;
+      if (choice.finish_reason) finishReason = choice.finish_reason;
+    }
+  }
+  const body = {
+    id,
+    object: 'chat.completion',
+    model,
+    choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: finishReason }],
+    usage,
+    timings,
+    streamed: true,
+    sse_chunks: chunks,
+    sse_parse_errors: parseErrors,
+  };
+  return { body, sse };
+}
+
+export function streamChat(url, body, timeoutMs = TIMEOUT_MS_DEFAULT) {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 's02-stream-'));
+  const bodyFile = path.join(dir, 'body');
+  const sseFile = path.join(dir, 'sse');
+  try {
+    writeFileSync(bodyFile, JSON.stringify(body));
+    const args = [
+      '-sS', '-N', '--max-time', String(Math.ceil(timeoutMs / 1000)),
+      '-o', sseFile, '-w', '%{http_code}', '-X', 'POST',
+      '-H', 'content-type: application/json',
+      '--data-binary', `@${bodyFile}`,
+      url,
+    ];
+    const stdout = execFileSync('curl', args, {
+      timeout: timeoutMs + 15_000,
+      maxBuffer: 64 * 1024 * 1024,
+      encoding: 'utf8',
+    });
+    const status = Number.parseInt(String(stdout).trim(), 10);
+    const sse = existsSync(sseFile) ? readFileSync(sseFile, 'utf8') : '';
+    const parsed = parseSseChat(sse);
+    return { status: Number.isFinite(status) ? status : 0, ok: status >= 200 && status < 300, body: parsed.body, sse };
+  } catch (err) {
+    if (err && (err.status === 28 || err.code === 28)) {
+      throw new Error(`request timeout after ${timeoutMs} ms`);
+    }
+    if (err && err.signal === 'SIGTERM') throw new Error(`request timeout after ${timeoutMs} ms`);
+    const detail = err && err.stderr ? String(err.stderr).slice(0, 300) : String(err && err.message);
+    throw new Error(`curl stream transport failed: ${detail}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 /** GET /v1/models; assert the configured model id equals the served id. */
 export async function preflight({ modelsUrl = MODELS_URL_DEFAULT, model = MODEL_DEFAULT } = {}) {
   const res = await fetchJson(modelsUrl, { method: 'GET' }, 15_000);
@@ -727,7 +821,7 @@ export function requestBody({ model, prompt, seed, maxTokens }) {
     min_p: 0,
     max_tokens: maxTokens,
     seed,
-    stream: false,
+    stream: true,
   };
 }
 
@@ -814,11 +908,7 @@ export async function executeRun(spec, promptInfo, options) {
     const attemptStarted = Date.now();
     const attemptRecord = { attempt, started_at: new Date().toISOString() };
     try {
-      const res = await fetchJson(endpoint, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      }, timeoutMs);
+      const res = await streamChat(endpoint, body, timeoutMs);
       attemptRecord.http = res.status;
       attemptRecord.ok = res.ok;
       attemptRecord.seconds = Number(((Date.now() - attemptStarted) / 1000).toFixed(3));
@@ -826,6 +916,12 @@ export async function executeRun(spec, promptInfo, options) {
       const rawFile = path.join(rawDir, `${spec.run_id}.attempt${attempt}.json`);
       writeJsonAtomic(rawFile, response);
       attemptRecord.raw_file = path.relative(STUDY, rawFile);
+      if (typeof res.sse === 'string' && res.sse.length > 0) {
+        const sseFile = path.join(rawDir, `${spec.run_id}.attempt${attempt}.sse.txt`);
+        writeAtomic(sseFile, res.sse);
+        attemptRecord.sse_file = path.relative(STUDY, sseFile);
+      }
+      record.streamed = true;
       attemptRecord.response_sha256 = sha256Json(response);
       record.raw_file = attemptRecord.raw_file;
       record.http = res.status;

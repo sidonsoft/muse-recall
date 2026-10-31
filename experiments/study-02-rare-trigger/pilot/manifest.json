@@ -1,11 +1,11 @@
 {
   "runner_version": "s02-runner-0.1",
-  "created_at": "2026-10-31T04:03:55.534Z",
+  "created_at": "2026-10-31T04:57:43.497Z",
   "endpoint": "http://192.168.86.39:8080/v1/chat/completions",
   "models_url": "http://192.168.86.39:8080/v1/models",
   "model": "qwen3.6-35b-a3b-ud-q3_k_m",
   "max_tokens": 16384,
-  "timeout_ms": 900000,
+  "timeout_ms": 1800000,
   "concurrency": 1,
   "dry_run": false,
   "order_seed": 2760742,
@@ -41,11 +41,11 @@
       "order_key": "00528e29ac06e574570a8197236536b774e6e84d02a0fc61bd0769e2be379ba3",
       "variant_id": "farmyard-v01",
       "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
-      "prompt_sha256": "c1976eb461ae8daa5659f0939d00d7be08b826545ce1b3444a29f2fcc6cd4b4e",
+      "prompt_sha256": "0d0e4644de3240b4cc7f4c2371bd24a67414ad55518a979b6c7b979ae6a98734",
       "prompt_bytes": 20968,
       "memory_ids": [
-        "9eef8142-decc-40e8-8ea9-64aacacb8252",
-        "26b4b558-8c2d-4ef3-8e61-8045d979f7d4"
+        "927d0264-36df-4420-843b-648fafb70237",
+        "80ce804d-32f4-4cd5-a52c-e8cddccbb93f"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -104,11 +104,11 @@
       "order_key": "042832f90752245026a231d47bea5328094c1d7118f1fdf5dae75a36b078441a",
       "variant_id": "focusflow-v11",
       "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
-      "prompt_sha256": "12a6eafffe0dd68a6bb1d07552ff55ac8d85e33cbd7130d0c290efb1309a2766",
+      "prompt_sha256": "858fcf8c65416254930dc64cbb7e2cfe9e809ca0decb6fe9ae6d8b8cf598eb50",
       "prompt_bytes": 20490,
       "memory_ids": [
-        "371d83ae-cb22-439e-9b30-216ada9fb912",
-        "105fab2d-fc2a-4687-8e9b-d805f0e429d9"
+        "c238d8d7-62be-445c-99a4-47f2786283d7",
+        "6c40d8af-e8e3-41f2-99fc-0caa3dc73c68"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -137,10 +137,10 @@
       "order_key": "046fa628b89e3b541efcdbdd45b0f5c7b4051da699729f9f9ef13f8d6ca64d81",
       "variant_id": "orchard-v11",
       "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
-      "prompt_sha256": "793ccfb469362d411e3649426a3173ed23b4dbe0742fe198a2df851dc2a9cd08",
+      "prompt_sha256": "939ecc5700354e75d4a8d22779e667fd33516aaf73ea79d65b194e87e6da3843",
       "prompt_bytes": 18728,
       "memory_ids": [
-        "7575e455-47e0-4eeb-995e-94d78f1d6ebd"
+        "756091cb-05e6-4c90-a348-bf0f0a43f858"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -199,10 +199,10 @@
       "order_key": "063ca950046f2af0df4dc700d64988803e9c2158c18905a9d9a07b513afc6ce0",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "0a2624fc8cb1a1e5ff0c2259821ee15c4e0f2b7e60fa9ac9f13cc2f62c740578",
+      "prompt_sha256": "d3779747518f4b07ad8a68c3e30e54193b601ad7d5bc2a2a6612a28eb34b8d95",
       "prompt_bytes": 22561,
       "memory_ids": [
-        "23a7a629-8e09-4977-8361-aaa9d8573325"
+        "622fed23-a087-4dff-9933-69d1e791ad5d"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -231,11 +231,11 @@
       "order_key": "069c69a6da35a5b999a047d5ca6d47b85c2aa45ea7373624fe95d99a2b7655d1",
       "variant_id": "orchard-v02",
       "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
-      "prompt_sha256": "a6fd562320e29354212db68b1452eda5f46dff60fefed7599938b6ff9e421ded",
+      "prompt_sha256": "a33349144d4daec4c245db85574c261d62007bb72574548c5e1166c5c0d20500",
       "prompt_bytes": 21245,
       "memory_ids": [
-        "20e9349c-0e7d-4f1b-8955-0cc6c310c587",
-        "71c99e50-515c-4660-b842-12dc7d66e355"
+        "8044eda2-a563-47bc-904c-72cc686ed100",
+        "7069be40-654a-41ce-95b7-e63044240c89"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -264,11 +264,11 @@
       "order_key": "06e76f1e2ec81b81bde0f2ada572c9b714e953b062ca16645d00e97522f4728e",
       "variant_id": "focusflow-v01",
       "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
-      "prompt_sha256": "f32832cb98f4b1f1497aac4c36f90470f04a1b1087f350bed10198382956de6a",
+      "prompt_sha256": "016f584c574a09319fe3f507b97f1443a08c8474404131298a2f60fa9de28976",
       "prompt_bytes": 23014,
       "memory_ids": [
-        "daa15ea6-2c5f-4c8b-bb5f-178777f8ce84",
-        "166c2741-0010-4e15-a60a-cbc014ee7cbc"
+        "0808d115-7bd7-4fb8-bbec-26c1a64ef6f8",
+        "03a320f7-f13a-43da-aeb4-a2023de322ef"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -297,10 +297,10 @@
       "order_key": "07f46d3fe1a006539ea7ff60817719e6e099f3a874c8c53fa004286a75f4a7d1",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "4538b11ea9844d9e8f59e94ac7ae14beadd653b2b92c4eeeedac68bdab7c8f9b",
+      "prompt_sha256": "a06b6b1b9197f0f623ecbc9ff678a256f22b515e5d9a1017c525a4dfd529edc7",
       "prompt_bytes": 20829,
       "memory_ids": [
-        "cd6c6495-2604-4163-bfbb-e6a68b36724f"
+        "571ef8c1-55ba-41d8-9dcb-9c915721864d"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -359,11 +359,11 @@
       "order_key": "0b7c17b4d114b35cd634b17a22ff916aa40d843a5a82b6986fdf92552c6c1265",
       "variant_id": "orchard-v10",
       "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
-      "prompt_sha256": "327aaf355e573d7cfb048ac22df6bdf8562fa3c7ddb7da817bad5ee982863999",
+      "prompt_sha256": "cd50c6336218570b750275b9a6776976b428aa670df35016c1b0692b2d7a7844",
       "prompt_bytes": 18783,
       "memory_ids": [
-        "4ea0cd3d-41bb-46a5-9983-d790ab8ddb8f",
-        "c55bddab-e49d-449d-a69f-b01565cf4067"
+        "432cea14-6742-44bb-96ee-aef6b37f6e9b",
+        "8afe7e5f-dcbb-4b5c-9174-a29ceb8f631c"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -392,10 +392,10 @@
       "order_key": "0b82faa2b3956b49641fc96688fb75b74fc0fc981ee5addb1391be00d20381cf",
       "variant_id": "farmyard-v02",
       "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
-      "prompt_sha256": "a744243988f950807d6346f19dd63d6b9eb67267baea006721c54cd4f7b7f014",
+      "prompt_sha256": "f56c6b2f9b25f72d8b2ce8a438973fb6df7cb6e4a14035ae7979656135a83e72",
       "prompt_bytes": 20927,
       "memory_ids": [
-        "5dc64161-00e1-4ed5-a15b-60cc15b97e83"
+        "85be4cf5-c71f-48a5-8b96-6a2352f0651a"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -424,11 +424,11 @@
       "order_key": "0d9cf6e209de68e0bee3289fd3ddf34ff6ae7690fb99266659879ee0ebd5f8c9",
       "variant_id": "farmyard-v01",
       "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
-      "prompt_sha256": "73a8c63ab5f03cc287b7782f55766540b207ebd762f99ee597963a606c5fc9a0",
+      "prompt_sha256": "ea80cde5dd9531c6a2ce03df3d5f196fe22c3b5e22bad766d224681bd35f47bc",
       "prompt_bytes": 21000,
       "memory_ids": [
-        "07f0aa96-856e-4211-952c-cc5e3f8f9d77",
-        "e557555c-dc11-4662-8e5d-3ba9b12ee2fb"
+        "58d62797-059c-4151-a55a-6d01fc2c33a5",
+        "f4a9542d-d142-4dda-bfdf-ebd6a57fa9c9"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -457,11 +457,11 @@
       "order_key": "105060fe67435ad70c148f2034914865e8c66c204991fc115346e8f3965d7465",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "4a8f272ece151d9ac2ee883d5b219c51af8dbf22ecb1daa8579ae0570f7ffe7d",
+      "prompt_sha256": "f484cba518cd8fbf9d7a2bf5c3a171bfaef503e4bdce81abf87d97e82f0f1642",
       "prompt_bytes": 21122,
       "memory_ids": [
-        "6b2b8a29-d90f-4c27-9411-0e7af3b524f5",
-        "1de7c42d-be0c-4f4c-b766-763210a797f2"
+        "8c4a9196-e564-412e-b1ce-0018cc7c1936",
+        "3922c9c7-178e-457f-a649-2be2b4123bd2"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -490,11 +490,11 @@
       "order_key": "14d9686d26b086e4c68866e163298a11d5ada2834f48327cdff2c09ccc54f0f6",
       "variant_id": "farmyard-v02",
       "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
-      "prompt_sha256": "0270249eb9ccadf7a986d7a95cbe3c6b9bba49d65567edc72e723dcbb562e4dd",
+      "prompt_sha256": "42c54cc665ffd720f6dc6b783257a6650ba83d96c21be56f2433eefc428ed9b5",
       "prompt_bytes": 21049,
       "memory_ids": [
-        "6a9f7049-5be8-48f9-a41b-80f50a3d7301",
-        "f45dd6d2-bee4-4680-aaac-5e9477b13715"
+        "004a59f2-7ab0-4257-adb6-65c325dd2612",
+        "c56cba58-11c1-481d-ad42-636b5ff500a5"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -583,11 +583,11 @@
       "order_key": "19ed9017ab0915d481784895b623ce54fc95842298808cfa59bb0bb852826f18",
       "variant_id": "focusflow-v02",
       "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
-      "prompt_sha256": "96f46ba2fed11607b027698f96891b61e6d277643507a931d01783918bf07e7f",
+      "prompt_sha256": "117b602950f48fdec57e4866636fdf509b70596c5b8b513dedf8996e0a1e59ea",
       "prompt_bytes": 22872,
       "memory_ids": [
-        "5505cdde-4050-444b-b4af-83a9540c93b8",
-        "f2d8d2d0-8020-44ce-8bac-bf4b7cab7366"
+        "3b97d7ec-c2b9-48f7-801f-29615a3eead5",
+        "a76abf7f-30a6-48ca-8cb2-ee79faa6eae9"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -646,10 +646,10 @@
       "order_key": "1e17a7d59dce237df8751e4e76b40abe0ef5f01410502e4c5e2c1894aaa7d260",
       "variant_id": "focusflow-v11",
       "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
-      "prompt_sha256": "8bf6b4d2bd3e79b2ab7aee06f9fed0cb104744dbc4a225d76d4a02747cf8f0fa",
+      "prompt_sha256": "48de45bcd9b30a7e90cfb1b27cab7d7640abe65d100c515523a903945c10211c",
       "prompt_bytes": 20368,
       "memory_ids": [
-        "1cf8dacb-3ae0-4db5-89e0-4d73369a959e"
+        "62424643-04fd-4879-947a-c1be1a948231"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -678,11 +678,11 @@
       "order_key": "1f963a8b0491dc1aca239a49cd91e803358a63e2debb0c83e3ff6152d11d55f7",
       "variant_id": "focusflow-v01",
       "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
-      "prompt_sha256": "3dd6abac310eb46ba2cfc835acd3069d7f10d257faa01513ce742a7406ecb111",
+      "prompt_sha256": "2cfe3161580da86bc80865ead68a738f7867f3511ea4d33fb13cde98494db87c",
       "prompt_bytes": 23061,
       "memory_ids": [
-        "e7fe8e35-531c-4e42-a22f-d5ab4bf78fca",
-        "84d78b32-baa9-4ed9-aa73-ac8f0fa29208"
+        "7fc66ff7-a7ca-4131-afdb-5fc4717041f1",
+        "61940657-8d0f-4b20-8419-ecc340ad7008"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -711,10 +711,10 @@
       "order_key": "228344515e40d42f8fb1124f0a463265db195e95acc43abcbc0eebd061eeb4f9",
       "variant_id": "orchard-v02",
       "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
-      "prompt_sha256": "eb4675db3e731d0ba6d3970dce3c115433443a541f13d8943761163f204d6d1b",
+      "prompt_sha256": "0aa47658cfca260461a391021daac376e7b020e5d5c6cc976eefd7d6be03f4eb",
       "prompt_bytes": 21106,
       "memory_ids": [
-        "065bd1e5-8d46-4665-a834-b547218be4e1"
+        "9436000c-39da-422c-8215-80d85e9d9843"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -743,10 +743,10 @@
       "order_key": "2338b3d0ab150d7659e967794c98dff7c2cf848882c11b8eb9dd4920ce697300",
       "variant_id": "farmyard-v10",
       "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
-      "prompt_sha256": "4b09a5323fdae6326280a1bdcf003850f5f72db6b124eb4bff8e67ff4a55e136",
+      "prompt_sha256": "693921fae22bbcadf23f16e8a31ea300ce48425efbdddeca59da8655aed9c7fe",
       "prompt_bytes": 18490,
       "memory_ids": [
-        "1ec973a2-d4d3-45ab-ad92-54d9b340ec75"
+        "97883604-a063-4499-a2b2-a32c4713bc2e"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -805,11 +805,11 @@
       "order_key": "271263e903f88a3e3f4d385aa34c7de9f33717f9fe5dc93b670fe19cd4fa6e09",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "fda748e2049a07730b6a0ff25828d0fc14f431538b11b202fb58954bc4bc67c3",
+      "prompt_sha256": "858539165982cea31f4a5844c96f7d9e293cc5d7ae46303e9f5e2b36f3148852",
       "prompt_bytes": 20936,
       "memory_ids": [
-        "4f7ee83a-e6b1-48cb-a9e8-d22dad08db20",
-        "83e71181-a593-4280-8c10-c07e659ec10f"
+        "7affe718-3f8f-454e-93a8-c4eb10b4a4b0",
+        "b67dc3b3-faa2-4456-8eec-e6686f826d55"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -868,11 +868,11 @@
       "order_key": "2c6a59582752c191901bc4adc6ca1eeebaa8fec5d173b07f23fea62f1d680c08",
       "variant_id": "orchard-v02",
       "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
-      "prompt_sha256": "055a3189f1f1475dd1d5d6def1a692bb4588a5423266ff7a61af5c8eb62af52d",
+      "prompt_sha256": "9f0c18e57ef966f139d79f9f18c9b6fb5fec1edd8911565a167930b04f913ebb",
       "prompt_bytes": 21228,
       "memory_ids": [
-        "6e19793d-fab9-42d6-aac7-6f7f930d9ba1",
-        "6bfad9ce-cea8-4092-aa24-918ac0fe3782"
+        "ae5c1106-9171-4550-bbe7-cd85a5607fb0",
+        "db8dd73a-3ad4-43fe-af70-3145c3eb3e4f"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -901,11 +901,11 @@
       "order_key": "2d1f0f8200d30296e27d48bcf887571e228396b8e9ee753d9b6511b1592dba08",
       "variant_id": "orchard-v02",
       "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
-      "prompt_sha256": "51f7944e1f65bb952b26dc411b4094ab24d6682a14283be60f685c95fcf49db7",
+      "prompt_sha256": "90e717c45eef3af2de820b7957013f077f50fa73cff48eef2648f834e140cfbf",
       "prompt_bytes": 21213,
       "memory_ids": [
-        "e89f3078-3f4a-4e08-8a57-f4516d820b33",
-        "599d1057-782b-48d1-b0b3-186169f9bc31"
+        "e5de6636-99b4-40a3-9b8b-78b15f433292",
+        "45c123d6-c4c6-4c7c-bbd7-33c11ee1ed68"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -934,11 +934,11 @@
       "order_key": "2f6b9bbae3299a316f4c0d2a28cdadeb2e1dddb87277d89cfee231284a4eb093",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "7e0a04e7d129b79d7b069a64bae0e2a41bb95d30fa2deb8353271e85cb6202e7",
+      "prompt_sha256": "84fb686ebf412127c42d0145c3f658eaa3fbc04fe98a59905cd482e031124c0c",
       "prompt_bytes": 20936,
       "memory_ids": [
-        "4edda847-8818-495a-9866-a53cf26ecc18",
-        "eb12c774-92c0-4a7c-84bf-03904ac5e1f5"
+        "d3fe6b92-9b81-4882-8c29-63c61db9d922",
+        "33bac07a-716c-432f-b17b-bddd6e824c02"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -967,10 +967,10 @@
       "order_key": "31399f20c265ce4b44c3a1ceae1b4585f8d7093b57275f5e6b89328a03ce6f4d",
       "variant_id": "focusflow-v10",
       "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
-      "prompt_sha256": "66775bc1b656857b07d35e8540a64e41bd37531c16a8fd1895974f6bcdd0f73b",
+      "prompt_sha256": "7370edb41c6f667a9b0c10bb2dd382b835faf2182bd15aedeb13207ba55f5554",
       "prompt_bytes": 19990,
       "memory_ids": [
-        "28fc7220-d211-447e-9d1d-ca6787579a11"
+        "9d8e8990-75c0-4d2c-9f01-74c4774c0964"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -999,11 +999,11 @@
       "order_key": "324737e32cfe57a0e3d48799b45286f93aab44dc65b08f38ad9ee8cc09589e17",
       "variant_id": "orchard-v11",
       "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
-      "prompt_sha256": "fa96ae6b7cb9c06ccc1161ae7f4d54af7ec9dba937906f8618b420b16d8373a2",
+      "prompt_sha256": "0fc879645da0e07c8e81c9adec330876e084314677b4e2fa30984738867eb6ba",
       "prompt_bytes": 18835,
       "memory_ids": [
-        "2df36645-c764-4b20-a79b-94433871985d",
-        "665a3b36-1a24-44f0-9b3f-c196c4ef77ac"
+        "d9b9975b-7f5a-4b85-97ac-e384ed07dcbb",
+        "3912086c-dc3e-4db3-9c66-9f0b49279bfc"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1032,11 +1032,11 @@
       "order_key": "32af74ebf525c2e0ae35e0f60942699c43f38b184c2233d10fc15a07234437ba",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "cefd884c067a56acafd9f8ba981d99abdd18888cf021afe596e5203cfd3ecac1",
+      "prompt_sha256": "1084e9e273ce69d123f3c1cfd094f603e00de28b2b78a30fa106881a337cb31e",
       "prompt_bytes": 20983,
       "memory_ids": [
-        "18ac01a0-6a1b-4a3f-94a9-6c4b1ef5cd92",
-        "f524fc41-d174-4f84-8551-4a8c5b093ad4"
+        "08f8349a-4245-4d19-944a-1d8783e58f81",
+        "97fe5003-9ffa-487c-95f1-538e9484574c"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1065,10 +1065,10 @@
       "order_key": "338f81f5329628a452ec9ee40a3666380d3ca310db8b4eaf4a056e3afd3598d9",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "d682253f5f7c8f801632143fd143d878384e071e9f5bbe40c28fe19b78e068bd",
+      "prompt_sha256": "a37c027d608b9d718b5a239cec0178e49491deb9134f8a0ff2b96a02253b65d1",
       "prompt_bytes": 20814,
       "memory_ids": [
-        "623135fc-5918-466e-a508-ba0fc52107bb"
+        "bfc35d0a-1417-42b7-b2ad-6ec852a2fd68"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1097,11 +1097,11 @@
       "order_key": "34690e9139eeaab9e606db293c2291cb0bc8c5573c7afb5593e5a834fc06929e",
       "variant_id": "focusflow-v02",
       "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
-      "prompt_sha256": "3cf1807120a772ab3257085475a409321c57b8d217927d468e3ae9ed5575e2a1",
+      "prompt_sha256": "70538ee7d7d528fc6b6aa3e94d044646883cc68095b3f79676cf497ec301b55c",
       "prompt_bytes": 22884,
       "memory_ids": [
-        "6dd263d5-fd8c-415d-ab3a-34fe1060ba08",
-        "cd849fc9-d5d0-4a81-bf98-8905dfa2b6dd"
+        "196dabfd-91f2-455d-9551-968197de1134",
+        "a0eb7fe0-532e-428b-9566-bf2d9cd3a263"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1130,10 +1130,10 @@
       "order_key": "3476b1e4333bd97dff81c5301788faee1238eeeacf1862729d8c6ad34bef4e7f",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "3b8bfe70b5ae58b1c853ff01b33a46a7b29ba5d76130b7ab61b6b88619491853",
+      "prompt_sha256": "1076a0e85c990e7236171554f56bc6a41ea5b72daa06fecc58bc4a2edfe920e8",
       "prompt_bytes": 20814,
       "memory_ids": [
-        "cece4a9c-cb4f-44b3-90c7-c4078b62dd16"
+        "854cdf0f-dcdc-4da7-ae70-57c3140f3e6f"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1192,10 +1192,10 @@
       "order_key": "3717856b21a2ecb9c373382ffbc10564d3894bc9f46ea93c0c4393c7b2035689",
       "variant_id": "focusflow-v02",
       "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
-      "prompt_sha256": "85a9df721663a99f80da77cf276b58d9d2a57e305a487a29840d5338787cd2e7",
+      "prompt_sha256": "b8fe48b5577be761e1b7a1ed898fbef7162bf093773d81a69236560d096ade05",
       "prompt_bytes": 22762,
       "memory_ids": [
-        "1b4e44a6-512a-4592-be02-dd7d451db6ff"
+        "06402e57-e701-43ec-b52e-9585bd8e5433"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1224,11 +1224,11 @@
       "order_key": "3727d9a1fcc7a603a46d0b6c6d722ef8d7af6aed9a5a5f5e72b1817a6a3d5322",
       "variant_id": "focusflow-v10",
       "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
-      "prompt_sha256": "ce7834a4f0e593d2cc449e952e8f465a3e630840e42140ff247a23b7eb44fe52",
+      "prompt_sha256": "fd169fd3b6cab430864414886409ffcbd6839ae06e3cfb47e41e829cfc3513a2",
       "prompt_bytes": 20065,
       "memory_ids": [
-        "36a3d9cc-9d21-4fe8-9e5f-4e5e6b73ff1e",
-        "b6b4e0d7-a7fc-4e03-b8c9-1963955ab6d3"
+        "4864b413-76f0-447e-87c1-32f98e83d0fd",
+        "d3de1ad6-4abd-4f58-bfed-6ff671bb2e2e"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1257,11 +1257,11 @@
       "order_key": "37e7461303a610b88d4dc195012f4c6e4b95c7629133169874878d06ac913edd",
       "variant_id": "orchard-v01",
       "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
-      "prompt_sha256": "eb63064746ddcb6b2d8ac939202a1cf6ece86acfaaab0f2ba7843dee28075d87",
+      "prompt_sha256": "dd32fe730f34f5c237e65b4410bd80901fa929111052a1bacfbc62a481e867d2",
       "prompt_bytes": 21206,
       "memory_ids": [
-        "0707b069-41d7-4f8c-aedc-31c690289a49",
-        "8febc36e-8efa-4c70-8379-cf8f9ab42b89"
+        "72e4f51c-498e-4bf3-aab8-478c0b51666e",
+        "4cbba2d2-44a1-48ff-a03c-a41b9934fb13"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1320,11 +1320,11 @@
       "order_key": "3ab3208aa29c5d09b7fde373888db7c9dc51e8e76d21f5619a1d5f7006285019",
       "variant_id": "orchard-v01",
       "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
-      "prompt_sha256": "2715aef87d9c2dcdfc31cb395d0157b43da5913ce9cce3d1439dea5fa8172ec0",
+      "prompt_sha256": "b9d39281bea2bb04cfc772d92cb84a932badaceb3f37918730e136c780d499ae",
       "prompt_bytes": 21174,
       "memory_ids": [
-        "e33e6084-32c9-497a-9ddb-d285bb3ea337",
-        "1f453a0b-6447-430a-a111-13fff0816eef"
+        "fdaed643-5549-40b6-a052-c19be3d221e4",
+        "c8011ed0-00f7-4d9e-afc1-173625d6a669"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1353,11 +1353,11 @@
       "order_key": "3b2a005fa0e9926d942fafe9e626649c212a8b77c91d8cb69b1bd0ea2530a89c",
       "variant_id": "orchard-v01",
       "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
-      "prompt_sha256": "4637822c70071b5b0029ef56cd0ce65594a664cc0d5803c4f815b9254a3eb42b",
+      "prompt_sha256": "a432feea79d07888f84cc8dabe9d730923a81a456f2f05031a4108f71ac15a40",
       "prompt_bytes": 21189,
       "memory_ids": [
-        "0f2443a3-3b1e-40f1-ac43-8768b0f9c7ad",
-        "b2e1c15f-1d41-4c86-afee-0f4424d7f3bf"
+        "9b7a073e-aae3-4fe5-9769-9009d336cd43",
+        "a8e2fcce-c7b2-44c3-9508-04d5f9d8290b"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1416,11 +1416,11 @@
       "order_key": "3fa15b0f3ca9c13f393e5bfcba64d0f1e01d66fd7279e1b70acc786ad26f0d04",
       "variant_id": "orchard-v01",
       "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
-      "prompt_sha256": "702e60a692a04c8b73851358efd13d46268e43505f3a395a018b3868d981befd",
+      "prompt_sha256": "1942d0ab4cffbe6a28a2273b60ed59a17836b1fd52f7cf434a6fdb68e054e76a",
       "prompt_bytes": 21221,
       "memory_ids": [
-        "cb6ef62b-42b2-4900-bde1-d6f590116c22",
-        "d6fed392-6abd-4aa0-b0cf-4954384e79c2"
+        "7a034254-99dd-4bed-b23c-61e936506f7e",
+        "b31cb6e0-48ad-49c2-902c-2e7317d66c29"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1449,11 +1449,11 @@
       "order_key": "41fda186234204d65b8fc54e8ac05122a68377947335468b67238e2e40e8e27a",
       "variant_id": "orchard-v11",
       "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
-      "prompt_sha256": "c0bf4effd62ee73b7a780b9db28181399d2d2cc53e93abfa57581c3d91b6a105",
+      "prompt_sha256": "10971804188c11d852b810b4ed5d27995ad5732be970a7f3a0c18af49ab35171",
       "prompt_bytes": 18850,
       "memory_ids": [
-        "fcecb3d4-8388-4fa0-9be5-9a2b4afecf84",
-        "16f38e65-84a2-4cf4-ba03-a22ab546682d"
+        "581e6c18-a7c5-4b46-9848-feb371de39fd",
+        "466ae6f5-4677-4909-93b8-6b6b4f33ea08"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1482,11 +1482,11 @@
       "order_key": "427bb7b47e53f8dab6e14e44aedef1a19d9ffb220be4d844e0f942fe1c823b8d",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "858351efbbf64598efc94561a9138c1538b8c63c61fad528618a043c62dde7ba",
+      "prompt_sha256": "9371e4b1b270bd5ed5d5cd9c356a5cb9b28f4fc7b618d7a608189f0e31b453cc",
       "prompt_bytes": 20968,
       "memory_ids": [
-        "6302dc4c-f30f-421e-9d8d-146ca5c2d24e",
-        "647fab31-3fea-4ab9-97a2-0ecdb2ad5f4d"
+        "3b4d926a-277f-4f6a-928c-75506bff170a",
+        "80fb4502-637e-4567-8629-82c94c2f6230"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1515,11 +1515,11 @@
       "order_key": "46d0bbd677297c49a4cfcd1c0c1b8647092247a65e3281e21da4d1c309178a6d",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "76db6d98fc25ca2a118e77148a161693289844d96396347b1063077c042f9807",
+      "prompt_sha256": "8288e73eb6ca988516a402b51a334e440a735982f42cbbc9c8707c34323d421b",
       "prompt_bytes": 22683,
       "memory_ids": [
-        "1b34717a-bcf1-488e-9823-71022f86df0d",
-        "a0f6fd9c-283d-4415-bc2c-c74bb9389273"
+        "8168906e-5ebe-4bfa-8f3b-122379af3de3",
+        "acd3b5fb-e39a-418f-8247-512cadb7cc81"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1668,11 +1668,11 @@
       "order_key": "51619261cdae1ee5a6ba97867569f92b603135d87eff814d3f03400348ed6872",
       "variant_id": "farmyard-v01",
       "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
-      "prompt_sha256": "94b7ece1738a0d9607e602df5ccd59c1885ca81e777df7600509732bb65ae5ad",
+      "prompt_sha256": "30343061dbea1d1f27db3ae58dce93e47afc547db7e1f209730a46c9d071c62d",
       "prompt_bytes": 21015,
       "memory_ids": [
-        "93908f4a-f1c5-40f9-853e-e79a74cecaf1",
-        "873c3b23-6e45-4a69-8c28-2ec2636e2a74"
+        "42c3f22e-ea34-46ce-bc26-b8214c7722f4",
+        "ceaf505e-a521-46a1-907c-1818f7abc188"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1701,11 +1701,11 @@
       "order_key": "51ba6fc8c8df76815b60c011d69a4e7dc38440439509ec6ac10b7be75e657986",
       "variant_id": "focusflow-v10",
       "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
-      "prompt_sha256": "51a9e1086102201005fd64e1b150a7ea1e24adecbd32fe59491d87948613bc4d",
+      "prompt_sha256": "d8ac7c89fec65aa83a6c6a814fd11b6d07a465ed897f0fc978fbb1a0ace04251",
       "prompt_bytes": 20100,
       "memory_ids": [
-        "2d0bcefa-a81b-4463-8b36-124cb2bbf91d",
-        "04ef7415-8f88-4250-bc09-8ac3674ca9fd"
+        "07d4c897-1edc-417c-956b-637a6e09c553",
+        "4a467cdd-3ca0-4c36-adb4-1511a93a99a2"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1734,11 +1734,11 @@
       "order_key": "52153c4496cddf1f02bcfb3fa8f9f0380cfc5757dea0731f1e7b7dd768d6ddca",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "3ff13338a9f7e4349a36458a75cdce0bfb734493e3f9f1a0916934c78b8299bb",
+      "prompt_sha256": "867ad0572a54297f2a9103b44a02e1a08bced626247552d585d9e7f00420ac67",
       "prompt_bytes": 21122,
       "memory_ids": [
-        "ff7b8cbb-1fca-42c6-bf1d-ab0b9ac0890f",
-        "5112baf1-0c70-4f0e-bc62-21c75e138b12"
+        "8893cc4b-af43-4bf2-8421-c565f39ec188",
+        "950daf62-782f-4afd-92b2-8fefdfbafe18"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1797,10 +1797,10 @@
       "order_key": "5b425963624b28db8d78f869b451a945d22d94bee49989fa5f6d3a2ec2b0cfbe",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "c9d788dc25bf3c8bcba9f8492515ac1dded738b6f91a489807d92fccbd274c1a",
+      "prompt_sha256": "7c721ecf0229f43a4f337995a1141fbd808e4b85abb94daba017e82f4ba06238",
       "prompt_bytes": 21000,
       "memory_ids": [
-        "cd06b05f-d255-4c7b-bbb2-2f5aae30e940"
+        "0755083b-bb98-4bf4-837e-af2a31b8db47"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1859,11 +1859,11 @@
       "order_key": "5b720314d48a14fcf24b719da2d0c1e1ddb64628af7995e335c7d949f5c05f88",
       "variant_id": "farmyard-v10",
       "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
-      "prompt_sha256": "4bf9b4dcdab81e4c2e707fdc53f134a358eef211db7bce31589760037c417437",
+      "prompt_sha256": "1d185ca5e12edc0fdda205eb41261ebd813db2d376ad54d7644ad1760ae9ecd6",
       "prompt_bytes": 18597,
       "memory_ids": [
-        "6f4841b8-10c4-4daa-bd98-077e2635fced",
-        "557fed9f-164d-4c53-b299-4a27d031493e"
+        "ffa5e10a-51a8-40a0-b521-6df7af23f585",
+        "f5331c01-c3cf-4988-bdb6-9301c3ffd076"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1922,11 +1922,11 @@
       "order_key": "6362ed381ff4be849c04eb76adfd9cc505902783f741e8f1d36705e7844fc89b",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "3d8cd45d59e26c0685affd48023657dfaca4dd2a6cee88f086cc555ae3819345",
+      "prompt_sha256": "f3fdb2d1a89057ee4d0998b62e53d083004f4796ed440137a052f7ea6d3936f3",
       "prompt_bytes": 21154,
       "memory_ids": [
-        "16d42e32-ceb6-4300-b98e-61227b2ca00b",
-        "1aebd4e9-dacf-40b3-9892-2768bc6989e1"
+        "9592c1c0-d5ea-4a57-bbf5-a59087eb6ed1",
+        "617126fa-4a42-497b-a169-3ad37c61701e"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -1955,10 +1955,10 @@
       "order_key": "64278fe38dac98116d400c335699c7546174a47ba49fd63b9d483e8ea311cc1f",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "052c401bde6c93b1ad4efc4550fc48dbf103cf6de79a1046e815ba75cd9a2965",
+      "prompt_sha256": "23474ee17511f359ecbeadffefa1adf95929935c8668d9214352659e09bec1af",
       "prompt_bytes": 22549,
       "memory_ids": [
-        "199cf758-6e3e-4130-83a3-7466bdb0b16e"
+        "d24b4e18-5fad-4265-aa9b-39a4976a3490"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -1987,11 +1987,11 @@
       "order_key": "64e0825e06717bda4dc7e5f66a6156fa7a9f319097e0f19308d9ab55fd1cf501",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "f59d95c35c9371d8ec37a0e8bd9a4183d3b0c4f735fe4b027bca6e2beffd66b6",
+      "prompt_sha256": "eab79d650a47bc47640aa270c4526a5467e07bba5209932426674770de4f849d",
       "prompt_bytes": 21107,
       "memory_ids": [
-        "ceceaf32-c3e0-4e9b-99f3-a7f3628a0a99",
-        "cb596e65-7fa7-4b06-9c70-200268626b5c"
+        "f8e2b57a-772b-4384-a584-0702188da4dd",
+        "10c1c6c4-04d0-4b77-9c35-ac7959f09a13"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2020,11 +2020,11 @@
       "order_key": "652309908d82ed62b005cca363dd87545dcb7cf778ed22860930f6436c953e25",
       "variant_id": "farmyard-v11",
       "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
-      "prompt_sha256": "49464491f2bca9c5d72c4b9dc27e5a1a32c9882a4d14c45660df26374c321780",
+      "prompt_sha256": "d7f23b5978719992cf94190812ab3ac96f4fa55a3df32d77f6a071651325030f",
       "prompt_bytes": 18676,
       "memory_ids": [
-        "f86ec0b4-cac7-45e9-8367-b155812292e3",
-        "0a4a84c3-06c8-46ff-b505-3d0ad326a997"
+        "7b5733c5-34fb-43c9-bb6b-bd457a596594",
+        "3f9b9dda-30ea-4d0e-ac94-bd695bb0e41d"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2053,11 +2053,11 @@
       "order_key": "6627e35ac234938c5760ebd042a6bda2af16ad192129f33ee3ab020b380de546",
       "variant_id": "orchard-v11",
       "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
-      "prompt_sha256": "52246284e6966171f9cff7e52518710068a26f36dc71febfb2bce1dd311c8ad9",
+      "prompt_sha256": "ec951c8cd6a0206636aa89d2e994458a0f371f9862ec7f575e698e659658636a",
       "prompt_bytes": 18867,
       "memory_ids": [
-        "5effb70e-9428-4977-b49b-37b18794d2ca",
-        "2ec3b35e-eaaa-46db-a845-d5807a589fa7"
+        "100bff2a-9ff9-4a6d-85d8-34720def42ce",
+        "893b3396-3f11-4ee7-85c6-36d8889a5640"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2086,11 +2086,11 @@
       "order_key": "6e353465170dba365196556a4d78af6ea6cc4fecfcdfc95a4516ca96552ba088",
       "variant_id": "focusflow-v11",
       "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
-      "prompt_sha256": "ae9b81d73be2edb9b82207f33f705c44ef8ac283d11b489c8535351c373ea1cc",
+      "prompt_sha256": "9e456742a32a7782164556a4b8f379dabec75a569ea21c127a66be3c0d58b0b0",
       "prompt_bytes": 20502,
       "memory_ids": [
-        "bec5e6ca-5a85-44de-ae81-fd52f3e2a4fe",
-        "e238455f-c8c0-4e03-871b-ce491c746fb2"
+        "6dbaec12-6402-41aa-b75c-540ba5b02d84",
+        "7b7c5ca7-0139-4223-959f-9ed891fbcfc3"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2119,11 +2119,11 @@
       "order_key": "742344b5b5f4a1c999e31909fde3700b407ec70afbe5bfd166620d734296487e",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "9b8c98be9aa65987508e9d71d8c86c0ef542b591f72d071cbf625e57b97cb712",
+      "prompt_sha256": "1667584f37561fbf23e1b3f3558a7cc9683516092e00679126685690bbeaf67a",
       "prompt_bytes": 22683,
       "memory_ids": [
-        "341ecc0b-d6de-48dd-bc66-1cb598809c41",
-        "ef59e2d5-5571-4f0a-bfdb-70447c3015dc"
+        "2617fd99-5a60-4d7f-be45-6074e65a520f",
+        "96082186-b55a-48b6-82a5-924b316ea516"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2182,11 +2182,11 @@
       "order_key": "745aa4dcf5539d9eb83d2ad77c2b99605c1e0e9593b552228c8e729cc93aad19",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "88d0375c73e0055d623f761ce13c6ec676606de7e5e515aba214ad1e9531905f",
+      "prompt_sha256": "74461031475869e7a777ac9363275df4a5731886f6926b4dc94f290962087c97",
       "prompt_bytes": 22624,
       "memory_ids": [
-        "8401bf35-2580-4474-9317-8f0c7b21a65a",
-        "951c15c5-e923-40d9-bd1c-92fb68a2c81d"
+        "52e324bc-59da-48a8-bcc6-b4280bc30e5d",
+        "f053b482-6f6e-4b37-83c2-1e60f2218ec6"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2215,11 +2215,11 @@
       "order_key": "754f33a45d8dd4a7c16e7f2122bdee73ea946430462ccb3d436cfda3fd2a9e03",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "689c176f51df8c4a635c4801b5d2dfb6da8914ba28008c530dfdc22bfb285926",
+      "prompt_sha256": "17ad5ca5cc5ac12dcaf6ccd88129153f97b68501553209ee2e6b6737e6dce41f",
       "prompt_bytes": 20951,
       "memory_ids": [
-        "e783d5e5-a597-46c9-a31c-908d029ffe18",
-        "83703cd2-65fe-4f64-ae13-74a4bcffa18b"
+        "96de51ac-d855-4108-bf82-d21bfaaa184d",
+        "c352b59a-3ef5-4f74-8363-7eb0252cfcc6"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2248,11 +2248,11 @@
       "order_key": "76fcf8b9a1ddac1748da2fb927943447335427e75c610517dcc9aea388a60076",
       "variant_id": "focusflow-v01",
       "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
-      "prompt_sha256": "4464626e502e4aa9f60eebf051615903190f536790ede0e1becd258aece4d938",
+      "prompt_sha256": "022ee3f1b7f483eea51081a40d42ecd6061a00520ef9dcdeeedd9522dc957f39",
       "prompt_bytes": 23073,
       "memory_ids": [
-        "88b1835e-0521-41b7-84aa-846f15202bc9",
-        "d5374dce-2cc3-4a7f-8694-b7edd504e935"
+        "cb54081f-f447-4545-8132-53ef6ed1a549",
+        "f9495652-ce68-456e-812f-7ea225fdb41a"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2281,11 +2281,11 @@
       "order_key": "7c915af02b879c0f7e677643718ffe3c18e99a7dc6771d7a9565da297c72b941",
       "variant_id": "orchard-v10",
       "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
-      "prompt_sha256": "f97c5c3c4773a535ca5c381b19ca31e781b51c200942cd3063e5858b48c3dac0",
+      "prompt_sha256": "d216aede03ae31fd2bc417421d03b53818ed4e876a7e58b7d170b679770f3b3e",
       "prompt_bytes": 18768,
       "memory_ids": [
-        "37905460-94ac-4b99-b2b0-3f0b8194e76b",
-        "7d102766-2e6a-4194-9c83-1bfc56cca19d"
+        "a5bfdb84-d133-4552-a332-29b5ef78f98a",
+        "e16a789f-387f-4267-8066-8216c86ea444"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2344,11 +2344,11 @@
       "order_key": "81cdb0cf8a39432a60b17fbecd0ba8b80bc6d91b1e676eb124a777eb9a000993",
       "variant_id": "farmyard-v11",
       "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
-      "prompt_sha256": "2a0242311c9b2eda9e7ec7a7434321157b0ebeeab3b01a52e2da86b8a4e10fe9",
+      "prompt_sha256": "77913f918c827fe3bdf33d4d9165e0132c33524cc38e6bc5f38ead4be2c4108d",
       "prompt_bytes": 18644,
       "memory_ids": [
-        "33ebd5df-d2f4-4151-bd10-6222b6f2735c",
-        "58f317be-1c2d-4496-94a3-e5b19359feb7"
+        "866321c9-02c4-4171-8767-87866fd2ef29",
+        "51efc01b-a6c5-446b-960a-b52961a9dae9"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2377,10 +2377,10 @@
       "order_key": "8895621a2ddbce14f31a21d1c03c19caba5d034a06a277410d5fbef9dddc3286",
       "variant_id": "farmyard-v01",
       "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
-      "prompt_sha256": "09a1188e7d398f063361bcab336f3d1b2f0d101638c3bbc3973099974ff209bd",
+      "prompt_sha256": "faba44ee6813338954c2a0648d24b9b4f914126dc3d7f7404d93a018fb03eb7d",
       "prompt_bytes": 20861,
       "memory_ids": [
-        "d7a84b6d-7165-4a1a-9788-edeac056446b"
+        "a9807bd0-f340-433e-95de-ca403b273adf"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2409,10 +2409,10 @@
       "order_key": "8a94647fe3be85bdf838c186e4e67c32860ee51809f6cc607167d58239988b3d",
       "variant_id": "orchard-v01",
       "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
-      "prompt_sha256": "ef7812376cfd205c0b7a52d28bf4f64d2708f9905ab4b867599dbf2550f8d0df",
+      "prompt_sha256": "ecbe40ca56018aaf5d214cab986b74a3d7d1fae553c20729e37032c940a569c6",
       "prompt_bytes": 21067,
       "memory_ids": [
-        "309c386f-e22b-4133-87b4-90551092a6fd"
+        "c7952c69-0776-4e52-bfce-30922a33eceb"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2501,11 +2501,11 @@
       "order_key": "8ecb9065b77c843252db75fa8f5209b6f1d81418261ddd179d48dbe88ea29cc7",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "6964771ba1b723955c65e4f5da78b0a6cc6da43f5c4e88f9885c81c3b44b43c3",
+      "prompt_sha256": "c7210bb99f2689c96bce482ab0a5203a14296d9f5101c87dcc7d53d2ad3aabab",
       "prompt_bytes": 21139,
       "memory_ids": [
-        "b693b865-479d-4535-81ab-4a62bca100f5",
-        "9121adfd-a59f-42fb-83d0-2516786525b2"
+        "f6723672-c746-4230-b8c3-e6214eeafa70",
+        "70b31073-5a5a-4e00-a0ad-5a1384e81ccc"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2534,11 +2534,11 @@
       "order_key": "8f19b092c2e971716395f774787510aef3d55b3ab8f96f6ee464304964570108",
       "variant_id": "farmyard-v02",
       "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
-      "prompt_sha256": "1d0e9f0450dacfd8d2ef14c3a7816c1fd8117132274b9486c7fff10dc40aa091",
+      "prompt_sha256": "2f9d74897674fcf3c73e9ba9bf5f8f6f1eaf3903c3a1889313c21618d10f967d",
       "prompt_bytes": 21081,
       "memory_ids": [
-        "f097b4d3-80eb-490e-940f-1115e5d76125",
-        "76730da5-1c0d-403d-9cc4-4be625f953bb"
+        "d961ae70-44db-4c41-8e65-2661b4b00d3e",
+        "85af73d3-1e11-48dd-9f2e-efdc24bf1cf1"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2627,11 +2627,11 @@
       "order_key": "96badb757f7fd192b44539e9869a601e73e3657dddc935806fcf0d3ac790a980",
       "variant_id": "focusflow-v11",
       "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
-      "prompt_sha256": "1d137737cc05804cf3548352a84724cfc8e24bf75b278592a868b35f9e920f22",
+      "prompt_sha256": "11d2e3bc7cb2e22a9ff94401c802b8929b4c6d126707ae9e94ccd4dc224fbb7a",
       "prompt_bytes": 20443,
       "memory_ids": [
-        "7803bad7-314f-4d5b-ae10-80ceb398c6f4",
-        "e78b1fe0-72e9-4d04-9d87-5458f2e3ba95"
+        "3df8839a-1040-4f3c-801e-daf89157c027",
+        "884978ac-a170-4f2b-b86c-fa3991151ae7"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2660,10 +2660,10 @@
       "order_key": "988c17b9c364029f8e49a8386bd59ba8e6abf61cef430629ea4cc61fa8df59b1",
       "variant_id": "focusflow-v10",
       "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
-      "prompt_sha256": "f2d89b7b6dfaafe8eccc4c90a0dd15b6491ef1d5207d8941df599c9cf01fb107",
+      "prompt_sha256": "7e19f84452260ffc8ecc3e2a74ce8d03146184542e2a4c719e9a45a5b30b2a69",
       "prompt_bytes": 19978,
       "memory_ids": [
-        "9bc49c98-20cc-4688-87c9-0352762f1013"
+        "1558702f-b7b8-4334-b2cc-6bb1f18f242e"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2692,11 +2692,11 @@
       "order_key": "98df80becb517bfd264f618ad7c0f926a09914e2cd78e35426e0f75d0db9de8e",
       "variant_id": "focusflow-v10",
       "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
-      "prompt_sha256": "69da53ceb126044e89e3df967b4795a64b910f4119146c86641b43b58e180676",
+      "prompt_sha256": "2bd7e57a5b44c7fe4042757cf361beed9e43c45dfc4ae03b40e581d1600a1d0c",
       "prompt_bytes": 20112,
       "memory_ids": [
-        "782dea04-f799-486d-bd26-f41dbc94bdda",
-        "929aec5e-cf32-4cff-835b-4a1abc90121c"
+        "c2fef3c9-63b9-453a-97e5-f2500ea57edd",
+        "eca16168-70e0-4fb8-a801-11556860e447"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2725,10 +2725,10 @@
       "order_key": "9924cc6465b0d1fe56a6768db24b08541700c86cbc60c943d9a7811a1432cf20",
       "variant_id": "farmyard-v02",
       "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
-      "prompt_sha256": "0f19206be516621d9207082db2afc0364bc001f7816ebdb70884f5fab48a979c",
+      "prompt_sha256": "0c450a6ac0fd1c49889d0dea0c8a0272f3b2666571c155b1069f85f2b386a6a3",
       "prompt_bytes": 20942,
       "memory_ids": [
-        "43b33686-f4b8-44ff-9b12-cd3b13782edb"
+        "6d71dfd7-075f-4b5e-9026-d1f23b13f214"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2787,11 +2787,11 @@
       "order_key": "9df81575642fcdba0c506eade2f634632484bfc3ab782244cb05bbecbd9bd051",
       "variant_id": "farmyard-v10",
       "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
-      "prompt_sha256": "ab291fb4cd68e3006724a3776e41fe402757d68832b50d49c1dd52ab60dc8b5a",
+      "prompt_sha256": "108d14af5b690286ec020d3daf437137269fd45fbef83515bdb793eafe20ac59",
       "prompt_bytes": 18644,
       "memory_ids": [
-        "bcf3ae86-4714-4d18-bda4-6eb6f65d90ef",
-        "0a6d0563-6142-4991-aadd-0f078e09d578"
+        "6c214751-a9b1-43da-8a6a-0b9e4c22c79b",
+        "c3304d76-ebef-4b54-9ad7-8d7579ba20b4"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2820,11 +2820,11 @@
       "order_key": "a03c170cb302a4bd3e2fe85c6f25a268c6fb6ca64c18eff767666d77b1d0cac1",
       "variant_id": "focusflow-v02",
       "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
-      "prompt_sha256": "d7701764efbb129d104d5cf4e77b3719fd993df9a64658bebc21b64f7e09e27c",
+      "prompt_sha256": "0d91a86551231f236dcb2e94ae3cdfde9a5d4365b475cb5f2c6fd6a44343bd90",
       "prompt_bytes": 22837,
       "memory_ids": [
-        "2133b2e9-3b91-4fef-9962-c16eca5679d5",
-        "d0741a7a-0448-4eaa-9043-9feda920d5c5"
+        "35f733f5-0e3e-4491-bdeb-63246158bee3",
+        "d9254af2-9c9d-492d-bfd2-9e9067d689b0"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2853,10 +2853,10 @@
       "order_key": "a33432b3811abaa08f523e5cf2c2078093ab6ccfc51777337e1d9a3d5fc85c5e",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "9c4ce403e1226b15f4806648abd02606a0a0cda173642cfaaa5b1751ae97e551",
+      "prompt_sha256": "754e651edc70f6f049976c8eb96fa35062c958fb2f3a50322da2c98f576e6240",
       "prompt_bytes": 20985,
       "memory_ids": [
-        "43163e30-6127-4772-9987-eecc0683d3d9"
+        "941e77b7-cd6d-4dd2-b109-8a927a5206bf"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -2885,11 +2885,11 @@
       "order_key": "a4113104e2eb255da580b1c3501256e67f1b085e2a8e1b5ee2ef6d9bafe3e978",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "e68e3856abb5a8c74190cc7cffa9d91b97aa5ea09b5a2809f129bbc591817fa7",
+      "prompt_sha256": "6a6810e865e869407a2b7e48442038faf2b89d40d0573c8b9452c485aedfbdfa",
       "prompt_bytes": 21154,
       "memory_ids": [
-        "0ce8308e-d272-414a-8104-79d3347d6bd2",
-        "9d7496fa-71fb-4d1b-8b86-b6787f69a8f3"
+        "0d09cacf-6df4-4e83-bcc9-994a1d3a1330",
+        "a0b5b4c3-9405-4afc-a3ce-f2fbbad6e924"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2918,11 +2918,11 @@
       "order_key": "a8eb630e6e06cc07f1ce4726d965aeb9641cc71edf3d48a38d37f75a303b9668",
       "variant_id": "orchard-v10",
       "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
-      "prompt_sha256": "57c49a38b120a8c6706633351fae7b0367920fbe76bf518f8be6d9fc455b1868",
+      "prompt_sha256": "d08cd96c5c7409fd2249b8c3e830d42bdf7de7fca9264ad3ca23ea9a3e3a794c",
       "prompt_bytes": 18800,
       "memory_ids": [
-        "30d82255-aa1f-4b82-899d-6bf23ee237d6",
-        "7261fbba-5e26-46e2-89b2-ca5f02c0af4b"
+        "0bc9db6b-e077-401e-ae0d-4aa463e0ed3a",
+        "107d2e58-2e7f-4d2b-960c-58fccd0a7431"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -2951,10 +2951,10 @@
       "order_key": "a97a4872fc3a2d8788fd9b00e8b8d9c4ff715413805d81cd48dcf12a6ba4d364",
       "variant_id": "orchard-v10",
       "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
-      "prompt_sha256": "90e07c505091990e5bf8a2655e2f945f9bd16d8d53a4e6a1e58f25cf89696a1b",
+      "prompt_sha256": "de13bcc570c52f9362407704ba51d5c99cc932c7979e9a61d5e183ec9b679ec8",
       "prompt_bytes": 18661,
       "memory_ids": [
-        "b8705145-704b-4b09-ae9c-562b7c2d9ead"
+        "f6a80940-18d3-4366-ba07-59b8241bd1b6"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3043,11 +3043,11 @@
       "order_key": "b1496ba04373d0a7559f757c3f98e251f4588eb4414486231700b7c1fbc25f1f",
       "variant_id": "orchard-v11",
       "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
-      "prompt_sha256": "b03118ae7eca94eea1e1eee3dfe3031fcac5540ca235af0e0268de44916f7d77",
+      "prompt_sha256": "811813eb07918bd674c9fa44d0f33afbfae8469a83bf9f3db19a636a8fc22eae",
       "prompt_bytes": 18882,
       "memory_ids": [
-        "36690401-1320-420d-899b-ddcc31d378d1",
-        "c7e26756-2179-46c1-b684-4e67f5f751d1"
+        "83d4f69a-dd0f-40b8-a860-0547bc359f2a",
+        "8adb55a8-42ba-4450-94da-09ef6f5ed3bb"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3106,11 +3106,11 @@
       "order_key": "b4e6a5ded0a8fb85323f324dbbd92df4c89b7869bc7e1501f1db6615118dfcf6",
       "variant_id": "farmyard-v10",
       "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
-      "prompt_sha256": "d25e7f67dde6d2efa445f515f7f6402bfe701d5ef0701bc1d98d63917e6ec6a8",
+      "prompt_sha256": "2ac5efe76a5a864d1269ec3080c7adfd9acfb912034a80945506f9e4102ee92b",
       "prompt_bytes": 18612,
       "memory_ids": [
-        "5716f79d-15b6-447b-bd02-8c7b84caad2e",
-        "aa45d98c-aaa6-44a9-8323-a22bec3ccd18"
+        "06c6e8dc-e1ec-40a5-829f-64f08ce6db32",
+        "777b4f3a-9486-441c-89e3-a2ad222ccb54"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3139,11 +3139,11 @@
       "order_key": "b923ddfc504663a210ccabdc699652035a50f9f10e04059c5599a2d33349121e",
       "variant_id": "farmyard-v02",
       "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
-      "prompt_sha256": "3e9662931cecf0fb93aef99a5e56a47f8afa54f6dbdf4eeb00bfd622e2137d13",
+      "prompt_sha256": "1a40290de001594ed911da983ee2be3611c89e80111d34422f81e0f24db7d6ad",
       "prompt_bytes": 21096,
       "memory_ids": [
-        "4889c151-a6e9-4285-a6ce-2465730e7a06",
-        "379d920a-871f-4dc4-9c6e-e8fda0b52d1a"
+        "1d5f233d-28af-45aa-b0e4-c433a1d3d0f3",
+        "25eb816a-3710-471a-b04a-54d564614ae7"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3172,10 +3172,10 @@
       "order_key": "b96857e3e93887460774ee2695f9a74b52bdfbf800993bd78ec5bd9c9156418c",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "08c9ea152ba44c1e8e49df8b8b06493afc8e2ea7dc5ba3b65bc15e781321b273",
+      "prompt_sha256": "e25a28e78486fed5b8d321b873a5b7f9ceab13571780e74645c073e0c2d87166",
       "prompt_bytes": 22561,
       "memory_ids": [
-        "5cdaf023-9833-4567-b330-622ceb89a6d8"
+        "2dbba842-a000-4922-8bf1-2a4defcb1696"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3204,10 +3204,10 @@
       "order_key": "bc9864e539c7d56bd89b918ad143ce0fe37894479f6f7d2dcdfc343253068fa0",
       "variant_id": "farmyard-v01",
       "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
-      "prompt_sha256": "2aaef9f28d970c77c4d3a4eba98359ffebe223feab855c3207c9a116ca821bf8",
+      "prompt_sha256": "6514f7641bdea310f4875125a650dd686467cb9b4246bd0bc97860a36cac4209",
       "prompt_bytes": 20846,
       "memory_ids": [
-        "fc56f82c-906b-460a-b4ae-2578eca81457"
+        "f8914b3c-376f-40bb-a51f-4b7dbd32e1bf"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3266,11 +3266,11 @@
       "order_key": "be7f799a99fef1ccf16f3a3dff2f528d2e10aacae7ec44424bb3ee293b5c4328",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "cc607a0d19950ee592a60684300d1bc8c091d2c78e4232b03bf278576aa58237",
+      "prompt_sha256": "6970685aabd190eff33a3a9bd690b6b98b773dbd2fdea45a3b809c336a05fdac",
       "prompt_bytes": 22636,
       "memory_ids": [
-        "1cafef37-dec5-4c41-9eff-1dac9cf6a80d",
-        "bca44fe0-2d43-4c73-9519-fd270e5d3fa2"
+        "5942478d-0f55-482a-a643-7147f8a5c081",
+        "b2916c4d-d462-4f33-b67d-95190732f224"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3329,11 +3329,11 @@
       "order_key": "c18c93d5efe150d2073e0986a10ad1f8bd97e79fe5b3528d92aa4daf5403f5ae",
       "variant_id": "farmyard-v00",
       "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
-      "prompt_sha256": "e3dd8bc1281c6d31102ce7c1a1d607819cef17df246d49e16473bd0e60db7ac8",
+      "prompt_sha256": "a57503e41729aec8de6764b65436ce40ca330ae0a18ad583b7e866f633a164d9",
       "prompt_bytes": 20968,
       "memory_ids": [
-        "4231cdff-6de2-435d-8ebe-6989e9ed7060",
-        "b8da991c-548c-4f68-a59a-6250ae69a081"
+        "529d347b-8b58-4140-836f-5e4e443e6665",
+        "2ffdb058-72be-40c7-a1c5-43f975556eeb"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3362,10 +3362,10 @@
       "order_key": "c228f97e6053f888bbe451e95666e43590e65c6835e99f9a2025ee9cffefce21",
       "variant_id": "farmyard-v11",
       "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
-      "prompt_sha256": "06d359a62a151fb3080bce4c21854b9b2cd792785d1d6f4faf11d419024b5a82",
+      "prompt_sha256": "74c17153912e8cf6d2ae7b29604c388337e5a9946adccb555aacef2b73e7c341",
       "prompt_bytes": 18522,
       "memory_ids": [
-        "ef7017ed-e981-42b5-8659-4abd2cce3ec2"
+        "4b37d557-1d24-4790-8983-298079815a43"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3394,11 +3394,11 @@
       "order_key": "c47f887f0d419dce650520c12d4bc1e375b14ee599a7eed3739274fa174deac0",
       "variant_id": "farmyard-v11",
       "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
-      "prompt_sha256": "eaf804639385c12be61c7f5ab7a97ff19048441dea6a01c4ef2fa8c198f659b0",
+      "prompt_sha256": "799bcfcbd45e12d901f3aa84a19ed14b2ccfff3a3108b3aaeb13d52deacb538d",
       "prompt_bytes": 18629,
       "memory_ids": [
-        "84b07f2e-4431-4add-b976-680204fe1379",
-        "26764011-9c3a-4fc5-9b15-895fde049d14"
+        "2c1f4cf9-2ac3-42de-9745-8b5bf1960cf4",
+        "f8227184-f1f3-4ce5-a5c2-ac003f843498"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3427,11 +3427,11 @@
       "order_key": "c4ff27e7a6a04aaf2210637ede4850f771aa8d6d9acf1c5db9cff86d95c089a5",
       "variant_id": "farmyard-v11",
       "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
-      "prompt_sha256": "557a04ee30277b59b7cdf26d3ca2d3c0ff15f09f46fb1f1fe602b403c8c830ce",
+      "prompt_sha256": "d1d0725a91b2cf5ee97e721243f76255c87feb58ee671ca24d39706226bb3e04",
       "prompt_bytes": 18661,
       "memory_ids": [
-        "f47cc217-93b1-4fd6-b50c-65d12a0ed759",
-        "7dba4875-33e6-4edb-8d81-fdf5aa285606"
+        "347aeddf-5a7d-4ffd-b35e-3b4b7c0fba8f",
+        "ebd70033-689d-40ce-9929-bef1c0721752"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3460,11 +3460,11 @@
       "order_key": "c566d2875f43adf033cd3c830e3c6df0fae10cb06a4691f32ea3dab676a24edb",
       "variant_id": "focusflow-v02",
       "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
-      "prompt_sha256": "28a1ef5e938719ada73986bb57ff8e76da8011a1fa43592f086876dbbde01c08",
+      "prompt_sha256": "71d5a05842ced6d5a09d3ca4437afdad762b969b734f704e1b213d46a5796456",
       "prompt_bytes": 22825,
       "memory_ids": [
-        "536ca324-701d-4951-bbc9-f44f9a437a10",
-        "1c0f9a9e-f915-4a85-8293-ef7adbf48758"
+        "5b119901-042d-4911-ac70-8a0509f8cf88",
+        "9728830a-c16e-4571-8457-971519cd3a8f"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3493,10 +3493,10 @@
       "order_key": "c94c63067e584d29be74f83058a9736f51354764fde323c4f1a116c5ce5ecf26",
       "variant_id": "farmyard-v11",
       "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
-      "prompt_sha256": "4c501b9dd96188f7f9d056566965ad41160d7b2f5b0cc02c79ba14b35e7128ef",
+      "prompt_sha256": "b17caf74666c7ba82bafadaf60d191ec3f4e86ffd5da62534a612587a3a2e708",
       "prompt_bytes": 18507,
       "memory_ids": [
-        "fac27bae-a231-4501-9564-2c84cbfc2985"
+        "b347bbc0-d97f-43e2-8728-8e49182a71e8"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3525,10 +3525,10 @@
       "order_key": "d040a97a25a0e6bf0e6840c9b4619b93f4b338b1086df08f29fcd5c94e2458bd",
       "variant_id": "orchard-v11",
       "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
-      "prompt_sha256": "a9aab34b3fd8260e3fa1aa41c6ad493a561058c1ffcdb67ef5fff32d1fc5683a",
+      "prompt_sha256": "5245e536ee947996ee18a96694f267b8a4e2f9fce4597d24270b09c13affdd45",
       "prompt_bytes": 18713,
       "memory_ids": [
-        "cdf6b682-a8cb-4104-b44a-c19c37a304e5"
+        "f79ee592-adc3-4781-989c-f4b4b17773a6"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3557,11 +3557,11 @@
       "order_key": "d2ce76dfdaa03b696c4ef2ce73530f9c8a82e680d7df035955350e07c813b5d5",
       "variant_id": "focusflow-v10",
       "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
-      "prompt_sha256": "a2135c628b4a55faa3f174cf0e5b1a8ec89ef14e6791c908669ae10006c9028a",
+      "prompt_sha256": "ad1c72ecfe19cf4fdfe1d646c5e4b980ad744205264b06c500234346fa226851",
       "prompt_bytes": 20053,
       "memory_ids": [
-        "a28222fd-5475-4d64-88c0-414ae93e3f5a",
-        "9f8107d1-6d56-4b2a-90cf-481caf561733"
+        "9c3b6ebb-9b4d-4937-adf6-916ab92fdd8e",
+        "4f4eb2d5-d73f-4c7a-af60-8b94d415e3a0"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3590,11 +3590,11 @@
       "order_key": "d2dde72db25538ba6a1bf5d62cd6b6a4eb0fcb6668c7566b0cc5d918e200ca0c",
       "variant_id": "orchard-v10",
       "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
-      "prompt_sha256": "def20254d757c980391980fb68762e3da0225e2ab65a837432953cc0bb117843",
+      "prompt_sha256": "b48cd50ede7947c9ed444829a19f03c2ce9365283d1116707aa5481565afbf67",
       "prompt_bytes": 18815,
       "memory_ids": [
-        "7705408a-37d3-45d9-ae8b-50f65360edac",
-        "14139202-fec3-4a23-b49a-127baba92cc8"
+        "d419cbb3-9829-43fd-80fb-1e6ba61299ae",
+        "63ddf5bf-086f-4d99-b975-ea68e414a4f7"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3623,10 +3623,10 @@
       "order_key": "d3efa58ce96ffc580a3aad9800d4ac6961a8b1fbbdeabf234fdcfccaf3ff46f5",
       "variant_id": "focusflow-v11",
       "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
-      "prompt_sha256": "8f56f14b0d94a98d28a402720dbd6f0b0860d3da0b82383c26c99c6c07d63b8d",
+      "prompt_sha256": "413c083d74538f7d8a876c5acd880689b7e9a80554d5f1e07f7eae291c20d507",
       "prompt_bytes": 20380,
       "memory_ids": [
-        "5cf6c420-7e3c-40fd-91e9-e99726ac8128"
+        "0de3e092-37c3-4681-b88b-33cdc6e2825d"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3655,10 +3655,10 @@
       "order_key": "d47ce2fc581a4aa4ce4a1eb775d2f4f4134e10d29df69451c2028d8f536d8b25",
       "variant_id": "focusflow-v02",
       "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
-      "prompt_sha256": "9b14d669a72e4a34bb22c0b6e3fac7cd42fe9e0d7209999b8ec5a59074c885b6",
+      "prompt_sha256": "e381bb7c55e61d5de2c69975c748b874be93a0e4efbb3943c6224a5f43a79585",
       "prompt_bytes": 22750,
       "memory_ids": [
-        "6ece38d4-a2cc-400f-be93-691b01b7bdf8"
+        "20b9e93a-6d79-4b7f-8cc1-d19a03eb146b"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3687,11 +3687,11 @@
       "order_key": "d482ecae8b3acff376f5fbee5cea36ca821f608877e93caf586f3ccb149f8ca5",
       "variant_id": "farmyard-v02",
       "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
-      "prompt_sha256": "c5e0fc368067ef550c833898a6595047a0f16ac6042701702117f9800cf00599",
+      "prompt_sha256": "e27c69accc871c45757561d85a90111c28cbfeaaf185608b10daa559cd978c95",
       "prompt_bytes": 21064,
       "memory_ids": [
-        "3f805b53-8a45-498a-8de4-f1ef0f2c886b",
-        "cd843cd6-0bfb-498e-ae51-80f2af8131aa"
+        "59a8aad5-45fa-4df1-84db-cf3b85deef68",
+        "93e9b48a-92d2-4171-b713-d90103873935"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3720,11 +3720,11 @@
       "order_key": "d7ba3ef980fbea29aaa50daebe47bbc00a926daa15029fb7b583b7bee968d812",
       "variant_id": "focusflow-v01",
       "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
-      "prompt_sha256": "6e6656ebac14c6d76118425557bc6c703260e3c60651f7f91fa659c390b34b7b",
+      "prompt_sha256": "5bb4d09626ffe3b81e33fa774d0b18865e7bbb89efaa53a9f1d9074dfdcba77f",
       "prompt_bytes": 23026,
       "memory_ids": [
-        "8cb691a5-352c-4298-97d0-35e879805cdd",
-        "9df67464-fcd4-4727-8c54-f8e2dea7db6a"
+        "8a77bb01-4487-4a7c-9f45-9f51524f6620",
+        "f3de5a3a-b092-4907-9139-90b1caa52435"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -3783,11 +3783,11 @@
       "order_key": "da629d3b8d441862dee678234244a2d529ea43360d4f71c3e2f48b437023153c",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "ebfc19849d8632309eee05e4e78108142063bc70ba653a2293682957ba2f28f5",
+      "prompt_sha256": "01abcc9c6ab5974f092f1ef6450d97b2c7d6bc04f5dd5204301e9542d937949d",
       "prompt_bytes": 22671,
       "memory_ids": [
-        "10de5cc6-76b3-45b7-b989-21c5d918cd8c",
-        "383e90ab-dafc-4418-b1b4-ba390eee41cd"
+        "5617e871-ada1-443e-9769-66fd5af10e7b",
+        "b8107b84-8da0-4b04-a743-47c1da5e5164"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3876,10 +3876,10 @@
       "order_key": "df66ea35edd83b654ca03deb6bf559938f4d547ecbb4f3432290d08e73a1cc92",
       "variant_id": "orchard-v02",
       "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
-      "prompt_sha256": "b7c33eac5f8d60263fe044cb44a2060da93d4cd4d0bb39e202556b9a855fd5e9",
+      "prompt_sha256": "f92ae940896b1b17dfa8e2dd3a763221f10a78c7224d2394e2dda96147d34ee9",
       "prompt_bytes": 21091,
       "memory_ids": [
-        "972a25dc-7ca8-4219-8257-e866b22f593b"
+        "72525939-aea1-46ea-a1a9-f4ed62bc12e6"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3908,10 +3908,10 @@
       "order_key": "df9b38027fe0872c10791c6323f9578ae4b3500ac0fb3ff3b5ac01ded095c210",
       "variant_id": "focusflow-v01",
       "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
-      "prompt_sha256": "08788b39d12e0b8a55dc3de045b350fb6535d002a077133988085a622f0866c9",
+      "prompt_sha256": "19e197f94efbcd21e70119c2f4221f5b72165f4d17affceaa73fb927133082cb",
       "prompt_bytes": 22939,
       "memory_ids": [
-        "f5752246-e9be-46cf-9f11-1d495e070b2c"
+        "ff9334e4-0adb-4426-bc78-8617e49e15d2"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3940,11 +3940,11 @@
       "order_key": "dfa0f9afd9d22c6179a5ea1fcd8f9869dc5e45d7471690ee386cc010395d9307",
       "variant_id": "farmyard-v01",
       "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
-      "prompt_sha256": "8a6ce24e1e5ae736975f22d0aa18e7f39c79d674b609fabf7f8d0b42afeb0c82",
+      "prompt_sha256": "3256fc62d2dce7593b4d8cf82bf218968fb3cb8c630b324edc79ad483d1cce91",
       "prompt_bytes": 20983,
       "memory_ids": [
-        "5d066d4d-bf4b-4ce7-896e-a7a3df80f2fb",
-        "066045a7-d7be-4865-ab13-1adc0ad99427"
+        "338bf0de-b2f8-4b10-9dfd-ff182d198bdd",
+        "d05208a2-bbfa-4f68-9a77-80f1e4a8692b"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -3973,10 +3973,10 @@
       "order_key": "e2a8e4f7d0f077ad034f079090784a77e07adb846f9105d22f244c8d6b27b9fc",
       "variant_id": "focusflow-v01",
       "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
-      "prompt_sha256": "ecece03db2b56b9441c964420d4221ae23c54e5bc2db2768b3bc79a97619e74f",
+      "prompt_sha256": "b26de73cc0e87685f8937781e2d78cccb8e65524c685df5d6befe3fc9b9a689c",
       "prompt_bytes": 22951,
       "memory_ids": [
-        "f65c4c64-fd69-4721-b50e-49fa32f870d6"
+        "8c82cecf-e8f0-4254-85ed-877904762576"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -4005,10 +4005,10 @@
       "order_key": "e416910305a3e40c6bd9afb31064c24ab58ec2f10107620f62f5fdc6aab85f58",
       "variant_id": "orchard-v00",
       "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
-      "prompt_sha256": "7de63f90c152d3a94752a511f4e57df32fef17a9a6bca473712a434acdb9927b",
+      "prompt_sha256": "f9ee2edf0cc7d7dd847ed86dd510eb096015462f0f61002809a974890afea3ab",
       "prompt_bytes": 21000,
       "memory_ids": [
-        "902a589b-6e3f-4095-b1d4-e98a16f72e34"
+        "78c94388-dd39-47f3-a959-2349d06bf6f4"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -4037,10 +4037,10 @@
       "order_key": "e5e21859478969b4ca93b5c7cb1c7cfcc6af44cadb2f872ab42894c4dbed517c",
       "variant_id": "orchard-v10",
       "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
-      "prompt_sha256": "73dbc201ca4ba9804a29cc3520364c505641b2b2b6ad286442e302a02e6e232f",
+      "prompt_sha256": "75514a4ba07ab4e6c9fd8a435f19851a9b1be0d2e6cfb04126d673121f8c9490",
       "prompt_bytes": 18646,
       "memory_ids": [
-        "05e742fd-212d-42d2-9cac-d8f634c85c18"
+        "1f5437a9-63bc-48b1-8fa1-7ec34d70d080"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -4069,11 +4069,11 @@
       "order_key": "e788ba79a09b26de7dd19d30821482d8f3a4cad5a4e813481345c73715788b4b",
       "variant_id": "orchard-v02",
       "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
-      "prompt_sha256": "78de55198b5811c0c954372118de794f278d054a6af4f015a73ec079f4da077b",
+      "prompt_sha256": "bb7541ecd360e12fb361392ac6e04fb52dde8cb8eec0e85020ce174a7b9db60c",
       "prompt_bytes": 21260,
       "memory_ids": [
-        "c718a921-d97c-4475-9c65-630959981648",
-        "893d54a1-6e9a-4422-9c3d-a89bc1176d96"
+        "c1c35c98-da7a-4230-9e18-d23f150737e5",
+        "9e61b8a3-9d9f-4ccf-b03d-4a78a6a3ffad"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -4102,11 +4102,11 @@
       "order_key": "eeb3a9b94464f1396230b0102f35f99c918c24bcdf8caf99c1ce24fcb80e0bb2",
       "variant_id": "farmyard-v10",
       "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
-      "prompt_sha256": "37de166ff905b092ef966a19fefe3d1d244153b4a5588491655dea55a28dfaa6",
+      "prompt_sha256": "f9458c79331e5669ff2e91e5a02861b04ba593515b123ffcd90ea0633dcadd35",
       "prompt_bytes": 18629,
       "memory_ids": [
-        "b22c7b6b-3bc0-4252-aa2d-5ba84087fc2e",
-        "72584f40-e18b-4315-8acb-0d4032481be1"
+        "bd64c066-f2b9-4e2b-a161-190d34735ad6",
+        "4f6be16b-4b7a-492f-93cc-5aeadf0e7cba"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -4135,11 +4135,11 @@
       "order_key": "f4fb6fe1f00cb47e287433cccb25fdec7bdc2028a6b9963d4d71dd33a64910b3",
       "variant_id": "focusflow-v11",
       "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
-      "prompt_sha256": "0949d947dc5202a17630410c842b2dba3c40b83f587f1fd6c6f8c13f3352f788",
+      "prompt_sha256": "06c1f96a7d79c2f602eaec76c1c006f364ab86f157707ff9d0aea6d28dbcde01",
       "prompt_bytes": 20455,
       "memory_ids": [
-        "0b76b626-943f-4782-8531-0e65acfbde7d",
-        "ac66e948-b816-4ef6-a540-a20ee62519af"
+        "95c571e7-dad4-48f0-9aa6-40e5dea179e8",
+        "d5eed92f-c1d9-4e50-a2e2-85a4aadb830c"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,
@@ -4168,10 +4168,10 @@
       "order_key": "f758cf46df2416c88eee538210723b4a9830be14bcfa5717eef6e3a277f9d9fd",
       "variant_id": "orchard-v01",
       "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
-      "prompt_sha256": "21b3c4720f8af35d4c7672f83d14fadfdbe81310ccaa6efd534f65ba03a611f3",
+      "prompt_sha256": "bbe4e88ccff9cd397c341d29899205303e33e99090846b62efdf2d16b7b99aaa",
       "prompt_bytes": 21052,
       "memory_ids": [
-        "6fe607ee-c1cc-48be-8c41-79c062e3975b"
+        "e46a2567-ab0e-4fc8-a2aa-b17a69c2484a"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -4200,10 +4200,10 @@
       "order_key": "f8ce910ea416e3c9a0e5df50267771734d857e016a94e2e6dedd69a357e54957",
       "variant_id": "farmyard-v10",
       "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
-      "prompt_sha256": "60b92eddc6f77dbdc6c7bab70a7d6155bc90b18bc8be10194ff4b3f818c8e830",
+      "prompt_sha256": "9e5d6dd6259db3d180eb700b2f05eab7028de3565bf2d6277424ceec7ebcb0a8",
       "prompt_bytes": 18475,
       "memory_ids": [
-        "3e28c4b6-2896-41d3-b184-dd4767441ec2"
+        "39c86284-1cdd-4d0f-93b6-7252466a829e"
       ],
       "rule_in_prompt": true,
       "correction_in_prompt": false,
@@ -4232,11 +4232,11 @@
       "order_key": "ff8bac73bf441b5c2c4752a57d53ba6a9134ab6f2f857e2eaa39e2224ba3844d",
       "variant_id": "focusflow-v00",
       "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
-      "prompt_sha256": "b5da7bc214c86a0a3e32bd7a4bf7e995b8e108a3a5ab72a1d8876b10a23781e5",
+      "prompt_sha256": "e523ec2b3e8f20d009ac6f47bb210d4ef758e7840924d4802846f3592ffda66d",
       "prompt_bytes": 22636,
       "memory_ids": [
-        "49aea6d9-f4b6-4e03-95ca-5bf9add34a7a",
-        "5284d243-3488-496d-9d6e-50e074e68e5e"
+        "58299bc5-8c10-42b1-8469-875ad36e21a8",
+        "ac7f108a-904f-4665-bc70-f4013112d555"
       ],
       "rule_in_prompt": false,
       "correction_in_prompt": true,

@@ -78,3 +78,19 @@ free/local calls; the confirmatory experiment is not started and nothing is froz
   900 s per-request safety timeout is unaffected.
 - Lesson recorded for the confirmatory harness: never treat a client-side abort as a server-side
   abort on this endpoint; always wait for the slot to drain before the next execution.
+
+### D-P9 — non-streaming long generations lose the connection; streaming transport adopted
+
+- One pilot execution (`pilot.s02.focus-reward.focusflow-v01.p00--none--r0`) failed with
+  `curl: (56) Recv failure: Operation timed out` after 780.3 s (attempt 1) and 660.3 s (attempt 2).
+  The server was generating a very long full-file output; the connection carried no bytes until the
+  single JSON response, and the idle long-lived connection was dropped before the response arrived.
+- Fix: generation calls now use **SSE streaming** (`stream: true`, curl `-N`), which the endpoint
+  keeps alive with `: keep-alive` comments every ~10 s; the runner reconstructs the response content
+  from `data:` deltas. Verified end-to-end: content `"OK"`, finish_reason `stop`, usage and timings
+  present, 3 chunks, 1.0 s. Raw SSE text is kept per attempt (`*.attemptN.sse.txt`) for audit.
+- The failed record was quarantined under `pilot/aborted-transport-defect-2/` (no output produced)
+  and the run is re-executed under the streaming transport; the final dataset contains one
+  successful record for each run id.
+- Request timeout default raised to 1800 s (streaming removes the idle-socket failure mode; this is a
+  safety bound, not an expected runtime).
