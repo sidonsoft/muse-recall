@@ -260,6 +260,15 @@ now is maintenance honesty, not new surface:
     demo generators are provider-neutral and safe. The map turns the #149
     near-miss into a standing guardrail any runner can consult BEFORE
     dirtying the tree.
+  - Command two-way census README<->package.json (31 Oct, at head): every
+    `pnpm <name>` in the README resolves to a real package.json script
+    (the four apparent misses are prose/CLI subcommands: pnpm 10.32.1,
+    exec, install, scripts); every script is documented SOMEWHERE in
+    docs - db tools in runbooks, evidence generators in their phase
+    docs, dev variants in dev notes - except `test:watch`,
+    `test:coverage`, `lint:fix`, deliberately left as universal
+    developer conventions rather than padding the README's table.
+    No phantom commands; no undiscoverable scripts.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
