@@ -491,6 +491,18 @@ now is maintenance honesty, not new surface:
     the historical-era citation rule in action, and a fact about this
     repo's own topology: the docs remember branch shapes that the
     squash history no longer contains.
+  - Every merge is gated twice - and the watch trap finally has its
+    mechanism (31 Oct): ci.yml triggers on push to [main, integration]
+    AND on pull_request, so each squash merge re-runs the full gate on
+    the MERGED RESULT, not just the PR head. Six sampled post-merge
+    integration runs: all success; the newest (this cadence's last
+    merge head) verified completed success after the observation.
+    That post-merge leg is the real safety net behind the stale-watch
+    confusion: a watch that reattaches to an old PR run shows a
+    stale VIEW, while the merged tree was independently greened by
+    its own push run. Concurrency `cancel-in-progress: true` on the
+    PR ref explains why older runs sometimes appear superseded
+    mid-watch.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
