@@ -103,6 +103,11 @@ in the archived journal. Each row: probe -> observed -> owner of the follow-up.
 | `/api/meta` posture self-report | loopback-only / shared-token per mode | SECURITY groundwork |
 | idempotent replay (socket level) | 201 replay byte-identical + `idempotent-replayed: 1` header | D049 |
 | error envelopes (404/validation_failed) | not_found names METHOD+path; details[] path-level | inventory §4 |
+| clean-clone DR drill (app stopped, 31 Oct beta) | symlink-alias source==target refused; live `--force` restore works app-stopped; structurally corrupt backup + `--force` refused, target bytes byte-identical (caveat: garbage in free space passes `integrity_check` - detection is structural, by design) | runbook DR |
+| `backup:drill` on a clean clone | PASS incl. both failure-guard legs | runbook DR |
+| MCP stdio from a clean clone (offline) | initialize + tools/list (7 tools), stderr read-only banner, write descriptions carry the startup-policy note | D058 witness |
+| live Muse CLI 1.4.14 turn (clean clone) | assistant turn returned verbatim "BETA LIVE PROVIDER OK" (17,247/54 tok); missing binary -> `provider_failure` naming the spawn error, boot unaffected | quickstart |
+| Playwright managed Chromium on a clean clone | `verify:studio-workflow` 48/48 checks; `verify:browser` smoke pass (dev web + API); generative-UI check skips honestly when provider != muse-cli | CI parity |
 
 Characterization pins `tests/integration/error-envelope-pins.test.ts` were flipped by the v3
 lockstep itself (beta, 31 Oct, owner-directed) — code + catalogue + pins in one bump, as pinned.

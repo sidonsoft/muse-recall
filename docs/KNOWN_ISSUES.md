@@ -523,6 +523,14 @@ app's own runtime does not use vite at all. The workspace itself audits CLEAN
 (`pnpm audit`, prod+dev, 31 Oct). Frozen path + semver-major: the bump is queued
 post-judging (website/ unfreezes first), as part of the supply-chain tier with
 action-register item 6.
+**Status (beta integration, 31 Oct):** re-audited at `integration` head: identical two
+findings (locked vite 5.4.21 + esbuild 0.21.5; the only automated fix is a vite 8
+major), main workspace `pnpm audit` clean. Beta decision: DEFER unchanged - website/
+is outside the pnpm workspace, ships as a static Pages artifact, and both advisories
+need a dev server to exploit. Same sweep also found the queued main-workspace
+updates (biome 2.6.3->2.6.4, @types/node 26.6.5->26.6.6 patch; vite 7->8 +
+plugin-react 5->6 dev-major): all deferred - a toolchain churn PR during beta buys
+nothing and would force a full re-verify.
 
 ### KI-47 - On the frozen `main`, CONTRIBUTING's SECURITY.md link 404s; the security-policy indicator is unset (same shape as KI-44)
 
@@ -538,6 +546,9 @@ Fix: NONE needed as new work - promoting `integration` to `main` post-judging la
 and repairs the link in one merge. Owner decision at tag time mirrors KI-44: (i) promote the
 docs-only lines to `main` before tagging (changes the shipped SHA) or (ii) ship as-is with the
 404 recorded here. Both files are also inside the frozen tree, so nothing acts before judging.
+**Status (beta integration, 31 Oct):** unchanged - no beta action; the fix IS the
+post-judging `integration`->`main` promotion merge, and the tag-time choice stays an
+owner call (mirrors KI-44).
 
 ### KI-48 - Oversized request bodies answer 413 + `internal_error`; the catalogue has no 413 entry at all (KI-45's class, second instance)
 
