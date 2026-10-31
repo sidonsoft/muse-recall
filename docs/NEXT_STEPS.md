@@ -407,6 +407,16 @@ now is maintenance honesty, not new surface:
     MUSE_RECALL_NO_COUNT) live in setup.sh, not config.ts, which is why
     the config-centric env census never listed them; the census scope is
     now annotated rather than silently widened.
+  - Duplication sweep across the hot docs (31 Oct, at head, after the
+    #169->#170 dedupe): repeated-content scan over NEXT_STEPS (26
+    register bullets, zero duplicate heads, zero repeated long lines),
+    KNOWN_ISSUES, CAPABILITY_INVENTORY, SUBMISSION_PRESERVATION,
+    DECISIONS and README. Every surviving duplicate proved legitimate
+    by context: three KNOWN_ISSUES hits are severity-label boilerplate
+    across distinct entries; README's two identical `git clone` lines
+    sit in two different run-paths sections, consistently worded. The
+    session's ~100 doc patches introduced exactly ONE unintended
+    duplication (#169), and the sweep proves nothing else is hiding.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
