@@ -690,6 +690,19 @@ now is maintenance honesty, not new surface:
     split. CI typecheck already proves resolution at every merge;
     this adds the private/workspace:* policy shape that typecheck
     does not assert.
+  - Supply-chain audit sweep, one real finding filed (31 Oct): `pnpm
+    audit` over the full workspace - CLEAN, no known vulnerabilities
+    prod or dev; `npm audit` in the standalone website/ project -
+    TWO advisories: vite high (dev-server .map path traversal, all
+    <=6.4.3) and esbuild moderate (dev-server request exposure).
+    Context bounds the severity honestly: both are DEV-SERVER flaws;
+    the landing page ships as static Pages output and no dev server
+    ever faces a visitor; the app runtime does not use vite. Fix is
+    semver-major (vite 8.x) inside a frozen path - so KI-46 records
+    it and the bump joins the post-judging supply-chain tier with
+    pinning, not a pre-Nov-4 change. SECURITY.md gains a dated
+    Dependency posture section carrying today's dated results. KI
+    validator: 46 ids, zero dups.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
