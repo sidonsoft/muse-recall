@@ -366,7 +366,7 @@ now is maintenance honesty, not new surface:
     `permissions:` block, still runs under a read-only ceiling: least
     privilege is structurally enforced at the repo layer, not per-file.
     website.yml scopes permissions explicitly where Pages deploy needs
-    write. All 18 `uses:` steps reference floating major tags (@v4/
+    write. All 18 `uses:` steps reference floating major tags (@v4/  [count refreshed 31 Oct: 17]
     @v3), no SHA pins - standard for the project's scale; SHA pinning
     queued post-judging (it would touch website.yml, inside the freeze,
     and the required-check surface).
@@ -643,6 +643,20 @@ now is maintenance honesty, not new surface:
     post-judging lockstep PR as its second code-honesty item.
     Pre-Nov 4: documented, never silently patched - the KI-43/KI-44
     pattern for real defects found at head.
+  - Supply-chain pin count self-corrected (31 Oct): the #162 census
+    line said "all 18 uses: steps float". Re-count, then-line-by-
+    line: ci.yml had NINE uses: at #162's own commit and has nine
+    now; website.yml eight both times; the total is - and always
+    was at this cadence - SEVENTEEN. The "18" was BORN wrong in my
+    #162 count, and my first draft of THIS entry invented a
+    mechanism ("a step consolidation removed one") that the diff
+    proves never happened. Two errors, both mine, both now on
+    record: an off-by-one census AND a fabricated causal story
+    covering for it - caught by the same rule that catches all of
+    them: count the lines, read the diff, before narrating.
+    Register line carries an in-place [count refreshed: 17]
+    marker; pin-ladder scope exact: 17 steps, 9 distinct actions,
+    all floating @v4/@v3.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
