@@ -242,6 +242,19 @@ absence of a public URL are the only controls keeping the API private. Do not ex
 build to a network without setting `ACCESS_TOKEN` — and treat that as groundwork, not a
 multi-user security boundary.
 
+## Dependency posture (audited 31 Oct 2026)
+
+`pnpm audit` across the whole workspace (production and dev manifests):
+**no known vulnerabilities at head.** The standalone landing-page project under
+`website/` (an npm project, deliberately outside the workspace) reports two
+advisories against its BUILD tooling: a high in `vite` (path traversal in the
+dev-server's optimized-deps `.map` handling, all vite ≤6.4.3) and a moderate in
+`esbuild` (dev-server request exposure, ≤0.24.2). Both are dev-server flaws:
+the deployed artifact is static output built by CI and hosted on GitHub Pages -
+no dev server ever runs for a visitor. Fixes are semver-major (`vite` 8.x) and
+the tree is inside the freeze until judging closes, so the bump is queued
+post-judging (exact advisories in KNOWN_ISSUES KI-46).
+
 ## Repository hygiene
 
 - `.env`, `data/`, `*.db`, `workspaces/`, and `test-results/` are gitignored.

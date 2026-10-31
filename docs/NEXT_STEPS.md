@@ -792,6 +792,8 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    close with reason (SUBMISSION_PRESERVATION.md recovery block).
 6. SHA-pin the 17 floating `uses:` steps (9 actions) + per-file `permissions:`
    completion; website.yml pinning included once unfrozen (#162/#195 scope).
+   Same tier: bump website/ vite to 8.x + esbuild (KI-46, semver-major,
+   build-tooling only; re-audit clean after).
 7. Test-typecheck tsconfig in CI (documented trade, #161).
 8. Archive this cadence register into a dated log file; freeze-era watch bullets
    retire with it.
