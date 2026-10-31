@@ -982,6 +982,15 @@ now is maintenance honesty, not new surface:
     ruleset match the preservation doc's table; the doc's
     "bypass actors unchanged" claim now has its first full-list
     witness.
+  - Website sentinel refreshed, one happy coincidence noted (31
+    Oct): the last PUSH run of website.yml is still 29 Oct
+    (0c4bcf7c, success) - no pushes since; the deployed site answers
+    200 with the submitted title ("Muse Recall - correctable
+    project memory for AI-built software"); and PR #28's own
+    website.yml run sits at action_required on pull-ref head
+    f1a16f79 since 30 Oct - GitHub's fork-approval gate holding the
+    frozen-path PR exactly as our freeze decision intended: two
+    independent holds, one decision.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
