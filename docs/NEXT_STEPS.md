@@ -756,7 +756,7 @@ now is maintenance honesty, not new surface:
     judge follows. Command-token scanning needs the prose-exception
     note: the two false positives were named, not deleted.
   - Case-sensitive probes found KI-47 (31 Oct): on the frozen main,
-    CONTRIBUTING's [SECURITY.md](SECURITY.md) link 404s - the root
+    CONTRIBUTING's `[SECURITY.md](SECURITY.md)` link 404s - the root
     security policy was added on integration (9bb0770) after main's
     cut - and GitHub's security-policy indicator reads default-
     branch files, so it stays unset there too. Raw-URL witnesses:
@@ -768,6 +768,21 @@ now is maintenance honesty, not new surface:
     two same-shaped frozen-entry blemishes should be decided once.
     Lesson for link audits: GitHub's side is case-sensitive Linux;
     a macOS resolver that says 200 can be lying about case.
+  - Case-sensitive link audit closed the KI-47 lesson (31 Oct): all
+    relative links across every tracked markdown file re-resolved
+    against git's OWN blob list (653 raw hits, 477 after applying
+    the known dialects: strip ?raw= queries, skip in-page anchors,
+    directory links count if the directory exists, and .github/
+    template files resolve from the REPO root). Zero case-wrong
+    live links remain on integration: the two flagged SECURITY.md
+    occurrences are both backtick-quoted meta-text describing
+    KI-47, and the one real CONTRIBUTING link's 404 lives on the
+    frozen main - exactly what KI-47 files. One hygiene fix rode
+    this PR: NEXT_STEPS:759's quoted link now sits in backticks,
+    matching its KNOWN_ISSUES twin, so neither register line can
+    ever render as the 404 it describes. A scanner's lookbehind
+    for backticks misfired and reported those two as live - the
+    flagger got flaged: eyeball what a regex claims before filing.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
