@@ -273,7 +273,12 @@ durability) closed 2026-10-30.**
   suites it drives; the opt-in live-Muse trio guards the real-provider
   path. Layer map: packages+server modules -> unit; wire contracts +
   auth + pagination -> integration HTTP; UI -> browser workflows;
-  provider reality -> opt-in live.
+  provider reality -> opt-in live. One deliberate, as-found trade:
+  `tests/` EXECUTES in CI but is never TYPECHECKED - every tsconfig
+  includes only `src/**`, so type-level drift inside test files
+  surfaces only as runtime import/call failures (which the full 76-file
+  run catches every leg). A test-only tsconfig would tighten this;
+  adding gates is post-judging work, not pre-Nov-4 work.
   Full
   `pnpm run verify` (lint → `tsc` per package → tests) re-run green end-to-
   end, exit 0, at the 65-PR milestone head `dec4d24` on 31 Oct.
