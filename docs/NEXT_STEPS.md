@@ -517,6 +517,16 @@ now is maintenance honesty, not new surface:
     anywhere. Issue templates checked in the same pass: both form
     YAMLs and config.yml parse with sane keys, blank issues policy
     explicit.
+  - Judge-entry rehearsal from a FRESH clone at head (31 Oct): cloned
+    integration from origin at 409e8eb, then ran exactly what the
+    README promises - frozen-lockfile install, pnpm build, built
+    server answering /api/health, and pnpm demo:seed landing 3
+    memories + 1 project (the two active + one superseded shape the
+    walkthroughs describe). Honest scope notes: install was 1.2s on a
+    warm pnpm store - this rehearse CORRECTNESS, not cold-network
+    timing; and the dev-server browser path was not re-opened, its
+    leg being the managed-browser CI gate (green at every merge).
+    Clone and scratch DBs removed after; repo untouched.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
