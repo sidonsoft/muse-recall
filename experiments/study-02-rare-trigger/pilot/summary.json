@@ -1,0 +1,37 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "updated_at": "2026-10-31T03:05:25.923Z",
+  "planned": 132,
+  "recorded": 3,
+  "remaining": 129,
+  "usable": 3,
+  "unusable": 0,
+  "manipulation_failures": 0,
+  "by_status": {
+    "succeeded": 3
+  },
+  "by_arm": {
+    "memory": {
+      "total": 2,
+      "usable": 2
+    },
+    "none": {
+      "total": 1,
+      "usable": 1
+    }
+  },
+  "by_stratum": {
+    "farm-arcade": {
+      "total": 1,
+      "usable": 1
+    },
+    "farm-challenge": {
+      "total": 1,
+      "usable": 1
+    },
+    "focus-lively": {
+      "total": 1,
+      "usable": 1
+    }
+  }
+}

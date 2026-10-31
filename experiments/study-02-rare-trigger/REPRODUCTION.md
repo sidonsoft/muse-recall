@@ -148,3 +148,71 @@ PY
 - Any claim of independent verification: the checkpoint's audit and verifiers are same-team work.
   The preregistered analysis must be independently re-implemented and, where human coding is used,
   independently coded.
+
+---
+
+# Checkpoint 2 additions (corpus, scoring, pilot) — 2026-10-31
+
+These commands reproduce the checkpoint-2 artefacts. The pilot is Dell-only and free/local; the
+confirmatory experiment does not exist in the tooling.
+
+## 11. Validate the expanded corpus (deterministic, no network)
+
+```bash
+cd experiments/study-02-rare-trigger
+python3 scripts/study02/gen_corpus.py --check       # reproduces all 68 generated files byte-identically
+python3 - <<'PY'
+import json
+v = json.load(open('corpus/validation.json'))
+assert v['ok'] and v['counts']['scenarios'] == 400 and v['counts']['scenarios_high'] == 200
+assert v['counts']['variants'] == 60 and v['counts']['twin_pairs'] == 30
+assert v['counts']['strata'] == {
+    'farm-arcade': 60, 'farm-challenge': 60, 'orchard-arcade': 60,
+    'orchard-challenge': 60, 'focus-reward': 80, 'focus-lively': 80}
+print('corpus validation OK')
+PY
+sha256sum -c corpus/corpus.sha256 | tail -2   # 67/67 OK (run from the study directory)
+```
+
+## 12. Validate the frozen scoring endpoint
+
+```bash
+cd experiments/study-02-rare-trigger
+python3 scripts/study02/test_scoring.py
+# expects: 41 Phase 17 fixtures + baseline-clean; exposure fixtures; and an exact
+# re-score of docs/hackathon-evidence/phase17/out reproducing phase17-analysis.json
+```
+
+## 13. Re-run the pilot dry-run (zero model calls)
+
+```bash
+cd /Users/burnz/projects/muse-memory-lab
+pnpm exec tsx experiments/study-02-rare-trigger/scripts/study02/run_pilot.mjs --dry-run
+# expects: 132/132 prompts, 120 primary + 12 repeats, 0 manipulation failures
+```
+
+## 14. Resume the pilot (Dell endpoint; Lead only, exclusive use)
+
+```bash
+pnpm exec tsx experiments/study-02-rare-trigger/scripts/study02/run_pilot.mjs --resume
+# resumable: an existing pilot/records/<run_id>.json is never re-executed.
+# Never run this concurrently with endpoint qualification or another client.
+```
+
+## 15. Recompute the pilot analysis
+
+```bash
+cd experiments/study-02-rare-trigger
+python3 scripts/study02/analyze_pilot.py
+# writes pilot/scores.jsonl, pilot/pilot-analysis.json, pilot/pilot-tables.md
+```
+
+The pilot analysis is descriptive only; it excludes itself from the confirmatory dataset and makes
+no determinism claim (the Dell endpoint is not seed-deterministic at temperature 0.7 — see
+`07-ENDPOINT-QUALIFICATION.md` §2.2).
+
+## 16. Endpoint qualification evidence
+
+`qualification/` holds the six real generations (prompts, requests, raw responses, extracted HTML,
+records, measurements and the seed probes). The machine-readable summary is the JSON block in
+`07-ENDPOINT-QUALIFICATION.md` §0; the raw per-run records are `qualification/records.json`.

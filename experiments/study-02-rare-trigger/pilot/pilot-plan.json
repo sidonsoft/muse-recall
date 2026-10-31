@@ -1,0 +1,913 @@
+{
+  "determinism_check": {
+    "new_seed": {
+      "arms": 4,
+      "executions": 4,
+      "pilot_scenario_ids": [
+        "pilot.s02.orchard-challenge.orchard-v00.p00"
+      ],
+      "rule": "each repeat uses a distinct derived seed; output may differ (sample-variability probe)"
+    },
+    "same_seed": {
+      "arms": 4,
+      "executions": 8,
+      "pilot_scenario_ids": [
+        "pilot.s02.farm-arcade.farmyard-v00.p00",
+        "pilot.s02.focus-reward.focusflow-v00.p00"
+      ],
+      "rule": "each repeat uses the same seed as the primary execution; identical output bytes are the expected deterministic behaviour"
+    }
+  },
+  "disjoint_from_corpus": true,
+  "note": "Pilot data are separate from the confirmatory corpus: only pilot-only p00 request texts are used, and none of these executions enter the 400-scenario corpus. Arms and prompt construction are owned by the harness; this plan fixes scenario identity, paraphrase, and seeds.",
+  "paraphrase_scope": "p00 only",
+  "pilot_scenarios": [
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 328673691,
+        "manual": 794595706,
+        "memory": 803834682,
+        "none": 313529342
+      },
+      "stratum": "farm-arcade",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "farmyard-v00"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v01.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 968558907,
+        "manual": 331387551,
+        "memory": 300761754,
+        "none": 831652136
+      },
+      "stratum": "farm-arcade",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "farmyard-v01"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v02.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 674509018,
+        "manual": 267636933,
+        "memory": 1628997830,
+        "none": 1646817454
+      },
+      "stratum": "farm-arcade",
+      "template_id": "T02",
+      "twin_id": "twin-T02",
+      "variant_id": "farmyard-v02"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 772554114,
+        "manual": 719562052,
+        "memory": 345091751,
+        "none": 1607647004
+      },
+      "stratum": "farm-arcade",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "farmyard-v10"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 1939042191,
+        "manual": 726254274,
+        "memory": 215679032,
+        "none": 1131845226
+      },
+      "stratum": "farm-arcade",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "farmyard-v11"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 235832847,
+        "manual": 1778940966,
+        "memory": 437555411,
+        "none": 1603763526
+      },
+      "stratum": "farm-challenge",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "farmyard-v00"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 618688143,
+        "manual": 823070651,
+        "memory": 633568182,
+        "none": 1195512332
+      },
+      "stratum": "farm-challenge",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "farmyard-v01"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.farm-challenge.farmyard-v02.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 15982367,
+        "manual": 1091885870,
+        "memory": 319732036,
+        "none": 2124002966
+      },
+      "stratum": "farm-challenge",
+      "template_id": "T02",
+      "twin_id": "twin-T02",
+      "variant_id": "farmyard-v02"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.farm-challenge.farmyard-v10.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 370646282,
+        "manual": 2070239167,
+        "memory": 765184235,
+        "none": 1443002441
+      },
+      "stratum": "farm-challenge",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "farmyard-v10"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.farm-challenge.farmyard-v11.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 374452380,
+        "manual": 34408322,
+        "memory": 206229333,
+        "none": 529993447
+      },
+      "stratum": "farm-challenge",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "farmyard-v11"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.orchard-arcade.orchard-v00.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 202895542,
+        "manual": 1606041805,
+        "memory": 186662356,
+        "none": 112008669
+      },
+      "stratum": "orchard-arcade",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "orchard-v00"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 1117048913,
+        "manual": 1926676832,
+        "memory": 413816858,
+        "none": 1661303338
+      },
+      "stratum": "orchard-arcade",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "orchard-v01"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.orchard-arcade.orchard-v02.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 1930358810,
+        "manual": 1699791908,
+        "memory": 83699880,
+        "none": 979160010
+      },
+      "stratum": "orchard-arcade",
+      "template_id": "T02",
+      "twin_id": "twin-T02",
+      "variant_id": "orchard-v02"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.orchard-arcade.orchard-v10.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 1535253973,
+        "manual": 1921571459,
+        "memory": 1524002373,
+        "none": 1002625687
+      },
+      "stratum": "orchard-arcade",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "orchard-v10"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the game as exciting and challenging as an arcade game.",
+      "pilot_scenario_id": "pilot.s02.orchard-arcade.orchard-v11.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "arcade",
+      "seeds": {
+        "corrected": 2140315117,
+        "manual": 638759048,
+        "memory": 591430330,
+        "none": 243405742
+      },
+      "stratum": "orchard-arcade",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "orchard-v11"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 1210928258,
+        "manual": 1011294846,
+        "memory": 432950682,
+        "none": 93863221
+      },
+      "stratum": "orchard-challenge",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "orchard-v00"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v01.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 460139153,
+        "manual": 1514349500,
+        "memory": 1292159580,
+        "none": 561769470
+      },
+      "stratum": "orchard-challenge",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "orchard-v01"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 97945623,
+        "manual": 1344808752,
+        "memory": 675121712,
+        "none": 327093979
+      },
+      "stratum": "orchard-challenge",
+      "template_id": "T02",
+      "twin_id": "twin-T02",
+      "variant_id": "orchard-v02"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v10.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 578489918,
+        "manual": 1275745660,
+        "memory": 1338848842,
+        "none": 171114582
+      },
+      "stratum": "orchard-challenge",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "orchard-v10"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v11.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "challenge",
+      "seeds": {
+        "corrected": 1342501840,
+        "manual": 1077607931,
+        "memory": 2057575081,
+        "none": 401987978
+      },
+      "stratum": "orchard-challenge",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "orchard-v11"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make completing a task feel rewarding and celebratory.",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "reward",
+      "seeds": {
+        "corrected": 812154474,
+        "manual": 2122180535,
+        "memory": 366710044,
+        "none": 1392918688
+      },
+      "stratum": "focus-reward",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "focusflow-v00"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make completing a task feel rewarding and celebratory.",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "reward",
+      "seeds": {
+        "corrected": 161267924,
+        "manual": 1687856621,
+        "memory": 662336354,
+        "none": 1398335065
+      },
+      "stratum": "focus-reward",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "focusflow-v01"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make completing a task feel rewarding and celebratory.",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v02.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "reward",
+      "seeds": {
+        "corrected": 169171790,
+        "manual": 1631206330,
+        "memory": 1134524854,
+        "none": 83194284
+      },
+      "stratum": "focus-reward",
+      "template_id": "T02",
+      "twin_id": "twin-T02",
+      "variant_id": "focusflow-v02"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make completing a task feel rewarding and celebratory.",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v10.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "reward",
+      "seeds": {
+        "corrected": 382929041,
+        "manual": 1025774625,
+        "memory": 1326337380,
+        "none": 536041108
+      },
+      "stratum": "focus-reward",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "focusflow-v10"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make completing a task feel rewarding and celebratory.",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v11.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "reward",
+      "seeds": {
+        "corrected": 632753497,
+        "manual": 287131845,
+        "memory": 1577252982,
+        "none": 1736399468
+      },
+      "stratum": "focus-reward",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "focusflow-v11"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the planner feel lively and engaging.",
+      "pilot_scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "lively",
+      "seeds": {
+        "corrected": 587962949,
+        "manual": 402637766,
+        "memory": 1074647271,
+        "none": 2093285441
+      },
+      "stratum": "focus-lively",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "focusflow-v00"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the planner feel lively and engaging.",
+      "pilot_scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "lively",
+      "seeds": {
+        "corrected": 613608162,
+        "manual": 719651122,
+        "memory": 603856955,
+        "none": 484281808
+      },
+      "stratum": "focus-lively",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "focusflow-v01"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "high",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the planner feel lively and engaging.",
+      "pilot_scenario_id": "pilot.s02.focus-lively.focusflow-v02.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "lively",
+      "seeds": {
+        "corrected": 370625051,
+        "manual": 44581322,
+        "memory": 1914078039,
+        "none": 57826055
+      },
+      "stratum": "focus-lively",
+      "template_id": "T02",
+      "twin_id": "twin-T02",
+      "variant_id": "focusflow-v02"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the planner feel lively and engaging.",
+      "pilot_scenario_id": "pilot.s02.focus-lively.focusflow-v10.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "lively",
+      "seeds": {
+        "corrected": 2024570309,
+        "manual": 1024177331,
+        "memory": 516408234,
+        "none": 1425538169
+      },
+      "stratum": "focus-lively",
+      "template_id": "T00",
+      "twin_id": "twin-T00",
+      "variant_id": "focusflow-v10"
+    },
+    {
+      "arms": [
+        "none",
+        "memory",
+        "manual",
+        "corrected"
+      ],
+      "executions": 4,
+      "opportunity_class": "low",
+      "paraphrase_id": "p00",
+      "paraphrase_text": "Make the planner feel lively and engaging.",
+      "pilot_scenario_id": "pilot.s02.focus-lively.focusflow-v11.p00",
+      "prompt_scope": "pilot-only p00 (disjoint from corpus)",
+      "reps": 1,
+      "request_id": "lively",
+      "seeds": {
+        "corrected": 526064000,
+        "manual": 1750678563,
+        "memory": 105711185,
+        "none": 194604588
+      },
+      "stratum": "focus-lively",
+      "template_id": "T01",
+      "twin_id": "twin-T01",
+      "variant_id": "focusflow-v11"
+    }
+  ],
+  "repeats": [
+    {
+      "arm": "none",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "repeat_id": "repeat-01",
+      "repeat_type": "same_seed_determinism",
+      "seed": 313529342
+    },
+    {
+      "arm": "memory",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "repeat_id": "repeat-02",
+      "repeat_type": "same_seed_determinism",
+      "seed": 803834682
+    },
+    {
+      "arm": "manual",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "repeat_id": "repeat-03",
+      "repeat_type": "same_seed_determinism",
+      "seed": 794595706
+    },
+    {
+      "arm": "corrected",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "repeat_id": "repeat-04",
+      "repeat_type": "same_seed_determinism",
+      "seed": 328673691
+    },
+    {
+      "arm": "none",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "repeat_id": "repeat-05",
+      "repeat_type": "same_seed_determinism",
+      "seed": 1392918688
+    },
+    {
+      "arm": "memory",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "repeat_id": "repeat-06",
+      "repeat_type": "same_seed_determinism",
+      "seed": 366710044
+    },
+    {
+      "arm": "manual",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "repeat_id": "repeat-07",
+      "repeat_type": "same_seed_determinism",
+      "seed": 2122180535
+    },
+    {
+      "arm": "corrected",
+      "expectation": "identical output bytes to the primary execution (determinism check; if not, record both hashes)",
+      "pilot_scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "repeat_id": "repeat-08",
+      "repeat_type": "same_seed_determinism",
+      "seed": 812154474
+    },
+    {
+      "arm": "none",
+      "expectation": "sample variation probe; output may differ from the primary execution",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "repeat_id": "repeat-09",
+      "repeat_type": "new_seed_variability",
+      "seed": 234167252
+    },
+    {
+      "arm": "memory",
+      "expectation": "sample variation probe; output may differ from the primary execution",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "repeat_id": "repeat-10",
+      "repeat_type": "new_seed_variability",
+      "seed": 143194222
+    },
+    {
+      "arm": "manual",
+      "expectation": "sample variation probe; output may differ from the primary execution",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "repeat_id": "repeat-11",
+      "repeat_type": "new_seed_variability",
+      "seed": 795501531
+    },
+    {
+      "arm": "corrected",
+      "expectation": "sample variation probe; output may differ from the primary execution",
+      "pilot_scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "repeat_id": "repeat-12",
+      "repeat_type": "new_seed_variability",
+      "seed": 1833298294
+    }
+  ],
+  "status": "checkpoint2-draft",
+  "totals": {
+    "arms": 4,
+    "pilot_scenarios": 30,
+    "primary_executions": 120,
+    "repeat_executions": 12,
+    "reps": 1,
+    "total_executions": 132
+  }
+}

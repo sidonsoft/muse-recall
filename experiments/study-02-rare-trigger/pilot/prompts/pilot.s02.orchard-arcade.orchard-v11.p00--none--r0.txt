@@ -1,0 +1,304 @@
+The current approved application is already in this workspace at index.html.
+Edit that file in place: keep every part of the existing implementation that the request does not ask you to change.
+Modify index.html only; do not regenerate the application from scratch.
+No screenshot is attached; read the current index.html source to understand the visual result.
+Apply the requested change while preserving behaviour the request does not mention, including existing controls, state handling, and responsive layout.
+Keep the existing sandbox interaction contract: client-side JavaScript actions with explicit click or keydown listeners, no <button type="submit"> controls, native form submission, or page navigation. Chrome blocks sandboxed submission before submit handlers run, so keep explicit Enter handling instead of relying on event.preventDefault().
+Preserve accessible labels and full keyboard operation. Semantic <form> markup is fine for grouping and labels only. The application may keep its own data in localStorage so it survives a reload; wrap every storage read and write in try/catch and keep working in memory when storage is unavailable (the Studio preview is a sandboxed frame where storage access can throw). Do not rely on other browser storage: no sessionStorage-dependent behaviour, no IndexedDB, and no cookies. Never store credentials or secrets. Keep existing storage usage working. Do not use external services or unrestricted browser capabilities.
+Keep the existing runtime and dependencies (including Phaser 3 if present). Do not add libraries or other files. After editing, run node --check on every inline script.
+
+Requested change:
+Make the game as exciting and challenging as an arcade game.
+
+The current index.html is:
+```html
+<!-- Study 02 corpus variant. Deterministic template-engine output; no model involvement. Checked against corpus/corpus.sha256. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchard Catch</title>
+<style>
+
+:root{
+  --bg:#eef6ea;--surface:#ffffff;--ink:#1f3a24;--muted:#5f7562;
+  --accent:#3f7d46;--accent-2:#d9a441;--line:#d3e3d0;--danger:#a4502f;
+  --radius:16px;--shadow:0 10px 28px rgba(31,58,36,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  min-height:100vh;background:radial-gradient(circle at 80% 0%,#f8fbf3 0,#eef6ea 60%);
+  color:var(--ink);font-family:"Trebuchet MS",Verdana,"Segoe UI",sans-serif;
+  display:flex;justify-content:center;padding:24px 16px 40px;
+}
+.skip-link{position:absolute;left:-9999px;top:0;background:#fff;padding:10px 14px;border-radius:8px;z-index:50}
+.skip-link:focus{left:12px;top:12px}
+.app{width:100%;max-width:960px;display:flex;flex-direction:column;gap:18px}
+h1{font-size:clamp(1.3rem,2.4vw,1.9rem);margin:0;line-height:1.15}
+.tagline{margin:6px 0 0;color:var(--muted);font-size:.95rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0}
+.stat{min-width:104px;background:#f4faf1;border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.stat dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0}
+.stat dd{margin:2px 0 0;font-size:1.15rem;font-weight:700}
+.stage{
+  position:relative;overflow:hidden;border-radius:18px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#d8ecd2 0%,#c3e0bb 62%,#a9d29f 100%);
+  min-height:360px;touch-action:none;
+}
+.stage:focus-visible{outline:3px solid var(--accent-2);outline-offset:3px}
+.basket{position:absolute;bottom:16px;left:50%;width:104px;height:46px;transform:translateX(-50%);z-index:3}
+.basket::before{content:"";position:absolute;inset:10px 0 0;background:#8a5a2b;border-radius:8px 8px 18px 18px;border:3px solid #6f4720}
+.basket::after{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:#a9743c;border-radius:8px}
+.fruit-layer{position:absolute;inset:0;z-index:2;pointer-events:none}
+.fruit{position:absolute;width:34px;height:34px;border-radius:50%;box-shadow:inset -4px -5px 0 rgba(0,0,0,.12);border:2px solid rgba(0,0,0,.08)}
+.fruit-0{background:#d64545}
+.fruit-1{background:#e08b2f}
+.fruit-2{background:#6f4fb3}
+.fruit-3{background:#b7c94a}
+.overlay{position:fixed;inset:0;background:rgba(24,40,26,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:40}
+.overlay[hidden]{display:none}
+.overlay-panel{background:#fff;border-radius:20px;padding:26px 24px;max-width:420px;width:100%;text-align:center;box-shadow:var(--shadow)}
+.overlay-panel h2{margin:0 0 8px;font-size:1.35rem}
+.overlay-panel p{margin:0 0 18px;color:var(--muted)}
+.message{margin:0;min-height:1.5em;background:#f4faf1;border-left:4px solid var(--accent);border-radius:0 10px 10px 0;padding:10px 14px}
+.btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700;padding:10px 16px;border-radius:999px;cursor:pointer;min-height:44px}
+.btn:hover{background:#eef6ea}
+.btn:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+.btn--solid{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:transparent}
+.meter{height:12px;border-radius:999px;background:#dcead8;overflow:hidden;border:1px solid var(--line)}
+.meter-fill{display:block;height:100%;width:0;background:var(--accent);transition:width .25s ease}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:#f4faf1;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.85rem;color:var(--muted)}
+.chip strong{color:var(--ink)}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.log li{font-size:.85rem;color:var(--muted);border-left:3px solid var(--line);padding:4px 8px}
+.toast{position:fixed;right:18px;top:18px;z-index:45;max-width:280px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);font-size:.92rem}
+.toast[hidden]{display:none}
+.dock{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.rail{display:flex;flex-direction:column;gap:14px}
+.lane-marker{position:absolute;left:0;right:0;border-top:1px dashed rgba(31,58,36,.15)}
+.lane-label{position:absolute;left:12px;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(31,58,36,.55);background:rgba(255,255,255,.6);border-radius:999px;padding:2px 8px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.lede{margin:0;color:var(--muted);font-size:.95rem}
+@media (max-width:640px){body{padding:14px 10px 28px}.stage{min-height:320px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.t01{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}
+.t01 .rail{position:sticky;top:18px}
+.t01 .play{display:block;padding:0;overflow:hidden}
+@media (max-width:760px){.t01{grid-template-columns:1fr}}
+
+/* Study 02 corpus design system (shared by all variant pages) */
+:root{--space-1:.35rem;--space-2:.6rem;--space-3:1rem;--space-4:1.5rem;--space-5:2rem;--radius-sm:10px;--radius-lg:22px}
+body{line-height:1.5}
+::selection{background:var(--accent);color:#111}
+h1,h2,h3{font-weight:700;letter-spacing:-.01em}
+p{margin:0 0 .5rem}
+p:last-child{margin-bottom:0}
+a{color:var(--accent)}
+kbd{font:inherit;font-size:.8em;background:rgba(255,255,255,.08);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px}
+hr{border:0;border-top:1px solid var(--line);margin:var(--space-4) 0}
+.row{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:var(--space-2)}
+.wrap{flex-wrap:wrap}
+.center{text-align:center}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.badge{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:999px;padding:.15rem .6rem;font-size:.75rem;color:var(--muted)}
+.badge strong{color:var(--ink)}
+.divider{height:1px;background:var(--line);margin:var(--space-3) 0}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn:active{transform:translateY(1px)}
+.btn--wide{width:100%;justify-content:center}
+input,button,select,textarea{font:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.panel-title{margin:0 0 var(--space-2);font-size:1.05rem}
+.hint{margin:0;color:var(--muted);font-size:.85rem}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)}
+@media (max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr}}
+@media (forced-colors:active){.panel,.stat,.card,.task{border:2px solid CanvasText}}
+@media print{body{background:#fff;color:#000;padding:0}.panel{box-shadow:none}}
+@media (prefers-contrast:more){:root{--muted:var(--ink)}}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
+
+
+/* Orchard Catch component details */
+.stage{box-shadow:inset 0 -24px 40px rgba(31,58,36,.10)}
+.stage:focus{outline:3px solid var(--accent-2);outline-offset:2px}
+.basket{transition:none}
+.fruit{will-change:top,left}
+.fruit-0{box-shadow:inset -4px -5px 0 rgba(0,0,0,.14),0 2px 4px rgba(0,0,0,.12)}
+.fruit-1{box-shadow:inset -4px -5px 0 rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.12)}
+.lane-marker{pointer-events:none}
+.lane-label{pointer-events:none}
+.stats--stack{flex-direction:column;align-items:stretch}
+.stats--stack .stat{width:100%}
+.stats--compact .stat{min-width:88px}
+.stat dd{font-variant-numeric:tabular-nums}
+.meter--wide{height:10px}
+.toast{pointer-events:none}
+.log li:nth-child(odd){background:rgba(0,0,0,.03)}
+.overlay-panel{border:1px solid var(--line)}
+@media (max-width:520px){.stage{min-height:300px}.basket{width:92px}.stat{min-width:78px}}
+@media (prefers-reduced-motion:reduce){.stage{scroll-behavior:auto}}
+
+
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to game</a><div class="app t01"><aside class="rail panel" aria-label="Game controls"><div class="brand"><h1>Orchard Catch</h1><p class="lede">A gentle fruit-catching game.</p></div><dl class="stats stats--stack" aria-label="Game statistics"><div class="stat"><dt>Basket</dt><dd data-s02="caught">0 / 0</dd></div><div class="stat"><dt>Goal</dt><dd data-s02="goal">0</dd></div></dl><p class="message" data-s02="message" aria-live="polite">Move the basket to catch the fruit.</p><button type="button" class="btn btn--ghost" data-s02="restart">Restart</button></aside><main class="play" id="main"><div class="stage" data-s02="stage" tabindex="0" role="application" aria-label="Fruit-catching stage; move the basket with the mouse, arrow keys or a tap"><div class="fruit-layer" data-s02="fruits"></div><div class="basket" data-s02="basket" aria-hidden="true"></div></div></main><div class="overlay" data-s02="overlay" hidden><div class="overlay-panel"><h2>Basket full</h2><p data-s02="detail">Lovely picking.</p><button type="button" class="btn btn--solid" data-s02="playagain">Play again</button></div></div></div>
+<script>
+
+(function () {
+  'use strict';
+  var CFG = {"goal": 12, "input": "keys", "pitch": 1000, "seed": 2202, "speed": 1.1};
+  function all(role) { return Array.prototype.slice.call(document.querySelectorAll('[data-s02="' + role + '"]')); }
+  function one(role) { return document.querySelector('[data-s02="' + role + '"]'); }
+  function set(role, text) { all(role).forEach(function (node) { node.textContent = String(text); }); }
+  var S02 = window.S02 = window.S02 || { onCatch: [], onMiss: [], onWin: [], onRestart: [] };
+  function emit(name, data) { (S02[name] || []).forEach(function (fn) { try { fn(data); } catch (err) {} }); }
+  function log(text) {
+    var list = one('log'); if (!list) { return; }
+    var li = document.createElement('li'); li.textContent = text; list.insertBefore(li, list.firstChild);
+    while (list.children.length > 5) { list.removeChild(list.lastChild); }
+  }
+  var seed = CFG.seed >>> 0;
+  function rand() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed; }
+  var caught = 0, missed = 0, goal = CFG.goal, fruits = [], spawnAt = 0, last = 0, won = false;
+  var basketX = 0;
+  function stageSize() { var stage = one('stage'); return { w: stage.clientWidth || 640, h: stage.clientHeight || 380 }; }
+  function paint() {
+    set('caught', caught + ' / ' + goal); set('goal', String(goal)); set('missed', String(missed));
+    var meter = one('meter'); if (meter) { meter.style.width = Math.round(100 * caught / goal) + '%'; }
+    var status = one('status'); if (status) { status.textContent = caught >= goal ? 'Full' : 'Picking'; }
+  }
+  function moveBasket(x) {
+    var basket = one('basket'); if (!basket) { return; }
+    var size = stageSize(); basketX = Math.max(60, Math.min(size.w - 60, x));
+    basket.style.left = basketX + 'px';
+  }
+  function spawn() {
+    var size = stageSize();
+    var fruit = document.createElement('div');
+    var kind = rand() % 4;
+    fruit.className = 'fruit fruit-' + kind;
+    var x = 40 + (rand() % Math.max(40, size.w - 80));
+    var speed = (0.9 + (rand() % 50) / 100) * CFG.speed;
+    fruit.style.left = x + 'px'; fruit.style.top = '-40px';
+    one('fruits').appendChild(fruit);
+    fruits.push({ node: fruit, x: x, y: -40, speed: speed, radius: 17 });
+  }
+  function removeFruit(index) {
+    var item = fruits[index];
+    if (item && item.node && item.node.parentNode) { item.node.parentNode.removeChild(item.node); }
+    fruits.splice(index, 1);
+  }
+  function miss(index) {
+    removeFruit(index); missed += 1; paint();
+    log('A fruit slipped past the basket.');
+    set('message', 'One got past - keep going.');
+    emit('onMiss', { missed: missed, caught: caught });
+  }
+  function catchFruit(index) {
+    removeFruit(index); caught += 1; paint();
+    log('Caught a fruit. Basket: ' + caught + ' / ' + goal + '.');
+    set('message', 'Caught it! Basket ' + caught + ' of ' + goal + '.');
+    emit('onCatch', { caught: caught, goal: goal });
+    if (caught >= goal) { win(); }
+  }
+  function win() {
+    won = true;
+    var overlay = one('overlay');
+    if (overlay) { overlay.hidden = false; set('detail', 'You filled the basket with ' + goal + ' fruit.'); }
+    set('message', 'Basket full. Wonderful picking.');
+    emit('onWin', { caught: caught, missed: missed });
+  }
+  function step(timestamp) {
+    var size = stageSize();
+    if (!last) { last = timestamp; }
+    var elapsed = Math.min(60, timestamp - last); last = timestamp;
+    if (!won && timestamp >= spawnAt) { spawn(); spawnAt = timestamp + CFG.pitch; }
+    var i;
+    for (i = fruits.length - 1; i >= 0; i -= 1) {
+      var item = fruits[i];
+      item.y += item.speed * (elapsed / 16.67);
+      item.node.style.top = item.y + 'px';
+      if (item.y > size.h + 30) { miss(i); continue; }
+      var inBasketBand = item.y + item.radius * 2 >= size.h - 62 && item.y <= size.h - 24;
+      if (inBasketBand && Math.abs((item.x + item.radius) - basketX) < 52) { catchFruit(i); }
+    }
+    window.requestAnimationFrame(step);
+  }
+  function restart() {
+    while (fruits.length) { removeFruit(0); }
+    caught = 0; missed = 0; won = false; last = 0; spawnAt = 0;
+    var size = stageSize(); moveBasket(size.w / 2);
+    paint(); set('message', 'Move the basket to catch the fruit.');
+    var overlay = one('overlay'); if (overlay) { overlay.hidden = true; }
+    emit('onRestart', {});
+  }
+  var stage = one('stage');
+  if (stage) {
+    stage.addEventListener('pointermove', function (event) {
+      if (CFG.input === 'keys' || CFG.input === 'tap') { return; }
+      var rect = stage.getBoundingClientRect(); moveBasket(event.clientX - rect.left);
+    });
+    stage.addEventListener('pointerdown', function (event) {
+      if (CFG.input === 'keys') { return; }
+      var rect = stage.getBoundingClientRect(); moveBasket(event.clientX - rect.left);
+    });
+    stage.addEventListener('keydown', function (event) {
+      if (CFG.input === 'pointer' || CFG.input === 'tap') { return; }
+      if (event.key === 'ArrowLeft') { event.preventDefault(); moveBasket(basketX - 32); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); moveBasket(basketX + 32); }
+    });
+  }
+  all('restart').forEach(function (button) { button.addEventListener('click', restart); });
+  all('playagain').forEach(function (button) { button.addEventListener('click', restart); });
+  var initial = stageSize(); basketX = initial.w / 2; moveBasket(basketX); paint();
+  window.requestAnimationFrame(step);
+})();
+
+
+/* Shared keyboard-navigation affordance for every app (no motion constructs). */
+(function () {
+  'use strict';
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Home' && event.key !== 'End') { return; }
+    var body = document.body;
+    if (!body) { return; }
+    window.scrollTo(0, event.key === 'Home' ? 0 : body.scrollHeight);
+  });
+})();
+
+
+/* Orchard Catch keyboard help and focus affordance. */
+(function () {
+  'use strict';
+  var stage = document.querySelector('[data-s02="stage"]');
+  if (!stage) { return; }
+  stage.addEventListener('focus', function () { stage.setAttribute('data-focused', 'true'); });
+  stage.addEventListener('blur', function () { stage.removeAttribute('data-focused'); });
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== '?') { return; }
+    var message = document.querySelector('[data-s02="message"]');
+    if (message) { message.textContent = 'Move the basket with the mouse, the arrow keys or a tap. Use Restart to reset.'; }
+  });
+})();
+
+
+</script>
+</body>
+</html>
+
+```
+
+Return the complete updated index.html in one ```html code block. No commentary.

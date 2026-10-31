@@ -1,0 +1,1937 @@
+{
+  "limits": [
+    "Variants are artificial single-file template-engine outputs. They are derived in spirit from the Phase 17 baselines (memory match, catch, planner) but are not byte-derived copies and do not use Phaser or the production shell.",
+    "Similarity is measured on static text (token and 5-gram Jaccard); DOM composition differences matter to a reader but are not rendered. No browser rendering test was available in this environment; inline JavaScript is syntax-checked with `node --check` when node is present, but not executed.",
+    "Within a family the 10 templates deliberately share a family engine and design language, so some similarity is by construction; the structural variance is in DOM composition, layout, HUD placement, feedback mechanism and game/planner configuration.",
+    "Twin pairs differ only in the hook block by construction (string-level proof). The proof establishes construction discipline, not that a hook block is the only semantic difference in every possible reading.",
+    "Paraphrase diversity is lexical only. Intent equivalence across paraphrases is asserted by the authoring rules, not independently human-validated in checkpoint 2 (no human-validation claim is made).",
+    "The corpus is not a random sample of apps, requests or rules; diversity metrics describe this corpus, not a population."
+  ],
+  "paraphrases": {
+    "arcade": {
+      "corpus_texts": 3,
+      "distinct_words_union": 17,
+      "intent_tags": [
+        "affect:excitement",
+        "difficulty:challenge",
+        "reference:arcade"
+      ],
+      "mean_bigram_jaccard": 0.262745,
+      "mean_unigram_jaccard": 0.458333,
+      "pilot_text": "Make the game as exciting and challenging as an arcade game.",
+      "texts": [
+        "Make the game more exciting and challenging, like an arcade game.",
+        "Make the game feel more exciting and challenging, in the style of an arcade game.",
+        "Give the game the excitement and challenge of an arcade game."
+      ]
+    },
+    "challenge": {
+      "corpus_texts": 3,
+      "distinct_words_union": 14,
+      "intent_tags": [
+        "difficulty:harder-mode",
+        "audience:experienced-players"
+      ],
+      "mean_bigram_jaccard": 0.761905,
+      "mean_unigram_jaccard": 0.904762,
+      "pilot_text": "Add a harder challenge mode for experienced players who find the game easy.",
+      "texts": [
+        "Add a harder challenge mode for experienced players who find the game too easy.",
+        "Add a harder mode for experienced players who find the game too easy.",
+        "Add a challenge mode for experienced players who find the game too easy."
+      ]
+    },
+    "lively": {
+      "corpus_texts": 4,
+      "distinct_words_union": 10,
+      "intent_tags": [
+        "affect:lively",
+        "affect:engaging"
+      ],
+      "mean_bigram_jaccard": 0.438552,
+      "mean_unigram_jaccard": 0.814815,
+      "pilot_text": "Make the planner feel lively and engaging.",
+      "texts": [
+        "Make the planner feel more lively and engaging.",
+        "Make the planner feel livelier and more engaging.",
+        "Make the planner feel more lively and more engaging.",
+        "Make the planner feel more energetic and engaging."
+      ]
+    },
+    "reward": {
+      "corpus_texts": 4,
+      "distinct_words_union": 15,
+      "intent_tags": [
+        "affect:reward",
+        "affect:celebration",
+        "event:task-completion"
+      ],
+      "mean_bigram_jaccard": 0.255179,
+      "mean_unigram_jaccard": 0.550916,
+      "pilot_text": "Make completing a task feel rewarding and celebratory.",
+      "texts": [
+        "Make completing a task feel more rewarding and celebratory.",
+        "Make finishing a task feel more rewarding and celebratory.",
+        "Make task completion feel more rewarding and worth celebrating.",
+        "Make completing a task feel like something worth celebrating and rewarding."
+      ]
+    }
+  },
+  "per_variant": [
+    {
+      "bytes": 18180,
+      "distinct_classes": 24,
+      "distinct_tokens": 469,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 339,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T00",
+      "tokens": 2147,
+      "variant_id": "farmyard-v00"
+    },
+    {
+      "bytes": 18212,
+      "distinct_classes": 24,
+      "distinct_tokens": 466,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 340,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T01",
+      "tokens": 2149,
+      "variant_id": "farmyard-v01"
+    },
+    {
+      "bytes": 18293,
+      "distinct_classes": 25,
+      "distinct_tokens": 468,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 341,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T02",
+      "tokens": 2160,
+      "variant_id": "farmyard-v02"
+    },
+    {
+      "bytes": 18382,
+      "distinct_classes": 25,
+      "distinct_tokens": 467,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 343,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T03",
+      "tokens": 2167,
+      "variant_id": "farmyard-v03"
+    },
+    {
+      "bytes": 18162,
+      "distinct_classes": 23,
+      "distinct_tokens": 469,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 339,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T04",
+      "tokens": 2141,
+      "variant_id": "farmyard-v04"
+    },
+    {
+      "bytes": 18284,
+      "distinct_classes": 27,
+      "distinct_tokens": 468,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 338,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T05",
+      "tokens": 2164,
+      "variant_id": "farmyard-v05"
+    },
+    {
+      "bytes": 18197,
+      "distinct_classes": 20,
+      "distinct_tokens": 465,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 340,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T06",
+      "tokens": 2150,
+      "variant_id": "farmyard-v06"
+    },
+    {
+      "bytes": 17997,
+      "distinct_classes": 21,
+      "distinct_tokens": 460,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 340,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T07",
+      "tokens": 2116,
+      "variant_id": "farmyard-v07"
+    },
+    {
+      "bytes": 18169,
+      "distinct_classes": 23,
+      "distinct_tokens": 465,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 339,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T08",
+      "tokens": 2141,
+      "variant_id": "farmyard-v08"
+    },
+    {
+      "bytes": 18147,
+      "distinct_classes": 23,
+      "distinct_tokens": 467,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 339,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T09",
+      "tokens": 2142,
+      "variant_id": "farmyard-v09"
+    },
+    {
+      "bytes": 15841,
+      "distinct_classes": 18,
+      "distinct_tokens": 448,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 302,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T00",
+      "tokens": 1869,
+      "variant_id": "farmyard-v10"
+    },
+    {
+      "bytes": 15873,
+      "distinct_classes": 18,
+      "distinct_tokens": 446,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 303,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 18,
+      "template_id": "T01",
+      "tokens": 1871,
+      "variant_id": "farmyard-v11"
+    },
+    {
+      "bytes": 15954,
+      "distinct_classes": 19,
+      "distinct_tokens": 446,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 304,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T02",
+      "tokens": 1882,
+      "variant_id": "farmyard-v12"
+    },
+    {
+      "bytes": 16043,
+      "distinct_classes": 19,
+      "distinct_tokens": 445,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 306,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 18,
+      "template_id": "T03",
+      "tokens": 1889,
+      "variant_id": "farmyard-v13"
+    },
+    {
+      "bytes": 15823,
+      "distinct_classes": 17,
+      "distinct_tokens": 448,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 302,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T04",
+      "tokens": 1863,
+      "variant_id": "farmyard-v14"
+    },
+    {
+      "bytes": 15945,
+      "distinct_classes": 21,
+      "distinct_tokens": 446,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 301,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T05",
+      "tokens": 1886,
+      "variant_id": "farmyard-v15"
+    },
+    {
+      "bytes": 15858,
+      "distinct_classes": 14,
+      "distinct_tokens": 443,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 303,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T06",
+      "tokens": 1872,
+      "variant_id": "farmyard-v16"
+    },
+    {
+      "bytes": 15658,
+      "distinct_classes": 15,
+      "distinct_tokens": 438,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 303,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 16,
+      "template_id": "T07",
+      "tokens": 1838,
+      "variant_id": "farmyard-v17"
+    },
+    {
+      "bytes": 15830,
+      "distinct_classes": 17,
+      "distinct_tokens": 443,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 302,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T08",
+      "tokens": 1863,
+      "variant_id": "farmyard-v18"
+    },
+    {
+      "bytes": 15808,
+      "distinct_classes": 17,
+      "distinct_tokens": 445,
+      "family": "farmyard",
+      "ids": 1,
+      "lines": 302,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T09",
+      "tokens": 1864,
+      "variant_id": "farmyard-v19"
+    },
+    {
+      "bytes": 19809,
+      "distinct_classes": 24,
+      "distinct_tokens": 453,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 358,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T00",
+      "tokens": 2287,
+      "variant_id": "focusflow-v00"
+    },
+    {
+      "bytes": 20199,
+      "distinct_classes": 24,
+      "distinct_tokens": 448,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 359,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T01",
+      "tokens": 2331,
+      "variant_id": "focusflow-v01"
+    },
+    {
+      "bytes": 20010,
+      "distinct_classes": 24,
+      "distinct_tokens": 446,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 358,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T02",
+      "tokens": 2315,
+      "variant_id": "focusflow-v02"
+    },
+    {
+      "bytes": 19879,
+      "distinct_classes": 23,
+      "distinct_tokens": 448,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 359,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T03",
+      "tokens": 2289,
+      "variant_id": "focusflow-v03"
+    },
+    {
+      "bytes": 19987,
+      "distinct_classes": 24,
+      "distinct_tokens": 443,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 358,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T04",
+      "tokens": 2304,
+      "variant_id": "focusflow-v04"
+    },
+    {
+      "bytes": 19636,
+      "distinct_classes": 20,
+      "distinct_tokens": 443,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 358,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T05",
+      "tokens": 2261,
+      "variant_id": "focusflow-v05"
+    },
+    {
+      "bytes": 20007,
+      "distinct_classes": 24,
+      "distinct_tokens": 443,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 358,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T06",
+      "tokens": 2305,
+      "variant_id": "focusflow-v06"
+    },
+    {
+      "bytes": 19843,
+      "distinct_classes": 21,
+      "distinct_tokens": 443,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 359,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 23,
+      "template_id": "T07",
+      "tokens": 2293,
+      "variant_id": "focusflow-v07"
+    },
+    {
+      "bytes": 19682,
+      "distinct_classes": 21,
+      "distinct_tokens": 443,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 358,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T08",
+      "tokens": 2266,
+      "variant_id": "focusflow-v08"
+    },
+    {
+      "bytes": 20090,
+      "distinct_classes": 24,
+      "distinct_tokens": 443,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 359,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T09",
+      "tokens": 2313,
+      "variant_id": "focusflow-v09"
+    },
+    {
+      "bytes": 17238,
+      "distinct_classes": 17,
+      "distinct_tokens": 415,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 314,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T00",
+      "tokens": 1997,
+      "variant_id": "focusflow-v10"
+    },
+    {
+      "bytes": 17628,
+      "distinct_classes": 17,
+      "distinct_tokens": 409,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 315,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T01",
+      "tokens": 2041,
+      "variant_id": "focusflow-v11"
+    },
+    {
+      "bytes": 17439,
+      "distinct_classes": 17,
+      "distinct_tokens": 407,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 314,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T02",
+      "tokens": 2025,
+      "variant_id": "focusflow-v12"
+    },
+    {
+      "bytes": 17308,
+      "distinct_classes": 16,
+      "distinct_tokens": 409,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 315,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T03",
+      "tokens": 1999,
+      "variant_id": "focusflow-v13"
+    },
+    {
+      "bytes": 17416,
+      "distinct_classes": 17,
+      "distinct_tokens": 404,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 314,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T04",
+      "tokens": 2014,
+      "variant_id": "focusflow-v14"
+    },
+    {
+      "bytes": 17065,
+      "distinct_classes": 13,
+      "distinct_tokens": 404,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 314,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T05",
+      "tokens": 1971,
+      "variant_id": "focusflow-v15"
+    },
+    {
+      "bytes": 17436,
+      "distinct_classes": 17,
+      "distinct_tokens": 405,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 314,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 18,
+      "template_id": "T06",
+      "tokens": 2015,
+      "variant_id": "focusflow-v16"
+    },
+    {
+      "bytes": 17272,
+      "distinct_classes": 14,
+      "distinct_tokens": 404,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 315,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T07",
+      "tokens": 2003,
+      "variant_id": "focusflow-v17"
+    },
+    {
+      "bytes": 17111,
+      "distinct_classes": 14,
+      "distinct_tokens": 405,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 314,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T08",
+      "tokens": 1976,
+      "variant_id": "focusflow-v18"
+    },
+    {
+      "bytes": 17519,
+      "distinct_classes": 17,
+      "distinct_tokens": 404,
+      "family": "focusflow",
+      "ids": 2,
+      "lines": 315,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T09",
+      "tokens": 2023,
+      "variant_id": "focusflow-v19"
+    },
+    {
+      "bytes": 18356,
+      "distinct_classes": 25,
+      "distinct_tokens": 471,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 321,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T00",
+      "tokens": 2174,
+      "variant_id": "orchard-v00"
+    },
+    {
+      "bytes": 18423,
+      "distinct_classes": 26,
+      "distinct_tokens": 470,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 323,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T01",
+      "tokens": 2181,
+      "variant_id": "orchard-v01"
+    },
+    {
+      "bytes": 18462,
+      "distinct_classes": 27,
+      "distinct_tokens": 470,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 322,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T02",
+      "tokens": 2188,
+      "variant_id": "orchard-v02"
+    },
+    {
+      "bytes": 18808,
+      "distinct_classes": 30,
+      "distinct_tokens": 472,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 322,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T03",
+      "tokens": 2232,
+      "variant_id": "orchard-v03"
+    },
+    {
+      "bytes": 18365,
+      "distinct_classes": 24,
+      "distinct_tokens": 468,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 322,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T04",
+      "tokens": 2172,
+      "variant_id": "orchard-v04"
+    },
+    {
+      "bytes": 18468,
+      "distinct_classes": 29,
+      "distinct_tokens": 468,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 321,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T05",
+      "tokens": 2192,
+      "variant_id": "orchard-v05"
+    },
+    {
+      "bytes": 18414,
+      "distinct_classes": 22,
+      "distinct_tokens": 469,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 323,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 21,
+      "template_id": "T06",
+      "tokens": 2183,
+      "variant_id": "orchard-v06"
+    },
+    {
+      "bytes": 18192,
+      "distinct_classes": 22,
+      "distinct_tokens": 463,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 322,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 17,
+      "template_id": "T07",
+      "tokens": 2148,
+      "variant_id": "orchard-v07"
+    },
+    {
+      "bytes": 18336,
+      "distinct_classes": 23,
+      "distinct_tokens": 467,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 323,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T08",
+      "tokens": 2166,
+      "variant_id": "orchard-v08"
+    },
+    {
+      "bytes": 18373,
+      "distinct_classes": 25,
+      "distinct_tokens": 470,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 322,
+      "opportunity_class": "high",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 22,
+      "template_id": "T09",
+      "tokens": 2177,
+      "variant_id": "orchard-v09"
+    },
+    {
+      "bytes": 16017,
+      "distinct_classes": 19,
+      "distinct_tokens": 448,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 284,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T00",
+      "tokens": 1896,
+      "variant_id": "orchard-v10"
+    },
+    {
+      "bytes": 16084,
+      "distinct_classes": 20,
+      "distinct_tokens": 447,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 286,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 18,
+      "template_id": "T01",
+      "tokens": 1903,
+      "variant_id": "orchard-v11"
+    },
+    {
+      "bytes": 16123,
+      "distinct_classes": 21,
+      "distinct_tokens": 448,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 285,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T02",
+      "tokens": 1910,
+      "variant_id": "orchard-v12"
+    },
+    {
+      "bytes": 16469,
+      "distinct_classes": 24,
+      "distinct_tokens": 450,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 285,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T03",
+      "tokens": 1954,
+      "variant_id": "orchard-v13"
+    },
+    {
+      "bytes": 16026,
+      "distinct_classes": 18,
+      "distinct_tokens": 445,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 285,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 18,
+      "template_id": "T04",
+      "tokens": 1894,
+      "variant_id": "orchard-v14"
+    },
+    {
+      "bytes": 16129,
+      "distinct_classes": 23,
+      "distinct_tokens": 446,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 284,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 20,
+      "template_id": "T05",
+      "tokens": 1914,
+      "variant_id": "orchard-v15"
+    },
+    {
+      "bytes": 16075,
+      "distinct_classes": 16,
+      "distinct_tokens": 446,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 286,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 18,
+      "template_id": "T06",
+      "tokens": 1905,
+      "variant_id": "orchard-v16"
+    },
+    {
+      "bytes": 15853,
+      "distinct_classes": 16,
+      "distinct_tokens": 441,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 285,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 16,
+      "template_id": "T07",
+      "tokens": 1870,
+      "variant_id": "orchard-v17"
+    },
+    {
+      "bytes": 15997,
+      "distinct_classes": 17,
+      "distinct_tokens": 444,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 286,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 16,
+      "template_id": "T08",
+      "tokens": 1888,
+      "variant_id": "orchard-v18"
+    },
+    {
+      "bytes": 16034,
+      "distinct_classes": 19,
+      "distinct_tokens": 448,
+      "family": "orchard",
+      "ids": 1,
+      "lines": 285,
+      "opportunity_class": "low",
+      "script_blocks": 1,
+      "style_blocks": 1,
+      "tags": 19,
+      "template_id": "T09",
+      "tokens": 1899,
+      "variant_id": "orchard-v19"
+    }
+  ],
+  "scenario_structure": {
+    "high": 200,
+    "labels": 400,
+    "low": 200,
+    "scenarios": 400,
+    "strata": {
+      "farm-arcade": 60,
+      "farm-challenge": 60,
+      "focus-lively": 80,
+      "focus-reward": 80,
+      "orchard-arcade": 60,
+      "orchard-challenge": 60
+    }
+  },
+  "similarity": {
+    "across_family_high_templates": {
+      "mean_5gram_jaccard": 0.224074,
+      "mean_dom_5gram_jaccard": 0.130849,
+      "mean_dom_token_jaccard": 0.369619,
+      "mean_normalised_line_edit_distance": 0.620482,
+      "mean_token_jaccard": 0.53815,
+      "pairs": 300
+    },
+    "reference": {
+      "high_opportunity_variants": 30,
+      "low_opportunity_variants": 30
+    },
+    "twin_pairs": {
+      "mean_5gram_jaccard": 0.872553,
+      "mean_dom_5gram_jaccard": 0.616232,
+      "mean_dom_token_jaccard": 0.802456,
+      "mean_normalised_line_edit_distance": 0.070684,
+      "mean_token_jaccard": 0.939592,
+      "pairs": 30
+    },
+    "within_family_different_templates": {
+      "farmyard": {
+        "high": {
+          "mean_5gram_jaccard": 0.913609,
+          "mean_dom_5gram_jaccard": 0.248388,
+          "mean_dom_token_jaccard": 0.668915,
+          "mean_normalised_line_edit_distance": 0.020005,
+          "mean_token_jaccard": 0.977222,
+          "pairs": 45
+        },
+        "low": {
+          "mean_5gram_jaccard": 0.9059,
+          "mean_dom_5gram_jaccard": 0.180518,
+          "mean_dom_token_jaccard": 0.608586,
+          "mean_normalised_line_edit_distance": 0.019146,
+          "mean_token_jaccard": 0.974673,
+          "pairs": 45
+        }
+      },
+      "focusflow": {
+        "high": {
+          "mean_5gram_jaccard": 0.917169,
+          "mean_dom_5gram_jaccard": 0.203728,
+          "mean_dom_token_jaccard": 0.696572,
+          "mean_normalised_line_edit_distance": 0.012833,
+          "mean_token_jaccard": 0.974214,
+          "pairs": 45
+        },
+        "low": {
+          "mean_5gram_jaccard": 0.906536,
+          "mean_dom_5gram_jaccard": 0.144297,
+          "mean_dom_token_jaccard": 0.624021,
+          "mean_normalised_line_edit_distance": 0.013994,
+          "mean_token_jaccard": 0.97048,
+          "pairs": 45
+        }
+      },
+      "orchard": {
+        "high": {
+          "mean_5gram_jaccard": 0.918724,
+          "mean_dom_5gram_jaccard": 0.291303,
+          "mean_dom_token_jaccard": 0.681089,
+          "mean_normalised_line_edit_distance": 0.017901,
+          "mean_token_jaccard": 0.979304,
+          "pairs": 45
+        },
+        "low": {
+          "mean_5gram_jaccard": 0.912433,
+          "mean_dom_5gram_jaccard": 0.184528,
+          "mean_dom_token_jaccard": 0.626075,
+          "mean_normalised_line_edit_distance": 0.017886,
+          "mean_token_jaccard": 0.97667,
+          "pairs": 45
+        }
+      }
+    }
+  },
+  "structural_distinctness": {
+    "distinct_dom_5gram_sets": {
+      "farmyard": 20,
+      "focusflow": 20,
+      "orchard": 20
+    },
+    "element_signatures": {
+      "farmyard": 20,
+      "focusflow": 20,
+      "orchard": 20
+    },
+    "note": "The token-level similarity is dominated by the shared family engine and design system; the DOM-signature similarity isolates structural composition."
+  },
+  "template_feature_matrix": [
+    {
+      "config": {
+        "cols": 4,
+        "name": "Header HUD, 4x3 board, dock feedback",
+        "pairs": 6,
+        "seed": 1101,
+        "structure": "header-hud",
+        "tid": "T00"
+      },
+      "family": "farmyard",
+      "high_bytes": 18180,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v00",
+      "low_bytes": 15841,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v10",
+      "structure": "header-hud",
+      "structure_name": "Header HUD, 4x3 board, dock feedback",
+      "template_id": "T00",
+      "twin_id": "twin-T00"
+    },
+    {
+      "config": {
+        "cols": 5,
+        "name": "Left stats rail, 5x2 board",
+        "pairs": 5,
+        "seed": 1102,
+        "structure": "side-panel",
+        "tid": "T01"
+      },
+      "family": "farmyard",
+      "high_bytes": 18212,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v01",
+      "low_bytes": 15873,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v11",
+      "structure": "side-panel",
+      "structure_name": "Left stats rail, 5x2 board",
+      "template_id": "T01",
+      "twin_id": "twin-T01"
+    },
+    {
+      "config": {
+        "cols": 4,
+        "name": "Header progress, 4x4 board, footer tray",
+        "pairs": 8,
+        "seed": 1103,
+        "structure": "bottom-tray",
+        "tid": "T02"
+      },
+      "family": "farmyard",
+      "high_bytes": 18293,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v02",
+      "low_bytes": 15954,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v12",
+      "structure": "bottom-tray",
+      "structure_name": "Header progress, 4x4 board, footer tray",
+      "template_id": "T02",
+      "twin_id": "twin-T02"
+    },
+    {
+      "config": {
+        "cols": 3,
+        "name": "Dark ribbon HUD, toast feedback, 3x4 board",
+        "pairs": 6,
+        "seed": 1104,
+        "structure": "ribbon",
+        "tid": "T03"
+      },
+      "family": "farmyard",
+      "high_bytes": 18382,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v03",
+      "low_bytes": 16043,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v13",
+      "structure": "ribbon",
+      "structure_name": "Dark ribbon HUD, toast feedback, 3x4 board",
+      "template_id": "T03",
+      "twin_id": "twin-T03"
+    },
+    {
+      "config": {
+        "cols": 4,
+        "name": "Board plus recent-events log column",
+        "pairs": 6,
+        "seed": 1105,
+        "structure": "log-column",
+        "tid": "T04"
+      },
+      "family": "farmyard",
+      "high_bytes": 18162,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v04",
+      "low_bytes": 15823,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v14",
+      "structure": "log-column",
+      "structure_name": "Board plus recent-events log column",
+      "template_id": "T04",
+      "twin_id": "twin-T04"
+    },
+    {
+      "config": {
+        "cols": 4,
+        "name": "Progress header, 4x4 board, modal end screen",
+        "pairs": 8,
+        "seed": 1106,
+        "structure": "progress-header",
+        "tid": "T05"
+      },
+      "family": "farmyard",
+      "high_bytes": 18284,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v05",
+      "low_bytes": 15945,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v15",
+      "structure": "progress-header",
+      "structure_name": "Progress header, 4x4 board, modal end screen",
+      "template_id": "T05",
+      "twin_id": "twin-T05"
+    },
+    {
+      "config": {
+        "cols": 7,
+        "name": "Dashboard metric cards above board",
+        "pairs": 7,
+        "seed": 1107,
+        "structure": "dashboard",
+        "tid": "T06"
+      },
+      "family": "farmyard",
+      "high_bytes": 18197,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v06",
+      "low_bytes": 15858,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v16",
+      "structure": "dashboard",
+      "structure_name": "Dashboard metric cards above board",
+      "template_id": "T06",
+      "twin_id": "twin-T06"
+    },
+    {
+      "config": {
+        "cols": 5,
+        "name": "Minimal chips layout, 5x2 board",
+        "pairs": 5,
+        "seed": 1108,
+        "structure": "minimal",
+        "tid": "T07"
+      },
+      "family": "farmyard",
+      "high_bytes": 17997,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v07",
+      "low_bytes": 15658,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v17",
+      "structure": "minimal",
+      "structure_name": "Minimal chips layout, 5x2 board",
+      "template_id": "T07",
+      "twin_id": "twin-T07"
+    },
+    {
+      "config": {
+        "cols": 4,
+        "name": "Board left, vertical control column right",
+        "pairs": 6,
+        "seed": 1109,
+        "structure": "control-column",
+        "tid": "T08"
+      },
+      "family": "farmyard",
+      "high_bytes": 18169,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v08",
+      "low_bytes": 15830,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v18",
+      "structure": "control-column",
+      "structure_name": "Board left, vertical control column right",
+      "template_id": "T08",
+      "twin_id": "twin-T08"
+    },
+    {
+      "config": {
+        "cols": 4,
+        "name": "Magazine masthead, framed board, footer stats",
+        "pairs": 8,
+        "seed": 1110,
+        "structure": "magazine",
+        "tid": "T09"
+      },
+      "family": "farmyard",
+      "high_bytes": 18147,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "high_variant_id": "farmyard-v09",
+      "low_bytes": 15808,
+      "low_hooks": [],
+      "low_variant_id": "farmyard-v19",
+      "structure": "magazine",
+      "structure_name": "Magazine masthead, framed board, footer stats",
+      "template_id": "T09",
+      "twin_id": "twin-T09"
+    },
+    {
+      "config": {
+        "goal": 10,
+        "input": "pointer",
+        "name": "Header HUD, pointer basket, interval spawn",
+        "pitch": 900,
+        "seed": 2201,
+        "spawn": "interval",
+        "speed": 1.0,
+        "structure": "classic-header",
+        "tid": "T00"
+      },
+      "family": "orchard",
+      "high_bytes": 18356,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v00",
+      "low_bytes": 16017,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v10",
+      "structure": "classic-header",
+      "structure_name": "Header HUD, pointer basket, interval spawn",
+      "template_id": "T00",
+      "twin_id": "twin-T00"
+    },
+    {
+      "config": {
+        "goal": 12,
+        "input": "keys",
+        "name": "Left stats rail, keyboard basket, frame spawn",
+        "pitch": 1000,
+        "seed": 2202,
+        "spawn": "raf",
+        "speed": 1.1,
+        "structure": "side-panel",
+        "tid": "T01"
+      },
+      "family": "orchard",
+      "high_bytes": 18423,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v01",
+      "low_bytes": 16084,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v11",
+      "structure": "side-panel",
+      "structure_name": "Left stats rail, keyboard basket, frame spawn",
+      "template_id": "T01",
+      "twin_id": "twin-T01"
+    },
+    {
+      "config": {
+        "goal": 8,
+        "input": "both",
+        "name": "Header title, footer tray, pointer+keys",
+        "pitch": 800,
+        "seed": 2203,
+        "spawn": "interval",
+        "speed": 0.9,
+        "structure": "bottom-tray",
+        "tid": "T02"
+      },
+      "family": "orchard",
+      "high_bytes": 18462,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v02",
+      "low_bytes": 16123,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v12",
+      "structure": "bottom-tray",
+      "structure_name": "Header title, footer tray, pointer+keys",
+      "template_id": "T02",
+      "twin_id": "twin-T02"
+    },
+    {
+      "config": {
+        "goal": 12,
+        "input": "keys",
+        "name": "Three painted lanes, keyboard basket",
+        "pitch": 760,
+        "seed": 2204,
+        "spawn": "interval",
+        "speed": 1.15,
+        "structure": "lanes",
+        "tid": "T03"
+      },
+      "family": "orchard",
+      "high_bytes": 18808,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v03",
+      "low_bytes": 16469,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v13",
+      "structure": "lanes",
+      "structure_name": "Three painted lanes, keyboard basket",
+      "template_id": "T03",
+      "twin_id": "twin-T03"
+    },
+    {
+      "config": {
+        "goal": 10,
+        "input": "pointer",
+        "name": "Stage plus catch log column",
+        "pitch": 950,
+        "seed": 2205,
+        "spawn": "raf",
+        "speed": 1.0,
+        "structure": "log-column",
+        "tid": "T04"
+      },
+      "family": "orchard",
+      "high_bytes": 18365,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v04",
+      "low_bytes": 16026,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v14",
+      "structure": "log-column",
+      "structure_name": "Stage plus catch log column",
+      "template_id": "T04",
+      "twin_id": "twin-T04"
+    },
+    {
+      "config": {
+        "goal": 12,
+        "input": "tap",
+        "name": "Progress header, tap-to-move basket",
+        "pitch": 850,
+        "seed": 2206,
+        "spawn": "interval",
+        "speed": 1.05,
+        "structure": "progress-header",
+        "tid": "T05"
+      },
+      "family": "orchard",
+      "high_bytes": 18468,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v05",
+      "low_bytes": 16129,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v15",
+      "structure": "progress-header",
+      "structure_name": "Progress header, tap-to-move basket",
+      "template_id": "T05",
+      "twin_id": "twin-T05"
+    },
+    {
+      "config": {
+        "goal": 8,
+        "input": "both",
+        "name": "Dashboard cards above stage",
+        "pitch": 720,
+        "seed": 2207,
+        "spawn": "raf",
+        "speed": 0.95,
+        "structure": "dashboard",
+        "tid": "T06"
+      },
+      "family": "orchard",
+      "high_bytes": 18414,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v06",
+      "low_bytes": 16075,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v16",
+      "structure": "dashboard",
+      "structure_name": "Dashboard cards above stage",
+      "template_id": "T06",
+      "twin_id": "twin-T06"
+    },
+    {
+      "config": {
+        "goal": 10,
+        "input": "pointer",
+        "name": "Minimal chip layout",
+        "pitch": 1000,
+        "seed": 2208,
+        "spawn": "interval",
+        "speed": 1.0,
+        "structure": "minimal",
+        "tid": "T07"
+      },
+      "family": "orchard",
+      "high_bytes": 18192,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v07",
+      "low_bytes": 15853,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v17",
+      "structure": "minimal",
+      "structure_name": "Minimal chip layout",
+      "template_id": "T07",
+      "twin_id": "twin-T07"
+    },
+    {
+      "config": {
+        "goal": 12,
+        "input": "keys",
+        "name": "Stage left, control column right",
+        "pitch": 900,
+        "seed": 2209,
+        "spawn": "raf",
+        "speed": 1.1,
+        "structure": "control-column",
+        "tid": "T08"
+      },
+      "family": "orchard",
+      "high_bytes": 18336,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v08",
+      "low_bytes": 15997,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v18",
+      "structure": "control-column",
+      "structure_name": "Stage left, control column right",
+      "template_id": "T08",
+      "twin_id": "twin-T08"
+    },
+    {
+      "config": {
+        "goal": 10,
+        "input": "both",
+        "name": "Magazine masthead, framed stage, footer",
+        "pitch": 880,
+        "seed": 2210,
+        "spawn": "interval",
+        "speed": 1.0,
+        "structure": "magazine",
+        "tid": "T09"
+      },
+      "family": "orchard",
+      "high_bytes": 18373,
+      "high_hooks": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "high_variant_id": "orchard-v09",
+      "low_bytes": 16034,
+      "low_hooks": [
+        "G4"
+      ],
+      "low_variant_id": "orchard-v19",
+      "structure": "magazine",
+      "structure_name": "Magazine masthead, framed stage, footer",
+      "template_id": "T09",
+      "twin_id": "twin-T09"
+    },
+    {
+      "config": {
+        "filters": false,
+        "groups": null,
+        "name": "Single-column agenda",
+        "seed": 3301,
+        "structure": "agenda",
+        "tid": "T00"
+      },
+      "family": "focusflow",
+      "high_bytes": 19809,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v00",
+      "low_bytes": 17238,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v10",
+      "structure": "agenda",
+      "structure_name": "Single-column agenda",
+      "template_id": "T00",
+      "twin_id": "twin-T00"
+    },
+    {
+      "config": {
+        "filters": true,
+        "groups": null,
+        "name": "Task list main column, stats sidebar",
+        "seed": 3302,
+        "structure": "split-sidebar",
+        "tid": "T01"
+      },
+      "family": "focusflow",
+      "high_bytes": 20199,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v01",
+      "low_bytes": 17628,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v11",
+      "structure": "split-sidebar",
+      "structure_name": "Task list main column, stats sidebar",
+      "template_id": "T01",
+      "twin_id": "twin-T01"
+    },
+    {
+      "config": {
+        "filters": false,
+        "groups": null,
+        "name": "Three-column kanban board",
+        "seed": 3303,
+        "structure": "kanban",
+        "tid": "T02"
+      },
+      "family": "focusflow",
+      "high_bytes": 20010,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v02",
+      "low_bytes": 17439,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v12",
+      "structure": "kanban",
+      "structure_name": "Three-column kanban board",
+      "template_id": "T02",
+      "twin_id": "twin-T02"
+    },
+    {
+      "config": {
+        "filters": false,
+        "groups": "priority",
+        "name": "Priority-grouped timeline with rail",
+        "seed": 3304,
+        "structure": "timeline",
+        "tid": "T03"
+      },
+      "family": "focusflow",
+      "high_bytes": 19879,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v03",
+      "low_bytes": 17308,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v13",
+      "structure": "timeline",
+      "structure_name": "Priority-grouped timeline with rail",
+      "template_id": "T03",
+      "twin_id": "twin-T03"
+    },
+    {
+      "config": {
+        "filters": true,
+        "groups": null,
+        "name": "Card grid with filter chips",
+        "seed": 3305,
+        "structure": "card-grid",
+        "tid": "T04"
+      },
+      "family": "focusflow",
+      "high_bytes": 19987,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v04",
+      "low_bytes": 17416,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v14",
+      "structure": "card-grid",
+      "structure_name": "Card grid with filter chips",
+      "template_id": "T04",
+      "twin_id": "twin-T04"
+    },
+    {
+      "config": {
+        "filters": false,
+        "groups": null,
+        "name": "Compact list plus task detail panel",
+        "seed": 3306,
+        "structure": "detail-panel",
+        "tid": "T05"
+      },
+      "family": "focusflow",
+      "high_bytes": 19636,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v05",
+      "low_bytes": 17065,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v15",
+      "structure": "detail-panel",
+      "structure_name": "Compact list plus task detail panel",
+      "template_id": "T05",
+      "twin_id": "twin-T05"
+    },
+    {
+      "config": {
+        "filters": true,
+        "groups": null,
+        "name": "Tabbed filters (all, active, completed)",
+        "seed": 3307,
+        "structure": "tabs",
+        "tid": "T06"
+      },
+      "family": "focusflow",
+      "high_bytes": 20007,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v06",
+      "low_bytes": 17436,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v16",
+      "structure": "tabs",
+      "structure_name": "Tabbed filters (all, active, completed)",
+      "template_id": "T06",
+      "twin_id": "twin-T06"
+    },
+    {
+      "config": {
+        "filters": false,
+        "groups": null,
+        "name": "Metric dashboard above list",
+        "seed": 3308,
+        "structure": "dashboard",
+        "tid": "T07"
+      },
+      "family": "focusflow",
+      "high_bytes": 19843,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v07",
+      "low_bytes": 17272,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v17",
+      "structure": "dashboard",
+      "structure_name": "Metric dashboard above list",
+      "template_id": "T07",
+      "twin_id": "twin-T07"
+    },
+    {
+      "config": {
+        "filters": false,
+        "groups": "priority",
+        "name": "Accordion sections by priority and completion",
+        "seed": 3309,
+        "structure": "accordion",
+        "tid": "T08"
+      },
+      "family": "focusflow",
+      "high_bytes": 19682,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v08",
+      "low_bytes": 17111,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v18",
+      "structure": "accordion",
+      "structure_name": "Accordion sections by priority and completion",
+      "template_id": "T08",
+      "twin_id": "twin-T08"
+    },
+    {
+      "config": {
+        "filters": true,
+        "groups": null,
+        "name": "Minimal list with footer status bar",
+        "seed": 3310,
+        "structure": "statusbar",
+        "tid": "T09"
+      },
+      "family": "focusflow",
+      "high_bytes": 20090,
+      "high_hooks": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "high_variant_id": "focusflow-v09",
+      "low_bytes": 17519,
+      "low_hooks": [
+        "F1"
+      ],
+      "low_variant_id": "focusflow-v19",
+      "structure": "statusbar",
+      "structure_name": "Minimal list with footer status bar",
+      "template_id": "T09",
+      "twin_id": "twin-T09"
+    }
+  ],
+  "twin_diff_sizes": {
+    "max_changed_lines": 50,
+    "mean_hook_block_bytes": 2416.3,
+    "mean_similarity_ratio": 0.929316,
+    "min_changed_lines": 43,
+    "pairs": 30
+  },
+  "version": "s02-diversity-cp2-1.0"
+}
