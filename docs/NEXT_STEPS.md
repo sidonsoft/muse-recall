@@ -178,7 +178,8 @@ evening through 31 Oct.
   counts); offline reruns can destroy richer live evidence.
 - **Self-corrections shipped as visible PRs, never quiet amends:**
   #77, #100, #113, #91→#92, #136→#137 (KI id collision), plus wrong
-  check-watch PR numbers twice and anchor-assert saves ~6 times.
+  check-watch PR numbers twice, and anchor-assert saves now >6 - the
+  last one while writing this very retrospective block.
 - **Untouched, by design:** zero product-surface changes, zero schema/
   contract moves, zero frozen-path touches; `main` `c32d03b`, three
   tags, four rulesets, PR #28 held open - sentinel green throughout.
