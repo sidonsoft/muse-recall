@@ -960,6 +960,17 @@ now is maintenance honesty, not new surface:
     frozen-hold recovery handle holds). My cadence's latest is
     integration @ 2d649b6 with main still c32d03b. The register's
     job: record what moved, do not act on what is not mine.
+  - PR template promises audited against the enforcing ruleset
+    (31 Oct): ruleset 26184026 read live - required_approving_
+    review_count = 1 matches CONTRIBUTING's "one approving review";
+    allowed_merge_methods = [squash] makes the template's
+    "squash-merged, so each PR becomes one commit" not just habit
+    but ENFORCED policy; the three required status contexts are
+    exactly the three CI job names; plus two settings the docs
+    don't claim and now record: stale reviews auto-dismiss on
+    push, and deletion/non_fast_forward are blocked on
+    integration. Template prose and GitHub policy agree line for
+    line at this head.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
