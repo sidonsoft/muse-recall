@@ -12,6 +12,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
+import { forgeChildEnv } from './child-env.js';
 
 /**
  * Forge worker launch wrapper (roadmap G-2 / NEXT_STEPS P0 #4).
@@ -74,16 +75,30 @@ export function resolveWorkerWrapper(
 /**
  * Prove the wrapper passes argv through and runs to success. Returns null on
  * success or an actionable failure description.
+ *
+ * Beta review (P2): the probe spawns under `forgeChildEnv(overrides)` — the
+ * EXACT scrubbed allowlist environment a real generation child gets (same
+ * construction as runner.ts's launch). Pre-fix the probes inherited the full
+ * server environment, so a wrapper depending on stripped configuration
+ * (e.g. DOCKER_HOST) passed boot and died mid-job; now such a wrapper is
+ * refused AT BOOT. Wrapper configuration belongs in the wrapper itself.
  */
 export function probeWorkerWrapper(
   wrapper: ForgeWorkerWrapper,
-  timeoutMs = 5_000,
-  execPath: string = process.execPath,
+  options: {
+    timeoutMs?: number;
+    execPath?: string;
+    /** Overrides layered onto the allowlisted env, exactly as at launch. */
+    env?: NodeJS.ProcessEnv;
+  } = {},
 ): string | null {
+  const timeoutMs = options.timeoutMs ?? 5_000;
+  const execPath = options.execPath ?? process.execPath;
   const result = spawnSync(wrapper.path, [execPath, '-e', '0'], {
     stdio: 'ignore',
     timeout: timeoutMs,
     windowsHide: true,
+    env: forgeChildEnv(options.env),
   });
   if (result.error) {
     return `worker wrapper "${wrapper.path}" could not start: ${result.error.message}`;
@@ -92,8 +107,9 @@ export function probeWorkerWrapper(
     const how = result.signal ? `on signal ${result.signal}` : `with exit code ${result.status}`;
     return (
       `worker wrapper "${wrapper.path}" failed the pass-through probe ${how} ` +
-      `(expected 0 while running "${execPath} -e 0"). ` +
-      'Fix the wrapper or unset FORGE_WORKER_WRAPPER.'
+      `(expected 0 while running "${execPath} -e 0" under the same scrubbed child env a real ` +
+      'generation gets - a wrapper that needs more than the allowlist must carry that ' +
+      'configuration inside the wrapper itself). Fix the wrapper or unset FORGE_WORKER_WRAPPER.'
     );
   }
   return null;
@@ -116,6 +132,8 @@ export function probeWorkerStagingAccess(
   options: {
     timeoutMs?: number;
     execPath?: string;
+    /** Overrides layered onto the allowlisted env, exactly as at launch. */
+    env?: NodeJS.ProcessEnv;
     /** TEST SEAM: parent directory for the scratch tree (default os.tmpdir()). */
     scratchRoot?: string;
   } = {},
@@ -152,6 +170,7 @@ export function probeWorkerStagingAccess(
       stdio: 'ignore',
       timeout: timeoutMs,
       windowsHide: true,
+      env: forgeChildEnv(options.env),
     });
     if (result.error) {
       return `worker wrapper "${wrapper.path}" could not start for the staging-access probe: ${result.error.message}`;

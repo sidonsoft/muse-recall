@@ -153,7 +153,13 @@ cwd = that dir to read the prompt and write inside it — the exact accesses eve
 performs. A wrapper failing either probe refuses boot with the wrapper path in the error
 (pass-through and staging access proven at startup, not assumed). The child env is an
 allowlist (`@mml/shared` child policy + three test seams); no credentials are inherited -
-the provider API key goes to the child over stdin.
+the provider API key goes to the child over stdin. **Both probes spawn under exactly that
+scrubbed env** (`forgeChildEnv`, the same construction as the real launch - beta review
+fix), so a probe passing means the launch passes: a wrapper must be self-contained - it
+carries its own configuration (embedded arguments or a config file it reads) and must NOT
+depend on server-only variables like `DOCKER_HOST`; the server does not forward extra
+environment to wrappers. A wrapper that needs stripped configuration is now refused at
+boot instead of dying mid-generation (pinned by a sentinel regression test).
 
 What the child must be able to do, verified from the launch path (runner.ts prompt-file/staging
 calls, fs-utils `ensurePrivateDirectory`/`writePrivateFile`): **read+execute** the muse CLI and

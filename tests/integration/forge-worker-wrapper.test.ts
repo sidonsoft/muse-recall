@@ -108,6 +108,39 @@ describe('Forge worker wrapper (G-2 isolation seam)', () => {
     );
   });
 
+  it('refuses boot for a wrapper that needs configuration the child env strips (beta review P2)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'forge-wrapper-bad-'));
+    roots.push(dir);
+    // The DOCKER_HOST-shaped sentinel from the review: the SERVER process
+    // carries it in its real environment, a generation child would NOT see
+    // it - so the boot probes must not either. Pre-fix this wrapper booted
+    // and exited 73 at the first generation; post-fix construction throws.
+    const wrapper = await writeWrapper(
+      dir,
+      'needs-sentinel.sh',
+      'if [ -z "${MML_PROBE_SENTINEL:-}" ]; then exit 73; fi\nexec "$@"',
+    );
+    const root = await mkdtemp(join(tmpdir(), 'forge-wrapper-'));
+    roots.push(root);
+    const database = openDatabase({ path: ':memory:', wal: false });
+    databases.push(database);
+    process.env.MML_PROBE_SENTINEL = 'tcp://simulated-server-daemon';
+    try {
+      expect(
+        () =>
+          new ForgeJobManager({
+            workspace: new ForgeWorkspace(root),
+            engine: new MemoryEngine(database.db),
+            museBin: FIXTURE,
+            env: { FAKE_MUSE_MODE: 'auto' },
+            workerWrapper: wrapper,
+          }),
+      ).toThrow(/failed the pass-through probe with exit code 73/);
+    } finally {
+      delete process.env.MML_PROBE_SENTINEL;
+    }
+  });
+
   it('refuses boot for a relative wrapper path', async () => {
     await expect(setup('relative/wrapper')).rejects.toThrow(/must be an absolute path/);
   });

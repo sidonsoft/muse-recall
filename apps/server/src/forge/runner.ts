@@ -197,12 +197,13 @@ export class ForgeJobManager {
           : resolveWorkerWrapper();
     if (wrapperResolution.error) throw new Error(wrapperResolution.error);
     if (wrapperResolution.wrapper) {
-      // Both probes gate boot. The staging probe runs INSIDE the real
-      // workspace tree so a container launcher whose bind-mount covers the
-      // staging tree sees exactly what production will see.
+      // Both probes gate boot, run INSIDE the real workspace tree, and spawn
+      // under the same scrubbed child env a real generation gets - probe
+      // environment ≡ launch environment (beta review, P2).
       const probeFailure =
-        probeWorkerWrapper(wrapperResolution.wrapper) ??
+        probeWorkerWrapper(wrapperResolution.wrapper, { env: options.env }) ??
         probeWorkerStagingAccess(wrapperResolution.wrapper, {
+          env: options.env,
           scratchRoot: join(this.workspace.getRoot(), '.wrapper-probe'),
         });
       if (probeFailure) throw new Error(probeFailure);
