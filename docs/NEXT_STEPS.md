@@ -666,6 +666,18 @@ now is maintenance honesty, not new surface:
     caught pre-claim: a loose G-row regex counted 9 of 12 - the
     row form is `| G-N |`, regexes need the full row anchor or
     registers under-count and the report lies.
+  - `pnpm verify` composition checked against its promises (31 Oct):
+    the script is exactly lint (biome check .) + typecheck (pnpm -r,
+    which is the recursive typecheck of packages/apps) + test
+    (vitest run) - what README and the devcontainer guide say it
+    runs, term for term. Suite totals witnessed at head from a NEW
+    cheaper source: the LATEST POST-MERGE CI leg's own log (76 test
+    files passed on the merged tree) - the double-gate witness
+    means the per-head full-suite re-assertion no longer needs a
+    local re-run; the gate of record keeps its own receipts.
+    Dialect trap banked: `vitest list --files` answered zero in
+    this harness - a silent-empty probe; a tool's zero must be
+    confirmed to mean "nothing", not "I heard nothing".
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
