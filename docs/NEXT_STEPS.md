@@ -886,6 +886,18 @@ now is maintenance honesty, not new surface:
     config schema, fails closed at boot, and the refusal message
     doubles as documentation. Scratch DBs/logs deleted, server
     stopped, tree verified clean.
+  - Bearer-gate wire probe: gate holds, one prose overstatement
+    fixed (31 Oct): with ACCESS_TOKEN set - /api/projects no-auth
+    401, wrong bearer 401, correct bearer 200; /api/health open
+    200; a <16-char token refuses boot ("Too small... >=16
+    characters"). SECURITY.md's wording (every /api route EXCEPT
+    GET /api/health) verified exactly, including its 31 Oct
+    socket-level block - my own first read tripped on
+    .env.example:14, the ONE file that said "every /api route"
+    without the documented health exemption; fixed comment-only,
+    now names the exemption in place. The probe that was meant to
+    catch the code lying instead caught the comment lying - and
+    SECURITY.md came out of it corroborated on a second route.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
