@@ -49,7 +49,7 @@
    **baseline construct-key saturation in H twins** and **same-class replacement blindness** (§2.3).
 5. **Required sample (pre-declared):** census of **all 111 primary usable pilot runs** (real-run
    agreement), a **200-case seeded known-truth diagnostic panel**, a **census of all 60 variants** for
-   opportunity labels/hooks, and a **census of all 26 corpus + 4 pilot-only paraphrases** for intent.
+   opportunity labels/hooks, and a **census of all 14 corpus + 4 pilot-only paraphrases** for intent.
    Achieved precision is **±9 pp** on raw agreement at best and about **±12 pp** after accounting for
    the 30-scenario clustering; κ **±0.11–0.13**. This is enough to **screen for gross instrument failure**
    (κ < 0.40, sensitivity < 0.80, arm-differential error > 15 pp) and **not enough to certify a
@@ -217,7 +217,7 @@ construct judgements reserved to blinded human coders. **No number in this secti
 | **F-repeat** | repeat-probe runs (`--r1`) | **12** | V1 only | descriptive repeatability of the reading; **never pooled with F-real** |
 | **F-panel** | seeded known-truth diagnostic cases built from frozen variants (no model calls) | **200** | V1, V2, V6 (blind; truth held by the panel author, not the coders) | **sensitivity/specificity** per family and pooled |
 | **F-label** | corpus variants (baseline only) | **60** | V4 (`opportunity_class`, hook plausibility, hook count band) | primary denominator validity |
-| **F-request** | corpus paraphrases + pilot-only paraphrases | **26 + 4** | V4 (target zone), V5 (intent) | request-intent validity, H-vs-L matching |
+| **F-request** | corpus paraphrases + pilot-only paraphrases | **14 + 4** | V4 (target zone), V5 (intent) | request-intent validity, H-vs-L matching |
 | **F-fail** | unusable runs (9) | 9 | none (not codable: no output) | **operational audit only**: arm/stratum missingness table; not a construct validation |
 
 **Why unusable/failed cases are in the sampling plan but not in the coding frames.** The exposure

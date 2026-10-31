@@ -1,0 +1,594 @@
+<!-- Study 02 corpus variant. Deterministic template-engine output; no model involvement. Checked against corpus/corpus.sha256. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchard Catch Arcade</title>
+<style>
+
+:root{
+  /* Arcade Palette Override */
+  --bg:#0a140d;
+  --surface:#152619;
+  --ink:#e8f5e9;
+  --muted:#8fa893;
+  --accent:#6BBF59;
+  --accent-glow:rgba(107, 191, 89, 0.6);
+  --accent-2:#d9a441;
+  --danger:#ff3333;
+  --line:#2d4a35;
+  --radius:4px; /* Sharper arcade corners */
+  --shadow:0 0 15px rgba(107, 191, 89, 0.2);
+  
+  /* CRT Effect Variables */
+  --scanline-color:rgba(0, 0, 0, 0.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background-color: var(--bg)}
+body{
+  min-height:100vh;
+  color:var(--ink);
+  font-family:"Trebuchet MS",Verdana,"Segoe UI",sans-serif;
+  display:flex;justify-content:center;padding:16px;
+  overflow-x:hidden;
+}
+.skip-link{position:absolute;left:-9999px;top:0;background:#fff;padding:10px 14px;border-radius:8px;z-index:50}
+.skip-link:focus{left:12px;top:12px}
+.app{width:100%;max-width:960px;display:flex;flex-direction:column;gap:18px}
+h1{font-size:clamp(1.3rem,2.4vw,1.9rem);margin:0;line-height:1.15;text-transform:uppercase;letter-spacing:2px;color:var(--accent);text-shadow:0 0 10px var(--accent-glow)}
+.tagline{margin:6px 0 0;color:var(--muted);font-size:.95rem;font-style:italic}
+
+/* Arcade Panel Styling */
+.panel{background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;position:relative}
+.panel::before {
+  content:""; position:absolute; inset:0; border-radius:inherit; opacity:0.1; pointer-events:none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--ink) 3px);
+}
+
+.brand{display:flex;flex-direction:column;gap:2px}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0}
+.stat{min-width:104px;background:#0f1c12;border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.stat dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0}
+.stat dd{margin:2px 0 0;font-size:1.15rem;font-weight:700;color:var(--accent)}
+
+.stage{
+  position:relative;overflow:hidden;border-radius:8px;border:4px solid var(--line);
+  background:linear-gradient(180deg, #0f1c12 0%, #1a2e1d 100%);
+  min-height:360px;touch-action:none; user-select:none;
+}
+/* Scanline overlay */
+.stage::after {
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:10;
+  background: linear-gradient(to bottom, var(--scanline-color) 50%, transparent 50%);
+  background-size: 100% 4px;
+  opacity: 0.3;
+}
+.stage:focus-visible{outline:3px solid var(--accent-2);outline-offset:-6px}
+
+/* Arcade Basket */
+.basket{position:absolute;bottom:20px;left:50%;width:110px;height:40px;transform:translateX(-50%);z-index:3}
+.basket::before{content:"";position:absolute;inset:0;background:#2d4a35;border-radius:6px;border-bottom:4px solid var(--accent);box-shadow:0 0 15px var(--accent-glow)}
+.basket::after{content:"";position:absolute;left:50%;top:-10px;transform:translateX(-50%);width:20px;height:10px;background:var(--accent-2);border-radius:4px}
+
+.fruit-layer{position:absolute;inset:0;z-index:2;pointer-events:none}
+.fruit{position:absolute;width:36px;height:36px;border-radius:50%;box-shadow:0 0 10px rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.4)}
+.fruit-0{background:#ff3333; box-shadow:0 0 10px #ff3333} /* Red */
+.fruit-1{background:#ffaa00; box-shadow:0 0 10px #ffaa00} /* Orange */
+.fruit-2{background:#aa55ff; box-shadow:0 0 10px #aa55ff} /* Purple */
+.fruit-3{background:#ffff00; box-shadow:0 0 10px #ffff00} /* Gold */
+.fruit-star{background:#fff; border-color:var(--accent); box-shadow:0 0 20px var(--accent), inset 0 0 10px var(--accent)}
+
+/* Particles */
+.particle { position:absolute; width:6px; height:6px; background:var(--accent); border-radius:50%; pointer-events:none; z-index:4; }
+
+.overlay{position:fixed;inset:0;background:rgba(10, 20, 13, 0.9);display:flex;align-items:center;justify-content:center;padding:20px;z-index:40;backdrop-filter:blur(4px)}
+.overlay[hidden]{display:none}
+.overlay-panel{background:#152619;border:2px solid var(--accent);border-radius:8px;padding:30px;max-width:480px;width:100%;text-align:center;box-shadow:0 0 30px rgba(107, 191, 89, 0.3)}
+.overlay-panel h2{margin:0 0 12px;font-size:2rem;color:#fff;text-transform:uppercase;letter-spacing:2px}
+.overlay-panel p{margin:0 0 24px;color:var(--muted);font-size:1.1rem}
+
+.message{margin:0;min-height:1.5em;background:#0f1c12;border-left:4px solid var(--accent);border-radius:0 4px 4px 0;padding:10px 14px;font-weight:bold;color:var(--accent);text-transform:uppercase}
+.btn{appearance:none;border:2px solid var(--line);background:#152619;color:var(--ink);font:inherit;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:12px 24px;border-radius:4px;cursor:pointer;min-height:48px;transition:all 0.1s}
+.btn:hover{background:#2d4a35;border-color:var(--accent)}
+.btn:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+.btn--solid{background:var(--accent);border-color:var(--accent);color:#000;box-shadow:0 0 15px var(--accent-glow)}
+.btn--solid:hover{background:#8fd47a}
+
+.meter{height:16px;border-radius:4px;background:#0f1c12;overflow:hidden;border:1px solid var(--line)}
+.meter-fill{display:block;height:100%;width:0;background:var(--accent);transition:width .1s linear;box-shadow:0 0 10px var(--accent-glow)}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.chip{background:#0f1c12;border:1px solid var(--line);border-radius:4px;padding:6px 12px;font-size:.85rem;color:var(--muted)}
+.chip strong{color:var(--accent)}
+
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:200px;overflow:auto}
+.log li{font-size:.8rem;color:var(--muted);border-left:3px solid var(--line);padding:4px 8px;font-family:monospace}
+.toast{position:fixed;right:18px;top:18px;z-index:45;max-width:280px;background:#152619;border:1px solid var(--accent);border-radius:8px;padding:12px 14px;box-shadow:var(--shadow);font-size:.92rem;color:var(--ink)}
+.toast[hidden]{display:none}
+
+.dock{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.rail{display:flex;flex-direction:column;gap:14px}
+.lane-marker{position:absolute;left:0;right:0;border-top:1px dashed rgba(107, 191, 89, 0.2)}
+.lane-label{position:absolute;left:12px;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(107, 191, 89, 0.5);background:rgba(0,0,0,.6);border-radius:4px;padding:2px 8px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.lede{margin:0;color:var(--muted);font-size:.95rem}
+
+@media (max-width:640px){body{padding:10px}.stage{min-height:320px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.t01{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}
+.t01 .rail{position:sticky;top:18px}
+.t01 .play{display:block;padding:0;overflow:hidden}
+@media (max-width:760px){.t01{grid-template-columns:1fr}}
+
+/* Shared Design System Overrides for Arcade */
+body{line-height:1.5}
+::selection{background:var(--accent);color:#000}
+h1,h2,h3{font-weight:800;letter-spacing:-.01em}
+p{margin:0 0 .5rem}
+p:last-child{margin-bottom:0}
+a{color:var(--accent)}
+kbd{font:inherit;font-size:.8em;background:#0f1c12;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:var(--ink)}
+hr{border:0;border-top:1px solid var(--line);margin:var(--space-4) 0}
+.row{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:var(--space-2)}
+.wrap{flex-wrap:wrap}
+.center{text-align:center}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.badge{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:4px;padding:.15rem .6rem;font-size:.75rem;color:var(--muted);text-transform:uppercase}
+.badge strong{color:var(--ink)}
+.divider{height:1px;background:var(--line);margin:var(--space-3) 0}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn:active{transform:translateY(2px)}
+.btn--wide{width:100%;justify-content:center}
+input,button,select,textarea{font:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.panel-title{margin:0 0 var(--space-2);font-size:1.05rem;color:var(--ink)}
+.hint{margin:0;color:var(--muted);font-size:.85rem}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)}
+@media (max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr}}
+@media (forced-colors:active){.panel,.stat,.card,.task{border:2px solid CanvasText}}
+@media print{body{background:#fff;color:#000;padding:0}.panel{box-shadow:none}}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+
+/* Arcade specific tweaks */
+.stage{box-shadow:inset 0 0 50px rgba(0,0,0,.8)}
+.basket{transition:none}
+.fruit{will-change:top,left}
+.stats--stack{flex-direction:column;align-items:stretch}
+.stats--stack .stat{width:100%}
+.stat dd{font-variant-numeric:tabular-nums}
+.toast{pointer-events:none}
+.log li:nth-child(odd){background:rgba(255,255,255,.03)}
+.overlay-panel{border:2px solid var(--accent)}
+@media (max-width:520px){.stage{min-height:300px}.basket{width:92px}.stat{min-width:78px}}
+
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to game</a><div class="app t01"><aside class="rail panel" aria-label="Game controls"><div class="brand"><h1>Orchard Catch</h1><p class="lede">Arcade Edition.</p></div><dl class="stats stats--stack" aria-label="Game statistics"><div class="stat"><dt>Lives</dt><dd data-s02="lives">3</dd></div><div class="stat"><dt>Score</dt><dd data-s02="score">0</dd></div><div class="stat"><dt>Combo</dt><dd data-s02="combo">x1</dd></div></dl><p class="message" data-s02="message" aria-live="polite">Press Start to Play.</p><button type="button" class="btn btn--ghost" data-s02="restart">Reset Game</button><div class="chips"><span class="chip">Mouse: <strong>Move</strong></span><span class="chip">Keys: <strong>Arrows</strong></span><span class="chip">Touch: <strong>Swipe</strong></span></div></aside><main class="play" id="main"><div class="stage" data-s02="stage" tabindex="0" role="application" aria-label="Fruit-catching stage; move the basket with the mouse, arrow keys or a tap"><div class="fruit-layer" data-s02="fruits"></div><div class="basket" data-s02="basket" aria-hidden="true"></div></div></main><div class="overlay" data-s02="overlay" hidden><div class="overlay-panel"><h2 id="game-title">Orchard Catch</h2><p data-s02="detail">Catch the falling fruit. Avoid missing.</p><button type="button" class="btn btn--solid" data-s02="playagain">Start Game</button></div></div></div>
+<script>
+
+(function () {
+  'use strict';
+  
+  // --- Configuration & State ---
+  var CFG = {
+    "goal": 100,          // Score to win (or infinite mode)
+    "input": "keys",      // Default input type
+    "pitch": 800,         // Initial spawn rate (ms)
+    "seed": 2202,
+    "speed": 3.5,         // Base speed multiplier
+    "maxLives": 3
+  };
+
+  function all(role) { return Array.prototype.slice.call(document.querySelectorAll('[data-s02="' + role + '"]')); }
+  function one(role) { return document.querySelector('[data-s02="' + role + '"]'); }
+  function set(role, text) { all(role).forEach(function (node) { node.textContent = String(text); }); }
+  
+  // Event Emitter for External Integration
+  var S02 = window.S02 = window.S02 || { onCatch: [], onMiss: [], onWin: [], onRestart: [] };
+  function emit(name, data) { (S02[name] || []).forEach(function (fn) { try { fn(data); } catch (err) {} }); }
+
+  // --- Game Variables ---
+  var seed = CFG.seed >>> 0;
+  function rand() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed; }
+  
+  var state = {
+    score: 0,
+    lives: CFG.maxLives,
+    combo: 0,
+    highScore: 0,
+    won: false,
+    active: false,
+    fruits: [],
+    particles: [],
+    spawnAt: 0,
+    last: 0,
+    difficulty: 1
+  };
+
+  var basketX = 0;
+  
+  // --- Helpers ---
+  function stageSize() { 
+    var stage = one('stage'); 
+    return { w: stage.clientWidth || 640, h: stage.clientHeight || 380 }; 
+  }
+
+  function paint() {
+    set('score', state.score);
+    set('lives', state.lives);
+    set('combo', 'x' + Math.max(1, state.combo));
+    
+    // Update Meter (Visual progress bar)
+    var meter = one('meter'); 
+    if (meter) { 
+      var pct = Math.min(100, (state.score / CFG.goal) * 100);
+      meter.style.width = pct + '%'; 
+    }
+    
+    // Color feedback for combo
+    var comboEl = one('combo');
+    if(comboEl) {
+      if(state.combo > 5) comboEl.style.color = '#ffff00';
+      else if(state.combo > 2) comboEl.style.color = '#ffaa00';
+      else comboEl.style.color = 'var(--accent)';
+    }
+  }
+
+  function createParticle(x, y, color) {
+    var p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.background = color;
+    one('fruits').appendChild(p);
+    
+    // Physics for particle
+    var angle = rand() % 360;
+    var speed = 1 + (rand() % 4);
+    state.particles.push({
+      node: p,
+      x: parseFloat(p.style.left),
+      y: parseFloat(p.style.top),
+      vx: Math.cos(angle * Math.PI / 180) * speed,
+      vy: Math.sin(angle * Math.PI / 180) * speed,
+      life: 1.0
+    });
+  }
+
+  function updateParticles() {
+    for (var i = state.particles.length - 1; i >= 0; i--) {
+      var p = state.particles[i];
+      p.life -= 0.05;
+      p.x += p.vx;
+      p.y += p.vy;
+      
+      if (p.life <= 0) {
+        if (p.node.parentNode) p.node.parentNode.removeChild(p.node);
+        state.particles.splice(i, 1);
+      } else {
+        p.node.style.left = p.x + 'px';
+        p.node.style.top = p.y + 'px';
+        p.node.style.opacity = p.life;
+      }
+    }
+  }
+
+  function moveBasket(x) {
+    var basket = one('basket'); 
+    if (!basket) return;
+    var size = stageSize();
+    // Clamp within bounds, accounting for half width (approx 55px)
+    basketX = Math.max(55, Math.min(size.w - 55, x));
+    basket.style.left = basketX + 'px';
+  }
+
+  function spawn() {
+    var size = stageSize();
+    var fruit = document.createElement('div');
+    
+    // Determine type (0-3 normal, 4 special star)
+    var kind = rand() % 5; 
+    if (kind === 4 && state.score > 20) {
+      fruit.className = 'fruit fruit-star';
+    } else {
+      fruit.className = 'fruit fruit-' + (kind < 4 ? kind : 0);
+    }
+
+    // Position
+    var x = 30 + (rand() % Math.max(60, size.w - 60));
+    
+    // Speed increases with score
+    var speedMultiplier = 1 + (state.score / 200); 
+    var baseSpeed = CFG.speed * speedMultiplier;
+    var speed = (baseSpeed + (rand() % 3) * 0.5);
+
+    fruit.style.left = x + 'px'; 
+    fruit.style.top = '-40px';
+    
+    one('fruits').appendChild(fruit);
+    state.fruits.push({ node: fruit, x: x, y: -40, speed: speed, radius: 18, type: kind });
+  }
+
+  function removeFruit(index) {
+    var item = state.fruits[index];
+    if (item && item.node && item.node.parentNode) { 
+      item.node.parentNode.removeChild(item.node); 
+    }
+    state.fruits.splice(index, 1);
+  }
+
+  function miss(index) {
+    removeFruit(index); 
+    state.lives -= 1;
+    state.combo = 0; // Reset combo
+    paint();
+    
+    var msg = one('message');
+    if(state.lives <= 0) {
+      set('message', 'GAME OVER! Press Start.');
+      endGame(false);
+    } else {
+      set('message', 'Missed! Lives: ' + state.lives);
+      // Shake effect
+      var stage = one('stage');
+      if(stage) {
+        stage.style.transform = 'translateX(5px)';
+        setTimeout(function(){ stage.style.transform = 'translateX(-5px)'; }, 50);
+        setTimeout(function(){ stage.style.transform = 'none'; }, 100);
+      }
+    }
+    emit('onMiss', { lives: state.lives, score: state.score });
+  }
+
+  function catchFruit(index) {
+    var item = state.fruits[index];
+    removeFruit(index); 
+    
+    // Scoring Logic
+    state.combo++;
+    var points = 10 * Math.max(1, Math.floor(state.combo / 2));
+    
+    // Star fruit bonus
+    if (item.type === 4) {
+      points += 50;
+      set('message', 'STAR! +' + points);
+      state.lives = Math.min(CFG.maxLives, state.lives + 1); // Revive life
+    } else {
+      set('message', 'Caught! +' + points);
+    }
+
+    state.score += points;
+    
+    // Particles
+    var colors = ['#ff3333','#ffaa00','#aa55ff','#ffff00'];
+    for(var i=0; i<8; i++) {
+      createParticle(item.x, item.y, colors[rand() % 4]);
+    }
+
+    paint();
+    emit('onCatch', { score: state.score, combo: state.combo });
+    
+    if (state.score >= CFG.goal) {
+      win();
+    }
+  }
+
+  function win() {
+    endGame(true);
+  }
+
+  function endGame(winState) {
+    state.won = true;
+    state.active = false;
+    var overlay = one('overlay');
+    if (overlay) { 
+      overlay.hidden = false; 
+      var title = document.getElementById('game-title');
+      var detail = one('detail');
+      var btn = one('playagain');
+      
+      if (winState) {
+        title.textContent = "YOU WIN!";
+        title.style.color = "#6BBF59";
+        detail.textContent = "Final Score: " + state.score;
+        btn.textContent = "Play Again";
+      } else {
+        title.textContent = "GAME OVER";
+        title.style.color = "#ff3333";
+        detail.textContent = "Score: " + state.score;
+        btn.textContent = "Try Again";
+      }
+    }
+    emit('onWin', { score: state.score, win: winState });
+  }
+
+  function restart() {
+    // Clear DOM
+    while (state.fruits.length) { removeFruit(0); }
+    updateParticles(); // This will clean up particles
+    
+    // Reset State
+    state.score = 0;
+    state.lives = CFG.maxLives;
+    state.combo = 0;
+    state.won = false;
+    state.active = true;
+    state.last = 0; 
+    state.spawnAt = 0;
+    
+    var size = stageSize(); 
+    basketX = size.w / 2; 
+    moveBasket(basketX);
+    
+    paint(); 
+    set('message', 'Catch the fruit!');
+    
+    var overlay = one('overlay'); 
+    if (overlay) { overlay.hidden = true; }
+    
+    emit('onRestart', {});
+    window.requestAnimationFrame(step);
+  }
+
+  // --- Main Loop ---
+  function step(timestamp) {
+    if (!state.active) return;
+    
+    var size = stageSize();
+    if (!state.last) state.last = timestamp;
+    var elapsed = Math.min(60, timestamp - state.last); 
+    state.last = timestamp;
+
+    // Spawn Logic (Dynamic difficulty)
+    // As score goes up, pitch decreases (spawns faster)
+    var currentPitch = Math.max(300, CFG.pitch - (state.score * 2));
+    
+    if (timestamp >= state.spawnAt) { 
+      spawn(); 
+      state.spawnAt = timestamp + currentPitch; 
+    }
+
+    // Update Fruits
+    for (var i = state.fruits.length - 1; i >= 0; i -= 1) {
+      var item = state.fruits[i];
+      item.y += item.speed * (elapsed / 16.67);
+      item.node.style.top = item.y + 'px';
+
+      // Missed bottom
+      if (item.y > size.h + 30) { 
+        miss(i); 
+        continue; 
+      }
+
+      // Collision Logic
+      // Basket Y is roughly size.h - 60. Basket height is ~40.
+      var basketTop = size.h - 60;
+      var basketBottom = size.h - 20;
+      
+      if (item.y + item.radius >= basketTop && item.y <= basketBottom) {
+        // Check X overlap
+        if (Math.abs((item.x + item.radius/2) - basketX) < 55) {
+          catchFruit(i); 
+        }
+      }
+    }
+    
+    updateParticles();
+    window.requestAnimationFrame(step);
+  }
+
+  // --- Input Handling ---
+  var stage = one('stage');
+  if (stage) {
+    // Pointer Move (Mouse Drag / Touch Move)
+    stage.addEventListener('pointermove', function (event) {
+      event.preventDefault(); // Prevent scrolling on touch
+      var rect = stage.getBoundingClientRect(); 
+      moveBasket(event.clientX - rect.left);
+    });
+
+    // Pointer Down (Tap/Click to jump or just focus)
+    stage.addEventListener('pointerdown', function (event) {
+      if (state.active) return; // Let overlay handle clicks
+      var rect = stage.getBoundingClientRect(); 
+      moveBasket(event.clientX - rect.left);
+    });
+
+    // Keyboard Controls
+    stage.addEventListener('keydown', function (event) {
+      if (CFG.input === 'pointer') return;
+      
+      if (event.key === 'ArrowLeft') { 
+        event.preventDefault(); 
+        moveBasket(basketX - 20); 
+      }
+      if (event.key === 'ArrowRight') { 
+        event.preventDefault(); 
+        moveBasket(basketX + 20); 
+      }
+    });
+    
+    // Touch Swipe Support for Arcade feel
+    var touchStartX = 0;
+    stage.addEventListener('touchstart', function(e) {
+      touchStartX = e.changedTouches[0].screenX;
+    }, {passive: false});
+    
+    stage.addEventListener('touchmove', function(e) {
+      // Prevent default to stop scrolling while playing
+      if(state.active) e.preventDefault(); 
+    }, {passive: false});
+
+    stage.addEventListener('touchend', function(e) {
+       var touchEndX = e.changedTouches[0].screenX;
+       var diff = touchEndX - touchStartX;
+       if (Math.abs(diff) > 30) { // Threshold for swipe
+          moveBasket(basketX + (diff > 0 ? 40 : -40));
+       }
+    });
+  }
+
+  // --- Initialization ---
+  all('restart').forEach(function (button) { button.addEventListener('click', restart); });
+  all('playagain').forEach(function (button) { 
+    button.addEventListener('click', function() {
+      // Reset overlay to start state if needed, then restart
+      var title = document.getElementById('game-title');
+      if(title.textContent === "YOU WIN!") {
+        title.textContent = "Orchard Catch";
+        title.style.color = "#e8f5e9";
+      }
+      restart(); 
+    }); 
+  });
+
+  // Initial Setup
+  var initial = stageSize(); 
+  basketX = initial.w / 2; 
+  moveBasket(basketX); 
+  paint();
+  
+  // Start Loop (paused initially via state.active)
+  window.requestAnimationFrame(step);
+
+})();
+
+
+/* Shared keyboard-navigation affordance for every app (no motion constructs). */
+(function () {
+  'use strict';
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Home' && event.key !== 'End') { return; }
+    var body = document.body;
+    if (!body) { return; }
+    window.scrollTo(0, event.key === 'Home' ? 0 : body.scrollHeight);
+  });
+})();
+
+
+/* Orchard Catch keyboard help and focus affordance. */
+(function () {
+  'use strict';
+  var stage = document.querySelector('[data-s02="stage"]');
+  if (!stage) { return; }
+  stage.addEventListener('focus', function () { stage.setAttribute('data-focused', 'true'); });
+  stage.addEventListener('blur', function () { stage.removeAttribute('data-focused'); });
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== '?') { return; }
+    var message = document.querySelector('[data-s02="message"]');
+    if (message) message.textContent = 'Use Arrow Keys or Mouse to move. Catch fruit to score!';
+  });
+})();
+
+</script>
+</body>
+</html>

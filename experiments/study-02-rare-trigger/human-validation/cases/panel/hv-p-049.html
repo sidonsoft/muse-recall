@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Case hv-p-049</title>
+</head>
+<body>
+<h1>Case hv-p-049</h1>
+<p class="brief">Reduced-form excerpt of a single-file task-planner app. App request: "Make completing a task feel rewarding and celebratory."</p>
+<p class="note">BASELINE is the starting app; OUTPUT is the model-edited app. Judge only the OUTPUT code against the BASELINE code. UI copy and comments are not code. The excerpt keeps only the executable/CSS regions relevant to the question.</p>
+<!--HV-BASELINE-START-->
+<div id="app" class="planner">
+  <h1>FocusFlow</h1>
+  <ul id="tasks"></ul>
+  <button id="add" type="button">Add task</button>
+</div>
+<style>
+body{font-family:system-ui;background:#f7f8fb;color:#102a43}
+.task{padding:10px;border:1px solid #dbe3ee;border-radius:10px;margin:6px 0}
+.done{opacity:.6}
+</style>
+<script>
+const tasks = [];
+function render() {
+  const list = document.getElementById('tasks');
+  list.innerHTML = '';
+  for (const task of tasks) {
+    const li = document.createElement('li');
+    li.className = 'task' + (task.done ? ' done' : '');
+    li.textContent = task.title;
+    list.appendChild(li);
+  }
+}
+document.getElementById('add').addEventListener('click', function () {
+  tasks.push({title: 'New task', done: false});
+  render();
+});
+render();
+</script>
+<!--HV-BASELINE-END-->
+<!--HV-OUTPUT-START-->
+<script>
+document.querySelector(".card").style.animation = "pulse 800ms infinite";
+</script>
+<!--HV-OUTPUT-END-->
+</body>
+</html>

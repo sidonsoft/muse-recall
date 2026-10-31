@@ -32,6 +32,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildForgePrompt, buildRetrievalQuery } from '../../../../apps/server/src/forge/prompt.ts';
+import {
+  PROVENANCE_VERSION, freezePromptSet, loadPromptSet, promptPaths, sha256Text, verifyPromptSet,
+} from './prompt_provenance.mjs';
 import { MemoryEngine, openDatabase } from '../../../../packages/memory-engine/src/index.ts';
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -903,6 +906,11 @@ export async function executeRun(spec, promptInfo, options) {
     prompt_file: path.relative(STUDY, path.join(pilotDir, 'prompts', `${spec.run_id}.txt`)),
     prompt_sha256: promptInfo.prompt_sha256,
     prompt_bytes: promptInfo.prompt_bytes,
+    prompt_meta_file: promptInfo.prompt_meta_file ? path.relative(STUDY, promptInfo.prompt_meta_file) : null,
+    prompt_meta_sha256: promptInfo.prompt_meta_sha256 ?? null,
+    prompt_frozen: promptInfo.frozen === true,
+    prompt_provenance_version: promptInfo.provenance_version ?? null,
+    prompt_sent_sha256: sha256Text(promptInfo.prompt),
     request_sha256: requestSha,
     model_requested: model,
     model_observed: null,
@@ -1102,6 +1110,10 @@ export async function runPilot(options = {}) {
     concurrency = 1,
     limit = null,
     dryRun = false,
+    // D-14 prompt provenance: build-once frozen prompts. Default (false/false) keeps the
+    // historical pilot behaviour; qualification/confirmatory runs must use frozen prompts.
+    frozenPrompts = false,
+    writeFrozenPrompts = false,
     onProgress = () => {},
   } = options;
 
@@ -1121,12 +1133,35 @@ export async function runPilot(options = {}) {
   const paths = pilotPaths(pilotDir);
   for (const dir of [paths.promptsDir, paths.rawDir, paths.recordsDir, paths.outputsDir]) mkdirSync(dir, { recursive: true });
 
-  // Prompts are built before any model call and written for every planned run.
-  const promptInfos = new Map();
-  for (const spec of specs) {
-    const info = buildPrompt(design, spec);
-    promptInfos.set(spec.run_id, info);
-    writeAtomic(path.join(paths.promptsDir, `${spec.run_id}.txt`), info.prompt);
+  // Prompts are built before any model call. For qualification/confirmatory runs the set is
+  // frozen once (D-14): prompt bytes + metadata are written atomically and never rebuilt or
+  // overwritten; later runs load and verify the frozen bytes. Default keeps the pilot behaviour.
+  let promptInfos = new Map();
+  let promptProvenance = { mode: 'rebuilt-per-invocation', provenance_version: PROVENANCE_VERSION };
+  if (frozenPrompts || writeFrozenPrompts) {
+    const buildFor = (spec) => buildPrompt(design, spec);
+    const expectedManifest = frozenPrompts && !writeFrozenPrompts
+      ? readJson(promptPaths(paths.promptsDir, '.').manifestFile, 'frozen prompt manifest')
+      : null;
+    const frozen = writeFrozenPrompts
+      ? freezePromptSet({ specs, promptsDir: paths.promptsDir, buildFor })
+      : loadPromptSet({ specs, promptsDir: paths.promptsDir, expectedManifest });
+    promptInfos = frozen.promptInfos;
+    const verify = verifyPromptSet({ promptsDir: paths.promptsDir });
+    if (!verify.ok) throw new Error(`frozen prompt verification failed: ${verify.problems.slice(0, 5).join('; ')}`);
+    promptProvenance = {
+      mode: writeFrozenPrompts ? 'frozen-written' : 'frozen-loaded',
+      provenance_version: PROVENANCE_VERSION,
+      manifest_file: promptPaths(paths.promptsDir, '.').manifestFile,
+      manifest_sha256: verify.manifest_sha256,
+      count: verify.count,
+    };
+  } else {
+    for (const spec of specs) {
+      const info = buildPrompt(design, spec);
+      promptInfos.set(spec.run_id, info);
+      writeAtomic(path.join(paths.promptsDir, `${spec.run_id}.txt`), info.prompt);
+    }
   }
 
   const manifest = {
@@ -1146,6 +1181,7 @@ export async function runPilot(options = {}) {
     corpus_root: path.relative(STUDY, corpusRoot) || '.',
     repeats: { total: plan.repeats.length, same_seed: plan.repeatsSame, new_seed: plan.repeatsNew },
     counts: { planned: plan.specs.length, selected: specs.length, primary: plan.primary.length, repeats: plan.repeats.length },
+    prompt_provenance: promptProvenance,
     runs: specs.map((spec) => ({
       run_id: spec.run_id,
       scenario_id: spec.scenario_id,
@@ -1164,6 +1200,8 @@ export async function runPilot(options = {}) {
       baseline_sha256: promptInfos.get(spec.run_id).baseline_sha256,
       prompt_sha256: promptInfos.get(spec.run_id).prompt_sha256,
       prompt_bytes: promptInfos.get(spec.run_id).prompt_bytes,
+      prompt_meta_sha256: promptInfos.get(spec.run_id).prompt_meta_sha256 ?? null,
+      frozen: promptInfos.get(spec.run_id).frozen === true,
       memory_ids: promptInfos.get(spec.run_id).memory_ids,
       rule_in_prompt: promptInfos.get(spec.run_id).rule_in_prompt,
       correction_in_prompt: promptInfos.get(spec.run_id).correction_in_prompt,

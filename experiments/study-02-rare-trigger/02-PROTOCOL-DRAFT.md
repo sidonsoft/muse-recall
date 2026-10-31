@@ -597,7 +597,7 @@ balance.
   census of the 111 usable pilot runs (fallback: a stratified 80-run subsample drawn by a published
   seed; never enlarged after results); F-panel = 200 seeded known-truth cases (100 positive / 100
   negative, built offline from frozen variants, no model calls); F-label = 60 corpus variants;
-  F-request = 26 corpus + 4 pilot-only paraphrase texts; F-repeat = 12 repeat probes (V1 only, never
+  F-request = 14 corpus + 4 pilot-only paraphrase texts; F-repeat = 12 repeat probes (V1 only, never
   pooled with F-real).
 - **Coders and blinding (`04` §5):** two independent coders plus a third adjudicator; at least one
   coder independent of the study authors; neither coder is the label generator, primary analyst,

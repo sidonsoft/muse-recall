@@ -43,7 +43,7 @@ All values are means over the listed pair sets, computed from `corpus/diversity.
 | Unique element signatures | 20/20 per family; **60/60** across the corpus |
 | Scenarios | **400** (200 high-opportunity / 200 low-opportunity) |
 | Scenarios per stratum | `farm-arcade` 60, `farm-challenge` 60, `orchard-arcade` 60, `orchard-challenge` 60, `focus-reward` 80, `focus-lively` 80 |
-| Request paraphrases | 26 corpus texts (arcade 3, challenge 3, reward 4, lively 4); 4 pilot-only `p00` texts |
+| Request paraphrases | 14 corpus texts (arcade 3, challenge 3, reward 4, lively 4); 4 pilot-only `p00` texts |
 | Labels | **400** records × 20 fields |
 | Variant size range | **15,658–20,199 bytes** (target 15–35 KB) |
 | Total HTML | 1,058,234 bytes across 60 files |

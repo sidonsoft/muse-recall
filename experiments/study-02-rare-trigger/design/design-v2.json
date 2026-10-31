@@ -1,5 +1,5 @@
 {
-  "study": "Study 02 — Rare-Trigger Reliability",
+  "study": "Study 02 \u2014 Rare-Trigger Reliability",
   "design_version": "design-v2",
   "status": "checkpoint2-draft",
   "status_note": "Checkpoint 2 design draft for the revised, matched-twin corpus. The corpus is generated deterministically and checksum-pinned; it is NOT a preregistration freeze and nothing has been executed against it. Confirmatory execution remains forbidden in checkpoint 2.",
@@ -8,7 +8,7 @@
   "corpus_construction": {
     "approach": "10 structural templates per family T00-T09; each template instantiated twice as matched twins (H v00-v09, L v10-v19); each variant is full-file single-file HTML built by a Python-stdlib template engine; no model, network, clock or randomness",
     "generator": "scripts/study02/gen_corpus.py",
-    "generator_sha256": "62b921e8b753251a9f1ec7e4dc82b06d3ca00b4c0175b8b0fa079e7289e765d3",
+    "generator_sha256": "4b10e09f9059004aeee4d98e70f2cd3a491dc92e40b4b4a2d6061105ad4247bc",
     "determinism": "byte-identical on rerun; verified by `python3 scripts/study02/gen_corpus.py --check`",
     "variant_counts": {
       "total": 60,

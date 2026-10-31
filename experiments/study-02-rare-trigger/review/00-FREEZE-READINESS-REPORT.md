@@ -1,5 +1,11 @@
 # Study 02 — freeze-readiness report (review gate)
 
+> **Post-decision update (2026-11-01):** the Director's response to this report was **CONDITIONAL
+> GO for Baseten qualification (≤$6), NO-GO for confirmatory execution, preregistration freeze and
+> freeze tag**. Preparation progress, decision-register compliance and remaining blockers are tracked
+> in [`review/11-QUALIFICATION-PREP-STATUS.md`](11-QUALIFICATION-PREP-STATUS.md). This report remains the
+> review-gate evidence snapshot.
+
 **Status:** offline preparation complete; **review gate reached**. No confirmatory experiment was
 started, the preregistration is **not frozen**, no freeze tag was pushed, and **no paid API call was
 made**. The Dell/Qwen work remains an archived exploratory pilot and is never pooled with future
@@ -157,7 +163,7 @@ not human validation and must never be labelled as such.**
 - **Sample:** census of all **111 usable primary pilot runs**; a **200-case seeded known-truth diagnostic
   panel** (100 planted positives incl. partial/same-class-replacement cases, 100 near-miss negatives;
   offline, no model calls); census of all **60 variants** for opportunity labels/hooks; census of
-  **26 corpus + 4 pilot-only paraphrases** for intent.
+  **14 corpus + 4 pilot-only paraphrases** for intent.
 - **Design:** two independent blinded coders (condition/arm hidden, randomised order); coding guide with
   construct-family definitions, positive/negative exemplars and false-positive/false-negative modes;
   third-coder adjudication; all disagreements retained; coder training and pre-test.

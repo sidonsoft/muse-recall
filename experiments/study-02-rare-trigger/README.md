@@ -1,8 +1,12 @@
 # Study 02 — Rare-Trigger Reliability
 
-**Status: CHECKPOINT 3 (FREEZE PREPARATION) — review gate reached, nothing frozen.** The Dell/Qwen
-pilot remains archived exploratory evidence; the proposed confirmatory endpoint is Baseten-hosted
-Muse Spark Open (not yet qualified). See [`review/00-FREEZE-READINESS-REPORT.md`](review/00-FREEZE-READINESS-REPORT.md).
+**Status: QUALIFICATION PREPARATION (post-Director decision) — CONDITIONAL GO for Baseten
+qualification (≤$6, not executed), NO-GO for confirmatory execution / preregistration freeze.** The
+Dell/Qwen pilot remains archived exploratory evidence; the proposed confirmatory endpoint is
+Baseten-hosted Muse Spark Open (**not yet qualified; no credential/billing verification yet**). See
+[`review/11-QUALIFICATION-PREP-STATUS.md`](review/11-QUALIFICATION-PREP-STATUS.md) for the current
+decision-register status and blockers, and [`review/00-FREEZE-READINESS-REPORT.md`](review/00-FREEZE-READINESS-REPORT.md)
+for the review-gate evidence snapshot.
 
 **Checkpoint 2 status: complete — report for user review.** Endpoint qualification, the expanded
 matched-twin corpus, deterministic scoring, the revised power analysis and the approved 30-scenario
@@ -110,6 +114,26 @@ qualification data are excluded from any confirmatory dataset.
    (blocker). Defects D-P1–D-P11 logged; transport fixes applied and recorded.
 
 ---
+
+## Qualification preparation (post-Director decision)
+
+The Director's freeze-readiness decision is **CONDITIONAL GO for Baseten qualification, NO-GO for
+confirmatory execution / preregistration freeze / freeze tag**. This round completes the offline
+preparation items and leaves the qualification blocked on credential, billing and account-limit
+verification.
+
+| Artefact | Path | Status |
+|---|---|---|
+| Qualification-prep status (decision register compliance, blockers, next actions) | [`review/11-QUALIFICATION-PREP-STATUS.md`](review/11-QUALIFICATION-PREP-STATUS.md) | **Current status document** |
+| Baseten D-02 verification procedure + cost-control design | [`review/09-BASETEN-VERIFICATION-AND-COST-CONTROL.md`](review/09-BASETEN-VERIFICATION-AND-COST-CONTROL.md) | Complete (procedure not executed; no credential) |
+| Corpus coverage review (ACCEPT, no expansion before freeze) | [`review/08-CORPUS-COVERAGE-REVIEW.md`](review/08-CORPUS-COVERAGE-REVIEW.md) | Complete |
+| D-14 frozen-prompt provenance + $6 cost-cap implementation | [`review/10-PROMPT-PROVENANCE-AND-COST-CAP.md`](review/10-PROMPT-PROVENANCE-AND-COST-CAP.md), [`scripts/study02/prompt_provenance.mjs`](scripts/study02/prompt_provenance.mjs), [`scripts/study02/cost_cap.mjs`](scripts/study02/cost_cap.mjs) | Complete and tested offline |
+| Human-validation materials package | [`human-validation/`](human-validation/) | Materials prepared; **no human coding has occurred**; reviewers must be nominated by the Director |
+| Qualification outputs | [`qualification-baseten/`](qualification-baseten/) | **Empty by design** — no paid call made |
+
+Qualification cannot run until: a dedicated `S02_BASETEN_API_KEY` exists; billing/rate card and
+account limits are verified; D-02 (slug/version/limits) is resolved; and the Director's $6 spend
+reference is in force. The confirmatory run and preregistration freeze remain **blocked**.
 
 ## Freeze preparation (checkpoint 3 — review gate)
 

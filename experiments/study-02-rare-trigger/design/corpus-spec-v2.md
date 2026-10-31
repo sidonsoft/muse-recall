@@ -38,7 +38,7 @@ focus strata 80 (20 variants × 4 paraphrases), still 400 scenarios and still 20
 | File | Content | Count |
 |---|---|---:|
 | `corpus/variants/<family>-v<NN>.html` | single-file HTML variants, `NN` = `00`–`19` per family | **60** (20 per family) |
-| `corpus/paraphrases.json` | frozen request paraphrases: 26 corpus + 4 pilot-only | 1 file |
+| `corpus/paraphrases.json` | frozen request paraphrases: 14 corpus + 4 pilot-only | 1 file |
 | `corpus/labels.json` | 20-field label record per scenario, sorted by `scenario_id` | **400** |
 | `corpus/corpus.json` | scenario objects (runner interface), sorted by `scenario_id` | **400** |
 | `corpus/twin-diff-proof.json` | per-twin-pair structural diff proof | 30 pairs |
@@ -375,7 +375,7 @@ All paths relative to `experiments/study-02-rare-trigger/`:
 
 ```
 corpus/variants/<family>-v<NN>.html   60
-corpus/paraphrases.json               26 corpus + 4 pilot-only texts
+corpus/paraphrases.json               14 corpus + 4 pilot-only texts
 corpus/labels.json                    400 × 20-field records
 corpus/corpus.json                    400 scenario objects
 corpus/twin-diff-proof.json           30 twin proofs

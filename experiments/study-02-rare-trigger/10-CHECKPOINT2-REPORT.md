@@ -121,7 +121,7 @@ templates** (10 per family).
 detector-clean under the primary **and** sensitivity Phase 17 detectors; 60/60 inline JS pass
 `node --check`; twins differ only in hook blocks (30/30 proofs); H hooks 3–4 / L 0–1 as designed;
 400 unique scenarios, injective `(variant_sha256, request_sha256)`; 400 × 19-field labels with
-`baseline_clean=true`; 26 corpus paraphrases + 4 pilot-only `p00`; generator `--check` reproduces all
+`baseline_clean=true`; 14 corpus paraphrases + 4 pilot-only `p00`; generator `--check` reproduces all
 68 files byte-identically; `corpus.sha256` 67/67.
 
 **Diversity (candid):** 20/20 distinct element signatures and DOM 5-gram sets per family; DOM 5-gram

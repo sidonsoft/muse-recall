@@ -174,7 +174,7 @@ Recomputed from `corpus/corpus.json`, `corpus/labels.json`, `corpus/validation.j
 | Templates | 30 (10/family), each with an H and an L twin | 30; 30 twin pairs complete (`validation.json` `twin_pairs: 30`, twin proofs 30/30 hold) | ✔ |
 | Scenarios per variant | 6 game / 8 focus (cross-stratum) | 40 variants × 6 + 20 variants × 8 | ✔ |
 | Scenarios per (variant, stratum) | 3 game / 4 focus | 3 / 4 | ✔ |
-| Paraphrases | 26 corpus (arcade 3, challenge 3, reward 4, lively 4) + 4 pilot-only | 26 + 4 (`paraphrases.json` `counts`) | ✔ |
+| Paraphrases | 14 corpus (arcade 3, challenge 3, reward 4, lively 4) + 4 pilot-only | 14 + 4 (`paraphrases.json` `counts`) | ✔ |
 | Labels | 400 records | 400; now **20** fields (`variant_role` added) | ✔ (schema text must be updated, T9) |
 | Hooks | H ≥ 3, L ≤ 1 | H observed 3–4, L observed 0–1 (`validation.json` `hook_rules`) | ✔ |
 | `opportunity_class` ⇒ H/L | consistent | 0 mismatches; `variant_role == 'H'` ⇔ class `high` enforced by generator | ✔ |

@@ -507,3 +507,14 @@ points at the corrected plan:
   as the current analysis plan, with the v1 plan retained as the checkpoint-1 record.
 The only surviving `04-ANALYSIS-PLAN.md` mention is the labelled checkpoint-1 "related" row.
 No corpus, variant, pilot, locked artifact or statistical number was changed by these edits.
+
+## 7d — Lead post-Director documentation correction (2026-11-01)
+
+- Paraphrase count corrected from the erroneous "26 corpus + 4 pilot-only" to the as-built
+  **14 corpus + 4 pilot-only = 18** in the protocol/review/diversity/checkpoint documents and the
+  `gen_corpus.py` docstring; the human-validation package's discrepancy note updated to a dated
+  correction. The human-validation package was regenerated so its manifest hashes match.
+- `gen_corpus.py` docstring change alters the generator's self-hash embedded in labels/provenance, so
+  the corpus was regenerated: **60/60 variant HTML files are byte-identical**; `--check` reproduces
+  all 68 files; `design/design-v2.json` generator hash updated. No corpus content, scenario, label
+  value, pilot record or checkpoint-2 artefact changed.

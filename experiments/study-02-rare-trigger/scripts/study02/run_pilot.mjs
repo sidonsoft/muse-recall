@@ -28,6 +28,8 @@ function usage() {
 
 Options:
   --dry-run                build prompts + manifest, make zero model calls
+  --write-frozen-prompts   D-14: build the prompt set once and freeze bytes+metadata+manifest
+  --frozen-prompts         D-14: require and load the frozen prompt set; never rebuild prompts
   --limit N                execute only the first N ordered runs
   --resume                 resume: recorded runs are never re-executed (default behaviour)
   --plan PATH              pilot plan (default pilot/pilot-plan.json)
@@ -55,6 +57,8 @@ function parseArgs(argv) {
     const arg = argv[i];
     switch (arg) {
       case '--dry-run': options.dryRun = true; break;
+      case '--frozen-prompts': options.frozenPrompts = true; break;
+      case '--write-frozen-prompts': options.writeFrozenPrompts = true; break;
       case '--resume': options.resume = true; break;
       case '--confirmatory':
         throw new Error('REFUSED: --confirmatory is not a supported mode; this tool runs the approved pilot only');
@@ -96,6 +100,10 @@ async function main() {
   const outRoot = options.outRoot ?? STUDY;
   const pilotDir = path.join(outRoot, 'pilot');
   const planFile = options.planFile ?? path.join(pilotDir, 'pilot-plan.json');
+  if (options.frozenPrompts && options.writeFrozenPrompts) {
+    console.error('REFUSED: --frozen-prompts and --write-frozen-prompts are mutually exclusive');
+    return 2;
+  }
   const limit = options.limit ?? null;
   if (limit !== null && (!Number.isInteger(limit) || limit < 1)) {
     console.error('REFUSED: --limit must be a positive integer');
@@ -126,6 +134,8 @@ async function main() {
       concurrency: options.concurrency ?? 1,
       limit,
       dryRun: Boolean(options.dryRun),
+      frozenPrompts: Boolean(options.frozenPrompts),
+      writeFrozenPrompts: Boolean(options.writeFrozenPrompts),
       onProgress: progress,
     });
     const s = result.summary;

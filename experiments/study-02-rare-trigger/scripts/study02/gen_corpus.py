@@ -20,7 +20,7 @@ disk; it exits nonzero on any difference (determinism / tamper check).
 
 Outputs (written next to this study, under experiments/study-02-rare-trigger/):
     corpus/variants/<family>-v<NN>.html   60 variants
-    corpus/paraphrases.json               26 corpus + 4 pilot-only request texts
+    corpus/paraphrases.json               14 corpus + 4 pilot-only request texts
     corpus/labels.json                    400 label records (19 fields)
     corpus/corpus.json                    400 scenario objects (runner interface)
     corpus/twin-diff-proof.json           per-twin structural diff proof
