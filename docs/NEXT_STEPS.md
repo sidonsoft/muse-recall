@@ -183,7 +183,12 @@ evening through 31 Oct.
   actor's live PR with a red leg that was never mine), three stale-watch reads after fix-pushes
   (a stale watch shows the PREVIOUS run's jobs - the adopted rule is a
   fresh `gh pr checks` query plus run-id comparison against the new
-  push), anchor-assert saves now >8, and two commit-message/content
+  push) - plus the empty-report variant (#204: gh pr checks answered
+  "no checks reported" twice while runs were QUEUED, and an --admin
+  merge then rides the post-merge leg; the rule completes to: empty
+  checks means UNVERIFIED, never pass - wait for legs to appear or
+  watch the merged tree's own run to success before declaring the
+  round green), anchor-assert saves now >8, and two commit-message/content
   mismatches caught by merge diffstats (#169->#170, #172 mid-branch).
   Failure modes in MY process get the same register treatment as the
   repo's.
