@@ -90,9 +90,26 @@ pnpm db:restore /backups/muse-recall/muse-memory-lab.db.backup-<stamp> --into /t
 pnpm db:restore /backups/.../backup-<stamp> --into "$LIVE_DB" --force   # live replacement
 ```
 
-`db:restore` runs `PRAGMA integrity_check` before reporting anything; a corrupt
-backup aborts loudly. The live replacement needs the explicit `--force` precisely
-so an operator never clobbers a live DB by typo.
+`db:restore` validates the backup (`PRAGMA integrity_check`) and copies it to a
+temp file beside the target, then verifies THAT copy, before the target is ever
+replaced (beta fix, 31 Oct — the previous ordering destroyed the target on a
+corrupt force-restore):
+
+- corrupt backup, failed copy, or failed replacement → loud abort, and the
+  existing target keeps its original bytes; the backup file is never modified.
+- source and target referring to the same file (same path, symlink alias, or
+  hard link) are **always refused**, `--force` included — the old ordering
+  deleted the backup in that case.
+- `--force` live replacement requires the **application to be stopped**: a
+  running server keeps the WAL open and would rewrite the file after the swap.
+  Stop the server, swap, restart.
+
+**What each backup preserves:** `db:backup` snapshots the SQLite database only —
+memories, sessions, tool-call audit. The Forge workspace under `WORKSPACE_ROOT`
+(job records, staged bytes, approved version files) is NOT inside the database:
+preserve it as a separate file backup of that directory (it is plain files).
+Restoring one without the other is a valid choice — the runbook's recovery
+banner and `recovery/state` endpoints surface the mismatch honestly.
 
 Freshness without grepping logs: `curl -fsS localhost:8787/api/health | jq .alerts.backup`
 reports the newest next-to-DB snapshot's age and an `ok`/`stale`/`missing` state
@@ -100,8 +117,11 @@ reports the newest next-to-DB snapshot's age and an `ok`/`stale`/`missing` state
 directories are that cron's own bookkeeping).
 
 **Drill:** `pnpm backup:drill` performs seed → backup → destroy → restore →
-record-parity verification plus the clobber-guard refusal, in a throwaway temp
-directory — safe to run any time, and it runs on every CI push. It prints its own
+record-parity verification, plus the clobber-guard refusal and the two
+destructive-restore regressions the beta review reproduced (corrupt backup +
+force preserves the target bytes; force + source==target refused), in a
+throwaway temp directory — safe to run any time, and it runs on every CI push.
+It prints its own
 restore+verify timing with a warning: a single local file restoring in
 milliseconds is **not** evidence for the hosted ≤4h recovery-time target (§8);
 that target is untested and effectively unassigned until a deployment exists.

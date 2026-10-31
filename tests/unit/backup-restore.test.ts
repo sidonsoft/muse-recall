@@ -1,4 +1,14 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  linkSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
@@ -107,5 +117,146 @@ describe('restoreDatabase (roadmap §8)', () => {
     // permission bits are asserted where the filesystem reports them.
     const { statSync } = await import('node:fs');
     expect(statSync(target).mode & 0o077).toBe(0);
+  });
+
+  /**
+   * Regression pins for the two reproduced destructive failures (corrupt
+   * force-restore overwriting a live target; force + source==target deleting
+   * the backup) and every related alias/copy/replacement failure path: the
+   * existing target keeps its original bytes and the source is never touched.
+   */
+  describe('failure paths preserve the target byte-for-byte', () => {
+    function leftoverTemps(dir: string): string[] {
+      return readdirSync(dir).filter((name) => name.startsWith('.restore-'));
+    }
+
+    it('a corrupt backup with force throws and leaves target and source bytes identical', async () => {
+      const dir = workspace();
+      const live = join(dir, 'live.db');
+      await seeded(live);
+      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const corrupt = join(dir, 'corrupt.db');
+      const backupBytes = readFileSync(backup.destination);
+      const damaged = Buffer.from(backupBytes);
+      damaged.fill(0xab, 100); // keep a plausible header, wreck every page after it
+      writeFileSync(corrupt, damaged);
+      const corruptBytes = readFileSync(corrupt);
+
+      const target = join(dir, 'target.db');
+      writeFileSync(target, 'original target bytes that must survive');
+      const before = readFileSync(target);
+
+      expect(() => restoreDatabase(corrupt, target, { force: true })).toThrow(/corrupt/i);
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(corrupt)).toEqual(corruptBytes);
+      expect(leftoverTemps(dir)).toEqual([]);
+    });
+
+    it('refuses source and target being the same file even with force; the backup survives', async () => {
+      const dir = workspace();
+      const live = join(dir, 'live.db');
+      await seeded(live);
+      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const before = readFileSync(backup.destination);
+
+      expect(() =>
+        restoreDatabase(backup.destination, backup.destination, { force: true }),
+      ).toThrow(/same file/i);
+      expect(readFileSync(backup.destination)).toEqual(before);
+    });
+
+    it('refuses a target symlink pointing at the source; the backup survives', async () => {
+      const dir = workspace();
+      const live = join(dir, 'live.db');
+      await seeded(live);
+      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const alias = join(dir, 'alias.db');
+      try {
+        symlinkSync(backup.destination, alias);
+      } catch {
+        return; // platform refuses symlinks; skip gracefully
+      }
+      const before = readFileSync(backup.destination);
+      expect(() => restoreDatabase(backup.destination, alias, { force: true })).toThrow(
+        /same file/i,
+      );
+      expect(readFileSync(backup.destination)).toEqual(before);
+    });
+
+    it('refuses a source symlink pointing at the target; the target survives', async () => {
+      const dir = workspace();
+      const target = join(dir, 'target.db');
+      writeFileSync(target, 'target bytes that must survive');
+      const alias = join(dir, 'alias.db');
+      try {
+        symlinkSync(target, alias);
+      } catch {
+        return; // platform refuses symlinks; skip gracefully
+      }
+      const before = readFileSync(target);
+      expect(() => restoreDatabase(alias, target, { force: true })).toThrow(/same file/i);
+      expect(readFileSync(target)).toEqual(before);
+    });
+
+    it('refuses a hard-link alias via dev/ino; both names keep the bytes', async () => {
+      const dir = workspace();
+      const target = join(dir, 'target.db');
+      writeFileSync(target, 'hard-linked bytes that must survive');
+      const alias = join(dir, 'alias.db');
+      try {
+        linkSync(target, alias);
+      } catch {
+        return; // platform refuses hard links; skip gracefully
+      }
+      const before = readFileSync(target);
+      expect(() => restoreDatabase(alias, target, { force: true })).toThrow(/same file/i);
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(alias)).toEqual(before);
+    });
+
+    it('a failed copy (read-only target directory) leaves the target untouched and no temp behind', async () => {
+      if (typeof process.getuid === 'function' && process.getuid() === 0) {
+        return; // root ignores the read-only directory; skip gracefully
+      }
+      const dir = workspace();
+      const live = join(dir, 'live.db');
+      await seeded(live);
+      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const target = join(dir, 'target.db');
+      writeFileSync(target, 'target bytes that must survive a failed copy');
+      const before = readFileSync(target);
+      chmodSync(dir, 0o555);
+      try {
+        expect(() => restoreDatabase(backup.destination, target, { force: true })).toThrow();
+      } finally {
+        chmodSync(dir, 0o700);
+      }
+      expect(readFileSync(target)).toEqual(before);
+      expect(leftoverTemps(dir)).toEqual([]);
+    });
+
+    it('a failed replacement (injected rename seam) leaves the target untouched and removes the temp', async () => {
+      const dir = workspace();
+      const live = join(dir, 'live.db');
+      await seeded(live);
+      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const target = join(dir, 'target.db');
+      writeFileSync(target, 'target bytes that must survive a failed swap');
+      const before = readFileSync(target);
+
+      let injectedTemp: string | undefined;
+      const failingRename = (from: string): void => {
+        injectedTemp = from;
+        throw new Error('injected replacement failure');
+      };
+      expect(() =>
+        restoreDatabase(backup.destination, target, { force: true, __rename: failingRename }),
+      ).toThrow(/injected replacement failure/);
+      expect(readFileSync(target)).toEqual(before);
+      if (injectedTemp !== undefined) {
+        expect(existsSync(injectedTemp)).toBe(false);
+      }
+      expect(leftoverTemps(dir)).toEqual([]);
+    });
   });
 });

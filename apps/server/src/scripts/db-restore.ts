@@ -6,7 +6,14 @@ import { loadConfig, loadDotEnv } from '../config.js';
  *
  * Restores a backup copy for verification or disaster rehearsal. The live
  * database is never the implicit target: `--into` is required, and
- * replacing an existing target additionally requires `--force`.
+ * replacing an existing target additionally requires `--force`. The backup
+ * is integrity-checked and copied to a validated temp file beside the
+ * target BEFORE the target is replaced; on a corrupt backup, a failed copy,
+ * or a failed replacement the existing target keeps its original bytes and
+ * the backup is left untouched. A source that is the same file as the
+ * target (path, symlink alias, or hard link) is always refused, `--force`
+ * included. For live replacement (`--force`) stop the server first: a
+ * running server keeps the WAL open and can rewrite the file after the swap.
  */
 function main(): void {
   loadDotEnv();
