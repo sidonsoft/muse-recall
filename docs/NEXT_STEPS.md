@@ -107,7 +107,8 @@ repository's working backlog; completed items stay for the audit trail.
     **Done (2026-10-30, D049).** `Idempotency-Key` (single 8–128-char header) on
     `POST /api/memories` and `POST /api/forge/projects/:id/generate`: the first response is
     recorded in SQLite (schema v8, keyed by method + concrete path + key, 24h TTL purged
-    lazily) and replays byte-identical with an `Idempotency-Replayed: 1` header — a retried
+    lazily) and replays byte-identical with an `Idempotent-Replayed: 1` header (wire form as
+    emitted: `idempotent-replayed`) — a retried
     generation spends model quota once. First-wins on diverged bodies (documented); an
     in-flight duplicate in this process gets 409 `idempotency_in_progress`; joined duplicate
     headers (comma) are refused as ambiguous; replay records are durable across restarts but
