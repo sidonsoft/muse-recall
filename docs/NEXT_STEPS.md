@@ -991,6 +991,21 @@ now is maintenance honesty, not new surface:
     f1a16f79 since 30 Oct - GitHub's fork-approval gate holding the
     frozen-path PR exactly as our freeze decision intended: two
     independent holds, one decision.
+  - Zero-touch freeze proof, computed from git history with the
+    window declared (31 Oct): across ALL integration commits since
+    31 Oct 00:00, file-level log against docs/hackathon-evidence,
+    docs/submission, docs/demo/evidence, website = ZERO touches.
+    Widening the window honestly exposed a pre-doctrine sliver
+    worth explaining rather than hiding: between main's cut
+    (c32d03b, 30 Oct 13:17) and the freeze doctrine, PR #42's
+    ef72895 (30 Oct 19:11, NOT an ancestor of main) updated three
+    docs/submission lines by four words - "five" -> "seven" rule
+    families. Era-checked in BOTH directions: main's guard
+    implements exactly the five families its submission copy
+    names; integration says seven and implements seven. The era
+    rule working as designed, not drift. Tag derefs re-read exact
+    (5e83616e/71416ae7/6640e83f). Method rule: a zero-touch claim
+    is only honest with its scanned window declared.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
