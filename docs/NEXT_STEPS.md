@@ -178,7 +178,9 @@ evening through 31 Oct.
   counts); offline reruns can destroy richer live evidence.
 - **Self-corrections shipped as visible PRs, never quiet amends:**
   #77, #100, #113, #91→#92, #136→#137 (KI id collision), plus wrong
-  check-watch PR numbers twice, three stale-watch reads after fix-pushes
+  check-watch PR numbers FOUR times (the fourth: watching a guessed 187
+  while my create had returned 188 - the guessed number was ANOTHER
+  actor's live PR with a red leg that was never mine), three stale-watch reads after fix-pushes
   (a stale watch shows the PREVIOUS run's jobs - the adopted rule is a
   fresh `gh pr checks` query plus run-id comparison against the new
   push), anchor-assert saves now >8, and two commit-message/content
@@ -573,6 +575,16 @@ now is maintenance honesty, not new surface:
     disclaimer; "Four surfaces" matches App.tsx's view branches and
     the four legs the browser gate walks at every merge. Zero guide
     edits due; every number now carries an instrument cite.
+  - Parallel-activity witness (31 Oct): the repo is not single-actor.
+    PR #187 (study02/checkpoint-1, its own CI red on its own JSON
+    formatting) and PR #28 (branch deleted, recovery path pinned via
+    pull-ref) are LIVE in parallel with the cadence; 41 remote heads
+    include the study02 branch. Discipline holds both ways: cadence
+    touched no foreign path, foreign work touches only unfrozen
+    territory, and every sentinel re-verified green (main c32d03b,
+    3 tags, 4 rulesets). Wrong-number watches got rarer precisely
+    because the fresh-query rule exists - it caught this fourth one
+    inside the round it happened.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
