@@ -396,6 +396,164 @@ describe('restoreDatabase (roadmap §8)', () => {
   });
 
   /**
+   * Follow-up review at ab80ba0 (P1): the gate above checked only the v1 core,
+   * so a CURRENT-version image with a dropped later table (sessions, ...) or
+   * a dropped later column (memories.revision, ...) still "restored" - and a
+   * normal startup never repaired it because the migrations were already
+   * recorded. The gate now requires every table and column the backup's
+   * CLAIMED version mandates, while genuinely older images stay restorable.
+   */
+  describe('the gate requires the schema the claimed version mandates', () => {
+    async function v8Backup(dir: string, name: string): Promise<string> {
+      const source = join(dir, name);
+      await seeded(source);
+      return (await backupDatabase(source, join(dir, `snap-${name}`))).destination;
+    }
+
+    async function existingTarget(dir: string): Promise<{ target: string; before: Buffer }> {
+      const target = join(dir, 'target.db');
+      await seeded(target);
+      return { target, before: readFileSync(target) };
+    }
+
+    function mutate(path: string, sql: string): void {
+      const database = new DatabaseSync(path);
+      try {
+        database.exec(sql);
+      } finally {
+        database.close();
+      }
+    }
+
+    function expectNoLeftovers(dir: string): void {
+      expect(
+        readdirSync(dir).filter(
+          (name) => name.startsWith('.restore-') || name.includes('restore-previous'),
+        ),
+      ).toEqual([]);
+    }
+
+    it('a v8 backup missing sessions is refused; target and source keep every byte', async () => {
+      const dir = workspace();
+      const backup = await v8Backup(dir, 'live.db');
+      mutate(backup, 'DROP TABLE sessions');
+      const bytes = readFileSync(backup);
+      const { target, before } = await existingTarget(dir);
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /missing mandatory Muse table "sessions"/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(backup)).toEqual(bytes);
+      expectNoLeftovers(dir);
+    });
+
+    it('a v8 backup missing messages (another v3 table) is refused', async () => {
+      const dir = workspace();
+      const backup = await v8Backup(dir, 'live.db');
+      mutate(backup, 'DROP TABLE messages');
+      const bytes = readFileSync(backup);
+      const { target, before } = await existingTarget(dir);
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /missing mandatory Muse table "messages"/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(backup)).toEqual(bytes);
+      expectNoLeftovers(dir);
+    });
+
+    it('a v8 backup missing tool_calls (v6) is refused', async () => {
+      const dir = workspace();
+      const backup = await v8Backup(dir, 'live.db');
+      mutate(backup, 'DROP TABLE tool_calls');
+      const bytes = readFileSync(backup);
+      const { target, before } = await existingTarget(dir);
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /missing mandatory Muse table "tool_calls"/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(backup)).toEqual(bytes);
+      expectNoLeftovers(dir);
+    });
+
+    it('a v8 backup missing idempotency_keys (v8) is refused', async () => {
+      const dir = workspace();
+      const backup = await v8Backup(dir, 'live.db');
+      mutate(backup, 'DROP TABLE idempotency_keys');
+      const bytes = readFileSync(backup);
+      const { target, before } = await existingTarget(dir);
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /missing mandatory Muse table "idempotency_keys"/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(backup)).toEqual(bytes);
+      expectNoLeftovers(dir);
+    });
+
+    it('a v8 backup whose memories lack the v7 record-contract columns is refused', async () => {
+      const dir = workspace();
+      const backup = await v8Backup(dir, 'live.db');
+      mutate(backup, 'ALTER TABLE memories DROP COLUMN revision');
+      mutate(backup, 'ALTER TABLE memories DROP COLUMN actor');
+      const bytes = readFileSync(backup);
+      const { target, before } = await existingTarget(dir);
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /table "memories" is missing mandatory columns "revision", "actor"/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(backup)).toEqual(bytes);
+      expectNoLeftovers(dir);
+    });
+
+    it('a v8 backup whose memories lack the v2 superseded_by column is refused', async () => {
+      const dir = workspace();
+      const backup = await v8Backup(dir, 'live.db');
+      mutate(backup, 'DROP INDEX IF EXISTS idx_memories_superseded_by; ALTER TABLE memories DROP COLUMN superseded_by');
+      const bytes = readFileSync(backup);
+      const { target, before } = await existingTarget(dir);
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /table "memories" is missing mandatory columns "superseded_by"/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(backup)).toEqual(bytes);
+      expectNoLeftovers(dir);
+    });
+
+    it('a genuine v1 backup still restores; later tables are absent, not zeroed', () => {
+      const dir = workspace();
+      const old = join(dir, 'old-v1.db');
+      const database = new DatabaseSync(old);
+      try {
+        database.exec(
+          'CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT, applied_at TEXT);',
+        );
+        for (const migration of MIGRATIONS.slice(0, 1)) {
+          database.exec('BEGIN');
+          migration.up(database);
+          database
+            .prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)')
+            .run(migration.version, migration.name, '2026-01-01T00:00:00.000Z');
+          database.exec('COMMIT');
+        }
+      } finally {
+        database.close();
+      }
+
+      const restored = restoreDatabase(old, join(dir, 'restored.db'));
+      expect(restored.schema_version).toBe(1);
+      expect(restored.counts).toHaveProperty('projects');
+      // Tables the v1 image never had are ABSENT from counts, not faked as 0.
+      expect(restored.counts).not.toHaveProperty('sessions');
+      expect(restored.counts).not.toHaveProperty('tool_calls');
+    });
+  });
+
+  /**
    * Beta review P2 (31 Oct): the sidecar cleanup ran AFTER the rename, so a
    * directory at <target>-wal threw EISDIR with the original already gone.
    * The swap now parks the previous database AND its sidecars, pre-checks

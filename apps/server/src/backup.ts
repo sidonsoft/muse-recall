@@ -147,6 +147,73 @@ const CORE_TABLE_COLUMNS: Record<string, readonly string[]> = {
 };
 
 /**
+ * Follow-up review at ab80ba0 (P1): checking only the v1 core let a
+ * CURRENT-version image with a dropped later table (DROP TABLE sessions on
+ * an otherwise healthy v8 database) pass the gate - and a normal startup
+ * never repaired it because every migration was already recorded, so the
+ * first sessions query failed with `no such table: sessions`. This is
+ * detectable missing schema, not the disclosed undetectable-content
+ * limitation.
+ *
+ * The gate therefore requires every table the backup's CLAIMED version
+ * mandates. Each table maps to the migration that introduced it; tables
+ * from later migrations than the claimed version are legitimately absent
+ * (genuinely older backups stay restorable) and are simply omitted from
+ * the count report. Anchor columns per table catch "right name, wrong
+ * shape" stubs at every version, not just v1.
+ */
+const TABLE_INTRODUCED_IN: Record<string, number> = {
+  projects: 1,
+  memories: 1,
+  memory_supersessions: 1,
+  memory_history: 1,
+  memory_fts: 1,
+  sessions: 3,
+  messages: 3,
+  turn_memories: 3,
+  ui_surfaces: 5,
+  ui_events: 5,
+  project_tasks: 6,
+  tool_calls: 6,
+  idempotency_keys: 8,
+};
+
+/** Anchor columns each versioned table must carry. */
+const REQUIRED_TABLE_COLUMNS: Record<string, readonly string[]> = {
+  ...CORE_TABLE_COLUMNS,
+  // memories gains columns in later migrations (v2 superseded_by; v7
+  // record-contract revision/actor): the full anchor set applies at the
+  // claimed version via the per-column map below, older claims skip them.
+  memories: [
+    ...(CORE_TABLE_COLUMNS.memories ?? []),
+    'superseded_by',
+    'revision',
+    'actor',
+  ],
+  memory_fts: ['content', 'tags', 'memory_id'],
+  sessions: ['id', 'project_id', 'status', 'created_at', 'updated_at'],
+  messages: ['id', 'session_id', 'sequence', 'role', 'content', 'status', 'created_at'],
+  turn_memories: ['message_id', 'memory_id', 'score', 'evidence', 'memory_type', 'scope'],
+  ui_surfaces: ['id', 'session_id', 'title', 'spec_json', 'status', 'created_at'],
+  ui_events: ['id', 'surface_id', 'action_id', 'values_json', 'created_at'],
+  project_tasks: ['id', 'project_id', 'title', 'status', 'created_at', 'updated_at'],
+  tool_calls: ['id', 'session_id', 'tool_id', 'arguments_json', 'status', 'created_at'],
+  idempotency_keys: ['route', 'key', 'status', 'response', 'created_at'],
+};
+
+/**
+ * `memories` is the only table that gains columns in later migrations
+ * (v2 `superseded_by`; v7 record-contract `revision`/`actor`). Every other
+ * versioned table is created whole by its migration, so its full anchor set
+ * applies from its introduction version on.
+ */
+const MEMORIES_COLUMN_INTRODUCED_IN: Record<string, number> = {
+  superseded_by: 2,
+  revision: 7,
+  actor: 7,
+};
+
+/**
  * Resolve a path through every symlink that exists on the way down, even when
  * the final component does not exist yet (realpathSync refuses those). This is
  * what catches "target resolves onto the source via an existing directory
@@ -223,17 +290,23 @@ function columnNames(database: DatabaseSync, table: string): Set<string> {
 }
 
 /**
- * The schema gate (beta review, P1): SQLite's integrity_check happily calls
- * an EMPTY database 'ok' - zero application tables read as zero counts and
- * missing migration metadata reads as version 0, so a forced restore of an
- * empty or unrelated database "succeeded" and destroyed a real one.
+ * The schema gate (beta review, P1; hardened at the ab80ba0 follow-up): SQLite's
+ * integrity_check happily calls an EMPTY database 'ok' - zero application
+ * tables read as zero counts and missing migration metadata reads as version
+ * 0, so a forced restore of an empty or unrelated database "succeeded" and
+ * destroyed a real one. Requiring only the v1 core was the second hole: a
+ * current-version image missing a later table passed, and startup could not
+ * repair it because the migrations were already recorded.
  *
  * A database is restorable here only if it carries the Muse migration
  * metadata (`schema_migrations` with a contiguous history at a supported
- * version >= 1) AND the v1 core tables with their anchor columns. Genuinely
- * older Muse backups (any version >= 1) pass; empty files, foreign SQLite
- * images, hand-made stubs, incomplete histories and future/unsupported
- * versions are refused BEFORE anything touches the target.
+ * version >= 1) AND every table its CLAIMED version mandates with the
+ * required anchor columns. Genuinely older Muse backups (any version >= 1)
+ * pass because tables from later migrations are legitimately absent; empty
+ * files, foreign SQLite images, hand-made stubs, incomplete histories,
+ * current-version images with dropped tables/columns, and
+ * future/unsupported versions are refused BEFORE anything touches the
+ * target.
  */
 function assertRestorableMuseSchema(database: DatabaseSync, origin: string): number {
   const names = tableNames(database);
@@ -288,14 +361,22 @@ function assertRestorableMuseSchema(database: DatabaseSync, origin: string): num
         `(version ${version} claims ${Math.max(contiguous, 0)} predecessor rows): ${origin}`,
     );
   }
-  for (const [table, anchors] of Object.entries(CORE_TABLE_COLUMNS)) {
+  for (const [table, anchors] of Object.entries(REQUIRED_TABLE_COLUMNS)) {
+    if ((TABLE_INTRODUCED_IN[table] ?? 1) > version) continue; // genuinely older: legitimately absent
     if (!names.has(table)) {
       throw new Error(
-        `Restore refused: missing mandatory Muse table "${table}" (v1 core schema absent): ${origin}`,
+        `Restore refused: backup claims schema version ${version} but is missing mandatory Muse table "${table}" (introduced in migration ${TABLE_INTRODUCED_IN[table] ?? 1}): ${origin}`,
       );
     }
     const columns = columnNames(database, table);
-    const missing = anchors.filter((column) => !columns.has(column));
+    const missing = anchors.filter((column) => {
+      if (table === 'memories') {
+        // v1 anchors always apply; later columns only from their versions.
+        const introduced = MEMORIES_COLUMN_INTRODUCED_IN[column];
+        if (introduced !== undefined && introduced > version) return false;
+      }
+      return !columns.has(column);
+    });
     if (missing.length > 0) {
       throw new Error(
         `Restore refused: table "${table}" is missing mandatory columns ` +
@@ -430,7 +511,7 @@ export function restoreDatabase(
       const names = tableNames(database);
       const counts: Record<string, number> = {};
       for (const table of RESTORE_TABLES) {
-        if (!names.has(table)) continue; // absent != zero; gate covers v1 tables
+        if (!names.has(table)) continue; // absent != zero; the gate above refuses missing MANDATORY tables
         const row = database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as
           | { count: number }
           | undefined;
