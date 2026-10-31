@@ -229,6 +229,13 @@ GitHub policy indicator on the default branch).
 Cherry-picks are docs-only and touch no shared lines with code, so order does
 not matter; if promoted, the candidate SHA at the top of this file is stale by
 design and must be re-recorded from the promoted tree BEFORE cutting the tag.
+DRY-RUN PROVEN 31 Oct (scratch branch off `main`, discarded; `main` never
+touched): the exact act is ONE command -
+`git checkout origin/integration -- docs/README.md docs/SUBMISSION_CHECKLIST.md SECURITY.md`
+- which applied CLEAN onto main's tree yielding exactly 47 insertions / 6
+deletions across the three files, no conflicts. Note: `main`'s biome config
+processes no markdown, so the promoted files are not subject to any md-format
+gate on that branch - promotion cannot break main's CI gates.
 
 ## While judging is open
 
