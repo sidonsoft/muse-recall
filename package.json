@@ -60,7 +60,8 @@
     "media:restore": "pnpm --filter @mml/server run media:restore",
     "media:drill": "pnpm --filter @mml/server run media:drill",
     "verify:media": "pnpm --filter @mml/server run verify:media",
-    "verify:media-journey": "tsx scripts/verify-media-journey.ts"
+    "verify:media-journey": "tsx scripts/verify-media-journey.ts",
+    "verify:media-live-smoke": "tsx scripts/verify-media-live-smoke.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
