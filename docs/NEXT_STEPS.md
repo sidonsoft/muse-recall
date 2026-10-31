@@ -755,6 +755,19 @@ now is maintenance honesty, not new surface:
     errors out; no script is undocumented in the prose that a
     judge follows. Command-token scanning needs the prose-exception
     note: the two false positives were named, not deleted.
+  - Case-sensitive probes found KI-47 (31 Oct): on the frozen main,
+    CONTRIBUTING's [SECURITY.md](SECURITY.md) link 404s - the root
+    security policy was added on integration (9bb0770) after main's
+    cut - and GitHub's security-policy indicator reads default-
+    branch files, so it stays unset there too. Raw-URL witnesses:
+    main 404 / integration 200 for the same path; the lowercase
+    docs/security.md threat model resolves 200 everywhere (its
+    links are fine). Promotion integration->main post-judging
+    repairs BOTH with zero new work; owner decides at tag time,
+    exactly the KI-44 decision shape - registered beside it, since
+    two same-shaped frozen-entry blemishes should be decided once.
+    Lesson for link audits: GitHub's side is case-sensitive Linux;
+    a macOS resolver that says 200 can be lying about case.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
@@ -846,8 +859,10 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
 **A. Owner actions at submission (Nov 4, owner-only - never agent-side):**
 1. Cut tag `submission-2026-11-04` from the shipped tree (auto-covered by ruleset
    26184029); Release + archive per SUBMISSION_PRESERVATION.md owner-act list.
-2. KI-44 decision: promote the two docs-only 2:46-pointer fix lines to `main`
-   pre-tag (changes the SHA judges see) or ship as-is with one dead pointer.
+2. KI-44 + KI-47 decision (same shape, decide together): promote the docs-only
+   fix lines (2:46 pointer; root SECURITY.md landing that repairs CONTRIBUTING's
+   404 on main) pre-tag - changes the SHA judges see - or ship as-is with both
+   dead pointers recorded in KI-44/KI-47.
 3. Record submitted SHA, tag derefs, and form fields in SUBMISSION_PRESERVATION.md.
 
 **B. Immediately after judging closes (mechanical, no owner judgment needed):**
