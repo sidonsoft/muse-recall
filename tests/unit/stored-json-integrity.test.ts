@@ -3,6 +3,7 @@ import { openDatabase } from '@mml/memory-engine';
 import type { ContextReport } from '@mml/shared';
 import { describe, expect, it } from 'vitest';
 import { UiSurfaceStore } from '../../apps/server/src/ui-store.js';
+import { defined } from '../helpers/defined';
 
 /**
  * How each stored-JSON read path reacts to a corrupted row — the deliberate
@@ -46,26 +47,24 @@ describe('stored-JSON integrity: degrade vs fail-closed per path', () => {
     const sessions = new SessionStore(opened.db);
     try {
       const session = sessions.createSession({ project_id: null, title: 'ctx-integrity' });
+      const msg0 = () => defined(sessions.listMessages(session.id)[0], 'context-integrity message');
       sessions.appendMessage({
         sessionId: session.id,
         role: 'user',
         content: 'hi',
         context: REPORT,
       });
-      expect(sessions.listMessages(session.id)[0].context?.prompt_characters).toBe(10);
+      expect(msg0().context?.prompt_characters).toBe(10);
 
       opened.db
         .prepare('UPDATE messages SET context_json = ? WHERE id = ?')
-        .run('{"prompt_characters": 1', sessions.listMessages(session.id)[0].id);
-      expect(sessions.listMessages(session.id)[0].context).toBeNull();
+        .run('{"prompt_characters": 1', msg0().id);
+      expect(msg0().context).toBeNull();
 
       opened.db
         .prepare('UPDATE messages SET context_json = ? WHERE id = ?')
-        .run(
-          JSON.stringify({ ...REPORT, prompt_characters: -5 }),
-          sessions.listMessages(session.id)[0].id,
-        );
-      const row = sessions.listMessages(session.id)[0];
+        .run(JSON.stringify({ ...REPORT, prompt_characters: -5 }), msg0().id);
+      const row = msg0();
       expect(row.context).toBeNull(); // schema-invalid: degrades...
       expect(row.content).toBe('hi'); // ...while the message itself survives intact
     } finally {
