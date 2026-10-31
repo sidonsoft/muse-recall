@@ -19,7 +19,11 @@
       "@mml/muse-provider": ["./packages/muse-provider/src/index.ts"],
       "@mml/tool-runtime": ["./packages/tool-runtime/src/index.ts"],
       "@mml/decision-guard": ["./packages/decision-guard/src/index.ts"],
-      "@mml/mcp-server": ["./packages/mcp-server/src/index.ts"]
+      "@mml/mcp-server": ["./packages/mcp-server/src/index.ts"],
+      "@mml/agent-core": ["./packages/agent-core/src/index.ts"],
+      "@mml/ui-protocol": ["./packages/ui-protocol/src/index.ts"],
+      "fastify": ["./apps/server/node_modules/fastify"],
+      "fastify/*": ["./apps/server/node_modules/fastify/*"]
     }
   },
   "include": ["tests/**/*.ts", "scripts/**/*.ts"],
