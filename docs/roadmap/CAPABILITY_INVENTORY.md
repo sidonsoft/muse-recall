@@ -473,7 +473,10 @@ gh api repos/sidonsoft/muse-recall/private-vulnerability-reporting # {"enabled":
    ("apply the prepared rulesets; enable private vulnerability reporting") are complete;
    update §16 and the G0 checklist when recording submission SHAs.
 2. Retention **is** enforced, just not on a timer: `engine.expireStale()` runs at server
-   startup ([index.ts:29–33](../../apps/server/src/index.ts)) and retrieval hard-filters
-   `expires_at > now` in SQL ([retrieval.ts:379–380](../../packages/memory-engine/src/retrieval.ts)),
+   startup ([index.ts:31–35](../../apps/server/src/index.ts), anchor re-read
+   31 Oct; drifts are why anchors get re-read not arithmetic-shifted) and
+   retrieval hard-filters `expires_at > now` in SQL
+   ([retrieval.ts:379–380](../../packages/memory-engine/src/retrieval.ts),
+   still exact),
    so an expired memory is never served. Only the *status label* lags on a long-running
    server until the next restart — cosmetic for stats, not a correctness gap.
