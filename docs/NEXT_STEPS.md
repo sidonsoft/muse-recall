@@ -132,9 +132,10 @@ toward the home doc.
    stored-json-integrity). Plan (validated by a scratch-branch probe 31 Oct, reverted):
    PR1 = widen engine.create/correct params to the z.input types already exported by
    shared (MemoryCreateRequest, MemoryCorrectionRequestInput) - measured -74 errors,
-   the four fixture files 50->4, `pnpm -r typecheck` exit 0 under it; PR2 = residual
-   TS2345/undefined clusters (~60 sites, one helper annotation + three direct-contract
-   sites left over from PR1's scope); PR3 = carve `closeRelative` out of the
+   the four fixture files 50->4, `pnpm -r typecheck` exit 0 under it; PR2 = the residual long tail - measured 94 errors across ~20 files
+   AFTER PR1+PR3 combined (largest: harness 10, forge-api 7, error-catalog 6,
+   reading-nook fixtures 6, then 4s and 3s; mixed TS2345/2322/undefined classes,
+   no single design lever); PR3 = carve `closeRelative` out of the
    protocol-locked verify-phase17-strict (its bytes are asserted by the Phase 17
    protocol - never edit them) and exclude the script (-17); then wire
    `typecheck:tests` into the verify leg.
