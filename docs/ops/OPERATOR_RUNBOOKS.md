@@ -90,16 +90,32 @@ pnpm db:restore /backups/muse-recall/muse-memory-lab.db.backup-<stamp> --into /t
 pnpm db:restore /backups/.../backup-<stamp> --into "$LIVE_DB" --force   # live replacement
 ```
 
-`db:restore` validates the backup (`PRAGMA integrity_check`) and copies it to a
-temp file beside the target, then verifies THAT copy, before the target is ever
-replaced (beta fix, 31 Oct — the previous ordering destroyed the target on a
-corrupt force-restore):
+`db:restore` validates the backup (`PRAGMA integrity_check` **plus a Muse schema
+gate**) and copies it to a temp file beside the target, then re-verifies THAT copy,
+before the target is ever replaced (beta fix, 31 Oct — the previous ordering
+destroyed the target on a corrupt force-restore):
 
 - corrupt backup, failed copy, or failed replacement → loud abort, and the
   existing target keeps its original bytes; the backup file is never modified.
+- **empty or foreign images are schema-gated out** (`integrity_check` calls a
+  zero-byte file "ok"; pre-gate a forced restore of an empty/unrelated SQLite
+  database "succeeded" and wiped a real one). A restorable image must carry
+  contiguous `schema_migrations` metadata (version 1..N, N ≤ this build's
+  latest) and the v1 core tables with their columns. Genuinely older Muse
+  backups stay restorable; hand-made stubs, foreign databases, empty files
+  and newer-than-this-build images are refused before anything moves.
 - source and target referring to the same file (same path, symlink alias, or
   hard link) are **always refused**, `--force` included — the old ordering
   deleted the backup in that case.
+- **the swap parks before it commits**: the previous target AND its WAL/SHM
+  sidecars are renamed to a `.restore-previous-*` set, the validated copy is
+  renamed in, and only then is the parked set discarded. Any failure at or
+  after the swap renames the parked set back — post-swap failures (including
+  a non-regular `<target>-wal` like a directory, which is refused BEFORE any
+  move) restore the original bytes and sidecars instead of reporting a
+  failure that destroyed the target; if even the undo fails, the error names
+  the parked copy for manual recovery. The database+sidecar set is not one
+  atomic object — consistency rests on the stop requirement plus park/undo.
 - `--force` live replacement requires the **application to be stopped**: a
   running server keeps the WAL open and would rewrite the file after the swap.
   Stop the server, swap, restart.
@@ -117,7 +133,7 @@ reports the newest next-to-DB snapshot's age and an `ok`/`stale`/`missing` state
 directories are that cron's own bookkeeping).
 
 **Drill:** `pnpm backup:drill` performs seed → backup → destroy → restore →
-record-parity verification, plus the clobber-guard refusal and the two
+record-parity verification, plus the clobber-guard refusal and the four
 destructive-restore regressions the beta review reproduced (corrupt backup +
 force preserves the target bytes; force + source==target refused), in a
 throwaway temp directory — safe to run any time, and it runs on every CI push.

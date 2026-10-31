@@ -6,14 +6,32 @@ import { loadConfig, loadDotEnv } from '../config.js';
  *
  * Restores a backup copy for verification or disaster rehearsal. The live
  * database is never the implicit target: `--into` is required, and
- * replacing an existing target additionally requires `--force`. The backup
- * is integrity-checked and copied to a validated temp file beside the
- * target BEFORE the target is replaced; on a corrupt backup, a failed copy,
- * or a failed replacement the existing target keeps its original bytes and
- * the backup is left untouched. A source that is the same file as the
- * target (path, symlink alias, or hard link) is always refused, `--force`
- * included. For live replacement (`--force`) stop the server first: a
- * running server keeps the WAL open and can rewrite the file after the swap.
+ * replacing an existing target additionally requires `--force`.
+ *
+ * Guarantees (beta review, in order):
+ *  - the source must be an INTACT **and genuine Muse** database: integrity
+ *    check plus a schema gate (contiguous `schema_migrations` history at a
+ *    supported version >= 1 and the v1 core tables/columns). Empty files,
+ *    unrelated SQLite images, hand-made stubs and unsupported versions are
+ *    refused before anything is touched;
+ *  - a source that is the same file as the target (path, symlink alias, or
+ *    hard link) is always refused, `--force` included;
+ *  - the validated copy is staged in a temp file beside the target and
+ *    re-verified there; a pre-existing target plus its WAL/SHM sidecars is
+ *    parked to a `.restore-previous-*` set first, so a failure at or after
+ *    the swap puts the ORIGINAL bytes and sidecars back instead of leaving
+ *    a half-restored target. If even the automatic undo fails, the error
+ *    names the parked copy for a manual restore;
+ *  - stale WAL/SHM at the target path are cleared with the replacement, and
+ *    anything that is not a regular file there (directory, fifo) is refused
+ *    up front rather than discovered mid-swap;
+ *  - on success the parked previous copy is removed (that is what `--force`
+ *    means). Nothing here deletes or modifies the backup source.
+ *
+ * The database-plus-sidecar set is NOT claimed atomic: consistency rests on
+ * the stop-application requirement plus park/undo, not on a single rename.
+ * **Stop the application before `--force`**: a running server keeps the WAL
+ * open and can rewrite files after the swap.
  */
 function main(): void {
   loadDotEnv();

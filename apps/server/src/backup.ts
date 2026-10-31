@@ -92,11 +92,23 @@ export async function backupDatabase(
  *
  * Ordering is the whole safety story (both reproduced review failures were
  * destructive orderings): the source is rejected if it is the same file as
- * the target by any route, then validated as intact BEFORE anything touches
- * the target, then copied to a temp file beside the target and verified —
- * only the validated temp copy is ever renamed onto the target. Every
- * failure path leaves the existing target and the source byte-for-byte as
- * they were; the source is never deleted or modified.
+ * the target by any route, then validated as intact AND as a real Muse
+ * schema (migration metadata + v1 core tables/columns; empty, unrelated,
+ * incomplete or unsupported images are refused) BEFORE anything touches the
+ * target, then copied to a temp file beside the target and re-verified —
+ * only the validated temp copy is ever swapped onto the target.
+ *
+ * The swap itself is parked, not blind: the previous target and its WAL/SHM
+ * sidecars are first renamed to a `.restore-previous-*` set (sidecar shapes
+ * are pre-checked; non-regular sidecars are refused before any move), the
+ * temp copy is renamed into place, and the parked previous is discarded
+ * only after the swap and post-swap steps succeed. Any failure after the
+ * swap renames the parked set back, restoring the target byte-for-byte; if
+ * even that undo fails, the error names the parked copy. Guarantees hold
+ * for the application being STOPPED (a live server keeps the WAL open and
+ * can rewrite files after the swap). The database-plus-sidecar set is not
+ * one atomic object — consistency is established by the stop requirement
+ * plus park/undo, not claimed as atomicity.
  */
 export interface DatabaseRestore {
   source: string;
@@ -106,6 +118,12 @@ export interface DatabaseRestore {
   counts: Record<string, number>;
 }
 
+/**
+ * Reporting tables: counts for tables this surface knows about. Tables the
+ * backup's schema version does not have yet are OMITTED (absent != zero:
+ * swallowing a missing mandatory table as a `0` count is exactly the bug
+ * the schema gate below refuses).
+ */
 const RESTORE_TABLES = [
   'projects',
   'memories',
@@ -113,6 +131,20 @@ const RESTORE_TABLES = [
   'sessions',
   'tool_calls',
 ] as const;
+
+/**
+ * Tables and anchor columns created by migration 1. Every genuine Muse
+ * backup - at ANY supported version - has them; an empty file, an unrelated
+ * SQLite database, or a hand-made stub does not. Column checks are anchors,
+ * not the full schema: enough to refuse "tables with the right names but
+ * the wrong shape" without pinning every historical column.
+ */
+const CORE_TABLE_COLUMNS: Record<string, readonly string[]> = {
+  projects: ['id', 'name', 'created_at', 'updated_at'],
+  memories: ['id', 'type', 'scope', 'content', 'content_hash', 'status', 'validation_status'],
+  memory_supersessions: ['new_id', 'old_id'],
+  memory_history: ['id', 'memory_id', 'action', 'next_status', 'actor', 'at'],
+};
 
 /**
  * Resolve a path through every symlink that exists on the way down, even when
@@ -155,10 +187,11 @@ function integrityCheck(database: DatabaseSync): string {
 }
 
 /**
- * Validate the SOURCE before any copy: open read-only, integrity check must
- * be 'ok'. Throws naming the backup corrupt.
+ * Validate the SOURCE before any copy: open read-only, integrity must be
+ * 'ok' AND the image must pass the Muse schema gate. Returns the backup's
+ * schema version. Throws naming the backup corrupt or unrestorable.
  */
-function assertBackupIntact(source: string): void {
+function assertBackupUsable(source: string): number {
   let database: DatabaseSync;
   try {
     database = new DatabaseSync(source, { readOnly: true });
@@ -171,9 +204,106 @@ function assertBackupIntact(source: string): void {
     if (result !== 'ok') {
       throw new Error(`Backup is corrupt (integrity check failed): ${source}: ${result}`);
     }
+    return assertRestorableMuseSchema(database, source);
   } finally {
     database.close();
   }
+}
+
+function tableNames(database: DatabaseSync): Set<string> {
+  const rows = database
+    .prepare(`SELECT name FROM sqlite_master WHERE type IN ('table', 'view')`)
+    .all() as { name: string }[];
+  return new Set(rows.map((row) => row.name));
+}
+
+function columnNames(database: DatabaseSync, table: string): Set<string> {
+  const rows = database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  return new Set(rows.map((row) => row.name));
+}
+
+/**
+ * The schema gate (beta review, P1): SQLite's integrity_check happily calls
+ * an EMPTY database 'ok' - zero application tables read as zero counts and
+ * missing migration metadata reads as version 0, so a forced restore of an
+ * empty or unrelated database "succeeded" and destroyed a real one.
+ *
+ * A database is restorable here only if it carries the Muse migration
+ * metadata (`schema_migrations` with a contiguous history at a supported
+ * version >= 1) AND the v1 core tables with their anchor columns. Genuinely
+ * older Muse backups (any version >= 1) pass; empty files, foreign SQLite
+ * images, hand-made stubs, incomplete histories and future/unsupported
+ * versions are refused BEFORE anything touches the target.
+ */
+function assertRestorableMuseSchema(database: DatabaseSync, origin: string): number {
+  const names = tableNames(database);
+  if (!names.has('schema_migrations')) {
+    throw new Error(
+      `Restore refused: not a Muse Recall database (no schema_migrations table): ${origin}`,
+    );
+  }
+  let version = 0;
+  let recorded = 0;
+  try {
+    version = currentSchemaVersion(database);
+    const row = database
+      .prepare('SELECT COUNT(*) AS count FROM schema_migrations WHERE version >= 1')
+      .get() as { count: number } | undefined;
+    recorded = row?.count ?? 0;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Restore refused: unreadable schema_migrations metadata: ${origin}: ${reason}`);
+  }
+  if (version < 1 || recorded < 1) {
+    throw new Error(
+      `Restore refused: database has no applied Muse migrations (schema version ${version}): ` +
+        `${origin} - empty or unrelated images are never restorable over a Muse database`,
+    );
+  }
+  // A future version is checked before contiguity: a v999 image is first and
+  // foremost UNSUPPORTED, and reporting it as "incomplete history" misleads.
+  const latest = latestVersion();
+  if (version > latest) {
+    throw new Error(
+      `Restore refused: unsupported schema version ${version} (this build supports ` +
+        `1..${latest}); restore with a build that knows this schema`,
+    );
+  }
+  // History must be contiguous from 1..version: a database claiming version
+  // 8 with only rows {1, 8} is not a Muse image this migrator can trust.
+  let contiguous = 0;
+  try {
+    const row = database
+      .prepare(
+        'SELECT COUNT(DISTINCT version) AS count FROM schema_migrations WHERE version BETWEEN 1 AND ?',
+      )
+      .get(version) as { count: number } | undefined;
+    contiguous = row?.count ?? 0;
+  } catch {
+    contiguous = -1;
+  }
+  if (contiguous !== version) {
+    throw new Error(
+      `Restore refused: schema_migrations history is incomplete or not contiguous ` +
+        `(version ${version} claims ${Math.max(contiguous, 0)} predecessor rows): ${origin}`,
+    );
+  }
+  for (const [table, anchors] of Object.entries(CORE_TABLE_COLUMNS)) {
+    if (!names.has(table)) {
+      throw new Error(
+        `Restore refused: missing mandatory Muse table "${table}" (v1 core schema absent): ${origin}`,
+      );
+    }
+    const columns = columnNames(database, table);
+    const missing = anchors.filter((column) => !columns.has(column));
+    if (missing.length > 0) {
+      throw new Error(
+        `Restore refused: table "${table}" is missing mandatory columns ` +
+          `${missing.map((column) => `"${column}"`).join(', ')}: ${origin}`,
+      );
+    }
+  }
+  return version;
 }
 
 export function restoreDatabase(
@@ -182,11 +312,13 @@ export function restoreDatabase(
   options: {
     force?: boolean;
     /**
-     * TEST-ONLY SEAM: overrides the final rename that swaps the validated
-     * temp copy onto the target, so tests can inject a replacement failure.
-     * Never set this in production code.
+     * TEST-ONLY SEAMS: `__rename` overrides the final rename that swaps the
+     * validated temp copy onto the target; `__postSwap` runs (and may throw)
+     * immediately AFTER the swap, so tests can prove the park/undo boundary.
+     * Never set these in production code.
      */
     __rename?: (from: string, to: string) => void;
+    __postSwap?: (destination: string) => void;
   } = {},
 ): DatabaseRestore {
   const source = resolve(backupFile);
@@ -220,16 +352,65 @@ export function restoreDatabase(
     );
   }
 
-  // Validate the source BEFORE touching the target in any way.
-  assertBackupIntact(source);
+  // Validate the source BEFORE touching the target in any way: integrity
+  // plus the Muse schema gate (empty/unrelated/unsupported images never get
+  // a chance to become "zero counts" at a swap).
+  assertBackupUsable(source);
 
-  // Copy to a temp file in the SAME directory as the target, then verify the
-  // temp copy — validating the bytes that actually landed, not the source.
-  const temp = join(
-    dirname(destination),
-    `.restore-${process.pid}-${randomBytes(8).toString('hex')}.tmp`,
-  );
+  // Sidecar shape pre-check (beta review, P2): stale WAL/SHM at the target
+  // path MUST be cleared when the database is replaced - but only if they
+  // are regular files we can move or remove. A directory, fifo or other
+  // oddity at `<target>-wal` used to throw EISDIR AFTER the replacement;
+  // now it is refused here, before any move, target untouched.
+  if (targetExisted) {
+    for (const sidecar of [`${destination}-wal`, `${destination}-shm`]) {
+      if (!existsSync(sidecar)) continue;
+      let regular = false;
+      try {
+        regular = statSync(sidecar).isFile();
+      } catch {
+        regular = false;
+      }
+      if (!regular) {
+        throw new Error(
+          `Restore refused: ${sidecar} exists and is not a regular file; stale WAL state ` +
+            'cannot be cleared safely. With the application stopped, remove it manually and retry.',
+        );
+      }
+    }
+  }
+
+  const tag = `${process.pid}-${randomBytes(8).toString('hex')}`;
+  const temp = join(dirname(destination), `.restore-${tag}.tmp`);
+  // Parked previous state: the original database plus its WAL/SHM, kept
+  // until the swap provably succeeds. Restored back on any later failure.
+  const previous = `${destination}.restore-previous-${tag}`;
   const rename = options.__rename ?? renameSync;
+
+  /** Moves recorded while parking, so an aborted park unwinds exactly. */
+  const parkedMoves: Array<{ from: string; to: string }> = [];
+  const park = (): void => {
+    renameSync(destination, previous);
+    parkedMoves.push({ from: destination, to: previous });
+    for (const suffix of ['-wal', '-shm']) {
+      const side = `${destination}${suffix}`;
+      if (existsSync(side)) {
+        renameSync(side, `${previous}${suffix}`);
+        parkedMoves.push({ from: side, to: `${previous}${suffix}` });
+      }
+    }
+  };
+  const unpark = (): void => {
+    for (const move of parkedMoves.reverse()) {
+      try {
+        renameSync(move.to, move.from);
+      } catch {
+        // Best-effort unwind; the caller's error will name the parked path.
+      }
+    }
+    parkedMoves.length = 0;
+  };
+
   try {
     copyFileSync(source, temp);
     chmodSync(temp, 0o600);
@@ -243,21 +424,22 @@ export function restoreDatabase(
           `Restored backup failed integrity check: ${integrity} (temp copy at ${temp})`,
         );
       }
+      // Re-run the full gate on the bytes that ACTUALLY landed, not on the
+      // source file (a copy can be truncated mid-write on a full disk).
+      const schemaVersion = assertRestorableMuseSchema(database, temp);
+      const names = tableNames(database);
       const counts: Record<string, number> = {};
       for (const table of RESTORE_TABLES) {
-        try {
-          const row = database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as
-            | { count: number }
-            | undefined;
-          counts[table] = row?.count ?? 0;
-        } catch {
-          counts[table] = 0;
-        }
+        if (!names.has(table)) continue; // absent != zero; gate covers v1 tables
+        const row = database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as
+          | { count: number }
+          | undefined;
+        counts[table] = row?.count ?? 0;
       }
       result = {
         source,
         target: destination,
-        schema_version: currentSchemaVersion(database),
+        schema_version: schemaVersion,
         latest_schema_version: latestVersion(),
         counts,
       };
@@ -269,19 +451,71 @@ export function restoreDatabase(
       rmSync(`${temp}-shm`, { force: true });
     }
 
-    // Only now replace the target. rename is an atomic replacement on POSIX,
-    // so the existing target is never removed before the swap succeeds; a
-    // failed replacement leaves its original bytes in place.
-    rename(temp, destination);
-    // Drop any sidecars at the target path that would shadow the restored
-    // file with stale WAL state from the replaced database.
-    rmSync(`${destination}-wal`, { force: true });
-    rmSync(`${destination}-shm`, { force: true });
+    // Park the previous target (database + sidecars together) so a later
+    // failure can put the whole picture back. Only then swap the validated
+    // temp copy in: rename is an atomic replacement on POSIX, so there is
+    // never a moment where the target path holds nothing.
+    if (targetExisted) {
+      try {
+        park();
+      } catch (error) {
+        unpark(); // unwind exactly what was moved before the abort
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Restore aborted before replacing ${destination}: could not park the existing ` +
+            `target (${reason}); unwound, the target is intact at its original path`,
+        );
+      }
+    }
+
+    try {
+      rename(temp, destination);
+      options.__postSwap?.(destination);
+    } catch (failure) {
+      // Failure at or after the swap (beta review, P2): the replacement may
+      // already be in place; undo it with the parked original, sidecars and
+      // all, instead of reporting a failure that destroyed the target.
+      let undone = true;
+      try {
+        rmSync(destination, { force: true });
+        rmSync(`${destination}-wal`, { force: true });
+        rmSync(`${destination}-shm`, { force: true });
+        for (const move of [...parkedMoves].reverse()) {
+          renameSync(move.to, move.from);
+        }
+        parkedMoves.length = 0;
+      } catch (undoError) {
+        undone = false;
+        const reason = undoError instanceof Error ? undoError.message : String(undoError);
+        throw new Error(
+          `Restore of ${source} onto ${destination} failed (${
+            failure instanceof Error ? failure.message : String(failure)
+          }) AND the automatic undo failed (${reason}). The ORIGINAL database is preserved ` +
+            `at ${previous} (with its -wal/-shm sidecars): with the application stopped, ` +
+            `rename it back to ${destination} yourself`,
+          { cause: failure },
+        );
+      }
+      const reason = failure instanceof Error ? failure.message : String(failure);
+      throw new Error(
+        `Restore of ${source} onto ${destination} failed (${reason}); target restored to its ` +
+          `previous bytes${undone ? '' : ' via partial undo - check the parked copy'}`,
+        { cause: failure },
+      );
+    }
+
+    // Commit point reached: the restored database is in place and readable.
+    // Stale sidecars of the ORIGINAL database were parked with it, so the
+    // replacement can never be shadowed by the previous WAL state; now the
+    // parked set is discarded (deliberately: force was required to get here).
+    rmSync(previous, { force: true });
+    rmSync(`${previous}-wal`, { force: true });
+    rmSync(`${previous}-shm`, { force: true });
     return result;
   } catch (error) {
-    // Any failure after (or during) the temp copy: remove the temp file and
-    // any sidecars it grew, leaving the existing target and the source
-    // exactly as they were.
+    // Any failure before (or during) the copy/park/swap attempt: remove the
+    // temp file and any sidecars it grew, leaving the existing target (or
+    // its parked-then-restored original) and the source exactly as they were.
     rmSync(temp, { force: true });
     rmSync(`${temp}-wal`, { force: true });
     rmSync(`${temp}-shm`, { force: true });

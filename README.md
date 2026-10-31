@@ -315,7 +315,7 @@ pnpm demo:showcase          # Demos A, B, D, E end to end (fresh database recomm
 pnpm eval:comparison        # persistent memory vs inline facts (n=4 per configuration)
 pnpm eval:guard             # advisory Decision Guard accuracy corpus
 pnpm db:backup [dest]       # online SQLite snapshot (owner-only file, timestamped)
-pnpm db:restore <backup> --into <isolated-target> [--force]   # backup validated into a temp copy before any swap; target bytes survive every failure; same-file source/target refused; stop the app for --force (see runbooks)
+pnpm db:restore <backup> --into <isolated-target> [--force]   # backup validated (integrity + Muse schema gate: empty/foreign/newer images refused) into a temp copy before any swap; a failed swap puts the parked original back; same-file source/target refused; stop the app for --force (see runbooks)
 pnpm backup:drill           # seed → back up → destroy → restore → verify parity (roadmap §8; also runs in CI)
 pnpm ops:alert-prober [url] # cron-ready consumer of /api/health alert states (exit 0/1/2; see runbooks)
 ```

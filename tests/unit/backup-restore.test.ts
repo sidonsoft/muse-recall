@@ -2,6 +2,7 @@ import {
   chmodSync,
   existsSync,
   linkSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -11,7 +12,8 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MemoryEngine, openDatabase } from '@mml/memory-engine';
+import { DatabaseSync } from 'node:sqlite';
+import { MemoryEngine, MIGRATIONS, openDatabase } from '@mml/memory-engine';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   backupDatabase,
@@ -127,7 +129,9 @@ describe('restoreDatabase (roadmap §8)', () => {
    */
   describe('failure paths preserve the target byte-for-byte', () => {
     function leftoverTemps(dir: string): string[] {
-      return readdirSync(dir).filter((name) => name.startsWith('.restore-'));
+      return readdirSync(dir).filter(
+        (name) => name.startsWith('.restore-') || name.includes('restore-previous'),
+      );
     }
 
     it('a corrupt backup with force throws and leaves target and source bytes identical', async () => {
@@ -257,6 +261,229 @@ describe('restoreDatabase (roadmap §8)', () => {
         expect(existsSync(injectedTemp)).toBe(false);
       }
       expect(leftoverTemps(dir)).toEqual([]);
+    });
+  });
+
+  /**
+   * Beta review P1 (31 Oct): integrity_check calls an EMPTY database 'ok' -
+   * zero-byte sources used to "restore" over real Muse databases as a row of
+   * zero counts at schema version 0. The schema gate refuses anything that
+   * is not a genuine Muse image (migration metadata + v1 core tables and
+   * columns), force included, while genuinely older Muse backups stay
+   * restorable.
+   */
+  describe('the schema gate refuses empty, unrelated and unsupported images', () => {
+    function museBackupOf(dir: string, name = 'live.db'): Promise<string> {
+      return (async () => {
+        const source = join(dir, name);
+        await seeded(source);
+        return (await backupDatabase(source, join(dir, `snap-${name}`))).destination;
+      })();
+    }
+
+    it('a zero-byte source with force is refused; the real target keeps every byte', async () => {
+      const dir = workspace();
+      const target = join(dir, 'real.db');
+      await seeded(target);
+      const before = readFileSync(target);
+      const empty = join(dir, 'empty.db');
+      writeFileSync(empty, '');
+
+      expect(() => restoreDatabase(empty, target, { force: true })).toThrow(
+        /not a Muse Recall database/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readdirSync(dir).some((n) => n.includes('restore-'))).toBe(false);
+    });
+
+    it('a valid SQLite database from another application is refused', async () => {
+      const dir = workspace();
+      const target = join(dir, 'real.db');
+      await seeded(target);
+      const before = readFileSync(target);
+      const foreign = join(dir, 'foreign.db');
+      const database = new DatabaseSync(foreign);
+      database.exec(
+        `CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT);
+         INSERT INTO customers (name) VALUES ('not a muse row');`,
+      );
+      database.close();
+
+      expect(() => restoreDatabase(foreign, target, { force: true })).toThrow(
+        /not a Muse Recall database/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+    });
+
+    it('stubbed v1 tables with the right names but the wrong columns are refused', async () => {
+      const dir = workspace();
+      const target = join(dir, 'real.db');
+      await seeded(target);
+      const before = readFileSync(target);
+      const stub = join(dir, 'stub.db');
+      const database = new DatabaseSync(stub);
+      database.exec(
+        `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT, applied_at TEXT);
+         INSERT INTO schema_migrations VALUES (1, 'core_memory_schema', 'x');
+         CREATE TABLE projects (id TEXT);
+         CREATE TABLE memories (id TEXT);
+         CREATE TABLE memory_supersessions (new_id TEXT);
+         CREATE TABLE memory_history (id TEXT);`,
+      );
+      database.close();
+
+      expect(() => restoreDatabase(stub, target, { force: true })).toThrow(
+        /missing mandatory columns/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+    });
+
+    it('a history that skips a version is refused (claiming 8 with gaps)', async () => {
+      const dir = workspace();
+      const backup = await museBackupOf(dir);
+      const target = join(dir, 'target.db');
+      await seeded(target);
+      const before = readFileSync(target);
+      const tampered = new DatabaseSync(backup);
+      tampered.exec('DELETE FROM schema_migrations WHERE version = 4');
+      tampered.close();
+
+      expect(() => restoreDatabase(backup, target, { force: true })).toThrow(
+        /incomplete or not contiguous/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+    });
+
+    it('a backup NEWER than this build (version 999) is refused as unsupported', async () => {
+      const dir = workspace();
+      const backup = await museBackupOf(dir, 'live.db');
+      const future = new DatabaseSync(backup);
+      future
+        .prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)')
+        .run(999, 'from_the_future', '2099-01-01T00:00:00.000Z');
+      future.close();
+
+      expect(() => restoreDatabase(backup, join(dir, 'target.db'))).toThrow(
+        /unsupported schema version 999/,
+      );
+    });
+
+    it('genuinely older Muse backups (v1-era) restore; later tables simply absent', () => {
+      const dir = workspace();
+      const old = join(dir, 'old-v3.db');
+      const database = new DatabaseSync(old);
+      database.exec(
+        `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT, applied_at TEXT);`,
+      );
+      for (const migration of MIGRATIONS.slice(0, 3)) {
+        database.exec('BEGIN');
+        migration.up(database);
+        database
+          .prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)')
+          .run(migration.version, migration.name, '2026-01-01T00:00:00.000Z');
+        database.exec('COMMIT');
+      }
+      database.close();
+
+      const restored = restoreDatabase(old, join(dir, 'restored.db'));
+      expect(restored.schema_version).toBe(3);
+      expect(restored.counts).toHaveProperty('projects');
+      expect(restored.counts).toHaveProperty('sessions');
+      // Tables the v3 image never had are ABSENT from counts, not faked as 0.
+      expect(restored.counts).not.toHaveProperty('tool_calls');
+      expect(restored.latest_schema_version).toBeGreaterThanOrEqual(8);
+    });
+  });
+
+  /**
+   * Beta review P2 (31 Oct): the sidecar cleanup ran AFTER the rename, so a
+   * directory at <target>-wal threw EISDIR with the original already gone.
+   * The swap now parks the previous database AND its sidecars, pre-checks
+   * sidecar shapes, and undoes the swap from the parked copy on any failure
+   * at or after the replacement.
+   */
+  describe('the swap parks the previous state and undoes post-swap failures', () => {
+    function leftover(dir: string): string[] {
+      return readdirSync(dir).filter(
+        (name) => name.startsWith('.restore-') || name.includes('restore-previous'),
+      );
+    }
+
+    it('a DIRECTORY at <target>-wal is refused before anything moves', async () => {
+      const dir = workspace();
+      const source = join(dir, 'live.db');
+      await seeded(source);
+      const backup = await backupDatabase(source, join(dir, 'snap.db'));
+      const target = join(dir, 'target.db');
+      await seeded(target);
+      const before = readFileSync(target);
+      mkdirSync(`${target}-wal`);
+      writeFileSync(join(`${target}-wal`, 'stale'), 'stale content that must survive');
+
+      expect(() => restoreDatabase(backup.destination, target, { force: true })).toThrow(
+        /not a regular file/,
+      );
+      expect(readFileSync(target)).toEqual(before);
+      expect(readFileSync(join(`${target}-wal`, 'stale'), 'utf8')).toBe(
+        'stale content that must survive',
+      );
+      expect(leftover(dir)).toEqual([]);
+    });
+
+    it('a failure AFTER the swap restores the original bytes AND its sidecars', async () => {
+      const dir = workspace();
+      const source = join(dir, 'live.db');
+      await seeded(source);
+      const backup = await backupDatabase(source, join(dir, 'snap.db'));
+
+      const target = join(dir, 'target.db');
+      await seeded(target);
+      writeFileSync(`${target}-wal`, 'wal-bytes-of-the-original');
+      writeFileSync(`${target}-shm`, 'shm-bytes-of-the-original');
+      const before = readFileSync(target);
+
+      expect(() =>
+        restoreDatabase(backup.destination, target, {
+          force: true,
+          __postSwap: () => {
+            throw new Error('injected post-swap failure');
+          },
+        }),
+      ).toThrow(/injected post-swap failure/);
+
+      // The ORIGINAL database is back, with its sidecars renamed back to it:
+      // not a half-restored target with the original unreachable.
+      expect(readFileSync(target)).toEqual(before);
+      expect(existsSync(`${target}-wal`)).toBe(true);
+      expect(readFileSync(`${target}-wal`, 'utf8')).toBe('wal-bytes-of-the-original');
+      expect(readFileSync(`${target}-shm`, 'utf8')).toBe('shm-bytes-of-the-original');
+      expect(leftover(dir)).toEqual([]);
+    });
+
+    it('success removes stale sidecars and the parked copy; the restored DB reopens clean', async () => {
+      const dir = workspace();
+      const source = join(dir, 'live.db');
+      await seeded(source); // holds "a fact that must survive restore"
+      const backup = await backupDatabase(source, join(dir, 'snap.db'));
+
+      const target = join(dir, 'target.db');
+      const other = openDatabase({ path: target, wal: true });
+      new MemoryEngine(other.db).ensureProject('zeta');
+      other.close();
+      writeFileSync(`${target}-wal`, 'stale wal that must NOT shadow the restore');
+      writeFileSync(`${target}-shm`, 'stale shm');
+
+      const restored = restoreDatabase(backup.destination, target, { force: true });
+      expect(restored.counts['memories']).toBe(1);
+      expect(existsSync(`${target}-wal`)).toBe(false);
+      expect(existsSync(`${target}-shm`)).toBe(false);
+      expect(leftover(dir)).toEqual([]);
+
+      const reopened = openDatabase({ path: target, wal: false });
+      const engine = new MemoryEngine(reopened.db);
+      const contents = engine.list({ all_projects: true }).items.map((memory) => memory.content);
+      reopened.close();
+      expect(contents).toContain('a fact that must survive restore');
     });
   });
 });
