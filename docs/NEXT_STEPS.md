@@ -43,7 +43,11 @@ repository's working backlog; completed items stay for the audit trail.
    and the repair archive rename. File syncs are strict (a failure is a write failure);
    directory syncs are best-effort and documented, because platforms that refuse
    directory fsync must not break writes that are still atomic.
-6. **Expand managed browser coverage.** — **Partial (2026-10-30).**
+6. **Expand managed browser coverage.** — **Closed (2026-10-30; marker
+   corrected 31 Oct - the body itself records "the remaining piece landed the
+   same day", and G-10 in the inventory is Closed 2026-10-30. A register that
+   says Closed while its twin says Partial is a contradiction even when the
+   prose underneath is complete; correction marker keeps the era visible).**
    Done: a second browser engine (managed Firefox as a CI matrix leg; Chromium keeps
    the required-check name), accessibility assertions (banner/navigation/main
    landmarks, role=status live notices, dialog focus handoff), and an
@@ -823,6 +827,17 @@ now is maintenance honesty, not new surface:
     fully verified: era statements stay (honest history), live
     claims match (slice witness), one stale claim was fixed rather
     than trusted.
+  - Cross-branch era audit + one marker contradiction fixed (31 Oct):
+    tool-count prose verified on BOTH branches - main's guide says
+    "Six bounded project/memory tools" (era-correct: main's registry
+    has six and no mcp-server), integration says "seven" in all four
+    tool-bearing lines with the mcp-server row only there; the
+    six/seven boundary is branch-consistent end to end. Same pass
+    found P1 #6 header "Partial" contradicting its own body ("the
+    remaining piece landed the same day") and the G-table's
+    G-10=Closed - status marker fixed with a dated correction note;
+    P1 #4 stays honestly Partial (G-6 identity work waits for
+    judging), a live partial, not a stale one.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
