@@ -285,6 +285,8 @@ is not executed inside the original stream.
 **Severity:** Informational (by design)
 **Detail:** Phase 5 deliberately ships six project/memory tools only. `WORKSPACE_ROOT` is
 reserved for a later phase; there is no arbitrary command path.
+*(Era note, 31 Oct: the registry now publishes seven - `task.create`/`task.list` joined later;
+the design claim is unchanged: still no shell, filesystem or network tools.)*
 
 ---
 

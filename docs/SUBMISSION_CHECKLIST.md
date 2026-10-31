@@ -36,8 +36,9 @@ Because the Official Rules were unavailable, this checklist marks visibility and
 - [x] Evaluation comparison with measured results and stated sample size
 - [x] Integrated showcase 8/8 checks with real Muse (`docs/benchmarks/showcase.json`)
 - [x] Security review: no active secrets (one historical test-fixture key rotated/revoked
-      2026-10-27; see `docs/PHASE11_RELEASE_READINESS.md`), no tracked `.env`/databases, six
-      bounded tools, no outbound HTTP from the app, generated UI is declarative data only
+      2026-10-27; see `docs/PHASE11_RELEASE_READINESS.md`), no tracked `.env`/databases, seven
+      bounded tools (six at review time; count refreshed at head 31 Oct), no outbound HTTP from
+      the app, generated UI is declarative data only
 - [x] Documentation set (submission, evaluation, architecture, demo)
 - [x] Phase 15B research published and integrated with provenance and deviation disclosures
 - [x] Phase 16 / 16B research published with locked hashes, all outputs and `pnpm verify:research16`

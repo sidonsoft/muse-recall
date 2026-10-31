@@ -123,7 +123,7 @@ and include invalid and denied requests. Forge jobs/versions live on the filesys
 
 - Local-first: binds `127.0.0.1`, no authentication, **not** production-ready for multi-user
   hosting.
-- Conversational tools are six bounded project/memory tools; the Forge child may write
+- Conversational tools are seven bounded project/memory tools (count re-read at head, 31 Oct); the Forge child may write
   inside its staging workspace under the CLI's own sandbox.
 - Stored memory is rendered as bounded, escaped data with record identity and provenance.
   It cannot grant tool permissions or change the application prompt/policy.
