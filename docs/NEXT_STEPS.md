@@ -390,6 +390,13 @@ now is maintenance honesty, not new surface:
     (DECISIONS.md numbering note), and every D-number cited in every
     other doc resolves to a defined decision - zero true dangling
     references across 55 ids x the whole docs tree.
+  - Front-of-house sweep (31 Oct, at head): README front has NO badge
+    surface to rot (pure prose - nothing to break); license topology
+    correct for a non-publishing monorepo - one root LICENSE (MIT),
+    root package declares private, all 10 workspace packages private,
+    no license-field sprawl or contradiction; and the live Pages site
+    re-witnessed this round: 200 + the exact submitted title. Clean
+    surfaces, dated.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
