@@ -3,6 +3,9 @@ import { type ProviderErrorCode, redactSecrets } from '@mml/shared';
 
 /**
  * Batch A1 — bounded server-side media adapter for the Meta Model API.
+ * Fixed after the d3f3b67 review: success payloads are preserved whole
+ * (never silently truncated), redirects never leave the provider origin,
+ * and only diagnostics are bounded/redacted.
  *
  * Security posture, mirroring `forge/runtime-check.ts`: generated content is
  * untrusted, so this adapter performs **no arbitrary-URL fetch**. Every
@@ -26,6 +29,15 @@ export function isAllowedMediaUrl(raw: string): boolean {
 }
 
 const MAX_DETAIL_CHARS = 300;
+
+/**
+ * Maximum successful response body kept in memory (8 MiB). Payloads up to
+ * this size are preserved whole and returned to the caller; anything larger
+ * fails loudly with `provider_invalid_output` instead of being silently
+ * truncated into corrupt data. Reading enforces the cap incrementally so an
+ * unbounded stream cannot exhaust memory before the limit trips.
+ */
+export const MEDIA_RESPONSE_MAX_BYTES = 8 * 1024 * 1024;
 
 function boundedRedacted(
   message: string,
@@ -51,6 +63,12 @@ export interface MediaRequestOptions {
   idempotencyKey?: string;
   /** Cooperative cancellation. The adapter stops and reports `cancelled`. */
   signal?: AbortSignal;
+  /**
+   * Raw request body for non-JSON endpoints (e.g. multipart uploads).
+   * When set, `body` is sent as-is with `contentType` instead of JSON.
+   */
+  rawBody?: RequestInit['body'];
+  contentType?: string;
 }
 
 export interface MediaCallResult {
@@ -100,13 +118,81 @@ function toProviderCode(status: number | null, message: string): ProviderErrorCo
 }
 
 /**
+ * Read a response body whole, enforcing MEDIA_RESPONSE_MAX_BYTES
+ * incrementally. Payloads within the cap are preserved exactly (success
+ * data is never truncated); anything larger fails loudly instead of
+ * becoming corrupt data. Only callers of this function see full bodies —
+ * diagnostics elsewhere stay bounded and redacted.
+ */
+async function readBoundedText(response: Response): Promise<string> {
+  // Prefer the declared length as a fast refusal, but never trust it: the
+  // stream is still capped chunk by chunk below.
+  const declared = response.headers.get('content-length');
+  if (declared !== null) {
+    const length = Number(declared);
+    if (Number.isSafeInteger(length) && length > MEDIA_RESPONSE_MAX_BYTES) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new ProviderError(
+        'provider_invalid_output',
+        `Media response is ${length} bytes, above the ${MEDIA_RESPONSE_MAX_BYTES}-byte limit; refusing instead of truncating.`,
+      );
+    }
+  }
+  if (!response.body) {
+    const text = await response.text();
+    if (text.length > MEDIA_RESPONSE_MAX_BYTES) {
+      throw new ProviderError(
+        'provider_invalid_output',
+        `Media response is ${text.length} bytes, above the ${MEDIA_RESPONSE_MAX_BYTES}-byte limit; refusing instead of truncating.`,
+      );
+    }
+    return text;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MEDIA_RESPONSE_MAX_BYTES) {
+        throw new ProviderError(
+          'provider_invalid_output',
+          `Media response exceeds the ${MEDIA_RESPONSE_MAX_BYTES}-byte limit; refusing instead of truncating.`,
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder('utf-8', { fatal: false }).decode(merged);
+}
+
+/**
  * Minimal structured transport for media endpoints.
  *
  * - URL origin is pinned to `https://api.meta.ai`; anything else throws
  *   `invalid_request` before any I/O.
+ * - Redirects are never followed automatically (`redirect: 'manual'`): a 3xx
+ *   with a `location` is surfaced as `provider_unavailable` naming the
+ *   offending status, so a 307/308 can never smuggle a POST body (and the
+ *   Authorization header) to another host. Signed asset downloads that need
+ *   other origins use a separate constrained downloader (Batch B), never
+ *   this inference transport.
  * - A missing/blank API key throws `provider_auth_failed` — callers that must
  *   stay silent when unconfigured should use the capability probes, which map
  *   a missing key to `unconfigured` instead of throwing.
+ * - Success payloads are preserved whole up to MEDIA_RESPONSE_MAX_BYTES;
+ *   oversized bodies fail instead of truncating into corrupt data. Reading
+ *   enforces the cap incrementally, so memory stays bounded.
  * - Bounded retries apply only to network errors, timeouts, and retryable
  *   statuses (408/425/429/5xx). Auth and validation failures never retry.
  * - Cooperative cancellation via `AbortSignal`: on abort the in-flight fetch
@@ -156,8 +242,11 @@ export class MediaAdapter {
     const timeoutMs = options.timeoutMs ?? this.defaultTimeoutMs;
     const maxRetries = options.maxRetries ?? this.defaultMaxRetries;
     const started = Date.now();
-    const payload: Record<string, unknown> = { ...body };
-    if (this.model !== null && payload.model === undefined) payload.model = this.model;
+    const hasRawBody = options.rawBody !== undefined;
+    const payload: Record<string, unknown> = hasRawBody ? {} : { ...body };
+    if (!hasRawBody && this.model !== null && payload.model === undefined) {
+      payload.model = this.model;
+    }
 
     let attempt = 0;
     for (;;) {
@@ -173,20 +262,37 @@ export class MediaAdapter {
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const headers: Record<string, string> = {
-          'content-type': 'application/json',
           // Credential goes in the header only — never in the URL or logs.
           authorization: `Bearer ${this.apiKey}`,
         };
+        if (!hasRawBody) headers['content-type'] = 'application/json';
+        else if (options.contentType !== undefined) headers['content-type'] = options.contentType;
         if (options.idempotencyKey !== undefined && options.idempotencyKey.length > 0) {
           headers['idempotency-key'] = options.idempotencyKey.slice(0, 128);
         }
         const response = await this.fetchImpl(url, {
           method: 'POST',
           headers,
-          body: JSON.stringify(payload),
+          body: hasRawBody ? options.rawBody : JSON.stringify(payload),
           signal: controller.signal,
+          // Never follow redirects automatically: a 3xx destination is NOT
+          // validated by fetch, so default behaviour could deliver the POST
+          // body and (same-origin) auth headers to another host.
+          redirect: 'manual',
         });
-        const text = boundedRedacted(await response.text(), 2_000, [this.apiKey]);
+        // A redirect is a transport refusal, not a success and not a body to
+        // follow. Surface the status explicitly (never the location: it is
+        // untrusted provider/host content and stays out of diagnostics).
+        if (response.status >= 300 && response.status < 400) {
+          await response.body?.cancel().catch(() => undefined);
+          clearTimeout(timer);
+          throw new ProviderError(
+            'provider_unavailable',
+            `Media request was redirected (status ${response.status}); redirects are refused so requests stay on the provider origin.`,
+            { status: response.status },
+          );
+        }
+        const text = await readBoundedText(response);
         clearTimeout(timer);
         if (isAborted(options.signal)) {
           // Completed after cancellation: report failure, never success.

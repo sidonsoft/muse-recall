@@ -7,7 +7,7 @@ export type {
 export { isAllowedMediaUrl, MEDIA_PROVIDER_ORIGIN, MediaAdapter } from './adapter.js';
 export type { MediaProbeFn, MediaProbeOptions } from './capabilities.js';
 export {
-  MEDIA_PROBE_PATHS,
+  MEDIA_PROBE_MODELS,
   mediaAdapterFromEnv,
   probeMediaCapabilities,
   probeMediaCapability,
