@@ -6,6 +6,18 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Token scope stated at the file level instead of inherited from repo
+# settings. The repository's default_workflow_permissions is already
+# `read` (API-confirmed 30 Oct), so this block pins the SAME effective
+# privilege per file - belt for the repo-setting braces - listing
+# exactly what the jobs consume: checkout reads contents, the two
+# artifact uploads need actions:read. Nothing here escalates; if any
+# job needed more, this PR's own three legs would fail, and they are
+# the witness.
+permissions:
+  contents: read
+  actions: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
