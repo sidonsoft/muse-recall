@@ -261,7 +261,8 @@ FocusFlow limitations, stated plainly:
 | pnpm | 10.x | `corepack enable && corepack prepare pnpm@10 --activate` |
 | Meta Muse Code CLI | 1.4.x | `muse` on `PATH`, logged in (`muse login`) |
 
-Verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.13, SQLite 3.53.4.
+Verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.14 (re-witnessed on a clean
+clone, 31 Oct), SQLite 3.53.4.
 
 ### Run it
 
@@ -284,7 +285,7 @@ stream of created/corrected events and the SVG relationship map over supersessio
 ### Verify, don't trust
 
 ```bash
-pnpm verify                 # lint + typecheck + tests (925 passed, 3 skipped)
+pnpm verify                 # lint + typecheck + tests (941 passed, 3 skipped)
 pnpm build                  # production web + server build
 pnpm muse:probe             # real headless Muse call with latency and token usage
 MML_LIVE_MUSE=1 pnpm test   # adds 3 live integration tests against Muse

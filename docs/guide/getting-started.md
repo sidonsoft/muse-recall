@@ -13,8 +13,8 @@ Set up Muse Recall on a local machine, load the recorded demo, and make a first 
 | Meta Muse Code CLI | 1.4.x, `muse` on `PATH`, logged in | Real chat and HTML Studio generation. `muse login` once; `muse --version` to check. |
 | Playwright Chromium | current managed build | Needed for the default managed approval/runtime checks and for `verify:studio-workflow`. Install with `pnpm exec playwright-core install chromium`; `FORGE_RUNTIME_BROWSER=chrome` is the explicit system-Chrome alternative. |
 
-The repository is verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.13 and SQLite 3.53.4 on
-macOS. The supported floor in `package.json` is Node 24.
+The repository is verified on Node 26.8.1, pnpm 10.32.1, Muse Code 1.4.14 and SQLite 3.53.4 on
+macOS (full local-beta path re-witnessed on a clean clone, 31 Oct). The supported floor in `package.json` is Node 24.
 
 The app is local-first. It needs no hosted service, database server or account beyond the Muse CLI
 login. `MODEL_PROVIDER=echo` removes even that dependency for browsing and chat; see
