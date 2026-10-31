@@ -297,6 +297,9 @@ export const MemoryHistoryEntrySchema = z.object({
     'superseded',
     'deleted',
     'expired',
+    // 'purged' is accepted by schema and SQL CHECK but never written: engine.purge()
+    // hard-deletes the row and its history, so no history event can carry it. Kept for
+    // contract stability; removal is a D042-style migration queued separately.
     'purged',
     'accepted',
     'rejected',
