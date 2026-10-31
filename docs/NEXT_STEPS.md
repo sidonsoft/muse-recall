@@ -731,6 +731,20 @@ now is maintenance honesty, not new surface:
     non-config.ts readers (setup.sh's opt-out vars were the prior
     instance). 36 example keys, 42 schema keys, zero orphans each
     way once comments and consumers are counted honestly.
+  - Browser-workflow counts re-witnessed at head from the CI leg's
+    own print (31 Oct): both post-merge logs say "Automated Studio
+    workflow: 49 checks passed" - per engine, chromium and firefox;
+    the 48-local/49-CI split matches the script's design (visual
+    compare is one Linux-only check; baselines on disk are exactly
+    linux x 2 engines x 3 slots = 6 pngs). A LOCAL re-attempt on
+    this host failed before the driver's first check: the pinned
+    managed Chromium build is absent from the browser cache, the
+    server-side runtime check stalls, and the UI 422s - a host
+    toolchain gap, not an application defect (the script's own
+    error names the cure). We did NOT download browsers to the
+    host; the CI receipts stand as this head's witnesses, and the
+    static call-site count (45) would have UNDERCOUNTED the loops
+    anyway - the runtime counter is the measure, never grep -c.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
