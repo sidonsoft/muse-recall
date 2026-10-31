@@ -1,0 +1,94 @@
+# Public technical summary — DRAFT, NOT FOR PUBLICATION YET
+
+**Status:** draft outline, 2026-10-31. It contains **no results**, because Study 02 has not been
+preregistered, piloted or run. Do not publish or cite until the preregistration is frozen and the
+confirmatory results exist. The final version must be rewritten from the frozen protocol and the
+confirmatory report, and must include every negative finding.
+
+**Audience:** external reviewers, including Meridian, who argued that the Phase 17 evaluation's
+zero observed violations may reflect scenarios in which the violation opportunity rarely occurred.
+
+---
+
+## 1. What was claimed, and what was actually measured
+
+The Phase 17 evaluation reported that a remembered safety/design rule reduced executable violations
+from 37/57 to 0/58 (Muse Spark) and from 49/60 to 1/60 (Muse Spark Open). Those are **unconditional**
+counts: violations divided by all usable runs. The evaluation never defined or measured whether a
+run offered a realistic chance to violate the rule. Two of its six strata produced zero violations
+in the no-memory arm, so they contained no evidence about the rule constraint at all.
+
+The criticism is therefore substantially correct, and Phase 17's evidence does not settle it. Note
+also the limits of the original result: one-sided 95% upper bounds of roughly 5% for 0/58 and 0/60,
+two models, one generation path each, six fixed prompts, source-code detectors only, and a same-team
+verification chain.
+
+## 2. What Study 02 changes
+
+Study 02 keeps the original experimental arms and six task strata — for continuity — and changes the
+measurement and corpus:
+
+- **Primary metric:** conditional violation rate (CVR) = violations among runs with a **valid trigger
+  opportunity**. Opportunity is a pre-treatment property of the scenario, frozen before any run.
+- **Corpus:** 400 unique scenarios (distinct baseline variants × frozen request paraphrases), with a
+  pre-registered 200 high-opportunity / 200 low-opportunity split. Opportunity is balanced by
+  construction rather than inferred after seeing outcomes.
+- **Three quantities reported separately:** trigger prevalence (whether the opportunity exists),
+  trigger exposure (whether the model engaged the relevant subsystem, a post-treatment descriptive
+  quantity), and actual violations (frozen detectors).
+- **Replications and clustering:** three repetitions per scenario per arm at a fixed non-zero
+  sampling setting; the unit of analysis is the scenario, not the run.
+- **Predefined analysis:** stratified paired permutation tests for the two superiority hypotheses,
+  cluster-bootstrap non-inferiority for the memory-vs-manual hypothesis, Holm correction, fixed
+  H2 margin, no optional stopping, no interim analysis.
+
+## 3. What the study will and will not support
+
+It will support, if the data do: a statement that among scenarios built to force a violation
+decision, a remembered rule changed the conditional violation rate by X (95% CI), and how that
+compares with typing the same rule into every request. It will not support:
+
+- any claim that zero observed failures imply zero probability of failure;
+- generalisation beyond the tested scenarios, baselines, rules and model(s);
+- a claim that memory is "more than prompting" (the memory-vs-manual comparison tests delivery);
+- a claim about runtime safety: the detectors are fixed source-code operational definitions;
+- a claim of independent verification if the only verification is the study team's own scripts —
+  the final report must state who implemented the second analysis and how labels were validated.
+
+## 4. Methods summary (final numbers frozen at preregistration)
+
+| Element | Draft |
+|---|---|
+| Arms | no memory · memory (production retrieval) · manual (rule typed each request) · corrected (rule superseded through the production correction route) |
+| Strata | two games × two requests + one non-game app × two requests (same six as Phase 17) |
+| Corpus | 400 scenarios; 10 deterministic rule-clean baseline variants per family × frozen paraphrases; 200 high / 200 low opportunity |
+| Repetitions | 3 per scenario per arm; fixed non-zero sampling; distinct per-run seeds |
+| Executions | 4,800 confirmatory (all executed) + a 30-scenario pilot reported separately |
+| Order | SHA-256-determined, seed `0x02A2026`, independently verifiable, frozen before the run |
+| Scoring | frozen Phase 17 detectors (primary + sensitivity readings), local, deterministic |
+| Analysis | pre-registered; exact/permutation primary, cluster bootstrap intervals, Holm; ITT/worst-case reported |
+
+## 5. Provenance and integrity commitments
+
+- The frozen protocol, design, corpus, expected-outcome labels, detectors, order and analysis code
+  will be hashed into a single manifest, committed and **pushed (tagged) before the first
+  confirmatory run**, so the lock has an external timestamp rather than a local file time.
+- The corpus and labels will be generated by a deterministic script from declared baseline
+  structure, and a human validation sample will be coded by independent coders; the procedure and
+  agreement statistic will be reported.
+- Every failed, incomplete and excluded run will be listed with its cause. Results will be published
+  in full whether or not they support the original claim.
+- The Dell local endpoint is used only as an experimental execution environment. It is **not** an
+  independent scoring authority; all outcomes are scored by the frozen local detectors.
+- The original Phase 15B/17 evidence is left untouched. Corrections to it, if any are proposed, will
+  be separate and labelled.
+
+## 6. Current status (replace at publication)
+
+- Phase 1 audit: complete (`01-AUDIT.md`).
+- Protocol draft: complete but **not frozen** (`02-PROTOCOL-DRAFT.md`).
+- Dell endpoint: discovered and characterised (`03-DELL-ENDPOINT.md`).
+- Unit of analysis and power: resolved for the draft (`04-ANALYSIS-PLAN.md`).
+- Pilot: **not run**. Confirmatory experiment: **not started**.
+- Open items include the confirmatory model/endpoint, the human-coding resource, and an
+  opportunity-class design confound — see the checkpoint report.
