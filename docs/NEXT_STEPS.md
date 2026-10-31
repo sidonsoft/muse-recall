@@ -801,6 +801,17 @@ now is maintenance honesty, not new surface:
     serves catalog_version 2 with 5 groups and 46 published entries
     (45 unique codes, invalid_request's designed double-publish) -
     the 45/46 doctrine holds live, not just on paper.
+  - Last stale "six" found at head - in a code comment (31 Oct):
+    mcp-server's header still said "The six bounded tools" while
+    the shared registry it fronts defines seven and the MCP
+    contract test asserts set-equality with that registry (a
+    stronger guard than any count number - it cannot age). The
+    seven-tools documentation campaign had converged every PROSE
+    surface and missed this one comment; fixed word-only, zero
+    behavior, and census proves the frozen main never carried this
+    file at all (mcp-server is integration-only, main's README
+    never mentions MCP) - so no frozen-entry blemish, just a
+    head-only stale comment with era-consistent absence on main.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the

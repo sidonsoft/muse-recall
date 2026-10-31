@@ -12,7 +12,7 @@ import { z } from 'zod';
 /**
  * MCP surface for the shared tool contract (gap G-5).
  *
- * The six bounded tools the session runtime already enforces are exposed over
+ * The seven bounded tools the session runtime already enforces are exposed over
  * the Model Context Protocol from the SAME registry — the REST tool list, the
  * session runtime, and this server can never drift, and a conformance test
  * pins that. JSON Schemas come from the tools' zod contracts (input and
