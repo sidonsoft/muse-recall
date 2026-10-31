@@ -217,8 +217,15 @@ by trigger, newest obligation first. Conflicts resolve toward the home doc.
    errors, 261 after module mappings (agent-core, ui-protocol, fastify via
    apps/server), 254 with allowImportingTsExtensions (the config is noEmit-only;
    tests and web sources use .ts specifiers as their vite/tsx convention). Zero
-   plumbing noise left; all 254 are real fix work: TS2739 x87 partial fixtures,
-   TS2345 x53, undefined-access x43 (TS18048/2532). The 87 fixture-vs-interface cases
+   plumbing noise left; denominator now 231 after excluding PROTOCOL-LOCKED
+   research scripts (verify-phase16/17/-sums assert their own bytes against
+   hashes recorded in the locked protocols - editing ANY byte, type-only
+   included, breaks verify:research17: proven by patch-then-FAIL then
+   revert-then-PASS on 31 Oct; they are permanently un-fixable and were
+   excluded). verify-phase17-strict stays in the count (17) because a research
+   test imports its helper - post-judging: carve the helper out, then exclude.
+   Remaining real fix work: TS2739 x87 partial fixtures, TS2345 x53,
+   undefined-access clusters in editable scripts/tests. The 87 fixture-vs-interface cases
    are a design decision (Partial<> types vs explicit fields), not mechanical;
    B-7 is now a scoped plan with a number, not a vague trade.
 8. ~~Archive this cadence register into a dated log file~~ DONE 31 Oct: journal
