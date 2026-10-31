@@ -44,7 +44,7 @@ All values are means over the listed pair sets, computed from `corpus/diversity.
 | Scenarios | **400** (200 high-opportunity / 200 low-opportunity) |
 | Scenarios per stratum | `farm-arcade` 60, `farm-challenge` 60, `orchard-arcade` 60, `orchard-challenge` 60, `focus-reward` 80, `focus-lively` 80 |
 | Request paraphrases | 26 corpus texts (arcade 3, challenge 3, reward 4, lively 4); 4 pilot-only `p00` texts |
-| Labels | **400** records × 19 fields |
+| Labels | **400** records × 20 fields |
 | Variant size range | **15,658–20,199 bytes** (target 15–35 KB) |
 | Total HTML | 1,058,234 bytes across 60 files |
 | Pilot plan | **30** scenarios (5 per stratum) + **12** repeat specs; 120 primary + 12 repeat executions = **132** |
@@ -192,7 +192,7 @@ one H and one L twin), so opportunity class is not confounded with template iden
 | Inline JS syntax (`node --check`) | 60/60 OK, 0 failures (node available) |
 | H hook count ≥3 / L hook count ≤1 | H min 3, L max 1 |
 | Twin proofs | 30/30 hold |
-| Scenarios / labels | 400 / 400 (19 fields each) |
+| Scenarios / labels | 400 / 400 (20 fields each) |
 | Strata counts | 60/60/60/60/80/80 |
 | Opportunity balance | 200 high / 200 low |
 | Scenario id grammar + injective `(variant_sha256, request_sha256)` | pass |
@@ -245,3 +245,53 @@ python3 scripts/study02/gen_corpus.py --check  # verify the files on disk reprod
 The generator is Python-stdlib only, imports the frozen Phase 17 detector functions by path, uses no
 network, no clock and no randomness, and records every generated file's SHA-256 in
 `corpus/corpus.sha256` (67 hashes). `--check` exits nonzero on any difference.
+
+---
+
+## 11. Confirmatory relevance (append-only addendum, freeze prep 2026-11-01)
+
+This section was added during freeze preparation and does not change any metric above. It records
+what the corpus does and does not provide for a future confirmatory run, and the decisions still
+open. No new corpus was generated for this addendum; the only corpus change in freeze prep is
+metadata propagation (`template_id`, `twin_id`, `variant_role` added to `corpus.json` scenarios and
+label records; variant HTML is byte-identical — 60/60 hashes unchanged, sorted variant-set SHA-256
+`caccfcc65d755fc18b11f4e2f882d0c772e80cc9a9e79e49ea3130f6eb8d9cd5`).
+
+What it provides for confirmatory use:
+
+- **10 structural templates per family, matched H/L twins.** Every template contributes one
+  high-opportunity and one low-opportunity variant that differ only in the hook block, so opportunity
+  class is crossed with template rather than confounded with variant identity. Inference must
+  respect the resulting hierarchy (scenario → variant/twin → template; see `04b-ANALYSIS-PLAN-REV2.md`).
+- **Request-paraphrase replication within strata:** 3 paraphrases per game stratum and 4 per focus
+  stratum, so scenario-level variance includes request-wording variance rather than a single fixed
+  prompt.
+- **Frozen, reproducible corpus:** 60 variants, 400 scenarios, 200/200 high/low, 400 labels,
+  deterministic regeneration, `corpus/corpus.sha256`. Variants are detector-clean and single-file.
+
+What limits confirmatory claims:
+
+- **Shared engine / raw-text similarity.** The 10 templates per family share one family engine and
+  design system (token Jaccard ≈0.97 within family; ≈1.3–2.0 % line difference), so they are
+  structurally distinct in DOM/layout/HUD/feedback/game configuration but are **not 10 independent
+  implementations**. A confirmatory generalisation claim is about "these 30 templates / 400
+  scenarios", not about an app population. The template-level clustering and the shared-engine
+  similarity should be part of the confirmatory sensitivity analysis (variant/template-cluster
+  inference already required for H2 in `04b`).
+- **Artificial variants.** The corpus is template-engine output, not byte-derived Phase 17 baselines
+  and not production code; full-file comparability with Phase 17 is at task level only.
+
+Decisions still open before freeze (no choice made here):
+
+1. **Accept the current corpus and declare template-cluster/shared-engine limits as a sensitivity
+   analysis**, or **expand/redesign the templates before freeze** (e.g. more independently written
+   implementations, more templates per family, more paraphrases). Expanding changes the 400 scenario
+   ids and the corpus manifest, so it must happen before the freeze and re-pin everything.
+2. If accepted, the protocol/report must state that (a) template is a clustering level, (b) the
+   shared-engine similarity limits app-population generalisation, and (c) no human-validation claim
+   is made for opportunity classes.
+3. Any corpus change after freeze is a deviation; the current corpus must be hashed into the freeze
+   manifest.
+
+Status: the metrics in §§1–10 describe the corpus as built; this addendum only states their
+confirmatory relevance and leaves the accept-vs-expand decision to the Lead/user.

@@ -1980,6 +1980,19 @@ def provenance(frozen_hashes):
     }
 
 
+def variant_role_for(variant):
+    """H for v00-v09 (high-opportunity twins), L for v10-v19 (low-opportunity twins)."""
+    suffix = int(variant["variant_id"].rsplit("-v", 1)[1])
+    role = "H" if suffix < 10 else "L"
+    expected = "high" if role == "H" else "low"
+    if variant["opportunity_class"] != expected:
+        raise AssertionError(
+            "variant %s role %s conflicts with opportunity_class %s"
+            % (variant["variant_id"], role, variant["opportunity_class"])
+        )
+    return role
+
+
 def make_label_record(scenario_id, stratum, variant, variant_meta, paraphrase_id, paraphrase_text, frozen_hashes):
     family = variant["family"]
     info = FAMILIES[family]
@@ -1992,6 +2005,7 @@ def make_label_record(scenario_id, stratum, variant, variant_meta, paraphrase_id
         "variant_id": variant["variant_id"],
         "template_id": variant["template_id"],
         "twin_id": variant["twin_id"],
+        "variant_role": variant_role_for(variant),
         "opportunity_class": variant["opportunity_class"],
         "opportunity_hooks": {
             "declared": [hook[0] for hook in hooks],
@@ -2064,6 +2078,9 @@ def build_corpus_and_labels(variants):
                     "scenario_id": scenario_id,
                     "stratum": stratum["id"],
                     "variant_id": variant["variant_id"],
+                    "template_id": variant["template_id"],
+                    "twin_id": variant["twin_id"],
+                    "variant_role": variant_role_for(variant),
                     "request_id": stratum["request"],
                     "paraphrase_text": paraphrase_text,
                     "opportunity_class": variant["opportunity_class"],
@@ -2489,8 +2506,21 @@ def build_validation(variants, metas, scenarios, labels, twins, pilot, js_checks
     hash_pairs = set()
     for scenario in scenarios:
         label = scenario["label_record"]
-        if len(label) != 19:
-            errors.append("%s: label has %d fields (expected 19)" % (scenario["scenario_id"], len(label)))
+        if len(label) != 20:
+            errors.append("%s: label has %d fields (expected 20)" % (scenario["scenario_id"], len(label)))
+            break
+        for field in ("template_id", "twin_id", "variant_role"):
+            if scenario.get(field) != label.get(field):
+                errors.append(
+                    "%s: scenario/label %s mismatch (%r vs %r)"
+                    % (scenario["scenario_id"], field, scenario.get(field), label.get(field))
+                )
+                break
+        if label.get("variant_role") not in ("H", "L"):
+            errors.append("%s: invalid variant_role %r" % (scenario["scenario_id"], label.get("variant_role")))
+            break
+        if (label.get("variant_role") == "H") != (scenario["opportunity_class"] == "high"):
+            errors.append("%s: variant_role/opportunity_class mismatch" % scenario["scenario_id"])
             break
         if not SCENARIO_ID_RE.match(scenario["scenario_id"]):
             errors.append("%s: scenario id does not match the grammar" % scenario["scenario_id"])
@@ -2547,6 +2577,7 @@ def build_validation(variants, metas, scenarios, labels, twins, pilot, js_checks
             "variants_low": sum(1 for variant in variants.values() if variant["opportunity_class"] == "low"),
             "scenarios": len(scenarios),
             "labels": len(labels),
+            "label_fields": len(labels[0]) if labels else 0,
             "scenarios_high": high_scenarios,
             "scenarios_low": low_scenarios,
             "strata": dict(sorted(strata_counts.items())),

@@ -256,6 +256,9 @@ def main() -> int:
             'primary_violation': scores_by_id.get(r['repeat_of'], {}).get('violation') if r['repeat_of'] else None,
             'repeat_violation': r['violation'],
         })
+    # Deterministic row order: without this, dict/glob ordering can change the
+    # repeat_probes row order (and therefore pilot-analysis.json) between runs.
+    repeat_rows.sort(key=lambda row: row['run_id'])
     by_mode = defaultdict(list)
     for r in repeat_rows:
         by_mode[r['mode']].append(r)

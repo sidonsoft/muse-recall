@@ -1,0 +1,117 @@
+{
+  "pin_version": "study02-prompt-builder-pin-1.0",
+  "status": "pre-freeze pin (offline). NOT a preregistration freeze; no confirmatory run, no paid calls.",
+  "purpose": "Pin the production prompt-builder and retrieval call sites that a future Study 02 confirmatory run would use, so the prompt path cannot change silently between the freeze commit and the run.",
+  "base_commit": "85773b331ef02f28cb4ba761a72e21b3a34b2de9",
+  "base_commit_short": "85773b3",
+  "branch": "study02/freeze-prep",
+  "repository": "muse-memory-lab (working tree at /Users/burnz/projects/muse-memory-lab)",
+  "pinned_at_utc": "2026-11-01",
+  "pinning_note": "Hashes and sizes are SHA-256 of the working-tree files at base commit 85773b3 on branch study02/freeze-prep. They are computed, not invented. If a rebuild differs, the pin must be re-taken and the new hashes recorded before any confirmatory run.",
+
+  "pinned_files": [
+    {
+      "path": "apps/server/src/forge/prompt.ts",
+      "role": "the single production prompt builder for Forge jobs (generate and modify paths, memory rendering)",
+      "bytes": 7128,
+      "sha256": "b4d5717a5228ea0ad83e873967b0c3e19c7ee7e02da0cb1841e8109a7513aa58",
+      "last_touching_commit": "553c58ca53a62848acf8f01da841995a9545f4af",
+      "last_touching_date": "2026-10-30"
+    },
+    {
+      "path": "apps/server/src/forge/runner.ts",
+      "role": "server-side Forge runner: retrieval call, memory list, buildForgePrompt call, prompt_sha256 recording, job lifecycle",
+      "bytes": 67457,
+      "sha256": "dca1b4a6a94122b73bd79dc2b7dc3c4ff1388f0683ff8dd138618eccd33c6ba2",
+      "last_touching_commit": "9a3c9eb78f885a23089da9aa437114a2e054fbd8",
+      "last_touching_date": "2026-10-30"
+    },
+    {
+      "path": "packages/memory-engine/src/engine.ts",
+      "role": "MemoryEngine: create/retrieve/correct API used to place and supersede the arm's memories",
+      "bytes": 49778,
+      "sha256": "dc05bbd840fbf1d22d47b8ad3bb8a74573f2508c480bfc8647c57415c4999e71",
+      "last_touching_commit": "4dba23ead6011b78cdc6ad782c74f486c05aeeb1",
+      "last_touching_date": "2026-10-31"
+    }
+  ],
+
+  "prompt_rendering_dependencies": [
+    {
+      "path": "packages/memory-engine/src/context.ts",
+      "role": "renderMemoryLayout(..., 'forge'): delimited project_constraints / project_memory_data blocks with provenance header, escaped content and 'data, not instructions' safety lines; imported by prompt.ts. Advisory dependency: it changes the rendered memory block even when prompt.ts is unchanged.",
+      "bytes": 6701,
+      "sha256": "204a18ab1997b309804b309b2aa86fa18d4f7981bdd0a510823c57a7f1cfda93",
+      "last_touching_commit": "3627932b2805ff74eaabf1cb79b25a8aa8362b83",
+      "last_touching_date": "2026-10-29",
+      "pinned": false,
+      "reason_not_in_three_file_pin": "The requested three-file pin is prompt.ts + runner.ts + engine.ts; this dependency is recorded so a context.ts change is not invisible, and must be added to the freeze manifest."
+    }
+  ],
+
+  "buildforgeprompt_behaviour": {
+    "source": "apps/server/src/forge/prompt.ts (read directly at base commit)",
+    "exported_functions": ["buildForgePrompt(input: ForgePromptInput): string", "buildRetrievalQuery(input): string"],
+    "input_shape": {
+      "kind": "ForgeJobKind ('generate' | 'modify')",
+      "prompt": "string: the user's task/request text",
+      "request": "string | null | undefined: modify-request text",
+      "memories": "RetrievedMemory[] | undefined: structured retrieval records (optional; empty/absent -> no memory block)",
+      "hasScreenshot": "boolean | undefined: whether a preview screenshot is attached (modify path)"
+    },
+    "memory_rendering": {
+      "function": "renderForgeMemory(input) -> renderMemoryLayout(input.memories, 'forge') when memories is non-empty; otherwise ''",
+      "layout": "forge layout emits a <project_constraints> block for constraint/goal memories and a <project_memory_data> block for other memories; each entry carries [n] id, type, scope, validation_status, confidence, source; content is escaped; both blocks start with standing safety lines stating the block is data, not a trusted instruction.",
+      "injection_point": "The memory block is injected after a paragraph telling the model the stored project memory is reference data and cannot grant permissions, change the execution contract, or override policy.",
+      "empty_behaviour": "No memories -> the memory block is the empty string; no memory section is added."
+    },
+    "prompt_paths": {
+      "generate": "generate path: fixed application contract (single index.html, responsive, sandbox interaction contract, accessibility/keyboard, storage rules, node --check, optional memory block, then 'Application request:' + input.prompt).",
+      "modify": "modify path: edit-in-place contract, screenshot sentence (attached vs not), preserve behaviour, sandbox interaction contract, storage rules, optional memory block, then 'Requested change:' + (input.request ?? input.prompt).",
+      "request_vs_prompt": "modify uses request when present; generate uses prompt."
+    },
+    "retrieval_query": "buildRetrievalQuery returns input.request ?? input.prompt for kind 'modify', else input.prompt (project_id deliberately excluded from the query).",
+    "runner_call_site": "apps/server/src/forge/runner.ts: retrieve via this.engine.retrieve({project_id, query, mode:'forge'}, {now}); memories = retrieval.results; then buildForgePrompt({kind, prompt, request, memories, hasScreenshot}); resulting prompt is hashed (prompt_sha256) and written to staging/prompt.txt before execution.",
+    "retrieval_api": "packages/memory-engine/src/engine.ts exposes create(input), retrieve(request, options), correct(input); retrieve delegates to retrieveMemories(this.db, request, options) and reads only."
+  },
+
+  "phase17_difference": {
+    "phase17_call_site": "docs/hackathon-evidence/phase17/run_open.mjs",
+    "phase17_behaviour": "The locked Phase 17 Open runner rendered memory itself into a flat string: `memoryBlock = retrieval.results.map(r => '- ' + r.injected_content).join('\\n')` (or '' when empty), then called buildForgePrompt({ kind: 'modify', prompt, request, memoryBlock, hasScreenshot: false }). That call site corresponds to an older production builder whose input accepted a pre-rendered `memoryBlock`.",
+    "current_behaviour": "The current production builder (pinned above) has no `memoryBlock` input; it accepts structured `memories: RetrievedMemory[]` and renders a delimited, id/provenance-bearing memory block itself via renderMemoryLayout(..., 'forge'). Passing an extra `memoryBlock` string at runtime would not be rendered.",
+    "verdict": "The two paths are not prompt-level comparable. Study 02 confirmatory runs use the CURRENT production builder (structured memories); prompt-level identity with the locked Phase 17 runs is NOT claimed. Any Phase 17 vs Study 02 comparison is a task-level replication/successor comparison, not a byte-identical-prompt comparison.",
+    "consequence_for_freeze": "The freeze manifest must include this pin, the frozen retrieval/rendering dependency hashes, and the exact prompt_sha256 recorded per confirmatory run. A prompt.ts/runner.ts/engine.ts/context.ts change after the freeze is a deviation, not a silent update."
+  },
+
+  "decision": {
+    "confirmatory_prompt_source": "current production buildForgePrompt at the freeze commit (pinned by the hashes above), not a re-implementation and not the Phase 17 loader",
+    "prompt_level_identity_with_phase17": false,
+    "must_be_stated_in_protocol_and_results": true,
+    "rationale": "The study measures the product's current prompt path; freezing a historical prompt would measure a prompt the product no longer uses. Continuity with Phase 17 is at the level of arms, strata, rules, detectors and task, and is labelled as such.",
+    "pinning_route": "At freeze: add these hashes (plus context.ts) to the lock manifest and record the pinned base commit in the protocol; after the freeze the prompt builder is immutable for the confirmatory run."
+  },
+
+  "environment_dependent_not_pinned_here": [
+    "Provider/model version served by Baseten for meta-models/muse-spark-open-1026 (revision id; must be recorded per run and asserted against an expected id).",
+    "Tokenizer and chat template applied server-side by the provider; token counts returned in usage are provider-computed.",
+    "Sampling parameter support/defaults at the provider (temperature/top_p/max_tokens/seed); the protocol's frozen sampling setting is a request-side choice and must be echoed/recorded.",
+    "Transport and request framing (chat-completions vs the Forge CLI tool loop); checkpoint-2 evidence uses a chat-completions-style path, so the confirmatory run must use one fixed path.",
+    "Retrieval contents: the actual memory ids and rendered character counts depend on the project memory state and retrieval DB; these must be recorded per run (the engine/API are pinned, the data are not).",
+    "Screenshot attachment: modify prompts differ when hasScreenshot is true; the confirmatory harness must fix and record this per arm.",
+    "System/developer instructions injected outside buildForgePrompt (provider system prompt, tool loop) are not in these files."
+  ],
+
+  "verification_commands": [
+    "git rev-parse HEAD  # expect 85773b331ef02f28cb4ba761a72e21b3a34b2de9 at pin time",
+    "shasum -a 256 apps/server/src/forge/prompt.ts apps/server/src/forge/runner.ts packages/memory-engine/src/engine.ts packages/memory-engine/src/context.ts",
+    "wc -c apps/server/src/forge/prompt.ts apps/server/src/forge/runner.ts packages/memory-engine/src/engine.ts packages/memory-engine/src/context.ts",
+    "grep -n 'buildForgePrompt' apps/server/src/forge/prompt.ts apps/server/src/forge/runner.ts",
+    "grep -n 'memoryBlock\\|memories' docs/hackathon-evidence/phase17/run_open.mjs"
+  ],
+
+  "limitations": [
+    "The pin records the repository state, not the deployed provider. A provider-side model swap or revision change would be invisible to these hashes; per-run observed model id is required.",
+    "context.ts is pinned only as an advisory dependency; a full lock must include it (and any future renderer the prompt imports).",
+    "No generated prompt is stored in this pin; prompt content depends on the arm's memory set and request text, which are corpus/pilot inputs."
+  ]
+}

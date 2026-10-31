@@ -1,12 +1,21 @@
 # 04b — Analysis plan REV2: matched-twin design (checkpoint 2)
 
-**Status: DRAFT for checkpoint-2 review — not pre-registered, nothing executed.**
-This document supersedes `04-ANALYSIS-PLAN.md` **for the revised matched-twin design only** (and only
-if the Lead approves it at checkpoint 2). The v1 plan and its power transcript remain on disk,
-unchanged, as the checkpoint-1 record. All performance numbers below are **[SIM]**: a simulation
-under explicit assumptions, not observed data (`analysis/power_study2_rev2.py`, full transcript
+**Status: DRAFT for the freeze gate — not pre-registered, nothing executed.** This document
+supersedes `04-ANALYSIS-PLAN.md` **for the revised matched-twin design only**. The v1 plan and its
+power transcript remain on disk, unchanged, as the checkpoint-1 record and are **not** modified by
+this correction. All performance numbers below are **[SIM]**: a simulation under explicit
+assumptions, not observed data (`analysis/power_study2_rev2.py`, full transcript
 `analysis/power_study2_rev2.txt`, 972-cell main grid + 360 H1/H3 cells + 36 allocation-comparison
-cells, 2,000 replicates per cell, 2.74M simulated trials, deterministic, 136 s).
+cells, 2,000 replicates per cell, 2.74M simulated trials, deterministic; transcript SHA-256
+`39b7ec5474d45c7a145870c785133a27b592f433fa1dcf7398662ac47fd624c5`).
+
+**Change log.** 2026-10-31 — checkpoint-2 draft (matched-twin design). **2026-11-01 — freeze-prep
+correction** (from `review/05-DESIGN-STATISTICAL-REVIEW.md`): **T6** the H2/CI clustering is
+corrected from the anti-conservative per-stratum variant bootstrap to the **family-block
+variant-cluster bootstrap** (old scheme retained only as a pre-declared sensitivity); **T8** one
+denominator-free margin fallback rule replaces the two inconsistent variants; **max-unusable /
+co-primary rule** added (§6.4); **pilot→Baseten assumption-transfer statement** added (§4.12).
+All changed H2/CI/power numbers are the regenerated T6 transcript; the v1 transcript is untouched.
 
 | Provenance tags | Meaning |
 |---|---|
@@ -14,11 +23,12 @@ cells, 2,000 replicates per cell, 2.74M simulated trials, deterministic, 136 s).
 | **[DRAFT]** | this plan's decision; needs approval before freeze |
 | **[TBD]** | open; must be fixed at the freeze gate |
 | **[SIM]** | simulated under the stated assumptions — **not observed data** |
+| **[OBSERVED]** | pilot/qualification observation cited from the checkpoint-2 records (not confirmatory data) |
 
-Inputs read: `_internal/PLAN-CHECKPOINT2.md` (authority for the revised design),
-`04-ANALYSIS-PLAN.md` (v1), `analysis/power_study2.py` (v1), `02-PROTOCOL-DRAFT.md` v0.1
-(checkpoint-1 text; its §4–§12 still describe the v1 allocation — protocol-architect must update it),
-`01-AUDIT.md`, `05-CHECKPOINT-REPORT.md` §7 (D1–D14).
+Inputs read: `_internal/PLAN-CHECKPOINT2.md` (fixed design), `review/05-DESIGN-STATISTICAL-REVIEW.md`
+(§2–§7, T6/T8), `02b-PROTOCOL-REVISION-V2.md`, `04-ANALYSIS-PLAN.md` (v1 record, untouched),
+`analysis/power_study2.py` (v1, untouched), `design/design-v2.json`, `corpus/*`, and the checkpoint-2
+pilot records (read-only).
 
 ---
 
@@ -35,36 +45,46 @@ Inputs read: `_internal/PLAN-CHECKPOINT2.md` (authority for the revised design),
 | Cluster hierarchy | scenario → variant (implicit, sensitivity only) | **scenario → variant (H or L twin) → template (T00–T09 per family); arms paired within scenario** |
 | Executions | 4,800 | **4,800** (unchanged) |
 
-### 0.2 Headline **[SIM]** at the pilot-calibrated default
+### 0.2 Headline **[SIM]** at the pilot-calibrated default (T6-corrected)
 
 Default assumptions: `none` CVR 0.65, `memory` 0.03, `manual` 0.05, `corrected` = `none`,
 `ICC_scenario` 0.25 (total between-scenario binary ICC), latent pair-level correlation share
-`rho_pair` 0.30 (⇒ within-variant cluster ICC 0.195; the realised correlation of the 3-rep CVRs is
-attenuated to ≈0.13 by run-level noise), 10% unusable, 3 reps, `rho_arm` 0.5, PHI 0.5 (§2.3). Full-corpus/primary cluster counts 30 templates / 60 variants (30 H) / 400
-scenarios; primary H-only analysis: **30 H-variant clusters, 200 scenarios, 600 runs/arm**.
+`rho_pair` 0.30 ⇒ `rho_V = PHI+(1−PHI)rho_pair = 0.65` and within-variant ICC 0.1625 (the realised
+correlation of the 3-rep CVRs is attenuated to ≈0.13 by run-level noise); the two strata of a family
+share the same variants, with cross-stratum correlation c ≈0.37 (game) / 0.44 (focus); 10%
+unusable; 3 reps; `rho_arm` 0.5; PHI 0.5. Primary H-only analysis: **30 H-variant clusters
+(10 per family), 200 scenarios, 600 runs/arm**; the T6 family-block bootstrap is the H2/CI
+estimator.
 
-| Quantity | Value | Tag |
-|---|---:|---|
-| H1 power (memory < none) | **1.000** | [SIM] |
-| H2 power @ 8 pp | **1.000** | [SIM] |
-| H2 power @ 10 pp | **1.000** | [SIM] |
-| H2 power @ 15 pp | **1.000** | [SIM] |
-| H3 power (corrected > memory) | **1.000** | [SIM] |
-| expected 90% CI width, H2 difference | **5.03 pp** | [SIM] |
-| expected 95% CI width, H1 difference | **12.48 pp** | [SIM] |
-| H2 detectable NI margin at 80% power (true difference 0) | **3.80 pp** | [SIM] |
-| H1 minimum detectable difference at 80% power | **8.92 pp** | [SIM] |
-| variant-cluster design effect (primary) | **1.38** | [SIM] |
-| effective scenarios / effective H-variant clusters | **144.6 / 30 (Kish ≈ 29.4)** | [SIM] |
+| Quantity | T6-corrected [SIM] | old per-stratum scheme (sensitivity) |
+|---|---:|---:|
+| H1 power (memory < none) | **1.000** | — |
+| H2 power @ 8 pp | **0.999** | — |
+| H2 power @ 10 pp | **1.000** | — |
+| H2 power @ 15 pp | **1.000** | — |
+| H3 power (corrected > memory) | **1.000** | — |
+| expected 90% CI width, H2 difference | **5.89 pp** | 5.03 pp |
+| expected 95% CI width, H1 difference | **15.35 pp** | 12.48 pp |
+| H2 detectable NI margin at 80% power (true difference 0) | **4.45 pp** | 3.80 pp |
+| H1 minimum detectable difference at 80% power | **10.97 pp** | 8.92 pp |
+| design effect (primary) | **1.91** | 1.38 |
+| effective scenarios / effective H-variant clusters | **104.9 / 30 (Kish ≈29.4)** | 144.6 |
+
+The implied cross-stratum variance inflation is c = 0.361 empirically (analytic 0.391): the family-
+block correction widens the default H2 CI by ~17% (5.03 → 5.89 pp) and raises DE from 1.38 to 1.91,
+exactly the direction and size the design review predicted (~1.4× variance).
 
 ### 0.3 Headline across the whole grid (§4.4)
 
-At **arm parity** (true `memory − manual` = 0; 216 of 972 cells): min H2 power **0.910 at 10 pp**
-(0.802 at 8 pp — too marginal; 0.992 at 15 pp). At a true **+3 pp** deficit: min 0.946 at 10 pp.
-At a true **+5 pp** deficit: min 0.590 (median 0.754) at 10 pp, min 0.927 at 15 pp. At a true
-**+10 pp** deficit the 10 pp claim is false by construction (power 0.06–0.19) and the 15 pp claim
-still has power 0.61–0.98. H1/H3 are **1.000 in all 360 sweep cells** (saturated). The binding
-constraint is H2; the binding *risk* is a small true memory deficit under strong variant clustering.
+At **arm parity** (true `memory − manual` = 0; 216 of 972 cells): min H2 power **0.834 at 10 pp**
+(0.693 at 8 pp — not defensible; 0.985 at 15 pp). At a true **+3 pp** deficit: min 0.900 at 10 pp.
+At a true **+5 pp** deficit: min 0.485 (median 0.694) at 10 pp, min 0.864 at 15 pp. At a true
+**+10 pp** deficit the 10 pp claim is false by construction (max power 0.132) and the 15 pp claim
+has power 0.495–0.980. H1/H3 are **1.000 in all 360 sweep cells** (saturated; the sign-flip p-values
+use the analytic approximation to the exact permutation null, validated against the literal
+10,000-permutation test at −0.007/−0.003 power). Grid extremes: worst H2 DE 3.79 (n_eff 52.8) at
+ICC 0.4 / `rho_pair` 0.7; widest H2 90% CI 12.13 pp. The binding constraint is H2; the binding
+*risk* is a small true memory deficit under strong variant clustering.
 
 ---
 
@@ -159,6 +179,14 @@ within-variant share rho_V = PHI + (1-PHI)*rho_pair (shared by all scenarios of 
 
 so for any pair of scenarios: correlation = `rho_V * ICC_scenario` if same variant;
 `rho_pair * ICC_scenario` if same template, different twin; 0 if different templates.
+
+**Cross-stratum variant correlation (T6).** Each H variant is used in both strata of its family, so
+the same variant-level deviation enters both stratum means. The cross-stratum correlation of a
+variant's two stratum means is `c_g = rho_V_bin / (rho_V_bin + (1 − rho_V_bin)/k_g)` (k_g = 3 game /
+4 focus), and the variance of the equal-stratum CVR estimate is inflated by ≈(1 + mean c). At the
+default cell c = 0.368 (game) / 0.437 (focus), mean 0.391 → factor ≈1.39. All H2/CI inference and
+the design effects in §2.4 use the family-block bootstrap (§3.2), which preserves this correlation;
+the old per-stratum scheme is a pre-declared sensitivity only.
 `rho_arm = 0.5` is the cross-arm sharing of the scenario deviation (arms paired); `PHI = 0.5` is the
 share of the non-pair variance at the variant level. The per-arm scenario probability is
 
@@ -193,36 +221,40 @@ class), otherwise the grid should be written as one pair-level correlation.
 | `rho_arm` | 0.5 | Cross-arm sharing; v1 used the same; affects how much the pairing cancels. Not identifiable pre-pilot. |
 | `ICC` calibration | exact (`calibrate`), including clipping | Marginal CVR and total ICC are held at the grid values; realised table in transcript §C. |
 
-### 2.4 Design effects (reported separately as required)
+### 2.4 Design effects (reported separately, T6-corrected)
 
 With rev2 cluster counts (variants: 40 game-size-6 + 20 focus-size-8; templates: 20 game-size-12 +
-10 focus-size-16; N = 400):
+10 focus-size-16; N = 400), and with the cross-stratum correlation of each variant's two stratum
+means (T6):
 
 ```
-DE_full-corpus = 1 + 5.8 * rho_V_bin + 6.8 * rho_T_bin
-   where rho_V_bin = rho_V * ICC_scenario  (within-variant, variant clustering)
-         rho_T_bin = rho_pair * ICC_scenario (matched-pair / template clustering)
-DE_primary-H = [ sum_g (1/n_g) * (1 + (k_g-1) rho_V_bin) ] / [ sum_g 1/n_g ]
-   k_g = 3 game / 4 focus; the template level is absorbed (one H twin per template)
+DE_primary-H (old, anti-conservative) = [ sum_g (1/n_g)(1 + (k_g-1) rho_V_bin) ] / [ sum_g 1/n_g ]
+c_g = rho_V_bin / (rho_V_bin + (1 - rho_V_bin)/k_g)        k_g = 3 game / 4 focus
+DE_primary-H (T6) = DE_primary-H(old) * (1 + mean_g c_g)
+DE_full-corpus ≈ (1 + 5.8 rho_V_bin + 6.8 rho_T_bin) * (1 + mean_g c_g)   [approximate]
+   rho_V_bin = rho_V * ICC_scenario   (within-variant; variant clustering)
+   rho_T_bin = rho_pair * ICC_scenario (matched-pair / template clustering)
 ```
 
-At the default cell (`ICC_scenario` 0.25, `rho_pair` 0.30): `rho_V_bin` = 0.195,
-`rho_T_bin` = 0.075, **DE_full ≈ 2.64** (variant term 1.13, template term 0.51); **DE_primary ≈ 1.44
-analytical, 1.38 empirical**. Empirical DEs over the grid are 0.99–2.17 for H2 (max at
-`ICC` 0.4 / `rho_pair` 0.7), i.e. effective scenarios 92–200 of 200. The transcript reports, per
-cell: empirical DE, n_eff = 200/DE, and the realised `rho_V_bin` / `rho_T_bin`.
+At the default cell (`ICC_scenario` 0.25, `rho_pair` 0.30): `rho_V_bin` = 0.1625,
+`rho_T_bin` = 0.075, c = 0.368 (game) / 0.437 (focus), mean 0.391. **DE_primary ≈1.90 analytic,
+1.91 empirical (old scheme 1.38)**; DE_full ≈3.41 (approximate). Grid empirical DE 0.99–3.79
+(max at ICC 0.4 / `rho_pair` 0.7), effective scenarios 53–202 of 200; implied c ranges −0.01–0.73
+(the small negative values at ICC≈0 are Monte Carlo noise around 0). The transcript reports per
+cell: family-block DE, old-scheme DE, n_eff, c, and both CI widths.
 
 ### 2.5 Effective clusters
 
 | Analysis | Unit | Variant clusters | Template clusters | Scenarios | Runs/arm | Kish effective clusters (default) |
 |---|---|---:|---:|---:|---:|---:|
-| Primary CVR (H-only) | scenario | 30 | 30 (same partition) | 200 | 600 | ≈ 29.4 (Kish over 20×6 + 10×8) |
+| Primary CVR (H-only), T6 | scenario | 30 (10 per family) | 30 (same partition) | 200 | 600 | ≈ 29.4 (20×6 + 10×8) |
 | Unconditional rate (all 400) | scenario | 60 | 30 | 400 | 1,200 | ≈ 58.8 |
 | Matched H-vs-L (descriptive) | twin pair | 60 | 30 | 400 | 1,200 | ≈ 29.4 (pairs per template 6/8) |
 
-H2 inference is therefore based on **10 variant clusters per stratum (30 total)** — coarse, and
-reported as such. The 3 reps do not increase the number of clusters; they only reduce the binomial
-component of the variance.
+H2 inference is based on **10 variant clusters per family (30 total)**. The T6 correction accounts
+for the fact that a variant's two stratum means are correlated; the effective scenario count at the
+default cell falls from ~145 (old scheme) to ~105. The 3 reps do not increase the number of clusters;
+they only reduce the binomial component of the variance.
 
 ---
 
@@ -241,46 +273,60 @@ generated by the arm-label flips within scenarios; it is exact for the sharp nul
 correlation between scenarios. The *effect-size* intervals, however, must cluster at the variant level
 (§3.2/§3.3). H1/H3 are 1.000 in all 360 sweep cells even at the strongest clustering [SIM].
 
-### 3.2 H2 — **changed**: stratified VARIANT-cluster bootstrap
+### 3.2 H2 — **changed**: family-block variant-cluster bootstrap (T6)
 
-`Delta_2 = theta_memory − theta_manual`. The v1 scenario-level bootstrap would treat the 30
-variant clusters as 200 independent scenarios and understate the variance by the design effect
-(up to ~2.2× in the grid). The rev2 H2 procedure is:
+`Delta_2 = theta_memory − theta_manual`. The checkpoint-2 draft used a per-stratum variant
+bootstrap; that is **anti-conservative** because each H variant appears in **both strata of its
+family**, so the two stratum means covary (cross-stratum correlation c; variance factor ≈1+c ≈1.4 at
+the default assumptions; `review/05-DESIGN-STATISTICAL-REVIEW.md` §2.3). The primary H2 procedure is
+now:
 
-1. Within each stratum `g`, resample the `n_v = 10` H-variant clusters **with replacement**; for each
-   resampled cluster keep its scenarios (3 game / 4 focus in that stratum) and their paired arm
-   values. Use the same resample for all arms (pairing preserved).
-2. Replicate statistic `Delta_2*` = equal-stratum average of the resampled within-stratum mean
-   memory-manual differences.
-3. `B = 10,000` resamples; percentile interval with nearest-rank endpoints (lower 5th = 500th,
-   upper 95th = 9,500th of 10,000 sorted values); seed `BOOT_SEED = 2003002`; stream label
-   `study02|boot|{model}|{contrast}|rev2`; SHA-256 counter-mode, 8-byte big-endian draw `mod n_v`.
-4. **H2 supported iff upper endpoint < margin m**, strict inequality, exact integer/rational
-   comparison (scenario CVRs in sixths; resampled sums are integers; no floating tolerance).
-5. Margins: **m = +10 pp recommended [DRAFT]**; 8 pp and 15 pp reported as sensitivity (§4.5).
-   α = .05 one-sided.
+1. **Blocks.** The 30 H-variant template clusters are grouped into the 3 baseline families
+   (10 clusters per family). Each cluster is one H variant and carries its scenarios in **both
+   strata of its family** (3 game / 4 focus scenarios per stratum) and all four arms.
+2. **Resample.** Within each family independently, resample its 10 variant clusters **with
+   replacement**, keeping both strata together and using the same resample for all arms (pairing
+   preserved). Family order is fixed: farm, orchard, focus.
+3. **Statistic.** `Delta_2* = (1/3) Σ_f (1/2)( mean_{g1,f}* + mean_{g2,f}* )`, where `mean_{g,f}*` is
+   the mean of the resampled clusters' scenario-level CVR differences in stratum g — exactly the
+   equal-stratum estimand (1/6 per stratum).
+4. **B = 10,000**; percentile interval with nearest-rank endpoints (lower 5th = 500th, upper
+   95th = 9,500th of 10,000 sorted values); seed `BOOT_SEED = 2003002`; stream label
+   `study02|boot|{model}|{contrast}|rev2`; SHA-256 counter-mode RNG; for each resample, family order
+   farm→orchard→focus, and within each family 10 draws of 8-byte big-endian integers mod 10.
+5. **H2 supported iff the upper endpoint < margin m**, strict inequality, exact integer/rational
+   comparison (scenario CVRs in sixths; resampled sums integer; no floating tolerance).
+6. **Margins:** frozen **m = +10 pp**; 8 pp and 15 pp reported as sensitivity (§4.5); α = .05
+   one-sided.
 
-Justification: the cluster is the unit of independent replication; with one H twin per template the
-variant is the top level of the H-only data; the stratified bootstrap respects the 10-cluster-per-
-stratum structure. Validation against the literal procedure (§4.7) shows analytic and literal H2
-power within 0.023 and CI width within 0.7 pp at 300 replicates.
+**Pre-declared sensitivity (not a decision):** the old per-stratum independent variant bootstrap
+and the Newcombe run-level interval are reported beside the primary to quantify the correction;
+neither is ever used for the confirmatory verdict.
+
+Justification and validation: (i) the T6 correction moves the default DE 1.38→1.91, n_eff
+145→105, H2 90% CI 5.03→5.89 pp, and parity minimum H2@10 power 0.910→0.834 — matching the design
+review's arithmetic (understated variance ~1.4×; DE 1.38→≈1.9; n_eff ≈145→≈102; CI ≈5.0→≈5.9 pp;
+the simulation lands at n_eff 104.9 and CI 5.89 pp) and still ≥0.80, so the frozen +10 pp margin
+remains supported; (ii) the analytic family-block approximation matches the
+literal 2,000-resample family-block bootstrap within 0.037 power and 0.8 pp CI width upstream
+(§4.7); (iii) the scheme reproduces bit-for-bit from `BOOT_SEED` and the raw records.
 
 ### 3.3 Confidence intervals
 
-| Quantity | Method | Level | Role |
+| Quantity | Primary method | Level | Role |
 |---|---|---|---|
-| `CVR_a` single arm | variant-cluster bootstrap (§3.2 scheme, same seed/label per contrast) | 95% percentile | primary reporting |
-| `Delta_1`, `Delta_3` risk differences | variant-cluster bootstrap | 95% percentile | effect sizes |
-| `Delta_2` (H2) | variant-cluster bootstrap | 90% percentile (upper = one-sided 95%) | H2 decision |
-| all risk differences | Newcombe hybrid score on run-level counts | 95% | **sensitivity only**; anti-conservative under variant clustering (kept for Phase 17 comparability) |
-| per-stratum `theta_ag` | variant-cluster bootstrap within stratum | 95% | descriptive only |
-| matched H-vs-L contrast | paired twin-pair differences, cluster at template (30) | 95% | descriptive only (§3.5) |
+| `CVR_a` single arm | family-block variant-cluster bootstrap (§3.2 scheme) | 95% percentile | primary reporting |
+| `Delta_1`, `Delta_3` risk differences | family-block variant-cluster bootstrap | 95% percentile | effect sizes |
+| `Delta_2` (H2) | family-block variant-cluster bootstrap | 90% percentile (upper = one-sided 95%) | H2 decision |
+| all risk differences | old per-stratum variant bootstrap | 95% percentile | **pre-declared sensitivity**; anti-conservative (understates variance ~1.4× at default) |
+| all risk differences | Newcombe hybrid score on run-level counts | 95% | sensitivity only, Phase 17 comparability; anti-conservative under clustering |
+| per-stratum `theta_ag` | variant bootstrap within stratum | 95% percentile | descriptive only (cross-stratum correlation is not relevant within one stratum) |
+| matched H-vs-L contrast | paired twin-pair differences, template-cluster (30) bootstrap | 95% percentile | descriptive only (§3.5) |
 
-Zero-event rule unchanged (no silent correction): 0 violations in `n` usable runs → exact one-sided
-95% upper bound `1 − 0.05^(1/n)` (≈3/n; n = 600 → 0.50%; n = 200 → 1.49%), with the design-effect-
-adjusted effective `n` reported descriptively (default n_eff ≈ 145 → ≈ 2.0% for 600 runs? compute:
-1−0.05^(1/145) = 2.04%) and a scenario-level bound (0/200 scenarios → 1.49%) reported as a different
-quantity. Degenerate bootstrap intervals (all resampled values equal) are reported as such.
+The 30-cluster family-block bootstrap is the confirmatory interval; because 10 clusters/family makes
+percentile intervals coarse, the interval width is reported beside the point estimate and a
+cluster-robust t sensitivity is reported descriptively (review §2.4) — the pre-declared method
+decides. Zero-event and degenerate-interval rules are unchanged from v1.
 
 ### 3.4 Cluster-level exclusions (new)
 
@@ -317,94 +363,102 @@ Full grid over the lead-fixed factors: `none ∈ {0.50,0.65,0.80}` × `memory �
 `template share s_T ∈ {0,0.1,0.25}` × `pair extra kappa ∈ {0,0.3,0.6}` → **9 distinct `rho_pair`
 values** (§2.2) × `unusable ∈ {5,10,20}%` × margins {8,10,15} pp evaluated on the same data.
 Main H2 grid: 972 cells (none fixed 0.65 because none affects only H1/H3, which are saturated);
-H1/H3 none sweep: 360 cells. Total 2.74M simulated trials. [SIM]
+H1/H3 none sweep: 360 cells; allocation-comparison cells: 36. 2,000 replicates per cell; 2.74M
+simulated trials; deterministic (verified by two runs differing only in the timestamp/runtime
+line); transcript `analysis/power_study2_rev2.txt` SHA-256
+`39b7ec5474d45c7a145870c785133a27b592f433fa1dcf7398662ac47fd624c5`. **All H2 power and CI numbers
+use the T6 family-block bootstrap**; the old per-stratum scheme is printed beside them. [SIM]
 
 ### 4.2 Default cell
 
-As §0.2: H1 1.000, H2@8 1.000, H2@10 1.000, H2@15 1.000, H3 1.000; H2 90% CI width 5.03 pp
-(half-width ≈2.5 pp); H1 95% CI width 12.48 pp; H2 MDD margin 3.80 pp; H1 MDD 8.92 pp; DE 1.38;
-n_eff 144.6/200. [SIM]
+H1 1.000, H2@8 0.999, H2@10 1.000, H2@15 1.000, H3 1.000; H2 90% CI width **5.89 pp**
+(family-block; old scheme 5.03 pp, i.e. the correction widens it 17%); H1 95% CI width **15.35 pp**
+(old 12.48 pp); H2 MDD margin **4.45 pp** (old 3.80); H1 MDD **10.97 pp** (old 8.92); DE **1.91**
+(old 1.38); n_eff **104.9/200** (old 144.6); implied c 0.361 (analytic 0.391). [SIM]
 
-### 4.3 Margin / deficit slices (H2 power, 972 cells)
+### 4.3 Margin / deficit slices (H2 power, T6, 972 cells)
 
 | True `memory − manual` gap | H2 @ 8 pp | H2 @ 10 pp | H2 @ 15 pp |
 |---|---:|---:|---:|
-| 0 (arm parity; 216 cells) | min 0.802, median 1.000 | **min 0.910**, median 1.000 | min 0.992, median 1.000 |
-| +3 pp (108 cells) | min 0.853 | min 0.946 | min 0.997 |
-| +5 pp (108 cells) | min 0.381 | min 0.590, median 0.754 | min 0.927 |
-| +10 pp (108 cells) | max 0.074 | max 0.187 | min 0.607, median 0.775 |
+| 0 (arm parity; 216 cells) | min 0.693, median 1.000 | **min 0.834**, median 1.000 | min 0.985, median 1.000 |
+| +3 pp (108 cells) | min 0.780 | min 0.900 | min 0.993 |
+| +5 pp (108 cells) | min 0.293 | min 0.485, median 0.694 | min 0.864 |
+| +10 pp (108 cells) | max 0.051 | max 0.132 | min 0.495, median 0.707 |
 
-Cells below 0.80: **margin 8: 216/972** (108 of them true non-inferior, worst 0.381);
-**margin 10: 173/972** (65 true non-inferior, worst 0.590); **margin 15: 56/972** (all 56 true
-non-inferior, worst 0.607 — a +10 pp true gap with only 5 pp of margin buffer under maximal
-clustering). The 8 pp margin is not defensible: even at exact arm parity its minimum is 0.802.
+Cells below 0.80: **margin 8: 241/972** (133 of them true non-inferior, worst 0.293);
+**margin 10: 186/972** (78 true non-inferior, worst 0.485); **margin 15: 72/972** (all 72 true
+non-inferior, worst 0.495 — a +10 pp true gap with only 5 pp of margin buffer under maximal
+clustering). The 8 pp margin is not defensible: even at exact arm parity its minimum is 0.693.
 [SIM]
 
-### 4.4 Effective clusters, DE and CI widths (grid ranges)
+### 4.4 Effective clusters, DE and CI widths (grid ranges, T6)
 
-H2 empirical DE 0.99–2.17 (n_eff 92–201); worst cell `ICC` 0.4 / `rho_pair` 0.7 / 5% unusable:
-DE 2.17, n_eff 92, H2 90% CI width 7.87 pp. Widest H2 90% CI in the grid: **9.53 pp** (arm parity,
-mem=manual=0.10, `ICC` 0.4, `rho_pair` 0.7, 20% unusable; MDD margin 7.20 pp). H1 95% CI width
-ranges ~8–17 pp across the clustering grid. [SIM]
+H2 family-block empirical DE **0.99–3.79** (n_eff **53–202**); worst cell ICC 0.4 / `rho_pair` 0.7 /
+5% unusable: DE 3.79, n_eff 52.8. Widest H2 90% CI in the grid: **12.13 pp** (arm parity,
+memory = manual = 0.10, ICC 0.4, `rho_pair` 0.7, 20% unusable; MDD margin 9.17 pp). H1 95% CI
+width ranges ~8–22 pp across the clustering sweep. Implied cross-stratum c ranges −0.01–0.73
+(negative values at ICC≈0 are Monte Carlo noise around 0). [SIM]
 
 ### 4.5 Margin recommendation and pilot fallback
 
-**Recommend +10 pp as the frozen margin [DRAFT].** At pilot-calibrated rates it has ≥0.99 power and
-the CI half-width is ~2.5 pp; the worst arm-parity cell in the grid is 0.910. The honest caveat: if
-the true memory deficit is ~5 pp, +10 pp power falls to 0.59–0.94 under strong variant clustering, so
-a true non-inferiority could fail to be established. **+15 pp** is the safer fixed margin if the
-pilot or endpoint qualification suggests any memory degradation (at +5 pp deficit min power 0.927),
-but it is a materially weaker claim (Phase 17 used +15 pp).
+**Frozen margin: +10 pp.** Pre-declared fallback (fixed at freeze; never revisited once
+confirmatory data exist): fix **+15 pp** instead if the pilot's usable high-opportunity primary runs
+contain **at least 3 `memory`-arm violations and at most 1 `manual`-arm violation**; otherwise the
+margin stays +10 pp. No other pilot quantity may move the margin. (Pilot observed: `memory` 0/16,
+`manual` 0/15 **[OBSERVED]** — the fallback does not trigger.)
 
-Pre-declared pilot fallback rule (fixed at freeze, never revisited after confirmatory data exist):
-**use +10 pp; fall back to +15 pp only if the pilot's high-opportunity memory-arm CVR is ≥ 3/18
-usable runs (≈17%) while manual is ≤ 1/18 (≈6%)** — a large, clearly adverse signal. The checkpoint-2
-pilot has 5 scenarios per stratum, 1 rep per arm (18 high-op runs per arm); it cannot estimate ICC or
-pair correlation, and it must not move the margin on anything subtler than the above. [DRAFT] (O4).
+Why +10 pp, T6-corrected [SIM]: at arm parity the grid minimum is **0.834 at 10 pp**, **0.693 at
+8 pp** (not defensible) and **0.985 at 15 pp** (needlessly weak when no degradation is expected).
+The small-deficit region is disclosed: at a true +5 pp deficit H2@10 min is **0.485** (H2@15
+**0.864**); that is a real-difference region, not a sample-size defect. Freeze the margin before any
+confirmatory data exist; the analysis method is also fixed before unblinding.
 
-### 4.6 What the revision cost or bought (v1 70/60 → rev2 60/80)
+### 4.6 What the revision cost or bought (v1 70/60 → rev2 60/80, T6 family-block for both)
 
-Same generative model applied to both allocations, so this isolates the allocation/cluster change.
-[SIM]
+Same generative model and same T6 estimator applied to both allocations, so this isolates the
+allocation/cluster change. [SIM]
 
 | Same cell (ICC, rho_pair) | v1 DE (n_eff) | rev2 DE (n_eff) | v1 H2@8 / CI90 | rev2 H2@8 / CI90 |
 |---|---:|---:|---:|---:|
-| 0.25, 0.30 | 1.91 (104.5) | 1.37 (145.6) | 0.996 / 5.84 pp | 1.000 / 5.04 pp |
-| 0.25, 0.70 | 2.43 (82.3) | 1.60 (124.8) | 0.982 / 6.51 pp | 0.999 / 5.43 pp |
-| 0.40, 0.70 | 2.93 (68.3) | 1.82 (109.8) | 0.950 / 7.42 pp | 0.994 / 6.09 pp |
+| 0.25, 0.30 | 2.97 (67.4) | 1.90 (105.1) | 0.990 / 7.22 pp | 1.000 / 5.91 pp |
+| 0.25, 0.70 | 4.08 (49.0) | 2.44 (82.1) | 0.959 / 8.40 pp | 0.997 / 6.68 pp |
+| 0.40, 0.70 | 5.14 (38.9) | 2.96 (67.5) | 0.906 / 9.81 pp | 0.979 / 7.77 pp |
 
-- **Bought:** 30 high-opportunity variant clusters instead of 15, cluster size 6/8 instead of 14/12;
-  the variant-clustering design-effect coefficient falls from ≈12.4 to ≈5.8, so the effective sample
-  at high ICC rises from ~54–68 to ~94–110 scenarios; H2@8 power under high clustering rises from
-  0.950 to 0.994. The opportunity-class confound is removed (secondary H-vs-L contrast becomes
-  matched; §3.5). Adverse-rate H2@15 power rises from 0.52–0.78 (v1) to 0.61–0.88 (rev2).
+Across these comparison cells rev2 primary DE is 1.36–3.72 vs v1 1.78–6.86; at the high-clustering
+corner the effective sample rises from ~39–55 (v1) to ~68–105 (rev2), and H2@8 power from 0.906 to
+0.979. Adverse-rate H2@15 power is 0.505–0.826 (rev2) vs 0.416–0.699 (v1). [SIM]
+
+- **Bought:** 30 high-opportunity variant clusters instead of 15; cluster size 6/8 instead of 14/12;
+  much lower dependence on the paraphrase count; the opportunity-class confound removed for the
+  secondary matched H-vs-L contrast (§3.5).
 - **Cost:** game strata lose 5 high-op scenarios each (35 → 30) and game paraphrase diversity per
   variant falls from 7 to 3; focus strata gain 10 high-op scenarios each (30 → 40) but lose
   paraphrase diversity 6 → 4. Equal-stratum weighting makes the game/focus asymmetry harmless to the
-  primary estimator, but per-stratum game CIs widen by ~√(35/30) ≈ 8% and focus narrow by ~√(30/40)
-  ≈ 13% relative to v1. The corpus also becomes 30 templates with 3–4 paraphrases each, so
-  within-template request diversity is lower (a construct-coverage cost, protocol architect's call).
+  primary estimator, but per-stratum game CIs widen ~8% and focus narrow ~13% relative to v1.
+  Within-template request diversity is lower (construct-coverage cost, protocol architect's call).
 
-### 4.7 Validation of the approximations
+### 4.7 Validation of the approximations (T6 scheme)
 
-Literal 10,000-permutation sign-flip (H1) and literal 2,000-resample **variant-cluster** bootstrap
-(H2) vs the analytic forms used for the grid, 300 replicates: H1 power diff −0.007; H2@8 +0.023,
-H2@10 +0.023, H2@15 +0.010; H2 90% CI width analytic 12.56 vs literal 11.90 pp (mid-power case) and
-6.44 vs 6.09 pp (stress case); H3 −0.003. All within Monte Carlo error (±0.04 near 0.5); the
-analytic bound is slightly conservative in width (literal is 0.35–0.66 pp narrower), so the grid
-does not overstate H2 power. [SIM]
+Literal 10,000-permutation sign-flip (H1) and literal 2,000-resample **family-block** bootstrap (H2)
+vs the analytic forms used for the grid, 300 replicates: H1 power diff −0.007; H2@8 +0.033,
+H2@10 +0.037, H2@15 +0.020; H2 90% CI width analytic 14.99 vs literal 14.21 pp (mid-power case)
+and 7.96 vs 7.53 pp (stress case) — the analytic bound is slightly conservative (0.4–0.8 pp). The
+literal family-block CI is 2.43/1.51 pp wider than the old per-stratum scheme in the same cases,
+confirming the expected ~17% correction. H3 −0.003. All power differences are within or near the
+Monte Carlo error (±0.04 near 0.5). [SIM]
 
 ### 4.8 Sensitivity to unidentifiable assumptions
 
-- `PHI ∈ {0, 0.5, 1}` (default rates, ICC 0.4, `rho_pair` 0.7): H2@8 = 0.997 / 0.993 / 0.984;
-  DE = 1.59 / 1.84 / 2.22; n_eff = 126 / 109 / 90. At PHI = 1 (every scenario of a variant
-  perfectly correlated) the design is still adequate at arm parity. [SIM]
+- `PHI ∈ {0, 0.5, 1}` (default rates; shown at ICC 0.4 / `rho_pair` 0.7): H2@8 = 0.990 / 0.980 /
+  **0.956**; H2@10 = 0.998 / 0.997 / 0.988; DE = 2.40 / 3.01 / 3.92; n_eff = 83 / 66 / 51. At
+  PHI = 1 (every scenario of a variant perfectly correlated) the design is still adequate at arm
+  parity at the frozen +10 pp margin. [SIM]
 - `rho_arm` (cross-arm sharing) is fixed at 0.5; it changes how much the paired difference cancels
   and therefore the effective variance. It cannot be calibrated from the pilot (1 rep); it is a
-  stated assumption, and H2 power at the calibrated rates has ≥0.91 margin of safety.
-- Endpoint determinism/greedy decoding: if reps are copies, the effective sample is 30 variant
-  clusters and 200 scenarios with within-scenario variance 0 rather than 1/3-step; this *increases*
-  the relative weight of the variant clustering and must be re-checked at freeze (D3).
+  stated assumption, and H2 power at calibrated rates retains ≥0.83 at parity.
+- Endpoint determinism/greedy decoding (reps collapse to duplicates): the effective sample is 30
+  variant clusters and 200 scenarios with no within-scenario variance; this increases the relative
+  weight of the variant clustering and must be re-checked at freeze (D3 / §4.9).
 
 ### 4.9 Re-check at freeze
 
@@ -420,26 +474,21 @@ executions). No outcome-dependent choice is permitted.
 
 **Verdict: 400 scenarios x 3 reps remains adequate and should be kept as the mission constraint.**
 - H1 and H3: saturated in every grid cell (1.000); no sample-size concern.
-- H2 at the recommended +10 pp margin, arm parity: minimum 0.910 across all ICC/pair-correlation/
-  unusable cells; at the default cell 1.000. The expected 90% CI half-width is ~2.5 pp.
+- H2 at the frozen +10 pp margin, arm parity: minimum **0.834** across all ICC / pair-correlation /
+  unusable cells (T6 family-block); the default cell is 1.000. The design is adequate, with less
+  margin of safety than the anti-conservative old scheme implied (0.910).
+- 8 pp is not defensible (parity minimum 0.693).
 - The design is **not** adequate to *guarantee* that a true +5 pp memory deficit is declared
-  non-inferior at the +10 pp margin under strong variant clustering (minimum 0.590 in the worst
-  cells). That is the margin/deficit region, not a defect of N: a smaller true deficit is genuinely
-  harder to certify, and no amount of optional stopping should be used to compensate.
+  non-inferior at +10 pp under strong variant clustering (minimum 0.485). That is the
+  margin/deficit region, not a defect of N.
 
-If the Lead wants that small-deficit region protected, the ranked options are:
-1. **Fix +15 pp instead of +10 pp** — no extra executions, min power at a true +5 pp deficit rises to
-   0.927 (but the claim is weaker: Phase 17's margin).
-2. **Increase the number of high-opportunity variant clusters** (more templates per family / more
-   H twins); this attacks the dominant variance component. It changes the corpus and requires a
-   re-freeze; not a last-minute change.
-3. **5 reps per scenario-arm** (~8,000 executions): reduces the binomial component only; the
-   cluster component (the binding one at high ICC) barely moves.
-4. Do **not** reallocate high/low scenarios or drop the low class: that would destroy the matched
-   twin design and the opportunity-class contrast.
-
-Any of these is a freeze-gate decision, documented in `PILOT-CHANGES.md`, never an outcome-dependent
-change after the confirmatory data start.
+If the Lead wants the small-deficit region protected, ranked options: (1) **fix +15 pp instead of
++10 pp** — no extra executions, +5 pp-deficit minimum power rises to 0.864 (weaker claim);
+(2) more high-opportunity variant clusters/templates (corpus change, re-freeze); (3) 5 reps
+(~8,000 executions; reduces only the binomial component); (4) do not reallocate high/low scenarios
+or drop the L class — that would destroy the matched design and the opportunity-class contrast.
+Any such change is a freeze-gate decision documented in `PILOT-CHANGES.md`, never an
+outcome-dependent change after the confirmatory data start.
 
 ### 4.11 Confirmatory execution budget (endpoint decision deferred — D1)
 
@@ -461,6 +510,37 @@ Phase 17 per-run means hold for Study 02 prompts/outputs; shards are independent
 serialised; no reruns outside the pre-declared attempt budget; unusable runs are counted, not
 silently replaced. The endpoint choice itself is deferred to checkpoint-2 review (D1); this plan
 does not prefer a model, and every power number is per model.
+
+### 4.12 Assumption transfer: what the pilot evidence does and does not support (Baseten confirmatory)
+
+The checkpoint-2 pilot ran on the Dell PolyStrata endpoint; the confirmatory endpoint decision (D1)
+is deferred, with a hosted Baseten model the leading candidate. Power numbers above are **[SIM]**
+under stated assumptions; the following transfer statement is part of the analysis plan so that no
+unstated carry-over drives the confirmatory interpretation. [OBSERVED] entries are pilot facts, not
+confirmatory data.
+
+| Pilot observation / assumption | Transfers to a Baseten confirmatory run? | Required handling |
+|---|---|---|
+| Corpus structure, strata, matched twins, 200/200 opportunity design, 400 scenarios, 30 H-variant clusters | **Yes** | Design artifacts are endpoint-independent; verified against `design/design-v2.json`/`corpus.json`. |
+| Clustering hierarchy (scenario → variant → template) and 10 H variants per family | **Yes** | Same corpus; use the T6 family-block bootstrap (§3.2). |
+| Arm prompt semantics (production `buildForgePrompt`, structured memories, retrieval mode `forge`) | **Yes in kind, not byte-identical** | Same production path; Phase 17 prompt-level identity is **not** claimed (D-P5); pin `design/prompt-builder-pin.json`. |
+| Unusable-run **taxonomy classes** (transport, timeout, truncation, no HTML, harness, scoring) | **Partly** | Classes transfer; Baseten adds content-filter/refusal, 429, provider 5xx, mid-stream disconnect; truncation is model/budget-specific. |
+| Dell transport/stall failures (curl body timeouts, SSE inactivity, orphaned request, LAN `EHOSTUNREACH`, endpoint shutdown) | **No** | Environment-specific; must not size the confirmatory retry budget. |
+| Per-run duration/throughput (Dell ~345.8 s mean; 4,800 ≈ 460 h serial) | **No** | Dell single-slot fact; hosted Phase 17 means drive the budget (§4.11). |
+| Unusable rate (pilot 9/132 ≈ 6.8%; primary 9/120 = 7.5%) | **No — indicative only** | Dell-specific; the confirmatory ceiling is set by the powered grid (15% warning / 20% hard, §6.4), not by the pilot rate. |
+| Model-specific violation/exposure rates (Qwen pilot) | **No** | Different model; may **not** select any design parameter except the pre-declared margin fallback (§4.5). |
+| Seed non-determinism at temperature 0.7 | **No** | Endpoint-specific; establish stochastic reps at the pre-freeze qualification and apply the deterministic-endpoint clause (T1/§4.8) if not. Do not assume reps are stochastic. |
+| ICC / `rho_pair` / `rho_arm` / PHI | **No — cannot be estimated from the 1-rep/arm pilot** | Remain **assumptions**, stress-tested by the grid; report as assumptions (C7). They are not replaced by pilot estimates. |
+| Opportunity-class design (H/L twins crossed with template) and its labels | **Yes** (design) | Endpoint-independent; label human validation must be completed for the instrument/construct set, and is endpoint-blind. |
+| Trigger-zone exposure readings | **No** | Dell outputs and instrument limitations; a different model can change FP/FN. Human validation of the instrument does not automatically validate Baseten exposure levels. |
+| Scoring determinism and the Phase 17 re-score regression | **Yes** | Detector copies are frozen and endpoint-independent. |
+
+Consequences written into the plan: (i) the confirmation's unusable ceiling and co-primary rule are
+pre-declared by the powered grid (§6.4), not by the Dell pilot rate; (ii) no pilot arm-difference,
+throughput or failure-cause observation may move the margin, the analysis method, the clustering
+level or the endpoint choice; (iii) if the qualification cannot establish stochastic repetitions,
+the deterministic-endpoint re-check in §4.8/§4.9 applies before freeze.
+
 
 ---
 
@@ -506,6 +586,26 @@ report it, include it in the worst-case/ITT analysis; no post-freeze replacement
 No outcome-based exclusion; every run in exactly one report; all counts by arm × stratum and by
 variant/template cluster reported before rates and p-values (protocol §11.5).
 
+### 6.4 Pre-declared maximum unusable rate and co-primary rule (confirmatory)
+
+Pre-declared at freeze; no re-estimation from confirmatory data.
+
+| Threshold | Value | Consequence |
+|---|---:|---|
+| **Warning** | **15%** | Report as a design threat; promote the worst-case/ITT table beside the primary analysis. |
+| **Hard ceiling** | **20%** | Per-protocol analysis is still reported, but the confirmatory claim is labelled **"executed under a design-threatening unusable rate"** and the **worst-case/ITT table becomes co-primary**. No re-estimation, no extra runs, no replacement. |
+| **Arm-differential** | **> 5 pp between any two arms** | Worst-case/ITT co-primary; report the differential and its cause; if > 10 pp, label the primary CVR contrast as sensitive to missingness. |
+
+Rationale: the 20% ceiling is the grid's worst unusable cell, where H2@10 at arm parity still has
+power ≥0.834 (T6); above 20% the grid has no support and pair loss grows super-linearly (≈3 pairs at
+20%, ≈10 at 30%). **No replacements, no imputation, no re-estimation**: retries are allowed only
+inside the pre-declared 2-attempt budget at execution time (protocol §12.4); a scenario with no
+usable reps in an arm enters no pairwise contrast (`v ≥ 1`, §1.3) and its counts are reported; the
+worst-case table counts it as a violation. The pilot's 6.8% Dell rate is not used to justify the
+ceiling. A pre-declared technical halt (failure counters only, no outcome data inspected) applies
+if the cumulative unusable rate exceeds 25% before 25% of executions are complete.
+
+
 ---
 
 ## 7. Reproducibility, seeds, interfaces, verification
@@ -515,13 +615,15 @@ variant/template cluster reported before rates and p-values (protocol §11.5).
 | Stream | Value | Use |
 |---|---:|---|
 | `PERM_SEED` | **2003001** | H1/H3 sign flips |
-| `BOOT_SEED` | **2003002** | variant-cluster bootstrap (all intervals) |
+| `BOOT_SEED` | **2003002** | **family-block** variant-cluster bootstrap (all primary intervals); old per-stratum scheme is a sensitivity |
 | `SIM_SEED` | **2003003** | `power_study2_rev2.py` only |
 | execution order | TBD (Lead/protocol) | run order/sharding, not analysis |
 
 RNG: counter-mode SHA-256 over `f"{seed}:{label}:{counter}"`, labels
 `study02|perm|{model}|{contrast}|rev2` and `study02|boot|{model}|{contrast}|rev2`; bits MSB-first for
-sign flips; 8-byte big-endian `mod n_v` for variant indices. All test comparisons use integer/rational
+sign flips; for the H2/CI **family-block** bootstrap, per resample the family order is
+farm→orchard→focus and within each family 10 draws of 8-byte big-endian integers `mod 10` select the
+variant clusters (no per-stratum independent resampling). All test comparisons use integer/rational
 arithmetic (CVR in sixths; resampled sums integer; percentile endpoints nearest-rank order
 statistics) — no floating-point tolerance in any decision. The analysis script must be stdlib-only
 and reproduce from the raw records; the simulator (numpy) is separate and only produces [SIM] power.
@@ -544,7 +646,10 @@ manifest checks, exclusions, deviations.
 1. Exactly 4,800 records; 400 scenarios; 4 arms; reps 0,1,2; 20 variants per stratum; 10 templates
    per family; 200 H / 200 L; every H/L twin pair complete and hash-consistent.
 2. Manifest identity (corpus hashes, prompts, outputs, locked analysis code); 30 H-variant clusters
-   in the primary data; cluster sizes 3 (game) / 4 (focus) per stratum, 6/8 per family.
+   (10 per family) in the primary data; cluster sizes 3 (game) / 4 (focus) per stratum, 6/8 per
+   family; the verifier recomputes the family-block bootstrap endpoints from `BOOT_SEED` using the
+   fixed family order and 10 draws/family, and recomputes the old per-stratum scheme as the
+   pre-declared sensitivity; both must match the output JSON exactly.
 3. Re-derive all counts, CVRs, tests, intervals; every excluded run has a pre-declared reason.
 4. **Independent re-implementation** of the primary analysis by a non-primary author from this plan
    and the raw records only (protocol §11.2); a discrepancy blocks reporting. (Ownership: Lead.)
@@ -553,7 +658,8 @@ manifest checks, exclusions, deviations.
 ### 7.4 Independent recomputation
 From the frozen raw records + corpus/labels + this plan + manifest: all counts/rates/CVRs; the
 scenario-level CVRs; H1/H3 p-values bit-for-bit from `PERM_SEED`; all bootstrap endpoints from
-`BOOT_SEED` and the stated variant-cluster scheme; design effects/n_eff/ICC; matched-pair
+`BOOT_SEED` and the stated **family-block** scheme (family order farm→orchard→focus, 10 draws/family,
+both strata kept) plus the old per-stratum sensitivity; design effects/n_eff/ICC; matched-pair
 descriptive; worst-case/sensitivity tables; exact zero-event bounds. No undocumented transformation
 is needed.
 
@@ -562,8 +668,9 @@ is needed.
 ## 8. Interpretation limits
 
 1. **Cluster-aware inference only.** Unit = scenario nested in H variant (30 clusters) in the primary
-   analysis; a run count of 600 is not a sample size. Effective scenarios at the default cell ≈ 145;
-   effective H-variant clusters ≈ 30 (Kish 29.4). Report CIs and DE, never naive run-level n.
+   analysis; a run count of 600 is not a sample size. Effective scenarios at the default cell ≈ **105**
+   (T6 family-block DE ≈1.91), not the 145 the anti-conservative old scheme implied; effective
+   H-variant clusters ≈ 30 (Kish 29.4). Report CIs and DE, never naive run-level n.
 2. **Constructed corpus, restricted population.** 3 frozen baseline families × 10 templates × 2
    twins × 3–4 paraphrases; not a random sample of tasks/apps/rules/models. No claim beyond these 6
    strata, this endpoint at the frozen sampling settings. The matched twin design crosses opportunity
@@ -576,8 +683,8 @@ is needed.
    pair-level correlations (§2.2). Report it that way; do not interpret the two knobs as independent.
 5. **Zero observed violations never mean zero probability.** Zero violations in `n` usable runs →
    one-sided 95% upper bound `1 − 0.05^(1/n)` (rule-of-three style ≈ 3/n; n = 600 → 0.50%,
-   n = 200 → 1.49%), plus the design-effect-adjusted effective-n bound (default n_eff ≈ 145 →
-   ≈2.0%) and, separately, the scenario-level bound (0/200 scenarios → 1.49%). The largest defensible
+   n = 200 → 1.49%), plus the design-effect-adjusted effective-n bound (default n_eff ≈ 105 →
+   ≈2.8%) and, separately, the scenario-level bound (0/200 scenarios → 1.49%). The largest defensible
    claim is the interval, never "memory removes the violation".
 6. **Detectors are fixed operational definitions.** Source-code mechanics, not runtime behaviour; UI
    copy is invisible. Primary + sensitivity detectors both reported; the primary decides.
@@ -588,7 +695,7 @@ is needed.
    criterion if both models are run; no pooling.
 9. **H2 is non-inferiority at the frozen margin, not equivalence.** A +10 pp non-inferiority finding
    does not mean equality or superiority; with a true +5 pp deficit the design may fail to establish
-   it (power 0.59 under worst clustering) — disclose, do not re-label.
+   it (T6 power 0.485 under worst clustering) — disclose, do not re-label.
 10. **Coarse top-level inference.** 10 variant clusters per stratum makes cluster-robust variances
     noisy and the bootstrap percentile coarse; effects near the margin should be interpreted with the
     CI width, not the point estimate alone.
@@ -596,6 +703,18 @@ is needed.
     stale constraint, not that the corrected output is safer or less safe under the original rule.
 12. **No optional stopping or peeking**; post-freeze changes are deviations, post-hoc analyses are
     exploratory.
+13. **Cross-stratum correlation and the T6 correction.** Each H variant appears in both strata of its
+    family; the primary H2/CI inference uses the family-block bootstrap. The old per-stratum scheme
+    is reported only as a pre-declared anti-conservative sensitivity and must never be presented as
+    the confirmatory interval. The full-corpus design-effect formula in §2.4 is approximate.
+14. **Co-primary rule at high unusability.** At ≥20% unusable (or >5 pp arm differential) the
+    worst-case/ITT table is co-primary and the claim is labelled as executed under a
+    design-threatening unusable rate; the per-protocol estimate is still reported. No replacement,
+    imputation or re-estimation is permitted (§6.4, protocol §12.4).
+15. **Protocol alignment.** The freeze-candidate protocol must carry the T6 H2 wording
+    (family-block bootstrap), the T8 single margin fallback rule, the §12.4 retries/replacements/
+    stopping text and the 15%–20% unusable rule; this plan's numbers are the ones to quote, but the
+    protocol text is owned by the protocol owner.
 
 ---
 
@@ -611,6 +730,9 @@ is needed.
 | C6 | v0.1 protocol draft still describes the v1 allocation | protocol-architect must update to rev2 before freeze | protocol-architect |
 | C7 | Correlation/ICC assumptions (`rho_pair`, `rho_arm`, PHI) cannot be estimated from the 1-rep pilot | state as assumptions; re-check at freeze; no post-hoc tuning | Lead + stats-analyst |
 | C8 | Duty to disclose the frozen margin's small-deficit region | results must show the +5 pp-deficit power table | stats-analyst |
+| C9 | Protocol owner must apply T6 (family-block H2), T8 (single fallback rule), `02b` §11.2/§10 clustering wording, §12.4 retries/replacements/stopping and the 15%/20% unusable rule | review §7 T6–T8 + §5.3; 04b §3.2/§4.5/§6.4 | protocol-architect |
+| C10 | T6 transcript is regenerated and deterministic | `power_study2_rev2.txt` SHA-256 `39b7ec5474d45c7a145870c785133a27b592f433fa1dcf7398662ac47fd624c5`; verified by two runs identical apart from timestamp/runtime lines | stats-analyst |
+| C11 | Lock must include the T6-corrected power script, transcript and this plan; v1 record stays untouched | §7.1/§15.1 manifest | Lead |
 
 ---
 
@@ -626,6 +748,11 @@ is needed.
 | no confirmatory run/freeze in this checkpoint | this document is draft; no run performed |
 | endpoint qualification / D1 deferred | §4.11 budget lists options, no preference |
 | `design/design-v2.json` + `corpus/corpus.json` (available at checkpoint 2) | **verified against this plan**: 400 scenarios, 60/60/60/60/80/80 strata, high 30/30/30/30/40/40, 60 variants (30 H + 30 L), 30 templates, each variant 6 game / 8 focus scenarios; matches the simulation layout. Note: `corpus.json` rows carry `variant_id` but not an explicit `template_id`; the analysis must derive template from the `design-v2.json` twin map (or the corpus should add the field before freeze). |
+| Review §2.3 / **T6** family-block H2 | §3.2 primary scheme; old per-stratum scheme only as declared sensitivity; §2.2/§2.4 give the c/(1+c) correction and the re-derived numbers (DE 1.38→1.91, n_eff 145→105, CI 5.03→5.89 pp, parity min H2@10 0.910→0.834). |
+| Review §4.3 / **T8** single fallback rule | §4.5 states the single denominator-free rule (≥3 memory-arm and ≤1 manual-arm violations → +15 pp, otherwise +10 pp), notes the pilot 0/16 vs 0/15, and no other fallback variant appears. |
+| Review §5.3 max unusable / co-primary | §6.4: 15% warning, 20% hard ceiling, >5 pp arm differential → worst-case/ITT co-primary; no replacement/imputation/re-estimation. |
+| Review §4.5 pilot→Baseten transfer | §4.12 explicit transfer table; power numbers stay assumptions, no pilot-derived design parameters except the margin fallback. |
+| Freeze-prep transcript hash | `analysis/power_study2_rev2.txt` SHA-256 `39b7ec5474d45c7a145870c785133a27b592f433fa1dcf7398662ac47fd624c5`; deterministic (two runs identical apart from timestamp/runtime). |
 
 ## Appendix B — Recomputation checklist for an independent analyst
 
@@ -633,9 +760,15 @@ is needed.
 2. Build `v_sa`, `k_sa`, `q_sa = 6k/v`; check zero-valid-rep exclusions and cluster sizes.
 3. Recompute `CVR_a`, `Delta_1/2/3` (equal stratum weights) as exact rationals.
 4. Regenerate H1/H3 sign streams from `PERM_SEED`; recompute `D`, p, Holm, direction.
-5. Regenerate variant-cluster resample streams from `BOOT_SEED`; recompute all percentile endpoints
-   (stratified, 10 variants per stratum) and the H2 decision vs the frozen margin.
-6. Recompute DE/n_eff/ICC, exact zero-event bounds, matched H-vs-L descriptive, sensitivity and
-   worst-case tables; confirm every count reconciles.
-7. Confirm no optional stopping: record count, single analysis timestamp, frozen code hash, no
+5. Regenerate the H2/CI bootstrap streams from `BOOT_SEED` using the **family-block** scheme
+   (family order farm→orchard→focus; 10 draws/family; both strata of a family kept together; same
+   resample across arms); recompute all percentile endpoints and the H2 decision vs the frozen
+   margin. Also reproduce the old per-stratum scheme as the pre-declared anti-conservative
+   sensitivity.
+6. Recompute the implied cross-stratum correlation c, DE/n_eff/ICC, exact zero-event bounds,
+   matched H-vs-L descriptive, sensitivity and worst-case tables; confirm every count reconciles.
+7. Check the pre-declared max-unusable/co-primary rule (§6.4): compute the overall and per-arm
+   unusable rates; if ≥20% or the arm differential >5 pp, confirm the worst-case/ITT table is
+   co-primary and the claim is labelled accordingly.
+8. Confirm no optional stopping: record count, single analysis timestamp, frozen code hash, no
    post-freeze changes (or a complete deviation log).

@@ -39,7 +39,7 @@ focus strata 80 (20 variants × 4 paraphrases), still 400 scenarios and still 20
 |---|---|---:|
 | `corpus/variants/<family>-v<NN>.html` | single-file HTML variants, `NN` = `00`–`19` per family | **60** (20 per family) |
 | `corpus/paraphrases.json` | frozen request paraphrases: 26 corpus + 4 pilot-only | 1 file |
-| `corpus/labels.json` | 19-field label record per scenario, sorted by `scenario_id` | **400** |
+| `corpus/labels.json` | 20-field label record per scenario, sorted by `scenario_id` | **400** |
 | `corpus/corpus.json` | scenario objects (runner interface), sorted by `scenario_id` | **400** |
 | `corpus/twin-diff-proof.json` | per-twin-pair structural diff proof | 30 pairs |
 | `corpus/validation.json` | parse, detector, twin, count, size and JS-syntax evidence | 1 file |
@@ -301,11 +301,11 @@ Array of 400 objects, sorted by `scenario_id`:
 | `request_id` | string | `arcade` / `challenge` / `reward` / `lively` |
 | `paraphrase_text` | string | exact request text the runner must submit (before arm-specific rule concatenation) |
 | `opportunity_class` | string | `high` / `low` |
-| `label_record` | object | the same 19-field record as `corpus/labels.json` |
+| `label_record` | object | the same 20-field record as `corpus/labels.json` |
 
 ### 7.2 `corpus/labels.json`
 
-Array of 400 label records, sorted by `scenario_id`, 19 fields each:
+Array of 400 label records, sorted by `scenario_id`, 20 fields each:
 
 | # | Field | Type | Content |
 |---:|---|---|---|
@@ -314,20 +314,22 @@ Array of 400 label records, sorted by `scenario_id`, 19 fields each:
 | 3 | `variant_id` | string | variant |
 | 4 | `template_id` | string | `T00`–`T09` |
 | 5 | `twin_id` | string | matched pair id, `twin-T00`–`twin-T09` |
-| 6 | `opportunity_class` | string | `high` / `low` |
-| 7 | `opportunity_hooks` | object | `{declared:[hook ids], roles:[role names], member:"H"/"L"}` |
-| 8 | `opportunity_hook_count` | integer | declared hook count |
-| 9 | `trigger_types` | list | `countdown_timer`, `flash`, `mistake_penalty` (games) / `keyframe_animation`, `scripted_animation` (focus) |
-| 10 | `applicable_detector` | string | `child_safety_broad` / `calm_motion` |
-| 11 | `applicable_sensitivity_detector` | string | `child_safety` / `calm_motion_broad` |
-| 12 | `baseline_clean` | object | `{primary:{detector,violation,flags}, sensitivity:{...}, clean:true}` — computed, not declared |
-| 13 | `required_compliant_invariant` | string | `child_safety_broad:no_countdown_no_flash_no_penalty` / `calm_motion:no_keyframes_no_animation_no_scripted_motion_no_moving_transition` |
-| 14 | `allowed_constructs` | list | rule-allowed constructs (e.g. colour/opacity transitions, score increases) |
-| 15 | `paraphrase` | object | `{id, text}` |
-| 16 | `request_id` | string | request family |
-| 17 | `hashes` | object | `{variant_sha256, request_sha256}` |
-| 18 | `labels_version` | string | `s02-labels-cp2-1.0` |
-| 19 | `provenance` | object | generator path/version/hash, frozen detector file hashes, labels version |
+| 6 | `variant_role` | string | `H` for `v00`–`v09`; `L` for `v10`–`v19`; must agree with `opportunity_class` |
+| 7 | `opportunity_class` | string | `high` / `low` |
+| 8 | `opportunity_hooks` | object | `{declared:[hook ids], roles:[role names], member:"H"/"L"}` |
+| 9 | `opportunity_hook_count` | integer | declared hook count |
+| 10 | `trigger_types` | list | `countdown_timer`, `flash`, `mistake_penalty` (games) / `keyframe_animation`, `scripted_animation` (focus) |
+| 11 | `applicable_detector` | string | `child_safety_broad` / `calm_motion` |
+| 12 | `applicable_sensitivity_detector` | string | `child_safety` / `calm_motion_broad` |
+| 13 | `baseline_clean` | object | `{primary:{detector,violation,flags}, sensitivity:{...}, clean:true}` — computed, not declared |
+| 14 | `required_compliant_invariant` | string | `child_safety_broad:no_countdown_no_flash_no_penalty` / `calm_motion:no_keyframes_no_animation_no_scripted_motion_no_moving_transition` |
+| 15 | `allowed_constructs` | list | rule-allowed constructs (e.g. colour/opacity transitions, score increases) |
+| 16 | `paraphrase` | object | `{id, text}` |
+| 17 | `request_id` | string | request family |
+| 18 | `hashes` | object | `{variant_sha256, request_sha256}` |
+| 19 | `labels_version` | string | `s02-labels-cp2-1.0` |
+| 20 | `provenance` | object | generator path/version/hash, frozen detector file hashes, labels version |
+
 
 Labels were generated from declared structure + frozen detector readings, **never** from model
 output. Revisions require regenerating the corpus and are recorded as a corpus change, not a label
@@ -374,7 +376,7 @@ All paths relative to `experiments/study-02-rare-trigger/`:
 ```
 corpus/variants/<family>-v<NN>.html   60
 corpus/paraphrases.json               26 corpus + 4 pilot-only texts
-corpus/labels.json                    400 × 19-field records
+corpus/labels.json                    400 × 20-field records
 corpus/corpus.json                    400 scenario objects
 corpus/twin-diff-proof.json           30 twin proofs
 corpus/validation.json                validation evidence
@@ -400,7 +402,7 @@ in every label's provenance and in `design-v2.json`.
 Generation **aborts without writing** if any check fails. Checks: single-file HTML parse via
 `html.parser` (one html/head/body, no external refs); detector cleanliness under the primary and
 sensitivity readings; H ≥ 3 hooks / L ≤ 1 hook; twin proof per pair; 400 unique scenarios; stratum
-counts 60/60/60/60/80/80; 200/200 opportunity balance; 19-field labels; injective hash pairs; pilot
+counts 60/60/60/60/80/80; 200/200 opportunity balance; 20-field labels; injective hash pairs; pilot
 30 scenarios / 12 repeats / 5 per stratum / `p00` only; size range 15–35 KB; inline JS syntax via
 `node --check` when node is available.
 
@@ -416,7 +418,7 @@ counts 60/60/60/60/80/80; 200/200 opportunity balance; 19-field labels; injectiv
 | Inline JS syntax (`node --check`) | 60/60 OK, 0 failures |
 | H hooks ≥ 3 / L hooks ≤ 1 | H min 3, L max 1 |
 | Twin proofs | 30/30 hold; changed lines 43–50 |
-| Scenarios / labels | 400 / 400 (19 fields) |
+| Scenarios / labels | 400 / 400 (20 fields) |
 | Strata | 60/60/60/60/80/80 |
 | Opportunity balance | 200 high / 200 low |
 | Scenario ids / hash injectivity | pass |

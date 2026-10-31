@@ -1,6 +1,10 @@
 # Study 02 — Rare-Trigger Reliability
 
-**Status: CHECKPOINT 2 COMPLETE — report for user review.** Endpoint qualification, the expanded
+**Status: CHECKPOINT 3 (FREEZE PREPARATION) — review gate reached, nothing frozen.** The Dell/Qwen
+pilot remains archived exploratory evidence; the proposed confirmatory endpoint is Baseten-hosted
+Muse Spark Open (not yet qualified). See [`review/00-FREEZE-READINESS-REPORT.md`](review/00-FREEZE-READINESS-REPORT.md).
+
+**Checkpoint 2 status: complete — report for user review.** Endpoint qualification, the expanded
 matched-twin corpus, deterministic scoring, the revised power analysis and the approved 30-scenario
 Dell pilot (120 primary + 12 repeat executions, plus a pre-declared pilot-only replacement pass) are
 complete. **No confirmatory data exist.** **The confirmatory experiment has NOT
@@ -106,6 +110,24 @@ qualification data are excluded from any confirmatory dataset.
    (blocker). Defects D-P1–D-P11 logged; transport fixes applied and recorded.
 
 ---
+
+## Freeze preparation (checkpoint 3 — review gate)
+
+| Artefact | Path | Status |
+|---|---|---|
+| **Freeze-readiness report (consolidated)** | [`review/00-FREEZE-READINESS-REPORT.md`](review/00-FREEZE-READINESS-REPORT.md) | **For user review** |
+| Pilot accounting audit + record-level inclusion table | [`review/01-PILOT-ACCOUNTING-AUDIT.md`](review/01-PILOT-ACCOUNTING-AUDIT.md), [`review/pilot-inclusion-table.json`](review/pilot-inclusion-table.json) | Complete |
+| Baseten provider contract review | [`review/02-BASETEN-CONTRACT.md`](review/02-BASETEN-CONTRACT.md) | Complete (contract partly unverified — see report) |
+| Bounded qualification plan | [`review/03-QUALIFICATION-PLAN.md`](review/03-QUALIFICATION-PLAN.md) | Proposal — **not executed; paid budget requires approval** |
+| Blinded human-validation protocol | [`review/04-HUMAN-VALIDATION-PROTOCOL.md`](review/04-HUMAN-VALIDATION-PROTOCOL.md) | Protocol only — **no human validation has occurred** |
+| Design/statistical review | [`review/05-DESIGN-STATISTICAL-REVIEW.md`](review/05-DESIGN-STATISTICAL-REVIEW.md) | Complete; corrections applied to 04b |
+| Offline fixes log + prompt pin | [`review/06-OFFLINE-FIXES.md`](review/06-OFFLINE-FIXES.md), [`design/prompt-builder-pin.json`](design/prompt-builder-pin.json) | Complete |
+| Pilot errata (D1–D3) | [`review/07-PILOT-ERRATA.md`](review/07-PILOT-ERRATA.md) | Recorded; pilot data preserved unchanged |
+| Freeze-prep manifest | [`MANIFEST-freeze-prep.sha256`](MANIFEST-freeze-prep.sha256) | 719 files verified |
+
+**Not done in this pass:** no confirmatory run, no preregistration freeze, no freeze tag, no paid
+API call, no change to the frozen submission / Phase 15B-17 locked artefacts / product integration
+branch. The Dell/Qwen configuration is archived and not re-run.
 
 ## Next gate
 

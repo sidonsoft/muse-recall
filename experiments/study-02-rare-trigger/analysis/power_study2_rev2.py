@@ -32,6 +32,17 @@ FIXED REV2 DESIGN (PLAN-CHECKPOINT2.md, approved 2026-10-31):
     same tests as v1 except H2 variance is now clustered at the variant level
     (see 04b-ANALYSIS-PLAN-REV2.md)
 
+FREEZE-PREP CORRECTION 2026-11-01 (review/05-DESIGN-STATISTICAL-REVIEW.md T6/T8):
+  * T6: the earlier per-stratum variant bootstrap ignored the cross-stratum
+    correlation of a variant (each H variant appears in two strata of its family).
+    H2 and all CIs now use a FAMILY-BLOCK variant-cluster bootstrap: the 10
+    H-variant template clusters of each family are resampled as blocks (both
+    strata kept together) and the 3 families are equal-weighted. The old
+    per-stratum scheme is kept as a pre-declared anti-conservative sensitivity.
+    Expected variance inflation ~(1+c), c ~ 0.42 (game) / 0.49 (focus) at the
+    default assumptions (review §2.3); re-derived by simulation below.
+  * T8: one denominator-free margin fallback rule (see section K2).
+
 Generative model (per arm a, marginal CVR mu_a; calibrated exactly as v1):
     p = clip(m0_a + s_a * U, 0, 1),   U = sqrt(rho_arm) U_shared + sqrt(1-rho_arm) U_arm
     U_shared, U_arm = sqrt(rho_V) z_variant + sqrt(1-rho_V) z_scenario
@@ -148,7 +159,10 @@ def high_layout(design):
             var_of += [off + t] * p
     return dict(slices=slices, n_var=n_var, k=k_paras, n_high=start,
                 n_variants=3 * n_templates, n_templates=3 * n_templates,
-                var_of=np.asarray(var_of, dtype=int))
+                var_of=np.asarray(var_of, dtype=int),
+                # STRATA order is family-blocked: (farm-arcade, farm-challenge),
+                # (orchard-arcade, orchard-challenge), (focus-reward, focus-lively)
+                family_of_stratum=tuple(si // 2 for si in range(6)))
 
 
 def design_meta(design):
@@ -211,67 +225,127 @@ def simulate_cell(u_shared, u_arm, v, mus, icc, rng):
 # --------------------------------------------------------------------------- #
 # Analyses
 # --------------------------------------------------------------------------- #
-def cluster_ci(d, meta):
-    """Stratified variant-cluster-robust point estimate and SE for a paired CVR diff.
+def _cluster_means(d, meta, g):
+    """Per-variant cluster means c (reps, n_v) and valid-pair counts m (reps, n_v)."""
+    sl = meta['slices'][g]
+    n_v = meta['n_var'][g]
+    k = meta['k'][g]
+    dg3 = d[:, sl].reshape(d.shape[0], n_v, k)
+    valid = ~np.isnan(dg3)
+    m = valid.sum(axis=2).astype(float)
+    s = np.nansum(dg3, axis=2)
+    c = np.full_like(s, np.nan)
+    np.divide(s, m, out=c, where=m > 0)
+    return c, m
 
-    T = (1/G) sum_g (1/n_g) sum_{s in g} d_s.  Cluster = H variant within stratum
-    (10 per stratum; 3 or 4 scenarios each). CR0 variance:
-      Var(mean_g) = n_v/(n_v-1) * (1/n_g^2) * sum_v (S_v - m_v*mean_g)^2
-    Also returns the naive iid-scenario SE for the design-effect ratio.
+
+def _stratum_stats(d, meta, g):
+    """Stratum mean, scenario count, cluster means, and the two variance estimates.
+
+    var_strat_g = bootstrap variance of the stratum mean from the 10 variant
+    clusters treated as independent (the OLD, anti-conservative scheme);
+    var_iid_g = naive iid-scenario variance (design-effect denominator).
+    """
+    c, m = _cluster_means(d, meta, g)
+    mg = m.sum(axis=1)
+    ok = mg > 0
+    mgs = np.maximum(mg, 1.0)
+    num = np.nansum(np.where(m > 0, c * m, 0.0), axis=1)
+    mean_g = np.where(ok, num / mgs, 0.0)
+    n_v = (m > 0).sum(axis=1).astype(float)
+    dev2 = np.where(m > 0, (c - mean_g[:, None]) ** 2, 0.0)
+    s2c = np.nansum(dev2, axis=1) / np.maximum(n_v - 1.0, 1.0)
+    var_strat = np.where((n_v > 1.0) & ok, s2c / np.maximum(n_v, 1.0), 0.0)
+    # iid-scenario variance within the stratum
+    sl = meta['slices'][g]
+    dg = d[:, sl]
+    valid = ~np.isnan(dg)
+    n_g = valid.sum(axis=1).astype(float)
+    ngs = np.maximum(n_g, 1.0)
+    devg2 = np.where(valid, (dg - mean_g[:, None]) ** 2, 0.0)
+    s2 = np.nansum(devg2, axis=1) / np.maximum(n_g - 1.0, 1.0)
+    var_iid = np.where(n_g > 1.0, s2 / ngs, 0.0)
+    return mean_g, n_g, c, m, var_strat, var_iid
+
+
+def family_block_ci(d, meta):
+    """T6-CORRECTED primary estimator: family-block variant-cluster bootstrap.
+
+    Each H variant appears in BOTH strata of its family, so a variant's two stratum
+    means covary. The primary procedure resamples the 10 H-variant template clusters
+    of each family as a block (both strata kept together) and equal-weights the
+    3 families, exactly the equal-stratum estimand (1/6 per stratum):
+
+        Delta = (1/3) sum_f (1/2)(mean_{g1} + mean_{g2})
+
+    This function returns the normal approximation to that bootstrap:
+      se_fb   : SE from Var(Delta) = (1/9) sum_f (1/n_f) s^2(z_f),
+                z_{f,v} = (c_{v,g1}+c_{v,g2})/2 for the 10 variants of family f
+      se_strat: OLD per-stratum independent variant-cluster SE (sensitivity only;
+                anti-conservative for H2, kept to quantify the correction)
+      se_iid  : naive iid-scenario SE (design-effect denominator)
+      c_emp   : implied cross-stratum variance inflation, se_fb^2/se_strat^2 - 1
+    Returns (T, se_fb, se_strat, se_iid, c_emp, n_used).
     """
     reps = d.shape[0]
     total = np.zeros(reps)
-    var_cr = np.zeros(reps)
+    var_fb = np.zeros(reps)
+    var_strat = np.zeros(reps)
     var_iid = np.zeros(reps)
-    g_used = np.zeros(reps)
     n_used = np.zeros(reps)
-    for g, sl in enumerate(meta['slices']):
-        dg = d[:, sl]
-        n_v = meta['n_var'][g]
-        k = meta['k'][g]
-        dg3 = dg.reshape(reps, n_v, k)
-        valid = ~np.isnan(dg3)
-        m = valid.sum(axis=2).astype(float)
-        s_v = np.nansum(dg3, axis=2)
-        n_g = m.sum(axis=1)
-        ok = n_g > 0
-        ngs = np.maximum(n_g, 1.0)
-        mean_g = np.where(ok, s_v.sum(axis=1) / ngs, 0.0)
-        resid = s_v - m * mean_g[:, None]
-        var_g = np.where(
-            ok & (n_v > 1),
-            (n_v / (n_v - 1.0)) * np.nansum(resid * resid, axis=1) / (ngs * ngs),
-            0.0,
-        )
-        dev2 = np.where(valid, (dg3 - mean_g[:, None, None]) ** 2, 0.0)
-        s2 = np.where(n_g > 1.0, np.nansum(np.nansum(dev2, axis=2), axis=1)
-                      / np.maximum(n_g - 1.0, 1.0), 0.0)
-        var_i = np.where(ok, s2 / ngs, 0.0)
-        total += mean_g
-        var_cr += var_g
-        var_iid += var_i
-        g_used += ok
-        n_used += n_g
-    gc = np.maximum(g_used, 1.0)
-    return total / gc, np.sqrt(var_cr) / gc, np.sqrt(var_iid) / gc, n_used
+    for f in range(3):
+        g1, g2 = 2 * f, 2 * f + 1
+        mean1, n1, c1, m1, v1s, v1i = _stratum_stats(d, meta, g1)
+        mean2, n2, c2, m2, v2s, v2i = _stratum_stats(d, meta, g2)
+        total += mean1 + mean2
+        var_strat += v1s + v2s
+        var_iid += v1i + v2i
+        n_used += n1 + n2
+        both = (m1 > 0) & (m2 > 0)
+        only1 = (m1 > 0) & ~both
+        only2 = (m2 > 0) & ~both
+        z = np.where(both, 0.5 * (c1 + c2),
+                     np.where(only1, c1, np.where(only2, c2, np.nan)))
+        valid = ~np.isnan(z)
+        n_f = valid.sum(axis=1).astype(float)
+        nfs = np.maximum(n_f, 1.0)
+        fam_mean = np.nansum(z, axis=1) / nfs
+        dev2 = np.where(valid, (z - fam_mean[:, None]) ** 2, 0.0)
+        s2 = np.nansum(dev2, axis=1) / np.maximum(n_f - 1.0, 1.0)
+        var_fb += np.where(n_f > 1.0, s2 / nfs, 0.0)
+    t = total / 6.0
+    var_fb = var_fb / 9.0
+    var_strat = var_strat / 36.0
+    var_iid = var_iid / 36.0
+    se_fb = np.sqrt(var_fb)
+    se_strat = np.sqrt(var_strat)
+    se_iid = np.sqrt(var_iid)
+    c_emp = np.where(se_strat ** 2 > 0,
+                     se_fb ** 2 / np.maximum(se_strat ** 2, 1e-300) - 1.0, 0.0)
+    return t, se_fb, se_strat, se_iid, c_emp, n_used
 
 
 def analytic_de(icc, rho_pair, meta):
-    """Design effects implied by the variance shares (for reporting next to the
-    simulated ratio). H-only primary: variant cluster, k = 3 (game) / 4 (focus)."""
+    """Design effects implied by the variance shares, T6-corrected.
+
+    H-only primary: variant cluster, k = 3 (game) / 4 (focus); the cross-stratum
+    correlation of a variant's two stratum means inflates the variance by ~(1+c),
+    c_g = rho_V_bin / (rho_V_bin + (1-rho_V_bin)/k_g) (review §2.3).
+    """
     rho_v_bin = (PHI + (1.0 - PHI) * rho_pair) * icc
     rho_t_bin = rho_pair * icc
     de_g = [1.0 + (k - 1.0) * rho_v_bin for k in meta['k']]
     inv_n = sum(1.0 / n for n in meta['sizes'])
-    de_h = sum(de / n for de, n in zip(de_g, meta['sizes'])) / inv_n
-    # full-corpus (all 400 scenarios, unconditional rate): variants and templates
-    # rev2 cluster counts: sum_v m(m-1)=2320, sum_t m(m-1)=5040, N=400
-    # (v1: 5 templates/family, sizes 14/12 -> coefficients from the design)
+    de_h_indep = sum(de / n for de, n in zip(de_g, meta['sizes'])) / inv_n
+    c_g = [rho_v_bin / (rho_v_bin + (1.0 - rho_v_bin) / k) if rho_v_bin > 0 else 0.0
+           for k in meta['k']]
+    c_mean = sum(c_g) / 6.0
+    de_h = de_h_indep * (1.0 + c_mean)
     if meta['n_templates'] == 30:
-        de_full = 1.0 + 5.8 * rho_v_bin + 6.8 * rho_t_bin
+        de_full = (1.0 + 5.8 * rho_v_bin + 6.8 * rho_t_bin) * (1.0 + c_mean)
     else:
         de_full = 1.0 + 12.4 * rho_v_bin
-    return de_h, de_full, rho_v_bin, rho_t_bin
+    return de_h, de_h_indep, de_full, rho_v_bin, rho_t_bin, c_mean
 
 
 def evaluate(cvr, meta, icc, rho_pair):
@@ -282,25 +356,33 @@ def evaluate(cvr, meta, icc, rho_pair):
     h1 = pair_perm_test(d1, slices)
     h3 = pair_perm_test(d3, slices)
     rej1, rej3 = holm_support(h1['p'], h3['p'], h1['T'], h3['T'])
-    t2, se2, se2_iid, n2 = cluster_ci(d2, meta)
-    t1, se1, _, _ = cluster_ci(d1, meta)
-    t3, se3, _, _ = cluster_ci(d3, meta)
+    t2, se2, se2s, se2_iid, c2, n2 = family_block_ci(d2, meta)
+    t1, se1, se1s, se1_iid, _, _ = family_block_ci(d1, meta)
+    t3, se3, se3s, _, _, _ = family_block_ci(d3, meta)
     upper = {m: t2 + Z90 * se2 for m in MARGINS}
-    de_h, de_full, rho_v_bin, rho_t_bin = analytic_de(icc, rho_pair, meta)
+    de_h, de_h_indep, de_full, rho_v_bin, rho_t_bin, c_ana = analytic_de(icc, rho_pair, meta)
     ratio = np.where(se2_iid ** 2 > 0,
                      (se2 ** 2) / np.maximum(se2_iid ** 2, 1e-300), 1.0)
     de_emp = float(np.mean(ratio))
+    de_strat = float(np.mean(np.where(se2_iid ** 2 > 0,
+                                      (se2s ** 2) / np.maximum(se2_iid ** 2, 1e-300), 1.0)))
     return dict(
         power_h1=float(rej1.mean()), power_h3=float(rej3.mean()),
         power_h2={m: float((upper[m] < m).mean()) for m in MARGINS},
-        mean_t2=float(t2.mean()), mean_t1=float(t1.mean()), mean_t3=float(t3.mean()),
+        mean_t2=float(t2.mean()),
         ci90_h2=float(np.mean(2.0 * Z90 * se2)),
+        ci90_h2_strat=float(np.mean(2.0 * Z90 * se2s)),
         ci95_h1=float(np.mean(2.0 * Z975 * se1)),
+        ci95_h1_strat=float(np.mean(2.0 * Z975 * se1s)),
         mdd_h1=float((Z975 + Z80) * np.mean(se1)),
         mdd_ni=float((Z90 + Z80) * np.mean(se2)),
-        de_h_analytic=float(de_h), de_h_full_analytic=float(de_full),
-        de_h_empirical=de_emp,
+        mdd_ni_strat=float((Z90 + Z80) * np.mean(se2s)),
+        de_h_analytic=float(de_h), de_h_indep_analytic=float(de_h_indep),
+        de_h_full_analytic=float(de_full),
+        de_h_empirical=de_emp, de_h_strat_scheme=de_strat,
+        c_empirical=float(np.mean(c2)), c_analytic=float(c_ana),
         n_eff_scen=float(meta['n_high'] / de_emp if de_emp > 0 else meta['n_high']),
+        n_eff_scen_strat=float(meta['n_high'] / de_strat if de_strat > 0 else meta['n_high']),
         rho_v_bin=float(rho_v_bin), rho_t_bin=float(rho_t_bin),
         n_pair=float(np.mean(n2)),
     )
@@ -330,31 +412,41 @@ def literal_perm_p(d, meta, rng, n_perm):
     return out
 
 
-def literal_variant_bootstrap(d, meta, rng, n_boot, level):
-    """Literal stratified VARIANT-cluster bootstrap endpoints, per replicate.
+def literal_family_bootstrap(d, meta, rng, n_boot, level):
+    """Literal family-block variant-cluster bootstrap endpoints, per replicate (T6).
 
-    Within each stratum, resample the 10 variant clusters with replacement and keep
-    each resampled cluster's scenarios; the replicate mean is the equal-stratum
-    average of the resampled within-stratum means. Percentile endpoints.
+    Within each family, resample the 10 H-variant clusters with replacement and keep
+    each resampled variant's scenarios in BOTH of the family's strata; the replicate
+    statistic is (1/3) sum_f (1/2)(mean_{g1}* + mean_{g2}*). Percentile endpoints.
+    Variants with no valid pair in either stratum are dropped for that replicate
+    (rare; reported); a variant missing one stratum contributes its available stratum
+    mean to z (the pre-declared approximation).
     """
     reps = d.shape[0]
     lo = np.empty(reps)
     hi = np.empty(reps)
     for i in range(reps):
         row = d[i]
-        g_used = sum(1 for sl in meta['slices'] if (~np.isnan(row[sl])).any())
         t_star = np.zeros(n_boot)
-        for g, sl in enumerate(meta['slices']):
-            n_v = meta['n_var'][g]
-            dg3 = row[sl].reshape(n_v, meta['k'][g])
-            if not (~np.isnan(dg3)).any():
+        for f in range(3):
+            g1, g2 = 2 * f, 2 * f + 1
+            c1 = np.full(meta['n_var'][g1], np.nan)
+            c2 = np.full(meta['n_var'][g2], np.nan)
+            for g, out in ((g1, c1), (g2, c2)):
+                dg3 = row[meta['slices'][g]].reshape(meta['n_var'][g], meta['k'][g])
+                mask = ~np.isnan(dg3)
+                mm = mask.sum(axis=1)
+                ss = np.nansum(dg3, axis=1)
+                out[mm > 0] = ss[mm > 0] / mm[mm > 0]
+            both = ~np.isnan(c1) & ~np.isnan(c2)
+            z = np.where(both, 0.5 * (c1 + c2),
+                         np.where(~np.isnan(c1), c1, c2))
+            z = z[~np.isnan(z)]
+            n_v = z.size
+            if n_v < 2:
                 continue
             idx = rng.integers(0, n_v, size=(n_boot, n_v))
-            block = dg3[idx]                      # (n_boot, n_v, k)
-            n_ok = np.sum(~np.isnan(block), axis=(1, 2))
-            tot = np.nansum(block, axis=(1, 2))
-            ok = n_ok > 0
-            t_star[ok] += (tot[ok] / n_ok[ok]) / g_used
+            t_star += z[idx].mean(axis=1) / 3.0
         lo[i], hi[i] = np.quantile(t_star, [(1 - level) / 2, 1 - (1 - level) / 2])
     return lo, hi
 
@@ -382,6 +474,9 @@ def print_intro(reps, elapsed):
     print(f'numpy {np.__version__}; Python {sys.version.split()[0]}; '
           f'{reps} replicates per reported cell; MC SE of a power estimate <= {0.5 / math.sqrt(reps):.3f}')
     print('deterministic: all streams seeded; transcript self-describing; no hidden data.')
+    print('FREEZE-PREP CORRECTION 2026-11-01: T6 family-block H2 bootstrap (all H2/CI')
+    print('numbers below use it; the old per-stratum scheme is a sensitivity) and T8 one')
+    print('denominator-free margin fallback rule (section K2). [SIM] throughout.')
     print()
     print('REV2 FIXED DESIGN (PLAN-CHECKPOINT2.md): 4 arms; 6 strata; 400 scenarios')
     print('(4 game x 60 = 20 variants x 3 paraphrases; 2 focus x 80 = 20 x 4); 10')
@@ -449,34 +544,61 @@ def print_calibration(reps):
     print('target mean and the target ICC under clipping.')
 
 
+def print_t6_correction():
+    section('C2. T6 CORRECTION - FAMILY-BLOCK VARIANT-CLUSTER BOOTSTRAP')
+    print('The checkpoint-2 plan originally resampled the 10 H-variant clusters WITHIN')
+    print('each stratum independently. That is anti-conservative: every H variant appears')
+    print('in BOTH strata of its family (same variant bytes; 3 game / 4 focus scenarios per')
+    print('stratum), so the two stratum means of a family covary through the shared')
+    print('variants. For a variant, the cross-stratum correlation of its two stratum means')
+    print('is c ~= rho_V*ICC / (rho_V*ICC + (1-rho_V*ICC)/k), k = 3 or 4; with 6 equal-')
+    print('weight strata and 3 family-shared pairs the variance is understated by ~(1+c).')
+    print('At the default assumptions (rho_V = PHI + (1-PHI)*rho_pair = 0.65, rho_V*ICC =')
+    print('0.1625, c = 0.37 game / 0.44 focus, mean ~0.39) the factor is ~1.39 in variance')
+    print('(SE x1.18). The simulation below re-derives c and the design effect.')
+    print()
+    print('PRIMARY (corrected): resample the 10 H-variant template clusters of each')
+    print('family AS A BLOCK (both strata kept together) and equal-weight the 3 families:')
+    print('    Delta* = (1/3) sum_f (1/2)(mean_{g1}* + mean_{g2}*)')
+    print('Normal approximation: Var(Delta) = (1/9) sum_f (1/n_f) s^2(z_f),')
+    print('    z_{f,v} = (c_{v,g1}+c_{v,g2})/2,  c = variant cluster mean difference.')
+    print('SENSITIVITY (pre-declared, anti-conservative): the old per-stratum independent')
+    print('scheme, reported beside the primary to quantify the correction.')
+    print('The generative model already contains the cross-stratum correlation (the H')
+    print('variant effect is shared by both strata), so only the estimator changes.')
+    print()
+
+
 def pair_reps():
     return {pl: [(s_t, k) for s_t, k in _PAIR_COMBOS
                  if round(s_t + (1 - s_t) * k, 6) == pl] for pl in _PAIR_LEVELS}
 
 
 def print_grid(rows, reps):
-    section('D. MAIN GRID - H2 clustered at the variant level (H1/H3 at none=0.65)')
+    section('D. MAIN GRID - T6 family-block H2 bootstrap (H1/H3 at none=0.65)')
     print('Corrected CVR = none (fixed). none fixed at 0.65 in this grid because none')
     print('enters only H1/H3, which are saturated; the none sweep is section E.')
-    print('H2 support = upper 90% one-sided cluster-robust bound of memory-manual CVR')
-    print('difference below the margin, with 10 H-variant clusters per stratum.')
-    print('CI90 = expected 90% CI width (pp); MDDni = detectable NI margin at 80% power;')
-    print('DE = design effect (variant cluster / iid scenario); n_eff = 200/DE.')
+    print('H2 support = upper 90% one-sided FAMILY-BLOCK variant-cluster bound of the')
+    print('memory-manual CVR difference below the margin (the T6 correction).')
+    print('CI90fb = expected 90% CI width, family-block (pp); CI90sb = old stratified')
+    print('scheme width (sensitivity, anti-conservative); MDDni = detectable NI margin at')
+    print('80% power (family-block); DE = family-block design effect vs iid scenario;')
+    print('n_eff = 200/DE; c = implied cross-stratum variance inflation.')
     print('Clusters in the primary analysis: 30 H variants (= 30 H templates), 200')
     print('scenarios, 600 runs/arm; full corpus: 60 variants, 30 templates, 400 scenarios.')
     print(f'{"icc":>5} {"rhoP":>6} {"mem":>5} {"man":>5} {"unus":>5}  {"H1":>5} '
-          f'{"H2@8":>5} {"H2@10":>5} {"H2@15":>5} {"H3":>5}  {"CI90":>5} '
-          f'{"CI95H1":>6} {"MDDni":>5} {"MDDh1":>5} {"DE":>5} {"neff":>6}')
-    print('-' * 116)
+          f'{"H2@8":>5} {"H2@10":>5} {"H2@15":>5} {"H3":>5}  {"CI90fb":>6} '
+          f'{"CI90sb":>6} {"MDDni":>5} {"DE":>5} {"neff":>6} {"c":>5}')
+    print('-' * 128)
     for row in rows:
         m = row['metrics']
         print(f'{row["icc"]:>5.2f} {row["rho_pair"]:>6.3f} {row["memory"]:>5.2f} '
               f'{row["manual"]:>5.2f} {row["unusable"]:>5.2f}  {m["power_h1"]:>5.3f} '
               f'{m["power_h2"][0.08]:>5.3f} {m["power_h2"][0.10]:>5.3f} '
               f'{m["power_h2"][0.15]:>5.3f} {m["power_h3"]:>5.3f}  '
-              f'{100 * m["ci90_h2"]:>5.2f} {100 * m["ci95_h1"]:>6.2f} '
-              f'{100 * m["mdd_ni"]:>5.2f} {100 * m["mdd_h1"]:>5.2f} '
-              f'{m["de_h_empirical"]:>5.2f} {m["n_eff_scen"]:>6.1f}')
+              f'{100 * m["ci90_h2"]:>6.2f} {100 * m["ci90_h2_strat"]:>6.2f} '
+              f'{100 * m["mdd_ni"]:>5.2f} {m["de_h_empirical"]:>5.2f} '
+              f'{m["n_eff_scen"]:>6.1f} {m["c_empirical"]:>5.2f}')
 
 
 def print_margin_summary(rows):
@@ -488,9 +610,10 @@ def print_margin_summary(rows):
         print(f'  margin {margin * 100:>2.0f} pp: {len(bad):>3} of {len(rows)} cells < 0.80; '
               f'true gaps represented: {gaps}')
     print()
-    print('Design decision: the failures are cells where the true memory-manual deficit is')
-    print('at or above the margin (a real difference) or, at 8 pp, a +5 pp deficit under')
-    print('maximal variant clustering. They are not power defects in the calibrated case.')
+    print('These are family-block-corrected numbers (T6). At 8 pp the arm-parity cells')
+    print('themselves fall below 0.80 under strong clustering (grid min 0.693), which is why')
+    print('8 pp is not defensible. At 10 and 15 pp the failures are cells with a true')
+    print('memory-manual deficit at or above the margin (a real difference), not N defects.')
     print()
     print('H1/H3 saturation across the none sweep is summarised in section E2.')
 
@@ -501,9 +624,9 @@ def print_h13_sweep(rows):
         print('  (skipped)')
         return
     print('none sweep {0.50,0.65,0.80} x memory {0,0.10} x ICC x pair level x unusable.')
-    print('Every individual cell is reported in the machine-readable grid; the table shows')
-    print('the minimum H1 / H3 power and the maximum 95% CI width across the sweep for')
-    print('each (none, memory) pair.')
+    print('The table shows the minimum H1 / H3 power and the maximum 95% CI width across')
+    print('this sweep for each (none, memory) pair; the individual sweep cells are not')
+    print('printed (only the main grid cells at none=0.65 are).')
     print()
     print(f'{"none":>5} {"mem":>5} {"min H1":>7} {"min H3":>7} {"max CI95H1":>11}')
     for none_rate in NONE_RATES:
@@ -538,13 +661,15 @@ def print_design_compare(rows):
               f'{m["de_h_empirical"]:>5.2f} {m["n_eff_scen"]:>6.1f} '
               f'{r["n_clusters"]:>8}')
     print()
-    print('Reading: the revision doubles the number of high-opportunity variant clusters')
-    print('(15 -> 30) and shrinks the within-cluster size (14/12 -> 6/8), which cuts the')
-    print('variant-clustering design-effect coefficient from ~12.4 to ~5.8 at the same')
-    print('ICC: the primary variance estimate becomes much less dependent on the')
-    print('paraphrase count. Cost: game strata lose 5 high-op scenarios each (35 -> 30),')
-    print('focus strata gain 10 each (30 -> 40), and game request diversity per variant')
-    print('falls from 7 to 3 paraphrases. Net effect on H2 power: see columns.')
+    v1de = [r['metrics']['de_h_empirical'] for r in rows if r['design'] == 'v1']
+    r2de = [r['metrics']['de_h_empirical'] for r in rows if r['design'] == 'rev2']
+    print(f'Reading (T6 family-block numbers): rev2 primary DE {min(r2de):.2f}-{max(r2de):.2f}')
+    print(f'vs v1 {min(v1de):.2f}-{max(v1de):.2f} over these cells. The revision doubles the')
+    print('number of high-opportunity variant clusters (15 -> 30) and shrinks the')
+    print('within-cluster size (14/12 -> 6/8), so the primary variance depends much less')
+    print('on the paraphrase count. Cost: game strata lose 5 high-op scenarios each')
+    print('(35 -> 30), focus strata gain 10 each (30 -> 40), and game request diversity per')
+    print('variant falls from 7 to 3 paraphrases. Net effect on H2 power: see columns.')
 
 
 def print_phi_sensitivity(reps):
@@ -574,9 +699,9 @@ def print_phi_sensitivity(reps):
 
 
 def print_validation():
-    section('H. LITERAL-PROCEDURE VALIDATION (normal approximation check)')
-    print('Literal 10,000-permutation scenario sign-flip (H1) and literal stratified')
-    print('VARIANT-cluster bootstrap (H2, 2,000 resamples) versus the analytic forms used')
+    section('H. LITERAL-PROCEDURE VALIDATION (normal approximation check, T6 scheme)')
+    print('Literal 10,000-permutation scenario sign-flip (H1) and literal FAMILY-BLOCK')
+    print('variant-cluster bootstrap (H2, 2,000 resamples) versus the analytic forms used')
     print('for the grid, on the same simulated data. 300 replicates; this checks the')
     print('approximation, not the design assumptions.')
     print()
@@ -598,11 +723,12 @@ def print_validation():
         an1 = pair_perm_test(d1, meta['slices'])
         an3 = pair_perm_test(d3, meta['slices'])
         a1, a3 = holm_support(an1['p'], an3['p'], an1['T'], an3['T'])
-        an_t2, an_se2, _, _ = cluster_ci(d2, meta)
+        an_t2, an_se2, an_se2s, _, an_c, _ = family_block_ci(d2, meta)
         an_h2 = {m: float(((an_t2 + Z90 * an_se2) < m).mean()) for m in MARGINS}
         an_ci90 = float(np.mean(2 * Z90 * an_se2))
+        an_ci90s = float(np.mean(2 * Z90 * an_se2s))
         boot_rng = np.random.default_rng([SEEDS['boot'], 600001])
-        lo, hi = literal_variant_bootstrap(d2, meta, boot_rng, n_boot, 0.90)
+        lo, hi = literal_family_bootstrap(d2, meta, boot_rng, n_boot, 0.90)
         lit_h2 = {m: float((hi < m).mean()) for m in MARGINS}
         lit_ci90 = float(np.mean(hi - lo))
         perm_rng = np.random.default_rng([SEEDS['perm'], 600001])
@@ -610,21 +736,24 @@ def print_validation():
         lp3 = literal_perm_p(d3, meta, perm_rng, n_perm)
         l1, l3 = holm_support(lp1, lp3, an1['T'], an3['T'])
         rows.append((label, a1.mean(), l1.mean(), an_h2, lit_h2, an_ci90, lit_ci90,
-                     a3.mean(), l3.mean()))
+                     a3.mean(), l3.mean(), an_ci90s, float(np.mean(an_c))))
     print(f'{"validation case":>34} {"quantity":>18} {"analytic":>9} {"literal":>8} {"diff":>7}')
     print('-' * 84)
-    for label, a1, l1, an_h2, lit_h2, aci, lci, a3, l3 in rows:
+    for label, a1, l1, an_h2, lit_h2, aci, lci, a3, l3, acis, ac in rows:
         print(f'{label:>34} {"H1 power":>18} {a1:>9.3f} {l1:>8.3f} {l1 - a1:>+7.3f}')
         for m in MARGINS:
             print(f'{"":>34} {"H2@" + str(int(m * 100)) + " power":>18} '
                   f'{an_h2[m]:>9.3f} {lit_h2[m]:>8.3f} {lit_h2[m] - an_h2[m]:>+7.3f}')
         print(f'{"":>34} {"H2 CI90 width (pp)":>18} {100 * aci:>9.2f} {100 * lci:>8.2f} '
               f'{100 * (lci - aci):>+7.2f}')
+        print(f'{"":>34} {"old strat CI90 (pp)":>18} {100 * acis:>9.2f} {"--":>8} '
+              f'{100 * (aci - acis):>+7.2f}')
         print(f'{"":>34} {"H3 power":>18} {a3:>9.3f} {l3:>8.3f} {l3 - a3:>+7.3f}')
         print()
     print('Monte Carlo SE of a power difference near 0.5 at 300 replicates is 0.041;')
-    print('differences below ~0.05 are not material. The literal variant bootstrap is')
-    print('the procedure 04b-ANALYSIS-PLAN-REV2.md pre-registers for H2.')
+    print('differences below ~0.05 are not material. The literal FAMILY-BLOCK bootstrap is')
+    print('the procedure 04b-ANALYSIS-PLAN-REV2.md pre-registers for H2 (T6 correction);')
+    print('the old per-stratum scheme is a pre-declared anti-conservative sensitivity.')
 
 
 def print_budget():
@@ -672,60 +801,77 @@ def print_recommendation(rows):
     default = [r for r in rows if r['memory'] == DEFAULT_MEMORY and r['manual'] == DEFAULT_MANUAL
                and r['icc'] == 0.25 and r['rho_pair'] == 0.3 and r['unusable'] == 0.10][0]
     m = default['metrics']
-    section('K1. HEADLINE AT THE DEFAULT CELL (pilot-calibrated rates)')
+    par = [r['metrics'] for r in rows if abs(r['memory'] - r['manual']) < 1e-9]
+    min_h2_8 = min(x['power_h2'][0.08] for x in par)
+    min_h2_10 = min(x['power_h2'][0.10] for x in par)
+    min_h2_15 = min(x['power_h2'][0.15] for x in par)
+    five = [r['metrics'] for r in rows if round(r['memory'] - r['manual'], 2) == 0.05]
+    min_five_10 = min(x['power_h2'][0.10] for x in five)
+    min_five_15 = min(x['power_h2'][0.15] for x in five)
+    section('K1. HEADLINE AT THE DEFAULT CELL (pilot-calibrated rates, T6 corrected)')
     print('DEFAULT: none 0.65, memory 0.03, manual 0.05, corrected = none, ICC_scenario 0.25,')
-    print('rho_pair 0.30 (=> within-variant ICC 0.30 x 0.65 = 0.195), 10% unusable.')
+    print('rho_pair 0.30 (=> within-variant ICC 0.1625, cross-stratum c ~0.37 game /')
+    print('0.44 focus), 10% unusable.')
     print(f'  H1 power = {m["power_h1"]:.3f};  H2@8 = {m["power_h2"][0.08]:.3f};  '
           f'H2@10 = {m["power_h2"][0.10]:.3f};  H2@15 = {m["power_h2"][0.15]:.3f};  '
           f'H3 power = {m["power_h3"]:.3f}')
-    print(f'  expected 90% CI width (H2) = {100 * m["ci90_h2"]:.2f} pp;  '
-          f'95% CI width (H1) = {100 * m["ci95_h1"]:.2f} pp')
-    print(f'  H2 detectable NI margin at 80% power = {100 * m["mdd_ni"]:.2f} pp;  '
+    print(f'  expected 90% CI width (H2, family-block) = {100 * m["ci90_h2"]:.2f} pp; '
+          f'old stratified scheme = {100 * m["ci90_h2_strat"]:.2f} pp')
+    print(f'  95% CI width (H1, family-block) = {100 * m["ci95_h1"]:.2f} pp;  '
+          f'H2 detectable NI margin at 80% power = {100 * m["mdd_ni"]:.2f} pp;  '
           f'H1 MDD = {100 * m["mdd_h1"]:.2f} pp')
-    print(f'  design effect (variant cluster / iid scenario) = {m["de_h_empirical"]:.2f};  '
-          f'effective scenarios = {m["n_eff_scen"]:.1f} / 200;  '
-          f'variant clusters = 30;  templates = 30;  runs/arm = 600')
+    print(f'  design effect (family-block variant cluster / iid scenario) = '
+          f'{m["de_h_empirical"]:.2f};  effective scenarios = {m["n_eff_scen"]:.1f} / 200;')
+    print(f'  implied cross-stratum variance inflation c = {m["c_empirical"]:.3f} '
+          f'(old stratified-scheme DE = {m["de_h_strat_scheme"]:.2f});')
+    print('  variant clusters = 30 (10 per family); templates = 30; runs/arm = 600.')
     print()
-    print('K2. MARGIN: recommend +10 pp (D4 in the checkpoint-1 review already accepted this).')
-    print('  The H2 cluster-aware 90% CI half-width at calibrated rates is ~2-3 pp; +10 pp')
-    print('  keeps >0.99 power at arm parity and is the stricter, more useful claim. At 8 pp')
-    print('  the calibrated case is still >0.99, but a true +5 pp memory deficit under the')
-    print('  strongest variant clustering can fall below 0.80; +15 pp is the fallback.')
-    print('  Pre-declared pilot fallback (fixed at freeze; pilot has only 5 scenarios per')
-    print('  stratum, 1 rep, so it cannot calibrate +/-5 pp): +10 pp unless the pilot shows')
-    print('  high-opportunity memory CVR >= 20% (>= 3/15 usable high-op pilot runs) while')
-    print('  manual <= 5%, in which case fix +15 pp. Anything subtler is not estimable.')
+    print('K2. MARGIN: FROZEN +10 pp (D4 accepted; T8 single fallback rule).')
+    print('  Frozen margin: +10 pp. Pre-declared fallback (fixed at freeze; never revisited')
+    print('  once confirmatory data exist): fix +15 pp instead if the pilot\'s usable')
+    print('  high-opportunity primary runs contain at least 3 memory-arm violations and at')
+    print('  most 1 manual-arm violation; otherwise the margin stays +10 pp. No other pilot')
+    print('  quantity may move the margin. (Pilot observed: memory 0/16, manual 0/15 - the')
+    print('  fallback does not trigger.)')
+    print('  Why +10 pp: with the T6 correction the arm-parity grid minimum is '
+          f'{min_h2_10:.3f} at 10 pp,')
+    print(f'  {min_h2_8:.3f} at 8 pp (8 pp is not defensible) and {min_h2_15:.3f} at 15 pp')
+    print('  (15 pp is needlessly weak when no degradation is expected). The small-deficit')
+    print(f'  region is disclosed: at a true +5 pp deficit, H2@10 min power is {min_five_10:.3f}')
+    print(f'  (H2@15 {min_five_15:.3f}); that is a real-difference region, not an N defect.')
     print()
-    print('K3. ADEQUACY: 400 x 3 remains adequate under the revised cluster structure only if')
-    print('  H2 is clustered at the VARIANT level (not the scenario level). The scenario-level')
-    print('  bootstrap of v1 would overstate precision by the reported design effect (up to')
-    print('  ~2-3x in variance at the highest ICC). With variant clustering, H2@10 is powered')
-    print('  > 0.99 in the calibrated-rate region across the grid; H1/H3 are saturated.')
-    print('  If the pre-freeze pilot shows ICC_scenario > 0.4 or rho_pair > 0.7, the design')
-    print('  is still adequate at +10 pp (see section F), but the CI will be wider; do not')
-    print('  compensate by adding optional stopping.')
+    print('K3. ADEQUACY: keep 400 x 3. H1/H3 are saturated (1.000). With the T6')
+    print(f'  family-block correction, H2@10 at arm parity has grid minimum {min_h2_10:.3f}')
+    print('  (T6 moves the default cell from the old 1.38 DE / 5.03 pp CI to the family-block')
+    print(f'  {m["de_h_empirical"]:.2f} DE / {100 * m["ci90_h2"]:.2f} pp CI), so the design is')
+    print('  adequate at the frozen margin. It is NOT adequate to guarantee that a true')
+    print(f'  +5 pp memory deficit is called non-inferior at +10 pp under strong clustering')
+    print(f'  (min {min_five_10:.3f}); that is disclosed, not compensated by optional stopping.')
+    print('  The scenario-level bootstrap of v1 and the old per-stratum scheme are both')
+    print('  anti-conservative for H2 and are never reported as the confirmatory interval.')
     print()
-    print('K4. NEW DESIGN WEAKNESSES FOUND (for the Lead):')
-    print(' a. Template ICC and matched-pair correlation are not independent random-effect')
+    print('K4. DESIGN WEAKNESSES / CORRECTIONS (for the Lead):')
+    print(' a. T6: the original per-stratum variant bootstrap broke the cross-stratum')
+    print('    correlation of a variant and understated the H2 variance by ~(1+c) ~1.4x. It')
+    print('    is replaced by the family-block bootstrap (primary); the old scheme is kept')
+    print('    only as a pre-declared sensitivity. All H2/CI numbers here are T6-corrected.')
+    print(' b. T8: the margin fallback is now one denominator-free rule (K2); the earlier')
+    print('    inconsistent 3/18-vs-3/15 and manual<=6%-vs-5% variants are removed.')
+    print(' c. Template ICC and matched-pair correlation are not independent random-effect')
     print('    levels in this corpus: a template contains exactly its H/L twin pair, so the')
     print('    two knobs combine into ONE pair-level correlation. The grid maps to 9 distinct')
     print('    values (section B); report it that way rather than as a 3x3 cross.')
-    print(' b. For the high-opportunity-only primary analysis, template clustering is not a')
+    print(' d. For the high-opportunity-only primary analysis, template clustering is not a')
     print('    separate level from variant clustering (one H twin per template). The separate')
     print('    template design effect exists only for full-corpus/secondary quantities.')
-    print(' c. H2 inference MUST move from scenario-level to variant-level clustering; with')
-    print('    only 10 variant clusters per stratum (30 total) the cluster-robust variance is')
-    print('    coarse and the design effect is material. The 3-rep design does not fix this.')
-    print(' d. The revised allocation trades request diversity for cluster count: game strata')
-    print('    have 30 high-op scenarios (was 35) and only 3 paraphrases per variant (was 7);')
-    print('    focus strata have 40 (was 30) and 4 paraphrases (was 6). Game per-stratum CIs')
-    print('    are wider; focus narrower. See section F for the net effect.')
-    print(' e. The matched-twin mechanism does not improve H1/H2/H3 (they use high-op only);')
-    print('    it buys (i) removal of the opportunity-class/variant confound for the')
-    print('    secondary H-vs-L contrast and (ii) a matched-pair secondary analysis. Do not')
-    print('    present the twin design as a power gain for the primary family.')
-    print(' f. The cross-arm correlation rho_arm and PHI are still unidentifiable until the')
-    print('    pilot; both change the effective variance. Sections G/G3 quantify the range.')
+    print(' e. 10 variant clusters per family makes percentile intervals coarse; the point')
+    print('    estimate and the interval width should be read together near the margin.')
+    print(' f. The revised allocation trades request diversity for cluster count: game strata')
+    print('    have 30 high-op scenarios (was 35) and 3 paraphrases per variant (was 7);')
+    print('    focus strata have 40 (was 30) and 4 (was 6). See section F.')
+    print(' g. The matched-twin mechanism does not improve H1/H2/H3 (they use high-op only);')
+    print('    it buys the opportunity-class confound fix and the matched H-vs-L secondary.')
+    print(' h. rho_arm and PHI remain unidentifiable pre-pilot; sections G/G3 bound them.')
 
 
 # --------------------------------------------------------------------------- #
@@ -952,10 +1098,12 @@ def main() -> int:
     print('Study 02 checkpoint 2 - REV2 matched-twin power simulation')
     print('generated by analysis/power_study2_rev2.py; deterministic; this transcript is')
     print('the deliverable.  [SIM] = simulation under assumptions, NOT observed data.')
+    print('freeze-prep correction 2026-11-01: T6 family-block H2 bootstrap; T8 unified margin fallback.')
     print(f'run started: {time.strftime("%Y-%m-%dT%H:%M:%S%z")}')
     print_intro(reps, t_cal)
     print_mapping()
     print_calibration(reps)
+    print_t6_correction()
 
     if args.quick:
         # smoke: a handful of cells only

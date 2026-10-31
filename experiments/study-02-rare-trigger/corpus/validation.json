@@ -1,5 +1,6 @@
 {
   "counts": {
+    "label_fields": 20,
     "labels": 400,
     "pilot_primary_executions": 120,
     "pilot_repeat_executions": 12,
