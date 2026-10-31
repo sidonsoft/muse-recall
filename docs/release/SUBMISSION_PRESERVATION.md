@@ -118,6 +118,13 @@ whether promotions to `main` should gate on both engines is an owner call
 for the post-judging period, not a silent fix. The tag freeze is bypass-proof
 by settings, which is the strongest guarantee the register rests on.
 
+**Refresh 31 Oct, later the same day (read-back verified via API):** ruleset
+26184026 ("Protect integration") gained a FOURTH required context,
+"Research evidence re-verification" (the locked Phase 16/17 verify chain,
+shipped via PR #251) - the table above is the three-context state from
+earlier that day. `Protect main` and both tag freezes unchanged at this
+writing; a Nov 4 census should expect FOUR contexts on integration.
+
 **Re-verified 31 Oct (second pass, cadence re-audit):** ruleset ids
 26184029/26184026/26184025 unchanged with the same targets, bypass actors
 and required contexts; the three frozen tags still point at
