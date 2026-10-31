@@ -927,6 +927,20 @@ now is maintenance honesty, not new surface:
     kept refusing curl's guesses) - the behavior stays witnessed
     by the inject-based mirror suite that runs every merge; the
     log says what was NOT done rather than pretending otherwise.
+  - Replay-socket promise closed at head (31 Oct): last round's
+    non-completion finished with the actual schema (project create
+    is {project_id, name?} under /api/forge/projects - my earlier
+    {name,goal} guess was the misfire). Live curl, fresh server:
+    POST /api/memories with Idempotency-Key -> 201 created:true;
+    same key+body -> byte-identical 201 response replayed WITH
+    header `idempotent-replayed: 1` (grepped from real response
+    headers). The replay deliberately re-sends the original
+    response - body included - so the HEADER is the replay marker;
+    a reader watching only bodies would miss the distinction,
+    which the D049 docs already state and this probe now shows at
+    socket level for the first time. One stray python fragment in
+    the scratch command tracebacked harmlessly - probe hygiene
+    note: paste-no-more leftovers get deleted, not shipped.
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
