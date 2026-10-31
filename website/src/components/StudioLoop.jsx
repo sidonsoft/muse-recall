@@ -4,10 +4,10 @@ import Icon from './Icon.jsx';
 
 const WHY = {
   supplied:
-    'Why it matters: the remembered rule survives a brand-new session — you never restate the constraint, and the violation rate collapses (37/57 → 0/58 in Phase 17).',
-  off: 'Why it matters: this is the “no memory” arm — the model cannot know what you already decided, so old constraints silently return (49/60 violations on Muse Spark Open without memory).',
+    'The saved rule is supplied with the request. This example keeps the calm game mechanics.',
+  off: 'The rule was left out of the prompt. This example adds the timer, penalty and flashing effect.',
   corrected:
-    'Why it matters: one transaction retires the old rule — the audit trail stays, but the superseded restriction stops constraining new work.',
+    'The old rule is retired. The corrected decision now allows timers and penalties.',
 };
 
 export default function StudioLoop() {
@@ -33,15 +33,15 @@ export default function StudioLoop() {
             <li>3 · check the Guard</li>
           </ol>
           <h3>Project memory</h3>
+          <div className="memory-controls">
           <div className="loop-toggle">
             <button
               className="switch"
               role="switch"
               aria-checked={memoryOn}
-              aria-label="Supply the project's remembered decisions to this generation"
               onClick={() => setMemoryOn((v) => !v)}
             >
-              Supply decisions to this generation
+              Include saved decisions
               <span className="track" aria-hidden="true" />
             </button>
             <button
@@ -52,13 +52,13 @@ export default function StudioLoop() {
               aria-label="Correct the rule by superseding it"
               onClick={() => setCorrected((v) => !v)}
             >
-              Correct the rule (supersede)
+              Correct the rule
               <span className="track" aria-hidden="true" />
             </button>
           </div>
 
           {corrected && (
-            <div className="decision-card" style={{ marginTop: 16 }}>
+            <div className="decision-card">
               <div className="id">
                 <span>{DECISION_NEW.id}</span>
                 <span className="state active">active</span>
@@ -79,12 +79,17 @@ export default function StudioLoop() {
             </p>
             <small>{DECISION_OLD.provenance}</small>
           </div>
+          </div>
         </div>
 
         <div className="loop-main" aria-live="polite">
-          <h3>Staged change — preview · source · diff</h3>
-          <div className="request-line">
-            you: <b>“{REQUEST}”</b> → Muse Spark edits the approved v2 source
+          <h3>The change you ask for</h3>
+          <div className="request-pictures" role="img" aria-label={`Your request: ${REQUEST}. Muse Spark prepares an edit to the approved v2 source.`}>
+            <div className="request-feature"><Icon name="timer" /><strong>3s</strong><span>countdown</span></div>
+            <span className="request-plus" aria-hidden="true">+</span>
+            <div className="request-feature"><Icon name="banknote" /><strong>−3</strong><span>per miss</span></div>
+            <span className="request-arrow" aria-hidden="true"><Icon name="right" /></span>
+            <div className="request-result"><Icon name="pencil" /><strong>AI edit</strong><span>v2 → v3</span></div>
           </div>
           <div className="snippet" key={`snip-${memoryOn}-${corrected}`}>
             {snippet.map((l, i) => (
@@ -93,27 +98,21 @@ export default function StudioLoop() {
               </div>
             ))}
           </div>
-          <div className="guard-panel">
-            <div className="head">
-              <Icon name="shield" /> Decision Guard — {guard.status}
+          <div className={`guard-panel guard-compact ${guard.findings.length ? 'has-conflicts' : ''}`}>
+            <div className="guard-overview">
+              <span className="guard-overview-icon"><Icon name="shield" /></span>
+              <div><h4>Decision Guard</h4><p>{guard.findings.length ? '3 possible conflicts' : corrected && memoryOn ? 'Old rule retired' : 'No supported conflicts found'}</p></div>
+              <strong className="guard-count">{guard.findings.length}</strong>
             </div>
-            {guard.findings.map(([f, cite]) => (
-              <div className="finding" key={f}>
-                <span className="sev">flag</span>
-                <span>
-                  {f} · <span style={{ color: 'var(--muted)' }}>{cite}</span>
-                </span>
+            {guard.findings.length > 0 && (
+              <div className="guard-chips">
+                <span><Icon name="timer" /> Countdown</span><span><Icon name="banknote" /> Penalty</span><span><Icon name="zap" /> Flash</span>
               </div>
-            ))}
-            {guard.findings.length === 0 && (
-              <div className="finding clear"><Icon name="check" /> no supported-pattern conflicts</div>
             )}
-            <p className="advisory-note">{guard.note}</p>
+            <div className="guard-bottom"><span>Advice only. You approve.</span><details><summary>Details</summary><div><p>{guard.note}</p>{guard.findings.map(([finding, cite]) => <p key={finding}>{finding} · {cite}</p>)}</div></details></div>
           </div>
           <p className="advisory-note" style={{ marginTop: 14 }}>
-            Reconstructed from the recorded demo and the Phase 16/17 arms — illustrative. In the
-            real Studio nothing is applied until a load-time browser check passes and{' '}
-            <em>you</em> approve the exact staged bytes.
+            Interactive example based on the recorded demo. In the Studio, you review and approve the staged source.
           </p>
           <p className="why" key={`why-${memoryOn}-${corrected}`}>
             {!memoryOn ? WHY.off : corrected ? WHY.corrected : WHY.supplied}

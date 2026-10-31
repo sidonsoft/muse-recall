@@ -1,0 +1,114 @@
+.hero-bottom > span { font: 500 14px/1.5 var(--font); color: #c5bfd3; letter-spacing: 0; }
+
+.memory-controls { border: 1px solid #a78bfa55; border-radius: 13px; overflow: hidden; }
+.memory-controls .loop-toggle { margin: 0; gap: 0; }
+.memory-controls .switch { border: 0; border-bottom: 1px solid #ffffff19; border-radius: 0; background: #ffffff05; }
+.memory-controls .switch[aria-checked='true'] { background: #a78bfa13; }
+.memory-controls .decision-card { margin: 0; border: 0; border-radius: 0; padding: 14px 16px; }
+.memory-controls .decision-card + .decision-card { border-top: 1px solid #a78bfa30; }
+
+.request-pictures { display: grid; grid-template-columns: 1fr 12px 1fr 25px 1fr; align-items: center; gap: 9px; margin-bottom: 18px; padding: 17px 12px; border: 1px solid #ffffff18; border-radius: 13px; background: #ffffff04; }
+.request-feature, .request-result { display: flex; align-items: center; flex-direction: column; gap: 4px; min-width: 0; }
+.request-pictures .request-feature > .ico { width: 28px; height: 28px; color: #e0c2ff; }
+.request-pictures strong { font-size: 24px; line-height: 1.2; color: #f2eafa; }
+.request-pictures span { font-size: 12px; color: #c0b8ce; }
+.request-plus { text-align: center; }
+.request-arrow .ico { width: 25px; height: 25px; color: #a594bf; }
+.request-result > .ico { width: 28px; height: 28px; color: #9ee2d0; }
+.request-result strong { font-size: 17px; }
+
+.guard-compact { background: #14241e66; border-color: #75d9ad30; padding: 16px; }
+.guard-overview { display: flex; gap: 12px; align-items: center; }
+.guard-overview-icon { display: grid; flex: 0 0 38px; height: 38px; border: 1px solid #70dcb13b; border-radius: 11px; place-items: center; color: #87e0bd; background: #70dcb10f; }
+.guard-overview-icon .ico { width: 22px; height: 22px; }
+.guard-overview h4 { color: #f2f1f5; font-size: 14px; font-weight: 650; }
+.guard-overview p { color: #a3d8bf; font-size: 12px; margin-top: 2px; }
+.guard-count { margin-left: auto; font-size: 30px; font-weight: 550; color: #99e3c4; line-height: 1; }
+.has-conflicts { background: #30231566; border-color: #e3ad653d; }
+.has-conflicts .guard-overview-icon { color: #edc28c; border-color: #e9b2664d; background: #e9b2660f; }
+.has-conflicts .guard-overview p, .has-conflicts .guard-count { color: #ebc28e; }
+.guard-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.guard-chips > span { display: flex; align-items: center; gap: 6px; padding: 5px 9px; background: #e9b26612; border: 1px solid #e9b26626; border-radius: 7px; color: #ebc99b; font-size: 12px; }
+.guard-bottom { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #ffffff12; color: #bfb9ca; font-size: 11px; }
+.guard-bottom summary { cursor: pointer; color: #d3c7e5; }
+.guard-bottom details[open] { max-width: 75%; }
+.guard-bottom details p + p { margin-top: 7px; }
+.guard-bottom details > div { padding-top: 10px; font-size: 12px; }
+
+.trial-chart-caption { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 0 0 15px; }
+.trial-chart-caption strong { font-size: 14px; font-weight: 550; }
+.trial-chart-caption > span { font-size: 12px; color: #c7becf; }
+.trial-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.trial-chart { min-width: 0; padding: 25px 26px 18px; border: 1px solid #ffffff1e; border-radius: 16px; background: #171520; }
+.trial-chart h3 { font-size: 19px; font-weight: 600; letter-spacing: -.025em; margin-bottom: 27px; }
+.trial-bar + .trial-bar { margin-top: 22px; }
+.trial-bar-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+.trial-bar-label > span:first-child { color: #e1dce9; font-size: 13px; }
+.trial-bar-label > span:last-child { display: flex; align-items: baseline; gap: 10px; }
+.trial-bar-label strong { font-size: 16px; font-weight: 650; }
+.trial-bar-label small { color: #bbb2c7; font: 11px/1.4 var(--mono); min-width: 42px; text-align: right; }
+.trial-bar-track { height: 9px; background: #ffffff0b; border-radius: 3px; position: relative; }
+.trial-bar-track > span { display: block; height: 100%; background: #e8a99d; border-radius: 3px; }
+.trial-bar-1 .trial-bar-track > span { background: #c3a1f8; }
+.trial-bar-1 .trial-bar-label > span:first-child { color: #d0b3ff; font-weight: 650; }
+.trial-bar-2 .trial-bar-track > span { background: #99c1cb; }
+.trial-axis { display: flex; justify-content: space-between; margin-top: 12px; color: #aaa1b8; font: 10px/1.4 var(--mono); }
+.trial-scope { color: #bcb5c7; font-size: 12px; line-height: 1.7; max-width: 850px; margin-top: 17px; }
+.trial-links { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 18px; font-size: 13px; color: #d6c0f6; }
+.trial-links a { padding-block: 5px; }
+.evidence-details { margin-top: 28px; border-top: 1px solid #ffffff21; }
+.evidence-details > summary, .guard-supported > summary { padding: 18px 0; color: #d5cee2; cursor: pointer; font-size: 14px; }
+.evidence-details-body { padding: 10px 0 0; }
+.evidence-details-body > h3 { font-size: 18px; margin-bottom: 10px; }
+.evidence-details-body > p { color: var(--muted); font-size: 13px; margin-bottom: 15px; }
+.evidence-details-body .section-head { margin-bottom: 18px; }
+.evidence-details-body .section-head h3 { font-size: 21px; letter-spacing: -.02em; }
+.evidence-details-body .section-head p { font-size: 13px; }
+
+.guard-story { display: grid; grid-template-columns: 1fr 32px 1fr 32px 1fr; align-items: center; gap: 16px; padding: 30px 20px; border: 1px solid #ffffff20; border-radius: 17px; background: #171520; }
+.guard-story-step { display: flex; align-items: center; flex-direction: column; gap: 13px; text-align: center; }
+.guard-story-step > span { color: #c0b8cc; font-size: 12px; }
+.guard-story-step > strong { color: #ede7f5; font-size: 16px; font-weight: 600; }
+.guard-story-icon { display: flex; align-items: center; justify-content: center; gap: 7px; width: 80px; height: 65px; color: #cab1ef; }
+.guard-story-icon .ico { width: 44px; height: 44px; }
+.guard-story-conflict .guard-story-icon { color: #edc293; }
+.guard-story-icon b { font-size: 25px; }
+.guard-story-arrow { display: flex; justify-content: center; color: #8d819f; }
+.guard-story-arrow .ico { width: 28px; height: 28px; }
+.guard-supported { border-bottom: 1px solid #ffffff20; }
+.guard-supported > div { padding: 0 0 22px; }
+.guard-supported > div > p { margin-top: 22px; color: #bbb3c7; font-size: 13px; max-width: 850px; }
+.guard-supported a { display: inline-block; margin-top: 15px; color: #d6c0f6; font-size: 13px; }
+.guard-family-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 22px; }
+.guard-family-list > div { display: flex; gap: 12px; }
+.guard-family-list .ico { flex: 0 0 24px; height: 24px; color: #d2b48f; }
+.guard-family-list strong { font-size: 13px; }
+.guard-family-list p { font-size: 12px; color: #bcb4c8; margin-top: 5px; }
+
+@media (max-width: 650px) {
+  .hero-bottom > span { display: block; max-width: 55%; font-size: 12px; }
+  .hero-bottom { align-items: flex-start; }
+  .trial-charts { grid-template-columns: 1fr; gap: 16px; }
+  .trial-chart { padding: 20px 18px 15px; }
+  .trial-chart-caption { align-items: flex-start; }
+  .trial-chart-caption strong { max-width: 60%; }
+  .trial-chart-caption > span { white-space: nowrap; }
+  .loop-grid { padding: 16px; }
+  .request-pictures { gap: 5px; padding: 15px 7px; grid-template-columns: 1fr 8px 1fr 18px 1fr; }
+  .request-pictures span { font-size: 10px; }
+  .request-arrow .ico { width: 18px; height: 18px; }
+  .request-result strong { font-size: 14px; }
+  .guard-overview { gap: 8px; }
+  .guard-overview-icon { flex-basis: 30px; height: 34px; }
+  .guard-overview p { font-size: 11px; }
+  .guard-bottom { flex-wrap: wrap; }
+  .guard-bottom details[open] { max-width: 100%; }
+  .guard-story { gap: 5px; padding: 22px 10px; grid-template-columns: 1fr 14px 1fr 14px 1fr; }
+  .guard-story-step { gap: 9px; }
+  .guard-story-step > strong { font-size: 12px; }
+  .guard-story-step > span { font-size: 10px; }
+  .guard-story-icon { width: 55px; height: 50px; gap: 2px; }
+  .guard-story-icon .ico { width: 30px; height: 30px; }
+  .guard-story-icon b { font-size: 20px; }
+  .guard-story-arrow .ico { width: 14px; height: 14px; }
+}

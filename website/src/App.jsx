@@ -3,7 +3,7 @@ import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import StudioLoop from './components/StudioLoop.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
-import { Watch, Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, SiteVerified, CTA, Footer } from './components/Sections.jsx';
+import { Watch, Problem, Features, How, Engine, Guard, Evidence, ForJudges, BeyondGames, Gallery, Stack, Quickstart, ProofVsRoadmap, MemoryTimeline, Honesty, CTA, Footer } from './components/Sections.jsx';
 
 const WATCH = ['watch', 'loop', 'timeline', 'how', 'evidence', 'judges', 'quickstart'];
 
@@ -57,35 +57,34 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
-        <Watch />
-        <section className="block" id="loop" style={{ paddingTop: 40 }}>
+        <section className="block" id="loop">
           <div className="container">
             <div className="section-head center">
-              <p className="kicker">The loop, interactively</p>
-              <h2>One request. Three memory states.</h2>
+              <p className="kicker">A closer look</p>
+              <h2>See what a remembered decision changes.</h2>
               <p>
-                Flip between supplying the project&apos;s remembered rule, not supplying it, and
-                correcting it. Watch the staged diff and the advisory Decision Guard respond.
+                Try the same request with a decision supplied, left out, or corrected. The
+                example shows how the proposed change and advisory check respond.
               </p>
             </div>
             <StudioLoop />
           </div>
         </section>
-        <MemoryTimeline />
-        <Problem />
         <How />
+        <Watch />
+        <Evidence />
+        <Quickstart />
+        <ForJudges />
+        <ProofVsRoadmap />
+        <Honesty />
+        <Problem />
+        <MemoryTimeline />
         <Features />
         <Engine />
         <Guard />
-        <Evidence />
-        <ForJudges />
         <BeyondGames />
         <Gallery />
         <Stack />
-        <Quickstart />
-        <ProofVsRoadmap />
-        <Honesty />
-        <SiteVerified />
         <CTA />
       </main>
       <Footer />
