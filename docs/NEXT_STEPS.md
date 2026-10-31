@@ -620,6 +620,17 @@ now is maintenance honesty, not new surface:
     (main c32d03b, 3 tags, 4 rulesets, 0 site pushes, PR #28 OPEN,
     0 frozen touches) and the Pages site still 200 with submitted
     title.
+  - Schema census end-to-end (31 Oct): the inventory's storage row
+    verified from BOTH sides - migrations.ts declares exactly eight
+    migrations, versions 1..8 contiguous; and a fresh database
+    created by the real server records exactly 1..8 in
+    schema_migrations, with the inventory's cited tail names
+    character-true (v7 record_contract_revision_actor_proposed, v8
+    idempotency_keys) and migration 4 named porter_stemming exactly
+    where the retrieval section credits it. Source-list truth AND
+    runtime-execution truth in one probe. Catalogue-count claims
+    also now consistent across KI-43/register since #172's wire
+    re-witness (45 unique / 46 entries phrasing everywhere).
   - Registers re-validated (31 Oct, at head): the KNOWN_ISSUES register —
     43 KI ids, zero duplicates, every entry carrying Severity and Detail
     (mechanically checked; the #137 renumber left it clean) — and the
