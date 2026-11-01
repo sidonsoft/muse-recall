@@ -226,10 +226,15 @@ handed to the element as a `blob:` object URL (revoked when the selection change
 panel unmounts), so the token never enters a URL, a bookmark, or a Referer, and downloads
 reuse the already-authenticated bytes instead of issuing a second bare request. Wire-verified
 1 Nov 2026 with production bundles in real Chromium under a real `ACCESS_TOKEN`
-(`pnpm verify:batchd-playback-auth`, 9 checks): element `src` scheme `blob:`, exactly one
-authorized byte fetch returning the full fixture, no download with a credential in its URL,
-zero failed HTTP requests, zero server-side dispatches, and the token absent from server logs;
-the same checks pass with `ACCESS_TOKEN` unset.
+(`pnpm verify:batchd-playback-auth`, 15 checks, audio **and** video): both byte routes answer
+a bare URL with `401 unauthorized` and hand the exact uploaded bytes to a bearer fetch; each
+media element's `src` scheme is `blob:` and the bytes behind it hash to the uploaded source
+sha256; the `<video>` element decodes a 2.9 KB ffmpeg-encoded baseline H.264 fixture
+(64×64, 1 s) to a real frame; one download per source, named `<source_id>.wav` /
+`<source_id>.mp4`, from a credential-free `blob:` URL; the previous source's object URL is
+revoked on selection change; zero failed HTTP requests, zero provider dispatches, and the
+token absent from server logs. The same 15 checks pass with `ACCESS_TOKEN` unset, where the
+byte requests carry no authorization header at all.
 
 Wire-verified 31 Oct 2026 (built server, fresh port, real curl): no token → `401
 {code: unauthorized}`; correct bearer → `200`; wrong bearer → `401`; `GET /api/health`
