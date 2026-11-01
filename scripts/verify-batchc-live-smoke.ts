@@ -1109,6 +1109,9 @@ async function artifact(apiBase: string): Promise<{ html: string; versionSha: st
 
 main().catch(async (error: unknown) => {
   console.error(error instanceof Error ? error.message : error);
+  // The failure message is evidence too: record it so the report is
+  // self-contained even when the run dies before any check completes.
+  observations.error = error instanceof Error ? error.message : String(error);
   try {
     await writeEvidence();
   } catch {
