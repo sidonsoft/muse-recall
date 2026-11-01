@@ -341,60 +341,100 @@ export function useSourcePlayback(projectId: string, sourceId: string | null): P
   return snapshot;
 }
 
+/** The browser-side plumbing for a download, factored out for tests. */
+export function createBrowserDownloadDeps(): PlaybackDeps & DownloadDeps {
+  return {
+    fetchBytes: (project, source) => api.mediaSourceBytes(project, source),
+    createUrl: (blob) => URL.createObjectURL(blob),
+    revokeUrl: (url) => URL.revokeObjectURL(url),
+    trigger: (url, filename) => {
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.rel = 'noopener';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+    },
+  };
+}
+
+export interface DownloadBinding {
+  controller: SourceDownload;
+  /** Fence off this controller: in-flight work can no longer report or download. */
+  detach: () => void;
+}
+
 /**
- * Download state for the current selection. The fence advances during render,
- * not in an effect, so a completion arriving between the prop change and the
- * effect cannot paint the old source's progress or error onto the new one.
+ * One controller per mount, created by the effect and detached by its cleanup —
+ * the lifecycle `useSourcePlayback` already uses. A ref-held controller that
+ * outlives the effect is NOT StrictMode safe: React runs setup -> cleanup ->
+ * setup on the first mount, so the cleanup's `dispose()` would leave a disposed
+ * controller subscribed, and every later `download()` would come back `stale`.
+ *
+ * `attach` also registers the selection immediately, so a panel that first
+ * renders with a source already active can download on the first click instead
+ * of refusing work because no selection was ever recorded.
+ */
+export function attachSourceDownload(
+  deps: PlaybackDeps & DownloadDeps,
+  projectId: string,
+  sourceId: string | null,
+): DownloadBinding {
+  const controller = new SourceDownload(deps);
+  controller.select(projectId, sourceId);
+  return { controller, detach: () => controller.dispose() };
+}
+
+/**
+ * The download state the panel may render for THIS project+source. During the
+ * render that follows a selection change the effect has not re-run yet, so the
+ * snapshot still belongs to the previous controller: its pending spinner and
+ * its error must not appear on the new selection.
+ */
+export function downloadView(
+  snapshot: DownloadSnapshot,
+  projectId: string,
+  sourceId: string | null,
+): DownloadSnapshot {
+  const wanted = sourceId === null || sourceId.length === 0 ? '' : playbackKey(projectId, sourceId);
+  return snapshot.sourceKey === wanted ? snapshot : IDLE_DOWNLOAD;
+}
+
+/**
+ * Download state for the current selection. Each mount owns its controller, so
+ * StrictMode's extra setup/cleanup pair re-arms with a live one, and unmount or
+ * a selection change fences off any fetch still in flight.
  */
 export function useSourceDownload(
   projectId: string,
   sourceId: string | null,
   mime: string | null,
 ): { download: () => void; pending: boolean; error: string | null } {
-  const controllerRef = useRef<SourceDownload | null>(null);
-  if (controllerRef.current === null) {
-    controllerRef.current = new SourceDownload({
-      fetchBytes: (project, source) => api.mediaSourceBytes(project, source),
-      createUrl: (blob) => URL.createObjectURL(blob),
-      revokeUrl: (url) => URL.revokeObjectURL(url),
-      trigger: (url, filename) => {
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = filename;
-        anchor.rel = 'noopener';
-        document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-      },
-    });
-  }
-  const controller = controllerRef.current;
   const [snapshot, setSnapshot] = useState<DownloadSnapshot>(IDLE_DOWNLOAD);
+  const controllerRef = useRef<SourceDownload | null>(null);
 
-  const key = sourceId === null || sourceId.length === 0 ? '' : playbackKey(projectId, sourceId);
-  const [previousKey, setPreviousKey] = useState(key);
-  if (previousKey !== key) {
-    // React's "adjust state while rendering" pattern: the reset lands on the
-    // same render that shows the new selection, never one render later.
-    setPreviousKey(key);
-    controller.select(projectId, sourceId);
-    setSnapshot(controller.current());
-  }
-
-  useEffect(() => controller.subscribe(setSnapshot), [controller]);
-  useEffect(() => () => controller.dispose(), [controller]);
+  useEffect(() => {
+    const binding = attachSourceDownload(createBrowserDownloadDeps(), projectId, sourceId);
+    controllerRef.current = binding.controller;
+    const unsubscribe = binding.controller.subscribe(setSnapshot);
+    return () => {
+      unsubscribe();
+      controllerRef.current = null;
+      binding.detach();
+    };
+  }, [projectId, sourceId]);
 
   const download = useCallback(() => {
-    if (sourceId === null || sourceId.length === 0) return;
+    const controller = controllerRef.current;
+    if (controller === null || sourceId === null || sourceId.length === 0) return;
     void controller.download(projectId, sourceId, mime ?? '');
-  }, [controller, projectId, sourceId, mime]);
+  }, [projectId, sourceId, mime]);
 
-  // Only the current selection's state is ever surfaced.
-  const visible = snapshot.sourceKey === key ? snapshot : IDLE_DOWNLOAD;
+  const visible = downloadView(snapshot, projectId, sourceId);
   return { download, pending: visible.pending, error: visible.error };
 }
 
-/** Filename for a downloaded source, matching the server's own naming. */
 export function filenameFor(sourceId: string, mime: string): string {
   const extension = mime === 'video/mp4' ? 'mp4' : mime === 'audio/wav' ? 'wav' : 'bin';
   return `${sourceId}.${extension}`;

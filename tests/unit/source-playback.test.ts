@@ -2,7 +2,10 @@ import { MEDIA_AUDIO_MAX_BYTES, MEDIA_VIDEO_MAX_BYTES } from '@mml/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DownloadDeps } from '../../apps/web/src/components/studio/source-playback.ts';
 import {
+  attachSourceDownload,
+  type DownloadSnapshot,
   downloadSource,
+  downloadView,
   filenameFor,
   IDLE_DOWNLOAD,
   IDLE_SNAPSHOT,
@@ -485,5 +488,95 @@ describe('download without a token in the URL', () => {
     expect(filenameFor('id-1', 'audio/wav')).toBe('id-1.wav');
     expect(filenameFor('id-1', 'video/mp4')).toBe('id-1.mp4');
     expect(filenameFor('id-1', 'application/octet-stream')).toBe('id-1.bin');
+  });
+});
+
+describe('download mount lifecycle (the hook wiring)', () => {
+  it('records the selection at attach so the very first click downloads', async () => {
+    // A panel that mounts with a source already active: nothing else ever
+    // called select(), so download() used to refuse its own selection.
+    const fakes = makeFakes(async (projectId, sourceId) => bytesFor(projectId, sourceId));
+    const binding = attachSourceDownload(fakes.deps, 'alpha', 'src-a');
+    expect(binding.controller.current().sourceKey).toBe(playbackKey('alpha', 'src-a'));
+    expect(await binding.controller.download('alpha', 'src-a', 'audio/wav')).toBe('downloaded');
+    expect(fakes.triggerCalls).toEqual([
+      { url: fakes.created[0] as string, filename: 'src-a.wav' },
+    ]);
+    binding.detach();
+  });
+
+  it('re-arms with a live controller across StrictMode setup, cleanup, setup', async () => {
+    const fakes = makeFakes(async (projectId, sourceId) => bytesFor(projectId, sourceId));
+    const first = attachSourceDownload(fakes.deps, 'alpha', 'src-a');
+    first.detach(); // StrictMode's extra cleanup on the first mount
+    const second = attachSourceDownload(fakes.deps, 'alpha', 'src-a'); // ...and its re-setup
+    expect(second.controller).not.toBe(first.controller);
+    // The regression this guards: a single permanent controller stayed
+    // subscribed after its own dispose(), so every later download returned
+    // stale and the Download button silently did nothing in dev.
+    expect(await first.controller.download('alpha', 'src-a', 'audio/wav')).toBe('stale');
+    expect(await second.controller.download('alpha', 'src-a', 'audio/wav')).toBe('downloaded');
+    expect(fakes.triggerCalls).toHaveLength(1);
+    second.detach();
+  });
+
+  it('an in-flight download at unmount never fires and never leaks a URL', async () => {
+    const pending = deferred<SourceBytes>();
+    const fakes = makeFakes(() => pending.promise);
+    const binding = attachSourceDownload(fakes.deps, 'alpha', 'src-a');
+    const started = binding.controller.download('alpha', 'src-a', 'audio/wav');
+    binding.detach();
+    pending.resolve(bytesFor('alpha', 'src-a'));
+    expect(await started).toBe('stale');
+    expect(fakes.created).toEqual([]);
+    expect(fakes.revoked).toEqual([]);
+    expect(fakes.triggerCalls).toEqual([]);
+  });
+
+  it('hands nothing at all to the next selection when the source changes mid-download', async () => {
+    const pending = deferred<SourceBytes>();
+    const fakes = makeFakes(() => pending.promise);
+    const previous = attachSourceDownload(fakes.deps, 'alpha', 'src-a');
+    const started = previous.controller.download('alpha', 'src-a', 'audio/wav');
+    previous.detach(); // effect cleanup for the selection change
+    const next = attachSourceDownload(fakes.deps, 'alpha', 'src-b'); // effect for the new one
+    pending.reject(new ApiError('unauthorized', 'Missing or invalid bearer token.', 401));
+    expect(await started).toBe('stale');
+    expect(next.controller.current()).toEqual({
+      sourceKey: playbackKey('alpha', 'src-b'),
+      pending: false,
+      error: null,
+    });
+    expect(fakes.created).toEqual([]);
+    expect(fakes.triggerCalls).toEqual([]);
+    next.detach();
+  });
+});
+
+describe('downloadView selection gating', () => {
+  const pendingOnA: DownloadSnapshot = {
+    sourceKey: playbackKey('alpha', 'src-a'),
+    pending: true,
+    error: null,
+  };
+
+  it('hides a pending state that belongs to another source', () => {
+    expect(downloadView(pendingOnA, 'alpha', 'src-b')).toEqual(IDLE_DOWNLOAD);
+    expect(downloadView(pendingOnA, 'beta', 'src-a')).toEqual(IDLE_DOWNLOAD);
+  });
+
+  it('shows an error only on the source that failed', () => {
+    const failed: DownloadSnapshot = {
+      sourceKey: playbackKey('alpha', 'src-a'),
+      pending: false,
+      error: 'Missing or invalid bearer token.',
+    };
+    expect(downloadView(failed, 'alpha', 'src-b')).toEqual(IDLE_DOWNLOAD);
+    expect(downloadView(failed, 'alpha', 'src-a')).toBe(failed);
+  });
+
+  it('stays idle while nothing is selected', () => {
+    expect(downloadView(pendingOnA, 'alpha', null)).toEqual(IDLE_DOWNLOAD);
+    expect(downloadView(pendingOnA, 'alpha', '')).toEqual(IDLE_DOWNLOAD);
   });
 });
