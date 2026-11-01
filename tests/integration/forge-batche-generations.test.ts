@@ -329,6 +329,73 @@ describe('prior generations carry their decision reference', () => {
     }
   });
 
+  it('reports a withdrawn decision as retired, not as a revision that never happened', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const decisionRecord = decision(
+      h.engine,
+      'batch-e',
+      'No countdown timer anywhere in the game.',
+    );
+
+    const generated = await startGenerate(h.app);
+    await finished(h.app, generated);
+    await approve(h.app, generated);
+
+    // Soft deletion keeps the row, keeps its wording byte-identical, and bumps
+    // the revision. Wording-plus-revision comparison alone would call that an
+    // in-place revision and then quote a deleted decision as current guidance.
+    h.engine.softDelete(decisionRecord.id, { reason: 'user withdrew the rule', actor: 'user' });
+
+    const listed = await generations(h.app);
+    const generation = listed.items[0] as (typeof listed.items)[number];
+    expect(generation.comparison.label).toBe('received_previous_decision');
+    const drift = generation.comparison.drift[0] as Record<string, unknown>;
+    expect(drift.change).toBe('withdrawn');
+    expect(drift.current_status).toBe('deleted');
+    expect(drift.current_excerpt).toBeNull();
+    // The wording the generation did receive stays on the record, so the
+    // reviewer can still see exactly what it was given.
+    expect(drift.supplied_excerpt).toBe('No countdown timer anywhere in the game.');
+    // A retired decision is not offered as guidance for a new proposal.
+    const proposal = await startModify(h.app, {
+      decisions: [{ memory_id: decisionRecord.id }],
+    });
+    expect(proposal.statusCode).toBe(422);
+    expect(proposal.json().error.code).toBe('decision_not_active');
+  });
+
+  it('records the exact injected prefix when a selected decision is too long', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const tail = 'TAIL_MARKER_THE_MODEL_NEVER_SEES';
+    const long = `${'A theme card must show exactly one symbol.'.repeat(80)} ${tail}`;
+    expect(long.length).toBeGreaterThan(2_000);
+    const big = decision(h.engine, 'batch-e', long);
+
+    const base = await startGenerate(h.app);
+    await finished(h.app, base);
+    await approve(h.app, base);
+
+    const response = await startModify(h.app, { decisions: [{ memory_id: big.id }] });
+    expect(response.statusCode).toBe(202);
+    const started = response.json().data as { id: string };
+    const reviewed = await finished(h.app, started.id);
+
+    const [supplied] = reviewed.decision_revisions_supplied as Array<Record<string, unknown>>;
+    // The stored decision is recorded whole …
+    expect(supplied.content_sha256).toBe(decisionContentSha256(long));
+    // … but the injection fingerprint covers only the truncated prefix.
+    const injected = (await readFile(h.promptPath, 'utf8')).includes(tail);
+    expect(injected).toBe(false);
+    expect(typeof supplied.injected_sha256).toBe('string');
+    expect(supplied.injected_sha256).not.toBe(supplied.content_sha256);
+    expect(supplied.injected_truncated).toBe(true);
+    expect(supplied.injected_excerpt).not.toContain(tail);
+    // And the job says so in plain language, not only as a flag.
+    expect(reviewed.logs?.some((line) => line.includes('injection cap'))).toBe(true);
+  });
+
   it('hands the new job the current wording, not the superseded one', async () => {
     const h = await harness();
     await createProject(h.app);

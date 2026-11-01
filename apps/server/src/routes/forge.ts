@@ -231,7 +231,10 @@ export function registerForgeRoutes(
             state,
             jobs: manager.list(id),
             activeDecisions: listed.items.filter((memory) => isActiveProjectDecision(memory, id)),
-            currentOf: (memoryId: string) => deps.engine.get(memoryId),
+            // includeDeleted so a soft-deleted record reads as retired with its
+            // status intact, instead of being mistaken for an in-place revision
+            // (or for a record that never existed at all).
+            currentOf: (memoryId: string) => deps.engine.get(memoryId, { includeDeleted: true }),
           }),
         ),
       );

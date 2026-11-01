@@ -926,16 +926,27 @@ export class ForgeJobManager {
       // displace the lowest-ranked retrieval results instead of growing the
       // memory block, and the displacement is visible in the job log.
       const selected = this.resolveSelectedDecisions(input.projectId, input.selectedMemories ?? []);
-      let displacedNote = '';
+      const notes: string[] = [];
       if (selected.length > 0) {
         const chosen = new Set(selected.map((entry) => entry.memory.id));
         const kept = memories.filter((result) => !chosen.has(result.memory.id));
         const room = Math.max(0, memories.length - chosen.size);
         const displaced = kept.length - room;
         if (displaced > 0) {
-          displacedNote = `memory budget: displaced ${String(displaced)} lower-ranked retrieved decision${displaced === 1 ? '' : 's'} to make room for the ${String(selected.length)} decision${selected.length === 1 ? '' : 's'} you selected`;
+          notes.push(
+            `memory budget: displaced ${String(displaced)} lower-ranked retrieved decision${displaced === 1 ? '' : 's'} to make room for the ${String(selected.length)} decision${selected.length === 1 ? '' : 's'} you selected`,
+          );
         }
         memories = [...selected.map((entry) => entry.retrieved), ...kept.slice(0, room)];
+      }
+      // A shortened injection is stated out loud in the job record, next to the
+      // truncation flag inside the reference, rather than being implicit.
+      for (const entry of selected) {
+        if (entry.retrieved.truncated) {
+          notes.push(
+            `decision ${entry.memory.id} exceeds the ${String(PINNED_DECISION_MAX_CHARACTERS)}-character injection cap: this job received a truncated prefix, recorded as truncated in its decision reference`,
+          );
+        }
       }
 
       job = ForgeJobSchema.parse({
@@ -950,21 +961,31 @@ export class ForgeJobManager {
         created_at: this.now().toISOString(),
         started_at: null,
         finished_at: null,
-        logs: displacedNote === '' ? [] : [displacedNote],
+        logs: notes,
         usage: null,
         model_observed: null,
         memory_ids: memories.map((result) => result.memory.id),
         // Batch E: what this job was actually given, revision by revision.
+        // The reference carries both fingerprints: the decision's stored text at
+        // that revision, and the exact bytes placed in the prompt. Retrieval and
+        // the selection length cap can shorten the injected text, so hashing only
+        // the record would describe wording the model never saw.
         memory_reference: memories.map((result) =>
-          decisionReference(
-            result.memory,
-            selected.some((entry) => entry.memory.id === result.memory.id),
-          ),
+          decisionReference(result.memory, {
+            userSelected: selected.some((entry) => entry.memory.id === result.memory.id),
+            injected: { content: result.injected_content, truncated: result.truncated },
+          }),
         ),
         ...(selected.length > 0
           ? {
               decision_revisions_supplied: selected.map((entry) =>
-                decisionReference(entry.memory, true),
+                decisionReference(entry.memory, {
+                  userSelected: true,
+                  injected: {
+                    content: entry.retrieved.injected_content,
+                    truncated: entry.retrieved.truncated,
+                  },
+                }),
               ),
             }
           : {}),
@@ -1756,7 +1777,10 @@ export class ForgeJobManager {
     for (const entry of selected) {
       if (seen.has(entry.memory_id)) continue;
       seen.add(entry.memory_id);
-      const memory = this.engine.get(entry.memory_id);
+      // A soft-deleted record is still readable on request, so a stale screen
+      // that still lists it is refused by name ("retired") instead of being
+      // reported as a record that never existed.
+      const memory = this.engine.get(entry.memory_id, { includeDeleted: true });
       if (memory === null) {
         throw new ForgeError(
           'decision_not_found',
@@ -1778,7 +1802,7 @@ export class ForgeJobManager {
       if (memory.status !== 'active') {
         throw new ForgeError(
           'decision_not_active',
-          `Decision ${entry.memory_id} is ${memory.status}, not an active decision, so it cannot be supplied to an update.`,
+          `Decision ${entry.memory_id} is ${memory.status}, not an active decision, so it cannot be supplied to an update. Retire it from this screen and select a current decision.`,
         );
       }
       if (entry.expected_revision !== undefined && entry.expected_revision !== memory.revision) {

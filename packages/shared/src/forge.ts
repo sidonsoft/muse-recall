@@ -266,9 +266,19 @@ export type DecisionGuardAdvisory = z.infer<typeof DecisionGuardAdvisorySchema>;
  *
  * A generation's memory wiring is only auditable if the record says *which
  * revision* of each decision went in, not just which ids were consulted at the
- * time. `content_sha256` fingerprints the exact stored text, so an in-place
- * edit or a later correction is detectable without re-reading history, and
- * `excerpt` lets a reviewer see the old wording next to the current one.
+ * time. Two fingerprints make that precise:
+ *
+ * - `content_sha256` — the decision's stored text at that revision, so an
+ *   in-place edit or a later correction is detectable without re-reading
+ *   history;
+ * - `injected_sha256` — the exact bytes placed in the prompt. Retrieval and the
+ *   user-selection length cap can both shorten the text, so this differs from
+ *   `content_sha256` whenever injection truncated it (`injected_truncated`).
+ *   Absent for references that were never injected, such as `added_since`
+ *   entries, which name a decision the generation did not receive at all.
+ *
+ * `excerpt` / `injected_excerpt` let a reviewer see the old wording next to the
+ * current one. Both run through credential redaction.
  *
  * This is a record of what was supplied. It is never evidence that the model
  * followed, or was caused by, a decision.
@@ -283,6 +293,19 @@ export const ForgeDecisionReferenceSchema = z.object({
   type: z.string().min(1).max(40),
   /** True when the user explicitly selected this decision for the change. */
   user_selected: z.boolean().default(false),
+  /**
+   * sha256 of the exact text placed in the prompt. Equals content_sha256 when
+   * nothing truncated it. Absent when this reference describes a decision the
+   * generation never received.
+   */
+  injected_sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  /** Excerpt of the injected text, present whenever injected_sha256 is. */
+  injected_excerpt: z.string().min(1).max(200).optional(),
+  /** True when injection shortened the stored decision text. */
+  injected_truncated: z.boolean().optional(),
 });
 export type ForgeDecisionReference = z.infer<typeof ForgeDecisionReferenceSchema>;
 
@@ -312,8 +335,16 @@ export const ForgeDecisionDriftSchema = z.object({
   memory_id: z.uuid(),
   supplied_revision: z.number().int().min(1),
   supplied_excerpt: z.string().min(1).max(200),
-  /** Null when the record is gone (deleted/purged). */
+  /** Null when the record is gone (deleted and purged). */
   current_revision: z.number().int().min(1).nullable(),
+  /**
+   * The stored record's status now: `deleted`, `expired`, or `active` with an
+   * `expires_at` in the past. A record that survives deletion with its wording
+   * intact is retired, not revised, so it must never be described as though it
+   * were current guidance the generation missed.
+   */
+  current_status: z.string().min(1).max(40).nullable(),
+  /** Null for a retired or withdrawn record: its text is not current guidance. */
   current_excerpt: z.string().max(200).nullable(),
   superseded_by: z.uuid().nullable(),
   change: DecisionChangeKindSchema,

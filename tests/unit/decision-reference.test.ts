@@ -66,7 +66,7 @@ describe('decision references', () => {
       decisionContentSha256('Ocean theme, never dark water.'),
     );
     expect(reference.user_selected).toBe(false);
-    expect(decisionReference(source, true).user_selected).toBe(true);
+    expect(decisionReference(source, { userSelected: true }).user_selected).toBe(true);
   });
 
   it('collapses whitespace and bounds the excerpt for side-by-side reading', () => {
@@ -101,6 +101,36 @@ describe('decision references', () => {
     expect(excerpt).not.toContain('hunter2secretsecret');
     expect(excerpt).not.toMatch(/\[REDAC|EDCTED|REDACTED:[a-z-]*$/);
     expect(excerpt.endsWith('…')).toBe(true);
+  });
+
+  it('separates the stored record from the bytes actually injected', () => {
+    const full = `${'x'.repeat(2_400)} TAIL_NOT_SENT`;
+    const prefix = `${'x'.repeat(1_999)}…`;
+    const source = memory({ content: full });
+    const reference = decisionReference(source, {
+      userSelected: true,
+      injected: { content: prefix, truncated: true },
+    });
+    // The record fingerprint still covers the whole stored decision …
+    expect(reference.content_sha256).toBe(decisionContentSha256(full));
+    // … while the injection fingerprint covers only what the model was handed.
+    expect(reference.injected_sha256).toBe(decisionContentSha256(prefix));
+    expect(reference.injected_sha256).not.toBe(reference.content_sha256);
+    expect(reference.injected_truncated).toBe(true);
+    expect(reference.injected_excerpt).not.toContain('TAIL_NOT_SENT');
+  });
+
+  it('claims no injection for a decision the generation never received', () => {
+    const reference = decisionReference(memory());
+    expect(reference.injected_sha256).toBeUndefined();
+    expect(reference.injected_excerpt).toBeUndefined();
+    expect(reference.injected_truncated).toBeUndefined();
+    // An untruncated injection records equal fingerprints on both sides.
+    const sent = decisionReference(memory(), {
+      injected: { content: memory().content, truncated: false },
+    });
+    expect(sent.injected_sha256).toBe(sent.content_sha256);
+    expect(sent.injected_truncated).toBe(false);
   });
 
   it('marks a user pin as user-selected and explains why it was in context', () => {
@@ -173,6 +203,94 @@ describe('compareGeneration', () => {
     expect(drift.current_excerpt).toBeNull();
   });
 
+  it('calls a deleted record retired instead of revised', () => {
+    // Deletion keeps the row, preserves its wording, and bumps the revision.
+    // Comparing wording alone would report an in-place revision that never
+    // happened and quote a deleted decision as if it were current guidance.
+    const supplied = memory({ content: 'No timer in this game.', revision: 2 });
+    const deleted = memory({ content: 'No timer in this game.', revision: 3, status: 'deleted' });
+    const result = compareGeneration({
+      reference: [referenceOf(supplied)],
+      currentOf: () => deleted,
+      activeDecisions: [],
+    });
+    const drift = result.drift[0] as (typeof result.drift)[number];
+    expect(result.label).toBe('received_previous_decision');
+    expect(drift.change).toBe('withdrawn');
+    expect(drift.current_status).toBe('deleted');
+    expect(drift.current_revision).toBe(3);
+    expect(drift.current_excerpt).toBeNull();
+    expect(result.unchanged).toEqual([]);
+  });
+
+  it('calls a record past its own expiry retired before the sweep runs', () => {
+    const supplied = memory({ content: 'Seasonal theme: Halloween.', revision: 4 });
+    const expiredButUnswept = memory({
+      content: 'Seasonal theme: Halloween.',
+      revision: 4,
+      expires_at: '2026-10-31T00:00:00.000Z',
+    });
+    const result = compareGeneration({
+      reference: [referenceOf(supplied)],
+      currentOf: () => expiredButUnswept,
+      activeDecisions: [],
+      now: '2026-11-01T00:00:00.000Z',
+    });
+    const drift = result.drift[0] as (typeof result.drift)[number];
+    expect(drift.change).toBe('withdrawn');
+    expect(drift.current_status).toBe('expired');
+    expect(drift.current_excerpt).toBeNull();
+  });
+
+  it('accepts a swept row that already carries expired status', () => {
+    const supplied = memory({ content: 'Seasonal theme: Halloween.', revision: 4 });
+    const swept = memory({
+      content: 'Seasonal theme: Halloween.',
+      revision: 5,
+      status: 'expired',
+      expires_at: '2026-10-31T00:00:00.000Z',
+    });
+    const result = compareGeneration({
+      reference: [referenceOf(supplied)],
+      currentOf: () => swept,
+      activeDecisions: [],
+      now: '2026-11-01T00:00:00.000Z',
+    });
+    const drift = result.drift[0] as (typeof result.drift)[number];
+    expect(drift.change).toBe('withdrawn');
+    expect(drift.current_status).toBe('expired');
+  });
+
+  it('leaves a live record with future expiry unmatched only if wording matches', () => {
+    const live = memory({
+      content: 'Keep every card face-up between turns.',
+      expires_at: '2027-01-01T00:00:00.000Z',
+    });
+    const result = compareGeneration({
+      reference: [referenceOf(live)],
+      currentOf: () => live,
+      activeDecisions: [live],
+      now: '2026-11-01T00:00:00.000Z',
+    });
+    expect(result.label).toBe('matched_current_decision');
+    expect(result.drift).toEqual([]);
+  });
+
+  it('never labels an in-place edit as withdrawn when the record is still active', () => {
+    const supplied = memory({ content: 'Theme: ocean.', revision: 1 });
+    const revised = memory({ content: 'Theme: woodland.', revision: 2 });
+    const result = compareGeneration({
+      reference: [referenceOf(supplied)],
+      currentOf: () => revised,
+      activeDecisions: [revised],
+      now: '2026-11-01T00:00:00.000Z',
+    });
+    const drift = result.drift[0] as (typeof result.drift)[number];
+    expect(drift.change).toBe('revised_in_place');
+    expect(drift.current_status).toBe('active');
+    expect(drift.current_excerpt).toBe('Theme: woodland.');
+  });
+
   it('separates a coverage gap from stale guidance', () => {
     const supplied = memory();
     const added = memory({ id: ID_C, content: 'Add a keyboard shortcut for restarting.' });
@@ -184,6 +302,8 @@ describe('compareGeneration', () => {
     expect(result.label).toBe('potentially_affected');
     expect(result.drift).toEqual([]);
     expect(result.added_since.map((entry) => entry.memory_id)).toEqual([ID_C]);
+    // These were never injected, so the record must not claim injection bytes.
+    for (const entry of result.added_since) expect(entry.injected_sha256).toBeUndefined();
     expect(result.reason).toContain('coverage gap');
     expect(result.unchanged).toHaveLength(1);
   });

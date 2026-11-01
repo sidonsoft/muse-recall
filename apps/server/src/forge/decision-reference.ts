@@ -32,6 +32,8 @@ import { redactSecrets } from '@mml/shared';
 export const GENERATION_COMPARISON_LIMITS: readonly string[] = [
   'Labels describe which decisions a generation was given; they are not evidence that the model followed, was guided by, or was caused by any decision.',
   'A decision corrected after a generation ran does not change that generation — only a new job can use current guidance.',
+  'A reference flagged as truncated records only the prefix that reached the prompt; the stored decision may be longer.',
+  'A record that was deleted, purged, or expired is reported as retired. Its surviving wording is never presented as current guidance.',
 ];
 
 const EXCERPT_LIMIT = 200;
@@ -70,16 +72,39 @@ export function decisionExcerpt(content: string, limit = EXCERPT_LIMIT): string 
   return `${redacted.slice(0, Math.max(0, cut)).trimEnd()}…`;
 }
 
-/** Snapshot the exact decision content a generation is about to receive. */
-export function decisionReference(memory: Memory, userSelected = false): ForgeDecisionReference {
-  return {
+export interface DecisionReferenceOptions {
+  userSelected?: boolean;
+  /**
+   * The text actually placed in the prompt. Retrieval and the user-selection
+   * length cap can shorten a decision, so the stored record and the injected
+   * bytes are recorded separately: hashing only the record would describe text
+   * the model never saw.
+   */
+  injected?: { content: string; truncated: boolean };
+}
+
+/**
+ * Snapshot one decision as a generation received it: the record's revision and
+ * stored text, plus the exact bytes injected when it was injected at all.
+ */
+export function decisionReference(
+  memory: Memory,
+  options: DecisionReferenceOptions = {},
+): ForgeDecisionReference {
+  const reference: ForgeDecisionReference = {
     memory_id: memory.id,
     revision: memory.revision,
     content_sha256: decisionContentSha256(memory.content),
     excerpt: decisionExcerpt(memory.content),
     type: memory.type,
-    user_selected: userSelected,
+    user_selected: options.userSelected ?? false,
   };
+  if (options.injected !== undefined) {
+    reference.injected_sha256 = decisionContentSha256(options.injected.content);
+    reference.injected_excerpt = decisionExcerpt(options.injected.content);
+    reference.injected_truncated = options.injected.truncated;
+  }
+  return reference;
 }
 
 /**
@@ -113,10 +138,25 @@ export interface ComparisonContext {
   currentOf(memoryId: string): Memory | null;
   /** Decisions active for the project right now. */
   activeDecisions: Memory[];
+  /** Injectable clock, so expiry judgements are testable and reproducible. */
+  now?: string;
+}
+
+/**
+ * A stored record can survive deletion, purging, or expiry with its wording
+ * intact while `revision` keeps climbing. Only `active`, unexpired records are
+ * current guidance; anything else is retired, and quoting its text back as the
+ * "current wording" would invent guidance the generation never missed.
+ */
+function isRetired(memory: Memory, nowMs: number): boolean {
+  if (memory.status !== 'active') return true;
+  if (memory.superseded_by !== null) return false; // reported as `superseded` instead
+  return memory.expires_at !== null && Date.parse(memory.expires_at) <= nowMs;
 }
 
 /** Compare one generation's stored guidance with the current decision set. */
 export function compareGeneration(context: ComparisonContext): ForgeGenerationComparison {
+  const nowMs = Date.parse(context.now ?? new Date().toISOString());
   const base = {
     limits: [...GENERATION_COMPARISON_LIMITS],
     drift: [] as ForgeDecisionDrift[],
@@ -144,6 +184,7 @@ export function compareGeneration(context: ComparisonContext): ForgeGenerationCo
         supplied_revision: entry.revision,
         supplied_excerpt: entry.excerpt,
         current_revision: null,
+        current_status: null,
         current_excerpt: null,
         superseded_by: null,
         change: 'withdrawn',
@@ -157,9 +198,30 @@ export function compareGeneration(context: ComparisonContext): ForgeGenerationCo
         supplied_revision: entry.revision,
         supplied_excerpt: entry.excerpt,
         current_revision: current.revision,
+        current_status: current.status,
         current_excerpt: successor === null ? null : decisionExcerpt(successor.content),
         superseded_by: current.superseded_by,
         change: 'superseded',
+      });
+      continue;
+    }
+    if (isRetired(current, nowMs)) {
+      // Deleted, purged, or past expiry: the wording may be byte-identical to
+      // what the generation received, and the revision may still have moved.
+      // Neither makes this an in-place revision — the decision is gone, so the
+      // generation received the last guidance that existed and nothing since.
+      drift.push({
+        memory_id: entry.memory_id,
+        supplied_revision: entry.revision,
+        supplied_excerpt: entry.excerpt,
+        current_revision: current.revision,
+        current_status:
+          current.expires_at !== null && Date.parse(current.expires_at) <= nowMs
+            ? 'expired'
+            : current.status,
+        current_excerpt: null,
+        superseded_by: current.superseded_by,
+        change: 'withdrawn',
       });
       continue;
     }
@@ -170,6 +232,7 @@ export function compareGeneration(context: ComparisonContext): ForgeGenerationCo
         supplied_revision: entry.revision,
         supplied_excerpt: entry.excerpt,
         current_revision: current.revision,
+        current_status: current.status,
         current_excerpt: decisionExcerpt(current.content),
         superseded_by: current.superseded_by,
         change: 'revised_in_place',
@@ -179,9 +242,10 @@ export function compareGeneration(context: ComparisonContext): ForgeGenerationCo
     unchanged.push(entry);
   }
 
+  // These were never injected, so they carry no injection claim at all.
   const addedSince = context.activeDecisions
     .filter((memory) => !suppliedIds.has(memory.id))
-    .map((memory) => decisionReference(memory, false));
+    .map((memory) => decisionReference(memory));
 
   if (drift.length > 0) {
     return {
@@ -213,12 +277,22 @@ export function compareGeneration(context: ComparisonContext): ForgeGenerationCo
   };
 }
 
-/** Active, project-scoped decisions (the set a new job is expected to use). */
-export function isActiveProjectDecision(memory: Memory, projectId: string): boolean {
+/**
+ * The decisions a new job is expected to be able to use: project or global,
+ * still active, not superseded, and not past its own expiry. An `expires_at`
+ * in the past is treated as retired even before the sweep marks the row,
+ * because retrieval already excludes it.
+ */
+export function isActiveProjectDecision(
+  memory: Memory,
+  projectId: string,
+  now: string = new Date().toISOString(),
+): boolean {
   return (
     (memory.project_id === projectId || memory.project_id === null) &&
     memory.status === 'active' &&
-    memory.superseded_by === null
+    memory.superseded_by === null &&
+    !(memory.expires_at !== null && Date.parse(memory.expires_at) <= Date.parse(now))
   );
 }
 
@@ -234,6 +308,7 @@ export function buildGenerationList(input: {
   activeDecisions: Memory[];
   currentOf(memoryId: string): Memory | null;
   limit?: number;
+  now?: string;
 }): ForgeGenerationList {
   const limit = Math.max(1, Math.min(64, input.limit ?? 64));
   const byId = new Map(input.jobs.map((job) => [job.id, job]));
@@ -257,6 +332,7 @@ export function buildGenerationList(input: {
         reference,
         currentOf: input.currentOf,
         activeDecisions: input.activeDecisions,
+        ...(input.now !== undefined ? { now: input.now } : {}),
       }),
     };
   });
