@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type BuildManifest,
   collectDistFiles,
+  collectInputFiles,
   collectSourceFiles,
   hashFiles,
   readManifest,
@@ -76,6 +77,60 @@ describe('collectSourceFiles / collectDistFiles', () => {
       expect(found).toEqual(['apps/server/src/data.json', 'apps/server/src/index.ts']);
       const dist = collectDistFiles(join(root, 'apps/server/dist'));
       expect(dist.map((p) => p.slice(root.length + 1))).toEqual(['apps/server/dist/index.js']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('production input coverage', () => {
+  const inputs = {
+    dirs: ['web/src'],
+    files: ['web/index.html', 'web/vite.config.ts', 'web/package.json', 'pnpm-lock.yaml'],
+  };
+  const skeleton = {
+    'web/src/main.ts': 'console.log(1)',
+    'web/src/index.css': '.a{color:red}',
+    'web/index.html': '<html></html>',
+    'web/vite.config.ts': 'export default {}',
+    'web/package.json': '{}',
+    'pnpm-lock.yaml': 'lockfileVersion: 9',
+  };
+
+  it('hashes CSS, HTML, Vite config and lockfile inputs', () => {
+    const root = tempRoot();
+    try {
+      writeSources(root, skeleton);
+      const before = hashFiles(root, collectInputFiles(root, inputs));
+      expect(before.count).toBe(6);
+      // Tampering any single production input changes the hash.
+      const drifted: Array<[string, string]> = [
+        ['web/src/index.css', '.a{color:blue}'],
+        ['web/index.html', '<html><body></body></html>'],
+        ['web/vite.config.ts', 'export default { base: "/x/" }'],
+        ['pnpm-lock.yaml', 'lockfileVersion: 9\n# bumped'],
+        ['web/package.json', '{"version":"9.9.9"}'],
+      ];
+      for (const [rel, tampered] of drifted) {
+        writeFileSync(join(root, rel), tampered);
+        const after = hashFiles(root, collectInputFiles(root, inputs));
+        expect(after.hash, rel).not.toBe(before.hash);
+        writeFileSync(join(root, rel), skeleton[rel] as string);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('never collects secret files and fails closed on missing inputs', () => {
+    const root = tempRoot();
+    try {
+      writeSources(root, { ...skeleton, '.env': 'KEY=secret', 'web/src/.env.local': 'X=1' });
+      const collected = collectInputFiles(root, inputs).map((p) => p.slice(root.length + 1));
+      expect(collected.some((p) => p.includes('.env'))).toBe(false);
+      // A renamed build input fails closed instead of silently hashing less.
+      rmSync(join(root, 'web/vite.config.ts'));
+      expect(() => collectInputFiles(root, inputs)).toThrow(/missing/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

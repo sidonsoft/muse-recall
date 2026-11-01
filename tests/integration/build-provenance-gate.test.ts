@@ -1,33 +1,28 @@
 /**
- * Stale-build refusal regression: with the recorded build manifests
- * moved aside (restored afterwards), the live smoke must refuse before
- * starting browsers, servers, or any provider dispatch — even with a
- * (dummy) key configured. Zero network, zero provider calls.
+ * Hermetic stale-build refusal regression: points the live smoke at
+ * empty fixture dist roots (no manifests) through the documented test
+ * hook and proves the real harness refuses before starting browsers,
+ * servers, or any provider dispatch — with a dummy key configured.
+ * Never touches the real (ignored) production manifests or dist
+ * outputs, so this passes on a clean checkout with no custom build.
+ * No network, no provider calls.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, renameSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(import.meta.dirname, '..', '..');
-const SERVER_MANIFEST = join(ROOT, 'apps/server/dist/.build-manifest.json');
-const WEB_MANIFEST = join(ROOT, 'apps/web/dist/.build-manifest.json');
 
 describe('stale build refusal (offline gate)', () => {
-  it('refuses before any browser/server/provider work with zero dispatches', async () => {
-    const backupDir = join(tmpdir(), `manifest-backup-${Date.now()}`);
-    const { mkdirSync } = await import('node:fs');
-    mkdirSync(backupDir, { recursive: true });
-    const moved: Array<{ from: string; to: string }> = [];
+  it('refuses missing manifests before any browser/server/provider work', async () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'provenance-gate-'));
+    const serverDist = join(fixture, 'server-dist');
+    const webDist = join(fixture, 'web-dist');
+    mkdirSync(serverDist, { recursive: true });
+    mkdirSync(webDist, { recursive: true });
     try {
-      for (const manifest of [SERVER_MANIFEST, WEB_MANIFEST]) {
-        if (!existsSync(manifest)) continue;
-        const to = join(backupDir, `${moved.length}.manifest.json`);
-        renameSync(manifest, to);
-        moved.push({ from: manifest, to });
-      }
-      expect(moved.length).toBeGreaterThan(0);
       let output = '';
       let exitCode = -1;
       const started = Date.now();
@@ -40,6 +35,8 @@ describe('stale build refusal (offline gate)', () => {
             ...process.env,
             FORGE_MUSE_API_KEY: 'dummy-key-for-offline-gate-proof',
             FORGE_MUSE_BIN: '/bin/false',
+            BATCHC_SMOKE_SERVER_DIST: serverDist,
+            BATCHC_SMOKE_WEB_DIST: webDist,
           },
         });
       } catch (error) {
@@ -56,13 +53,7 @@ describe('stale build refusal (offline gate)', () => {
       // Fast: no browser, server, or provider wait could have happened.
       expect(elapsed).toBeLessThan(120_000);
     } finally {
-      for (const { from, to } of moved) {
-        if (existsSync(to) && !existsSync(from)) renameSync(to, from);
-      }
-      // Both manifests are back: the gate passes again afterwards.
-      for (const { from } of moved) {
-        expect(existsSync(from)).toBe(true);
-      }
+      rmSync(fixture, { recursive: true, force: true });
     }
   }, 300_000);
 });

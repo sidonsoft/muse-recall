@@ -11,7 +11,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 export interface BuildManifest {
@@ -26,6 +26,8 @@ export interface BuildManifest {
   /** Hex sha256 over the sorted source inputs. */
   sourceHash: string;
   sourceFiles: number;
+  /** Repo-relative source inputs hashed, for audit. */
+  sourceInputs: string[];
   /** Hex sha256 over the sorted dist outputs (manifest excluded). */
   buildHash: string;
   buildFiles: number;
@@ -65,12 +67,19 @@ function listFiles(root: string, include: (relativePath: string) => boolean): st
 
 function isSourceFile(relativePath: string): boolean {
   if (relativePath.endsWith('.test.ts') || relativePath.endsWith('.test-d.ts')) return false;
+  // Bundled/loaded sources plus web assets. Deliberately narrow: secret
+  // files (.env), editor artifacts, and generated outputs never match.
   return (
     relativePath.endsWith('.ts') ||
     relativePath.endsWith('.tsx') ||
     relativePath.endsWith('.mts') ||
     relativePath.endsWith('.cts') ||
-    relativePath.endsWith('.json')
+    relativePath.endsWith('.json') ||
+    relativePath.endsWith('.css') ||
+    relativePath.endsWith('.svg') ||
+    relativePath.endsWith('.png') ||
+    relativePath.endsWith('.ico') ||
+    relativePath.endsWith('.webmanifest')
   );
 }
 
@@ -95,6 +104,103 @@ export function collectSourceFiles(root: string, dirs: string[]): string[] {
   }
   found.sort();
   return found;
+}
+
+/**
+ * Exact production inputs for one bundle: source directories plus the
+ * individual build/dependency files that change what a fresh build
+ * produces (entry HTML, bundler and compiler config, package manifests,
+ * the lockfile). Paths are explicit so a renamed or moved input fails
+ * closed (missing expected file) instead of silently dropping out of
+ * the hash.
+ *
+ * Secrets are never inputs: no `.env*` file appears here and the
+ * directory filter has no secret extension. Generated outputs (dist,
+ * node_modules, .git) are skipped by the walker.
+ */
+export interface ComponentInputs {
+  dirs: string[];
+  files: string[];
+}
+
+/** Packages whose sources the server bundle aliases (never bundled externals). */
+const SERVER_PACKAGES = [
+  'packages/shared',
+  'packages/memory-engine',
+  'packages/muse-provider',
+  'packages/agent-core',
+  'packages/tool-runtime',
+  'packages/ui-protocol',
+  'packages/decision-guard',
+];
+
+const ROOT_FILES = [
+  'package.json',
+  'pnpm-workspace.yaml',
+  // Declared dependency versions: the server bundle marks packages
+  // external, so node_modules drift changes the running code without
+  // touching the bundle hash. The lockfile closes that gap.
+  'pnpm-lock.yaml',
+  'tsconfig.base.json',
+];
+
+/**
+ * Server production inputs: app sources, every aliased package source,
+ * compiler/packaging manifests, and the dependency/configuration files
+ * that determine the built and running output.
+ */
+export const SERVER_INPUTS: ComponentInputs = {
+  dirs: ['apps/server/src', ...SERVER_PACKAGES.map((pkg) => `${pkg}/src`)],
+  files: [
+    'apps/server/package.json',
+    'apps/server/tsconfig.json',
+    ...SERVER_PACKAGES.flatMap((pkg) => [`${pkg}/package.json`, `${pkg}/tsconfig.json`]),
+    ...ROOT_FILES,
+  ],
+};
+
+/**
+ * Web production inputs: app sources (including styles), the entry HTML,
+ * bundler/compiler config, packaging manifests, and the dependency tree.
+ */
+export const WEB_INPUTS: ComponentInputs = {
+  dirs: ['apps/web/src', 'packages/shared/src', 'packages/ui-protocol/src'],
+  files: [
+    'apps/web/index.html',
+    'apps/web/vite.config.ts',
+    'apps/web/tsconfig.json',
+    'apps/web/package.json',
+    'packages/shared/package.json',
+    'packages/shared/tsconfig.json',
+    'packages/ui-protocol/package.json',
+    'packages/ui-protocol/tsconfig.json',
+    ...ROOT_FILES,
+  ],
+};
+
+/** All files of a component input set, sorted; missing files fail closed. */
+export function collectInputFiles(root: string, inputs: ComponentInputs): string[] {
+  const found = collectSourceFiles(root, inputs.dirs);
+  for (const file of inputs.files) {
+    const full = join(root, file);
+    try {
+      if (!statSync(full).isFile()) {
+        throw new Error(`expected build input is not a file: ${file}`);
+      }
+    } catch (error) {
+      throw new Error(
+        `expected build input is missing: ${file} (${error instanceof Error ? error.message : String(error)})`,
+      );
+    }
+    found.push(full);
+  }
+  found.sort();
+  return found;
+}
+
+/** Repo-relative paths of an input set, for manifest audit trails. */
+export function inputRelPaths(root: string, files: string[]): string[] {
+  return files.map((full) => relative(root, full).split(sep).join('/'));
 }
 
 /** Dist outputs that the harness serves (the manifest itself excluded). */
@@ -154,21 +260,6 @@ export function writeManifest(distDir: string, manifest: BuildManifest): void {
   writeFileSync(manifestPath(distDir), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-/** Server bundle inputs: app sources plus every aliased package. */
-export const SERVER_SOURCE_DIRS = [
-  'apps/server/src',
-  'packages/shared/src',
-  'packages/memory-engine/src',
-  'packages/muse-provider/src',
-  'packages/agent-core/src',
-  'packages/tool-runtime/src',
-  'packages/ui-protocol/src',
-  'packages/decision-guard/src',
-];
-
-/** Web bundle inputs: app sources plus every vite-aliased package. */
-export const WEB_SOURCE_DIRS = ['apps/web/src', 'packages/shared/src', 'packages/ui-protocol/src'];
-
 function failProvenance(message: string): never {
   throw new Error(
     `${message} — rebuild both production bundles with scripts/build-production-bundles.ts`,
@@ -180,6 +271,8 @@ function failProvenance(message: string): never {
  * current tree exactly — same source content, same dist bytes. Any
  * drift (edited source, rebuilt-by-hand dist, missing manifest) throws
  * before the harness starts servers, browsers, or provider calls.
+ * Explicit source lists (tests) bypass tree discovery; production
+ * callers use the component input sets.
  */
 export function verifyBuildProvenance(options: {
   root: string;
@@ -227,8 +320,8 @@ export function verifyBuildProvenance(options: {
     }
     return manifest;
   };
-  const serverSources = options.serverSources ?? collectSourceFiles(root, SERVER_SOURCE_DIRS);
-  const webSources = options.webSources ?? collectSourceFiles(root, WEB_SOURCE_DIRS);
+  const serverSources = options.serverSources ?? collectInputFiles(root, SERVER_INPUTS);
+  const webSources = options.webSources ?? collectInputFiles(root, WEB_INPUTS);
   const server = check('server', serverDist, serverSources);
   const web = check('web', webDist, webSources);
   const info = gitInfo(root);

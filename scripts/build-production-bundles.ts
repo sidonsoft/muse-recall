@@ -18,11 +18,12 @@ import { join } from 'node:path';
 import {
   type BuildManifest,
   collectDistFiles,
-  collectSourceFiles,
+  collectInputFiles,
   describeCurrentTree,
   hashFiles,
-  SERVER_SOURCE_DIRS,
-  WEB_SOURCE_DIRS,
+  inputRelPaths,
+  SERVER_INPUTS,
+  WEB_INPUTS,
   writeManifest,
 } from './lib/build-provenance.js';
 
@@ -34,8 +35,8 @@ function sh(cmd: string, args: string[], cwd: string): void {
 
 function main(): void {
   const tree = describeCurrentTree(ROOT);
-  const serverSources = collectSourceFiles(ROOT, SERVER_SOURCE_DIRS);
-  const webSources = collectSourceFiles(ROOT, WEB_SOURCE_DIRS);
+  const serverSources = collectInputFiles(ROOT, SERVER_INPUTS);
+  const webSources = collectInputFiles(ROOT, WEB_INPUTS);
   const serverHash = hashFiles(ROOT, serverSources);
   const webHash = hashFiles(ROOT, webSources);
   const builtAt = new Date().toISOString();
@@ -91,6 +92,7 @@ function main(): void {
     treeStatus: tree.treeStatus,
     sourceHash: serverHash.hash,
     sourceFiles: serverHash.count,
+    sourceInputs: inputRelPaths(ROOT, serverSources),
     buildHash: serverBuilt.hash,
     buildFiles: serverBuilt.count,
     builtAt,
@@ -104,6 +106,7 @@ function main(): void {
     treeStatus: tree.treeStatus,
     sourceHash: webHash.hash,
     sourceFiles: webHash.count,
+    sourceInputs: inputRelPaths(ROOT, webSources),
     buildHash: webBuilt.hash,
     buildFiles: webBuilt.count,
     builtAt,

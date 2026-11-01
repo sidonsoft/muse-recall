@@ -38,6 +38,14 @@
  *   BATCHC_SMOKE_RESUME_FROM=test-results/batchc-live/<stamp> FORGE_MUSE_API_KEY=... \
  *     FORGE_MUSE_BIN=$(which muse) pnpm exec tsx scripts/verify-batchc-live-smoke.ts
  *
+ * Build provenance (fail-closed, runs before any provider I/O): the
+ * script hashes the exact production inputs (sources, entry HTML, CSS,
+ * bundler/compiler config, package manifests, lockfile) and the dist
+ * outputs, and compares both against the recorded build manifests.
+ * BATCHC_SMOKE_{SERVER,WEB}_DIST override the verified dist locations;
+ * that hook exists only for the hermetic gate regression and is never
+ * set in live runs.
+ *
  * The SAM segmentation concept defaults to 'green rounded memory game card'
  * (the reference image shows 12 large uniform green cards on a gradient
  * background; even one match stages the cutout). BATCHC_SMOKE_SAM_CONCEPT
@@ -340,10 +348,18 @@ async function main(): Promise<void> {
   // Build provenance gate: the production builds under test must match
   // the current source tree exactly (content hashes, never timestamps).
   // Runs before any browser, server, or provider I/O: a stale build
-  // fails here with zero dispatches.
+  // fails here with zero dispatches. BATCHC_SMOKE_{SERVER,WEB}_DIST
+  // override the verified locations (hermetic gate-regression hook;
+  // never set in live runs, which always verify the real dist outputs).
   let provenance: ReturnType<typeof verifyBuildProvenance>;
   try {
-    provenance = verifyBuildProvenance({ root: ROOT });
+    const serverDist = process.env.BATCHC_SMOKE_SERVER_DIST?.trim();
+    const webDist = process.env.BATCHC_SMOKE_WEB_DIST?.trim();
+    provenance = verifyBuildProvenance({
+      root: ROOT,
+      ...(serverDist !== undefined && serverDist.length > 0 ? { serverDist } : {}),
+      ...(webDist !== undefined && webDist.length > 0 ? { webDist } : {}),
+    });
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }
