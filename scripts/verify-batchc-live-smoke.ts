@@ -51,6 +51,12 @@ import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
 import { seedForgeDemo } from './lib/demo-seed.js';
+import {
+  assertSingleProviderAttempt,
+  countModelAttempts,
+  readMediaTrace,
+  shouldStopAfterVisionOnly,
+} from './lib/media-trace.js';
 
 const ROOT = process.cwd();
 const PROJECT = `batchc-live-${Date.now().toString(36).slice(-6)}`;
@@ -58,6 +64,8 @@ const LONG = 900_000;
 const IMAGE = process.env.BATCHC_SMOKE_IMAGE ?? join(ROOT, 'docs/assets/muse-forge-after.png');
 const STAMP = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);
 const EVIDENCE = join(ROOT, 'test-results', 'batchc-live', STAMP);
+/** Bounded server stdout/stderr for this run; module scope so the trace reader can use it. */
+const SERVER_LOG = join(EVIDENCE, 'server.log');
 
 const checks: string[] = [];
 const calls = { vision: 0, sam: 0, coding: 0, imageGeneration: 0 };
@@ -219,38 +227,6 @@ function readAlphaStats(bytes: Buffer): {
   return { width: png.width, height: png.height, transparent, opaque };
 }
 
-interface MediaTraceEntry {
-  attempt: number;
-  path?: string;
-  model?: string;
-  outcome?: string;
-  status?: number;
-}
-function readMediaTrace(): MediaTraceEntry[] {
-  const entries: MediaTraceEntry[] = [];
-  let text = '';
-  try {
-    text = readFileSync(SERVER_LOG, 'utf8');
-  } catch {
-    return entries;
-  }
-  for (const line of text.split('\n')) {
-    if (!line.includes('[media-trace]')) continue;
-    const attempt = /attempt=(\d+)/.exec(line)?.[1];
-    if (attempt === undefined) continue;
-    const entry: MediaTraceEntry = { attempt: Number(attempt) };
-    const path = /path=(\S+)/.exec(line)?.[1];
-    if (path !== undefined) entry.path = path;
-    const model = /model=(\S+)/.exec(line)?.[1];
-    if (model !== undefined) entry.model = model;
-    const outcome = /outcome=(\S+)/.exec(line)?.[1];
-    if (outcome !== undefined) entry.outcome = outcome;
-    const status = /status=(\d+)/.exec(line)?.[1];
-    if (status !== undefined) entry.status = Number(status);
-    entries.push(entry);
-  }
-  return entries;
-}
 /** Bound diagnostics for failure evidence: the server already redacts
  *  provider messages, but raw transport bodies are masked here for
  *  credential-shaped values before they reach the evidence report. */
@@ -345,7 +321,6 @@ async function main(): Promise<void> {
   if (calls.vision + calls.sam + calls.coding !== 0) fail('call budget must start at zero');
   mkdirSync(EVIDENCE, { recursive: true });
 
-  const SERVER_LOG = join(EVIDENCE, 'server.log');
   writeFileSync(SERVER_LOG, '');
   const dataRoot = mkdtempSync(join(tmpdir(), 'batchc-live-'));
   const workspaceRoot = join(dataRoot, 'workspaces');
@@ -576,22 +551,22 @@ async function main(): Promise<void> {
       );
     }
     await new Promise((resolve) => setTimeout(resolve, 350));
-    const visionTrace = readMediaTrace().filter(
-      (entry) => entry.model?.includes('muse-spark') === true,
-    );
-    const visionAttempts = visionTrace.length;
-    observations.requestedVisionModel =
-      effectiveMeta.media?.vision_model ?? visionTrace.find((entry) => entry.model)?.model ?? null;
+    const traceEntries = readMediaTrace(SERVER_LOG);
+    const visionAttempts = countModelAttempts(traceEntries, 'muse-spark');
+    observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
     observations.visionProviderAttempts = visionAttempts;
     observations.providerAttempts = {
       ...(observations.providerAttempts as Record<string, number> | undefined),
       vision: visionAttempts,
     };
-    if (visionAttempts === 0) fail('no media trace captured for the vision request');
-    if (visionAttempts !== 1) {
-      fail(
-        `vision produced ${String(visionAttempts)} provider attempts; transport retry budget is 0`,
-      );
+    try {
+      assertSingleProviderAttempt({
+        capability: 'vision',
+        responseAttempts: suggestData.provider_attempts,
+        traceAttempts: visionAttempts,
+      });
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error));
     }
     observations.visionProviderAttempts = 1;
     observations.visionResponse = {
@@ -603,7 +578,7 @@ async function main(): Promise<void> {
       fail('vision returned no suggestions (unusable; stopping, no retry)');
     await page.getByLabel('Suggestion content').first().waitFor({ timeout: 20_000 });
     check(`live vision returned ${suggestData.suggestions.length} editable draft(s) (one call)`);
-    if (process.env.BATCHC_SMOKE_VISION_ONLY === '1') {
+    if (shouldStopAfterVisionOnly(visionOnly, calls)) {
       runScope = 'vision-only';
       observations.scope =
         'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
@@ -657,12 +632,6 @@ async function main(): Promise<void> {
     if (accepted.source.reference !== expectedReference)
       fail(`source reference ${accepted.source.reference} != ${expectedReference}`);
     check(`accepted proposal is active with source-version link ${expectedReference}`);
-    if (visionOnly) {
-      if (calls.sam !== 0 || calls.coding !== 0) fail('vision-only mode made extra calls');
-      check('vision-only mode: SAM and coding remain paused');
-      return;
-    }
-
     // ---- 2. live SAM -> inspect/select match -> save cutout -----------------
     await page.getByRole('button', { name: 'HTML Studio', exact: true }).click();
     await page.getByRole('region', { name: 'Media assets' }).waitFor({ timeout: 20_000 });
@@ -711,21 +680,21 @@ async function main(): Promise<void> {
       }>;
     };
     await new Promise((resolve) => setTimeout(resolve, 350));
-    const samTrace = readMediaTrace().filter((entry) => entry.model?.includes('sam-') === true);
-    const samAttempts = samTrace.length;
-    if (segmentData.provider_attempts !== 1) {
-      fail(`SAM response provider_attempts=${String(segmentData.provider_attempts)}; expected 1`);
-    }
-    observations.requestedSamModel =
-      effectiveMeta.media?.sam_model ?? samTrace.find((entry) => entry.model)?.model ?? null;
+    const samAttempts = countModelAttempts(readMediaTrace(SERVER_LOG), 'sam-');
+    observations.requestedSamModel = effectiveMeta.media?.sam_model ?? null;
     observations.samProviderAttempts = samAttempts;
     observations.providerAttempts = {
       ...(observations.providerAttempts as Record<string, number> | undefined),
       sam: samAttempts,
     };
-    if (samAttempts === 0) fail('no media trace captured for the SAM request');
-    if (samAttempts !== 1) {
-      fail(`SAM produced ${String(samAttempts)} provider attempts; transport retry budget is 0`);
+    try {
+      assertSingleProviderAttempt({
+        capability: 'SAM',
+        responseAttempts: segmentData.provider_attempts,
+        traceAttempts: samAttempts,
+      });
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error));
     }
     observations.segment = {
       segment_id: segmentData.segment_id,

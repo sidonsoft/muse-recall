@@ -57,6 +57,11 @@ are unchanged):
 - **Non-JSON failures captured:** vision/SAM failures now read the raw bounded body first and only
   then attempt JSON parsing; status, raw body, parsed envelope (when valid) and a screenshot are
   retained. A non-JSON error cannot bypass evidence capture.
+- **Trace-reader scoping fixed:** `SERVER_LOG` is now module-scoped and the reader is a separate
+  testable module (`scripts/lib/media-trace.ts`), so a successful vision call cannot silently return
+  an empty trace. The parser is covered by `tests/unit/media-trace.test.ts` (6 tests), including an
+  integrated success path: one response `provider_attempts:1` plus one trace attempt passes the
+  single-attempt gate and returns the vision-only stop decision.
 - **Offline regression:** new `tests/unit/media-adapter-retry.test.ts` (7 tests) proves default 1
   retry = two attempts, `maxRetries:0` refuses a second attempt on 503/network/timeout, and the trace
   contains one line per attempt without the credential. No provider traffic.
@@ -106,7 +111,8 @@ contract-backed actions:
 The failed vision submission remains consumed; a repeat is a **newly authorized attempt**, not a
 continuation of the original one-call allowance. No additional live call will be made without
 direction. The harness now has a `BATCHC_SMOKE_VISION_ONLY=1` mode so a newly authorized vision
-attempt can stop after the single vision submission without entering SAM/coding. Options:
+attempt can stop after the single vision submission without entering SAM/coding. The offline
+trace-reader/vision-only success gate is tested (6 tests); no live call was made in this fix. Options:
 
 1. Authorize **one new vision attempt** with the P2-fixed harness (`FORGE_MEDIA_MAX_RETRIES=0`,
    trace attempt accounting, non-JSON capture, retained `server.log`); or
@@ -121,7 +127,8 @@ merge, beta branch, tag, or research-artifact change was made.
 
 - Deterministic UI: `test-results/batchc-ui/` (screenshots/summary; gitignored)
 - Live failure report: `test-results/batchc-live/2026-11-01-0027/report.json` (gitignored)
-- P2 regression: `tests/unit/media-adapter-retry.test.ts` (7 tests, offline transport)
+- P2 regression: `tests/unit/media-adapter-retry.test.ts` (7 tests, offline transport),
+  `scripts/lib/media-trace.ts` + `tests/unit/media-trace.test.ts` (6 tests, trace + vision-only gate)
 - Retry/trace env: `FORGE_MEDIA_MAX_RETRIES=0`, `FORGE_MEDIA_TRACE=1` (smoke only; product default 1)
 - Future live transport evidence: `test-results/batchc-live/<stamp>/server.log` (`[media-trace]` lines)
 - Scripts: `scripts/verify-batchc-ui.ts`, `scripts/verify-batchc-live-smoke.ts`
