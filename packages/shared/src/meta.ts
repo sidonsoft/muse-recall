@@ -79,5 +79,19 @@ export const ServiceMetaSchema = z.object({
       endpoint: z.literal('/api/errors'),
     })
     .optional(),
+  /**
+   * Build provenance baked into the bundle at build time: the source
+   * commit and content hash the running code was built from. Null when
+   * the bundle was built without identity (dev/tsx). Acceptance
+   * harnesses compare this against the build manifest so a stale
+   * production build fails closed instead of running untested code.
+   */
+  build: z
+    .object({
+      commit: z.string(),
+      source_hash: z.string(),
+      built_at: z.string(),
+    })
+    .nullable(),
 });
 export type ServiceMeta = z.infer<typeof ServiceMetaSchema>;

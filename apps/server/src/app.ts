@@ -30,6 +30,7 @@ import {
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { scanBackupFreshness } from './alert-signals.js';
+import { buildIdentity } from './build-identity.js';
 import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
 import { ForgeJobManager } from './forge/runner.js';
@@ -637,6 +638,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       },
       memory: memoryMeta(config),
       errors: { catalog_version: ERROR_CATALOG_VERSION, endpoint: '/api/errors' },
+      build: buildIdentity(),
       safety: {
         tool_approval_policy: config.toolApprovalPolicy,
         generated_code_execution: false,

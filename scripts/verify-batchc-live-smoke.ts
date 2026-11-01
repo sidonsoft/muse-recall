@@ -61,6 +61,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
+import { verifyBuildProvenance } from './lib/build-provenance.js';
 import { seedForgeDemo } from './lib/demo-seed.js';
 import {
   assertSingleProviderAttempt,
@@ -336,6 +337,38 @@ async function main(): Promise<void> {
     return;
   }
   if (calls.vision + calls.sam + calls.coding !== 0) fail('call budget must start at zero');
+  // Build provenance gate: the production builds under test must match
+  // the current source tree exactly (content hashes, never timestamps).
+  // Runs before any browser, server, or provider I/O: a stale build
+  // fails here with zero dispatches.
+  let provenance: ReturnType<typeof verifyBuildProvenance>;
+  try {
+    provenance = verifyBuildProvenance({ root: ROOT });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  observations.buildProvenance = {
+    commit: provenance.commit,
+    treeClean: provenance.treeClean,
+    treeStatus: provenance.treeStatus,
+    server: {
+      sourceHash: provenance.server.sourceHash,
+      sourceFiles: provenance.server.sourceFiles,
+      buildHash: provenance.server.buildHash,
+      buildFiles: provenance.server.buildFiles,
+      builtAt: provenance.server.builtAt,
+    },
+    web: {
+      sourceHash: provenance.web.sourceHash,
+      sourceFiles: provenance.web.sourceFiles,
+      buildHash: provenance.web.buildHash,
+      buildFiles: provenance.web.buildFiles,
+      builtAt: provenance.web.builtAt,
+    },
+  };
+  check(
+    `production builds match the tested source (server ${provenance.server.buildHash.slice(0, 12)}…, web ${provenance.web.buildHash.slice(0, 12)}…; commit ${provenance.commit.slice(0, 12)})`,
+  );
   const resumeDir = process.env.BATCHC_SMOKE_RESUME_FROM?.trim() ?? '';
   let retained: RetainedVisionEvidence | null = null;
   if (process.env.BATCHC_SMOKE_VISION_ONLY === '1' && resumeDir) {
@@ -428,7 +461,26 @@ async function main(): Promise<void> {
         vision_model?: string;
         max_retries?: number;
       };
+      build?: { commit?: string; source_hash?: string; built_at?: string } | null;
     };
+    // Server identity: the running API must prove it is the verified
+    // build (baked commit + source hash), not a stale process.
+    const runtimeIdentity = meta.build ?? null;
+    observations.serverIdentity = runtimeIdentity;
+    const baked = provenance.server.identity;
+    if (
+      runtimeIdentity === null ||
+      baked === null ||
+      runtimeIdentity.commit !== baked.commit ||
+      runtimeIdentity.source_hash !== baked.source_hash
+    ) {
+      fail(
+        `running API identity does not match the verified build: runtime=${JSON.stringify(runtimeIdentity)} baked=${JSON.stringify(baked)}`,
+      );
+    }
+    check(
+      `running API proves the verified build identity (commit ${String(runtimeIdentity.commit).slice(0, 12)})`,
+    );
     observations.effectiveConfig = {
       forge_configured_model: meta.forge?.configured_model ?? null,
       media: meta.media ?? null,
@@ -980,6 +1032,24 @@ async function main(): Promise<void> {
     await stop(server);
     server = startApi();
     await waitForHttp(`${apiBase}/api/health`);
+    // The restarted process must prove the same verified build identity;
+    // a mismatched or missing identity stops the run before acceptance
+    // continues on an unverified server.
+    const revivedMeta = JSON.parse((await api(apiBase, 'GET', '/api/meta')).text).data as {
+      build?: { commit?: string; source_hash?: string; built_at?: string } | null;
+    };
+    const revivedIdentity = revivedMeta.build ?? null;
+    observations.serverIdentityAfterRestart = revivedIdentity;
+    if (
+      revivedIdentity === null ||
+      revivedIdentity.commit !== runtimeIdentity?.commit ||
+      revivedIdentity.source_hash !== runtimeIdentity?.source_hash
+    ) {
+      fail(
+        `restarted API identity does not match the verified build: ${JSON.stringify(revivedIdentity)}`,
+      );
+    }
+    check('restarted API proves the same verified build identity');
     await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
     await page.getByText('v2 approved', { exact: false }).waitFor({ timeout: 30_000 });
     const revived = await artifact(apiBase);
