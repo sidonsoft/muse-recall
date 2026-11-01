@@ -701,16 +701,20 @@ async function main(): Promise<void> {
       proposedList.find((entry) => entry.content.includes('reviewer edit')) ?? proposedList[0];
     if (!proposal) fail('proposed memory not found');
     await page.getByRole('button', { name: 'Memory', exact: true }).click();
-    await page.getByLabel('Search memories').fill(editedContent.slice(0, 40));
+    // Filter to proposals first: row buttons carry content text, not a
+    // content-derived accessible name, so name-matching cannot find them.
+    await page.getByLabel('Filter by status').waitFor({ timeout: 20_000 });
+    await page.getByLabel('Filter by status').selectOption('proposed');
     await page
-      .getByRole('button', {
-        name: new RegExp(editedContent.slice(0, 30).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      })
+      .getByRole('button')
+      .filter({ hasText: editedContent.slice(0, 60) })
       .first()
       .click();
     await page.getByText('Agent proposal', { exact: false }).waitFor({ timeout: 20_000 });
+    const memoryDetail = page.getByRole('region', { name: 'Memory detail' });
+    await memoryDetail.waitFor({ timeout: 10_000 });
     await page.screenshot({ path: join(EVIDENCE, '02-memory-proposal.png'), fullPage: false });
-    await page.getByRole('button', { name: 'Accept proposal', exact: true }).click();
+    await memoryDetail.getByRole('button', { name: 'Accept proposal', exact: true }).click();
     await page.getByText('Proposal accepted', { exact: false }).waitFor({ timeout: 20_000 });
     const accepted = JSON.parse((await api(apiBase, 'GET', `/api/memories/${proposal.id}`)).text)
       .data.memory as { status: string; source: { reference: string | null }; content: string };
