@@ -318,10 +318,7 @@ export function registerForgeRoutes(
           // A decision edited in place keeps its id, so id-only selection would
           // silently review the new wording and report it as the one the user
           // picked. The revision the screen displayed has to still be current.
-          if (
-            entry.expected_revision !== undefined &&
-            entry.expected_revision !== memory.revision
-          ) {
+          if (entry.expected_revision !== memory.revision) {
             throw new ForgeError(
               'decision_revision_conflict',
               `Decision ${memoryId} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decisions before reviewing the screenshot.`,
@@ -339,7 +336,13 @@ export function registerForgeRoutes(
         // from this project's own job history, so feedback cannot be attached to
         // another project's generation or to a job id that does not exist.
         let generation:
-          | { id: string; kind: string; status: string; version: number | null; created_at: string }
+          | {
+              id: string;
+              kind: 'generate' | 'modify';
+              status: 'succeeded';
+              version: number;
+              created_at: string;
+            }
           | undefined;
         if (body.job_id !== undefined) {
           const job = manager.get(body.job_id);
@@ -349,10 +352,20 @@ export function registerForgeRoutes(
               `Job ${body.job_id} is not a Forge job of project ${id}, so this review cannot be attached to it.`,
             );
           }
+          // Only a run that produced an approved version is a generation. A
+          // queued, running, failed, or finished-but-unapproved run is a job:
+          // there is no artifact the user actually has, so feedback cannot be
+          // filed against it as though it were a shipped generation.
+          if (job.version === null || job.status !== 'succeeded') {
+            throw new ForgeError(
+              'invalid_job_id',
+              `Job ${body.job_id} is a ${job.status} ${job.kind} with ${job.version === null ? 'no approved version' : `version ${String(job.version)}`} in project ${id}, so it is not an approved generation this review can describe. Omit job_id to review the screenshot on its own.`,
+            );
+          }
           generation = {
             id: job.id,
             kind: job.kind,
-            status: job.status,
+            status: 'succeeded',
             version: job.version,
             created_at: job.created_at,
           };

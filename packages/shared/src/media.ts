@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH,
   ForgeJobKindSchema,
-  ForgeJobStatusSchema,
   ForgeProjectIdSchema,
 } from './forge.js';
 
@@ -470,7 +469,11 @@ export const MediaVisualReviewRequestSchema = z.object({
     .array(
       z.object({
         memory_id: z.uuid(),
-        expected_revision: z.number().int().min(1).optional(),
+        // Required on purpose. This endpoint has no older client to stay
+        // compatible with, and an id-only selection is exactly the stale-subject
+        // bug the pin exists to prevent: the route would review whatever wording
+        // the decision has now and report it as the one the user chose.
+        expected_revision: z.number().int().min(1),
       }),
     )
     .min(1)
@@ -489,17 +492,20 @@ export const MediaVisualReviewResponseSchema = z.object({
   artifact_changed: z.literal(false),
   screenshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   /**
-   * The generation this review was attached to, echoed from the server's own
-   * job record. Absent when the caller named no generation. This is identity
-   * for the reader, not a verdict: it says which generation the frame was
-   * reviewed beside, not whether that generation satisfied anything.
+   * The approved generation this review was attached to, echoed from the
+   * server's own job record. Only a job that produced an approved version can
+   * appear here — a pending, failed, or finished-but-unapproved run is a job,
+   * not a generation, and naming one is refused. Absent when the caller named no
+   * generation. This is identity for the reader, not a verdict: it says which
+   * generation the frame was reviewed beside, not whether that generation
+   * satisfied anything.
    */
   generation: z
     .object({
       id: z.uuid(),
       kind: ForgeJobKindSchema,
-      status: ForgeJobStatusSchema,
-      version: z.number().int().min(1).nullable(),
+      status: z.literal('succeeded'),
+      version: z.number().int().min(1),
       created_at: z.iso.datetime(),
     })
     .optional(),

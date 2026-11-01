@@ -6,6 +6,8 @@ import {
   ForgeArtifactSchema,
   type ForgeDiff,
   ForgeDiffSchema,
+  type ForgeGenerationList,
+  ForgeGenerationListSchema,
   type ForgeJob,
   ForgeJobSchema,
   type ForgeProjectView,
@@ -48,6 +50,8 @@ import {
   MediaVersionListSchema,
   MediaVersionRecordSchema,
   type MediaVersionRecordView,
+  type MediaVisualReviewResponse,
+  MediaVisualReviewResponseSchema,
   type Memory,
   type MemoryCorrectionRequestInput,
   type MemoryCorrectionResult,
@@ -205,6 +209,25 @@ export interface ProviderProbeState {
 const DeleteResultSchema = z.object({ id: z.uuid(), deleted: z.literal(true) });
 const HistoryResultSchema = z.object({ entries: z.array(z.unknown()) });
 const ProjectListSchema = z.object({ items: z.array(z.unknown()) });
+
+/**
+ * A decision the user selected, pinned to the revision the screen displayed.
+ * The server resolves the text; the client only ever names id and revision.
+ */
+export interface DecisionSelection {
+  memory_id: string;
+  expected_revision?: number;
+}
+
+/**
+ * A selection pinned to the revision the screen is displaying. Required by
+ * visual review: an unpinned id would let an in-place edit quietly change the
+ * subject of the feedback.
+ */
+export interface PinnedDecisionSelection {
+  memory_id: string;
+  expected_revision: number;
+}
 
 export interface MemoryListParams {
   project_id?: string;
@@ -547,7 +570,12 @@ export const api = {
       (data) => ForgeJobSchema.parse(data),
     ),
 
-  forgeModify: (projectId: string, changeRequest: string, screenshotDataUrl?: string | null) =>
+  forgeModify: (
+    projectId: string,
+    changeRequest: string,
+    screenshotDataUrl?: string | null,
+    decisions?: DecisionSelection[],
+  ) =>
     request<ForgeJob>(
       `/api/forge/projects/${projectId}/modify`,
       {
@@ -555,9 +583,48 @@ export const api = {
         body: JSON.stringify({
           request: changeRequest,
           ...(screenshotDataUrl ? { screenshot_data_url: screenshotDataUrl } : {}),
+          ...(decisions && decisions.length > 0 ? { decisions } : {}),
         }),
       },
       (data) => ForgeJobSchema.parse(data),
+    ),
+
+  /**
+   * Batch E — prior generations with the decision reference each was created
+   * with, read from the server's own records. Read-only: listing them restages
+   * and re-approves nothing.
+   */
+  forgeGenerations: (projectId: string) =>
+    request<ForgeGenerationList>(
+      `/api/forge/projects/${projectId}/generations`,
+      { method: 'GET' },
+      (data) => ForgeGenerationListSchema.parse(data),
+    ),
+
+  /**
+   * Batch E — advisory screenshot review. The selection pins each decision to
+   * the revision this screen is displaying, so an in-place edit between listing
+   * and review is a conflict rather than a silent change of subject.
+   */
+  forgeVisualReview: (
+    projectId: string,
+    input: {
+      screenshotDataUrl: string;
+      decisions: PinnedDecisionSelection[];
+      jobId?: string | null;
+    },
+  ) =>
+    request<MediaVisualReviewResponse>(
+      `/api/forge/projects/${projectId}/visual-review`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          screenshot_data_url: input.screenshotDataUrl,
+          decisions: input.decisions,
+          ...(input.jobId ? { job_id: input.jobId } : {}),
+        }),
+      },
+      (data) => MediaVisualReviewResponseSchema.parse(data),
     ),
 
   forgeJob: (jobId: string) =>

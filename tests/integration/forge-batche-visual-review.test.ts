@@ -281,16 +281,37 @@ async function approveGenerate(app: FastifyInstance): Promise<string> {
   return jobId;
 }
 
-function reviewBody(decisions: string[], screenshot = SCREENSHOT) {
-  return {
-    screenshot_data_url: screenshot,
-    decisions: decisions.map((memory_id) => ({ memory_id })),
-  };
+/** A selection the way the screen sends one: an id pinned to the revision it showed. */
+interface Selection {
+  memory_id: string;
+  expected_revision: number;
 }
 
-/** The shape a real screen sends: each id pinned to the revision it showed. */
-function pinnedBody(selection: Array<{ memory_id: string; expected_revision: number }>) {
-  return { screenshot_data_url: SCREENSHOT, decisions: selection };
+function pick(memory: { id: string; revision: number }): Selection {
+  return { memory_id: memory.id, expected_revision: memory.revision };
+}
+
+function reviewBody(selection: Selection[], screenshot = SCREENSHOT) {
+  return { screenshot_data_url: screenshot, decisions: selection };
+}
+
+/** A run that finished but was never approved: a job, not a generation. */
+async function generateOnly(app: FastifyInstance): Promise<string> {
+  const started = await app.inject({
+    method: 'POST',
+    url: `/api/forge/projects/${PROJECT}/generate`,
+    payload: { prompt: PROMPT },
+  });
+  expect(started.statusCode).toBe(202);
+  const jobId = started.json().data.id as string;
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    const current = await app.inject({ method: 'GET', url: `/api/forge/jobs/${jobId}` });
+    if (current.json().data.status === 'succeeded') {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return jobId;
 }
 
 async function postReview(app: FastifyInstance, body: unknown) {
@@ -344,7 +365,7 @@ describe('screenshot advisory review against accepted decisions', () => {
     const before = await artifactFingerprint(h);
     const jobsBefore = h.manager.list(PROJECT).length;
 
-    const response = await postReview(h.app, reviewBody([theme.id, timer.id]));
+    const response = await postReview(h.app, reviewBody([pick(theme), pick(timer)]));
     expect(response.statusCode).toBe(200);
     const payload = MediaVisualReviewResponseSchema.parse(response.json().data);
 
@@ -427,12 +448,12 @@ describe('screenshot advisory review against accepted decisions', () => {
     await approveGenerate(h.app);
 
     const cases: Array<{ body: unknown; status: number; code: string }> = [
-      { body: reviewBody([stale.id]), status: 422, code: 'decision_superseded' },
-      { body: reviewBody([proposed.id]), status: 422, code: 'decision_not_active' },
-      { body: reviewBody([foreign.id]), status: 422, code: 'decision_cross_project' },
-      { body: reviewBody([retired.id]), status: 422, code: 'decision_not_active' },
+      { body: reviewBody([pick(stale)]), status: 422, code: 'decision_superseded' },
+      { body: reviewBody([pick(proposed)]), status: 422, code: 'decision_not_active' },
+      { body: reviewBody([pick(foreign)]), status: 422, code: 'decision_cross_project' },
+      { body: reviewBody([pick(retired)]), status: 422, code: 'decision_not_active' },
       {
-        body: reviewBody(['9c1f2a3b-4d5e-4f60-8a71-8b9c0d0e0f01']),
+        body: reviewBody([pick({ id: '9c1f2a3b-4d5e-4f60-8a71-8b9c0d0e0f01', revision: 1 })]),
         status: 422,
         code: 'decision_not_found',
       },
@@ -444,7 +465,7 @@ describe('screenshot advisory review against accepted decisions', () => {
       },
       {
         // Long enough to clear the request-length bound, but not a PNG.
-        body: reviewBody([current.id], `data:image/jpeg;base64,${'A'.repeat(200)}`),
+        body: reviewBody([pick(current)], `data:image/jpeg;base64,${'A'.repeat(200)}`),
         status: 400,
         code: 'invalid_screenshot',
       },
@@ -470,7 +491,7 @@ describe('screenshot advisory review against accepted decisions', () => {
     const timer = decision(h.engine, 'Never show a countdown timer.');
     await approveGenerate(h.app);
 
-    const response = await postReview(h.app, reviewBody([theme.id, timer.id]));
+    const response = await postReview(h.app, reviewBody([pick(theme), pick(timer)]));
     expect(response.statusCode).toBe(200);
     const payload = MediaVisualReviewResponseSchema.parse(response.json().data);
     // Both decisions were skipped: zero findings, both unknown, never assumed
@@ -490,7 +511,7 @@ describe('screenshot advisory review against accepted decisions', () => {
     const h = await harness({ unconfigured: true });
     await createProject(h.app);
     const theme = decision(h.engine, 'Theme: woodland.');
-    const response = await postReview(h.app, reviewBody([theme.id]));
+    const response = await postReview(h.app, reviewBody([pick(theme)]));
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe('media_unconfigured');
   });
@@ -509,7 +530,7 @@ describe('screenshot advisory review against accepted decisions', () => {
 
     const stale = await postReview(
       h.app,
-      pinnedBody([{ memory_id: theme.id, expected_revision: 1 }]),
+      reviewBody([{ memory_id: theme.id, expected_revision: 1 }]),
     );
     expect(stale.statusCode).toBe(409);
     expect(stale.json().error.code).toBe('decision_revision_conflict');
@@ -518,7 +539,7 @@ describe('screenshot advisory review against accepted decisions', () => {
     // was, so the response cannot be mistaken for the one the screen displayed.
     const fresh = await postReview(
       h.app,
-      pinnedBody([{ memory_id: theme.id, expected_revision: 2 }]),
+      reviewBody([{ memory_id: theme.id, expected_revision: 2 }]),
     );
     expect(fresh.statusCode).toBe(200);
     const payload = MediaVisualReviewResponseSchema.parse(fresh.json().data);
@@ -535,7 +556,7 @@ describe('screenshot advisory review against accepted decisions', () => {
     const jobId = await approveGenerate(h.app);
 
     const pinned = await postReview(h.app, {
-      ...reviewBody([theme.id]),
+      ...reviewBody([pick(theme)]),
       job_id: jobId,
     });
     expect(pinned.statusCode).toBe(200);
@@ -556,11 +577,54 @@ describe('screenshot advisory review against accepted decisions', () => {
       '9c1f2a3b-4d5e-4f60-8a71-8b9c0d0e0f02',
       '00000000-0000-4000-8000-000000000000',
     ]) {
-      const response = await postReview(h.app, { ...reviewBody([theme.id]), job_id: candidate });
+      const response = await postReview(h.app, { ...reviewBody([pick(theme)]), job_id: candidate });
       expect(response.statusCode).toBe(404);
       expect(response.json().error.code).toBe('invalid_job_id');
     }
     expect(h.review.calls).toBe(1);
+  });
+
+  it('refuses an id-only selection before the store or the provider is touched', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+
+    // The contract has no optional revision: without one the route could only
+    // review whatever wording the decision carries now.
+    expect(
+      MediaVisualReviewRequestSchema.safeParse({
+        screenshot_data_url: SCREENSHOT,
+        decisions: [{ memory_id: theme.id }],
+      }).success,
+    ).toBe(false);
+
+    const response = await postReview(h.app, {
+      screenshot_data_url: SCREENSHOT,
+      decisions: [{ memory_id: theme.id }],
+    });
+    expect([400, 422]).toContain(response.statusCode);
+    expect(h.review.calls).toBe(0);
+  });
+
+  it('refuses to call a run that was never approved a generation', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    const jobId = await generateOnly(h.app);
+
+    // The run finished; nobody approved its artifact, so there is no version.
+    const run = h.manager.get(jobId);
+    expect(run?.status).toBe('succeeded');
+    expect(run?.version).toBeNull();
+
+    const response = await postReview(h.app, {
+      ...reviewBody([pick(theme)]),
+      job_id: jobId,
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error.code).toBe('invalid_job_id');
+    expect(response.json().error.message).toContain('not an approved generation');
+    expect(h.review.calls).toBe(0);
   });
 
   it('bounds the request through the shared schema before any work happens', async () => {
@@ -577,9 +641,9 @@ describe('screenshot advisory review against accepted decisions', () => {
     // The shared contract itself refuses a screenshot below the PNG bound and
     // accepts a real one, so the route cannot be the only guard.
     expect(
-      MediaVisualReviewRequestSchema.safeParse(reviewBody([theme.id], 'data:image/png;base64,'))
+      MediaVisualReviewRequestSchema.safeParse(reviewBody([pick(theme)], 'data:image/png;base64,'))
         .success,
     ).toBe(false);
-    expect(MediaVisualReviewRequestSchema.safeParse(reviewBody([theme.id])).success).toBe(true);
+    expect(MediaVisualReviewRequestSchema.safeParse(reviewBody([pick(theme)])).success).toBe(true);
   });
 });
