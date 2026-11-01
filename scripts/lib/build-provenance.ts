@@ -121,6 +121,13 @@ export function collectSourceFiles(root: string, dirs: string[]): string[] {
 export interface ComponentInputs {
   dirs: string[];
   files: string[];
+  /**
+   * Optional asset roots (e.g. Vite `public/`): hashed when present,
+   * skipped when absent, so a future assets directory is covered
+   * without failing checkouts that predate it. Secret files are
+   * never collected (see `isPublicAsset`).
+   */
+  publicDirs?: string[];
 }
 
 /** Packages whose sources the server bundle aliases (never bundled externals). */
@@ -146,8 +153,11 @@ const ROOT_FILES = [
 
 /**
  * Server production inputs: app sources, every aliased package source,
- * compiler/packaging manifests, and the dependency/configuration files
- * that determine the built and running output.
+ * compiler/packaging manifests, the dependency/configuration files
+ * that determine the built and running output, the build script
+ * itself (it controls esbuild flags and the baked identity), and the
+ * hashing library (it defines verification semantics) — editing any of
+ * them must invalidate the hash even when sources are untouched).
  */
 export const SERVER_INPUTS: ComponentInputs = {
   dirs: ['apps/server/src', ...SERVER_PACKAGES.map((pkg) => `${pkg}/src`)],
@@ -156,12 +166,17 @@ export const SERVER_INPUTS: ComponentInputs = {
     'apps/server/tsconfig.json',
     ...SERVER_PACKAGES.flatMap((pkg) => [`${pkg}/package.json`, `${pkg}/tsconfig.json`]),
     ...ROOT_FILES,
+    'scripts/build-production-bundles.ts',
+    'scripts/lib/build-provenance.ts',
   ],
 };
 
 /**
  * Web production inputs: app sources (including styles), the entry HTML,
- * bundler/compiler config, packaging manifests, and the dependency tree.
+ * bundler/compiler config, packaging manifests, the dependency tree,
+ * the build script and hashing library (same rationale as server), and
+ * the optional public asset root (hashed when present, skipped when
+ * absent — Vite copies it verbatim into the production output).
  */
 export const WEB_INPUTS: ComponentInputs = {
   dirs: ['apps/web/src', 'packages/shared/src', 'packages/ui-protocol/src'],
@@ -175,7 +190,10 @@ export const WEB_INPUTS: ComponentInputs = {
     'packages/ui-protocol/package.json',
     'packages/ui-protocol/tsconfig.json',
     ...ROOT_FILES,
+    'scripts/build-production-bundles.ts',
+    'scripts/lib/build-provenance.ts',
   ],
+  publicDirs: ['apps/web/public'],
 };
 
 /** All files of a component input set, sorted; missing files fail closed. */
@@ -194,8 +212,37 @@ export function collectInputFiles(root: string, inputs: ComponentInputs): string
     }
     found.push(full);
   }
+  for (const dir of inputs.publicDirs ?? []) {
+    const full = join(root, dir);
+    let isDir = false;
+    try {
+      isDir = statSync(full).isDirectory();
+    } catch {
+      isDir = false;
+    }
+    // Absent today (no public/ in the checkout) means nothing to hash;
+    // present means every servable asset is hashed. Either way the rule
+    // is explicit, not timestamped.
+    if (isDir) {
+      found.push(...listFiles(full, (rel) => isPublicAsset(`${dir}/${rel}`)));
+    }
+  }
   found.sort();
   return found;
+}
+
+/**
+ * Public asset filter: everything a static host would serve, minus
+ * anything secret. Dotfiles/dot-directories, `.env` files, and private
+ * key material are never production inputs for provenance purposes.
+ */
+function isPublicAsset(relativePath: string): boolean {
+  const segments = relativePath.split('/');
+  if (segments.some((part) => part.startsWith('.'))) return false;
+  const base = segments[segments.length - 1] ?? '';
+  if (base === '.env' || base.startsWith('.env.') || base.endsWith('.env')) return false;
+  if (/\.(pem|key|p12|pfx|kdbx)$/i.test(base)) return false;
+  return true;
 }
 
 /** Repo-relative paths of an input set, for manifest audit trails. */

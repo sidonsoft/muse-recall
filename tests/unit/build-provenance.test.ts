@@ -137,6 +137,58 @@ describe('production input coverage', () => {
   });
 });
 
+describe('build script and public assets', () => {
+  const inputs = {
+    dirs: ['web/src'],
+    files: ['scripts/build-production-bundles.ts'],
+    publicDirs: ['web/public'],
+  };
+  const skeleton = {
+    'web/src/main.ts': 'console.log(1)',
+    'scripts/build-production-bundles.ts': 'build()',
+    'web/public/logo.svg': '<svg></svg>',
+  };
+
+  it('treats the build script as a production input', () => {
+    const root = tempRoot();
+    try {
+      writeSources(root, skeleton);
+      const before = hashFiles(root, collectInputFiles(root, inputs));
+      writeFileSync(join(root, 'scripts/build-production-bundles.ts'), 'build(/* changed */)');
+      const after = hashFiles(root, collectInputFiles(root, inputs));
+      expect(after.hash).not.toBe(before.hash);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('hashes added and modified public assets, tolerates a missing public dir', () => {
+    const root = tempRoot();
+    try {
+      writeSources(root, skeleton);
+      const before = hashFiles(root, collectInputFiles(root, inputs));
+      // Modified asset drifts.
+      writeFileSync(join(root, 'web/public/logo.svg'), '<svg>changed</svg>');
+      expect(hashFiles(root, collectInputFiles(root, inputs)).hash).not.toBe(before.hash);
+      // Newly added asset drifts.
+      writeFileSync(join(root, 'web/public/extra.png'), 'png-bytes');
+      expect(hashFiles(root, collectInputFiles(root, inputs)).hash).not.toBe(before.hash);
+      // Secret files in public/ are never collected.
+      writeFileSync(join(root, 'web/public/.env'), 'KEY=secret');
+      writeFileSync(join(root, 'web/public/nested.env'), 'KEY=secret');
+      const collected = collectInputFiles(root, inputs).map((p) => p.slice(root.length + 1));
+      expect(collected.some((p) => p.includes('.env'))).toBe(false);
+      // A checkout without public/ verifies fine.
+      rmSync(join(root, 'web/public'), { recursive: true, force: true });
+      const bare = hashFiles(root, collectInputFiles(root, inputs));
+      // main.ts plus the build script; the absent public dir adds nothing.
+      expect(bare.count).toBe(2);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('verifyBuildProvenance', () => {
   it('accepts manifests that describe the current tree exactly', () => {
     const root = tempRoot();
