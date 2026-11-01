@@ -21,6 +21,7 @@ import {
   pinnedSelection,
   proposalFailureText,
   reviewFailureText,
+  reviewIdempotencyKey,
   selectableDecisions,
   suppliedRevisionsLine,
 } from './decision-review.ts';
@@ -635,6 +636,12 @@ export function StudioView({
         screenshotDataUrl: screenshot,
         decisions: selection,
         jobId: generationJobId,
+        // The same frame and selection is one paid call, not two.
+        idempotencyKey: reviewIdempotencyKey({
+          screenshotDataUrl: screenshot,
+          decisions: selection,
+          jobId: generationJobId,
+        }),
       });
       if (activeProjectRef.current !== projectId) return;
       setReview(result);

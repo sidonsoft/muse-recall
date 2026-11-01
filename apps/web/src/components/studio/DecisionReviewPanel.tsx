@@ -121,7 +121,7 @@ export function DecisionReviewPanel({
           </button>
           <p className="mt-1 text-[9.5px] leading-relaxed text-muted">
             {canReview
-              ? `Reviews the captured frame against ${selectedCount === 0 ? 'no decision yet — select at least one' : `${String(selectedCount)} selected decision${selectedCount === 1 ? '' : 's'}`}. Advisory feedback only: it changes no file and approves nothing.`
+              ? `Reviews the captured frame against ${selectedCount === 0 ? 'no decision yet — select at least one' : `${String(selectedCount)} selected decision${selectedCount === 1 ? '' : 's'}`}. Advisory feedback only: it changes no file and approves nothing. Reviewing the same frame and selection again returns the stored answer rather than asking the model twice — capture a new frame for a fresh look.`
               : 'Capture a screenshot from the preview to review it.'}
           </p>
         </div>

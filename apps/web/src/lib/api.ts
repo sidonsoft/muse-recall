@@ -612,12 +612,19 @@ export const api = {
       screenshotDataUrl: string;
       decisions: PinnedDecisionSelection[];
       jobId?: string | null;
+      /**
+       * One review is a paid vision call, so the caller names it: the same
+       * captured frame against the same pinned selection replays the recorded
+       * answer instead of spending a second call.
+       */
+      idempotencyKey?: string;
     },
   ) =>
     request<MediaVisualReviewResponse>(
       `/api/forge/projects/${projectId}/visual-review`,
       {
         method: 'POST',
+        headers: input.idempotencyKey ? { 'idempotency-key': input.idempotencyKey } : undefined,
         body: JSON.stringify({
           screenshot_data_url: input.screenshotDataUrl,
           decisions: input.decisions,

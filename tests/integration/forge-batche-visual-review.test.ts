@@ -151,8 +151,21 @@ function config(workspaceRoot: string): AppConfig {
   };
 }
 
+interface Deferred {
+  promise: Promise<void>;
+  resolve: () => void;
+}
+
+function deferred(): Deferred {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 async function harness(
-  options: { unconfigured?: boolean; outcome?: OutcomeBuilder } = {},
+  options: { unconfigured?: boolean; outcome?: OutcomeBuilder; holdReview?: Deferred } = {},
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-batch-e-review-'));
   const sourcePath = join(root, 'source.html');
@@ -176,6 +189,9 @@ async function harness(
     targetedModel: 'muse-spark-1.3',
     review: async (_image: unknown, decisions: ResolvedDecision[]) => {
       review.calls += 1;
+      // A held review lets a test observe a second request that arrives while
+      // the first is still in flight, rather than after it has been recorded.
+      if (options.holdReview !== undefined) await options.holdReview.promise;
       review.prompts.push(decisions.map((entry) => `${entry.id}:${entry.text}`).join('|'));
       const outcome = review.outcome(decisions);
       return {
@@ -235,6 +251,10 @@ async function harness(
   };
   open.push(instance);
   return instance;
+}
+
+async function wait(milliseconds: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function decision(engine: MemoryEngine, content: string, projectId = PROJECT) {
@@ -314,10 +334,11 @@ async function generateOnly(app: FastifyInstance): Promise<string> {
   return jobId;
 }
 
-async function postReview(app: FastifyInstance, body: unknown) {
+async function postReview(app: FastifyInstance, body: unknown, headers?: Record<string, string>) {
   return app.inject({
     method: 'POST',
     url: `/api/forge/projects/${PROJECT}/visual-review`,
+    headers,
     payload: body,
   });
 }
@@ -624,6 +645,119 @@ describe('screenshot advisory review against accepted decisions', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json().error.code).toBe('invalid_job_id');
     expect(response.json().error.message).toContain('not an approved generation');
+    expect(h.review.calls).toBe(0);
+  });
+
+  it('spends one call for one frame, and replays it for the same request', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const body = reviewBody([pick(theme)]);
+
+    const first = await postReview(h.app, body, { 'idempotency-key': 'review-frame-a-1' });
+    expect(first.statusCode).toBe(200);
+    const replay = await postReview(h.app, body, { 'idempotency-key': 'review-frame-a-1' });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.headers['idempotent-replayed']).toBe('1');
+    expect(replay.json()).toEqual(first.json());
+    // The point is the provider: the answer came from the record, not a second call.
+    expect(h.review.calls).toBe(1);
+
+    // A different key is a different question: the server has no basis to call
+    // it the same review, so it dispatches again.
+    const second = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-frame-b-1',
+    });
+    expect(second.statusCode).toBe(200);
+    expect(h.review.calls).toBe(2);
+  });
+
+  it('refuses a concurrent duplicate instead of paying twice', async () => {
+    const gate = deferred();
+    const h = await harness({ holdReview: gate });
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const body = reviewBody([pick(theme)]);
+
+    const first = postReview(h.app, body, { 'idempotency-key': 'review-concurrent-1' });
+    await wait(150);
+    const rival = await postReview(h.app, body, { 'idempotency-key': 'review-concurrent-1' });
+    expect(rival.statusCode).toBe(409);
+    expect(rival.json().error.code).toBe('idempotency_in_progress');
+    expect(h.review.calls).toBe(1);
+
+    // Let the in-flight call finish: it is the one call this key pays for.
+    gate.resolve();
+    const done = await first;
+    expect(done.statusCode).toBe(200);
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('records nothing for a refusal, so the same key can be retried once it is fixed', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+
+    // Pinned to a revision the record is not at: refused before any dispatch.
+    const stale = await postReview(
+      h.app,
+      reviewBody([{ memory_id: theme.id, expected_revision: 99 }]),
+      { 'idempotency-key': 'review-retry-1' },
+    );
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('decision_revision_conflict');
+    expect(h.review.calls).toBe(0);
+
+    const fixed = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-retry-1',
+    });
+    expect(fixed.statusCode).toBe(200);
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('will not replay feedback once the pinned decision has moved on', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const body = reviewBody([pick(theme)]);
+
+    const first = await postReview(h.app, body, { 'idempotency-key': 'review-stale-replay-1' });
+    expect(first.statusCode).toBe(200);
+    expect(h.review.calls).toBe(1);
+
+    // The identical request now points at a record that has moved on. The key
+    // matches a recorded answer, but that answer describes wording nobody
+    // accepted any more, so the refusal is what comes back — not the cache.
+    h.engine.update(theme.id, {
+      content: 'Theme: woodland and moss.',
+      expected_revision: theme.revision,
+    });
+    const replay = await postReview(h.app, body, { 'idempotency-key': 'review-stale-replay-1' });
+    expect(replay.statusCode).toBe(409);
+    expect(replay.json().error.code).toBe('decision_revision_conflict');
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('rejects a malformed key before touching the store or the provider', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+
+    for (const key of [
+      'short',
+      'a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5',
+    ]) {
+      const response = await postReview(h.app, reviewBody([pick(theme)]), {
+        'idempotency-key': key,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe('bad_request');
+    }
     expect(h.review.calls).toBe(0);
   });
 

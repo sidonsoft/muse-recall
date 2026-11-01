@@ -103,6 +103,23 @@ no memory. `artifact_changed` is always `false`, and the response carries provid
 telemetry (`provider`, `observed`, `provider_attempts`) like every other media
 call.
 
+## One review is one paid call
+
+A review is a vision call, so it carries an `Idempotency-Key` (decision D049, the
+same mechanism generation uses). The client derives the key from the captured frame
+and the exact pinned selection, so the same question asked twice — a double click,
+a browser retry after a dropped connection — gets the recorded answer back with
+`idempotent-replayed: 1` instead of paying again. Wanting a fresh look means
+capturing a new frame, which is also what the feedback itself describes.
+
+Replay does not weaken the stale-subject rule. The server re-reads the selected
+decisions from the store before it consults the record, so a key match never serves
+cached feedback for a decision that has since been edited, superseded, or retired:
+that attempt is refused like any other. Failures are never recorded, so the same key
+stays retryable once the cause is fixed. A second request that arrives while the
+first is still in flight is refused with `idempotency_in_progress` rather than
+dispatching the model twice.
+
 ## How it is verified (all offline, no provider calls)
 
 - `tests/unit/decision-reference.test.ts` — reference fingerprinting, injected

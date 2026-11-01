@@ -16,6 +16,7 @@ import {
   pinnedSelection,
   proposalFailureText,
   reviewFailureText,
+  reviewIdempotencyKey,
   selectableDecisions,
   suppliedRevisionsLine,
 } from '../../apps/web/src/components/studio/decision-review.ts';
@@ -315,6 +316,66 @@ describe('generation comparison wording', () => {
     expect(view.unverified).toBe(true);
     expect(view.headline).toBe('not assessed');
     expect(view.confidence).toBe('no confidence reported');
+  });
+});
+
+describe('the review call identity', () => {
+  const selection = pinnedSelection(
+    ['4a1b2c3d-0001-4e5f-8a60-111111111111', '4a1b2c3d-0002-4e5f-8a60-222222222222'],
+    [
+      decision(),
+      decision({
+        id: '4a1b2c3d-0002-4e5f-8a60-222222222222',
+        content: 'Theme: ocean.',
+        revision: 1,
+      }),
+    ],
+  );
+
+  function key(input: {
+    frame: string;
+    decisions?: typeof selection;
+    jobId?: string | null;
+  }): string {
+    return reviewIdempotencyKey({
+      screenshotDataUrl: input.frame,
+      decisions: input.decisions ?? selection,
+      jobId: input.jobId === undefined ? '7b1f2a3b-4d5e-4f60-8a71-8b9c0d0e0f10' : input.jobId,
+    });
+  }
+
+  it('names one frame and selection consistently', () => {
+    expect(key({ frame: 'data:image/png;base64,AAA' })).toBe(
+      key({ frame: 'data:image/png;base64,AAA' }),
+    );
+    // Selection order is not part of the question being asked.
+    expect(key({ frame: 'f', decisions: [...selection].reverse() })).toBe(key({ frame: 'f' }));
+  });
+
+  it('changes when anything the feedback describes changes', () => {
+    const base = key({ frame: 'data:image/png;base64,AAA' });
+    const keys = new Set([
+      base,
+      key({ frame: 'data:image/png;base64,AAB' }),
+      key({ frame: 'data:image/png;base64,AAA', jobId: null }),
+      key({
+        frame: 'data:image/png;base64,AAA',
+        decisions: [{ memory_id: selection[0]?.memory_id as string, expected_revision: 9 }],
+      }),
+      key({
+        frame: 'data:image/png;base64,AAA',
+        decisions: [selection[0] as (typeof selection)[0]],
+      }),
+    ]);
+    expect(keys.size).toBe(5);
+  });
+
+  it('stays inside the single-token header the server accepts', () => {
+    const value = key({ frame: `data:image/png;base64,${'A'.repeat(2_000_000)}` });
+    expect(value).not.toContain(',');
+    expect(value).not.toContain(' ');
+    expect(value.length).toBeGreaterThanOrEqual(8);
+    expect(value.length).toBeLessThanOrEqual(128);
   });
 });
 

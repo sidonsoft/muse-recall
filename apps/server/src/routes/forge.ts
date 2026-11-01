@@ -267,148 +267,215 @@ export function registerForgeRoutes(
    * decisions nobody selected are counted and dropped, and a decision the answer
    * skipped is reported as unverified rather than assumed consistent.
    */
+  /**
+   * The review subject, resolved from the store on every attempt: the request, the
+   * configured service, the decisions that were validated, and the generation the
+   * frame was filed against (when one was named).
+   */
+  interface ReviewSubject {
+    body: z.infer<typeof MediaVisualReviewRequestSchema>;
+    media: MediaService;
+    selected: Array<{ id: string; revision: number; excerpt: string; text: string }>;
+    generation:
+      | {
+          id: string;
+          kind: 'generate' | 'modify';
+          status: 'succeeded';
+          version: number;
+          created_at: string;
+        }
+      | undefined;
+  }
+
+  // Idempotency-Key (D049) applies here too: one review is a paid vision call,
+  // and the frame plus the pinned selection is a stable identity for it. A
+  // client that retried — or a user who clicked twice on the same captured
+  // frame — gets the recorded answer back with `idempotent-replayed: 1` instead
+  // of a second dispatch. Failures are never recorded, so a refusal can be
+  // retried once the underlying cause is fixed.
   app.post(
     '/api/forge/projects/:id/visual-review',
     { bodyLimit: FORGE_MODIFY_BODY_LIMIT_BYTES },
     async (request, reply) => {
-      return guard(reply, async () => {
-        const { id } = ProjectParams.parse(request.params);
-        const body = MediaVisualReviewRequestSchema.parse(request.body ?? {});
-        await workspace.ensureProject(id);
-        const media = deps.media;
-        if (media === undefined || media === null) {
-          throw new MediaServiceError(
-            'media_unconfigured',
-            'Visual review is not configured on this server.',
-          );
-        }
+      const attempt = beginIdempotency(deps.idempotency, request);
+      if (attempt.state === 'bad_key') {
+        return reply.status(400).send(apiFailure('bad_request', attempt.message));
+      }
+      try {
+        // Resolve the subject from the store before consulting the record. A key
+        // match must not serve cached feedback for a decision that has since been
+        // edited or retired: that would hide a stale selection behind an answer
+        // that no longer describes the screen. Re-reading is cheap, and it keeps
+        // every refusal visible on every attempt.
+        const preflight = (await guard(reply, async () => {
+          const { id } = ProjectParams.parse(request.params);
+          const body = MediaVisualReviewRequestSchema.parse(request.body ?? {});
+          await workspace.ensureProject(id);
+          const media = deps.media;
+          if (media === undefined || media === null) {
+            throw new MediaServiceError(
+              'media_unconfigured',
+              'Visual review is not configured on this server.',
+            );
+          }
 
-        const now = new Date().toISOString();
-        const selected: Array<{ id: string; revision: number; excerpt: string; text: string }> = [];
-        const seen = new Set<string>();
-        for (const entry of body.decisions) {
-          if (seen.has(entry.memory_id)) continue;
-          seen.add(entry.memory_id);
-          const memoryId = entry.memory_id;
-          const memory = deps.engine.get(memoryId, { includeDeleted: true });
-          if (memory === null) {
-            throw new ForgeError(
-              'decision_not_found',
-              `Decision ${memoryId} no longer exists, so a screenshot cannot be reviewed against it.`,
-            );
-          }
-          if (memory.project_id !== null && memory.project_id !== id) {
-            throw new ForgeError(
-              'decision_cross_project',
-              `Decision ${memoryId} belongs to project ${memory.project_id}, not ${id}.`,
-            );
-          }
-          if (memory.superseded_by !== null) {
-            throw new ForgeError(
-              'decision_superseded',
-              `Decision ${memoryId} was corrected: ${memory.superseded_by} is current. Review against the current decision.`,
-            );
-          }
-          if (!isActiveProjectDecision(memory, id, now)) {
-            throw new ForgeError(
-              'decision_not_active',
-              `Decision ${memoryId} is ${memory.status}${memory.expires_at !== null ? ' past its expiry' : ''}, not an accepted decision, so there is nothing accepted to review against.`,
-            );
-          }
-          // A decision edited in place keeps its id, so id-only selection would
-          // silently review the new wording and report it as the one the user
-          // picked. The revision the screen displayed has to still be current.
-          if (entry.expected_revision !== memory.revision) {
-            throw new ForgeError(
-              'decision_revision_conflict',
-              `Decision ${memoryId} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decisions before reviewing the screenshot.`,
-            );
-          }
-          selected.push({
-            id: memory.id,
-            revision: memory.revision,
-            excerpt: decisionExcerpt(memory.content),
-            text: memory.content,
-          });
-        }
-
-        // A review may name the generation the frame belongs to. It is resolved
-        // from this project's own job history, so feedback cannot be attached to
-        // another project's generation or to a job id that does not exist.
-        let generation:
-          | {
-              id: string;
-              kind: 'generate' | 'modify';
-              status: 'succeeded';
-              version: number;
-              created_at: string;
+          const now = new Date().toISOString();
+          const selected: Array<{ id: string; revision: number; excerpt: string; text: string }> =
+            [];
+          const seen = new Set<string>();
+          for (const entry of body.decisions) {
+            if (seen.has(entry.memory_id)) continue;
+            seen.add(entry.memory_id);
+            const memoryId = entry.memory_id;
+            const memory = deps.engine.get(memoryId, { includeDeleted: true });
+            if (memory === null) {
+              throw new ForgeError(
+                'decision_not_found',
+                `Decision ${memoryId} no longer exists, so a screenshot cannot be reviewed against it.`,
+              );
             }
-          | undefined;
-        if (body.job_id !== undefined) {
-          const job = manager.get(body.job_id);
-          if (job === undefined || job.project_id !== id) {
-            throw new ForgeError(
-              'invalid_job_id',
-              `Job ${body.job_id} is not a Forge job of project ${id}, so this review cannot be attached to it.`,
-            );
+            if (memory.project_id !== null && memory.project_id !== id) {
+              throw new ForgeError(
+                'decision_cross_project',
+                `Decision ${memoryId} belongs to project ${memory.project_id}, not ${id}.`,
+              );
+            }
+            if (memory.superseded_by !== null) {
+              throw new ForgeError(
+                'decision_superseded',
+                `Decision ${memoryId} was corrected: ${memory.superseded_by} is current. Review against the current decision.`,
+              );
+            }
+            if (!isActiveProjectDecision(memory, id, now)) {
+              throw new ForgeError(
+                'decision_not_active',
+                `Decision ${memoryId} is ${memory.status}${memory.expires_at !== null ? ' past its expiry' : ''}, not an accepted decision, so there is nothing accepted to review against.`,
+              );
+            }
+            // A decision edited in place keeps its id, so id-only selection would
+            // silently review the new wording and report it as the one the user
+            // picked. The revision the screen displayed has to still be current.
+            if (entry.expected_revision !== memory.revision) {
+              throw new ForgeError(
+                'decision_revision_conflict',
+                `Decision ${memoryId} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decisions before reviewing the screenshot.`,
+              );
+            }
+            selected.push({
+              id: memory.id,
+              revision: memory.revision,
+              excerpt: decisionExcerpt(memory.content),
+              text: memory.content,
+            });
           }
-          // Only a run that produced an approved version is a generation. A
-          // queued, running, failed, or finished-but-unapproved run is a job:
-          // there is no artifact the user actually has, so feedback cannot be
-          // filed against it as though it were a shipped generation.
-          if (job.version === null || job.status !== 'succeeded') {
-            throw new ForgeError(
-              'invalid_job_id',
-              `Job ${body.job_id} is a ${job.status} ${job.kind} with ${job.version === null ? 'no approved version' : `version ${String(job.version)}`} in project ${id}, so it is not an approved generation this review can describe. Omit job_id to review the screenshot on its own.`,
-            );
+
+          // A review may name the generation the frame belongs to. It is resolved
+          // from this project's own job history, so feedback cannot be attached to
+          // another project's generation or to a job id that does not exist.
+          let generation:
+            | {
+                id: string;
+                kind: 'generate' | 'modify';
+                status: 'succeeded';
+                version: number;
+                created_at: string;
+              }
+            | undefined;
+          if (body.job_id !== undefined) {
+            const job = manager.get(body.job_id);
+            if (job === undefined || job.project_id !== id) {
+              throw new ForgeError(
+                'invalid_job_id',
+                `Job ${body.job_id} is not a Forge job of project ${id}, so this review cannot be attached to it.`,
+              );
+            }
+            // Only a run that produced an approved version is a generation. A
+            // queued, running, failed, or finished-but-unapproved run is a job:
+            // there is no artifact the user actually has, so feedback cannot be
+            // filed against it as though it were a shipped generation.
+            if (job.version === null || job.status !== 'succeeded') {
+              throw new ForgeError(
+                'invalid_job_id',
+                `Job ${body.job_id} is a ${job.status} ${job.kind} with ${job.version === null ? 'no approved version' : `version ${String(job.version)}`} in project ${id}, so it is not an approved generation this review can describe. Omit job_id to review the screenshot on its own.`,
+              );
+            }
+            generation = {
+              id: job.id,
+              kind: job.kind,
+              status: 'succeeded',
+              version: job.version,
+              created_at: job.created_at,
+            };
           }
-          generation = {
-            id: job.id,
-            kind: job.kind,
-            status: 'succeeded',
-            version: job.version,
-            created_at: job.created_at,
-          };
+
+          return { body, media, selected, generation };
+        })) as ReviewSubject | undefined;
+        if (preflight === undefined) return undefined; // the guard answered already
+
+        if (attempt.state === 'replay') {
+          reply.header('idempotent-replayed', '1');
+          return reply.status(attempt.record.status).send(attempt.record.body as never);
+        }
+        if (attempt.state === 'in_progress') {
+          return reply
+            .status(409)
+            .send(
+              apiFailure(
+                'idempotency_in_progress',
+                'A request with this Idempotency-Key is still being processed.',
+              ),
+            );
         }
 
-        const png = decodePng(body.screenshot_data_url);
-        const outcome = await media.reviewScreenshot({
-          bytes: png,
-          mime: 'image/png',
-          decisions: selected.map((entry) => ({ id: entry.id, text: entry.text })),
-        });
-        const byId = new Map(selected.map((entry) => [entry.id, entry]));
+        const runResult = await guard(reply, async () => {
+          const png = decodePng(preflight.body.screenshot_data_url);
+          const outcome = await preflight.media.reviewScreenshot({
+            bytes: png,
+            mime: 'image/png',
+            decisions: preflight.selected.map((entry) => ({ id: entry.id, text: entry.text })),
+          });
+          const byId = new Map(preflight.selected.map((entry) => [entry.id, entry]));
 
-        return envelope(
-          MediaVisualReviewResponseSchema.parse({
-            advisory: true,
-            artifact_changed: false,
-            screenshot_sha256: createHash('sha256').update(png).digest('hex'),
-            ...(generation === undefined ? {} : { generation }),
-            findings: outcome.findings.map((finding) => ({
-              ...finding,
-              decision_excerpt: (byId.get(finding.decision_id) as { excerpt: string }).excerpt,
-              decision_revision: (byId.get(finding.decision_id) as { revision: number }).revision,
-            })),
-            unverified: outcome.unverified.map((entry) => ({
-              decision_id: entry.decision_id,
-              decision_excerpt: (byId.get(entry.decision_id) as { excerpt: string }).excerpt,
-              decision_revision: (byId.get(entry.decision_id) as { revision: number }).revision,
-              reason: entry.reason,
-              uncertainty:
-                'No usable assessment exists for this decision, so its relationship to the frame stays unknown.',
-            })),
-            ignored_entries: outcome.ignored,
-            limits: [...VISUAL_REVIEW_LIMITS],
-            provider: {
-              provider: 'meta',
-              ...(outcome.model.length > 0 ? { model: outcome.model } : {}),
-              ...(outcome.observedModel !== null ? { observed: outcome.observedModel } : {}),
-            },
-            provider_attempts: outcome.attempts,
-          }),
-        );
-      });
+          return envelope(
+            MediaVisualReviewResponseSchema.parse({
+              advisory: true,
+              artifact_changed: false,
+              screenshot_sha256: createHash('sha256').update(png).digest('hex'),
+              ...(preflight.generation === undefined ? {} : { generation: preflight.generation }),
+              findings: outcome.findings.map((finding) => ({
+                ...finding,
+                decision_excerpt: (byId.get(finding.decision_id) as { excerpt: string }).excerpt,
+                decision_revision: (byId.get(finding.decision_id) as { revision: number }).revision,
+              })),
+              unverified: outcome.unverified.map((entry) => ({
+                decision_id: entry.decision_id,
+                decision_excerpt: (byId.get(entry.decision_id) as { excerpt: string }).excerpt,
+                decision_revision: (byId.get(entry.decision_id) as { revision: number }).revision,
+                reason: entry.reason,
+                uncertainty:
+                  'No usable assessment exists for this decision, so its relationship to the frame stays unknown.',
+              })),
+              ignored_entries: outcome.ignored,
+              limits: [...VISUAL_REVIEW_LIMITS],
+              provider: {
+                provider: 'meta',
+                ...(outcome.model.length > 0 ? { model: outcome.model } : {}),
+                ...(outcome.observedModel !== null ? { observed: outcome.observedModel } : {}),
+              },
+              provider_attempts: outcome.attempts,
+            }),
+          );
+        });
+
+        // Only a completed review is recorded, so a refusal never becomes a
+        // cached answer and the same key stays retryable.
+        if (attempt.state === 'run' && runResult !== undefined) {
+          deps.idempotency.record(attempt.route, attempt.key, 200, runResult);
+        }
+        return runResult;
+      } finally {
+        if (attempt.state === 'run') deps.idempotency.release(attempt.route, attempt.key);
+      }
     },
   );
 

@@ -521,6 +521,7 @@ async function main(): Promise<void> {
     const httpFailures: string[] = [];
     const nonLocal: string[] = [];
     const reviewRequests: MediaVisualReviewRequest[] = [];
+    const reviewKeys: Array<string | undefined> = [];
     const modifyBodies: Array<{
       decisions?: Array<{ memory_id: string; expected_revision: number }>;
     }> = [];
@@ -556,7 +557,10 @@ async function main(): Promise<void> {
       requestLog.push(`${request.method()} ${request.url()}`);
       if (request.url().endsWith('/visual-review')) {
         const body = request.postData();
-        if (body) reviewRequests.push(MediaVisualReviewRequestSchema.parse(JSON.parse(body)));
+        if (body) {
+          reviewRequests.push(MediaVisualReviewRequestSchema.parse(JSON.parse(body)));
+          reviewKeys.push(request.headers()['idempotency-key']);
+        }
       }
       if (request.url().endsWith('/modify')) {
         const body = request.postData();
@@ -611,6 +615,9 @@ async function main(): Promise<void> {
     await reviewPanel.getByRole('checkbox').last().check();
     if (await reviewButton.isDisabled())
       fail('Review stayed disabled with a frame and a selection');
+    await reviewPanel
+      .getByText('again returns the stored answer rather than asking the model twice')
+      .waitFor({ timeout: 5_000 });
 
     type ProjectView = {
       state: { versions: unknown[]; current_version: number | null };
@@ -716,6 +723,31 @@ async function main(): Promise<void> {
     if (reviewCalls !== 1)
       fail(`the stub review ran ${String(reviewCalls)} times, expected exactly 1`);
     check('the review wrote nothing: identical artifact sha, version count, and memory rows');
+
+    // ---- One question, one paid call: asking again replays the answer -------
+    const keysBeforeReplay = reviewKeys.length;
+    await reviewButton.click();
+    await waitUntil(
+      async () => reviewKeys.length === keysBeforeReplay + 1,
+      'the replayed review request',
+    );
+    const replayKey = reviewKeys[keysBeforeReplay];
+    if (reviewKeys[0] === undefined || reviewKeys[0].length < 8) {
+      fail('the review request carried no usable Idempotency-Key');
+    }
+    if (replayKey !== reviewKeys[0]) {
+      fail(
+        `re-asking the same question sent key ${String(replayKey)}, expected ${String(reviewKeys[0])}`,
+      );
+    }
+    await reviewPanel.getByText('the frame may conflict').first().waitFor({ timeout: 10_000 });
+    if (reviewCalls !== 1) {
+      fail(
+        `the same frame and selection cost ${String(reviewCalls)} dispatches, expected exactly 1`,
+      );
+    }
+    await screenshot(page, '03b-replayed-review');
+    check('re-asking the same question replays the answer: one dispatch per frame and selection');
 
     // ---- A decision moves under the screen: refuse before the stub -------
     await jsonApi(apiBase, 'PATCH', `/api/memories/${first.memory.id}`, {

@@ -49,6 +49,51 @@ export function suppliedRevisionsLine(job: ForgeJob | null): string | null {
   return `Supplied to the last job: ${parts.join(', ')}.`;
 }
 
+const FNV_OFFSET_BASIS = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+const MASK_64 = 0xffffffffffffffffn;
+
+/** FNV-1a over the string, as 16 hex digits. Not a security primitive. */
+function fnv1a64(text: string): string {
+  let hash = FNV_OFFSET_BASIS;
+  for (const character of text) {
+    hash ^= BigInt(character.codePointAt(0) ?? 0);
+    hash = (hash * FNV_PRIME) & MASK_64;
+  }
+  return hash.toString(16).padStart(16, '0');
+}
+
+/**
+ * The Idempotency-Key for one review.
+ *
+ * A review is a paid call, and its identity is already meaningful: the captured
+ * frame plus the exact pinned selection plus the generation it was filed
+ * against. Naming that lets the server replay the recorded answer when the same
+ * frame is reviewed again — a double click, a browser retry, or a second look at
+ * the same picture — instead of dispatching the model twice. Wanting a fresh
+ * answer means capturing a new frame, which is also what the feedback describes.
+ *
+ * The key stays inside the server's 8–128 character single-token rule: it holds
+ * no commas and no spaces.
+ */
+export function reviewIdempotencyKey(input: {
+  screenshotDataUrl: string;
+  decisions: readonly PinnedDecisionSelection[];
+  jobId: string | null;
+}): string {
+  const selection = input.decisions
+    .map((entry) => `${entry.memory_id}@${String(entry.expected_revision)}`)
+    .sort()
+    .join(';');
+  const canonical = [
+    'batche-review-v1',
+    input.jobId ?? 'no-generation',
+    selection,
+    `${String(input.screenshotDataUrl.length)}:${fnv1a64(input.screenshotDataUrl)}`,
+  ].join('|');
+  return `review-${fnv1a64(canonical)}-${String(canonical.length)}`;
+}
+
 /** Guidance for a failed review, keyed to the code the route actually returns. */
 export function reviewFailureText(cause: unknown): string {
   if (cause instanceof ApiError) {
