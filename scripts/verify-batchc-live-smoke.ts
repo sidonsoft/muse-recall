@@ -37,6 +37,14 @@
  * Resume without spending another vision call (reuses retained drafts):
  *   BATCHC_SMOKE_RESUME_FROM=test-results/batchc-live/<stamp> FORGE_MUSE_API_KEY=... \
  *     FORGE_MUSE_BIN=$(which muse) pnpm exec tsx scripts/verify-batchc-live-smoke.ts
+ *
+ * The SAM segmentation concept defaults to 'green rounded memory game card'
+ * (the reference image shows 12 large uniform green cards on a gradient
+ * background; even one match stages the cutout). BATCHC_SMOKE_SAM_CONCEPT
+ * overrides it without a code change. A valid-but-empty SAM lane is a
+ * verified auth/request/empty-state result, not a provider failure: it is
+ * recorded with observations.segment plus a 03-sam-zero-matches.png
+ * screenshot, and the run stops with the SAM allowance consumed.
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -731,7 +739,10 @@ async function main(): Promise<void> {
       .first();
     await assetRow2.getByTitle('Suggest decisions or extract a cutout from this version').click();
     await page.getByTitle('Extract an object cutout with SAM').click();
-    await fillStable(page, 'Segmentation concept', 'card');
+    const samConcept =
+      process.env.BATCHC_SMOKE_SAM_CONCEPT?.trim() || 'green rounded memory game card';
+    observations.samConcept = samConcept;
+    await fillStable(page, 'Segmentation concept', samConcept);
     if (calls.sam !== 0) fail('SAM call budget exhausted');
     calls.sam += 1;
     const [segmentResponse] = await Promise.all([
@@ -795,8 +806,15 @@ async function main(): Promise<void> {
         confidence: m.confidence,
       })),
     };
-    if (segmentData.matches.length === 0)
-      fail('SAM returned zero matches (unusable for acceptance; stopping, no retry)');
+    if (segmentData.matches.length === 0) {
+      observations.samEmpty = { concept: samConcept, segment_id: segmentData.segment_id };
+      await page
+        .screenshot({ path: join(EVIDENCE, '03-sam-zero-matches.png'), fullPage: false })
+        .catch(() => undefined);
+      fail(
+        `SAM returned zero matches for concept ${JSON.stringify(samConcept)} (valid empty lane; unusable for acceptance; stopping, no retry)`,
+      );
+    }
     await page.getByRole('button', { name: /Match 0 preview/ }).waitFor({ timeout: 20_000 });
     check(`live SAM returned ${segmentData.matches.length} match(es) with previews (one call)`);
     for (const match of segmentData.matches) {
