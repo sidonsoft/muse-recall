@@ -22,6 +22,9 @@ import { probeMediaCapability } from '../../apps/server/src/media/capabilities.j
  * transport preserves bounded, hash-keyed evidence for each dispatch.
  */
 
+/** Real-grammar lane for the contract-mismatch probe (terminal text, no deltas). */
+const LANE_LIKE =
+  '<0f>0<|box;x1=1;y1=2;x2=10;y2=12;w=16;h=16|><|mask;x=0;y=0;data=4,4,~payload|>';
 /** Two real-grammar matches (same payloads as media-segment.test.ts). */
 const LANE_TWO_MATCHES =
   '<0f>0<|box;x1=211;y1=228;x2=270;y2=254;w=320;h=334|>' +
@@ -213,6 +216,46 @@ describe('assembleResponsesStream', () => {
     expect(() => assembleResponsesStream(noObjectEvents, 'segment')).toThrow(/no response object/);
   });
 
+  it('rejects malformed terminal objects instead of reporting zero matches', async () => {
+    const malformed: Array<{ name: string; response: unknown }> = [
+      { name: 'empty object', response: {} },
+      { name: 'completed without output', response: { status: 'completed' } },
+      { name: 'completed with non-array output', response: { status: 'completed', output: {} } },
+      { name: 'completed with empty output', response: { status: 'completed', output: [] } },
+      {
+        name: 'completed with empty content',
+        response: {
+          status: 'completed',
+          output: [{ type: 'message', content: [] }],
+        },
+      },
+      { name: 'wrong-type status', response: { status: 200, output: [] } },
+    ];
+    for (const { name, response } of malformed) {
+      const events = await readEvents(sseResponse(`${completedEvent(response)}\n\n`));
+      let error: unknown = null;
+      try {
+        assembleResponsesStream(events, 'segment');
+      } catch (e) {
+        error = e;
+      }
+      expect(error, name).not.toBeNull();
+      expect(String((error as Error).message), name).toMatch(/terminal/);
+      // Partial stream evidence rides on every assembly failure.
+      expect((error as { details?: { events?: unknown; deltaEvents?: unknown } }).details).toEqual(
+        { events: 1, deltaEvents: 0 },
+      );
+    }
+    // The documented genuine zero match: completed status plus an
+    // explicit empty output_text part, with no deltas.
+    const valid = await readEvents(
+      sseResponse(`${completedEvent(terminalResponse(laneOutput('')))}\n\n`),
+    );
+    const assembled = assembleResponsesStream(valid, 'segment');
+    expect(assembled.lane).toBe('');
+    expect(assembled.texts).toEqual([{ kind: 'text', text: '' }]);
+  });
+
   it('collects terminal refusals without throwing (the caller decides)', async () => {
     const raw = `${completedEvent({
       status: 'completed',
@@ -313,9 +356,12 @@ describe('MediaAdapter.callStream', () => {
           headers: { 'content-type': 'text/event-stream', 'content-length': '99999999' },
         }),
     );
-    await expect(streamAdapter(huge).callStream('/v1/responses', {})).rejects.toThrow(
-      /above the .* limit/,
-    );
+    const oversized = await streamAdapter(huge)
+      .callStream('/v1/responses', {})
+      .catch((e: Error) => e);
+    expect(String((oversized as Error).message)).toMatch(/above the .* limit/);
+    // Post-dispatch transport refusal: the dispatch is still accounted.
+    expect((oversized as { details?: { attempts?: unknown } }).details?.attempts).toBe(1);
   });
 });
 
@@ -433,6 +479,24 @@ describe('segment probe over streaming', () => {
     expect(entry.detail).toContain('geometry');
     expect(entry.detail).toContain('sha=');
     expect(entry.detail).toContain('events=');
+  });
+
+  it('fails malformed terminals and terminal-only geometry at the probe', async () => {
+    const malformed = streamAdapter(
+      vi.fn(async () => sseResponse(`${completedEvent({ status: 'completed' })}\n\n`)),
+    );
+    const bad = await probeMediaCapability('segment', malformed);
+    expect(bad.status).toBe('failed');
+    expect(bad.detail).toContain('terminal');
+
+    const mismatched = streamAdapter(
+      vi.fn(async () =>
+        sseResponse(`${completedEvent(terminalResponse(laneOutput(LANE_LIKE)))}\n\n`),
+      ),
+    );
+    const offContract = await probeMediaCapability('segment', mismatched);
+    expect(offContract.status).toBe('failed');
+    expect(offContract.detail).toContain('contract mismatch');
   });
 
   it('passes streamed zero matches and fails interruptions and refusals', async () => {

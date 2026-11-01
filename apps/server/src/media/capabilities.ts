@@ -562,20 +562,9 @@ async function probeStreamOne(
       latency_ms: Date.now() - started,
     };
   }
-  if (
-    assembled.lane.trim().length === 0 &&
-    assembled.texts.some((part) => part.text.trim().length > 0)
-  ) {
-    return {
-      capability,
-      status: 'failed',
-      model: result.model ?? model,
-      detail: boundedRedacted(
-        `${capability} stream carried no output_text deltas but the terminal response contains text (contract mismatch)`,
-      ),
-      latency_ms: Date.now() - started,
-    };
-  }
+  // Empty-lane rules (explicit empty text required; terminal-only text is
+  // a contract mismatch) are enforced by the assembler: reaching here
+  // with an empty lane means a genuine zero match.
   const check = probe.streamCheck(assembled.lane);
   if (!check.ok) {
     return {

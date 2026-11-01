@@ -12,7 +12,11 @@ import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
 import { MediaAssetStore } from '../../apps/server/src/media/assets.js';
 import { MediaJobStore } from '../../apps/server/src/media/jobs.js';
-import type { MediaSegmentation, MediaUnderstand } from '../../apps/server/src/media/segment.js';
+import { MediaAdapter } from '../../apps/server/src/media/adapter.js';
+import {
+  MediaSegmentation,
+  type MediaUnderstand,
+} from '../../apps/server/src/media/segment.js';
 import { MediaService } from '../../apps/server/src/media/service.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
 
@@ -72,6 +76,8 @@ afterEach(async () => {
 });
 
 interface VisionStubs {
+  /** Real operation with stubbed transport: exercises the API envelope. */
+  realSegmentation?: MediaSegmentation;
   segmentation?: {
     matches: Array<{
       objectId: string;
@@ -102,7 +108,9 @@ async function buildHarness(
   const segmentation =
     options.unconfigured === true
       ? null
-      : {
+      : stubs.realSegmentation !== undefined
+        ? stubs.realSegmentation
+        : {
           targetedModel: 'sam-3.1',
           segment: async () => ({
             lane: '<stub>',
@@ -390,6 +398,73 @@ describe('Batch C SAM cutouts (segment)', () => {
     expect(bytes.statusCode).toBe(200);
     expect(bytes.headers['content-type']).toBe('image/png');
     expect(bytes.rawPayload[25]).toBe(6);
+  });
+
+  it('carries stream evidence on success and dispatch accounting on stream failures', async () => {
+    // Real streaming transport (stubbed fetch): the error envelope must
+    // surface dispatch counts and bounded stream evidence, not bare codes.
+    const stream = (raw: string): Response =>
+      new Response(raw, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    const completed = (response: unknown): string =>
+      `event: response.completed\ndata: ${JSON.stringify({ response })}`;
+    const real = (fetchImpl: unknown): MediaSegmentation =>
+      new MediaSegmentation(
+        new MediaAdapter({ apiKey: 'test', fetchImpl: fetchImpl as never, maxRetries: 0 }),
+      );
+    const segment = async (app: FastifyInstance, asset_id: string): Promise<{
+      statusCode: number;
+      json: () => { ok: boolean; data?: Record<string, unknown>; error?: Record<string, unknown> };
+    }> =>
+      app.inject({
+        method: 'POST',
+        url: `/api/forge/projects/${PROJECT}/media/segment`,
+        payload: { asset_id, concept: 'dot' },
+      });
+
+    // Genuine zero match: completed terminal with explicit empty text.
+    const emptyTerminal = completed({
+      status: 'completed',
+      output: [{ type: 'message', content: [{ type: 'output_text', text: '' }] }],
+    });
+    const zeroFetch = async (): Promise<Response> => stream(`${emptyTerminal}\n\n`);
+    const zeroHarness = await buildHarness({ realSegmentation: real(zeroFetch) });
+    const zeroAsset = await upload(zeroHarness.app);
+    const zero = await segment(zeroHarness.app, zeroAsset.asset_id);
+    expect(zero.statusCode).toBe(200);
+    const zeroData = zero.json().data ?? {};
+    expect(zeroData.matches).toEqual([]);
+    expect(zeroData.provider_attempts).toBe(1);
+    expect(zeroData.stream_events).toBe(1);
+    expect(zeroData.stream_bytes).toBeGreaterThan(0);
+    expect(zeroData.response_sha256).toMatch(/^[0-9a-f]{64}$/);
+
+    // Interrupted stream: one dispatch, no terminal event.
+    const cutFetch = async (): Promise<Response> =>
+      stream(`event: response.output_text.delta\ndata: ${JSON.stringify({ delta: 'x' })}\n\n`);
+    const cutHarness = await buildHarness({ realSegmentation: real(cutFetch) });
+    const cutAsset = await upload(cutHarness.app);
+    const cut = await segment(cutHarness.app, cutAsset.asset_id);
+    expect(cut.statusCode).toBe(502);
+    const cutError = (cut.json().error ?? {}) as { code?: unknown; details?: Record<string, unknown> };
+    expect(cutError.code).toBe('provider_invalid_output');
+    expect(cutError.details?.attempts).toBe(1);
+    expect(cutError.details?.stream_events).toBe(1);
+    expect(cutError.details?.stream_bytes).toBeGreaterThan(0);
+    expect(cutError.details?.response_sha256).toMatch(/^[0-9a-f]{64}$/);
+
+    // Malformed terminal: completed status but no text output.
+    const badFetch = async (): Promise<Response> =>
+      stream(`${completed({ status: 'completed', output: [] })}\n\n`);
+    const badHarness = await buildHarness({ realSegmentation: real(badFetch) });
+    const badAsset = await upload(badHarness.app);
+    const bad = await segment(badHarness.app, badAsset.asset_id);
+    expect(bad.statusCode).toBe(502);
+    const badError = (bad.json().error ?? {}) as { code?: unknown; details?: Record<string, unknown> };
+    expect(badError.code).toBe('provider_invalid_output');
+    expect(badError.details?.attempts).toBe(1);
   });
 
   it('fails closed on unknown, expired-scope, and out-of-range sessions', async () => {

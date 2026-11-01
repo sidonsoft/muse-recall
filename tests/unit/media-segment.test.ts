@@ -549,13 +549,20 @@ describe('MediaSegmentation lane validation (Batch C P2)', () => {
     expect(result.matches).toEqual([]);
   });
 
-  it('treats an empty terminal object with no deltas as zero matches', async () => {
-    // No delta channel, no terminal text: the streaming zero-match shape.
-    const fetchImpl = vi.fn(async () =>
-      sseResponse([], { status: 'completed', output: [] }),
-    );
-    const result = await new MediaSegmentation(adapter(fetchImpl)).segment(twoTone(), 'dot');
-    expect(result.matches).toEqual([]);
+  it('rejects terminal objects without explicit empty text output', async () => {
+    // No delta channel and no explicit empty text: malformed terminals
+    // are never zero matches, even on a completed status.
+    const malformed = [
+      { status: 'completed', output: [] },
+      { status: 'completed', output: [{ type: 'message', content: [] }] },
+      { status: 'completed' },
+    ];
+    for (const terminal of malformed) {
+      const fetchImpl = vi.fn(async () => sseResponse([], terminal));
+      await expect(
+        new MediaSegmentation(adapter(fetchImpl)).segment(twoTone(), 'dot'),
+      ).rejects.toThrow(/terminal response (has no text output|without output\[\])/);
+    }
   });
 
   it('rejects prose without geometry', async () => {

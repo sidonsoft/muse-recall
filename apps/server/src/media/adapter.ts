@@ -421,6 +421,13 @@ export class MediaAdapter {
         clearTimeout(timer);
         if (ProviderError.isProviderError(error)) {
           // Provider-mapped failure (incl. late cancellation): never publish.
+          // Post-dispatch transport failures keep the exact dispatch count.
+          if (typeof error.details.attempts !== 'number') {
+            throw new ProviderError(error.code, error.message, {
+              ...error.details,
+              attempts: dispatches,
+            });
+          }
           throw error;
         }
         const message = error instanceof Error ? error.message : String(error);
@@ -591,6 +598,15 @@ export class MediaAdapter {
       } catch (error) {
         clearTimeout(timer);
         if (ProviderError.isProviderError(error)) {
+          // Post-dispatch transport failures (byte cap, missing body,
+          // wrong content-type) keep the exact dispatch count: the API
+          // can only surface attempts when details retains it.
+          if (typeof error.details.attempts !== 'number') {
+            throw new ProviderError(error.code, error.message, {
+              ...error.details,
+              attempts: dispatches,
+            });
+          }
           throw error;
         }
         const message = error instanceof Error ? error.message : String(error);

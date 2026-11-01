@@ -313,11 +313,21 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
                 ? 502
                 : 502;
       // Surface only the bounded, non-secret provider telemetry the
-      // adapter attaches (HTTP status, dispatch count) so acceptance
-      // harnesses can account exact attempts even on failure.
+      // adapter attaches (HTTP status, dispatch count, bounded stream
+      // evidence) so acceptance harnesses can account exact attempts
+      // even on failure.
       const details: Record<string, unknown> = {};
       if (typeof error.details.status === 'number') details.status = error.details.status;
       if (typeof error.details.attempts === 'number') details.attempts = error.details.attempts;
+      if (typeof error.details.stream_events === 'number')
+        details.stream_events = error.details.stream_events;
+      if (typeof error.details.stream_bytes === 'number')
+        details.stream_bytes = error.details.stream_bytes;
+      if (
+        typeof error.details.response_sha256 === 'string' &&
+        /^[0-9a-f]{64}$/.test(error.details.response_sha256)
+      )
+        details.response_sha256 = error.details.response_sha256;
       return reply.status(status).send({
         ok: false,
         error: {

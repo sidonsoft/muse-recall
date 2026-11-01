@@ -208,25 +208,43 @@ function failureMessage(payload: Record<string, unknown>, fallback: string): str
  *   `response.incomplete`, or a stream `error`),
  * - the stream carries `[DONE]` or ends with no terminal
  *   `response.completed` event,
- * - a delta event carries a non-JSON payload or a non-string delta.
+ * - a delta event carries a non-JSON payload or a non-string delta,
+ * - the terminal response is malformed (status not exactly
+ *   `completed`, output missing or not an array),
+ * - the lane is empty but the terminal object carries no explicit empty
+ *   text output (a malformed terminal is never a zero match),
+ * - the lane is empty but the terminal object carries non-empty text
+ *   (geometry bypassed the delta channel: contract mismatch).
  *
  * Unknown event types are counted and ignored so additive provider
- * events cannot break the transport.
+ * events cannot break the transport. Every throw carries the event
+ * counts seen so far (`events`, `deltaEvents`) so callers can preserve
+ * partial stream evidence alongside dispatch accounting.
  */
 export function assembleResponsesStream(events: SseEvent[], label: string): AssembledStream {
   const trimmedLabel = label.trim().length > 0 ? label.trim() : 'stream';
+  // Every throw site keeps the counts seen so far: partial stream evidence
+  // rides on the error details alongside dispatch accounting.
+  const streamError = (message: string, seen: number, deltas: number): ProviderError =>
+    new ProviderError('provider_invalid_output', message, {
+      events: seen,
+      deltaEvents: deltas,
+    });
   let lane = '';
   let terminal: Record<string, unknown> | null = null;
   let deltaEvents = 0;
   let ignoredEvents = 0;
+  let seen = 0;
   for (const { event, data } of events) {
+    seen += 1;
     if (event === 'response.output_text.delta') {
       const payload = parseEventData(data, trimmedLabel, event);
       const delta: unknown = payload.delta;
       if (typeof delta !== 'string') {
-        throw new ProviderError(
-          'provider_invalid_output',
+        throw streamError(
           `${trimmedLabel} stream event ${event} carries a non-string delta.`,
+          seen,
+          deltaEvents,
         );
       }
       lane += delta;
@@ -242,18 +260,20 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         inner !== null && typeof inner === 'object' && !Array.isArray(inner)
           ? failureMessage(inner as Record<string, unknown>, event)
           : failureMessage(payload, event);
-      throw new ProviderError(
-        'provider_invalid_output',
+      throw streamError(
         boundedRedacted(`${trimmedLabel} stream terminal ${event}: ${detail}`),
+        seen,
+        deltaEvents,
       );
     } else if (event === 'error') {
       const detail =
         data.trim().length > 0
           ? failureMessage(parseEventData(data, trimmedLabel, event), event)
           : event;
-      throw new ProviderError(
-        'provider_invalid_output',
+      throw streamError(
         boundedRedacted(`${trimmedLabel} stream error event: ${detail}`),
+        seen,
+        deltaEvents,
       );
     } else if (data === '[DONE]') {
       // OpenAI-compatible end-of-stream marker: only meaningful after a
@@ -264,15 +284,18 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
     }
   }
   if (terminal === null) {
-    throw new ProviderError(
-      'provider_invalid_output',
+    throw streamError(
       `${trimmedLabel} stream ended without a terminal response.completed event ` +
         `(${events.length} events, ${deltaEvents} deltas); refusing to publish a partial lane.`,
+      events.length,
+      deltaEvents,
     );
   }
   const terminalOutput: unknown = terminal.output;
   const terminalStatus: unknown = terminal.status;
-  if (typeof terminalStatus === 'string' && terminalStatus !== 'completed') {
+  if (terminalStatus !== 'completed') {
+    const seenStatus =
+      typeof terminalStatus === 'string' ? JSON.stringify(terminalStatus) : 'missing';
     const errorField: unknown = terminal.error;
     const detail =
       typeof errorField === 'string'
@@ -280,16 +303,41 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         : typeof (errorField as Record<string, unknown> | null)?.message === 'string'
           ? String((errorField as Record<string, unknown>).message)
           : 'terminal status not completed';
-    throw new ProviderError(
-      'provider_invalid_output',
+    throw streamError(
       boundedRedacted(
-        `${trimmedLabel} terminal status ${JSON.stringify(terminalStatus)} (not completed): ${detail}`,
+        `${trimmedLabel} terminal status ${seenStatus} (not completed): ${detail}`,
       ),
+      events.length,
+      deltaEvents,
     );
   }
-  const { texts, refusals } = collectOutputParts(
-    Array.isArray(terminalOutput) ? terminalOutput : [],
-  );
+  if (!Array.isArray(terminalOutput)) {
+    throw streamError(
+      `${trimmedLabel} terminal response without output[]; refusing to publish an empty lane as a zero match.`,
+      events.length,
+      deltaEvents,
+    );
+  }
+  const { texts, refusals } = collectOutputParts(terminalOutput);
+  if (lane.trim().length === 0 && refusals.length === 0) {
+    // A genuine zero match completes with an explicit empty text output
+    // and no deltas. Anything else with an empty lane is malformed or
+    // off-contract — never silently a zero match.
+    if (texts.length === 0) {
+      throw streamError(
+        `${trimmedLabel} terminal response has no text output; refusing to publish an empty lane as a zero match.`,
+        events.length,
+        deltaEvents,
+      );
+    }
+    if (texts.some((part) => part.text.trim().length > 0)) {
+      throw streamError(
+        `${trimmedLabel} stream carried no output_text deltas but the terminal response contains text (contract mismatch).`,
+        events.length,
+        deltaEvents,
+      );
+    }
+  }
   return {
     lane,
     response: terminal,

@@ -754,15 +754,27 @@ async function main(): Promise<void> {
       page.getByRole('button', { name: 'Segment', exact: true }).click(),
     ]);
     const segmentBody = await segmentResponse.text();
-    const segmentEnvelope = JSON.parse(segmentBody) as { ok?: boolean; data?: unknown };
+    const segmentEnvelope = JSON.parse(segmentBody) as {
+      ok?: boolean;
+      data?: unknown;
+      error?: { code?: unknown; message?: unknown; details?: unknown };
+    };
     if (
       !segmentResponse.ok() ||
       segmentEnvelope.ok !== true ||
       segmentEnvelope.data === undefined
     ) {
+      // Bounded provider evidence survives in the error envelope details
+      // (dispatch count plus stream bytes/events/hash when available).
       observations.samError = {
         http_status: segmentResponse.status(),
         body: segmentBody.slice(0, 500),
+        details:
+          segmentEnvelope.error !== null &&
+          typeof segmentEnvelope.error === 'object' &&
+          (segmentEnvelope.error as { details?: unknown }).details !== undefined
+            ? (segmentEnvelope.error as { details?: unknown }).details
+            : null,
       };
       await page
         .screenshot({ path: join(EVIDENCE, '03-sam-failure.png'), fullPage: false })

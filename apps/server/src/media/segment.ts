@@ -575,73 +575,85 @@ export class MediaSegmentation {
         timeoutMs: this.timeoutMs,
       },
     );
-    const assembled = assembleResponsesStream(result.events, 'segment');
-    const streamEvidence = {
-      streamEvents: assembled.events,
-      deltaEvents: assembled.deltaEvents,
-      streamBytes: result.streamBytes,
-      responseSha256: result.responseSha256,
+    // Post-dispatch failures (assembly, refusal, geometry validation)
+    // keep exact dispatch accounting plus the bounded stream evidence
+    // already available, so error envelopes stay accountable. The thrown
+    // errors never retry: validation failures are deterministic.
+    const withEvidence = (error: unknown): never => {
+      if (ProviderError.isProviderError(error)) {
+        throw new ProviderError(error.code, error.message, {
+          ...error.details,
+          attempts: result.attempts,
+          stream_events: result.events.length,
+          stream_bytes: result.streamBytes,
+          response_sha256: result.responseSha256,
+        });
+      }
+      throw error;
     };
-    // Terminal-object parts are inspected through the assembled stream:
-    // refusals fail here (mirroring the buffered contract) and text that
-    // bypassed the delta channel is a contract mismatch, never a lane.
-    if (assembled.refusals.length > 0) {
-      throw new ProviderError(
-        'provider_invalid_output',
-        `Segmentation refused: ${(assembled.refusals[0]?.text ?? 'refused').slice(0, 200)}`,
-      );
-    }
-    const lane = assembled.lane;
-    if (lane.trim().length === 0) {
-      if (assembled.texts.some((part) => part.text.trim().length > 0)) {
-        // The terminal object carries text the delta channel never sent:
-        // geometry bypassed the documented channel, so an empty lane
-        // would misread the result. Fail, never publish.
+    try {
+      const assembled = assembleResponsesStream(result.events, 'segment');
+      const streamEvidence = {
+        streamEvents: assembled.events,
+        deltaEvents: assembled.deltaEvents,
+        streamBytes: result.streamBytes,
+        responseSha256: result.responseSha256,
+      };
+      // Refusals fail here, mirroring the buffered contract. The lane
+      // emptiness rules live in the assembler: only an explicitly empty
+      // terminal text output is a zero match.
+      if (assembled.refusals.length > 0) {
         throw new ProviderError(
           'provider_invalid_output',
-          'Segmentation stream carried no output_text deltas but the terminal response contains text (contract mismatch).',
+          `Segmentation refused: ${(assembled.refusals[0]?.text ?? 'refused').slice(0, 200)}`,
         );
       }
-      // A typed but explicitly empty output_text lane is a legitimate
-      // zero-match result. Anything else must carry usable geometry.
+      const lane = assembled.lane;
+      if (lane.trim().length === 0) {
+        // The assembler already required an explicit empty text output
+        // for this path, so an empty lane here is a legitimate
+        // zero-match result. Anything else must carry usable geometry.
+        return {
+          lane,
+          matches: [],
+          skipped: 0,
+          diagnostics: [],
+          model: this.model,
+          observedModel: observedModelOfRecord(assembled.response),
+          latencyMs: Date.now() - started,
+          attempts: result.attempts,
+          ...streamEvidence,
+        };
+      }
+      const parsed = parseSegmentLane(lane);
+      if (parsed.matches.length === 0) {
+        const detail =
+          parsed.diagnostics.length > 0
+            ? parsed.diagnostics[0]
+            : `${String(parsed.skipped)} unreadable match(es)`;
+        throw new ProviderError(
+          'provider_invalid_output',
+          `Segmentation returned no usable matches: ${detail}`.slice(0, 300),
+        );
+      }
+      const matches = parsed.matches.map((match) => ({
+        ...match,
+        box: mapBoxToSource(match.box, sent.width, sent.height, image.width, image.height),
+      }));
       return {
         lane,
-        matches: [],
-        skipped: 0,
-        diagnostics: [],
+        matches,
+        skipped: parsed.skipped,
+        diagnostics: parsed.diagnostics,
         model: this.model,
         observedModel: observedModelOfRecord(assembled.response),
         latencyMs: Date.now() - started,
         attempts: result.attempts,
         ...streamEvidence,
       };
+    } catch (error) {
+      return withEvidence(error);
     }
-    const parsed = parseSegmentLane(lane);
-    if (parsed.matches.length === 0) {
-      const detail =
-        parsed.diagnostics.length > 0
-          ? parsed.diagnostics[0]
-          : `${String(parsed.skipped)} unreadable match(es)`;
-      throw new ProviderError(
-        'provider_invalid_output',
-        `Segmentation returned no usable matches: ${detail}`.slice(0, 300),
-      );
-    }
-    const matches = parsed.matches.map((match) => ({
-      ...match,
-      box: mapBoxToSource(match.box, sent.width, sent.height, image.width, image.height),
-    }));
-    return {
-      lane,
-      matches,
-      skipped: parsed.skipped,
-      diagnostics: parsed.diagnostics,
-      model: this.model,
-      observedModel: observedModelOfRecord(assembled.response),
-      latencyMs: Date.now() - started,
-      attempts: result.attempts,
-      ...streamEvidence,
-    };
   }
 }
 
