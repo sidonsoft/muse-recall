@@ -90,20 +90,36 @@ function documentedSuccess(path: string): Response {
   });
 }
 
-/** SAM-grammar success lane: one frame line with box+mask tokens. */
+/** SAM streaming success: geometry deltas through a terminal completed event. */
 function samSuccess(): Response {
   const lane = '<0f>0<|box;x1=1;y1=2;x2=10;y2=12;w=16;h=16|><|mask;x=0;y=0;data=4,4,~payload|>';
-  return okJson({
-    status: 'completed',
-    output: [{ type: 'message', content: [{ type: 'output_text', text: lane }] }],
+  const blocks = [
+    `event: response.output_text.delta\ndata: ${JSON.stringify({ delta: lane.slice(0, 20) })}`,
+    `event: response.output_text.delta\ndata: ${JSON.stringify({ delta: lane.slice(20) })}`,
+    `event: response.completed\ndata: ${JSON.stringify({
+      response: {
+        status: 'completed',
+        output: [{ type: 'message', content: [{ type: 'output_text', text: lane }] }],
+      },
+    })}`,
+  ];
+  return new Response(`${blocks.join('\n\n')}\n\n`, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
   });
 }
 
-/** SAM valid zero-match: empty output_text lane on a completed response. */
+/** SAM streaming zero-match: completed terminal, no deltas, empty lane. */
 function samZeroMatches(): Response {
-  return okJson({
-    status: 'completed',
-    output: [{ type: 'message', content: [{ type: 'output_text', text: '' }] }],
+  const terminal = {
+    response: {
+      status: 'completed',
+      output: [{ type: 'message', content: [{ type: 'output_text', text: '' }] }],
+    },
+  };
+  return new Response(`event: response.completed\ndata: ${JSON.stringify(terminal)}\n\n`, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
   });
 }
 

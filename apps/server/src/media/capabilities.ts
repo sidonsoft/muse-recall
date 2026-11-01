@@ -7,7 +7,14 @@ import {
   type MediaProbeReport,
   redactSecrets,
 } from '@mml/shared';
+import type { MediaRequestOptions } from './adapter.js';
 import { MediaAdapter } from './adapter.js';
+import { assembleResponsesStream, collectOutputParts } from './sse.js';
+
+export type { RefusalPart, TextPart } from './sse.js';
+// The output-parts walker lives with the Responses stream module; it is
+// re-exported here so existing capability consumers keep working.
+export { collectOutputParts } from './sse.js';
 
 /**
  * Batch A1 — per-capability media probes, rewritten after the d3f3b67
@@ -63,8 +70,13 @@ export interface MediaProbeOptions {
   videoClip?: { fileId: string; mime?: string };
 }
 
+export type ProbeAdapter = Pick<
+  MediaAdapter,
+  'call' | 'callStream' | 'configured' | 'targetedModel'
+>;
+
 export type MediaProbeFn = (
-  adapter: Pick<MediaAdapter, 'call' | 'configured' | 'targetedModel'>,
+  adapter: ProbeAdapter,
   options?: MediaProbeOptions,
 ) => Promise<MediaProbeReport>;
 
@@ -92,7 +104,7 @@ function boundedRedacted(message: string, limit = MAX_DETAIL_CHARS): string {
 
 function modelFor(
   capability: MediaCapabilityName,
-  adapter: Pick<MediaAdapter, 'call' | 'configured' | 'targetedModel'>,
+  adapter: ProbeAdapter,
   options: MediaProbeOptions,
 ): string {
   return (
@@ -223,47 +235,6 @@ export function parseResponsesEnvelope(body: string, label: string): ResponsesEn
   };
 }
 
-export interface TextPart {
-  kind: 'text';
-  text: string;
-}
-
-export interface RefusalPart {
-  kind: 'refusal';
-  text: string;
-}
-
-/** Walk output items and collect typed text/refusal parts (parsed, not grepped). */
-export function collectOutputParts(output: unknown[]): {
-  texts: TextPart[];
-  refusals: RefusalPart[];
-} {
-  const texts: TextPart[] = [];
-  const refusals: RefusalPart[] = [];
-  for (const item of output) {
-    if (item === null || typeof item !== 'object' || Array.isArray(item)) continue;
-    const record = item as Record<string, unknown>;
-    const content: unknown = record.content;
-    if (!Array.isArray(content)) continue;
-    for (const part of content) {
-      if (part === null || typeof part !== 'object' || Array.isArray(part)) continue;
-      const typed = part as { type?: unknown; text?: unknown; refusal?: unknown };
-      if (typed.type === 'output_text' || typed.type === 'text') {
-        if (typeof typed.text === 'string') texts.push({ kind: 'text', text: typed.text });
-      } else if (typed.type === 'refusal') {
-        const message =
-          typeof typed.refusal === 'string'
-            ? typed.refusal
-            : typeof typed.text === 'string'
-              ? typed.text
-              : 'refused';
-        refusals.push({ kind: 'refusal', text: message });
-      }
-    }
-  }
-  return { texts, refusals };
-}
-
 /** image-generate: ImagesResponse must carry at least one image payload. */
 function checkImagesResponse(body: string): ProbeCheck {
   const json = parseJsonObject(body);
@@ -325,6 +296,15 @@ function checkSegmentResponse(body: string): ProbeCheck {
     return { ok: false, summary: 'segment output without an output_text lane' };
   }
   const lane = texts.map((part) => part.text).join('\n');
+  return checkSegmentLane(lane);
+}
+
+/**
+ * Validate an assembled SAM geometry lane. Shared by the non-streaming
+ * envelope check above and the streaming probe path, which assembles
+ * the lane from `output_text` deltas instead of a JSON body.
+ */
+function checkSegmentLane(lane: string): ProbeCheck {
   if (lane.trim().length === 0) {
     return { ok: true, summary: 'segment zero matches (empty output_text, completed)' };
   }
@@ -411,7 +391,17 @@ interface ProbeRequest {
   body: Record<string, unknown>;
   rawBody?: RequestInit['body'];
   contentType?: string;
+  /** Non-streaming validator: walks the JSON response body. */
   check: (body: string) => ProbeCheck;
+  /**
+   * When true the probe uses the streaming transport (`callStream`,
+   * which injects `stream: true`) and validates the assembled lane with
+   * `streamCheck` instead. SAM uses the documented streaming contract;
+   * every other capability stays on its proven buffered contract.
+   */
+  stream?: boolean;
+  /** Lane validator for streaming probes (assembled deltas). */
+  streamCheck?: (lane: string) => ProbeCheck;
   /**
    * When true, a passing check reports `unverified` (reachability only)
    * instead of `available`. Used by the text-only video probe: the endpoint
@@ -455,6 +445,8 @@ function requestFor(
       // Short noun-phrase concept prompt per the documented prompting rules
       // (no commands, no questions, one concept). max_output_tokens bounds
       // the geometry lane; a zero-match empty lane is a valid pass.
+      // Streaming contract: geometry arrives as output_text deltas through
+      // response.completed (the adapter injects `stream: true`).
       return {
         path: '/v1/responses',
         body: {
@@ -471,6 +463,8 @@ function requestFor(
           max_output_tokens: 256,
         },
         check: checkSegmentResponse,
+        stream: true,
+        streamCheck: checkSegmentLane,
       };
     case 'transcribe': {
       const wav = tinyWav();
@@ -537,9 +531,75 @@ function statusFor(error: unknown): MediaCapability['status'] {
   return 'failed';
 }
 
+/**
+ * Streaming probe path: assemble the lane from `output_text` deltas
+ * and validate it with the capability's lane check. Refusals and text
+ * that bypassed the delta channel fail the probe (mirroring the
+ * operation). Terminal stream failures throw and map to `failed` via
+ * the caller's statusFor, like any provider_invalid_output.
+ */
+async function probeStreamOne(
+  capability: MediaCapabilityName,
+  model: string,
+  probe: ProbeRequest,
+  adapter: ProbeAdapter,
+  passthrough: MediaRequestOptions,
+  started: number,
+): Promise<MediaCapability> {
+  if (probe.streamCheck === undefined) {
+    throw new Error(`streaming probe for ${capability} has no lane validator`);
+  }
+  const result = await adapter.callStream(probe.path, probe.body, passthrough);
+  const assembled = assembleResponsesStream(result.events, capability);
+  if (assembled.refusals.length > 0) {
+    return {
+      capability,
+      status: 'failed',
+      model: result.model ?? model,
+      detail: boundedRedacted(
+        `${capability} refusal: ${(assembled.refusals[0]?.text ?? 'refused').slice(0, 80)}`,
+      ),
+      latency_ms: Date.now() - started,
+    };
+  }
+  if (
+    assembled.lane.trim().length === 0 &&
+    assembled.texts.some((part) => part.text.trim().length > 0)
+  ) {
+    return {
+      capability,
+      status: 'failed',
+      model: result.model ?? model,
+      detail: boundedRedacted(
+        `${capability} stream carried no output_text deltas but the terminal response contains text (contract mismatch)`,
+      ),
+      latency_ms: Date.now() - started,
+    };
+  }
+  const check = probe.streamCheck(assembled.lane);
+  if (!check.ok) {
+    return {
+      capability,
+      status: 'failed',
+      model: result.model ?? model,
+      detail: boundedRedacted(`ok ${result.status} but invalid: ${check.summary}`),
+      latency_ms: Date.now() - started,
+    };
+  }
+  return {
+    capability,
+    status: 'available',
+    model: result.model ?? model,
+    detail: boundedRedacted(
+      `ok ${result.status} ${check.summary} sha=${result.responseSha256.slice(0, 12)} events=${assembled.events}`,
+    ),
+    latency_ms: Date.now() - started,
+  };
+}
+
 async function probeOne(
   capability: MediaCapabilityName,
-  adapter: Pick<MediaAdapter, 'call' | 'configured' | 'targetedModel'>,
+  adapter: ProbeAdapter,
   options: MediaProbeOptions = {},
 ): Promise<MediaCapability> {
   const model = modelFor(capability, adapter, options);
@@ -549,18 +609,22 @@ async function probeOne(
   }
   const started = Date.now();
   const probe = requestFor(capability, model, options);
+  const passthrough: MediaRequestOptions = {
+    ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+    ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    ...(probe.rawBody !== undefined
+      ? {
+          rawBody: probe.rawBody,
+          ...(probe.contentType !== undefined ? { contentType: probe.contentType } : {}),
+        }
+      : {}),
+  };
   try {
-    const result = await adapter.call(probe.path, probe.body, {
-      ...(options.signal !== undefined ? { signal: options.signal } : {}),
-      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
-      ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
-      ...(probe.rawBody !== undefined
-        ? {
-            rawBody: probe.rawBody,
-            ...(probe.contentType !== undefined ? { contentType: probe.contentType } : {}),
-          }
-        : {}),
-    });
+    if (probe.stream === true) {
+      return await probeStreamOne(capability, model, probe, adapter, passthrough, started);
+    }
+    const result = await adapter.call(probe.path, probe.body, passthrough);
     const check = probe.check(result.body);
     if (!check.ok) {
       return {
@@ -604,14 +668,14 @@ async function probeOne(
 
 export async function probeMediaCapability(
   capability: MediaCapabilityName,
-  adapter: Pick<MediaAdapter, 'call' | 'configured' | 'targetedModel'>,
+  adapter: ProbeAdapter,
   options: MediaProbeOptions = {},
 ): Promise<MediaCapability> {
   return probeOne(capability, adapter, options);
 }
 
 export async function probeMediaCapabilities(
-  adapter: Pick<MediaAdapter, 'call' | 'configured' | 'targetedModel'>,
+  adapter: ProbeAdapter,
   options: MediaProbeOptions = {},
 ): Promise<MediaProbeReport> {
   const capabilities: MediaCapability[] = [];

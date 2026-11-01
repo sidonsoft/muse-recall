@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import { ProviderError } from '@mml/muse-provider';
 import { type ProviderErrorCode, redactSecrets } from '@mml/shared';
+import { type SseEvent, SseParser } from './sse.js';
 
 /**
  * Batch A1 — bounded server-side media adapter for the Meta Model API.
@@ -85,6 +87,15 @@ export interface MediaCallResult {
 }
 
 export type MediaFetch = typeof fetch;
+
+export interface MediaStreamResult extends MediaCallResult {
+  /** SSE events parsed from the stream, in arrival order. */
+  events: SseEvent[];
+  /** Exact raw stream bytes received (sha256 input). */
+  streamBytes: number;
+  /** Hex sha256 over the exact raw stream bytes (bounded evidence). */
+  responseSha256: string;
+}
 
 export interface MediaAdapterOptions {
   apiKey: string | null | undefined;
@@ -182,6 +193,62 @@ async function readBoundedText(response: Response): Promise<string> {
     offset += chunk.byteLength;
   }
   return new TextDecoder('utf-8', { fatal: false }).decode(merged);
+}
+
+/**
+ * Read an SSE response incrementally, enforcing MEDIA_RESPONSE_MAX_BYTES
+ * on the raw bytes (decoder runs in streaming mode so split multibyte
+ * sequences survive chunk boundaries) while parsing events and hashing
+ * the exact bytes received. A missing body fails: a streaming request
+ * without a stream is a contract violation, not an empty result.
+ */
+async function readBoundedStream(response: Response): Promise<{
+  events: SseEvent[];
+  streamBytes: number;
+  responseSha256: string;
+}> {
+  if (!response.body) {
+    throw new ProviderError(
+      'provider_invalid_output',
+      'Media stream has no body; refusing to publish an empty result.',
+    );
+  }
+  const declared = response.headers.get('content-length');
+  if (declared !== null) {
+    const length = Number(declared);
+    if (Number.isSafeInteger(length) && length > MEDIA_RESPONSE_MAX_BYTES) {
+      await response.body.cancel().catch(() => undefined);
+      throw new ProviderError(
+        'provider_invalid_output',
+        `Media stream is ${length} bytes, above the ${MEDIA_RESPONSE_MAX_BYTES}-byte limit; refusing instead of truncating.`,
+      );
+    }
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  const parser = new SseParser();
+  const hash = createHash('sha256');
+  const events: SseEvent[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MEDIA_RESPONSE_MAX_BYTES) {
+        throw new ProviderError(
+          'provider_invalid_output',
+          `Media stream exceeds the ${MEDIA_RESPONSE_MAX_BYTES}-byte limit; refusing instead of truncating.`,
+        );
+      }
+      hash.update(value);
+      events.push(...parser.push(decoder.decode(value, { stream: true })));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  events.push(...parser.push(decoder.decode()));
+  return { events, streamBytes: total, responseSha256: hash.digest('hex') };
 }
 
 /**
@@ -354,6 +421,176 @@ export class MediaAdapter {
         clearTimeout(timer);
         if (ProviderError.isProviderError(error)) {
           // Provider-mapped failure (incl. late cancellation): never publish.
+          throw error;
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        if (this.traceAttempts) {
+          console.error(
+            `[media-trace] outcome=error attempt=${attempt + 1} error=${boundedRedacted(message, 160, [this.apiKey])}`,
+          );
+        }
+        const signalAborted = isAborted(options.signal);
+        const aborted =
+          signalAborted ||
+          (error instanceof DOMException && error.name === 'AbortError') ||
+          /abort/i.test(message);
+        if (aborted && signalAborted) {
+          fail('provider_cancelled', 'Media request was cancelled.');
+        }
+        if (attempt < maxRetries && isRetryable(error, null)) {
+          attempt += 1;
+          continue;
+        }
+        const timedOut = /timeout|timed out/i.test(message) || error instanceof DOMException;
+        fail(
+          aborted ? 'provider_cancelled' : timedOut ? 'provider_timeout' : 'provider_unavailable',
+          boundedRedacted(`Media request failed: ${message}`, MAX_DETAIL_CHARS, [this.apiKey]),
+        );
+      } finally {
+        options.signal?.removeEventListener('abort', onAbort);
+      }
+    }
+  }
+
+  /**
+   * Streaming transport for the Responses `stream: true` contract
+   * (SAM segmentation). Mirrors `call` — same origin pinning, key
+   * handling, redirect refusal, retry policy, trace lines, and
+   * per-attempt wall-clock budget — but reads `text/event-stream`
+   * incrementally and returns parsed SSE events plus a sha256 over the
+   * exact raw stream bytes. Anything that is not an event stream
+   * (wrong content-type, oversized body, missing body) fails with
+   * `provider_invalid_output`: a JSON body in answer to `stream: true`
+   * is a contract violation, never a silent fallback.
+   */
+  async callStream(
+    path: string,
+    body: Record<string, unknown>,
+    options: MediaRequestOptions = {},
+  ): Promise<MediaStreamResult> {
+    const url = `${MEDIA_PROVIDER_ORIGIN}${path}`;
+    if (!isAllowedMediaUrl(url)) {
+      throw new ProviderError(
+        'invalid_request',
+        `Refusing media request to non-provider origin: ${boundedRedacted(url, 120, [this.apiKey])}`,
+      );
+    }
+    if (this.apiKey === null) {
+      throw new ProviderError('provider_auth_failed', 'Media API key is not configured.');
+    }
+    const timeoutMs = options.timeoutMs ?? this.defaultTimeoutMs;
+    const maxRetries = options.maxRetries ?? this.defaultMaxRetries;
+    const started = Date.now();
+    const hasRawBody = options.rawBody !== undefined;
+    const payload: Record<string, unknown> = hasRawBody ? {} : { ...body };
+    if (!hasRawBody) {
+      if (this.model !== null && payload.model === undefined) {
+        payload.model = this.model;
+      }
+      // The streaming contract is a transport guarantee, not caller
+      // folklore: every callStream dispatch requests SSE explicitly.
+      payload.stream = true;
+    }
+
+    let attempt = 0;
+    let dispatches = 0;
+    const fail = (
+      code: ProviderErrorCode,
+      message: string,
+      extra: Record<string, unknown> = {},
+    ): never => {
+      throw new ProviderError(code, message, { ...extra, attempts: dispatches });
+    };
+    for (;;) {
+      if (isAborted(options.signal)) {
+        throw new ProviderError(
+          'provider_cancelled',
+          'Media request was cancelled before it started.',
+        );
+      }
+      if (this.traceAttempts) {
+        const traceModel =
+          typeof payload.model === 'string' && payload.model.length > 0 ? payload.model : '(none)';
+        console.error(
+          `[media-trace] attempt=${attempt + 1} path=${path} model=${traceModel.slice(0, 120)}`,
+        );
+      }
+      dispatches += 1;
+      const controller = new AbortController();
+      const onAbort = (): void => controller.abort();
+      options.signal?.addEventListener('abort', onAbort, { once: true });
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const headers: Record<string, string> = {
+          authorization: `Bearer ${this.apiKey}`,
+          accept: 'text/event-stream',
+        };
+        if (!hasRawBody) headers['content-type'] = 'application/json';
+        else if (options.contentType !== undefined) headers['content-type'] = options.contentType;
+        if (options.idempotencyKey !== undefined && options.idempotencyKey.length > 0) {
+          headers['idempotency-key'] = options.idempotencyKey.slice(0, 128);
+        }
+        const response = await this.fetchImpl(url, {
+          method: 'POST',
+          headers,
+          body: hasRawBody ? options.rawBody : JSON.stringify(payload),
+          signal: controller.signal,
+          redirect: 'manual',
+        });
+        if (response.status >= 300 && response.status < 400) {
+          await response.body?.cancel().catch(() => undefined);
+          clearTimeout(timer);
+          fail(
+            'provider_unavailable',
+            `Media request was redirected (status ${response.status}); redirects are refused so requests stay on the provider origin.`,
+            { status: response.status },
+          );
+        }
+        if (!response.ok) {
+          const text = await readBoundedText(response);
+          clearTimeout(timer);
+          if (attempt < maxRetries && isRetryable(null, response.status)) {
+            attempt += 1;
+            continue;
+          }
+          fail(
+            toProviderCode(response.status, text),
+            `Media request failed with status ${response.status}: ${boundedRedacted(text, 200, [this.apiKey])}`,
+            { status: response.status },
+          );
+        }
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.toLowerCase().includes('text/event-stream')) {
+          await response.body?.cancel().catch(() => undefined);
+          clearTimeout(timer);
+          fail(
+            'provider_invalid_output',
+            `Media stream answered ${boundedRedacted(contentType.slice(0, 120), 120, [this.apiKey]) || '(no content-type)'} instead of text/event-stream; refusing a non-stream body on a streaming request.`,
+          );
+        }
+        const { events, streamBytes, responseSha256 } = await readBoundedStream(response);
+        clearTimeout(timer);
+        if (this.traceAttempts) {
+          console.error(
+            `[media-trace] outcome=response attempt=${attempt + 1} status=${response.status} bytes=${streamBytes} events=${events.length}`,
+          );
+        }
+        if (isAborted(options.signal)) {
+          fail('provider_cancelled', 'Media request was cancelled.');
+        }
+        return {
+          status: response.status,
+          body: '',
+          model: this.model,
+          latency_ms: Date.now() - started,
+          attempts: dispatches,
+          events,
+          streamBytes,
+          responseSha256,
+        };
+      } catch (error) {
+        clearTimeout(timer);
+        if (ProviderError.isProviderError(error)) {
           throw error;
         }
         const message = error instanceof Error ? error.message : String(error);

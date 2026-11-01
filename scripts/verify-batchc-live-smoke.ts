@@ -773,6 +773,9 @@ async function main(): Promise<void> {
     }
     const segmentData = segmentEnvelope.data as {
       provider_attempts?: number;
+      stream_events?: number;
+      stream_bytes?: number;
+      response_sha256?: string;
       segment_id: string;
       matches: Array<{
         match_index: number;
@@ -805,6 +808,10 @@ async function main(): Promise<void> {
         box: m.box,
         confidence: m.confidence,
       })),
+      // Bounded streaming evidence preserved from the API response.
+      stream_events: segmentData.stream_events ?? null,
+      stream_bytes: segmentData.stream_bytes ?? null,
+      response_sha256: segmentData.response_sha256 ?? null,
     };
     if (segmentData.matches.length === 0) {
       observations.samEmpty = { concept: samConcept, segment_id: segmentData.segment_id };

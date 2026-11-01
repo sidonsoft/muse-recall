@@ -338,6 +338,18 @@ export const MediaSegmentResponseSchema = z.object({
    * enforce exact call budgets instead of counting UI submissions.
    */
   provider_attempts: z.number().int().min(1),
+  /**
+   * Bounded streaming evidence: SSE events parsed from the `stream: true`
+   * response, raw stream bytes received, and a hex sha256 over the exact
+   * raw stream bytes. Lets reviewers verify what the provider sent
+   * without retaining the full payload.
+   */
+  stream_events: z.number().int().min(0).optional(),
+  stream_bytes: z.number().int().min(0).optional(),
+  response_sha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
 });
 export type MediaSegmentResponse = z.infer<typeof MediaSegmentResponseSchema>;
 

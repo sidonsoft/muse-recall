@@ -36,6 +36,29 @@ function adapter(fetchImpl: unknown): MediaAdapter {
   });
 }
 
+/** SSE success envelope: geometry deltas through a terminal completed event. */
+function sseResponse(deltas: string[], terminal: unknown): Response {
+  const blocks = deltas.map(
+    (delta) =>
+      `event: response.output_text.delta\ndata: ${JSON.stringify({ delta })}`,
+  );
+  blocks.push(
+    `event: response.completed\ndata: ${JSON.stringify({ response: terminal })}`,
+  );
+  return new Response(`${blocks.join('\n\n')}\n\n`, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+
+function completedTerminal(output: unknown[]): Record<string, unknown> {
+  return { status: 'completed', model: 'sam-3.1-actual', output };
+}
+
+function laneOutput(lane: string): unknown[] {
+  return [{ type: 'message', content: [{ type: 'output_text', text: lane }] }];
+}
+
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -248,17 +271,16 @@ describe('MediaSegmentation (Batch C)', () => {
     const calls: Array<{ url: string; body: string }> = [];
     const fetchImpl = vi.fn(async (_input: unknown, init?: { body?: unknown }) => {
       calls.push({ url: 'x', body: String(init?.body) });
-      return jsonResponse({
-        status: 'completed',
-        model: 'sam-3.1-actual',
-        output: [{ type: 'message', content: [{ type: 'output_text', text: LANE_TWO_MATCHES }] }],
-      });
+      return sseResponse(
+        [LANE_TWO_MATCHES.slice(0, 100), LANE_TWO_MATCHES.slice(100)],
+        completedTerminal(laneOutput(LANE_TWO_MATCHES)),
+      );
     });
     const segmentation = new MediaSegmentation(adapter(fetchImpl), { model: 'sam-test' });
     // Same dims as the lane's frame, so sent boxes map back unchanged.
     const src: RgbaImage = { width: 320, height: 334, data: Buffer.alloc(320 * 334 * 4, 200) };
     const result = await segmentation.segment(src, 'dot');
-    expect(JSON.parse(calls[0]?.body ?? '{}')).toMatchObject({ model: 'sam-test' });
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toMatchObject({ model: 'sam-test', stream: true });
     expect(result.model).toBe('sam-test');
     expect(result.matches).toHaveLength(2);
     expect(result.matches[0]?.box).toEqual({ x1: 211, y1: 228, x2: 271, y2: 255 });
@@ -282,10 +304,7 @@ describe('MediaSegmentation (Batch C)', () => {
 
   it('reports zero matches without an error', async () => {
     const fetchImpl = vi.fn(async () =>
-      jsonResponse({
-        status: 'completed',
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '' }] }],
-      }),
+      sseResponse([], completedTerminal(laneOutput(''))),
     );
     const result = await new MediaSegmentation(adapter(fetchImpl)).segment(twoTone(), 'nothing');
     expect(result.matches).toEqual([]);
@@ -294,16 +313,22 @@ describe('MediaSegmentation (Batch C)', () => {
 
   it('rejects endpoint errors and refusals', async () => {
     const failing = vi.fn(async () =>
-      jsonResponse({ status: 'failed', output: [], error: { message: 'busy' } }),
+      sseResponse([], {
+        status: 'failed',
+        output: [],
+        error: { message: 'busy' },
+      }),
     );
     await expect(new MediaSegmentation(adapter(failing)).segment(twoTone(), 'dot')).rejects.toThrow(
-      /Segmentation failed/,
+      /terminal status "failed"/,
     );
     const refusing = vi.fn(async () =>
-      jsonResponse({
-        status: 'completed',
-        output: [{ type: 'message', content: [{ type: 'refusal', refusal: 'no' }] }],
-      }),
+      sseResponse(
+        [],
+        completedTerminal([
+          { type: 'message', content: [{ type: 'refusal', refusal: 'no' }] },
+        ]),
+      ),
     );
     await expect(
       new MediaSegmentation(adapter(refusing)).segment(twoTone(), 'dot'),
@@ -510,11 +535,13 @@ describe('cutout transparency (Batch C P2)', () => {
 });
 
 describe('MediaSegmentation lane validation (Batch C P2)', () => {
-  const textLane = (text: string): unknown =>
-    jsonResponse({
-      status: 'completed',
-      output: [{ type: 'message', content: [{ type: 'output_text', text }] }],
-    });
+  // Streaming lanes: geometry arrives as deltas; the terminal object
+  // carries the same lane text so the contract-mismatch guard stays quiet.
+  const textLane = (text: string): Response =>
+    sseResponse(
+      text.length > 0 ? [text] : [],
+      completedTerminal([{ type: 'message', content: [{ type: 'output_text', text }] }]),
+    );
 
   it('accepts an explicitly empty lane as zero matches', async () => {
     const fetchImpl = vi.fn(async () => textLane(''));
@@ -522,13 +549,13 @@ describe('MediaSegmentation lane validation (Batch C P2)', () => {
     expect(result.matches).toEqual([]);
   });
 
-  it('rejects a missing text lane', async () => {
+  it('treats an empty terminal object with no deltas as zero matches', async () => {
+    // No delta channel, no terminal text: the streaming zero-match shape.
     const fetchImpl = vi.fn(async () =>
-      jsonResponse({ status: 'completed', output: [{ type: 'message', content: [] }] }),
+      sseResponse([], { status: 'completed', output: [] }),
     );
-    await expect(
-      new MediaSegmentation(adapter(fetchImpl)).segment(twoTone(), 'dot'),
-    ).rejects.toThrow(/no text lane/);
+    const result = await new MediaSegmentation(adapter(fetchImpl)).segment(twoTone(), 'dot');
+    expect(result.matches).toEqual([]);
   });
 
   it('rejects prose without geometry', async () => {

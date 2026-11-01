@@ -3,6 +3,7 @@ export type {
   MediaCallResult,
   MediaFetch,
   MediaRequestOptions,
+  MediaStreamResult,
 } from './adapter.js';
 export { isAllowedMediaUrl, MEDIA_PROVIDER_ORIGIN, MediaAdapter } from './adapter.js';
 export {
@@ -34,6 +35,7 @@ export { mediaStoreToEmbedStore, mediaVersionToEmbeddable } from './bridge.js';
 export type {
   MediaProbeFn,
   MediaProbeOptions,
+  ProbeAdapter,
   RefusalPart,
   ResponsesEnvelope,
   TextPart,

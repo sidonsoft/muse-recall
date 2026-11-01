@@ -8,7 +8,8 @@ import { ProviderError } from '@mml/muse-provider';
 import { DEFAULT_SAM_MODEL, DEFAULT_VISION_MODEL } from '@mml/shared';
 import { PNG } from 'pngjs';
 import type { MediaAdapter } from './adapter.js';
-import { collectOutputParts, parseResponsesEnvelope } from './capabilities.js';
+import { parseResponsesEnvelope } from './capabilities.js';
+import { assembleResponsesStream, collectOutputParts } from './sse.js';
 
 /**
  * Batch C — SAM object extraction and vision understanding over the
@@ -459,6 +460,11 @@ function observedModelOf(body: string): string | null {
   } catch {
     return null;
   }
+  return observedModelOfRecord(parsed);
+}
+
+/** Model id from an already-parsed response object (streaming terminal). */
+function observedModelOfRecord(parsed: unknown): string | null {
   if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const model = (parsed as Record<string, unknown>).model;
     if (typeof model === 'string' && model.trim().length > 0) {
@@ -486,7 +492,7 @@ export interface SegmentOperationOptions {
 }
 
 export interface SegmentCallResult {
-  /** The exact geometry lane SAM returned (empty when zero matches). */
+  /** The exact geometry lane SAM streamed (empty when zero matches). */
   lane: string;
   matches: ParsedSegmentMatch[];
   skipped: number;
@@ -498,10 +504,21 @@ export interface SegmentCallResult {
   latencyMs: number;
   /** Provider fetch dispatches for the SAM request (adapter boundary). */
   attempts: number;
+  /** SSE events parsed from the stream (terminal included). */
+  streamEvents: number;
+  /** `response.output_text.delta` events folded into the lane. */
+  deltaEvents: number;
+  /** Exact raw stream bytes received (sha256 input). */
+  streamBytes: number;
+  /** Hex sha256 over the exact raw stream bytes (bounded evidence). */
+  responseSha256: string;
 }
 
 /**
- * SAM object extraction over the Responses API. Boxes come back in the
+ * SAM object extraction over the Responses streaming contract. The
+ * request sets `stream: true` and geometry is collected from
+ * `response.output_text.delta` events through the terminal
+ * `response.completed` event. Boxes come back in the
  * coordinates of the fitted image actually sent, so matches are mapped back
  * to the original pixels before compositing.
  */
@@ -536,7 +553,9 @@ export class MediaSegmentation {
     }
     const sent = downscaleRgba(image, fitScale(image.width, image.height, SEGMENT_SEND_MAX_SIDE));
     const started = Date.now();
-    const result = await this.adapter.call(
+    // Streaming contract: the adapter injects `stream: true` and returns
+    // parsed SSE events; geometry is assembled from output_text deltas.
+    const result = await this.adapter.callStream(
       '/v1/responses',
       {
         model: this.model,
@@ -556,25 +575,33 @@ export class MediaSegmentation {
         timeoutMs: this.timeoutMs,
       },
     );
-    const envelope = parseResponsesEnvelope(result.body, 'segment');
-    if (!envelope.ok || envelope.output === null) {
+    const assembled = assembleResponsesStream(result.events, 'segment');
+    const streamEvidence = {
+      streamEvents: assembled.events,
+      deltaEvents: assembled.deltaEvents,
+      streamBytes: result.streamBytes,
+      responseSha256: result.responseSha256,
+    };
+    // Terminal-object parts are inspected through the assembled stream:
+    // refusals fail here (mirroring the buffered contract) and text that
+    // bypassed the delta channel is a contract mismatch, never a lane.
+    if (assembled.refusals.length > 0) {
       throw new ProviderError(
         'provider_invalid_output',
-        `Segmentation failed: ${envelope.summary} ${envelope.error ?? ''}`.slice(0, 300),
+        `Segmentation refused: ${(assembled.refusals[0]?.text ?? 'refused').slice(0, 200)}`,
       );
     }
-    const { texts, refusals } = collectOutputParts(envelope.output);
-    if (refusals.length > 0) {
-      throw new ProviderError(
-        'provider_invalid_output',
-        `Segmentation refused: ${(refusals[0]?.text ?? 'refused').slice(0, 200)}`,
-      );
-    }
-    if (texts.length === 0) {
-      throw new ProviderError('provider_invalid_output', 'Segmentation returned no text lane.');
-    }
-    const lane = texts.map((part) => part.text).join('\n');
+    const lane = assembled.lane;
     if (lane.trim().length === 0) {
+      if (assembled.texts.some((part) => part.text.trim().length > 0)) {
+        // The terminal object carries text the delta channel never sent:
+        // geometry bypassed the documented channel, so an empty lane
+        // would misread the result. Fail, never publish.
+        throw new ProviderError(
+          'provider_invalid_output',
+          'Segmentation stream carried no output_text deltas but the terminal response contains text (contract mismatch).',
+        );
+      }
       // A typed but explicitly empty output_text lane is a legitimate
       // zero-match result. Anything else must carry usable geometry.
       return {
@@ -583,9 +610,10 @@ export class MediaSegmentation {
         skipped: 0,
         diagnostics: [],
         model: this.model,
-        observedModel: observedModelOf(result.body),
+        observedModel: observedModelOfRecord(assembled.response),
         latencyMs: Date.now() - started,
         attempts: result.attempts,
+        ...streamEvidence,
       };
     }
     const parsed = parseSegmentLane(lane);
@@ -609,9 +637,10 @@ export class MediaSegmentation {
       skipped: parsed.skipped,
       diagnostics: parsed.diagnostics,
       model: this.model,
-      observedModel: observedModelOf(result.body),
+      observedModel: observedModelOfRecord(assembled.response),
       latencyMs: Date.now() - started,
       attempts: result.attempts,
+      ...streamEvidence,
     };
   }
 }

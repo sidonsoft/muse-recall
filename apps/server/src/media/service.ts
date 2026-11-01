@@ -333,6 +333,9 @@ export class MediaService {
       version: record.version,
       concept: input.concept,
       provider_attempts: result.attempts,
+      stream_events: result.streamEvents,
+      stream_bytes: result.streamBytes,
+      response_sha256: result.responseSha256,
       matches: result.matches.map((match, index) => ({
         match_index: index,
         box: match.box,
