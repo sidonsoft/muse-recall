@@ -34,6 +34,9 @@
  * Vision-only (single vision attempt, SAM/coding paused):
  *   BATCHC_SMOKE_VISION_ONLY=1 FORGE_MUSE_API_KEY=... FORGE_MUSE_BIN=$(which muse) \
  *     pnpm exec tsx scripts/verify-batchc-live-smoke.ts
+ * Resume without spending another vision call (reuses retained drafts):
+ *   BATCHC_SMOKE_RESUME_FROM=test-results/batchc-live/<stamp> FORGE_MUSE_API_KEY=... \
+ *     FORGE_MUSE_BIN=$(which muse) pnpm exec tsx scripts/verify-batchc-live-smoke.ts
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -57,6 +60,10 @@ import {
   readMediaTrace,
   shouldStopAfterVisionOnly,
 } from './lib/media-trace.js';
+import {
+  loadRetainedVisionEvidence,
+  type RetainedVisionEvidence,
+} from './lib/retained-evidence.js';
 
 const ROOT = process.cwd();
 const PROJECT = `batchc-live-${Date.now().toString(36).slice(-6)}`;
@@ -321,6 +328,21 @@ async function main(): Promise<void> {
     return;
   }
   if (calls.vision + calls.sam + calls.coding !== 0) fail('call budget must start at zero');
+  const resumeDir = process.env.BATCHC_SMOKE_RESUME_FROM?.trim() ?? '';
+  let retained: RetainedVisionEvidence | null = null;
+  if (process.env.BATCHC_SMOKE_VISION_ONLY === '1' && resumeDir) {
+    fail('BATCHC_SMOKE_VISION_ONLY and BATCHC_SMOKE_RESUME_FROM are mutually exclusive');
+  }
+  if (resumeDir) {
+    // Fail fast before any browser/server cost: a resumed run is only valid
+    // with retained drafts from a completed vision step.
+    retained = loadRetainedVisionEvidence(resumeDir);
+    if (retained.suggestions.length === 0) fail(`no retained suggestions in ${resumeDir}`);
+    runScope = 'resume';
+    observations.scope =
+      'resume: reuses retained vision drafts without a new vision call; SAM/coding per explicit scope';
+    observations.resumedFrom = resumeDir;
+  }
   mkdirSync(EVIDENCE, { recursive: true });
 
   writeFileSync(SERVER_LOG, '');
@@ -506,106 +528,169 @@ async function main(): Promise<void> {
     const assetImage = page.locator(`img[src*="${uploaded.asset_id}"]`).first();
     await assetImage.waitFor({ timeout: 20_000 });
 
-    // ---- 1. live vision suggest -> editable drafts -> propose -> accept ----
+    // ---- 1. vision drafts -> propose -> accept (live suggest, or retained on resume) ----
+    // Resume reuses retained drafts byte-for-byte with no new vision call and
+    // proposes the edited draft via API; the Memory accept flow below stays
+    // UI-driven in both scopes.
     if (calls.vision !== 0) fail('vision call budget exhausted');
-    const assetRow = page
-      .locator('li', { has: page.locator(`img[src*="${uploaded.asset_id}"]`) })
-      .first();
-    await assetRow.getByTitle('Suggest decisions or extract a cutout from this version').click();
-    await page.getByTitle('Suggest project decisions from this image').click();
-    await fillStable(page, 'Suggestion guidance', 'visual style, palette and layout');
-    calls.vision += 1;
-    const [suggestResponse] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('/media/suggest') && response.request().method() === 'POST',
-        { timeout: LONG },
-      ),
-      page.getByRole('button', { name: 'Suggest', exact: true }).click(),
-    ]);
-    const suggestBody = await suggestResponse.text();
-    let suggestEnvelope: { ok?: boolean; data?: unknown; error?: unknown } | null = null;
-    try {
-      suggestEnvelope = JSON.parse(suggestBody) as {
-        ok?: boolean;
-        data?: unknown;
-        error?: unknown;
-      };
-    } catch {
-      suggestEnvelope = null;
-    }
-    if (
-      !suggestResponse.ok() ||
-      suggestEnvelope?.ok !== true ||
-      suggestEnvelope.data === undefined
-    ) {
-      await captureHttpFailure('vision', suggestResponse, '01-vision-failure.png');
-    }
-    const suggestData = suggestEnvelope.data as {
+    let suggestData: {
       suggestions: Array<{ type: string; content: string; confidence: number }>;
       asset_id: string;
       version: number;
       provider_attempts?: number;
     };
-    if (suggestData.provider_attempts !== 1) {
-      fail(
-        `vision response provider_attempts=${String(suggestData.provider_attempts)}; expected 1`,
-      );
-    }
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    const traceEntries = readMediaTrace(SERVER_LOG);
-    const visionAttempts = countModelAttempts(traceEntries, 'muse-spark');
-    observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
-    observations.visionProviderAttempts = visionAttempts;
-    observations.providerAttempts = {
-      ...(observations.providerAttempts as Record<string, number> | undefined),
-      vision: visionAttempts,
-    };
-    try {
-      assertSingleProviderAttempt({
-        capability: 'vision',
-        responseAttempts: suggestData.provider_attempts,
-        traceAttempts: visionAttempts,
-      });
-    } catch (error) {
-      fail(error instanceof Error ? error.message : String(error));
-    }
-    observations.visionProviderAttempts = 1;
-    observations.visionResponse = {
-      asset_id: suggestData.asset_id,
-      version: suggestData.version,
-      suggestions: suggestData.suggestions,
-    };
-    if (suggestData.suggestions.length === 0)
-      fail('vision returned no suggestions (unusable; stopping, no retry)');
-    await page.getByLabel('Suggestion content').first().waitFor({ timeout: 20_000 });
-    check(`live vision returned ${suggestData.suggestions.length} editable draft(s) (one call)`);
-    if (shouldStopAfterVisionOnly(visionOnly, calls)) {
-      runScope = 'vision-only';
-      observations.scope =
-        'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
-      await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
-      check('vision-only scope complete; SAM/coding paused');
-      console.log(`\nlive Batch C smoke (vision-only): PASS (${checks.length} checks)`);
-      console.log(
-        `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,
-      );
-      return;
-    }
+    let editedContent: string;
+    if (!resumeDir) {
+      const assetRow = page
+        .locator('li', { has: page.locator(`img[src*="${uploaded.asset_id}"]`) })
+        .first();
+      await assetRow.getByTitle('Suggest decisions or extract a cutout from this version').click();
+      await page.getByTitle('Suggest project decisions from this image').click();
+      await fillStable(page, 'Suggestion guidance', 'visual style, palette and layout');
+      calls.vision += 1;
+      const [suggestResponse] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/media/suggest') && response.request().method() === 'POST',
+          { timeout: LONG },
+        ),
+        page.getByRole('button', { name: 'Suggest', exact: true }).click(),
+      ]);
+      const suggestBody = await suggestResponse.text();
+      let suggestEnvelope: { ok?: boolean; data?: unknown; error?: unknown } | null = null;
+      try {
+        suggestEnvelope = JSON.parse(suggestBody) as {
+          ok?: boolean;
+          data?: unknown;
+          error?: unknown;
+        };
+      } catch {
+        suggestEnvelope = null;
+      }
+      if (
+        !suggestResponse.ok() ||
+        suggestEnvelope?.ok !== true ||
+        suggestEnvelope.data === undefined
+      ) {
+        await captureHttpFailure('vision', suggestResponse, '01-vision-failure.png');
+      }
+      suggestData = suggestEnvelope.data as {
+        suggestions: Array<{ type: string; content: string; confidence: number }>;
+        asset_id: string;
+        version: number;
+        provider_attempts?: number;
+      };
+      if (suggestData.provider_attempts !== 1) {
+        fail(
+          `vision response provider_attempts=${String(suggestData.provider_attempts)}; expected 1`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      const traceEntries = readMediaTrace(SERVER_LOG);
+      const visionAttempts = countModelAttempts(traceEntries, 'muse-spark');
+      observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
+      observations.visionProviderAttempts = visionAttempts;
+      observations.providerAttempts = {
+        ...(observations.providerAttempts as Record<string, number> | undefined),
+        vision: visionAttempts,
+      };
+      try {
+        assertSingleProviderAttempt({
+          capability: 'vision',
+          responseAttempts: suggestData.provider_attempts,
+          traceAttempts: visionAttempts,
+        });
+      } catch (error) {
+        fail(error instanceof Error ? error.message : String(error));
+      }
+      observations.visionProviderAttempts = 1;
+      observations.visionResponse = {
+        asset_id: suggestData.asset_id,
+        version: suggestData.version,
+        suggestions: suggestData.suggestions,
+      };
+      if (suggestData.suggestions.length === 0)
+        fail('vision returned no suggestions (unusable; stopping, no retry)');
+      await page.getByLabel('Suggestion content').first().waitFor({ timeout: 20_000 });
+      check(`live vision returned ${suggestData.suggestions.length} editable draft(s) (one call)`);
+      if (shouldStopAfterVisionOnly(visionOnly, calls)) {
+        runScope = 'vision-only';
+        observations.scope =
+          'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
+        await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+        check('vision-only scope complete; SAM/coding paused');
+        console.log(`\nlive Batch C smoke (vision-only): PASS (${checks.length} checks)`);
+        console.log(
+          `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,
+        );
+        return;
+      }
 
-    const first = suggestData.suggestions[0];
-    if (!first) fail('vision returned a draft list with no first element');
-    const editedContent = `${first.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
-    await page.getByLabel('Suggestion content').first().fill(editedContent);
-    await page.getByRole('button', { name: 'Propose to memory', exact: true }).first().click();
-    await page.getByText('Proposed to memory', { exact: false }).waitFor({ timeout: 20_000 });
-    check('edited draft proposed to memory (draft still requires explicit acceptance)');
-    if (suggestData.suggestions.length > 1) {
-      await page.getByRole('button', { name: 'dismiss', exact: true }).last().click();
-      check('dismissed one draft at the reference panel (never proposed)');
+      const first = suggestData.suggestions[0];
+      if (!first) fail('vision returned a draft list with no first element');
+      editedContent = `${first.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
+      await page.getByLabel('Suggestion content').first().fill(editedContent);
+      await page.getByRole('button', { name: 'Propose to memory', exact: true }).first().click();
+      await page.getByText('Proposed to memory', { exact: false }).waitFor({ timeout: 20_000 });
+      check('edited draft proposed to memory (draft still requires explicit acceptance)');
+      if (suggestData.suggestions.length > 1) {
+        await page.getByRole('button', { name: 'dismiss', exact: true }).last().click();
+        check('dismissed one draft at the reference panel (never proposed)');
+      }
+      mediaResponses.suggest = mediaResponses.suggest ?? [];
+      await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+    } else {
+      // Resume: reuse retained drafts byte-for-byte with no new vision call.
+      // The edited draft is proposed via API; acceptance below stays UI-driven.
+      if (!retained) fail('resume requested without retained vision evidence');
+      if ((mediaResponses.suggest ?? []).length !== 0) {
+        fail('resume scope produced a vision request; exactly zero are allowed');
+      }
+      const retainedSha = sha256(imageBytes);
+      if (retained.referenceSha256 !== null && retained.referenceSha256 !== retainedSha) {
+        fail('reference image bytes differ from the retained vision evidence');
+      }
+      suggestData = {
+        suggestions: retained.suggestions,
+        asset_id: uploaded.asset_id,
+        version: uploaded.version,
+      };
+      observations.visionResponse = {
+        asset_id: uploaded.asset_id,
+        version: uploaded.version,
+        suggestions: retained.suggestions,
+        resumedFrom: resumeDir,
+        resumedDraftSha256: sha256(JSON.stringify(retained.suggestions)),
+        referenceImageSha256: retainedSha,
+      };
+      observations.providerAttempts = {
+        ...(observations.providerAttempts as Record<string, number> | undefined),
+        vision: 0,
+      };
+      observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
+      check(`reused ${retained.suggestions.length} retained vision draft(s); no new vision call`);
+      const retainedFirst = suggestData.suggestions[0];
+      if (!retainedFirst) fail('retained drafts list has no first element');
+      editedContent = `${retainedFirst.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
+      const retainedProposed = dataOf(
+        await api(apiBase, 'POST', '/api/memories/proposals', {
+          type: retainedFirst.type,
+          scope: 'project',
+          project_id: PROJECT,
+          content: editedContent,
+          source: {
+            session_id: null,
+            reference: `muse-asset://${uploaded.asset_id}/v${uploaded.version}`,
+          },
+          confidence: retainedFirst.confidence,
+          validation_status: 'unverified',
+        }),
+        'propose retained draft',
+      ) as { memory?: { id?: string } };
+      if (!retainedProposed.memory?.id) fail('retained draft proposal returned no memory id');
+      check('edited draft proposed to memory via API (draft still requires explicit acceptance)');
+      await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
     }
-    mediaResponses.suggest = mediaResponses.suggest ?? [];
-    await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
 
     // explicit acceptance in Memory review (real UI)
     const proposedList = JSON.parse(
