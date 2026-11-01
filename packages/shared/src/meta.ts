@@ -36,6 +36,18 @@ export const ServiceMetaSchema = z.object({
     /** False when the generation CLI is not installed, so generation cannot start. */
     cli_available: z.boolean().optional(),
   }),
+  /**
+   * Media provider configuration actually in force: image, SAM, and
+   * vision models plus the transport retry budget. Recorded so live
+   * acceptance evidence cites effective settings, never hard-coded
+   * defaults.
+   */
+  media: z.object({
+    image_model: z.string(),
+    sam_model: z.string(),
+    vision_model: z.string(),
+    max_retries: z.number().int().min(0),
+  }),
   modules: z.object({
     memory_engine: ModuleStatusSchema,
     agent_runtime: ModuleStatusSchema,

@@ -382,6 +382,7 @@ async function main(): Promise<void> {
           model: 'sam-3.1',
           observedModel: null,
           latencyMs: 1,
+          attempts: 1,
         };
       },
     };
@@ -389,7 +390,12 @@ async function main(): Promise<void> {
       targetedModel: 'muse-spark-1.3',
       suggest: async () => {
         suggestCalls += 1;
-        return { suggestions: SUGGESTIONS, model: 'muse-spark-1.3', observedModel: null };
+        return {
+          suggestions: SUGGESTIONS,
+          model: 'muse-spark-1.3',
+          observedModel: null,
+          attempts: 1,
+        };
       },
     };
     database = openDatabase({ path: config.databasePath, wal: false });
@@ -489,7 +495,14 @@ async function main(): Promise<void> {
     page.on('response', (response) => {
       if (response.url().toLowerCase().includes('favicon')) return;
       if (response.status() >= 400) {
-        errors.push(`HTTP ${response.status()} ${response.request().method()} ${response.url()}`);
+        void response
+          .text()
+          .catch(() => '<unreadable body>')
+          .then((body) => {
+            errors.push(
+              `HTTP ${response.status()} ${response.request().method()} ${response.url()} body=${body.slice(0, 600)}`,
+            );
+          });
       }
     });
     const allowedOrigins = new Set([new URL(webBase).origin, new URL(apiBase).origin]);
@@ -859,7 +872,10 @@ main().catch(async (error: unknown) => {
     console.error(`Checks that passed before the failure:\n  - ${checks.join('\n  - ')}`);
   }
   try {
-    writeFileSync(join(OUT, 'failure.txt'), `${message}\n\nPassed checks:\n${checks.join('\n')}\n`);
+    writeFileSync(
+      join(OUT, 'failure.txt'),
+      `${message}\n\nPassed checks:\n${checks.join('\n')}\n\nBrowser/network observations:\n${errors.length > 0 ? errors.join('\n') : '(none captured)'}\n`,
+    );
   } catch {
     // Evidence is best effort.
   }

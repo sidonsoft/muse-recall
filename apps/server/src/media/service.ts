@@ -294,7 +294,12 @@ export class MediaService {
         ...(input.count !== undefined ? { count: input.count } : {}),
       },
     );
-    return { asset_id: input.asset_id, version: record.version, suggestions: result.suggestions };
+    return {
+      asset_id: input.asset_id,
+      version: record.version,
+      suggestions: result.suggestions,
+      provider_attempts: result.attempts,
+    };
   }
 
   /**
@@ -327,6 +332,7 @@ export class MediaService {
       asset_id: input.asset_id,
       version: record.version,
       concept: input.concept,
+      provider_attempts: result.attempts,
       matches: result.matches.map((match, index) => ({
         match_index: index,
         box: match.box,

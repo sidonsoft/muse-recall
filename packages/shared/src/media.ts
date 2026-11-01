@@ -332,6 +332,12 @@ export const MediaSegmentResponseSchema = z.object({
   concept: z.string().min(1).max(120),
   /** Empty when SAM reports zero matches: valid, not an error. */
   matches: z.array(MediaSegmentMatchSchema).max(16),
+  /**
+   * Provider fetch dispatches for the SAM request, counted at the adapter
+   * boundary (1 when retries are disabled). Lets acceptance harnesses
+   * enforce exact call budgets instead of counting UI submissions.
+   */
+  provider_attempts: z.number().int().min(1),
 });
 export type MediaSegmentResponse = z.infer<typeof MediaSegmentResponseSchema>;
 
@@ -364,5 +370,10 @@ export const MediaSuggestResponseSchema = z.object({
   asset_id: z.uuid(),
   version: z.number().int().min(1),
   suggestions: z.array(MediaSuggestionSchema).max(5),
+  /**
+   * Provider fetch dispatches for the vision request, counted at the
+   * adapter boundary (1 when retries are disabled).
+   */
+  provider_attempts: z.number().int().min(1),
 });
 export type MediaSuggestResponse = z.infer<typeof MediaSuggestResponseSchema>;

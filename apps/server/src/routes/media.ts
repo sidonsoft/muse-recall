@@ -312,9 +312,19 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
               : error.code === 'provider_auth_failed'
                 ? 502
                 : 502;
+      // Surface only the bounded, non-secret provider telemetry the
+      // adapter attaches (HTTP status, dispatch count) so acceptance
+      // harnesses can account exact attempts even on failure.
+      const details: Record<string, unknown> = {};
+      if (typeof error.details.status === 'number') details.status = error.details.status;
+      if (typeof error.details.attempts === 'number') details.attempts = error.details.attempts;
       return reply.status(status).send({
         ok: false,
-        error: { code: error.code, message: error.message },
+        error: {
+          code: error.code,
+          message: error.message,
+          ...(Object.keys(details).length > 0 ? { details } : {}),
+        },
       });
     }
     if (error instanceof z.ZodError) {

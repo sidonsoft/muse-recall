@@ -138,6 +138,10 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           // Image generation/editing uses its own model. The Studio coding
           // model is for /v1/chat/completions and must never be sent here.
           model: mediaModel,
+          ...(config.media?.maxRetries !== undefined
+            ? { maxRetries: config.media.maxRetries }
+            : {}),
+          ...(config.media?.traceAttempts === true ? { traceAttempts: true } : {}),
           ...(mediaFetch ? { fetchImpl: mediaFetch } : {}),
         });
   const mediaOperations =
@@ -616,6 +620,12 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         // recent jobs; null until the protocol has emitted one. Never the
         // configured request value promoted into an "observation".
         observed_model: forgeManager.lastObservedModel(),
+      },
+      media: {
+        image_model: mediaModel,
+        sam_model: config.media?.samModel ?? DEFAULT_SAM_MODEL,
+        vision_model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        max_retries: config.media?.maxRetries ?? 1,
       },
       modules: {
         memory_engine: 'complete',

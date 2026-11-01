@@ -120,6 +120,7 @@ async function buildHarness(
             model: 'sam-3.1',
             observedModel: null,
             latencyMs: 1,
+            attempts: 1,
           }),
         };
   const understand =
@@ -134,6 +135,7 @@ async function buildHarness(
             ],
             model: 'muse-spark-1.3',
             observedModel: null,
+            attempts: 1,
           }),
         };
   const service = new MediaService(assets, jobs, null, {

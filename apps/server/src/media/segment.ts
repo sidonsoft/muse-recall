@@ -496,6 +496,8 @@ export interface SegmentCallResult {
   /** Model id the provider reported, when it reported one. */
   observedModel: string | null;
   latencyMs: number;
+  /** Provider fetch dispatches for the SAM request (adapter boundary). */
+  attempts: number;
 }
 
 /**
@@ -583,6 +585,7 @@ export class MediaSegmentation {
         model: this.model,
         observedModel: observedModelOf(result.body),
         latencyMs: Date.now() - started,
+        attempts: result.attempts,
       };
     }
     const parsed = parseSegmentLane(lane);
@@ -608,6 +611,7 @@ export class MediaSegmentation {
       model: this.model,
       observedModel: observedModelOf(result.body),
       latencyMs: Date.now() - started,
+      attempts: result.attempts,
     };
   }
 }
@@ -649,7 +653,12 @@ export class MediaUnderstand {
   async suggest(
     image: { bytes: Buffer; mime: string },
     options: { guidance?: string; count?: number; signal?: AbortSignal } = {},
-  ): Promise<{ suggestions: SuggestionDraft[]; model: string; observedModel: string | null }> {
+  ): Promise<{
+    suggestions: SuggestionDraft[];
+    model: string;
+    observedModel: string | null;
+    attempts: number;
+  }> {
     const count = Math.max(1, Math.min(5, options.count ?? 3));
     const guidance =
       options.guidance !== undefined && options.guidance.trim().length > 0
@@ -685,6 +694,7 @@ export class MediaUnderstand {
       suggestions: parseSuggestions(result.body, count),
       model: this.model,
       observedModel: observedModelOf(result.body),
+      attempts: result.attempts,
     };
   }
 }

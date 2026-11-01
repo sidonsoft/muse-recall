@@ -137,6 +137,8 @@ const EnvSchema = z
     FORGE_MEDIA_MODEL: z.string().min(2).max(200).optional(),
     FORGE_SAM_MODEL: z.string().min(2).max(200).optional(),
     FORGE_VISION_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_MEDIA_MAX_RETRIES: z.coerce.number().int().min(0).max(5).optional(),
+    FORGE_MEDIA_TRACE: z.enum(['0', '1']).optional(),
     FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
     FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
     FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
@@ -179,6 +181,10 @@ export interface AppConfig {
     samModel: string;
     /** Vision-language model for reference-image understanding. */
     visionModel: string;
+    /** Transport retries after the first media attempt (0 disables retries). */
+    maxRetries?: number;
+    /** When true, emit bounded per-attempt transport diagnostics to stderr. */
+    traceAttempts?: boolean;
   };
   forge?: {
     maxRuntimeMs: number;
@@ -259,6 +265,12 @@ export function loadConfig(
       model: value.FORGE_MEDIA_MODEL ?? DEFAULT_MEDIA_IMAGE_MODEL,
       samModel: value.FORGE_SAM_MODEL ?? DEFAULT_SAM_MODEL,
       visionModel: value.FORGE_VISION_MODEL ?? DEFAULT_VISION_MODEL,
+      ...(value.FORGE_MEDIA_MAX_RETRIES !== undefined
+        ? { maxRetries: value.FORGE_MEDIA_MAX_RETRIES }
+        : {}),
+      ...(value.FORGE_MEDIA_TRACE !== undefined
+        ? { traceAttempts: value.FORGE_MEDIA_TRACE === '1' }
+        : {}),
     },
     forge: {
       maxRuntimeMs: value.FORGE_MAX_RUNTIME_MS,

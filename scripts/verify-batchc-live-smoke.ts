@@ -1,6 +1,21 @@
 /**
  * Batch C — scoped LIVE acceptance smoke (paid calls: exactly one vision, one
- * SAM, one coding request; no image-generation call, no retries).
+ * SAM, one coding request; no image-generation call).
+ *
+ * The call budget is enforced at the provider boundary, not by counting UI
+ * submissions: the spawned server runs with FORGE_MEDIA_MAX_RETRIES=0 (a
+ * single UI submission can no longer become two provider dispatches) and
+ * FORGE_MEDIA_TRACE=1 (one bounded, secret-free line per attempt in the
+ * server log). Every vision/SAM response must carry provider_attempts: 1
+ * or the run fails. Coding fallback is scrubbed from the server
+ * environment so one coding job cannot silently become two CLI invocations;
+ * the job logs are still inspected for fallback markers as a backstop.
+ *
+ * BATCHC_SMOKE_VISION_ONLY=1 stops after the single vision attempt (SAM
+ * and coding stay paused until vision succeeds and the remaining run scope
+ * is explicit). Any failure stops the run immediately and writes an
+ * evidence report with redacted status/body, provider attempts, and the
+ * effective server configuration actually in force.
  *
  * Flow (real Studio UI, real providers, isolated database/workspace):
  *   seed recorded baseline v1 (no model call) -> upload an existing reference
@@ -12,16 +27,24 @@
  *
  * Requirements: FORGE_MUSE_API_KEY (existing configured key; never printed)
  * and FORGE_MUSE_BIN (a real `muse` CLI). Playwright Chromium installed.
- * There are NO automatic retries: the script stops on the first failure or
- * unusable output and writes an evidence report before exiting.
  *
  * Usage:
  *   FORGE_MUSE_API_KEY=... FORGE_MUSE_BIN=$(which muse) \
  *     pnpm exec tsx scripts/verify-batchc-live-smoke.ts
+ * Vision-only (single vision attempt, SAM/coding paused):
+ *   BATCHC_SMOKE_VISION_ONLY=1 FORGE_MUSE_API_KEY=... FORGE_MUSE_BIN=$(which muse) \
+ *     pnpm exec tsx scripts/verify-batchc-live-smoke.ts
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,6 +63,9 @@ const checks: string[] = [];
 const calls = { vision: 0, sam: 0, coding: 0, imageGeneration: 0 };
 const observations: Record<string, unknown> = {};
 let evidenceWritten = false;
+let pageRef: Page | null = null;
+/** 'full' or 'vision-only' (BATCHC_SMOKE_VISION_ONLY=1); recorded in evidence. */
+let runScope = 'full';
 
 function check(label: string): void {
   checks.push(label);
@@ -107,6 +133,7 @@ function start(
   args: string[],
   env: NodeJS.ProcessEnv,
   cwd = ROOT,
+  logFile?: string,
 ): Managed {
   const child = spawn(command, args, {
     cwd,
@@ -114,7 +141,17 @@ function start(
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   });
+  const append = (chunk: Buffer) => {
+    if (logFile === undefined) return;
+    try {
+      appendFileSync(logFile, chunk);
+    } catch {
+      /* logging must not mask the result */
+    }
+  };
+  child.stdout?.on('data', append);
   child.stderr?.on('data', (chunk: Buffer) => {
+    append(chunk);
     const text = chunk.toString('utf8');
     // Preserve only bounded diagnostics; never credentials.
     if (text.trim().length > 0) console.error(`[${name}] ${text.trim().slice(0, 400)}`);
@@ -182,6 +219,78 @@ function readAlphaStats(bytes: Buffer): {
   return { width: png.width, height: png.height, transparent, opaque };
 }
 
+interface MediaTraceEntry {
+  attempt: number;
+  path?: string;
+  model?: string;
+  outcome?: string;
+  status?: number;
+}
+function readMediaTrace(): MediaTraceEntry[] {
+  const entries: MediaTraceEntry[] = [];
+  let text = '';
+  try {
+    text = readFileSync(SERVER_LOG, 'utf8');
+  } catch {
+    return entries;
+  }
+  for (const line of text.split('\n')) {
+    if (!line.includes('[media-trace]')) continue;
+    const attempt = /attempt=(\d+)/.exec(line)?.[1];
+    if (attempt === undefined) continue;
+    const entry: MediaTraceEntry = { attempt: Number(attempt) };
+    const path = /path=(\S+)/.exec(line)?.[1];
+    if (path !== undefined) entry.path = path;
+    const model = /model=(\S+)/.exec(line)?.[1];
+    if (model !== undefined) entry.model = model;
+    const outcome = /outcome=(\S+)/.exec(line)?.[1];
+    if (outcome !== undefined) entry.outcome = outcome;
+    const status = /status=(\d+)/.exec(line)?.[1];
+    if (status !== undefined) entry.status = Number(status);
+    entries.push(entry);
+  }
+  return entries;
+}
+/** Bound diagnostics for failure evidence: the server already redacts
+ *  provider messages, but raw transport bodies are masked here for
+ *  credential-shaped values before they reach the evidence report. */
+function redactForEvidence(text: string): string {
+  return text
+    .replace(/Bearer\s+\S+/gi, 'Bearer <redacted>')
+    .replace(/api[_-]?key["'\s:=]+[\w.-]{8,}/gi, 'api_key=<redacted>');
+}
+async function captureHttpFailure(
+  label: string,
+  response: { status(): number; text(): Promise<string> },
+  screenshot: string,
+): Promise<never> {
+  const raw = await response.text().catch(() => '<unreadable body>');
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = null;
+  }
+  observations[`${label}Error`] = {
+    http_status: response.status(),
+    body: redactForEvidence(raw.slice(0, 1_000)),
+    json: parsed,
+    attempts: (() => {
+      const details = (parsed as { error?: { details?: unknown } } | null)?.error?.details;
+      if (details !== null && typeof details === 'object') {
+        const attempts = (details as Record<string, unknown>).attempts;
+        return typeof attempts === 'number' ? attempts : null;
+      }
+      return null;
+    })(),
+    effective_media_config: observations.effectiveConfig ?? null,
+  };
+  await pageRef
+    ?.screenshot({ path: join(EVIDENCE, screenshot), fullPage: false })
+    .catch(() => undefined);
+  fail(`${label} failed (HTTP ${response.status()}): ${raw.slice(0, 300) || '<non-text body>'}`);
+}
+
 async function writeEvidence(): Promise<void> {
   if (evidenceWritten) return;
   evidenceWritten = true;
@@ -198,14 +307,20 @@ async function writeEvidence(): Promise<void> {
       bytes: readFileSync(IMAGE).length,
     },
     calls,
+    ui_submissions: calls,
+    scope: runScope,
+    media_retry_policy:
+      'FORGE_MEDIA_MAX_RETRIES=0 (transport retries disabled); FORGE_MEDIA_TRACE=1',
+    provider_attempts: observations.providerAttempts ?? null,
+    media_trace_path: 'server.log (bounded [media-trace] lines; no credential values)',
     requested_models: {
       vision: observations.requestedVisionModel ?? null,
       sam: observations.requestedSamModel ?? null,
       coding: observations.requestedCodingModel ?? null,
     },
     observed_models: {
-      vision: 'not surfaced by the media response contract',
-      sam: 'not surfaced by the media response contract',
+      vision: observations.visionObservedModel ?? 'not surfaced by the media response contract',
+      sam: observations.samObservedModel ?? 'not surfaced by the media response contract',
       coding: observations.codingModelObserved ?? null,
     },
     usage: {
@@ -230,6 +345,8 @@ async function main(): Promise<void> {
   if (calls.vision + calls.sam + calls.coding !== 0) fail('call budget must start at zero');
   mkdirSync(EVIDENCE, { recursive: true });
 
+  const SERVER_LOG = join(EVIDENCE, 'server.log');
+  writeFileSync(SERVER_LOG, '');
   const dataRoot = mkdtempSync(join(tmpdir(), 'batchc-live-'));
   const workspaceRoot = join(dataRoot, 'workspaces');
   const databasePath = join(dataRoot, 'memory.db');
@@ -263,10 +380,29 @@ async function main(): Promise<void> {
     FORGE_REASONING_EFFORT: 'low',
     FORGE_MAX_RUNTIME_MS: String(LONG),
     FORGE_RUNTIME_BROWSER: 'managed',
+    FORGE_MEDIA_MAX_RETRIES: '0',
+    FORGE_MEDIA_TRACE: '1',
+    // Scrub any ambient fallback credential: one coding job must not be
+    // able to silently become two CLI invocations via quota fallback. The
+    // job logs are still inspected for fallback markers as a backstop.
+    FORGE_FALLBACK_API_KEY: undefined,
     LOG_LEVEL: 'warn',
   };
+  const visionOnly = process.env.BATCHC_SMOKE_VISION_ONLY === '1';
+  // One coding job must not silently become two CLI invocations through a
+  // fallback provider. Scrub fallback credentials/models inherited from the
+  // caller's environment; the job logs are also checked after completion.
+  delete serverEnv.FORGE_FALLBACK_API_KEY;
+  delete serverEnv.FORGE_FALLBACK_MODEL;
   const startApi = (): Managed =>
-    start('api', process.execPath, [join(ROOT, 'apps/server/dist/index.js')], serverEnv);
+    start(
+      'api',
+      process.execPath,
+      [join(ROOT, 'apps/server/dist/index.js')],
+      serverEnv,
+      ROOT,
+      SERVER_LOG,
+    );
   let server = startApi();
   let web: Managed | null = null;
   const errors: string[] = [];
@@ -274,6 +410,32 @@ async function main(): Promise<void> {
   try {
     await waitForHttp(`${apiBase}/api/health`);
     check('started the production API against an isolated seeded database');
+    // Effective configuration actually in force — recorded in evidence and
+    // used for every model/attempt claim below instead of hard-coded labels.
+    // Fails fast if the server does not honor the zero-retry budget.
+    const meta = JSON.parse((await api(apiBase, 'GET', '/api/meta')).text).data as {
+      forge?: { configured_model?: string | null; observed_model?: string | null };
+      media?: {
+        image_model?: string;
+        sam_model?: string;
+        vision_model?: string;
+        max_retries?: number;
+      };
+    };
+    observations.effectiveConfig = {
+      forge_configured_model: meta.forge?.configured_model ?? null,
+      media: meta.media ?? null,
+    };
+    if (meta.media?.max_retries !== 0) {
+      fail(
+        `server does not honor the zero-retry budget: /api/meta media=${JSON.stringify(meta.media ?? null)}`,
+      );
+    }
+    check(
+      `server enforces zero media retries (vision=${meta.media.vision_model}, sam=${meta.media.sam_model})`,
+    );
+    const effectiveMeta = meta;
+    observations.effectiveMediaConfig = effectiveMeta.media ?? null;
     web = start(
       'web',
       process.execPath,
@@ -294,6 +456,7 @@ async function main(): Promise<void> {
 
     const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
     const page = await context.newPage();
+    pageRef = page;
     page.on('console', (message) => {
       if (message.type() !== 'error') return;
       const text = message.text();
@@ -384,33 +547,53 @@ async function main(): Promise<void> {
       page.getByRole('button', { name: 'Suggest', exact: true }).click(),
     ]);
     const suggestBody = await suggestResponse.text();
-    const suggestEnvelope = JSON.parse(suggestBody) as {
-      ok?: boolean;
-      data?: unknown;
-      error?: unknown;
-    };
+    let suggestEnvelope: { ok?: boolean; data?: unknown; error?: unknown } | null = null;
+    try {
+      suggestEnvelope = JSON.parse(suggestBody) as {
+        ok?: boolean;
+        data?: unknown;
+        error?: unknown;
+      };
+    } catch {
+      suggestEnvelope = null;
+    }
     if (
       !suggestResponse.ok() ||
-      suggestEnvelope.ok !== true ||
+      suggestEnvelope?.ok !== true ||
       suggestEnvelope.data === undefined
     ) {
-      observations.visionError = {
-        http_status: suggestResponse.status(),
-        body: suggestBody.slice(0, 500),
-      };
-      await page
-        .screenshot({ path: join(EVIDENCE, '01-vision-failure.png'), fullPage: false })
-        .catch(() => undefined);
-      fail(
-        `live vision request failed (HTTP ${suggestResponse.status()}): ${suggestBody.slice(0, 300)}`,
-      );
+      await captureHttpFailure('vision', suggestResponse, '01-vision-failure.png');
     }
     const suggestData = suggestEnvelope.data as {
       suggestions: Array<{ type: string; content: string; confidence: number }>;
       asset_id: string;
       version: number;
+      provider_attempts?: number;
     };
-    observations.requestedVisionModel = 'muse-spark-1.3 (configured default FORGE_VISION_MODEL)';
+    if (suggestData.provider_attempts !== 1) {
+      fail(
+        `vision response provider_attempts=${String(suggestData.provider_attempts)}; expected 1`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const visionTrace = readMediaTrace().filter(
+      (entry) => entry.model?.includes('muse-spark') === true,
+    );
+    const visionAttempts = visionTrace.length;
+    observations.requestedVisionModel =
+      effectiveMeta.media?.vision_model ?? visionTrace.find((entry) => entry.model)?.model ?? null;
+    observations.visionProviderAttempts = visionAttempts;
+    observations.providerAttempts = {
+      ...(observations.providerAttempts as Record<string, number> | undefined),
+      vision: visionAttempts,
+    };
+    if (visionAttempts === 0) fail('no media trace captured for the vision request');
+    if (visionAttempts !== 1) {
+      fail(
+        `vision produced ${String(visionAttempts)} provider attempts; transport retry budget is 0`,
+      );
+    }
+    observations.visionProviderAttempts = 1;
     observations.visionResponse = {
       asset_id: suggestData.asset_id,
       version: suggestData.version,
@@ -420,6 +603,18 @@ async function main(): Promise<void> {
       fail('vision returned no suggestions (unusable; stopping, no retry)');
     await page.getByLabel('Suggestion content').first().waitFor({ timeout: 20_000 });
     check(`live vision returned ${suggestData.suggestions.length} editable draft(s) (one call)`);
+    if (process.env.BATCHC_SMOKE_VISION_ONLY === '1') {
+      runScope = 'vision-only';
+      observations.scope =
+        'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
+      await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+      check('vision-only scope complete; SAM/coding paused');
+      console.log(`\nlive Batch C smoke (vision-only): PASS (${checks.length} checks)`);
+      console.log(
+        `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,
+      );
+      return;
+    }
 
     const first = suggestData.suggestions[0];
     if (!first) fail('vision returned a draft list with no first element');
@@ -462,6 +657,11 @@ async function main(): Promise<void> {
     if (accepted.source.reference !== expectedReference)
       fail(`source reference ${accepted.source.reference} != ${expectedReference}`);
     check(`accepted proposal is active with source-version link ${expectedReference}`);
+    if (visionOnly) {
+      if (calls.sam !== 0 || calls.coding !== 0) fail('vision-only mode made extra calls');
+      check('vision-only mode: SAM and coding remain paused');
+      return;
+    }
 
     // ---- 2. live SAM -> inspect/select match -> save cutout -----------------
     await page.getByRole('button', { name: 'HTML Studio', exact: true }).click();
@@ -501,6 +701,7 @@ async function main(): Promise<void> {
       );
     }
     const segmentData = segmentEnvelope.data as {
+      provider_attempts?: number;
       segment_id: string;
       matches: Array<{
         match_index: number;
@@ -509,7 +710,23 @@ async function main(): Promise<void> {
         confidence?: number;
       }>;
     };
-    observations.requestedSamModel = 'sam-3.1 (configured default FORGE_SAM_MODEL)';
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const samTrace = readMediaTrace().filter((entry) => entry.model?.includes('sam-') === true);
+    const samAttempts = samTrace.length;
+    if (segmentData.provider_attempts !== 1) {
+      fail(`SAM response provider_attempts=${String(segmentData.provider_attempts)}; expected 1`);
+    }
+    observations.requestedSamModel =
+      effectiveMeta.media?.sam_model ?? samTrace.find((entry) => entry.model)?.model ?? null;
+    observations.samProviderAttempts = samAttempts;
+    observations.providerAttempts = {
+      ...(observations.providerAttempts as Record<string, number> | undefined),
+      sam: samAttempts,
+    };
+    if (samAttempts === 0) fail('no media trace captured for the SAM request');
+    if (samAttempts !== 1) {
+      fail(`SAM produced ${String(samAttempts)} provider attempts; transport retry budget is 0`);
+    }
     observations.segment = {
       segment_id: segmentData.segment_id,
       matches: segmentData.matches.map((m) => ({
@@ -620,9 +837,20 @@ async function main(): Promise<void> {
       model_observed?: string | null;
       status: string;
     };
+    const jobLogs = JSON.stringify((jobData as { logs?: unknown }).logs ?? '');
+    if (/fallback/i.test(jobLogs)) {
+      fail('coding job logs report a fallback invocation; one-request budget not enforceable');
+    }
     observations.codingUsage = jobData.usage ?? null;
+    const codingUsage = jobData.usage as { calls?: number } | null;
+    observations.codingProviderAttempts = codingUsage?.calls ?? null;
+    observations.providerAttempts = {
+      ...(observations.providerAttempts as Record<string, number | null> | undefined),
+      coding: codingUsage?.calls ?? null,
+    };
     observations.codingModelObserved = jobData.model_observed ?? null;
-    observations.requestedCodingModel = serverEnv.FORGE_MUSE_MODEL ?? null;
+    observations.requestedCodingModel = meta.forge?.configured_model ?? null;
+    observations.codingModelObserved = jobData.model_observed ?? meta.forge?.observed_model ?? null;
     if (jobData.status !== 'succeeded') fail(`coding job status ${jobData.status}`);
     await page.getByRole('tab', { name: 'Preview' }).click();
     await page

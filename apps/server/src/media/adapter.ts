@@ -76,6 +76,12 @@ export interface MediaCallResult {
   body: string;
   model: string | null;
   latency_ms: number;
+  /**
+   * Provider fetch dispatches performed for this call (1 with no retry).
+   * Counted at the dispatch boundary so acceptance harnesses can enforce
+   * exact call budgets instead of counting UI submissions.
+   */
+  attempts: number;
 }
 
 export type MediaFetch = typeof fetch;
@@ -87,6 +93,8 @@ export interface MediaAdapterOptions {
   fetchImpl?: MediaFetch;
   timeoutMs?: number;
   maxRetries?: number;
+  /** Emit one bounded, secret-free diagnostic line per outbound attempt. */
+  traceAttempts?: boolean;
 }
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -206,6 +214,7 @@ export class MediaAdapter {
   private readonly fetchImpl: MediaFetch;
   private readonly defaultTimeoutMs: number;
   private readonly defaultMaxRetries: number;
+  private readonly traceAttempts: boolean;
 
   constructor(options: MediaAdapterOptions) {
     const key = options.apiKey?.trim();
@@ -214,6 +223,7 @@ export class MediaAdapter {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.defaultTimeoutMs = options.timeoutMs ?? 30_000;
     this.defaultMaxRetries = options.maxRetries ?? 1;
+    this.traceAttempts = options.traceAttempts === true;
   }
 
   get configured(): boolean {
@@ -249,6 +259,17 @@ export class MediaAdapter {
     }
 
     let attempt = 0;
+    let dispatches = 0;
+    // Every ProviderError thrown after a dispatch carries the dispatch
+    // count in details so callers (and HTTP error envelopes) can account
+    // provider attempts exactly, including on failure.
+    const fail = (
+      code: ProviderErrorCode,
+      message: string,
+      extra: Record<string, unknown> = {},
+    ): never => {
+      throw new ProviderError(code, message, { ...extra, attempts: dispatches });
+    };
     for (;;) {
       if (isAborted(options.signal)) {
         throw new ProviderError(
@@ -256,6 +277,14 @@ export class MediaAdapter {
           'Media request was cancelled before it started.',
         );
       }
+      if (this.traceAttempts) {
+        const traceModel =
+          typeof payload.model === 'string' && payload.model.length > 0 ? payload.model : '(none)';
+        console.error(
+          `[media-trace] attempt=${attempt + 1} path=${path} model=${traceModel.slice(0, 120)}`,
+        );
+      }
+      dispatches += 1;
       const controller = new AbortController();
       const onAbort = (): void => controller.abort();
       options.signal?.addEventListener('abort', onAbort, { once: true });
@@ -286,7 +315,7 @@ export class MediaAdapter {
         if (response.status >= 300 && response.status < 400) {
           await response.body?.cancel().catch(() => undefined);
           clearTimeout(timer);
-          throw new ProviderError(
+          fail(
             'provider_unavailable',
             `Media request was redirected (status ${response.status}); redirects are refused so requests stay on the provider origin.`,
             { status: response.status },
@@ -294,16 +323,21 @@ export class MediaAdapter {
         }
         const text = await readBoundedText(response);
         clearTimeout(timer);
+        if (this.traceAttempts) {
+          console.error(
+            `[media-trace] outcome=response attempt=${attempt + 1} status=${response.status} bytes=${text.length}`,
+          );
+        }
         if (isAborted(options.signal)) {
           // Completed after cancellation: report failure, never success.
-          throw new ProviderError('provider_cancelled', 'Media request was cancelled.');
+          fail('provider_cancelled', 'Media request was cancelled.');
         }
         if (!response.ok) {
           if (attempt < maxRetries && isRetryable(null, response.status)) {
             attempt += 1;
             continue;
           }
-          throw new ProviderError(
+          fail(
             toProviderCode(response.status, text),
             `Media request failed with status ${response.status}: ${boundedRedacted(text, 200, [this.apiKey])}`,
             { status: response.status },
@@ -314,6 +348,7 @@ export class MediaAdapter {
           body: text,
           model: this.model,
           latency_ms: Date.now() - started,
+          attempts: dispatches,
         };
       } catch (error) {
         clearTimeout(timer);
@@ -322,20 +357,25 @@ export class MediaAdapter {
           throw error;
         }
         const message = error instanceof Error ? error.message : String(error);
+        if (this.traceAttempts) {
+          console.error(
+            `[media-trace] outcome=error attempt=${attempt + 1} error=${boundedRedacted(message, 160, [this.apiKey])}`,
+          );
+        }
         const signalAborted = isAborted(options.signal);
         const aborted =
           signalAborted ||
           (error instanceof DOMException && error.name === 'AbortError') ||
           /abort/i.test(message);
         if (aborted && signalAborted) {
-          throw new ProviderError('provider_cancelled', 'Media request was cancelled.');
+          fail('provider_cancelled', 'Media request was cancelled.');
         }
         if (attempt < maxRetries && isRetryable(error, null)) {
           attempt += 1;
           continue;
         }
         const timedOut = /timeout|timed out/i.test(message) || error instanceof DOMException;
-        throw new ProviderError(
+        fail(
           aborted ? 'provider_cancelled' : timedOut ? 'provider_timeout' : 'provider_unavailable',
           boundedRedacted(`Media request failed: ${message}`, MAX_DETAIL_CHARS, [this.apiKey]),
         );
