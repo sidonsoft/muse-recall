@@ -72,8 +72,10 @@ const calls = { vision: 0, sam: 0, coding: 0, imageGeneration: 0 };
 const observations: Record<string, unknown> = {};
 let evidenceWritten = false;
 let pageRef: Page | null = null;
-/** 'full' or 'vision-only' (BATCHC_SMOKE_VISION_ONLY=1); recorded in evidence. */
-let runScope = 'full';
+/** 'full' or 'vision-only' (BATCHC_SMOKE_VISION_ONLY=1); recorded in evidence.
+ * Resolved from the environment at startup so failed runs are labeled with
+ * the scope they actually ran under, not the scope they reached. */
+let runScope = process.env.BATCHC_SMOKE_VISION_ONLY === '1' ? 'vision-only' : 'full';
 
 function check(label: string): void {
   checks.push(label);
