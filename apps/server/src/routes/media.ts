@@ -328,6 +328,10 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
         /^[0-9a-f]{64}$/.test(error.details.response_sha256)
       )
         details.response_sha256 = error.details.response_sha256;
+      if (typeof error.details.delta_events === 'number')
+        details.delta_events = error.details.delta_events;
+      if (typeof error.details.ignored_events === 'number')
+        details.ignored_events = error.details.ignored_events;
       return reply.status(status).send({
         ok: false,
         error: {

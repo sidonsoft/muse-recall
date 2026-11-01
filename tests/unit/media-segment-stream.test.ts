@@ -1,16 +1,13 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { MediaAdapter } from '../../apps/server/src/media/adapter.js';
+import { probeMediaCapability } from '../../apps/server/src/media/capabilities.js';
+import { MediaSegmentation, type RgbaImage } from '../../apps/server/src/media/segment.js';
 import {
   assembleResponsesStream,
-  SseParser,
   type SseEvent,
+  SseParser,
 } from '../../apps/server/src/media/sse.js';
-import {
-  MediaSegmentation,
-  type RgbaImage,
-} from '../../apps/server/src/media/segment.js';
-import { probeMediaCapability } from '../../apps/server/src/media/capabilities.js';
 
 /**
  * Batch C — Responses streaming contract (`stream: true`) for SAM.
@@ -23,14 +20,13 @@ import { probeMediaCapability } from '../../apps/server/src/media/capabilities.j
  */
 
 /** Real-grammar lane for the contract-mismatch probe (terminal text, no deltas). */
-const LANE_LIKE =
-  '<0f>0<|box;x1=1;y1=2;x2=10;y2=12;w=16;h=16|><|mask;x=0;y=0;data=4,4,~payload|>';
+const LANE_LIKE = '<0f>0<|box;x1=1;y1=2;x2=10;y2=12;w=16;h=16|><|mask;x=0;y=0;data=4,4,~payload|>';
 /** Two real-grammar matches (same payloads as media-segment.test.ts). */
 const LANE_TWO_MATCHES =
   '<0f>0<|box;x1=211;y1=228;x2=270;y2=254;w=320;h=334|>' +
   "<|mask;x=0;y=0;data=27,60,~!!!!M!0c[0o91w?q1!pIH4pPRVp2B3'7`e.ioeAf6-k/#Xd8%dX9x(|>" +
   ',1<|box;x1=155;y1=228;x2=202;y2=254;w=320;h=334|>' +
-  "<|mask;x=0;y=0;data=27,48,~!!!!J!0c[q=Pj_zs=*4C4(/./x#:/`S_GnD`=o3?X{emCgO$y@|>\n";
+  '<|mask;x=0;y=0;data=27,48,~!!!!J!0c[q=Pj_zs=*4C4(/./x#:/`S_GnD`=o3?X{emCgO$y@|>\n';
 
 const deltaEvent = (text: string): string =>
   `event: response.output_text.delta\ndata: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}`;
@@ -95,18 +91,16 @@ describe('SseParser', () => {
   it('parses event blocks and ignores comments, ids and empty blocks', () => {
     const parser = new SseParser();
     const events = parser.push(
-      ': keep-alive\nid: 1\n\nevent: response.output_text.delta\ndata: {\"delta\":\"ab\"}\n\n: another\n\n',
+      ': keep-alive\nid: 1\n\nevent: response.output_text.delta\ndata: {"delta":"ab"}\n\n: another\n\n',
     );
-    expect(events).toEqual([{ event: 'response.output_text.delta', data: '{\"delta\":\"ab\"}' }]);
+    expect(events).toEqual([{ event: 'response.output_text.delta', data: '{"delta":"ab"}' }]);
   });
 
   it('holds partial blocks across pushes and handles CRLF', () => {
     const parser = new SseParser();
     expect(parser.push('event: response.comp')).toEqual([]);
-    expect(parser.push('leted\r\ndata: {\"a\":1')).toEqual([]);
-    expect(parser.push('}\r\n\r\n')).toEqual([
-      { event: 'response.completed', data: '{\"a\":1}' },
-    ]);
+    expect(parser.push('leted\r\ndata: {"a":1')).toEqual([]);
+    expect(parser.push('}\r\n\r\n')).toEqual([{ event: 'response.completed', data: '{"a":1}' }]);
   });
 
   it('joins multi-line data and defaults missing event names', () => {
@@ -117,8 +111,7 @@ describe('SseParser', () => {
   });
 
   it('keeps split multibyte sequences intact across byte chunks', async () => {
-    const raw =
-      `${deltaEvent('café — ')}\n\n${completedEvent(terminalResponse([]))}\n\n`;
+    const raw = `${deltaEvent('café — ')}\n\n${completedEvent(terminalResponse([]))}\n\n`;
     const bytes = new TextEncoder().encode(raw);
     const parser = new SseParser();
     const decoder = new TextDecoder('utf-8', { fatal: false });
@@ -138,7 +131,7 @@ describe('assembleResponsesStream', () => {
   it('concatenates deltas in order and returns the terminal object', async () => {
     const raw =
       `${deltaEvent('<0f>0<|box;')}\n\n` +
-      'event: some.future.event\ndata: {\"n\":1}\n\n' +
+      'event: some.future.event\ndata: {"n":1}\n\n' +
       `${deltaEvent('x1=1|>')}\n\n${completedEvent(terminalResponse(laneOutput('<0f>lane')))}\n\n`;
     const assembled = assembleResponsesStream(await readEvents(sseResponse(raw)), 'segment');
     expect(assembled.lane).toBe('<0f>0<|box;x1=1|>');
@@ -206,12 +199,12 @@ describe('assembleResponsesStream', () => {
     expect(() => assembleResponsesStream(nonJsonEvents, 'segment')).toThrow(/non-JSON/);
 
     const nonString =
-      'event: response.output_text.delta\ndata: {\"delta\":42}\n\n' +
+      'event: response.output_text.delta\ndata: {"delta":42}\n\n' +
       `${completedEvent(terminalResponse([]))}\n\n`;
     const nonStringEvents = await readEvents(sseResponse(nonString));
     expect(() => assembleResponsesStream(nonStringEvents, 'segment')).toThrow(/non-string delta/);
 
-    const noObject = `event: response.completed\ndata: {\"nope\":true}\n\n`;
+    const noObject = `event: response.completed\ndata: {"nope":true}\n\n`;
     const noObjectEvents = await readEvents(sseResponse(noObject));
     expect(() => assembleResponsesStream(noObjectEvents, 'segment')).toThrow(/no response object/);
   });
@@ -242,9 +235,13 @@ describe('assembleResponsesStream', () => {
       expect(error, name).not.toBeNull();
       expect(String((error as Error).message), name).toMatch(/terminal/);
       // Partial stream evidence rides on every assembly failure.
-      expect((error as { details?: { events?: unknown; deltaEvents?: unknown } }).details).toEqual(
-        { events: 1, deltaEvents: 0 },
-      );
+      expect(
+        (
+          error as {
+            details?: { events?: unknown; deltaEvents?: unknown; ignoredEvents?: unknown };
+          }
+        ).details,
+      ).toEqual({ events: 1, deltaEvents: 0, ignoredEvents: 0 });
     }
     // The documented genuine zero match: completed status plus an
     // explicit empty output_text part, with no deltas.
@@ -254,6 +251,37 @@ describe('assembleResponsesStream', () => {
     const assembled = assembleResponsesStream(valid, 'segment');
     expect(assembled.lane).toBe('');
     expect(assembled.texts).toEqual([{ kind: 'text', text: '' }]);
+  });
+
+  it('counts lifecycle and unknown events without touching the lane', async () => {
+    const raw =
+      'event: response.created\n' +
+      `data: ${JSON.stringify({ type: 'response.created' })}\n\n` +
+      'event: some.future.event\n' +
+      `data: ${JSON.stringify({ n: 1 })}\n\n` +
+      `${deltaEvent('ab')}\n\n` +
+      'event: response.output_text.done\n' +
+      `data: ${JSON.stringify({ type: 'response.output_text.done' })}\n\n` +
+      `${completedEvent(terminalResponse(laneOutput('ab')))}` +
+      '\n\n';
+    const assembled = assembleResponsesStream(await readEvents(sseResponse(raw)), 'segment');
+    expect(assembled.lane).toBe('ab');
+    expect(assembled.deltaEvents).toBe(1);
+    // created + future event + output_text.done are not delta/terminal.
+    expect(assembled.ignoredEvents).toBe(3);
+    expect(assembled.events).toBe(5);
+  });
+
+  it('counts unknown events on a valid empty stream', async () => {
+    const raw =
+      'event: response.created\n' +
+      `data: ${JSON.stringify({ type: 'response.created' })}\n\n` +
+      `${completedEvent(terminalResponse(laneOutput('')))}` +
+      '\n\n';
+    const assembled = assembleResponsesStream(await readEvents(sseResponse(raw)), 'segment');
+    expect(assembled.lane).toBe('');
+    expect(assembled.deltaEvents).toBe(0);
+    expect(assembled.ignoredEvents).toBe(1);
   });
 
   it('collects terminal refusals without throwing (the caller decides)', async () => {
@@ -315,7 +343,8 @@ describe('MediaAdapter.callStream', () => {
     );
 
     const empty = vi.fn(
-      async () => new Response(null, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+      async () =>
+        new Response(null, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
     );
     await expect(streamAdapter(empty).callStream('/v1/responses', {})).rejects.toThrow(/no body/);
 
@@ -327,7 +356,9 @@ describe('MediaAdapter.callStream', () => {
 
   it('maps HTTP failures and retries network errors per policy', async () => {
     const denied = vi.fn(async () => new Response('nope', { status: 401 }));
-    const auth = streamAdapter(denied).callStream('/v1/responses', {}).catch((e: Error) => e);
+    const auth = streamAdapter(denied)
+      .callStream('/v1/responses', {})
+      .catch((e: Error) => e);
     await expect(auth).resolves.toMatchObject({ code: 'provider_auth_failed' });
 
     let calls = 0;
@@ -343,7 +374,9 @@ describe('MediaAdapter.callStream', () => {
     const strict = vi.fn(async () => {
       throw new TypeError('fetch failed');
     });
-    const failure = await streamAdapter(strict).callStream('/v1/responses', {}).catch((e: Error) => e);
+    const failure = await streamAdapter(strict)
+      .callStream('/v1/responses', {})
+      .catch((e: Error) => e);
     expect(failure).toMatchObject({ code: 'provider_unavailable' });
     expect((failure as { details?: { attempts?: number } }).details?.attempts).toBe(1);
   });
@@ -387,6 +420,7 @@ describe('MediaSegmentation over streaming', () => {
     expect(result.observedModel).toBe('sam-3.1-actual');
     expect(result.attempts).toBe(1);
     expect(result.deltaEvents).toBe(3);
+    expect(result.ignoredEvents).toBe(0);
     expect(result.streamEvents).toBe(4);
     expect(result.streamBytes).toBeGreaterThan(0);
     expect(result.responseSha256).toMatch(/^[0-9a-f]{64}$/);
@@ -459,6 +493,23 @@ describe('MediaSegmentation over streaming', () => {
   });
 });
 
+it('preserves attempts and stream evidence on validation failures', async () => {
+  const raw = `${deltaEvent('partial')}\n\n`;
+  const interrupted = vi.fn(async () => sseResponse(raw));
+  const failure = await new MediaSegmentation(streamAdapter(interrupted))
+    .segment(twoTone(), 'dot')
+    .catch((e: Error) => e);
+  expect(failure).toMatchObject({ code: 'provider_invalid_output' });
+  const details = (failure as { details?: Record<string, unknown> }).details ?? {};
+  expect(details.attempts).toBe(1);
+  expect(details.stream_events).toBe(1);
+  expect(details.stream_bytes).toBeGreaterThan(0);
+  expect(details.response_sha256).toBe(createHash('sha256').update(raw).digest('hex'));
+  // One delta seen, none ignored: exact assembly counts survive.
+  expect(details.delta_events).toBe(1);
+  expect(details.ignored_events).toBe(0);
+});
+
 describe('segment probe over streaming', () => {
   it('validates streamed geometry and records hash evidence', async () => {
     const bodies: string[] = [];
@@ -469,11 +520,9 @@ describe('segment probe over streaming', () => {
         `${deltaEvent(lane)}\n\n${completedEvent(terminalResponse(laneOutput(lane)))}\n\n`,
       );
     });
-    const entry = await probeMediaCapability(
-      'segment',
-      streamAdapter(fetchImpl, 1),
-      { models: { segment: 'sam-probe' } },
-    );
+    const entry = await probeMediaCapability('segment', streamAdapter(fetchImpl, 1), {
+      models: { segment: 'sam-probe' },
+    });
     expect(JSON.parse(bodies[0] ?? '{}')).toMatchObject({ model: 'sam-probe', stream: true });
     expect(entry.status).toBe('available');
     expect(entry.detail).toContain('geometry');

@@ -508,6 +508,8 @@ export interface SegmentCallResult {
   streamEvents: number;
   /** `response.output_text.delta` events folded into the lane. */
   deltaEvents: number;
+  /** Unknown SSE event types ignored for forward compatibility. */
+  ignoredEvents: number;
   /** Exact raw stream bytes received (sha256 input). */
   streamBytes: number;
   /** Hex sha256 over the exact raw stream bytes (bounded evidence). */
@@ -579,23 +581,43 @@ export class MediaSegmentation {
     // keep exact dispatch accounting plus the bounded stream evidence
     // already available, so error envelopes stay accountable. The thrown
     // errors never retry: validation failures are deterministic.
+    // Partial assembly counts ride on the thrown error's details when
+    // assembly itself failed; otherwise they come from the assembled
+    // stream recorded below.
+    let assembledCounts: { deltaEvents?: unknown; ignoredEvents?: unknown } = {};
     const withEvidence = (error: unknown): never => {
+      const details =
+        ProviderError.isProviderError(error) &&
+        error.details !== null &&
+        typeof error.details === 'object' &&
+        !Array.isArray(error.details)
+          ? (error.details as Record<string, unknown>)
+          : {};
+      const asCount = (value: unknown, fallback: unknown): number | null =>
+        typeof value === 'number' ? value : typeof fallback === 'number' ? fallback : null;
       if (ProviderError.isProviderError(error)) {
         throw new ProviderError(error.code, error.message, {
-          ...error.details,
+          ...details,
           attempts: result.attempts,
           stream_events: result.events.length,
           stream_bytes: result.streamBytes,
           response_sha256: result.responseSha256,
+          delta_events: asCount(details.deltaEvents, assembledCounts.deltaEvents),
+          ignored_events: asCount(details.ignoredEvents, assembledCounts.ignoredEvents),
         });
       }
       throw error;
     };
     try {
       const assembled = assembleResponsesStream(result.events, 'segment');
+      assembledCounts = {
+        deltaEvents: assembled.deltaEvents,
+        ignoredEvents: assembled.ignoredEvents,
+      };
       const streamEvidence = {
         streamEvents: assembled.events,
         deltaEvents: assembled.deltaEvents,
+        ignoredEvents: assembled.ignoredEvents,
         streamBytes: result.streamBytes,
         responseSha256: result.responseSha256,
       };

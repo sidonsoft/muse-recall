@@ -10,13 +10,10 @@ import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
+import { MediaAdapter } from '../../apps/server/src/media/adapter.js';
 import { MediaAssetStore } from '../../apps/server/src/media/assets.js';
 import { MediaJobStore } from '../../apps/server/src/media/jobs.js';
-import { MediaAdapter } from '../../apps/server/src/media/adapter.js';
-import {
-  MediaSegmentation,
-  type MediaUnderstand,
-} from '../../apps/server/src/media/segment.js';
+import { MediaSegmentation, type MediaUnderstand } from '../../apps/server/src/media/segment.js';
 import { MediaService } from '../../apps/server/src/media/service.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
 
@@ -111,26 +108,26 @@ async function buildHarness(
       : stubs.realSegmentation !== undefined
         ? stubs.realSegmentation
         : {
-          targetedModel: 'sam-3.1',
-          segment: async () => ({
-            lane: '<stub>',
-            matches: stubs.segmentation?.matches ?? [
-              {
-                objectId: '0',
-                box: { x1: 0, y1: 0, x2: 1, y2: 1 },
-                maskWidth: 1,
-                maskHeight: 1,
-                raster: Uint8Array.from([1]),
-              },
-            ],
-            skipped: 0,
-            diagnostics: [],
-            model: 'sam-3.1',
-            observedModel: null,
-            latencyMs: 1,
-            attempts: 1,
-          }),
-        };
+            targetedModel: 'sam-3.1',
+            segment: async () => ({
+              lane: '<stub>',
+              matches: stubs.segmentation?.matches ?? [
+                {
+                  objectId: '0',
+                  box: { x1: 0, y1: 0, x2: 1, y2: 1 },
+                  maskWidth: 1,
+                  maskHeight: 1,
+                  raster: Uint8Array.from([1]),
+                },
+              ],
+              skipped: 0,
+              diagnostics: [],
+              model: 'sam-3.1',
+              observedModel: null,
+              latencyMs: 1,
+              attempts: 1,
+            }),
+          };
   const understand =
     options.unconfigured === true
       ? null
@@ -414,7 +411,10 @@ describe('Batch C SAM cutouts (segment)', () => {
       new MediaSegmentation(
         new MediaAdapter({ apiKey: 'test', fetchImpl: fetchImpl as never, maxRetries: 0 }),
       );
-    const segment = async (app: FastifyInstance, asset_id: string): Promise<{
+    const segment = async (
+      app: FastifyInstance,
+      asset_id: string,
+    ): Promise<{
       statusCode: number;
       json: () => { ok: boolean; data?: Record<string, unknown>; error?: Record<string, unknown> };
     }> =>
@@ -440,6 +440,8 @@ describe('Batch C SAM cutouts (segment)', () => {
     expect(zeroData.stream_events).toBe(1);
     expect(zeroData.stream_bytes).toBeGreaterThan(0);
     expect(zeroData.response_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(zeroData.delta_events).toBe(0);
+    expect(zeroData.ignored_events).toBe(0);
 
     // Interrupted stream: one dispatch, no terminal event.
     const cutFetch = async (): Promise<Response> =>
@@ -448,12 +450,17 @@ describe('Batch C SAM cutouts (segment)', () => {
     const cutAsset = await upload(cutHarness.app);
     const cut = await segment(cutHarness.app, cutAsset.asset_id);
     expect(cut.statusCode).toBe(502);
-    const cutError = (cut.json().error ?? {}) as { code?: unknown; details?: Record<string, unknown> };
+    const cutError = (cut.json().error ?? {}) as {
+      code?: unknown;
+      details?: Record<string, unknown>;
+    };
     expect(cutError.code).toBe('provider_invalid_output');
     expect(cutError.details?.attempts).toBe(1);
     expect(cutError.details?.stream_events).toBe(1);
     expect(cutError.details?.stream_bytes).toBeGreaterThan(0);
     expect(cutError.details?.response_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(cutError.details?.delta_events).toBe(1);
+    expect(cutError.details?.ignored_events).toBe(0);
 
     // Malformed terminal: completed status but no text output.
     const badFetch = async (): Promise<Response> =>
@@ -462,9 +469,14 @@ describe('Batch C SAM cutouts (segment)', () => {
     const badAsset = await upload(badHarness.app);
     const bad = await segment(badHarness.app, badAsset.asset_id);
     expect(bad.statusCode).toBe(502);
-    const badError = (bad.json().error ?? {}) as { code?: unknown; details?: Record<string, unknown> };
+    const badError = (bad.json().error ?? {}) as {
+      code?: unknown;
+      details?: Record<string, unknown>;
+    };
     expect(badError.code).toBe('provider_invalid_output');
     expect(badError.details?.attempts).toBe(1);
+    expect(badError.details?.delta_events).toBe(0);
+    expect(badError.details?.ignored_events).toBe(0);
   });
 
   it('fails closed on unknown, expired-scope, and out-of-range sessions', async () => {

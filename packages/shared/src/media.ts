@@ -350,6 +350,10 @@ export const MediaSegmentResponseSchema = z.object({
     .string()
     .regex(/^[0-9a-f]{64}$/)
     .optional(),
+  /** `response.output_text.delta` events folded into the lane. */
+  delta_events: z.number().int().min(0).optional(),
+  /** Unknown SSE event types ignored for forward compatibility. */
+  ignored_events: z.number().int().min(0).optional(),
 });
 export type MediaSegmentResponse = z.infer<typeof MediaSegmentResponseSchema>;
 

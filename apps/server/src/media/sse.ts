@@ -218,17 +218,24 @@ function failureMessage(payload: Record<string, unknown>, fallback: string): str
  *
  * Unknown event types are counted and ignored so additive provider
  * events cannot break the transport. Every throw carries the event
- * counts seen so far (`events`, `deltaEvents`) so callers can preserve
- * partial stream evidence alongside dispatch accounting.
+ * counts seen so far (`events`, `deltaEvents`, `ignoredEvents`) so
+ * callers can preserve partial stream evidence alongside dispatch
+ * accounting.
  */
 export function assembleResponsesStream(events: SseEvent[], label: string): AssembledStream {
   const trimmedLabel = label.trim().length > 0 ? label.trim() : 'stream';
   // Every throw site keeps the counts seen so far: partial stream evidence
   // rides on the error details alongside dispatch accounting.
-  const streamError = (message: string, seen: number, deltas: number): ProviderError =>
+  const streamError = (
+    message: string,
+    seen: number,
+    deltas: number,
+    ignored: number,
+  ): ProviderError =>
     new ProviderError('provider_invalid_output', message, {
       events: seen,
       deltaEvents: deltas,
+      ignoredEvents: ignored,
     });
   let lane = '';
   let terminal: Record<string, unknown> | null = null;
@@ -245,6 +252,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
           `${trimmedLabel} stream event ${event} carries a non-string delta.`,
           seen,
           deltaEvents,
+          ignoredEvents,
         );
       }
       lane += delta;
@@ -264,6 +272,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         boundedRedacted(`${trimmedLabel} stream terminal ${event}: ${detail}`),
         seen,
         deltaEvents,
+        ignoredEvents,
       );
     } else if (event === 'error') {
       const detail =
@@ -274,6 +283,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         boundedRedacted(`${trimmedLabel} stream error event: ${detail}`),
         seen,
         deltaEvents,
+        ignoredEvents,
       );
     } else if (data === '[DONE]') {
       // OpenAI-compatible end-of-stream marker: only meaningful after a
@@ -289,6 +299,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         `(${events.length} events, ${deltaEvents} deltas); refusing to publish a partial lane.`,
       events.length,
       deltaEvents,
+      ignoredEvents,
     );
   }
   const terminalOutput: unknown = terminal.output;
@@ -304,11 +315,10 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
           ? String((errorField as Record<string, unknown>).message)
           : 'terminal status not completed';
     throw streamError(
-      boundedRedacted(
-        `${trimmedLabel} terminal status ${seenStatus} (not completed): ${detail}`,
-      ),
+      boundedRedacted(`${trimmedLabel} terminal status ${seenStatus} (not completed): ${detail}`),
       events.length,
       deltaEvents,
+      ignoredEvents,
     );
   }
   if (!Array.isArray(terminalOutput)) {
@@ -316,6 +326,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
       `${trimmedLabel} terminal response without output[]; refusing to publish an empty lane as a zero match.`,
       events.length,
       deltaEvents,
+      ignoredEvents,
     );
   }
   const { texts, refusals } = collectOutputParts(terminalOutput);
@@ -328,6 +339,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         `${trimmedLabel} terminal response has no text output; refusing to publish an empty lane as a zero match.`,
         events.length,
         deltaEvents,
+        ignoredEvents,
       );
     }
     if (texts.some((part) => part.text.trim().length > 0)) {
@@ -335,6 +347,7 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
         `${trimmedLabel} stream carried no output_text deltas but the terminal response contains text (contract mismatch).`,
         events.length,
         deltaEvents,
+        ignoredEvents,
       );
     }
   }

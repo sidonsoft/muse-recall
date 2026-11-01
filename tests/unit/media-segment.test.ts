@@ -39,12 +39,9 @@ function adapter(fetchImpl: unknown): MediaAdapter {
 /** SSE success envelope: geometry deltas through a terminal completed event. */
 function sseResponse(deltas: string[], terminal: unknown): Response {
   const blocks = deltas.map(
-    (delta) =>
-      `event: response.output_text.delta\ndata: ${JSON.stringify({ delta })}`,
+    (delta) => `event: response.output_text.delta\ndata: ${JSON.stringify({ delta })}`,
   );
-  blocks.push(
-    `event: response.completed\ndata: ${JSON.stringify({ response: terminal })}`,
-  );
+  blocks.push(`event: response.completed\ndata: ${JSON.stringify({ response: terminal })}`);
   return new Response(`${blocks.join('\n\n')}\n\n`, {
     status: 200,
     headers: { 'content-type': 'text/event-stream' },
@@ -303,9 +300,7 @@ describe('MediaSegmentation (Batch C)', () => {
   });
 
   it('reports zero matches without an error', async () => {
-    const fetchImpl = vi.fn(async () =>
-      sseResponse([], completedTerminal(laneOutput(''))),
-    );
+    const fetchImpl = vi.fn(async () => sseResponse([], completedTerminal(laneOutput(''))));
     const result = await new MediaSegmentation(adapter(fetchImpl)).segment(twoTone(), 'nothing');
     expect(result.matches).toEqual([]);
     expect(result.model).toBe('sam-3.1');
@@ -325,9 +320,7 @@ describe('MediaSegmentation (Batch C)', () => {
     const refusing = vi.fn(async () =>
       sseResponse(
         [],
-        completedTerminal([
-          { type: 'message', content: [{ type: 'refusal', refusal: 'no' }] },
-        ]),
+        completedTerminal([{ type: 'message', content: [{ type: 'refusal', refusal: 'no' }] }]),
       ),
     );
     await expect(

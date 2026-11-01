@@ -856,6 +856,8 @@ async function main(): Promise<void> {
       stream_events?: number;
       stream_bytes?: number;
       response_sha256?: string;
+      delta_events?: number;
+      ignored_events?: number;
       segment_id: string;
       matches: Array<{
         match_index: number;
@@ -892,6 +894,8 @@ async function main(): Promise<void> {
       stream_events: segmentData.stream_events ?? null,
       stream_bytes: segmentData.stream_bytes ?? null,
       response_sha256: segmentData.response_sha256 ?? null,
+      delta_events: segmentData.delta_events ?? null,
+      ignored_events: segmentData.ignored_events ?? null,
     };
     if (segmentData.matches.length === 0) {
       observations.samEmpty = { concept: samConcept, segment_id: segmentData.segment_id };
