@@ -48,9 +48,26 @@ describe('source format validation', () => {
     expect(inspected).toMatchObject({ kind: 'audio', mime: 'audio/wav', durationMs: 1_500 });
   });
 
-  it('measures an MP4 from mvhd, not from the client', () => {
-    const inspected = inspectSourceBytes(mp4Bytes({ durationMs: 12_000 }), 'video/mp4');
+  it('measures a video MP4 from mvhd when a vide track is present', () => {
+    const inspected = inspectSourceBytes(
+      mp4Bytes({ durationMs: 12_000, tracks: ['vide', 'soun'] }),
+      'video/mp4',
+    );
     expect(inspected).toMatchObject({ kind: 'video', mime: 'video/mp4', durationMs: 12_000 });
+  });
+
+  it('requires a real vide track and rejects trackless, audio-only, or malformed MP4', () => {
+    for (const brand of ['isom', 'mp42']) {
+      expect(
+        codeOf(() => inspectSourceBytes(mp4Bytes({ brand, tracks: ['soun'] }), 'video/mp4')),
+      ).toBe('unsupported_format');
+    }
+    expect(codeOf(() => inspectSourceBytes(mp4Bytes({ tracks: [] }), 'video/mp4'))).toBe(
+      'unsupported_format',
+    );
+    expect(
+      codeOf(() => inspectSourceBytes(mp4Bytes({ malformedHandler: true }), 'video/mp4')),
+    ).toBe('malformed_media');
   });
 
   it('refuses non-contract WAV variants with actionable codes', () => {

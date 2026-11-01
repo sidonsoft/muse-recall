@@ -48,13 +48,22 @@ export interface Mp4Options {
   brand?: string;
   omitMoov?: boolean;
   zeroDuration?: boolean;
+  tracks?: Array<'vide' | 'soun'>;
+  malformedHandler?: boolean;
 }
 
-/** Build a minimal ISO-BMFF fixture with ftyp + moov/mvhd. */
+function hdlr(handlerType: 'vide' | 'soun', malformed: boolean): Buffer {
+  const payload = Buffer.alloc(malformed ? 8 : 24);
+  if (!malformed) payload.write(handlerType, 8);
+  return box('hdlr', payload);
+}
+
+/** Build a minimal ISO-BMFF fixture with ftyp, moov/mvhd, and explicit tracks. */
 export function mp4Bytes(options: Mp4Options = {}): Buffer {
   const durationMs = options.durationMs ?? 10_000;
   const timescale = options.timescale ?? 1_000;
   const brand = options.brand ?? 'isom';
+  const tracks = options.tracks ?? ['vide'];
   const ftypPayload = Buffer.alloc(12);
   ftypPayload.write(brand, 0);
   ftypPayload.writeUInt32BE(512, 4);
@@ -69,7 +78,10 @@ export function mp4Bytes(options: Mp4Options = {}): Buffer {
   mvhdPayload.writeUInt32BE(timescale, 12);
   mvhdPayload.writeUInt32BE(options.zeroDuration === true ? 0 : durationMs, 16);
   const mvhd = box('mvhd', mvhdPayload);
-  return Buffer.concat([ftyp, box('moov', mvhd)]);
+  const traks = tracks.map((handler) =>
+    box('trak', box('mdia', hdlr(handler, options.malformedHandler === true))),
+  );
+  return Buffer.concat([ftyp, box('moov', Buffer.concat([mvhd, ...traks]))]);
 }
 
 export function base64(bytes: Buffer): string {

@@ -247,6 +247,14 @@ describe('voice and video HTTP surface (Batch D)', () => {
     expect(longVideo.statusCode).toBe(400);
     expect(longVideo.json().error.code).toBe('duration_exceeded');
 
+    const audioOnly = await app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${PROJECT}/media/sources`,
+      payload: { mime: 'video/mp4', data_base64: base64(mp4Bytes({ tracks: ['soun'] })) },
+    });
+    expect(audioOnly.statusCode).toBe(400);
+    expect(audioOnly.json().error.code).toBe('unsupported_format');
+
     const list = await app.inject({
       method: 'GET',
       url: `/api/forge/projects/${PROJECT}/media/sources`,

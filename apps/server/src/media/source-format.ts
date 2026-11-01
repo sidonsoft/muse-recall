@@ -7,9 +7,12 @@
  * - `audio/wav`: RIFF/WAVE, mono, 16-bit integer PCM, 16 kHz or 24 kHz.
  *   Muse Voice Transcribe rejects anything else, so this is checked before a
  *   paid call rather than discovered from a provider 400.
- * - `video/mp4`: ISO base media file format. Duration is read from `mvhd`
- *   and must be positive; fragmented or truncated files without a measurable
- *   duration are refused instead of guessing.
+ * - `video/mp4`: ISO base media file format with a known `ftyp` brand, a
+ *   positive `mvhd` duration, and at least one real `trak` whose
+ *   `mdia/hdlr` handler is `vide`. Audio-only and trackless MP4 files are
+ *   refused before the provider upload path. The container and video-track
+ *   structure are validated, but codec compatibility is not claimed here;
+ *   the provider still rejects an unsupported encoded stream.
  *
  * Duration is measured from the container, never trusted from the client.
  * The product bounds (3 minutes audio, 30 seconds video) are applied here so
@@ -201,7 +204,7 @@ function assertMp4Brands(bytes: Buffer): void {
   }
   throw new MediaSourceError(
     'unsupported_format',
-    `MP4 brand ${JSON.stringify(major)} is not a supported video profile. Re-encode as H.264/AAC MP4.`,
+    `MP4 brand ${JSON.stringify(major)} is not a supported video profile. Re-encode as a standard MP4 with a video track.`,
   );
 }
 
@@ -232,45 +235,108 @@ function readBox(bytes: Buffer, start: number, limit: number): BoxHeader | null 
 }
 
 /** Read `mvhd` duration from a moov box; null when not measurable. */
-function readMvhdDuration(bytes: Buffer, moovStart: number, moovEnd: number): number | null {
-  let pos = moovStart + 8;
-  let guard = 0;
-  while (pos + 8 <= moovEnd) {
-    guard += 1;
-    if (guard > 10_000) return null;
-    const box = readBox(bytes, pos, moovEnd);
-    if (box === null) return null;
-    if (box.type === 'mvhd') {
-      const payload = box.start + box.headerSize;
-      const payloadEnd = box.start + box.size;
-      if (payload + 4 > payloadEnd) return null;
-      const version = bytes[payload];
-      if (version === 0) {
-        if (payload + 20 > payloadEnd) return null;
-        const timescale = bytes.readUInt32BE(payload + 12);
-        const duration = bytes.readUInt32BE(payload + 16);
-        if (timescale === 0 || duration === 0 || duration === 0xffffffff) return null;
-        return (duration * 1000) / timescale;
-      }
-      if (version === 1) {
-        if (payload + 32 > payloadEnd) return null;
-        const timescale = bytes.readUInt32BE(payload + 20);
-        const high = bytes.readUInt32BE(payload + 24);
-        const low = bytes.readUInt32BE(payload + 28);
-        if (
-          timescale === 0 ||
-          (high === 0 && low === 0) ||
-          (high === 0xffffffff && low === 0xffffffff)
-        )
-          return null;
-        if (high > 0x001f_ffff) return null;
-        return ((high * 2 ** 32 + low) * 1000) / timescale;
-      }
+function readMvhdDuration(bytes: Buffer, mvhd: BoxHeader): number | null {
+  const payload = mvhd.start + mvhd.headerSize;
+  const payloadEnd = mvhd.start + mvhd.size;
+  if (payload + 4 > payloadEnd) return null;
+  const version = bytes[payload];
+  if (version === 0) {
+    if (payload + 20 > payloadEnd) return null;
+    const timescale = bytes.readUInt32BE(payload + 12);
+    const duration = bytes.readUInt32BE(payload + 16);
+    if (timescale === 0 || duration === 0 || duration === 0xffffffff) return null;
+    return (duration * 1000) / timescale;
+  }
+  if (version === 1) {
+    if (payload + 32 > payloadEnd) return null;
+    const timescale = bytes.readUInt32BE(payload + 20);
+    const high = bytes.readUInt32BE(payload + 24);
+    const low = bytes.readUInt32BE(payload + 28);
+    if (timescale === 0 || (high === 0 && low === 0) || (high === 0xffffffff && low === 0xffffffff))
       return null;
+    if (high > 0x001f_ffff) return null;
+    return ((high * 2 ** 32 + low) * 1000) / timescale;
+  }
+  return null;
+}
+
+function findChildBox(bytes: Buffer, start: number, end: number, type: string): BoxHeader | null {
+  let pos = start;
+  let guard = 0;
+  while (pos + 8 <= end) {
+    guard += 1;
+    if (guard > 10_000) {
+      throw new MediaSourceError('malformed_media', 'MP4 box has too many children to inspect.');
     }
+    const box = readBox(bytes, pos, end);
+    if (box === null) {
+      throw new MediaSourceError(
+        'malformed_media',
+        'MP4 contains a truncated or invalid box header.',
+      );
+    }
+    if (box.type === type) return box;
     pos = box.start + box.size;
   }
   return null;
+}
+
+function readTrackHandler(bytes: Buffer, trak: BoxHeader): string {
+  const trakEnd = trak.start + trak.size;
+  const mdia = findChildBox(bytes, trak.start + trak.headerSize, trakEnd, 'mdia');
+  if (mdia === null) {
+    throw new MediaSourceError('malformed_media', 'MP4 track is missing its mdia box.');
+  }
+  const mdiaEnd = mdia.start + mdia.size;
+  const hdlr = findChildBox(bytes, mdia.start + mdia.headerSize, mdiaEnd, 'hdlr');
+  if (hdlr === null) {
+    throw new MediaSourceError('malformed_media', 'MP4 track is missing its hdlr box.');
+  }
+  const payload = hdlr.start + hdlr.headerSize;
+  const payloadEnd = hdlr.start + hdlr.size;
+  if (payload + 12 > payloadEnd) {
+    throw new MediaSourceError('malformed_media', 'MP4 hdlr box is truncated.');
+  }
+  return upper(bytes, payload + 8, 4);
+}
+
+interface MoovInfo {
+  durationMs: number | null;
+  trackCount: number;
+  hasVideoTrack: boolean;
+}
+
+function readMoovInfo(bytes: Buffer, moov: BoxHeader): MoovInfo {
+  let pos = moov.start + moov.headerSize;
+  const end = moov.start + moov.size;
+  let durationMs: number | null = null;
+  let trackCount = 0;
+  let hasVideoTrack = false;
+  let guard = 0;
+  while (pos + 8 <= end) {
+    guard += 1;
+    if (guard > 10_000) {
+      throw new MediaSourceError(
+        'malformed_media',
+        'MP4 moov box has too many children to inspect.',
+      );
+    }
+    const box = readBox(bytes, pos, end);
+    if (box === null) {
+      throw new MediaSourceError(
+        'malformed_media',
+        'MP4 contains a truncated or invalid box header.',
+      );
+    }
+    if (box.type === 'mvhd') {
+      if (durationMs === null) durationMs = readMvhdDuration(bytes, box);
+    } else if (box.type === 'trak') {
+      trackCount += 1;
+      if (readTrackHandler(bytes, box) === 'vide') hasVideoTrack = true;
+    }
+    pos = box.start + box.size;
+  }
+  return { durationMs, trackCount, hasVideoTrack };
 }
 
 function parseMp4Duration(bytes: Buffer): number {
@@ -287,15 +353,26 @@ function parseMp4Duration(bytes: Buffer): number {
       throw new MediaSourceError('malformed_media', 'MP4 has a truncated or invalid box header.');
     }
     if (box.type === 'moov') {
-      const end = box.start + box.size;
-      const durationMs = readMvhdDuration(bytes, box.start, end);
-      if (durationMs === null || !Number.isFinite(durationMs)) {
+      const info = readMoovInfo(bytes, box);
+      if (info.trackCount === 0) {
+        throw new MediaSourceError(
+          'unsupported_format',
+          'MP4 contains no tracks, so it is not a usable video clip.',
+        );
+      }
+      if (!info.hasVideoTrack) {
+        throw new MediaSourceError(
+          'unsupported_format',
+          'MP4 has no video track (handler "vide"); audio-only MP4 is not accepted as video.',
+        );
+      }
+      if (info.durationMs === null || !Number.isFinite(info.durationMs)) {
         throw new MediaSourceError(
           'malformed_media',
           'MP4 duration could not be measured from its mvhd box. Re-encode as a standard MP4.',
         );
       }
-      return durationMs;
+      return info.durationMs;
     }
     pos = box.start + box.size;
   }
@@ -346,7 +423,7 @@ export function inspectSourceBytes(bytes: Buffer, declared: MediaSourceMime): In
       'unsupported_format',
       declared === 'audio/wav'
         ? 'Unsupported audio container. Upload a mono 16-bit PCM WAV at 16 kHz or 24 kHz.'
-        : 'Unsupported video container. Upload an MP4 (H.264/AAC); WebM and MOV are not accepted.',
+        : 'Unsupported video container. Upload a standard MP4 with a video track; WebM and MOV are not accepted.',
     );
   }
   if (detected !== declared) {
