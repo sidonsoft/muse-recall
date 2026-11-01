@@ -77,13 +77,24 @@ Offline, no provider key, no external network:
 - `pnpm -r run typecheck`: no `error TS`.
 - `npx biome check .`: 0 errors (4 warnings, 18 infos pre-existing).
 - **Commit gated: `76ed12e`** (`git status --porcelain` empty). The two commits it
-  reviews (`e0cd2eb`, `8250b44`) touch server, shared contract and script sources; this
-  file's own commit is documentation only, and docs are not build inputs.
+  reviews (`e0cd2eb`, `8250b44`) touch server, shared-contract and script sources.
+- **Identity is re-proved at every commit that touches this file, and the rule is
+  worth stating because it is easy to over-read.** Documentation is not a hashed build
+  input, but the build *identity* (commit, source hash, build time) is baked into the
+  server bundle, so the server hash moves at each commit while the web bundle's emitted
+  bytes can stay identical. A status refresh therefore records the gates run against the
+  bundles rebuilt at the commit it names, and the bundles for its own commit are rebuilt
+  after it and proved by the next refresh. Most recent such proof recorded here:
+  `test-results/batchd-playback-auth/2026-11-01-1743`, whose manifest commit is
+  `38d7c3923027611893e48ac9e489eca66f185c59` with `treeClean: true`, server
+  `9a07b8c4e847…` and web `53bb67170dbd…` — the web bytes unchanged across two
+  documentation commits, the server bytes not.
 - `pnpm exec tsx scripts/build-production-bundles.ts` after that commit: server
   `buildHash 393316bc724767af47af08291f4621d30625f755c61f5114e73a2f3aa241a9d0`, web
   `buildHash 53bb67170dbdfac6ec0297839505bfd172fa7414fcef03a792dd7f61c5f98306`; both
-  manifests carry `commit 76ed12e…` and `treeClean: true`. The web bundle changed this
-  time because `packages/shared` is a web input and the media/meta contracts moved.
+  manifests carry `commit 76ed12e…` and `treeClean: true`. The web bundle changed from
+  the previous record because `packages/shared` is a web input and the media/meta
+  contracts moved.
 - `pnpm verify:batche-review-ui`: **PASS 20 checks** (`test-results/batche-review-ui`),
   including the one-paid-call check (same frame and selection sends the same
   Idempotency-Key and costs one stub dispatch) and the stale-selection refusal.
