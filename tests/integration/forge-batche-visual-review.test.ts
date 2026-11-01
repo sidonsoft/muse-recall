@@ -4,8 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
-import { EchoProvider } from '@mml/muse-provider';
-import { MediaVisualReviewRequestSchema, MediaVisualReviewResponseSchema } from '@mml/shared';
+import { EchoProvider, ProviderError } from '@mml/muse-provider';
+import {
+  FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH,
+  MediaVisualReviewRequestSchema,
+  MediaVisualReviewResponseSchema,
+} from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
@@ -165,7 +169,13 @@ function deferred(): Deferred {
 }
 
 async function harness(
-  options: { unconfigured?: boolean; outcome?: OutcomeBuilder; holdReview?: Deferred } = {},
+  options: {
+    unconfigured?: boolean;
+    outcome?: OutcomeBuilder;
+    holdReview?: Deferred;
+    /** Named per call so a test can fail the first attempt and succeed later. */
+    failWith?: (call: number) => Error | undefined;
+  } = {},
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-batch-e-review-'));
   const sourcePath = join(root, 'source.html');
@@ -192,6 +202,8 @@ async function harness(
       // A held review lets a test observe a second request that arrives while
       // the first is still in flight, rather than after it has been recorded.
       if (options.holdReview !== undefined) await options.holdReview.promise;
+      const failure = options.failWith?.(review.calls);
+      if (failure !== undefined) throw failure;
       review.prompts.push(decisions.map((entry) => `${entry.id}:${entry.text}`).join('|'));
       const outcome = review.outcome(decisions);
       return {
@@ -251,6 +263,19 @@ async function harness(
   };
   open.push(instance);
   return instance;
+}
+
+/** A screenshot body whose payload is the given bytes. */
+function screenshotBody(bytes: Buffer, selection: Selection[]): Record<string, unknown> {
+  return reviewBody(selection, `data:image/png;base64,${bytes.toString('base64')}`);
+}
+
+/** The same PNG with a rewritten IHDR size, for a header a renderer would reject. */
+function pngResized(bytes: Buffer, width: number, height: number): Buffer {
+  const copy = Buffer.from(bytes);
+  copy.writeUInt32BE(width, 16);
+  copy.writeUInt32BE(height, 20);
+  return copy;
 }
 
 async function wait(milliseconds: number): Promise<void> {
@@ -759,6 +784,174 @@ describe('screenshot advisory review against accepted decisions', () => {
       expect(response.json().error.code).toBe('bad_request');
     }
     expect(h.review.calls).toBe(0);
+  });
+
+  it('refuses a malformed or truncated screenshot before the provider sees a byte', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const before = await artifactFingerprint(h);
+
+    const cases: Array<{ label: string; bytes: Buffer; message: string }> = [
+      {
+        label: 'not a PNG at all',
+        // Long enough to clear the schema's floor, so the refusal comes from the
+        // decoder rather than the request shape.
+        bytes: Buffer.from('this used to be a screenshot, repeated '.repeat(12)),
+        message: 'not a valid PNG',
+      },
+      {
+        label: 'smaller than a real capture',
+        bytes: pngResized(PNG, 8, 8),
+        message: 'too small',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const response = await postReview(h.app, screenshotBody(testCase.bytes, [pick(theme)]), {
+        'idempotency-key': `review-bad-${testCase.label.replace(/\W+/g, '-')}`,
+      });
+      expect(response.statusCode, testCase.label).toBe(400);
+      expect(response.json().error.code, testCase.label).toBe('invalid_screenshot');
+      expect(response.json().error.message, testCase.label).toContain(testCase.message);
+    }
+
+    // The schema's own length floor is above the decoder's header floor, so a
+    // payload that reaches the decoder is never shorter than the header it reads:
+    // truncation cannot smuggle a RangeError out of the route. A junk payload at
+    // the largest length the schema accepts must still be a clean request error.
+    const maximal = await postReview(
+      h.app,
+      screenshotBody(Buffer.alloc(FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH * 3 - 100, 0x41), [
+        pick(theme),
+      ]),
+      { 'idempotency-key': 'review-bad-maximal-length' },
+    );
+    expect([400, 413]).toContain(maximal.statusCode);
+    expect(['invalid_screenshot', 'validation_failed', 'payload_too_large']).toContain(
+      maximal.json().error.code,
+    );
+
+    // A non-PNG media type never reaches the decoder either.    // A non-PNG media type never reaches the decoder either.
+    const jpeg = await postReview(
+      h.app,
+      {
+        screenshot_data_url: `data:image/jpeg;base64,${PNG.toString('base64')}`,
+        decisions: [pick(theme)],
+      },
+      { 'idempotency-key': 'review-bad-jpeg-media-type' },
+    );
+    expect(jpeg.statusCode).toBe(400);
+    expect(jpeg.json().error.code).toBe('invalid_screenshot');
+
+    expect(h.review.calls).toBe(0);
+    expect(await artifactFingerprint(h)).toEqual(before);
+  });
+
+  it('answers a quota or auth failure as a provider failure, never a Forge conflict', async () => {
+    const h = await harness({
+      failWith: () =>
+        new ProviderError('provider_auth_failed', 'Subscription quota exhausted.', {
+          status: 429,
+          attempts: 1,
+        }),
+    });
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const before = await artifactFingerprint(h);
+
+    const response = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-quota-1',
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.json().error.code).toBe('provider_auth_failed');
+    // The bounded, non-secret telemetry survives: who was called, with what
+    // status, and how many dispatches it took.
+    expect(response.json().error.details).toEqual({ status: 429, attempts: 1 });
+    expect(JSON.stringify(response.json())).not.toContain('data:image/png');
+    expect(await artifactFingerprint(h)).toEqual(before);
+  });
+
+  it('keeps the bounded stream evidence for a timeout or an unusable answer', async () => {
+    const sha = 'a'.repeat(64);
+    const h = await harness({
+      failWith: (call) =>
+        call === 1
+          ? new ProviderError('provider_timeout', 'The review exceeded its wall-clock budget.', {
+              attempts: 1,
+              stream_events: 9,
+              stream_bytes: 3234,
+              response_sha256: sha,
+              delta_events: 1,
+              ignored_events: 8,
+            })
+          : new ProviderError('provider_invalid_output', 'The review answer was not usable JSON.', {
+              attempts: 1,
+              stream_events: 2,
+              response_sha256: sha,
+            }),
+    });
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+
+    const timedOut = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-timeout-1',
+    });
+    expect(timedOut.statusCode).toBe(504);
+    expect(timedOut.json().error.code).toBe('provider_timeout');
+    expect(timedOut.json().error.details).toEqual({
+      attempts: 1,
+      stream_events: 9,
+      stream_bytes: 3234,
+      response_sha256: sha,
+      delta_events: 1,
+      ignored_events: 8,
+    });
+
+    const unusable = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-invalid-1',
+    });
+    // An unusable provider answer is a provider fault (502), not something the
+    // user wrote wrongly; only our own malformed request would be a 400.
+    expect(unusable.statusCode).toBe(502);
+    expect(unusable.json().error.code).toBe('provider_invalid_output');
+    expect(unusable.json().error.details.response_sha256).toBe(sha);
+    expect(h.review.calls).toBe(2);
+  });
+
+  it('leaves a failed review retryable: nothing is recorded and the artifact is untouched', async () => {
+    const h = await harness({
+      // A storage fault the server did not name: the route must not pretend it
+      // is the client's mistake, and must not answer 200 with no feedback.
+      failWith: (call) =>
+        call === 1 ? new Error('ENOSPC: no space left on device, write') : undefined,
+    });
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const before = await artifactFingerprint(h);
+    const body = reviewBody([pick(theme)]);
+
+    const failed = await postReview(h.app, body, {
+      'idempotency-key': 'review-retry-after-failure',
+    });
+    expect(failed.statusCode).toBe(500);
+    expect(failed.json().error.code).toBe('internal_error');
+    // The storage detail stays in the server log, not in the client's error.
+    expect(JSON.stringify(failed.json())).not.toContain('ENOSPC');
+
+    // Same key, now that the cause is gone: a failure must not become a cached
+    // answer that the user is stuck with.
+    const retry = await postReview(h.app, body, {
+      'idempotency-key': 'review-retry-after-failure',
+    });
+    expect(retry.statusCode).toBe(200);
+    expect(retry.headers['idempotent-replayed']).toBeUndefined();
+    expect(h.review.calls).toBe(2);
+    expect(await artifactFingerprint(h)).toEqual(before);
   });
 
   it('bounds the request through the shared schema before any work happens', async () => {
