@@ -63,6 +63,7 @@
     "verify:media-journey": "tsx scripts/verify-media-journey.ts",
     "verify:media-live-smoke": "tsx scripts/verify-media-live-smoke.ts",
     "verify:batchc-live-smoke": "tsx scripts/verify-batchc-live-smoke.ts",
+    "verify:batchc-resume-staged": "tsx scripts/verify-batchc-resume-staged.ts",
     "verify:batchc-ui": "tsx scripts/verify-batchc-ui.ts"
   },
   "pnpm": {

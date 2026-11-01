@@ -119,6 +119,36 @@ describe('verifyStagedIsolate', () => {
     }
   });
 
+  it('rejects a consumed isolate whose staging was already promoted', () => {
+    // Mirrors the live fail-closed run: after approval the staging
+    // directory is empty, so a resume must refuse instead of re-inferring.
+    const built = makeIsolate();
+    rmSync(join(built.root, 'workspaces', 'forge', built.project, 'staging', built.job), {
+      recursive: true,
+      force: true,
+    });
+    try {
+      expect(() =>
+        verifyStagedIsolate(built.root, built.project, built.job, built.expected),
+      ).toThrow(/staged index\.html is missing/);
+    } finally {
+      rmSync(built.root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a job that already published a version (audit link drift)', () => {
+    const built = makeIsolate({
+      job: { status: 'succeeded', finished_at: 't', version: 2 } as never,
+    });
+    try {
+      expect(() =>
+        verifyStagedIsolate(built.root, built.project, built.job, built.expected),
+      ).toThrow(/already published/);
+    } finally {
+      rmSync(built.root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects staged and cutout mismatches', () => {
     const staged = makeIsolate({ staged: Buffer.from('different') });
     try {

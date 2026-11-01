@@ -90,5 +90,50 @@ HTTP surface (`apps/server/src/routes/media.ts`):
   regression: reference state resets on a same-asset version switch
   (v2 seeded into the asset store, page reloaded, stale drafts/errors
   must clear; 56 checks, clean console gate).
-- Not run: live SAM/vision calls and the scoped live smoke —
-  left for the acceptance gate.
+- ~~Not run: live SAM/vision calls and the scoped live smoke.~~ They ran
+  later under explicit authorization; see
+  `test-results/batchc-live/2026-11-01-0755/report.json` (one vision
+  dispatch reused from `2026-11-01-0106`, one SAM dispatch with a
+  1-match lane, cutout `52d90d986e62…`, 6374 bytes, RGBA) and the
+  following section for the offline continuation.
+
+## Offline continuation: resuming a preserved live run
+
+`scripts/verify-batchc-resume-staged.ts` (+ `scripts/lib/isolate-resume.ts`,
+unit-tested in `tests/unit/isolate-resume.test.ts`) completes the approval,
+restart, and rollback steps against the **isolated database and workspace a
+completed live run left behind**, with no new inference:
+
+```sh
+pnpm verify:batchc-resume-staged   # needs BATCHC_RESUME_ISOLATE/_PROJECT/_JOB
+```
+
+Fail-closed before any server or browser starts:
+
+- Refuses outright (exit 2) if `FORGE_MUSE_API_KEY` or
+  `FORGE_FALLBACK_API_KEY` is set, so a provider dispatch is structurally
+  impossible; the coding CLI is pinned to `/bin/false` and media retries
+  to zero, asserted from `/api/meta`.
+- `verifyStagedIsolate` re-verifies the fixture by content: v1 bytes equal
+  the sha recorded in `state.json` and the pinned baseline, the staged
+  artifact equals the pinned sha, the cutout bytes and reference bytes are
+  present in the media store, the job is the single `succeeded` record with
+  no fallback markers, and a job that already carries a published `version`
+  is rejected as consumed.
+- Zero dispatch is asserted afterwards: no `[media-trace]` lines in the
+  server log and no new job records.
+
+Evidence for the accepted run is
+`test-results/batchc-resume-staged/2026-11-01-0824/report.json`: 14 checks
+covering staged-restore on project open, browser-gated approval of v2 whose
+embedded PNG equals the retained cutout byte-for-byte, restart of the same
+production build (identical baked commit/source hash, identical version and
+embedded bytes), and rollback restoring the exact v1 baseline while v2 stays
+intact on disk. All counters are zero and the report states that explicitly.
+
+That run consumes the fixture: approval promotes `staging/<job>` to a
+version and clears staging, and the job record gains `version`. Re-running
+against the same isolate therefore fails closed with
+`job already published version 2; this isolate is consumed and cannot be
+re-approved offline`, which is the intended behavior — the staged bytes
+cannot be reconstructed, so the positive path is single-use per isolate.

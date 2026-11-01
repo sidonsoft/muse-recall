@@ -530,9 +530,14 @@ function writeEvidence(): void {
   if (evidenceWritten) return;
   evidenceWritten = true;
   mkdirSync(EVIDENCE, { recursive: true });
+  const failure = observations.error === undefined ? null : String(observations.error);
   const report = {
     kind: 'Batch C resume-staged acceptance (reattached isolate; zero new inference)',
-    status: 'live results; no retries; no provider calls by construction (credential withheld)',
+    // A failed run must not read as a passing one: the status says so.
+    status:
+      failure === null
+        ? 'live results; no retries; no provider calls by construction (credential withheld)'
+        : `FAILED before completion: ${failure}`,
     generated_at: new Date().toISOString(),
     project: process.env.BATCHC_RESUME_PROJECT ?? null,
     isolate: process.env.BATCHC_RESUME_ISOLATE ?? null,
@@ -543,6 +548,7 @@ function writeEvidence(): void {
     media_retry_policy:
       'FORGE_MEDIA_MAX_RETRIES=0 (transport retries disabled); FORGE_MEDIA_TRACE=1',
     provider_attempts: observations.providerAttempts ?? null,
+    completed_checks: checks.length,
     checks,
     observations,
   };

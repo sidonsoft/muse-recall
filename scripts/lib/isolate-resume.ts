@@ -104,6 +104,12 @@ export function verifyStagedIsolate(
   if (!isRecord(job)) fail('job record is not an object');
   if (job.status !== expected.jobStatus)
     fail(`job status is ${JSON.stringify(job.status)}, expected ${expected.jobStatus}`);
+  // A job already linked to a published version has been consumed by a
+  // prior approval; resuming it would either no-op or misattribute state.
+  if (job.version !== null && job.version !== undefined)
+    fail(
+      `job already published version ${JSON.stringify(job.version)}; this isolate is consumed and cannot be re-approved offline`,
+    );
   if (typeof job.finished_at !== 'string' || job.finished_at.length === 0)
     fail('job record has no finished_at timestamp');
   const logsText = JSON.stringify((job as { logs?: unknown }).logs ?? '');
