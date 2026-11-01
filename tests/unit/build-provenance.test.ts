@@ -88,7 +88,7 @@ describe('production input coverage', () => {
     dirs: ['web/src'],
     files: ['web/index.html', 'web/vite.config.ts', 'web/package.json', 'pnpm-lock.yaml'],
   };
-  const skeleton = {
+  const skeleton: Record<string, string> = {
     'web/src/main.ts': 'console.log(1)',
     'web/src/index.css': '.a{color:red}',
     'web/index.html': '<html></html>',
@@ -115,7 +115,7 @@ describe('production input coverage', () => {
         writeFileSync(join(root, rel), tampered);
         const after = hashFiles(root, collectInputFiles(root, inputs));
         expect(after.hash, rel).not.toBe(before.hash);
-        writeFileSync(join(root, rel), skeleton[rel] as string);
+        writeFileSync(join(root, rel), skeleton[rel] ?? '');
       }
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -162,6 +162,7 @@ describe('verifyBuildProvenance', () => {
         component: 'server',
         sourceHash: hashed.hash,
         sourceFiles: hashed.count,
+        sourceInputs: [],
         buildHash: built.hash,
         buildFiles: built.count,
       } satisfies BuildManifest);
@@ -171,6 +172,7 @@ describe('verifyBuildProvenance', () => {
         component: 'web',
         sourceHash: hashed.hash,
         sourceFiles: hashed.count,
+        sourceInputs: [],
         buildHash: empty.hash,
         buildFiles: 0,
       } satisfies BuildManifest);
@@ -211,6 +213,7 @@ describe('verifyBuildProvenance', () => {
         treeStatus: '',
         sourceHash: sourceHashValue,
         sourceFiles: 1,
+        sourceInputs: [],
         buildHash: buildHashValue,
         buildFiles: 0,
         builtAt: new Date(0).toISOString(),
