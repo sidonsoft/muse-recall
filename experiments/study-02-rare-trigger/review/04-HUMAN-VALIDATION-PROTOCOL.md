@@ -17,6 +17,18 @@
 | **[PROPOSED]** | This protocol's pre-declared design decision, to be frozen at the freeze gate. |
 | **[TBD]** | Must be fixed at freeze; not fixed here. |
 
+## 0a. Amendment — single-reviewer procedure (2026-11-01)
+
+Only the project author is available as a human reviewer; the two-coder/third-adjudicator requirement
+and the κ/inter-rater analysis in this protocol are **superseded for execution** by
+`review/12-SINGLE-REVIEWER-VALIDATION.md`. Under the amendment: one author-reviewer; priority to the
+opportunity labels/hooks and paraphrase intent that the primary claim depends on, then the exposure
+panel/census subset; randomised/blinded presentation where feasible; prior-exposure disclosure; an
+author disagreement/adjudication log; **no independence, human-validation or inter-rater reliability
+claim**; exposure analyses become exploratory/removed if the instrument check is inadequate. The
+remainder of this protocol is retained as the superseded two-coder design and as the source of the
+check definitions/thresholds.
+
 ---
 
 ## 0. Bottom line (read this first)

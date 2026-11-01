@@ -5,6 +5,15 @@
 **Status:** plan only. **No request in this document has been executed. No paid call was made. No
 credential was read or printed.** Execution requires the explicit approvals in §1.
 
+> **2026-11-01 amendment (confirmed hackathon constraints).** The authorized environment is the
+> already-configured Pi provider entry `baseten-muse` / **`meta-models/muse-spark-open-1026`** (context
+> 1,048,576; output 32,768; configured costs 1.25 / 4.25 / 0.15). The **existing hackathon key** is
+> reused from the Pi configuration (no dedicated replacement key is available or required), and
+> **provider credits are supplied** (no purchase/account creation). A2 and the credential/billing
+> blockers are therefore resolved offline. The only remaining gate is the Director's **final
+> execution authorization**. See `review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md`;
+> this document's §1 rows are updated accordingly.
+
 This plan validates the **provider contract and transport** for the proposed confirmatory endpoint
 (Baseten-hosted Muse Spark Open). It is **not** pilot data and **not** confirmatory data. Every output
 produced by it belongs to `experiments/study-02-rare-trigger/qualification-baseten/` and must never be
@@ -24,15 +33,14 @@ repeat below is a **repeatability** measurement, not a determinism check.
 
 | # | Approval item | Proposed value (this plan) | Why it is required |
 |---|---|---|---|
-| **A1** | **Credential** | A dedicated Baseten **team key with "Call Model APIs"** (inference-only; environment-scoped if available), exported by the user as **`S02_BASETEN_API_KEY`**. The general `BASETEN_API_KEY` (historically read from `/Users/burnz/.zshrc`, mode 600) must **not** be reused. Key prefix, owner and creation date recorded; key revoked after the run. | No key is present in the environment (`$BASETEN_API_KEY` and `$S02_BASETEN_API_KEY` both unset, checked 2026-11-01). Paid requests cannot run without it, and reuse of a general key would make spend/rotation ambiguous. |
-| **A2** | **Model identity** | Confirm that `meta-models/muse-spark-open-1026` resolves in the workspace and whether it is a frozen dated snapshot or an alias; record `context_length`, output limit and rate limits. If it does not resolve, the public alias is used only with a written provider statement of version stability for the study window. | Version identity is not public and there is no weights digest in responses; without this, “Baseten Muse Spark Open” is an unpinned model and the confirmatory run is not reproducible in identity. |
+| **A1** | **Credential** | Reuse the **existing hackathon key** stored in the Pi provider configuration (`providers.baseten-muse.apiKey`, mode 600); the harness loads it in memory via `scripts/study02/provider_config.mjs` and records only a non-reversible fingerprint (`700791232a0c87b1`). No dedicated replacement key, env export, purchase or rotation is required. The key value is never printed, logged or committed. | One hackathon key exists for this use; a dedicated key is unavailable. The loader fails closed if the configured key is missing/invalid and never falls back to another key. |
+| **A2** | **Model identity** | The authorized model is **already configured** as `baseten-muse` → `meta-models/muse-spark-open-1026` (name “Muse Spark Open 1026”; context 1,048,576; output 32,768; costs 1.25/4.25/0.15). No other model may be used and the configuration is not edited. Observable version metadata is limited to the configured id/name/limits/cost; no snapshot/revision/system-fingerprint guarantee is available locally or publicly. | This is the only authorized model and it will not change; no invention or alias substitution. The missing snapshot guarantee is recorded as a **reproducibility limitation**: the provider may route the id to a different underlying snapshot, so identity is treated as endpoint metadata observed per request, and a change halts/reports. |
 | **A3** | **Request count** | **32 inference requests** exactly as specified in §3 (24 core + 4 repeats + 2 truncation + 1 reasoning-control + 1 smoke). No additional requests without a new approval. | Bounds spend and scope; qualification is contract validation, not effect estimation. |
-| **A4** | **Token / cost ceiling** | Prompt ceiling **248,500** tokens; completion ceiling **937,280** tokens; worst case **$4.30 USD** at the public rate card with no retries, **$6.00 USD** hard cap with the permitted retries. The **exact USD cap must be approved by the user from the account rate card**; this repository records no Baseten rate. | The public card ($1.25 / $0.15 cached / $4.25 per 1M input/cached/output, verified 2026-11-01) is a planning estimate only; account/contract rates may differ. |
+| **A4** | **Token / cost ceiling** | Prompt ceiling **248,500** tokens; completion ceiling **937,280** tokens; worst-case reservation **$4.294065** at the configured prices, **$6.00 hard cap** (≈$1.706 headroom, ≈11 full-cap retries). Credits are supplied for hackathon use; no purchase/account action is required. | Bounds spend and scope. Enforcement uses `scripts/study02/cost_cap.mjs` (pre-dispatch reservation + actual-usage settlement + hard stop); the configured cost fields are the rate inputs, with any account/contract difference resolved before execution. |
 | **A5** | **Output location** | `experiments/study-02-rare-trigger/qualification-baseten/` only. Never `pilot/`, never `qualification/` (Dell), never a confirmatory path. | Evidence-class separation is a freeze requirement; qualification artefacts must never be mistaken for pilot or confirmatory observations. |
-| **A6** | **Scope limits** | No confirmatory generations; no preregistration freeze/tag; no corpus, pilot, manifest or locked-artefact edits; `--dry-run` executed first; no git commit by the reviewer. | Matches `_internal/PLAN-FREEZE-PREP.md`; the checkpoint-2 gates are still closed. |
+| **A6** | **Scope limits** | No confirmatory generations; no preregistration freeze/tag; no corpus, pilot, manifest or locked-artefact edits; no Pi/provider configuration change; existing key reused; `--dry-run` executed first; no git commit by the reviewer. | Matches `_internal/PLAN-FREEZE-PREP.md`; the checkpoint-2 gates are still closed. |
 
-**Decision rule:** if any of A1–A6 is missing, the answer is **NO-GO** for paid execution. The plan and
-the contract review remain valid offline artefacts.
+**Decision rule:** A1, A2, A4 and A5 are resolved offline under the confirmed hackathon environment (key present in Pi config; model configured and unchanged; credits supplied; output isolation ready). A3/A6 are plan commitments. **The only remaining gate is the Director's final execution authorization of the 32-request run within the $6 cap.** Until then the answer is NO-GO for execution; the plan remains an offline artefact.
 
 ---
 

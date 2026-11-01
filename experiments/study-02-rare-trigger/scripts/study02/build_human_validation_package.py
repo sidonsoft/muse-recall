@@ -1378,6 +1378,10 @@ def check_all(artifacts):
         if not path.is_file():
             continue
         rel_path = path.relative_to(PKG).as_posix()
+        # single-reviewer/ is a separate sub-package with its own manifest/checker
+        # (build_single_reviewer_package.py); it is not part of this generator's tree.
+        if rel_path.startswith('single-reviewer/'):
+            continue
         if rel_path in expected or rel_path in (
                 'README.md', 'CODING_GUIDE.md', 'REVIEWER_NOMINATION_REQUEST.md',
                 'forms/INDEPENDENCE_ATTESTATION.md', 'forms/REVIEWER_PACK.md'):

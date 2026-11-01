@@ -1,12 +1,13 @@
 # Study 02 — Rare-Trigger Reliability
 
-**Status: QUALIFICATION PREPARATION (post-Director decision) — CONDITIONAL GO for Baseten
-qualification (≤$6, not executed), NO-GO for confirmatory execution / preregistration freeze.** The
-Dell/Qwen pilot remains archived exploratory evidence; the proposed confirmatory endpoint is
-Baseten-hosted Muse Spark Open (**not yet qualified; no credential/billing verification yet**). See
-[`review/11-QUALIFICATION-PREP-STATUS.md`](review/11-QUALIFICATION-PREP-STATUS.md) for the current
-decision-register status and blockers, and [`review/00-FREEZE-READINESS-REPORT.md`](review/00-FREEZE-READINESS-REPORT.md)
-for the review-gate evidence snapshot.
+**Status: QUALIFICATION PLAN READY — awaiting final execution authorization.** The confirmed
+hackathon environment is the already-configured Pi provider `baseten-muse` →
+`meta-models/muse-spark-open-1026` (context 1,048,576; output 32,768; costs 1.25/4.25/0.15), using the
+**existing hackathon key** and **supplied credits**. No paid/credit-consuming call has been made;
+no confirmatory run, preregistration freeze or freeze tag. The Dell/Qwen pilot remains archived
+exploratory evidence. See [`review/11-QUALIFICATION-PREP-STATUS.md`](review/11-QUALIFICATION-PREP-STATUS.md),
+[`review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md`](review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md)
+and the single-reviewer plan [`review/12-SINGLE-REVIEWER-VALIDATION.md`](review/12-SINGLE-REVIEWER-VALIDATION.md).
 
 **Checkpoint 2 status: complete — report for user review.** Endpoint qualification, the expanded
 matched-twin corpus, deterministic scoring, the revised power analysis and the approved 30-scenario
@@ -129,6 +130,8 @@ verification.
 | Corpus coverage review (ACCEPT, no expansion before freeze) | [`review/08-CORPUS-COVERAGE-REVIEW.md`](review/08-CORPUS-COVERAGE-REVIEW.md) | Complete |
 | D-14 frozen-prompt provenance + $6 cost-cap implementation | [`review/10-PROMPT-PROVENANCE-AND-COST-CAP.md`](review/10-PROMPT-PROVENANCE-AND-COST-CAP.md), [`scripts/study02/prompt_provenance.mjs`](scripts/study02/prompt_provenance.mjs), [`scripts/study02/cost_cap.mjs`](scripts/study02/cost_cap.mjs) | Complete and tested offline |
 | Human-validation materials package | [`human-validation/`](human-validation/) | Materials prepared; **no human coding has occurred**; reviewers must be nominated by the Director |
+| Confirmed provider configuration (key-free) | [`design/provider-config-pin.json`](design/provider-config-pin.json), [`review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md`](review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md) | Verified offline; key never exposed |
+| Single-reviewer validation plan/materials | [`review/12-SINGLE-REVIEWER-VALIDATION.md`](review/12-SINGLE-REVIEWER-VALIDATION.md), [`human-validation/single-reviewer/`](human-validation/single-reviewer/) | Materials ready; no human coding |
 | Qualification outputs | [`qualification-baseten/`](qualification-baseten/) | **Empty by design** — no paid call made |
 
 Qualification cannot run until: a dedicated `S02_BASETEN_API_KEY` exists; billing/rate card and

@@ -64,3 +64,12 @@ contract), `04b-ANALYSIS-PLAN-REV2.md` (revised analysis/power), `07-ENDPOINT-QU
 See `PILOT-CHANGES.md`. The consolidated protocol v0.3 must incorporate the fixes and their
 provenance; no pilot-derived effect size may be used to choose a design parameter
 (`04b` §4.8 pre-declared margin rule excepted).
+
+
+## 4. Single-reviewer amendment (2026-11-01)
+
+The confirmed environment has only the project author as a human reviewer; the two-coder/κ plan is
+superseded for execution by `review/12-SINGLE-REVIEWER-VALIDATION.md` and the protocol §8.4 amendment.
+No independent or inter-rater claim is permitted; exposure-conditioned analyses are demoted/removed
+if the single-reviewer check is inadequate. The primary H1/H2/H3 remain detector/opportunity-label
+based and unaffected by the exposure instrument.

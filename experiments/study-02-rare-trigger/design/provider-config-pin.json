@@ -1,0 +1,49 @@
+{
+  "pin_version": "study02-provider-config-pin-1.0",
+  "status": "offline configuration check; no credential included; no model call made",
+  "observed_at": "2026-11-01T00:09:44.508Z",
+  "authorized_model": true,
+  "only_authorized_model": true,
+  "provider": "baseten-muse",
+  "providerName": "Muse Open (Baseten)",
+  "baseUrl": "https://inference.baseten.co/v1",
+  "api": "openai-completions",
+  "modelId": "meta-models/muse-spark-open-1026",
+  "modelName": "Muse Spark Open 1026",
+  "reasoning": true,
+  "input": [
+    "text",
+    "image"
+  ],
+  "contextWindow": 1048576,
+  "maxTokens": 32768,
+  "costUsdPerMillion": {
+    "input": 1.25,
+    "output": 4.25,
+    "cacheRead": 0.15,
+    "cacheWrite": 0
+  },
+  "credential": {
+    "source": "providers.baseten-muse.apiKey in models.json",
+    "fingerprintSha256_16": "700791232a0c87b1",
+    "lengthClass": "present",
+    "keyFileMode": null,
+    "note": "Existing hackathon key reused; no dedicated replacement key; value never exported."
+  },
+  "configuredIn": {
+    "providerFile": "/Users/burnz/.pi/agent/models.json",
+    "providerFileSha256": "9334ecc32c5dc07c8c9e2d51c2d87e02b6b557a12ceb69145a96637a677e7e79",
+    "settingsFile": "/Users/burnz/.pi/agent/settings.json",
+    "settingsFileSha256": "642079fa4f37550cd5d561ebe9ceb3f1f7420d54eb93f7e73b43ce4170befba0",
+    "piVersion": "1.4.0",
+    "piDefaultProvider": "strata",
+    "piDefaultModel": "qwen3.8-flash-next-iq3_s"
+  },
+  "authorizedModel": true,
+  "onlyAuthorizedModel": true,
+  "versionMetadata": {
+    "observable": "Pi provider entry exposes id/name/context/maxTokens/cost only; no snapshot, revision or system-fingerprint field is configured.",
+    "snapshotGuarantee": "none documented in the local configuration; public docs do not publish a dated snapshot guarantee for this slug",
+    "reproducibilityLimitation": "Provider may route the configured model id to a different underlying snapshot; model identity/version must be treated as endpoint metadata observed per request, not as a frozen scientific constant."
+  }
+}

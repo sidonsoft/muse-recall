@@ -1,0 +1,11 @@
+{
+  "counts": {
+    "variant_label": 60,
+    "paraphrase_intent": 18,
+    "panel": 140,
+    "census": 36,
+    "total": 254
+  },
+  "estimated_hours": 12.0,
+  "note": "Estimated coding time plus ~2.5 h orientation/logging/adjudication. Priority 3 (remaining negatives/census) is optional and not included."
+}

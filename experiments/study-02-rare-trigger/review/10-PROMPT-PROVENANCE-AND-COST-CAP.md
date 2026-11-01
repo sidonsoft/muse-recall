@@ -85,8 +85,7 @@ the qualification plan's token ceilings (248,500 input / 937,280 output, `review
 **$4.294065** (`review/09` §4.9, headroom **$1.705935** ≈ 11 full-cap retries), while the uniform
 per-request reservation model (32 × 24,000 chars/32,000 max) gives a more conservative
 **$4.67** (`test_cost_cap.mjs` plan-fit assertion). Expected spend is ≈**$2.25**. Qualification
-must configure the ledger with the **verified account rate card** and a **$6.00 cap** before
-dispatch; `review/09` §4.9 is the execution-day reconciliation source.
+must configure the ledger with the **configured provider cost fields** (now confirmed: input 1.25 / cached 0.15 / output 4.25 USD per 1M; `design/provider-config-pin.json`) and a **$6.00 cap** before dispatch; `review/09` §4.9 is the execution-day reconciliation source.
 
 ## 3. What remains for the qualification harness (not executed here)
 

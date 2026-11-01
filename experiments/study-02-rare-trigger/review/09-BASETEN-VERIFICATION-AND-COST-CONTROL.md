@@ -11,6 +11,16 @@ credentials, billing and account limits — and **must not run** until those exi
 `review/03-QUALIFICATION-PLAN.md` (32-request plan, token ceilings, stop conditions),
 `review/00-FREEZE-READINESS-REPORT.md` §8 (D-01…D-14), `_internal/PLAN-QUALIFICATION-PREP.md`.
 
+**2026-11-01 amendment (confirmed hackathon constraints).** The authorized model is already
+configured in Pi as `baseten-muse` → `meta-models/muse-spark-open-1026` (context 1,048,576; output
+32,768; costs 1.25/4.25/0.15) and the **existing hackathon key** is reused from that configuration;
+**credits are supplied** for hackathon use. No dedicated key, purchase, account creation or rotation
+is required. Offline validation of the configuration is complete (`design/provider-config-pin.json`;
+`scripts/study02/provider_config.mjs`; tests pass). The remaining execution gate is the Director's
+**final qualification authorization** (32 requests, ≤$6). This supersedes the credential/billing
+prerequisites in §1/§2 and §0; see
+`review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md`.
+
 **Evidence class:** every artefact produced under this procedure belongs to
 `experiments/study-02-rare-trigger/qualification-baseten/` and is **excluded** from the exploratory
 Dell pilot and from any confirmatory dataset. Nothing is pooled.
@@ -21,12 +31,12 @@ Dell pilot and from any confirmatory dataset. Nothing is pooled.
 
 | Question | Answer |
 |---|---|
-| Can qualification run today? | **No.** `$S02_BASETEN_API_KEY` and `$BASETEN_API_KEY` are unset; no billing/limits verification has been executed; D-02 is unanswered. |
+| Can qualification run today? | **Offline ready; execution awaits the Director's final authorization.** The configured Pi provider/model and existing hackathon key are verified offline; credits are supplied. D-02 is resolved to the configured identity with a documented snapshot limitation. |
 | What does this file enable? | The moment a credential + spend authorisation exists, the operator can run §2 (D-02 checks, read-only), §4 (ledger simulation), then the 32 requests under the §5 checklist without any new design work. |
 | Hard cap | **$6.00 = 6,000,000 micro-USD (µUSD)**, enforced **before dispatch** by `spent_actual + reserved_outstanding + next_reservation ≤ cap`, with actual usage settled from every response and conservative worst-case reservations held for every outstanding request. |
 | Worst-case plan arithmetic | Per-request reservations (each request's actual `max_tokens`) = **4,294,065 µUSD = $4.294065**, headroom **$1.705935** → up to **11 full-cap retries**. The implemented `cost_cap.mjs` conservative plan-fit (uniform 24,000-char/32,000-output, `review/10` §2) = **$4.672**, headroom **$1.328** → **9 full-cap retries**. Both fit the $6 cap. Expected spend ≈ **$2.2517**. |
 | Biggest unresolved risks | Slug/version identity for `meta-models/muse-spark-open-1026` is [NOT PUBLIC]; account TPM may be below the 4-in-flight requirement; the account rate card may differ from the public card. See §6. |
-| What must the Director provide? | Credential issuance (D-01), billing/account verification, account-rate authorisation or rate card, slug/snapshot written confirmation (D-02), spend-authorisation reference for the $6 cap, and a decision on provider-side enforced budget. See §6.1. |
+| What must the Director provide? | **Only the final qualification execution authorization** (32 requests, ≤$6). The earlier credential/billing/account prerequisites are satisfied by the confirmed hackathon environment; the snapshot/version limitation is recorded and does not block execution. See §6.1 as amended. |
 
 ---
 

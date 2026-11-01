@@ -591,7 +591,19 @@ sensitivity readings; a 20-field schema with scenario/label identity consistency
 `twin_id`, `variant_role`); twin proofs; stratum counts 60/60/60/60/80/80; and 200/200 opportunity
 balance.
 
-### 8.4 Independent validation (pilot; humans, blinded)
+### 8.4 Human validation (pilot; humans, blinded)
+
+> **2026-11-01 amendment — single-reviewer procedure.** The confirmed environment provides only the
+> **project author** as a human reviewer; no second coder or third adjudicator is available. The
+> two-coder/κ procedure below is therefore **superseded for execution** by
+> `review/12-SINGLE-REVIEWER-VALIDATION.md`: one author-reviewer, prioritised items (P1 opportunity
+> labels/hooks + paraphrase intent; P2 exposure panel subset + balanced census sample), randomised
+> and blinded presentation where feasible, concealed treatment labels/detector verdicts until the
+> coding sheet is hashed, a prior-exposure disclosure, and an author disagreement/adjudication log.
+> **No independent-validation, human-validation or inter-rater reliability claim may be made**, and no
+> κ is computed. If the single-reviewer check is inadequate, exposure-conditioned analyses are
+> demoted to exploratory/removed and the primary label check must be resolved before freeze. The
+> material below is retained as the superseded two-coder design.
 
 - **Sample (pre-declared; full detail in `review/04-HUMAN-VALIDATION-PROTOCOL.md` §3):** F-real =
   census of the 111 usable pilot runs (fallback: a stratified 80-run subsample drawn by a published

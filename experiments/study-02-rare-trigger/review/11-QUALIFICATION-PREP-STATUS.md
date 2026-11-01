@@ -15,20 +15,36 @@ freeze tag. Endpoint qualification is the next milestone; effect estimates are n
 
 | ID | Decision | Status after this preparation round |
 |---|---|---|
-| D-01 | Dedicated Baseten credential | **Approved; NOT YET ISSUED.** `$S02_BASETEN_API_KEY` and `$BASETEN_API_KEY` are unset. Provisioning checklist in `review/09` §1 (inference-only team key, named owner/revoker, env-only, redaction, revocation). |
-| D-02 | Model identity and limits | **Procedure ready, not executed.** `review/09` §2 gives the exact read-only verification steps (slug, context/output limits, account rate/quota, billing); the dated `-1026` slug remains **not public**, and no version metadata is documented. Blocked on credential + provider confirmation. |
+| D-01 | Credential | **SATISFIED by confirmed environment.** Reuse the **existing hackathon key** stored in the Pi provider configuration (`providers.baseten-muse.apiKey`). No dedicated replacement key is available or required; the offline loader reads it in memory and records only the fingerprint `700791232a0c87b1`. No purchase/rotation step. |
+| D-02 | Model identity and limits | **RESOLVED as configured identity.** Authorized model is the already-configured `baseten-muse` → **`meta-models/muse-spark-open-1026`** (context 1,048,576; output 32,768; costs 1.25/4.25/0.15; Pi 1.4.0). No public snapshot/revision guarantee exists; recorded as a **reproducibility limitation** (identity treated as endpoint metadata observed per request). No config change. Offline check: `review/13`, `design/provider-config-pin.json`. |
 | D-03 | 32-request qualification, max $6 | **Approved conditionally; NOT EXECUTED.** Plan in `review/03`; cap now enforceable by `scripts/study02/cost_cap.mjs` (admission before dispatch; actual + reservation; hard stop). |
 | D-04 | Qualification isolation | **Ready.** `qualification-baseten/` contains only its README; all qualification artefacts will be excluded from pilot/confirmatory data. |
-| D-05 | Human validation | **REQUIRED — materials complete, staffing open.** `human-validation/` now contains the full package (111-run census, 200-case seeded panel incl. 30 same-class blind-spot probes, 60 variants, 18 paraphrase texts, blind sheets, coding guide, adjudication forms, independence attestation, deterministic generator + κ/gate analysis with self-test). **Two independent coders + adjudicator have NOT been identified; no human coding has occurred.** |
+| D-05 | Human validation | **REVISED to single reviewer.** Only the project author is available. The two-coder/κ plan is superseded by `review/12-SINGLE-REVIEWER-VALIDATION.md`: author-as-reviewer, prioritised checks (P1 opportunity labels/hooks + paraphrase intent; P2 exposure panel/census), randomised/blinded presentation where feasible, no independence/inter-rater claims. Materials generated under `human-validation/single-reviewer/` (254 priority items, ≈12 h). **No human coding has occurred.** |
 | D-06 | Exposure validation gate | **Approved; protocol in place.** PASS/CONDITIONAL/FAIL gate and the AI-not-human labelling rule are in `review/04` and protocol §8.4. |
 | D-07 | Statistical corrections | **Done.** T6 family-block H2 bootstrap and T8 unified margin fallback applied (`04b` corrected 2026-11-01; transcript SHA-256 `39b7ec54…`). |
 | D-08 | Missingness and stopping | **Approved; written into protocol.** ≤2 attempts, no replacements, 20 % hard ceiling/15 % warning, co-primary worst-case/ITT, technical halt. |
 | D-09 | Confirmatory endpoint | **Deferred.** Decision only after qualification against pre-registered feasibility/validity gates. |
-| D-10 | Sampling and repeatability | **Conditional, unresolved until D-02.** Provider does not guarantee determinism at seed/temperature; actual supported controls and repeat meaning must be documented after contract verification. |
+| D-10 | Sampling and repeatability | **Documented limitation.** The provider does not guarantee deterministic output at seed/temperature 0; repeats are repeatability measurements only. Qualification logs requested/returned model identity and available metadata; no determinism assumption is made. |
 | D-11 | Confirmatory expenditure | **NOT APPROVED.** Revisit after qualification with measured token/cost data. |
 | D-12 | Corpus diversity | **Reviewed; decision recorded.** `review/08`: **ACCEPT** the current corpus for the primary claims, scoped, no expansion before freeze; conditions C1–C12 and expansion triggers X1–X5/E1–E3 recorded. |
 | D-13 | Freeze mechanics | **Approved in principle; not executed.** Requires all gates first (credential/identity, qualification report, human validation). |
 | D-14 | Exact prompt provenance | **DONE (offline, tested).** `scripts/study02/prompt_provenance.mjs` + runner integration + `test_prompt_provenance.mjs`; freeze-once prompts/meta/manifest, load-only execution, tamper/missing refusal; end-to-end dry-run test with 132 prompts (byte-identical reload, tamper refusal). |
+
+## 1b. Confirmed hackathon environment (offline checks complete)
+
+- **Exact configured endpoint:** Pi provider `baseten-muse`, base URL `https://inference.baseten.co/v1`,
+  API `openai-completions`; **model `meta-models/muse-spark-open-1026`** ("Muse Spark Open 1026"),
+  context **1,048,576**, max output **32,768**, configured costs **1.25 / 4.25 / 0.15** USD per 1M
+  tokens. Pi version **1.4.0**. Pi's default provider (`strata`) is not used and was not changed.
+- **Credential:** existing hackathon key in the Pi provider configuration; loaded in memory only;
+  recorded by source and non-reversible fingerprint `700791232a0c87b1`; never printed or committed.
+- **Credits:** supplied for hackathon use; no purchase/account-creation blocker.
+- **Version limitation:** no snapshot/revision/system-fingerprint guarantee is available locally or
+  publicly; recorded as a reproducibility limitation and treated as per-request endpoint metadata.
+- **Offline verification:** [design/provider-config-pin.json](design/provider-config-pin.json);
+  `provider_config.mjs`, `test_provider_config.mjs`, `pin_provider_config.mjs`; all tests pass, and
+  the public snapshot provably excludes the credential. See
+  [review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md](review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md).
 
 ## 2. Director's three additional requirements
 
@@ -59,58 +75,24 @@ freeze tag. Endpoint qualification is the next milestone; effect estimates are n
 |---|---|---|
 | 1 | Implement/test D-14 prompt provenance offline | **DONE** — `review/10`, module/tests, end-to-end dry-run verification |
 | 2 | Complete corpus-diversity review; record accept/expand | **DONE** — `review/08`: ACCEPT, no expansion before freeze, conditions C1–C12 |
-| 3 | Prepare human-validation materials; identify reviewers | **MATERIALS DONE; reviewers NOT identified.** `human-validation/` package is complete and reproducible (`--check` 399/399; gate analysis `--self-test` passes). Director must nominate 2 coders + adjudicator (`human-validation/REVIEWER_NOMINATION_REQUEST.md`), or approve removal/demotion of exposure analyses. |
-| 4 | Verify Baseten identity/billing/limits | **PROCEDURE READY, NOT EXECUTED** — `review/09`; blocked on D-01 credential and billing access |
-| 5 | Execute 32-request qualification within $6 | **BLOCKED** — no credential, no billing/limits verification, no spend-authorisation reference |
+| 3 | Prepare human-validation materials; identify reviewers | **REVISED AND READY.** Single-reviewer plan (`review/12`) and materials (`human-validation/single-reviewer/`, 254 priority items, ≈12 h) generated; no second coder required. Director reviews the plan and analysis changes before freeze. |
+| 4 | Verify Baseten identity/billing/limits | **DONE OFFLINE** — configured identity/limits/costs verified from Pi; key present (fingerprint only); version limitation documented. Runtime measurements occur during qualification. |
+| 5 | Execute 32-request qualification within $6 | **READY — awaiting final execution authorization.** No credential/billing blocker remains. |
 | 6 | Qualification report → separate freeze authorization | **FUTURE** |
 
 ## 4. Blockers and what is needed from the Director
 
-1. **Issue the credential (D-01):** a dedicated inference-only **team** key ("Call Model APIs") for
-   Study 02, named owner and revoker; provided only via `S02_BASETEN_API_KEY` in the environment
-   (never committed/logged; do not reuse the historical `~/.zshrc` key).
-2. **Authorize billing/limits reads** (`GET /v1/model_apis`, `GET /v1/billing/model_apis`) and provide
-   the **account rate card** (or confirm public pricing applies); confirm payment/credits sufficient
-   for ≤$6 so D-02 can be completed and the ledger uses verified rates.
-3. **Confirm model identity (D-02):** written confirmation that the approved slug resolves to a
-   **fixed dated snapshot** (or approve the public alias with a written stability statement); confirm
-   context/output limits.
-4. **Confirm account limits:** the 4-in-flight repeat block requires **TOKEN/MINUTE ≥ 200,000** and
-   **CONCURRENT_REQUEST ≥ 4** (`review/09` §2). 100k–200k TPM ⇒ 2-in-flight only with approval;
-   <100k ⇒ NO-GO.
-5. **Spend-authorisation reference for the $6 hard cap** (cost centre/decision ID), and decide whether
-   to enable provider-side **Enforce budget** (workspace-wide month-to-date + $6; conservative) or rely
-   on the local ledger plus notification.
-6. **Human-validation staffing (D-05):** nominate two independent coders + adjudicator; otherwise
-   approve removal/demotion of exposure analyses before freeze.
-7. **No confirmatory authorization yet:** D-11/D-13 remain blocked until the qualification report is
-   reviewed, billing reconciliation passes, and the human-validation gate passes. If the account rate
-   card makes the 32-request worst case exceed $6, qualification is **NO-GO** unless the plan is
-   reduced or the cap changed by the Director.
-
-## 4b. Documentation corrections applied this round
-
-- **Paraphrase-count arithmetic corrected.** Earlier documents said "26 corpus + 4 pilot-only"
-  paraphrases; the as-built `corpus/paraphrases.json` has **14 corpus (arcade 3, challenge 3, reward 4,
-  lively 4) + 4 pilot-only = 18**. Corrected in `02-PROTOCOL-DRAFT.md` §8.4, `review/04` §3.1/§5,
-  `review/05` §3, `review/00`, `review/08`, `08-CORPUS-DIVERSITY.md`, `10-CHECKPOINT2-REPORT.md`, and
-  the `gen_corpus.py` / human-validation generator notes. The human-validation package codes all 18
-  actual texts; the package records the correction.
-- **Corpus regenerated after the generator docstring correction.** Variant HTML files remained
-  **byte-identical** (60/60, sorted-set SHA-256 `caccfcc6…` unchanged); `gen_corpus.py --check` now
-  reproduces all 68 files; `design/design-v2.json` `corpus_construction.generator_sha256` updated to
-  `4b10e09f…`. This is a documentation/self-hash change only, not a corpus-content change.
-- **Human-validation package regenerated** to hash the corrected text and regenerated corpus inputs;
-  `--check` reports 399/399 artifacts byte-identical; analysis self-test passes.
-- No pilot record, pilot analysis, checkpoint-2 manifest, locked Phase 15B/17 artefact, or product
-  integration branch was modified.
-
-- **Blinding/sealing.** The package contains a hidden-truth file (`panel-truth.json`), a sealed
-  case mapping (`reference/case-map.json`) and the sampling manifest (which carries arms/records).
-  Do **not** distribute the repository or the whole package to coders. Give coders only the
-  coder-facing subset (`CODING_GUIDE.md`, `sheets/coder-A.csv` or `coder-B.csv`, the neutral case files
-  they are assigned, `paraphrase-texts.md` where applicable); the Lead/analyst keeps truth, mapping and
-  sheets sealed until both coders have submitted. No AI may fill any coding field.
+1. **Final qualification execution authorization (the only execution gate):** approve the bounded
+   **32-request** run against the configured `baseten-muse` / `meta-models/muse-spark-open-1026`,
+   using the existing hackathon key and supplied credits, within the usage ceiling (248,500 input /
+   937,280 output tokens) and **$6.00 hard cap**. No purchase, new account, dedicated key or config
+   change is required.
+2. **Human validation:** the project author is the only reviewer; no second coder/adjudicator will be
+   required. Approve the revised single-reviewer plan (`review/12`) and its proposed analysis
+   changes, including the pre-declared exposure-analysis demotion/removal rule if validation is
+   inadequate.
+3. **Confirmatory / freeze:** not requested here; both remain separately gated after the
+   qualification report, billing reconciliation and human check.
 
 ## 5. Evidence index
 
@@ -128,6 +110,9 @@ freeze tag. Endpoint qualification is the next milestone; effect estimates are n
 | Prompt provenance + cost-cap implementation | `review/10`, `scripts/study02/prompt_provenance.mjs`, `scripts/study02/cost_cap.mjs`, tests | Complete and tested offline |
 | Human-validation materials | `human-validation/` (404 files), `scripts/study02/build_human_validation_package.py`, `scripts/study02/analyze_human_validation.py` | Materials complete/reproducible; **no human coding**; reviewers to be nominated |
 | Qualification-prep manifest | `MANIFEST-qualification-prep.sha256` | Generated with this work (see below) |
+| Confirmed provider configuration (key-free pin) | `design/provider-config-pin.json` | Verified offline |
+| Confirmed-environment amendment | `review/13-CONFIRMED-ENVIRONMENT-AND-QUALIFICATION-AMENDMENT.md` | Complete |
+| Single-reviewer validation plan + materials | `review/12-SINGLE-REVIEWER-VALIDATION.md`, `human-validation/single-reviewer/` | Plan ready; no coding |
 | Qualification outputs | `qualification-baseten/` | **Empty by design** |
 | Confirmatory data | — | **Does not exist** |
 

@@ -1,0 +1,52 @@
+{
+  "schema_version": "study02-single-reviewer-package-1.0",
+  "status": "materials only; no human coding has occurred; author is the single reviewer; no independence/inter-rater claims",
+  "selection": {
+    "panel_positives": 100,
+    "panel_false_positive_probes": 10,
+    "panel_near_miss_sample": 30,
+    "census_strata": 6,
+    "seed": "study02-single-reviewer-2026-11-01"
+  },
+  "workload": {
+    "counts": {
+      "variant_label": 60,
+      "paraphrase_intent": 18,
+      "panel": 140,
+      "census": 36,
+      "total": 254
+    },
+    "estimated_hours": 12.0,
+    "note": "Estimated coding time plus ~2.5 h orientation/logging/adjudication. Priority 3 (remaining negatives/census) is optional and not included."
+  },
+  "artifacts": {
+    "README.md": {
+      "sha256": "4f7c9bb5e567c5544ac2014de6f23589f4b6850200e26af25c29d9624ed72055",
+      "bytes": 1450
+    },
+    "INSTRUCTIONS.md": {
+      "sha256": "cdd03d7b9e4193d32fd7935abf2d20d0136dccb97b4c0b41009ed69b3235da8a",
+      "bytes": 2318
+    },
+    "assignment.csv": {
+      "sha256": "ad2d554048a4a8f3828f063ab10884dfb30a698c7664179b4fd5462c35f89e75",
+      "bytes": 27727
+    },
+    "coding-sheet.csv": {
+      "sha256": "2c1eb7d1b2d4cc3555e946feccdd46cd45f706f0bdc0a7d6ae62e002609e5fbe",
+      "bytes": 7491
+    },
+    "disagreement-log.csv": {
+      "sha256": "ed80463b322101e2e340719fe090dce9e36dd87564856ff2d0e04ddb06b2a9f1",
+      "bytes": 93
+    },
+    "prior-exposure-disclosure.md": {
+      "sha256": "d87d5aa406917a14c98b54a706ca3ac435be2a3a6e1262b76e5afa0a602bf67e",
+      "bytes": 874
+    },
+    "workload.json": {
+      "sha256": "46094eb6b4a34c23eaffe6f9ce53ec32a6d25f55e6fad6786027e2bbae963cd7",
+      "bytes": 307
+    }
+  }
+}

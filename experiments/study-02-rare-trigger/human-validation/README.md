@@ -11,6 +11,16 @@ described as validated.
 > absent, and no AI system may fill them. See `forms/INDEPENDENCE_ATTESTATION.md` §5
 > (no-AI-substitution clause).
 
+## 0a. Single-reviewer amendment (2026-11-01)
+
+The confirmed environment provides only the **project author** as a human reviewer. The two-coder
+package below is retained as reference but is **superseded for execution** by
+`single-reviewer/` (see `review/12-SINGLE-REVIEWER-VALIDATION.md`): 254 priority items (60 variant
+labels/hooks, 18 paraphrase texts, 140 panel cases, 36 census runs), randomised/blinded presentation,
+prior-exposure disclosure, author disagreement log, no second coder, no adjudicator, no κ and **no
+independence or human-validation claim**. If the single-reviewer check fails, exposure-conditioned
+analyses are demoted/removed; the primary remains detector/opportunity-label based.
+
 ---
 
 ## 1. What this package is for

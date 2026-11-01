@@ -2397,10 +2397,10 @@
   ],
   "authored_docs": [
     {
-      "bytes": 18451,
+      "bytes": 19159,
       "path": "experiments/study-02-rare-trigger/human-validation/README.md",
       "role": "authored-doc",
-      "sha256": "b046bce4b5ddb87bf90ff1cde4a61cede6754311902799f340fe798403b2b6d1"
+      "sha256": "60ba349da4721c6e8aa25d47884241d04e3980bd75a9b2ccba29e128763d20cf"
     },
     {
       "bytes": 17556,
@@ -3701,9 +3701,9 @@
     ]
   },
   "generator": {
-    "bytes": 85459,
+    "bytes": 85702,
     "path": "experiments/study-02-rare-trigger/scripts/study02/build_human_validation_package.py",
-    "sha256": "6fd4fb1e74f73aaa4cb4ae2a5fe6237f079300d9c788fe4ac464991564921f16",
+    "sha256": "f24206eba108cecf417d97e8707a789b42837761d1f1195699db3eb5f65b4343",
     "version": "study02-human-validation-package-1.0"
   },
   "known_documentation_discrepancy": {
