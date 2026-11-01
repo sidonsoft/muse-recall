@@ -22,7 +22,7 @@ Status words mean exactly one thing here:
 | A — access, storage, recovery | built and verified offline | asset store, versioning, CSP-inline embedding, backup/restore drill (`pnpm media:drill`), provenance gate | see Batch B note on image calls |
 | B — Muse Image and integration | built and verified offline; **live image result outstanding** | media API/journey suites, `verify:media-journey`, embedded-asset verification in `verify:studio-workflow` | **none recorded in this tree** — `pnpm verify:media` reports `unconfigured (FORGE_MUSE_API_KEY is not set)` and exits 2 |
 | C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package, plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
-| D — voice and video | built and verified offline for access and playback; **transcription and clip observation built and fixture-verified, live result outstanding** | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts` | transcript/clip understanding: **none recorded** |
+| D — voice and video | built and verified offline for access and playback; **transcription and clip observation built and fixture-verified, live result outstanding (harness now exists)** | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts` | transcript/clip understanding: **none recorded** |
 | E — visual and decision-change review | built and verified offline, **live review quality outstanding** | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (18), `tests/integration/forge-batche-generations.test.ts` (6), `tests/unit/studio-batch-e.test.ts` (29) | **none recorded** — every Batch E gate uses a deterministic stub by design |
 
 ## What the live evidence actually shows
@@ -59,8 +59,8 @@ explicit go-ahead.
 | Capability | Gap | Command that records the evidence |
 | --- | --- | --- |
 | `muse-image-1.0` generate and edit | no live call recorded in this tree; embedding and CSP are proven only with fixture bytes | `pnpm verify:media` (server-side live check), `pnpm verify:media-live-smoke` (Studio journey incl. code and rollback) |
-| `muse-voice-transcribe-1.0` | transcript accuracy and turn timing against real audio unproven | **no live harness exists** — `verify:media-live-smoke` drives image and code only, so the missing piece is the harness itself, not only the key |
-| Video clip observation (`muse-spark-1.3` over an uploaded MP4) | no live clip observation | same: no live harness covers the video path |
+| `muse-voice-transcribe-1.0` | transcript agreement and turn timing against real audio unproven | `pnpm verify:batchd-live-smoke` (default scope `audio`): speaks a known sentence with `say`, transcribes it once, and fails if the content words do not come back |
+| Video clip observation (`muse-spark-1.3` over an uploaded MP4) | no live clip observation recorded | `BATCHD_SMOKE_SCOPE=both pnpm verify:batchd-live-smoke` — one clip call over a generated red-frame/green-square clip; observations are reported for a human, never auto-accepted |
 | Screenshot review (`muse-spark-1.3`) | contract, refusal, and no-write behaviour are proven with a stub; whether the findings are *useful* is unmeasured | `verify:batche-review-ui` is offline by design; a live review needs its own authorized run |
 
 Documentation states these gaps rather than leaving them implied:
@@ -86,6 +86,10 @@ Offline, no provider key, no external network:
 - `pnpm verify:batchc-ui`: **PASS 22 checks** (`test-results/batchc-ui`).
 - `pnpm verify:studio-workflow`: **56 checks passed** (project
   `studio-workflow-y1m2i4`; logs and screenshots in `test-results/studio-after/`).
+- Evidence directories under `test-results/` are gitignored local artifacts, not
+  repository content: the offline gates re-create them on any machine, but the live
+  Batch C runs cannot be re-created without spending quota again, so those recorded
+  results exist only here.
 - Preserved evidence untouched: `test-results/batchc-live/2026-11-01-0755/` and
   `test-results/batchc-resume-staged/2026-11-01-0824/` keep their original mtimes
   and hashes.
@@ -99,9 +103,16 @@ Offline, no provider key, no external network:
   rasterise the app's `<canvas>`; Batch D's decode proof needs a Chromium with
   H.264 enabled — without it the gate fails loudly instead of downgrading to a
   route-only check.
-- **ffmpeg/ffprobe** for the Batch D video fixture (generated in-script, 2 891 bytes,
-  recipe recorded in the evidence directory). `BATCHD_VIDEO_MP4=/path/to.mp4` overrides
-  it; ffprobe validation still applies.
+- **ffmpeg/ffprobe** for the Batch D video fixture (generated in-script, 3 305-byte
+  H.264 96×96 clip for the live harness, 2 891 bytes for the playback gate; recipes are
+  recorded in the evidence directory). `BATCHD_VIDEO_MP4` / `BATCHD_SMOKE_VIDEO_MP4`
+  override them; ffprobe validation still applies.
+- **`/usr/bin/say` (macOS)** to build the live transcription fixture, or
+  `BATCHD_SMOKE_AUDIO_WAV=/path/to.wav` to supply a recorded one. The harness probes
+  what it builds (16 kHz mono `pcm_s16le`) and refuses a fixture that does not match
+  its recipe. `BATCHD_SMOKE_FIXTURE_ONLY=1` runs that plumbing check with no network
+  call at all; without `FORGE_MUSE_API_KEY` the live mode reports `BLOCKED before any
+  provider call` and exits 2.
 - **No provider key** for any gate listed above; the Batch C/D/E gates exit 2 if one
   is present, so a green run is also proof that no paid call happened.
 
