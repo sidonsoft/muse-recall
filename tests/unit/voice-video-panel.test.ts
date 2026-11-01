@@ -68,6 +68,11 @@ describe('VoiceVideoPanel', () => {
     expect(html).not.toContain('Propose transcript');
     expect(html).toContain('24 kHz');
     expect(html).toContain('3 minutes');
+    // Regression for the auth fix: no element or link may point straight at the
+    // byte endpoint, because such requests cannot carry the bearer header and
+    // return 401 once ACCESS_TOKEN is configured.
+    expect(html).not.toContain('/media/sources/');
+    expect(html).not.toContain('bytes');
   });
 });
 

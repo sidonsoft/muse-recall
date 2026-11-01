@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { api } from '../../lib/api.ts';
 import { Icon } from '../Icon.tsx';
+import { playbackMessage, useSourceDownload, useSourcePlayback } from './source-playback.ts';
 import {
   clipTarget,
   initialState,
@@ -234,6 +235,15 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
   const startedAtRef = useRef(0);
 
   const active = sources.find((source) => source.source_id === activeId) ?? null;
+  // Bytes come through the API client (bearer header included when stored) and
+  // reach the element as a blob: URL, so playback and download work under
+  // ACCESS_TOKEN without a token ever appearing in a URL.
+  const playback = useSourcePlayback(projectId, active?.source_id ?? null);
+  const sourceDownload = useSourceDownload(
+    projectId,
+    active?.source_id ?? null,
+    active?.mime ?? null,
+  );
 
   const advanceToken = useCallback((): number => {
     const token = Math.max(seqRef.current, stateRef.current.operationToken) + 1;
@@ -710,33 +720,68 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
       {active ? (
         <div className="space-y-2 border-t border-line/70 px-3 py-2.5">
           {active.kind === 'audio' ? (
-            <audio
-              controls
-              preload="metadata"
-              src={api.mediaSourceBytesUrl(projectId, active.source_id)}
-              className="h-8 w-full"
-            >
-              <track kind="captions" />
-            </audio>
-          ) : (
+            playback.status === 'ready' && playback.objectUrl !== null ? (
+              <audio
+                key={playback.sourceKey}
+                controls
+                preload="metadata"
+                src={playback.objectUrl}
+                className="h-8 w-full"
+              >
+                <track kind="captions" />
+              </audio>
+            ) : (
+              <p
+                role="status"
+                className={
+                  playback.status === 'error'
+                    ? 'text-[10.5px] text-err'
+                    : 'text-[10.5px] text-muted'
+                }
+              >
+                {playbackMessage(playback)}
+              </p>
+            )
+          ) : playback.status === 'ready' && playback.objectUrl !== null ? (
             <video
+              key={playback.sourceKey}
               controls
               playsInline
               preload="metadata"
-              src={api.mediaSourceBytesUrl(projectId, active.source_id)}
+              src={playback.objectUrl}
               className="max-h-40 w-full rounded border border-line bg-black"
             >
               <track kind="captions" />
             </video>
+          ) : (
+            <p
+              role="status"
+              className={
+                playback.status === 'error' ? 'text-[10.5px] text-err' : 'text-[10.5px] text-muted'
+              }
+            >
+              {playbackMessage(playback)}
+            </p>
           )}
-          <a
-            href={api.mediaSourceBytesUrl(projectId, active.source_id)}
-            download={`${active.source_id}.${active.kind === 'audio' ? 'wav' : 'mp4'}`}
-            className="inline-flex items-center gap-1 text-[10px] text-muted underline decoration-dotted"
-          >
-            <Icon name="download" className="size-3" />
-            Download {active.kind === 'audio' ? 'WAV' : 'MP4'}
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={sourceDownload.download}
+              disabled={sourceDownload.pending}
+              className="inline-flex items-center gap-1 text-[10px] text-muted underline decoration-dotted disabled:opacity-50"
+            >
+              <Icon name="download" className="size-3" />
+              Download {active.kind === 'audio' ? 'WAV' : 'MP4'}
+            </button>
+            {sourceDownload.pending ? (
+              <span className="text-[10px] text-muted">Preparing download…</span>
+            ) : null}
+            {sourceDownload.error !== null ? (
+              <span role="alert" className="text-[10px] text-err">
+                {sourceDownload.error}
+              </span>
+            ) : null}
+          </div>
 
           {active.kind === 'audio' ? (
             <div className="space-y-2">

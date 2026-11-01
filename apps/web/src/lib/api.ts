@@ -20,6 +20,8 @@ import {
   ForgeStateSchema,
   type HealthResponse,
   HealthResponseSchema,
+  MEDIA_AUDIO_MAX_BYTES,
+  MEDIA_VIDEO_MAX_BYTES,
   type MediaAssetList,
   MediaAssetListSchema,
   type MediaClipResponse,
@@ -223,6 +225,87 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
   }
   const encoded = search.toString();
   return encoded.length > 0 ? `?${encoded}` : '';
+}
+
+/**
+ * Raw (non-JSON) fetch for media bytes. The JSON `request` helper cannot be
+ * used here: byte responses have no envelope, and browser-initiated
+ * `<audio src>`/`<a href>` requests cannot attach the bearer header, so the
+ * bytes have to come through this client to work under ACCESS_TOKEN.
+ */
+export interface SourceBytes {
+  blob: Blob;
+  mime: string;
+  byteLength: number;
+}
+
+async function requestBytes(path: string, init: RequestInit): Promise<SourceBytes> {
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      headers: {
+        ...authorizationHeader(),
+        ...((init.headers as Record<string, string>) ?? {}),
+      },
+    });
+  } catch (cause) {
+    throw new ApiError(
+      'network_unreachable',
+      'Cannot reach the Muse Recall server. Is it running on port 8787?',
+      0,
+      { cause },
+    );
+  }
+
+  if (!response.ok) {
+    // Error responses keep the normal envelope, so the failure code and
+    // message survive into the panel instead of a bare HTTP status.
+    const text = await response.text().catch(() => '');
+    let code = 'request_failed';
+    let message = `The server returned HTTP ${response.status}.`;
+    try {
+      const envelope = JSON.parse(text) as ApiEnvelope<unknown>;
+      if (envelope !== null && typeof envelope === 'object' && envelope.ok === false) {
+        code = envelope.error.code;
+        message = envelope.error.message;
+      }
+    } catch {
+      // Non-JSON error body: keep the generic message.
+    }
+    throw new ApiError(code, message, response.status);
+  }
+
+  const mime = (response.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
+  const maxBytes = mime.startsWith('audio/')
+    ? MEDIA_AUDIO_MAX_BYTES
+    : mime.startsWith('video/')
+      ? MEDIA_VIDEO_MAX_BYTES
+      : null;
+  if (maxBytes === null) {
+    throw new ApiError(
+      'unsafe_content_type',
+      `Refused a non-media response type "${mime === '' ? 'unknown' : mime}".`,
+      response.status,
+    );
+  }
+  const declared = Number(response.headers.get('content-length') ?? 'nan');
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new ApiError(
+      'source_too_large',
+      `The server announced ${declared} bytes, above the ${String(maxBytes)} byte limit.`,
+      response.status,
+    );
+  }
+  const blob = await response.blob();
+  if (blob.size > maxBytes) {
+    throw new ApiError(
+      'source_too_large',
+      `The response was ${String(blob.size)} bytes, above the ${String(maxBytes)} byte limit.`,
+      response.status,
+    );
+  }
+  return { blob, mime, byteLength: blob.size };
 }
 
 export const api = {
@@ -688,8 +771,16 @@ export const api = {
       (data) => MediaProposalResultSchema.parse(data),
     ),
 
-  mediaSourceBytesUrl: (projectId: string, sourceId: string) =>
-    apiUrl(`/api/forge/projects/${projectId}/media/sources/${sourceId}/bytes`),
+  /**
+   * Fetch a source's bytes through this client (bearer header included when a
+   * token is stored) so playback and download work in both trust models. The
+   * returned blob is turned into a `blob:` object URL by the caller; no token
+   * ever appears in a URL.
+   */
+  mediaSourceBytes: (projectId: string, sourceId: string) =>
+    requestBytes(`/api/forge/projects/${projectId}/media/sources/${sourceId}/bytes`, {
+      method: 'GET',
+    }),
 
   // --- Visual references and SAM cutouts (Batch C) ------------------------
 
