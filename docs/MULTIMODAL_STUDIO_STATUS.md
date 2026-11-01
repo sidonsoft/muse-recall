@@ -1,7 +1,9 @@
 # Multimodal studio — status against the beta v0.1 plan
 
 **Written:** 2026-11-01
-**Commit under review:** `8148cf0` (`git status --porcelain` empty)
+**Commit gated:** named in §Verified at this commit, together with the build identity
+those runs proved. The checks were run against the production bundles rebuilt at that
+commit, with `git status --porcelain` empty.
 **Scope:** the five expansion batches in the multimodal studio plan (§4) plus the
 release gate (§5). The pre-expansion product (memory, chat, approval, rollback,
 research trials) is covered by the earlier phase docs; this file only records the
@@ -22,7 +24,7 @@ Status words mean exactly one thing here:
 | A — access, storage, recovery | built and verified offline | asset store, versioning, CSP-inline embedding, backup/restore drill (`pnpm media:drill`), provenance gate | see Batch B note on image calls |
 | B — Muse Image and integration | built and verified offline; **live image result outstanding** | media API/journey suites, `verify:media-journey`, embedded-asset verification in `verify:studio-workflow` | **none recorded in this tree** — `pnpm verify:media` reports `unconfigured (FORGE_MUSE_API_KEY is not set)` and exits 2 |
 | C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package, plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
-| D — voice and video | built and verified offline for access and playback; **transcription and clip observation built and fixture-verified, live result outstanding (harness now exists)** | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts` | transcript/clip understanding: **none recorded** |
+| D — voice and video | built and verified offline for access and playback; **transcription and clip observation built and fixture-verified, live result outstanding** — the live harness exists and, after review, was repaired to the point where it can reach a dispatch (see Corrections after review) | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts` | transcript/clip understanding: **none recorded** |
 | E — visual and decision-change review | built and verified offline, **live review quality outstanding** | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (18), `tests/integration/forge-batche-generations.test.ts` (6), `tests/unit/studio-batch-e.test.ts` (29) | **none recorded** — every Batch E gate uses a deterministic stub by design |
 
 ## What the live evidence actually shows
@@ -60,7 +62,7 @@ explicit go-ahead.
 | --- | --- | --- |
 | `muse-image-1.0` generate and edit | no live call recorded in this tree; embedding and CSP are proven only with fixture bytes | `pnpm verify:media` (server-side live check), `pnpm verify:media-live-smoke` (Studio journey incl. code and rollback) |
 | `muse-voice-transcribe-1.0` | transcript agreement and turn timing against real audio unproven | `pnpm verify:batchd-live-smoke` (default scope `audio`): speaks a known sentence with `say`, transcribes it once, and fails if the content words do not come back |
-| Video clip observation (`muse-spark-1.3` over an uploaded MP4) | no live clip observation recorded | `BATCHD_SMOKE_SCOPE=both pnpm verify:batchd-live-smoke` — one clip call over a generated red-frame/green-square clip; observations are reported for a human, never auto-accepted |
+| Video clip observation (the model `/api/meta` names as `media.video_model`, default `muse-spark-1.3`, over an uploaded MP4) | no live clip observation recorded | `BATCHD_SMOKE_SCOPE=both pnpm verify:batchd-live-smoke` — one clip call over a generated red-frame/green-square clip; the prompt now names that scene, so an empty observation reads as a model result rather than a mismatched request. Observations are reported for a human, never auto-accepted |
 | Screenshot review (`muse-spark-1.3`) | contract, refusal, and no-write behaviour are proven with a stub; whether the findings are *useful* is unmeasured | `verify:batche-review-ui` is offline by design; a live review needs its own authorized run |
 
 Documentation states these gaps rather than leaving them implied:
@@ -144,14 +146,58 @@ Still open before a beta cut, none of which is a code question I should answer a
    spends real quota and needs an explicit go-ahead.
 2. **Fresh-install demonstration** on each claimed environment with the browser,
    Node, and ffmpeg prerequisites written down; only this machine has been exercised.
-3. **Independent review of the last four commits** (`4aa1282` idempotency,
-   `7cf3e63` failure coverage, `5bed18b` status doc, `8148cf0` voice/video live
-   harness) — all of it is my own work and none of it has been reviewed by anyone
-   else. The coordinator reviews that covered earlier Batch E commits do not extend
-   to these.
+3. **Independent review of the newest commits.** A read-only review of
+   `4aa1282`, `7cf3e63`, `5bed18b` and `8148cf0` was carried out by a separate agent
+   (verdict: ship-with-fixes). Its findings are addressed in `e0cd2eb` and `8250b44`;
+   the review of those two fixes has not happened, and this line of work is otherwise
+   unreviewed by anyone else. Coordinator reviews of earlier Batch E commits do not
+   extend to any of it.
 4. **A release decision.** `main` still points at the known-working candidate. There
    is no tag, no beta branch, and no merge from this line; nothing here publishes
    anything.
+
+## Corrections made after that review
+
+The review found claims in this file and in the harness that were stronger than the
+evidence. Each was fixed rather than reworded:
+
+- **The voice/video live harness could not reach a provider call.** It read
+  `listener.address()` immediately after `listen(0, …)`; the address is null until the
+  socket is bound, so the run failed at port reservation. Reservation is now awaited,
+  exported, and covered by a test that reserves a port, binds a server to that exact
+  port, and observes readiness. A run that never reaches a dispatch no longer gets to
+  describe itself as "blocked by credentials".
+- **A missing local tool was reported as a failure, not a blocker.** Without `say`,
+  ffmpeg or ffprobe the harness died inside the fixture recipe. It now lists the
+  missing prerequisites and exits before any credential, port or dispatch; the
+  fixture-only check went from 2 to 4 assertions.
+- **Dispatch accounting could not say which call spent what.** Trace lines were matched
+  by path, but `/v1/responses` is shared by clip observation, vision and coding, so a
+  coding call inside a clip step would have passed as the clip's own dispatch. Each
+  operation now owns a slice of the trace.
+- **A reused Idempotency-Key could replay the wrong answer.** The route re-validated
+  the pinned decisions, but a valid key sent with a different frame, a different
+  decision at a different revision, or a different generation returned the stored
+  feedback unchanged. A replay is now checked against the subject it claims to answer,
+  and a mismatch is `idempotency_key_reused`.
+- **A paid-for answer could be lost by a bookkeeping write.** A throw from
+  `IdempotencyStore.record()` escaped after the provider had answered: the client got
+  an internal error and the evidence went to the log. The write is now non-fatal.
+- **`AppDependencies.idempotency` did nothing.** The option was neither declared nor
+  read, so a supplied store was silently discarded; a failing store could not be
+  observed at all.
+- **A quota refusal looked like a bad request.** HTTP 429 mapped to `invalid_request`,
+  which would have told the operator to fix a correct request; the exact
+  "Subscription quota exhausted" error this project already hit would have read that
+  way. It maps to `provider_auth_failed`, still terminal under zero retries.
+- **The clip prompt did not name the clip.** The prompt asked generically while the
+  recipe renders a red frame with a green square crossing it, so an empty observation
+  was ambiguous. The prompt and the recipe are now checked against each other.
+- **The contract understated which models were configured.** `/api/meta` already sent
+  `transcribe_model` and `video_model`, but `ServiceMetaSchema` did not declare them,
+  so typed clients could not see them and validation stripped them. They are in the
+  contract now, and the live harness refuses to run against a server that cannot name
+  all five media models.
 
 ## Known limits to keep honest
 
