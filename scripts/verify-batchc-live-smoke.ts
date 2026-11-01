@@ -37,6 +37,13 @@
  * Resume without spending another vision call (reuses retained drafts):
  *   BATCHC_SMOKE_RESUME_FROM=test-results/batchc-live/<stamp> FORGE_MUSE_API_KEY=... \
  *     FORGE_MUSE_BIN=$(which muse) pnpm exec tsx scripts/verify-batchc-live-smoke.ts
+ * Cutout continuation (no new SAM or vision call; reuses a retained cutout):
+ *   BATCHC_SMOKE_RESUME_CUTOUT=test-results/batchc-live/<stamp> FORGE_MUSE_API_KEY=... \
+ *     FORGE_MUSE_BIN=$(which muse) pnpm exec tsx scripts/verify-batchc-live-smoke.ts
+ *   The retained cutout.png bytes (sha-verified against the retained
+ *   report) are uploaded as a new asset and approved/Insert/coded through
+ *   the normal UI flow. Bytes, box, and concept are labeled retained live
+ *   output from the cited run — never a fresh SAM or vision result.
  *
  * Build provenance (fail-closed, runs before any provider I/O): the
  * script hashes the exact production inputs (sources, entry HTML, CSS,
@@ -77,6 +84,7 @@ import {
   readMediaTrace,
   shouldStopAfterVisionOnly,
 } from './lib/media-trace.js';
+import { loadRetainedCutout, type RetainedCutout } from './lib/retained-cutout.js';
 import {
   loadRetainedVisionEvidence,
   type RetainedVisionEvidence,
@@ -386,9 +394,14 @@ async function main(): Promise<void> {
     `production builds match the tested source (server ${provenance.server.buildHash.slice(0, 12)}…, web ${provenance.web.buildHash.slice(0, 12)}…; commit ${provenance.commit.slice(0, 12)})`,
   );
   const resumeDir = process.env.BATCHC_SMOKE_RESUME_FROM?.trim() ?? '';
+  const resumeCutoutDir = process.env.BATCHC_SMOKE_RESUME_CUTOUT?.trim() ?? '';
   let retained: RetainedVisionEvidence | null = null;
-  if (process.env.BATCHC_SMOKE_VISION_ONLY === '1' && resumeDir) {
-    fail('BATCHC_SMOKE_VISION_ONLY and BATCHC_SMOKE_RESUME_FROM are mutually exclusive');
+  let retainedCutout: RetainedCutout | null = null;
+  if (process.env.BATCHC_SMOKE_VISION_ONLY === '1' && (resumeDir || resumeCutoutDir)) {
+    fail('BATCHC_SMOKE_VISION_ONLY is mutually exclusive with resume modes');
+  }
+  if (resumeDir && resumeCutoutDir) {
+    fail('BATCHC_SMOKE_RESUME_FROM and BATCHC_SMOKE_RESUME_CUTOUT are mutually exclusive');
   }
   if (resumeDir) {
     // Fail fast before any browser/server cost: a resumed run is only valid
@@ -399,6 +412,15 @@ async function main(): Promise<void> {
     observations.scope =
       'resume: reuses retained vision drafts without a new vision call; SAM/coding per explicit scope';
     observations.resumedFrom = resumeDir;
+  }
+  if (resumeCutoutDir) {
+    // Fail fast before any browser/server cost: the continuation needs a
+    // sha-verified retained cutout from a completed SAM run.
+    retainedCutout = loadRetainedCutout(resumeCutoutDir);
+    runScope = 'resume-cutout';
+    observations.scope =
+      'resume-cutout: uploads a retained SAM cutout with no new SAM or vision call; approve/Insert/coding per explicit scope';
+    observations.resumedFromCutout = resumeCutoutDir;
   }
   mkdirSync(EVIDENCE, { recursive: true });
 
@@ -470,7 +492,11 @@ async function main(): Promise<void> {
     // used for every model/attempt claim below instead of hard-coded labels.
     // Fails fast if the server does not honor the zero-retry budget.
     const meta = JSON.parse((await api(apiBase, 'GET', '/api/meta')).text).data as {
-      forge?: { configured_model?: string | null; observed_model?: string | null };
+      forge?: {
+        configured_model?: string | null;
+        observed_model?: string | null;
+        cli_available?: boolean;
+      };
       media?: {
         image_model?: string;
         sam_model?: string;
@@ -499,6 +525,9 @@ async function main(): Promise<void> {
     );
     observations.effectiveConfig = {
       forge_configured_model: meta.forge?.configured_model ?? null,
+      // The Generate button is disabled while no CLI is available; record
+      // it so a disabled-button stall is diagnosable from the report.
+      forge_cli_available: meta.forge?.cli_available ?? null,
       media: meta.media ?? null,
     };
     if (meta.media?.max_retries !== 0) {
@@ -604,339 +633,413 @@ async function main(): Promise<void> {
     const assetImage = page.locator(`img[src*="${uploaded.asset_id}"]`).first();
     await assetImage.waitFor({ timeout: 20_000 });
 
-    // ---- 1. vision drafts -> propose -> accept (live suggest, or retained on resume) ----
-    // Resume reuses retained drafts byte-for-byte with no new vision call and
-    // proposes the edited draft via API; the Memory accept flow below stays
-    // UI-driven in both scopes.
-    if (calls.vision !== 0) fail('vision call budget exhausted');
-    let suggestData: {
-      suggestions: Array<{ type: string; content: string; confidence: number }>;
-      asset_id: string;
-      version: number;
-      provider_attempts?: number;
-    };
-    let editedContent: string;
-    if (!resumeDir) {
-      const assetRow = page
-        .locator('li', { has: page.locator(`img[src*="${uploaded.asset_id}"]`) })
-        .first();
-      await assetRow.getByTitle('Suggest decisions or extract a cutout from this version').click();
-      await page.getByTitle('Suggest project decisions from this image').click();
-      await fillStable(page, 'Suggestion guidance', 'visual style, palette and layout');
-      calls.vision += 1;
-      const [suggestResponse] = await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.url().includes('/media/suggest') && response.request().method() === 'POST',
-          { timeout: LONG },
-        ),
-        page.getByRole('button', { name: 'Suggest', exact: true }).click(),
-      ]);
-      const suggestBody = await suggestResponse.text();
-      let suggestEnvelope: { ok?: boolean; data?: unknown; error?: unknown } | null = null;
-      try {
-        suggestEnvelope = JSON.parse(suggestBody) as {
-          ok?: boolean;
-          data?: unknown;
-          error?: unknown;
-        };
-      } catch {
-        suggestEnvelope = null;
-      }
-      if (
-        !suggestResponse.ok() ||
-        suggestEnvelope?.ok !== true ||
-        suggestEnvelope.data === undefined
-      ) {
-        await captureHttpFailure('vision', suggestResponse, '01-vision-failure.png');
-      }
-      suggestData = suggestEnvelope.data as {
+    // Cutout continuation skips vision/propose/accept/SAM entirely: the
+    // retained cutout bytes are uploaded below with no model dispatch.
+    let cutoutRecord:
+      | {
+          asset_id: string;
+          version: number;
+          sha256?: string;
+          parent?: unknown;
+          source?: unknown;
+          model?: unknown;
+        }
+      | undefined;
+    if (!resumeCutoutDir) {
+      // ---- 1. vision drafts -> propose -> accept (live suggest, or retained on resume) ----
+      // Resume reuses retained drafts byte-for-byte with no new vision call and
+      // proposes the edited draft via API; the Memory accept flow below stays
+      // UI-driven in both scopes.
+      if (calls.vision !== 0) fail('vision call budget exhausted');
+      let suggestData: {
         suggestions: Array<{ type: string; content: string; confidence: number }>;
         asset_id: string;
         version: number;
         provider_attempts?: number;
       };
-      if (suggestData.provider_attempts !== 1) {
+      let editedContent: string;
+      if (!resumeDir) {
+        const assetRow = page
+          .locator('li', { has: page.locator(`img[src*="${uploaded.asset_id}"]`) })
+          .first();
+        await assetRow
+          .getByTitle('Suggest decisions or extract a cutout from this version')
+          .click();
+        await page.getByTitle('Suggest project decisions from this image').click();
+        await fillStable(page, 'Suggestion guidance', 'visual style, palette and layout');
+        calls.vision += 1;
+        const [suggestResponse] = await Promise.all([
+          page.waitForResponse(
+            (response) =>
+              response.url().includes('/media/suggest') && response.request().method() === 'POST',
+            { timeout: LONG },
+          ),
+          page.getByRole('button', { name: 'Suggest', exact: true }).click(),
+        ]);
+        const suggestBody = await suggestResponse.text();
+        let suggestEnvelope: { ok?: boolean; data?: unknown; error?: unknown } | null = null;
+        try {
+          suggestEnvelope = JSON.parse(suggestBody) as {
+            ok?: boolean;
+            data?: unknown;
+            error?: unknown;
+          };
+        } catch {
+          suggestEnvelope = null;
+        }
+        if (
+          !suggestResponse.ok() ||
+          suggestEnvelope?.ok !== true ||
+          suggestEnvelope.data === undefined
+        ) {
+          await captureHttpFailure('vision', suggestResponse, '01-vision-failure.png');
+        }
+        suggestData = suggestEnvelope.data as {
+          suggestions: Array<{ type: string; content: string; confidence: number }>;
+          asset_id: string;
+          version: number;
+          provider_attempts?: number;
+        };
+        if (suggestData.provider_attempts !== 1) {
+          fail(
+            `vision response provider_attempts=${String(suggestData.provider_attempts)}; expected 1`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        const traceEntries = readMediaTrace(SERVER_LOG);
+        const visionAttempts = countModelAttempts(traceEntries, 'muse-spark');
+        observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
+        observations.visionProviderAttempts = visionAttempts;
+        observations.providerAttempts = {
+          ...(observations.providerAttempts as Record<string, number> | undefined),
+          vision: visionAttempts,
+        };
+        try {
+          assertSingleProviderAttempt({
+            capability: 'vision',
+            responseAttempts: suggestData.provider_attempts,
+            traceAttempts: visionAttempts,
+          });
+        } catch (error) {
+          fail(error instanceof Error ? error.message : String(error));
+        }
+        observations.visionProviderAttempts = 1;
+        observations.visionResponse = {
+          asset_id: suggestData.asset_id,
+          version: suggestData.version,
+          suggestions: suggestData.suggestions,
+        };
+        if (suggestData.suggestions.length === 0)
+          fail('vision returned no suggestions (unusable; stopping, no retry)');
+        await page.getByLabel('Suggestion content').first().waitFor({ timeout: 20_000 });
+        check(
+          `live vision returned ${suggestData.suggestions.length} editable draft(s) (one call)`,
+        );
+        if (shouldStopAfterVisionOnly(visionOnly, calls)) {
+          runScope = 'vision-only';
+          observations.scope =
+            'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
+          await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+          check('vision-only scope complete; SAM/coding paused');
+          console.log(`\nlive Batch C smoke (vision-only): PASS (${checks.length} checks)`);
+          console.log(
+            `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,
+          );
+          return;
+        }
+
+        const first = suggestData.suggestions[0];
+        if (!first) fail('vision returned a draft list with no first element');
+        editedContent = `${first.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
+        await page.getByLabel('Suggestion content').first().fill(editedContent);
+        await page.getByRole('button', { name: 'Propose to memory', exact: true }).first().click();
+        await page.getByText('Proposed to memory', { exact: false }).waitFor({ timeout: 20_000 });
+        check('edited draft proposed to memory (draft still requires explicit acceptance)');
+        if (suggestData.suggestions.length > 1) {
+          await page.getByRole('button', { name: 'dismiss', exact: true }).last().click();
+          check('dismissed one draft at the reference panel (never proposed)');
+        }
+        mediaResponses.suggest = mediaResponses.suggest ?? [];
+        await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+      } else {
+        // Resume: reuse retained drafts byte-for-byte with no new vision call.
+        // The edited draft is proposed via API; acceptance below stays UI-driven.
+        if (!retained) fail('resume requested without retained vision evidence');
+        if ((mediaResponses.suggest ?? []).length !== 0) {
+          fail('resume scope produced a vision request; exactly zero are allowed');
+        }
+        const retainedSha = sha256(imageBytes);
+        if (retained.referenceSha256 !== null && retained.referenceSha256 !== retainedSha) {
+          fail('reference image bytes differ from the retained vision evidence');
+        }
+        suggestData = {
+          suggestions: retained.suggestions,
+          asset_id: uploaded.asset_id,
+          version: uploaded.version,
+        };
+        observations.visionResponse = {
+          asset_id: uploaded.asset_id,
+          version: uploaded.version,
+          suggestions: retained.suggestions,
+          resumedFrom: resumeDir,
+          resumedDraftSha256: sha256(JSON.stringify(retained.suggestions)),
+          referenceImageSha256: retainedSha,
+        };
+        observations.providerAttempts = {
+          ...(observations.providerAttempts as Record<string, number> | undefined),
+          vision: 0,
+        };
+        observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
+        check(`reused ${retained.suggestions.length} retained vision draft(s); no new vision call`);
+        const retainedFirst = suggestData.suggestions[0];
+        if (!retainedFirst) fail('retained drafts list has no first element');
+        editedContent = `${retainedFirst.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
+        const retainedProposed = dataOf(
+          await api(apiBase, 'POST', '/api/memories/proposals', {
+            type: retainedFirst.type,
+            scope: 'project',
+            project_id: PROJECT,
+            content: editedContent,
+            source: {
+              session_id: null,
+              reference: `muse-asset://${uploaded.asset_id}/v${uploaded.version}`,
+            },
+            confidence: retainedFirst.confidence,
+            validation_status: 'unverified',
+          }),
+          'propose retained draft',
+        ) as { memory?: { id?: string } };
+        if (!retainedProposed.memory?.id) fail('retained draft proposal returned no memory id');
+        check('edited draft proposed to memory via API (draft still requires explicit acceptance)');
+        await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+      }
+
+      // explicit acceptance in Memory review (real UI)
+      const proposedList = JSON.parse(
+        (await api(apiBase, 'GET', `/api/memories?project_id=${PROJECT}&status=proposed&limit=50`))
+          .text,
+      ).data.items as Array<{ id: string; content: string; source: { reference: string | null } }>;
+      const proposal =
+        proposedList.find((entry) => entry.content.includes('reviewer edit')) ?? proposedList[0];
+      if (!proposal) fail('proposed memory not found');
+      await page.getByRole('button', { name: 'Memory', exact: true }).click();
+      // Filter to proposals first: row buttons carry content text, not a
+      // content-derived accessible name, so name-matching cannot find them.
+      await page.getByLabel('Filter by status').waitFor({ timeout: 20_000 });
+      await page.getByLabel('Filter by status').selectOption('proposed');
+      await page
+        .getByRole('button')
+        .filter({ hasText: editedContent.slice(0, 60) })
+        .first()
+        .click();
+      await page.getByText('Agent proposal', { exact: false }).waitFor({ timeout: 20_000 });
+      const memoryDetail = page.getByRole('region', { name: 'Memory detail' });
+      await memoryDetail.waitFor({ timeout: 10_000 });
+      await page.screenshot({ path: join(EVIDENCE, '02-memory-proposal.png'), fullPage: false });
+      await memoryDetail.getByRole('button', { name: 'Accept proposal', exact: true }).click();
+      await page.getByText('Proposal accepted', { exact: false }).waitFor({ timeout: 20_000 });
+      const accepted = JSON.parse((await api(apiBase, 'GET', `/api/memories/${proposal.id}`)).text)
+        .data.memory as { status: string; source: { reference: string | null }; content: string };
+      const expectedReference = `muse-asset://${uploaded.asset_id}/v${uploaded.version}`;
+      if (accepted.status !== 'active') fail(`accepted memory status is ${accepted.status}`);
+      if (accepted.source.reference !== expectedReference)
+        fail(`source reference ${accepted.source.reference} != ${expectedReference}`);
+      check(`accepted proposal is active with source-version link ${expectedReference}`);
+      // ---- 2. live SAM -> inspect/select match -> save cutout -----------------
+      await page.getByRole('button', { name: 'HTML Studio', exact: true }).click();
+      await page.getByRole('region', { name: 'Media assets' }).waitFor({ timeout: 20_000 });
+      const assetRow2 = page
+        .locator('li', { has: page.locator(`img[src*="${uploaded.asset_id}"]`) })
+        .first();
+      await assetRow2.getByTitle('Suggest decisions or extract a cutout from this version').click();
+      await page.getByTitle('Extract an object cutout with SAM').click();
+      const samConcept =
+        process.env.BATCHC_SMOKE_SAM_CONCEPT?.trim() || 'green rounded memory game card';
+      observations.samConcept = samConcept;
+      await fillStable(page, 'Segmentation concept', samConcept);
+      if (calls.sam !== 0) fail('SAM call budget exhausted');
+      calls.sam += 1;
+      const [segmentResponse] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/media/segment') && response.request().method() === 'POST',
+          { timeout: LONG },
+        ),
+        page.getByRole('button', { name: 'Segment', exact: true }).click(),
+      ]);
+      const segmentBody = await segmentResponse.text();
+      const segmentEnvelope = JSON.parse(segmentBody) as {
+        ok?: boolean;
+        data?: unknown;
+        error?: { code?: unknown; message?: unknown; details?: unknown };
+      };
+      if (
+        !segmentResponse.ok() ||
+        segmentEnvelope.ok !== true ||
+        segmentEnvelope.data === undefined
+      ) {
+        // Bounded provider evidence survives in the error envelope details
+        // (dispatch count plus stream bytes/events/hash when available).
+        observations.samError = {
+          http_status: segmentResponse.status(),
+          body: segmentBody.slice(0, 500),
+          details:
+            segmentEnvelope.error !== null &&
+            typeof segmentEnvelope.error === 'object' &&
+            (segmentEnvelope.error as { details?: unknown }).details !== undefined
+              ? (segmentEnvelope.error as { details?: unknown }).details
+              : null,
+        };
+        await page
+          .screenshot({ path: join(EVIDENCE, '03-sam-failure.png'), fullPage: false })
+          .catch(() => undefined);
         fail(
-          `vision response provider_attempts=${String(suggestData.provider_attempts)}; expected 1`,
+          `live SAM request failed (HTTP ${segmentResponse.status()}): ${segmentBody.slice(0, 300)}`,
         );
       }
+      const segmentData = segmentEnvelope.data as {
+        provider_attempts?: number;
+        stream_events?: number;
+        stream_bytes?: number;
+        response_sha256?: string;
+        delta_events?: number;
+        ignored_events?: number;
+        segment_id: string;
+        matches: Array<{
+          match_index: number;
+          box: { x1: number; y1: number; x2: number; y2: number };
+          preview_data_url: string;
+          confidence?: number;
+        }>;
+      };
       await new Promise((resolve) => setTimeout(resolve, 350));
-      const traceEntries = readMediaTrace(SERVER_LOG);
-      const visionAttempts = countModelAttempts(traceEntries, 'muse-spark');
-      observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
-      observations.visionProviderAttempts = visionAttempts;
+      const samAttempts = countModelAttempts(readMediaTrace(SERVER_LOG), 'sam-');
+      observations.requestedSamModel = effectiveMeta.media?.sam_model ?? null;
+      observations.samProviderAttempts = samAttempts;
       observations.providerAttempts = {
         ...(observations.providerAttempts as Record<string, number> | undefined),
-        vision: visionAttempts,
+        sam: samAttempts,
       };
       try {
         assertSingleProviderAttempt({
-          capability: 'vision',
-          responseAttempts: suggestData.provider_attempts,
-          traceAttempts: visionAttempts,
+          capability: 'SAM',
+          responseAttempts: segmentData.provider_attempts,
+          traceAttempts: samAttempts,
         });
       } catch (error) {
         fail(error instanceof Error ? error.message : String(error));
       }
-      observations.visionProviderAttempts = 1;
-      observations.visionResponse = {
-        asset_id: suggestData.asset_id,
-        version: suggestData.version,
-        suggestions: suggestData.suggestions,
+      observations.segment = {
+        segment_id: segmentData.segment_id,
+        matches: segmentData.matches.map((m) => ({
+          match_index: m.match_index,
+          box: m.box,
+          confidence: m.confidence,
+        })),
+        // Bounded streaming evidence preserved from the API response.
+        stream_events: segmentData.stream_events ?? null,
+        stream_bytes: segmentData.stream_bytes ?? null,
+        response_sha256: segmentData.response_sha256 ?? null,
+        delta_events: segmentData.delta_events ?? null,
+        ignored_events: segmentData.ignored_events ?? null,
       };
-      if (suggestData.suggestions.length === 0)
-        fail('vision returned no suggestions (unusable; stopping, no retry)');
-      await page.getByLabel('Suggestion content').first().waitFor({ timeout: 20_000 });
-      check(`live vision returned ${suggestData.suggestions.length} editable draft(s) (one call)`);
-      if (shouldStopAfterVisionOnly(visionOnly, calls)) {
-        runScope = 'vision-only';
-        observations.scope =
-          'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
-        await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
-        check('vision-only scope complete; SAM/coding paused');
-        console.log(`\nlive Batch C smoke (vision-only): PASS (${checks.length} checks)`);
-        console.log(
-          `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,
+      if (segmentData.matches.length === 0) {
+        observations.samEmpty = { concept: samConcept, segment_id: segmentData.segment_id };
+        await page
+          .screenshot({ path: join(EVIDENCE, '03-sam-zero-matches.png'), fullPage: false })
+          .catch(() => undefined);
+        fail(
+          `SAM returned zero matches for concept ${JSON.stringify(samConcept)} (valid empty lane; unusable for acceptance; stopping, no retry)`,
         );
-        return;
       }
-
-      const first = suggestData.suggestions[0];
-      if (!first) fail('vision returned a draft list with no first element');
-      editedContent = `${first.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
-      await page.getByLabel('Suggestion content').first().fill(editedContent);
-      await page.getByRole('button', { name: 'Propose to memory', exact: true }).first().click();
-      await page.getByText('Proposed to memory', { exact: false }).waitFor({ timeout: 20_000 });
-      check('edited draft proposed to memory (draft still requires explicit acceptance)');
-      if (suggestData.suggestions.length > 1) {
-        await page.getByRole('button', { name: 'dismiss', exact: true }).last().click();
-        check('dismissed one draft at the reference panel (never proposed)');
+      await page.getByRole('button', { name: /Match 0 preview/ }).waitFor({ timeout: 20_000 });
+      check(`live SAM returned ${segmentData.matches.length} match(es) with previews (one call)`);
+      for (const match of segmentData.matches) {
+        const b64 = match.preview_data_url.split(',')[1] ?? '';
+        writeFileSync(
+          join(EVIDENCE, `overlay-match-${match.match_index}.png`),
+          Buffer.from(b64, 'base64'),
+        );
       }
-      mediaResponses.suggest = mediaResponses.suggest ?? [];
-      await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
+      await page.screenshot({ path: join(EVIDENCE, '03-sam-overlays.png'), fullPage: false });
+      const chosen = segmentData.matches.length > 1 ? 1 : 0;
+      await page.getByRole('button', { name: new RegExp(`Match ${chosen} preview`) }).click();
+      await page
+        .getByRole('button', { name: new RegExp(`Save cutout of match ${chosen}`) })
+        .click();
+      await page
+        .getByText('Cutout saved as a new candidate asset', { exact: false })
+        .waitFor({ timeout: 30_000 });
+      cutoutRecord = (mediaResponses.cutout ?? []).at(-1) as
+        | {
+            asset_id: string;
+            version: number;
+            parent?: unknown;
+            source?: unknown;
+            sha256?: string;
+            model?: unknown;
+          }
+        | undefined;
+      if (!cutoutRecord) fail('cutout response was not captured');
+      observations.cutout = cutoutRecord;
+      check(
+        `saved cutout of match ${chosen} as asset ${cutoutRecord.asset_id.slice(0, 8)} v${cutoutRecord.version}`,
+      );
     } else {
-      // Resume: reuse retained drafts byte-for-byte with no new vision call.
-      // The edited draft is proposed via API; acceptance below stays UI-driven.
-      if (!retained) fail('resume requested without retained vision evidence');
-      if ((mediaResponses.suggest ?? []).length !== 0) {
-        fail('resume scope produced a vision request; exactly zero are allowed');
-      }
-      const retainedSha = sha256(imageBytes);
-      if (retained.referenceSha256 !== null && retained.referenceSha256 !== retainedSha) {
-        fail('reference image bytes differ from the retained vision evidence');
-      }
-      suggestData = {
-        suggestions: retained.suggestions,
-        asset_id: uploaded.asset_id,
-        version: uploaded.version,
-      };
-      observations.visionResponse = {
-        asset_id: uploaded.asset_id,
-        version: uploaded.version,
-        suggestions: retained.suggestions,
-        resumedFrom: resumeDir,
-        resumedDraftSha256: sha256(JSON.stringify(retained.suggestions)),
-        referenceImageSha256: retainedSha,
-      };
-      observations.providerAttempts = {
-        ...(observations.providerAttempts as Record<string, number> | undefined),
-        vision: 0,
-      };
-      observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
-      check(`reused ${retained.suggestions.length} retained vision draft(s); no new vision call`);
-      const retainedFirst = suggestData.suggestions[0];
-      if (!retainedFirst) fail('retained drafts list has no first element');
-      editedContent = `${retainedFirst.content} (reviewer edit: acceptance smoke)`.slice(0, 500);
-      const retainedProposed = dataOf(
-        await api(apiBase, 'POST', '/api/memories/proposals', {
-          type: retainedFirst.type,
-          scope: 'project',
-          project_id: PROJECT,
-          content: editedContent,
-          source: {
-            session_id: null,
-            reference: `muse-asset://${uploaded.asset_id}/v${uploaded.version}`,
-          },
-          confidence: retainedFirst.confidence,
-          validation_status: 'unverified',
+      // Resume-cutout: upload the retained SAM cutout bytes as a new asset
+      // and approve it through the normal UI flow below. Bytes, box, and
+      // concept are retained live output from the cited run — labeled as
+      // such, never a fresh SAM or vision result.
+      if (!retainedCutout) fail('cutout continuation requested without retained cutout bytes');
+      if (calls.sam !== 0 || calls.vision !== 0)
+        fail('cutout continuation call budget must start at zero');
+      const uploadedRefSha = sha256(imageBytes);
+      if (uploadedRefSha !== retainedCutout.referenceSha256)
+        fail('reference image bytes differ from the retained cutout evidence');
+      observations.samConcept = `${retainedCutout.concept} (retained; no new dispatch)`;
+      observations.samEmpty = null;
+      const cutoutUploaded = dataOf(
+        await api(apiBase, 'POST', `/api/forge/projects/${PROJECT}/media/upload`, {
+          mime: 'image/png',
+          data_base64: retainedCutout.bytes.toString('base64'),
+          source_text: `retained live SAM cutout from ${resumeCutoutDir} (no new SAM dispatch)`,
         }),
-        'propose retained draft',
-      ) as { memory?: { id?: string } };
-      if (!retainedProposed.memory?.id) fail('retained draft proposal returned no memory id');
-      check('edited draft proposed to memory via API (draft still requires explicit acceptance)');
-      await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
-    }
-
-    // explicit acceptance in Memory review (real UI)
-    const proposedList = JSON.parse(
-      (await api(apiBase, 'GET', `/api/memories?project_id=${PROJECT}&status=proposed&limit=50`))
-        .text,
-    ).data.items as Array<{ id: string; content: string; source: { reference: string | null } }>;
-    const proposal =
-      proposedList.find((entry) => entry.content.includes('reviewer edit')) ?? proposedList[0];
-    if (!proposal) fail('proposed memory not found');
-    await page.getByRole('button', { name: 'Memory', exact: true }).click();
-    // Filter to proposals first: row buttons carry content text, not a
-    // content-derived accessible name, so name-matching cannot find them.
-    await page.getByLabel('Filter by status').waitFor({ timeout: 20_000 });
-    await page.getByLabel('Filter by status').selectOption('proposed');
-    await page
-      .getByRole('button')
-      .filter({ hasText: editedContent.slice(0, 60) })
-      .first()
-      .click();
-    await page.getByText('Agent proposal', { exact: false }).waitFor({ timeout: 20_000 });
-    const memoryDetail = page.getByRole('region', { name: 'Memory detail' });
-    await memoryDetail.waitFor({ timeout: 10_000 });
-    await page.screenshot({ path: join(EVIDENCE, '02-memory-proposal.png'), fullPage: false });
-    await memoryDetail.getByRole('button', { name: 'Accept proposal', exact: true }).click();
-    await page.getByText('Proposal accepted', { exact: false }).waitFor({ timeout: 20_000 });
-    const accepted = JSON.parse((await api(apiBase, 'GET', `/api/memories/${proposal.id}`)).text)
-      .data.memory as { status: string; source: { reference: string | null }; content: string };
-    const expectedReference = `muse-asset://${uploaded.asset_id}/v${uploaded.version}`;
-    if (accepted.status !== 'active') fail(`accepted memory status is ${accepted.status}`);
-    if (accepted.source.reference !== expectedReference)
-      fail(`source reference ${accepted.source.reference} != ${expectedReference}`);
-    check(`accepted proposal is active with source-version link ${expectedReference}`);
-    // ---- 2. live SAM -> inspect/select match -> save cutout -----------------
-    await page.getByRole('button', { name: 'HTML Studio', exact: true }).click();
-    await page.getByRole('region', { name: 'Media assets' }).waitFor({ timeout: 20_000 });
-    const assetRow2 = page
-      .locator('li', { has: page.locator(`img[src*="${uploaded.asset_id}"]`) })
-      .first();
-    await assetRow2.getByTitle('Suggest decisions or extract a cutout from this version').click();
-    await page.getByTitle('Extract an object cutout with SAM').click();
-    const samConcept =
-      process.env.BATCHC_SMOKE_SAM_CONCEPT?.trim() || 'green rounded memory game card';
-    observations.samConcept = samConcept;
-    await fillStable(page, 'Segmentation concept', samConcept);
-    if (calls.sam !== 0) fail('SAM call budget exhausted');
-    calls.sam += 1;
-    const [segmentResponse] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('/media/segment') && response.request().method() === 'POST',
-        { timeout: LONG },
-      ),
-      page.getByRole('button', { name: 'Segment', exact: true }).click(),
-    ]);
-    const segmentBody = await segmentResponse.text();
-    const segmentEnvelope = JSON.parse(segmentBody) as {
-      ok?: boolean;
-      data?: unknown;
-      error?: { code?: unknown; message?: unknown; details?: unknown };
-    };
-    if (
-      !segmentResponse.ok() ||
-      segmentEnvelope.ok !== true ||
-      segmentEnvelope.data === undefined
-    ) {
-      // Bounded provider evidence survives in the error envelope details
-      // (dispatch count plus stream bytes/events/hash when available).
-      observations.samError = {
-        http_status: segmentResponse.status(),
-        body: segmentBody.slice(0, 500),
-        details:
-          segmentEnvelope.error !== null &&
-          typeof segmentEnvelope.error === 'object' &&
-          (segmentEnvelope.error as { details?: unknown }).details !== undefined
-            ? (segmentEnvelope.error as { details?: unknown }).details
-            : null,
+        'upload retained cutout',
+      ) as { asset_id: string; version: number };
+      cutoutRecord = {
+        asset_id: cutoutUploaded.asset_id,
+        version: cutoutUploaded.version,
       };
+      observations.cutoutSource = {
+        reusedFrom: resumeCutoutDir,
+        originalSegmentId: retainedCutout.segmentId,
+        retainedSha256: retainedCutout.sha256,
+        retainedBytes: retainedCutout.bytes.length,
+        concept: retainedCutout.concept,
+        box: retainedCutout.box,
+        maskWidth: retainedCutout.maskWidth,
+        maskHeight: retainedCutout.maskHeight,
+        referenceSha256: retainedCutout.referenceSha256,
+        note: 'retained live SAM output; no new SAM or vision dispatch in this run',
+      };
+      observations.providerAttempts = { vision: 0, sam: 0 };
+      observations.requestedVisionModel = effectiveMeta.media?.vision_model ?? null;
+      observations.requestedSamModel = effectiveMeta.media?.sam_model ?? null;
+      observations.cutout = {
+        ...cutoutRecord,
+        retainedFrom: resumeCutoutDir,
+        originalSegmentId: retainedCutout.segmentId,
+      };
+      check(
+        `uploaded retained cutout as asset ${cutoutRecord.asset_id.slice(0, 8)} v${cutoutRecord.version} (no new SAM call)`,
+      );
+      await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
       await page
-        .screenshot({ path: join(EVIDENCE, '03-sam-failure.png'), fullPage: false })
-        .catch(() => undefined);
-      fail(
-        `live SAM request failed (HTTP ${segmentResponse.status()}): ${segmentBody.slice(0, 300)}`,
-      );
+        .locator(`img[src*="${cutoutRecord.asset_id}"]`)
+        .first()
+        .waitFor({ timeout: 20_000 });
     }
-    const segmentData = segmentEnvelope.data as {
-      provider_attempts?: number;
-      stream_events?: number;
-      stream_bytes?: number;
-      response_sha256?: string;
-      delta_events?: number;
-      ignored_events?: number;
-      segment_id: string;
-      matches: Array<{
-        match_index: number;
-        box: { x1: number; y1: number; x2: number; y2: number };
-        preview_data_url: string;
-        confidence?: number;
-      }>;
-    };
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    const samAttempts = countModelAttempts(readMediaTrace(SERVER_LOG), 'sam-');
-    observations.requestedSamModel = effectiveMeta.media?.sam_model ?? null;
-    observations.samProviderAttempts = samAttempts;
-    observations.providerAttempts = {
-      ...(observations.providerAttempts as Record<string, number> | undefined),
-      sam: samAttempts,
-    };
-    try {
-      assertSingleProviderAttempt({
-        capability: 'SAM',
-        responseAttempts: segmentData.provider_attempts,
-        traceAttempts: samAttempts,
-      });
-    } catch (error) {
-      fail(error instanceof Error ? error.message : String(error));
-    }
-    observations.segment = {
-      segment_id: segmentData.segment_id,
-      matches: segmentData.matches.map((m) => ({
-        match_index: m.match_index,
-        box: m.box,
-        confidence: m.confidence,
-      })),
-      // Bounded streaming evidence preserved from the API response.
-      stream_events: segmentData.stream_events ?? null,
-      stream_bytes: segmentData.stream_bytes ?? null,
-      response_sha256: segmentData.response_sha256 ?? null,
-      delta_events: segmentData.delta_events ?? null,
-      ignored_events: segmentData.ignored_events ?? null,
-    };
-    if (segmentData.matches.length === 0) {
-      observations.samEmpty = { concept: samConcept, segment_id: segmentData.segment_id };
-      await page
-        .screenshot({ path: join(EVIDENCE, '03-sam-zero-matches.png'), fullPage: false })
-        .catch(() => undefined);
-      fail(
-        `SAM returned zero matches for concept ${JSON.stringify(samConcept)} (valid empty lane; unusable for acceptance; stopping, no retry)`,
-      );
-    }
-    await page.getByRole('button', { name: /Match 0 preview/ }).waitFor({ timeout: 20_000 });
-    check(`live SAM returned ${segmentData.matches.length} match(es) with previews (one call)`);
-    for (const match of segmentData.matches) {
-      const b64 = match.preview_data_url.split(',')[1] ?? '';
-      writeFileSync(
-        join(EVIDENCE, `overlay-match-${match.match_index}.png`),
-        Buffer.from(b64, 'base64'),
-      );
-    }
-    await page.screenshot({ path: join(EVIDENCE, '03-sam-overlays.png'), fullPage: false });
-    const chosen = segmentData.matches.length > 1 ? 1 : 0;
-    await page.getByRole('button', { name: new RegExp(`Match ${chosen} preview`) }).click();
-    await page.getByRole('button', { name: new RegExp(`Save cutout of match ${chosen}`) }).click();
-    await page
-      .getByText('Cutout saved as a new candidate asset', { exact: false })
-      .waitFor({ timeout: 30_000 });
-    const cutoutRecord = (mediaResponses.cutout ?? []).at(-1) as
-      | {
-          asset_id: string;
-          version: number;
-          parent?: unknown;
-          source?: unknown;
-          sha256?: string;
-          model?: unknown;
-        }
-      | undefined;
-    if (!cutoutRecord) fail('cutout response was not captured');
-    observations.cutout = cutoutRecord;
-    check(
-      `saved cutout of match ${chosen} as asset ${cutoutRecord.asset_id.slice(0, 8)} v${cutoutRecord.version}`,
-    );
+    if (!cutoutRecord) fail('no cutout asset available');
 
     const cutoutBytes = (
       await api(
@@ -947,6 +1050,11 @@ async function main(): Promise<void> {
     ).bytes;
     const alpha = readAlphaStats(cutoutBytes);
     observations.cutoutPng = { bytes: cutoutBytes.length, sha256: sha256(cutoutBytes), ...alpha };
+    if (resumeCutoutDir) {
+      // Round-trip integrity: the served bytes must equal the retained cutout.
+      if (!retainedCutout || sha256(cutoutBytes) !== retainedCutout.sha256)
+        fail('served cutout bytes differ from the retained cutout');
+    }
     writeFileSync(join(EVIDENCE, 'cutout.png'), cutoutBytes);
     if (alpha.transparent === 0) fail('cutout PNG has no transparent pixels (unusable)');
     copyFileSync(IMAGE, join(EVIDENCE, 'source-reference.png'));
@@ -981,21 +1089,97 @@ async function main(): Promise<void> {
     check(`Insert placed ${placeholder} in the Studio change draft`);
 
     if (calls.coding !== 0) fail('coding call budget exhausted');
-    calls.coding += 1;
     await fillStable(
       page,
       'Change request',
       `${placeholder}\nUse this cutout verbatim as the src of an <img> in a small gallery card. Do not remove or rewrite the placeholder. Keep the page small and valid.`,
     );
-    const [changeResponse] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes(`/api/forge/projects/${PROJECT}/generate`) &&
-          response.request().method() === 'POST',
-        { timeout: 30_000 },
-      ),
-      page.getByRole('button', { name: 'Generate change', exact: true }).click(),
-    ]);
+    // Bounded Generate-request diagnostics: distinguish click fired /
+    // request emitted / HTTP response / job created / provider attempt
+    // without logging credentials or the raw prompt (path + status and
+    // bounded transport failure text only). `calls.coding` counts the UI
+    // submission (the click); the provider attempt stays unknown until a
+    // job record says otherwise — never relabeled as zero.
+    const generateUrlPart = `/api/forge/projects/${PROJECT}/generate`;
+    type GenerateProbe = {
+      phase: 'request' | 'response' | 'requestfailed';
+      status?: number;
+      failure?: string;
+    };
+    const generateProbe: GenerateProbe[] = [];
+    const onGenerateRequest = (request: { url: () => string; method: () => string }): void => {
+      if (request.method() === 'POST' && request.url().includes(generateUrlPart))
+        generateProbe.push({ phase: 'request' });
+    };
+    const onGenerateResponse = (response: { url: () => string; status: () => number }): void => {
+      if (response.url().includes(generateUrlPart))
+        generateProbe.push({ phase: 'response', status: response.status() });
+    };
+    const onGenerateFailed = (request: {
+      url: () => string;
+      failure: () => { errorText: string } | null;
+    }): void => {
+      if (request.url().includes(generateUrlPart))
+        generateProbe.push({
+          phase: 'requestfailed',
+          failure: (request.failure()?.errorText ?? 'unknown').slice(0, 120),
+        });
+    };
+    page.on('request', onGenerateRequest);
+    page.on('response', onGenerateResponse);
+    page.on('requestfailed', onGenerateFailed);
+    let generateClicked = false;
+    let changeResponse: Awaited<ReturnType<typeof page.waitForResponse>> | null = null;
+    let generateError: unknown = null;
+    try {
+      const [resp] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes(generateUrlPart) && response.request().method() === 'POST',
+          { timeout: 30_000 },
+        ),
+        page
+          .getByRole('button', { name: 'Generate change', exact: true })
+          .click()
+          .then(() => {
+            generateClicked = true;
+            calls.coding += 1;
+          }),
+      ]);
+      changeResponse = resp;
+    } catch (error) {
+      // waitForResponse rejects on timeout; the click may still have
+      // fired (or hung). Fall through to diagnostics, never silently.
+      generateError = error;
+    } finally {
+      page.off('request', onGenerateRequest);
+      page.off('response', onGenerateResponse);
+      page.off('requestfailed', onGenerateFailed);
+    }
+    if (!changeResponse) {
+      await page
+        .screenshot({ path: join(EVIDENCE, '05-generate-failure.png'), fullPage: false })
+        .catch(() => undefined);
+      observations.generateAttempt = {
+        clicked: generateClicked,
+        requestEmitted: generateProbe.some((entry) => entry.phase === 'request'),
+        responseReceived: generateProbe.some((entry) => entry.phase === 'response'),
+        httpStatus: generateProbe.find((entry) => entry.phase === 'response')?.status ?? null,
+        jobCreated: false,
+        transportFailures: generateProbe.filter((entry) => entry.phase === 'requestfailed'),
+        consoleTail: errors.slice(-8).map((text) => text.slice(0, 200)),
+        waitError: generateError instanceof Error ? generateError.message.slice(0, 200) : null,
+        uiSubmissions: calls.coding,
+        providerObserved: null,
+        note: 'no job record: provider invocation unknown, not zero',
+      };
+      fail(
+        `generate step produced no usable HTTP response (clicked=${String(generateClicked)} ` +
+          `request=${String(generateProbe.some((entry) => entry.phase === 'request'))} ` +
+          `response=${String(generateProbe.some((entry) => entry.phase === 'response'))}); ` +
+          'provider invocation unknown — see observations.generateAttempt',
+      );
+    }
     const changeJob = JSON.parse(await changeResponse.text()).data as { id: string };
     observations.codingJobId = changeJob.id;
     await page.getByText('Change staged.', { exact: false }).waitFor({ timeout: LONG });
@@ -1131,7 +1315,11 @@ main().catch(async (error: unknown) => {
   console.error(error instanceof Error ? error.message : error);
   // The failure message is evidence too: record it so the report is
   // self-contained even when the run dies before any check completes.
+  // The finally block inside main() already wrote the report once without
+  // this message, so allow exactly one rewrite that preserves everything
+  // accumulated so far (checks, observations, screenshots on disk).
   observations.error = error instanceof Error ? error.message : String(error);
+  evidenceWritten = false;
   try {
     await writeEvidence();
   } catch {
