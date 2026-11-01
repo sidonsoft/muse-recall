@@ -261,6 +261,102 @@ export const DecisionGuardAdvisorySchema = z.object({
 });
 export type DecisionGuardAdvisory = z.infer<typeof DecisionGuardAdvisorySchema>;
 
+/**
+ * Batch E — one decision exactly as a generation received it.
+ *
+ * A generation's memory wiring is only auditable if the record says *which
+ * revision* of each decision went in, not just which ids were consulted at the
+ * time. `content_sha256` fingerprints the exact stored text, so an in-place
+ * edit or a later correction is detectable without re-reading history, and
+ * `excerpt` lets a reviewer see the old wording next to the current one.
+ *
+ * This is a record of what was supplied. It is never evidence that the model
+ * followed, or was caused by, a decision.
+ */
+export const ForgeDecisionReferenceSchema = z.object({
+  memory_id: z.uuid(),
+  /** The memory record's own monotonic revision at supply time. */
+  revision: z.number().int().min(1),
+  content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  /** Whitespace-collapsed prefix of that content, for side-by-side reading. */
+  excerpt: z.string().min(1).max(200),
+  type: z.string().min(1).max(40),
+  /** True when the user explicitly selected this decision for the change. */
+  user_selected: z.boolean().default(false),
+});
+export type ForgeDecisionReference = z.infer<typeof ForgeDecisionReferenceSchema>;
+
+/**
+ * How a past generation relates to the decisions that are current now.
+ *
+ * Only two labels may ever describe a generation that was given a stale
+ * decision — `received_previous_decision` (the record proves it) or
+ * `potentially_affected` (it could not have received a decision that did not
+ * exist yet, or no reference was stored). Nothing in this enum claims causal
+ * influence, and the UI renders the accompanying limits text with it.
+ */
+export const GENERATION_DECISION_LABELS = [
+  'received_previous_decision',
+  'potentially_affected',
+  'matched_current_decision',
+] as const;
+export const GenerationDecisionLabelSchema = z.enum(GENERATION_DECISION_LABELS);
+export type GenerationDecisionLabel = z.infer<typeof GenerationDecisionLabelSchema>;
+
+export const DECISION_CHANGE_KINDS = ['revised_in_place', 'superseded', 'withdrawn'] as const;
+export const DecisionChangeKindSchema = z.enum(DECISION_CHANGE_KINDS);
+export type DecisionChangeKind = z.infer<typeof DecisionChangeKindSchema>;
+
+/** One decision whose stored text moved after this generation ran. */
+export const ForgeDecisionDriftSchema = z.object({
+  memory_id: z.uuid(),
+  supplied_revision: z.number().int().min(1),
+  supplied_excerpt: z.string().min(1).max(200),
+  /** Null when the record is gone (deleted/purged). */
+  current_revision: z.number().int().min(1).nullable(),
+  current_excerpt: z.string().max(200).nullable(),
+  superseded_by: z.uuid().nullable(),
+  change: DecisionChangeKindSchema,
+});
+export type ForgeDecisionDrift = z.infer<typeof ForgeDecisionDriftSchema>;
+
+export const ForgeGenerationComparisonSchema = z.object({
+  label: GenerationDecisionLabelSchema,
+  /** Plain-language reason for the label, bounded and non-causal. */
+  reason: z.string().min(1).max(400),
+  /** Restated every time: these labels are not measured influence. */
+  limits: z.array(z.string().min(1).max(240)).min(1).max(4),
+  drift: z.array(ForgeDecisionDriftSchema).max(40),
+  /** Decisions active now that this generation was never given. */
+  added_since: z.array(ForgeDecisionReferenceSchema).max(40),
+  unchanged: z.array(ForgeDecisionReferenceSchema).max(40),
+});
+export type ForgeGenerationComparison = z.infer<typeof ForgeGenerationComparisonSchema>;
+
+/** One approved generation, with the memory reference it was created with. */
+export const ForgeGenerationSchema = z.object({
+  version: z.number().int().min(1),
+  created_at: z.iso.datetime(),
+  summary: z.string(),
+  base_version: z.number().int().min(1).nullable(),
+  job_id: z.uuid().nullable(),
+  job_status: ForgeJobStatusSchema.nullable(),
+  job_kind: ForgeJobKindSchema.nullable(),
+  /** Null for generations recorded before references existed. */
+  memory_reference: z.array(ForgeDecisionReferenceSchema).max(40).nullable(),
+  comparison: ForgeGenerationComparisonSchema,
+});
+export type ForgeGeneration = z.infer<typeof ForgeGenerationSchema>;
+
+export const ForgeGenerationListSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  current_version: z.number().int().min(1).nullable(),
+  /** Newest first, bounded: a project with 500 versions lists its most recent. */
+  items: z.array(ForgeGenerationSchema).max(64),
+  truncated: z.boolean(),
+});
+export type ForgeGenerationList = z.infer<typeof ForgeGenerationListSchema>;
+
 export const ForgeJobSchema = z.object({
   id: z.uuid(),
   project_id: ForgeProjectIdSchema,
@@ -283,6 +379,18 @@ export const ForgeJobSchema = z.object({
    */
   model_observed: z.string().min(1).max(128).nullable().default(null),
   memory_ids: z.array(z.uuid()),
+  /**
+   * Batch E: the decisions this job was actually given, with the revision and
+   * content hash each had at start time. Absent on records written before the
+   * field existed — a missing reference is reported as such, never guessed.
+   */
+  memory_reference: z.array(ForgeDecisionReferenceSchema).max(40).optional(),
+  /**
+   * The subset the user selected for this change, in the exact revisions
+   * supplied. Inspectable so an update proposal can be audited against the
+   * guidance it claimed to use.
+   */
+  decision_revisions_supplied: z.array(ForgeDecisionReferenceSchema).max(40).optional(),
   base_version: z.number().int().min(1).nullable(),
   /** sha256 of the exact prompt sent to the model, when known. */
   prompt_sha256: z
@@ -379,6 +487,22 @@ export const ForgeModifySchema = z.object({
    */
   screenshot_data_url: z.string().min(100).max(FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH).optional(),
   capture_memory: z.boolean().default(false),
+  /**
+   * Batch E: decisions the user selected for this update. The server resolves
+   * each id to the record that is current *at start time* — the client never
+   * supplies decision text — and records the exact revision it supplied, so a
+   * stale selection is a conflict rather than a silent regeneration with old
+   * guidance. `expected_revision` makes a stale UI selection detectable.
+   */
+  decisions: z
+    .array(
+      z.object({
+        memory_id: z.uuid(),
+        expected_revision: z.number().int().min(1).optional(),
+      }),
+    )
+    .max(16)
+    .optional(),
 });
 
 /**

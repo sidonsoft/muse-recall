@@ -28,6 +28,7 @@ import type { MediaAssetStore } from '../media/assets.js';
 import { forgeChildEnv } from './child-env.js';
 import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
+import { decisionReference, pinnedRetrieved } from './decision-reference.js';
 import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
@@ -101,7 +102,27 @@ export interface StartJobInput {
   request?: string | null;
   /** Screenshot bytes for a modify job, written into the staging directory. */
   screenshot?: Buffer;
+  /**
+   * Batch E: decisions the user selected for this job. Resolved against the
+   * store at start time, never taken from client-supplied text.
+   */
+  selectedMemories?: SelectedDecision[];
 }
+
+export interface SelectedDecision {
+  memory_id: string;
+  expected_revision?: number;
+}
+
+/**
+ * Character ceiling for a user-pinned decision injected into a prompt.
+ *
+ * Retrieved entries are already bounded by the engine's own budget; a pinned
+ * decision bypasses retrieval, so it needs its own ceiling. Pins also never
+ * increase the number of memories in context — they displace the lowest-ranked
+ * retrieval results, and the displacement is logged rather than silent.
+ */
+const PINNED_DECISION_MAX_CHARACTERS = 2_000;
 
 interface ExecuteState {
   child: ChildProcess | null;
@@ -898,8 +919,24 @@ export class ForgeJobManager {
         },
         { now: this.now() },
       );
-      const memoryIds = retrieval.results.map((result) => result.memory.id);
       memories = retrieval.results;
+
+      // Batch E: user-selected guidance is resolved from the store right here,
+      // so an update proposal provably runs on current decisions. Selections
+      // displace the lowest-ranked retrieval results instead of growing the
+      // memory block, and the displacement is visible in the job log.
+      const selected = this.resolveSelectedDecisions(input.projectId, input.selectedMemories ?? []);
+      let displacedNote = '';
+      if (selected.length > 0) {
+        const chosen = new Set(selected.map((entry) => entry.memory.id));
+        const kept = memories.filter((result) => !chosen.has(result.memory.id));
+        const room = Math.max(0, memories.length - chosen.size);
+        const displaced = kept.length - room;
+        if (displaced > 0) {
+          displacedNote = `memory budget: displaced ${String(displaced)} lower-ranked retrieved decision${displaced === 1 ? '' : 's'} to make room for the ${String(selected.length)} decision${selected.length === 1 ? '' : 's'} you selected`;
+        }
+        memories = [...selected.map((entry) => entry.retrieved), ...kept.slice(0, room)];
+      }
 
       job = ForgeJobSchema.parse({
         id,
@@ -913,10 +950,24 @@ export class ForgeJobManager {
         created_at: this.now().toISOString(),
         started_at: null,
         finished_at: null,
-        logs: [],
+        logs: displacedNote === '' ? [] : [displacedNote],
         usage: null,
         model_observed: null,
-        memory_ids: memoryIds,
+        memory_ids: memories.map((result) => result.memory.id),
+        // Batch E: what this job was actually given, revision by revision.
+        memory_reference: memories.map((result) =>
+          decisionReference(
+            result.memory,
+            selected.some((entry) => entry.memory.id === result.memory.id),
+          ),
+        ),
+        ...(selected.length > 0
+          ? {
+              decision_revisions_supplied: selected.map((entry) =>
+                decisionReference(entry.memory, true),
+              ),
+            }
+          : {}),
         base_version: baseVersion,
         validation: null,
         version: null,
@@ -1684,6 +1735,67 @@ export class ForgeJobManager {
     if (redacted.length <= limit) return redacted;
     const marker = '…';
     return `${redacted.slice(0, Math.max(0, limit - marker.length))}${marker}`.slice(0, limit);
+  }
+
+  /**
+   * Batch E — resolve the decisions a user selected for this job against the
+   * store, at start time. The client sends ids (and optionally the revision it
+   * saw); the text always comes from the record, so a proposal cannot smuggle
+   * stale or invented guidance.
+   *
+   * Every rejection is a named failure, never a silent drop: a selected
+   * decision that was corrected, superseded, deleted, or belongs to another
+   * project would otherwise quietly change what the job was given.
+   */
+  private resolveSelectedDecisions(
+    projectId: string,
+    selected: SelectedDecision[],
+  ): Array<{ memory: Memory; retrieved: RetrievedMemory }> {
+    const resolved: Array<{ memory: Memory; retrieved: RetrievedMemory }> = [];
+    const seen = new Set<string>();
+    for (const entry of selected) {
+      if (seen.has(entry.memory_id)) continue;
+      seen.add(entry.memory_id);
+      const memory = this.engine.get(entry.memory_id);
+      if (memory === null) {
+        throw new ForgeError(
+          'decision_not_found',
+          `Decision ${entry.memory_id} no longer exists, so it cannot be supplied to this update.`,
+        );
+      }
+      if (memory.project_id !== null && memory.project_id !== projectId) {
+        throw new ForgeError(
+          'decision_cross_project',
+          `Decision ${entry.memory_id} belongs to project ${memory.project_id}, not ${projectId}.`,
+        );
+      }
+      if (memory.superseded_by !== null) {
+        throw new ForgeError(
+          'decision_superseded',
+          `Decision ${entry.memory_id} was corrected: ${memory.superseded_by} is current. Select the current decision instead.`,
+        );
+      }
+      if (memory.status !== 'active') {
+        throw new ForgeError(
+          'decision_not_active',
+          `Decision ${entry.memory_id} is ${memory.status}, not an active decision, so it cannot be supplied to an update.`,
+        );
+      }
+      if (entry.expected_revision !== undefined && entry.expected_revision !== memory.revision) {
+        throw new ForgeError(
+          'decision_revision_conflict',
+          `Decision ${entry.memory_id} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decision before proposing the update.`,
+        );
+      }
+      const retrieved = pinnedRetrieved(memory);
+      if (retrieved.injected_content.length > PINNED_DECISION_MAX_CHARACTERS) {
+        retrieved.injected_content = `${retrieved.injected_content.slice(0, PINNED_DECISION_MAX_CHARACTERS - 1)}…`;
+        retrieved.truncated = true;
+        retrieved.evidence = 'selected by the user for this change · truncated for injection';
+      }
+      resolved.push({ memory, retrieved });
+    }
+    return resolved;
   }
 
   /**

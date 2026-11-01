@@ -11,6 +11,7 @@ import {
   ForgeCreateProjectSchema,
   ForgeDiffSchema,
   ForgeGenerateSchema,
+  ForgeGenerationListSchema,
   ForgeJobSchema,
   ForgeModifySchema,
   ForgeProjectViewSchema,
@@ -22,6 +23,7 @@ import {
 } from '@mml/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { buildGenerationList, isActiveProjectDecision } from '../forge/decision-reference.js';
 import type { ForgeJobManager } from '../forge/runner.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
 import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
@@ -195,12 +197,46 @@ export function registerForgeRoutes(
           prompt: body.request,
           request: body.request,
           ...(screenshot ? { screenshot } : {}),
+          // Batch E: the exact decisions the user selected. The manager
+          // resolves each id to the record current at start time and records
+          // the revision it supplied, so the proposal is auditable.
+          ...(body.decisions !== undefined ? { selectedMemories: body.decisions } : {}),
         });
         reply.status(202);
         return envelope(ForgeJobSchema.parse(job));
       });
     },
   );
+
+  /**
+   * Batch E — prior generations with the decision reference each was created
+   * with, compared against what is current now. Read-only: it never restages,
+   * rewrites, or re-approves anything.
+   */
+  app.get('/api/forge/projects/:id/generations', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      await workspace.ensureProject(id);
+      const state = await workspace.state(id);
+      const listed = deps.engine.list({
+        project_id: id,
+        status: ['active'],
+        include_global: true,
+        limit: 200,
+      });
+      return envelope(
+        ForgeGenerationListSchema.parse(
+          buildGenerationList({
+            projectId: id,
+            state,
+            jobs: manager.list(id),
+            activeDecisions: listed.items.filter((memory) => isActiveProjectDecision(memory, id)),
+            currentOf: (memoryId: string) => deps.engine.get(memoryId),
+          }),
+        ),
+      );
+    });
+  });
 
   app.get('/api/forge/jobs/:jobId', async (request, reply) => {
     return guard(reply, async () => {
@@ -643,9 +679,15 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
                       error.code === 'decision_required' ||
                       error.code === 'invalid_screenshot'
                     ? 400
-                    : error.code === 'invalid_media_reference'
+                    : error.code === 'decision_not_found' ||
+                        error.code === 'decision_cross_project' ||
+                        error.code === 'decision_superseded' ||
+                        error.code === 'decision_not_active' ||
+                        error.code === 'invalid_media_reference'
                       ? 422
-                      : 409;
+                      : error.code === 'decision_revision_conflict'
+                        ? 409
+                        : 409;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message, issues: error.details },

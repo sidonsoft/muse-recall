@@ -63,7 +63,13 @@ export type ForgeErrorCode =
   | 'persistence_failed'
   | 'shutting_down'
   | 'decision_required'
-  | 'invalid_media_reference';
+  | 'invalid_media_reference'
+  /** Batch E: user-selected decisions that cannot be supplied to a job. */
+  | 'decision_not_found'
+  | 'decision_cross_project'
+  | 'decision_superseded'
+  | 'decision_not_active'
+  | 'decision_revision_conflict';
 
 export class ForgeError extends Error {
   constructor(

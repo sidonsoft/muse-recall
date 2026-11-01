@@ -12,6 +12,12 @@ const FIXTURES_DIR = dirname(fileURLToPath(import.meta.url));
 const workspace = value('--workspace');
 const promptPath = value('--prompt-file');
 const prompt = promptPath ? readFileSync(promptPath, 'utf8') : '';
+// Batch E tests assert what guidance the model was actually handed, so the
+// fixture can copy the exact prompt to a stable path instead of leaving it in
+// the runner's private staging directory.
+if (process.env.FAKE_MUSE_PROMPT_COPY && promptPath) {
+  writeFileSync(process.env.FAKE_MUSE_PROMPT_COPY, prompt, 'utf8');
+}
 const requested = process.env.FAKE_MUSE_MODE ?? 'auto';
 let mode =
   requested === 'auto'
