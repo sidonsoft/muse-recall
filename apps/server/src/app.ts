@@ -70,6 +70,12 @@ export interface AppDependencies {
   /** Injectable for tests; created by default. */
   toolRegistry?: ToolRegistry;
   toolStore?: ToolCallStore;
+  /**
+   * Idempotency-Key replay store. Created over `db` when omitted; injectable so a
+   * caller can share one store across apps, or a test can make the write fail and
+   * see what happens to an answer the provider already produced.
+   */
+  idempotency?: IdempotencyStore;
   /** Forge workspace/job manager; created under WORKSPACE_ROOT when omitted. */
   forgeWorkspace?: ForgeWorkspace;
   forgeManager?: ForgeJobManager;
@@ -483,7 +489,10 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   );
 
   // --- Memory CRUD, correction, deletion, retrieval preview ---------------
-  const idempotency = new IdempotencyStore(db);
+  // The option exists so a caller can supply a store over its own database (or a
+  // failing one, in tests); it must actually be honoured rather than silently
+  // replaced by a fresh store.
+  const idempotency = dependencies.idempotency ?? new IdempotencyStore(db);
   registerMemoryRoutes(app, { engine, config, idempotency });
   registerSessionRoutes(app, { runtime });
   registerUiRoutes(app, { runtime, engine, provider, config });

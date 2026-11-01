@@ -16,6 +16,7 @@ import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
+import { IdempotencyStore } from '../../apps/server/src/idempotency.js';
 import { MediaAssetStore } from '../../apps/server/src/media/assets.js';
 import { MediaJobStore } from '../../apps/server/src/media/jobs.js';
 import type { MediaUnderstand, MediaVisualReview } from '../../apps/server/src/media/segment.js';
@@ -173,8 +174,12 @@ async function harness(
     unconfigured?: boolean;
     outcome?: OutcomeBuilder;
     holdReview?: Deferred;
+    /** Fires the moment a dispatch is inside the provider, before it answers. */
+    onEnter?: () => void;
     /** Named per call so a test can fail the first attempt and succeed later. */
     failWith?: (call: number) => Error | undefined;
+    /** A store whose write fails, to check what happens to a paid-for answer. */
+    recordFault?: boolean;
   } = {},
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'forge-batch-e-review-'));
@@ -199,6 +204,7 @@ async function harness(
     targetedModel: 'muse-spark-1.3',
     review: async (_image: unknown, decisions: ResolvedDecision[]) => {
       review.calls += 1;
+      options.onEnter?.();
       // A held review lets a test observe a second request that arrives while
       // the first is still in flight, rather than after it has been recorded.
       if (options.holdReview !== undefined) await options.holdReview.promise;
@@ -236,6 +242,15 @@ async function harness(
     runtimeCheck: async () => ({ ok: true, errors: [] }),
     now: () => new Date(base + tick++ * 1000),
   });
+  // A store whose write fails, so a test can see what happens to an answer the
+  // provider already produced when the replay record cannot be kept.
+  let faulty: IdempotencyStore | undefined;
+  if (options.recordFault === true) {
+    faulty = new IdempotencyStore(database.db);
+    faulty.record = () => {
+      throw new Error('ENOSPC: no space left on device');
+    };
+  }
   const app = await buildApp({
     config: config(root),
     db: database.db,
@@ -248,6 +263,7 @@ async function harness(
     mediaJobs: jobs,
     mediaService: service,
     providerHealth: new ProviderHealthTracker(new EchoProvider(), 0),
+    idempotency: faulty,
   });
   const instance: Harness = {
     app,
@@ -276,10 +292,6 @@ function pngResized(bytes: Buffer, width: number, height: number): Buffer {
   copy.writeUInt32BE(width, 16);
   copy.writeUInt32BE(height, 20);
   return copy;
-}
-
-async function wait(milliseconds: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function decision(engine: MemoryEngine, content: string, projectId = PROJECT) {
@@ -700,14 +712,19 @@ describe('screenshot advisory review against accepted decisions', () => {
 
   it('refuses a concurrent duplicate instead of paying twice', async () => {
     const gate = deferred();
-    const h = await harness({ holdReview: gate });
+    const entered = deferred();
+    const h = await harness({ holdReview: gate, onEnter: () => entered.resolve() });
     await createProject(h.app);
     const theme = decision(h.engine, 'Theme: woodland.');
     await approveGenerate(h.app);
     const body = reviewBody([pick(theme)]);
 
+    // The rival is released only once the first review is demonstrably inside the
+    // provider: a fixed sleep cannot promise that on a loaded machine, and a rival
+    // that arrives after the record lands would be a replay, not a concurrent
+    // duplicate — the test would pass without exercising de-duplication at all.
     const first = postReview(h.app, body, { 'idempotency-key': 'review-concurrent-1' });
-    await wait(150);
+    await entered.promise;
     const rival = await postReview(h.app, body, { 'idempotency-key': 'review-concurrent-1' });
     expect(rival.statusCode).toBe(409);
     expect(rival.json().error.code).toBe('idempotency_in_progress');
@@ -952,6 +969,110 @@ describe('screenshot advisory review against accepted decisions', () => {
     expect(retry.headers['idempotent-replayed']).toBeUndefined();
     expect(h.review.calls).toBe(2);
     expect(await artifactFingerprint(h)).toEqual(before);
+  });
+
+  it('refuses a key that was already spent on a different selection', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    const timer = decision(h.engine, 'Never show a countdown timer.');
+    await approveGenerate(h.app);
+
+    const first = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-swapped-selection',
+    });
+    expect(first.statusCode).toBe(200);
+
+    // Same key, still a valid request, different question. The answer on file
+    // describes the theme; serving it for the timer would be feedback about
+    // something else wearing the identity of a review of this decision.
+    const rival = await postReview(h.app, reviewBody([pick(timer)]), {
+      'idempotency-key': 'review-swapped-selection',
+    });
+    expect(rival.statusCode).toBe(409);
+    expect(rival.json().error.code).toBe('idempotency_key_reused');
+    expect(JSON.stringify(rival.json())).not.toContain('blue bar');
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('refuses a key that was already spent on a different frame', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const selection = [pick(theme)];
+
+    const first = await postReview(h.app, reviewBody(selection), {
+      'idempotency-key': 'review-swapped-frame',
+    });
+    expect(first.statusCode).toBe(200);
+    const firstFrame = (first.json().data as { screenshot_sha256: string }).screenshot_sha256;
+
+    // Bytes after IEND change the fingerprint while leaving a frame a decoder
+    // still reads: a genuinely different capture, not a malformed request.
+    const other = Buffer.concat([PNG, Buffer.from('a second capture')]);
+    const rival = await postReview(h.app, screenshotBody(other, selection), {
+      'idempotency-key': 'review-swapped-frame',
+    });
+    expect(rival.statusCode).toBe(409);
+    expect(rival.json().error.code).toBe('idempotency_key_reused');
+    expect(h.review.calls).toBe(1);
+
+    // The original answer stays reachable for the frame it was recorded against.
+    const replay = await postReview(h.app, reviewBody(selection), {
+      'idempotency-key': 'review-swapped-frame',
+    });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.headers['idempotent-replayed']).toBe('1');
+    expect((replay.json().data as { screenshot_sha256: string }).screenshot_sha256).toBe(
+      firstFrame,
+    );
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('refuses a key that was already spent against a different generation', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    const jobId = await approveGenerate(h.app);
+
+    const unbound = await postReview(h.app, reviewBody([pick(theme)]), {
+      'idempotency-key': 'review-swapped-generation',
+    });
+    expect(unbound.statusCode).toBe(200);
+
+    // Same frame, same decisions, now filed against a named generation: the
+    // recorded answer says it reviewed nothing in particular.
+    const bound = await postReview(
+      h.app,
+      { ...reviewBody([pick(theme)]), job_id: jobId },
+      {
+        'idempotency-key': 'review-swapped-generation',
+      },
+    );
+    expect(bound.statusCode).toBe(409);
+    expect(bound.json().error.code).toBe('idempotency_key_reused');
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('still returns a paid-for answer when the replay record cannot be written', async () => {
+    const h = await harness({ recordFault: true });
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    await approveGenerate(h.app);
+    const body = reviewBody([pick(theme)]);
+
+    const first = await postReview(h.app, body, { 'idempotency-key': 'review-record-fault' });
+    expect(first.statusCode).toBe(200);
+    expect(JSON.stringify(first.json())).toContain('blue bar');
+
+    // The record was lost, so there is nothing to replay: the client pays for a
+    // second look rather than being handed an error after the model already
+    // answered. Losing the cache is a logging event, not a failed review.
+    const retry = await postReview(h.app, body, { 'idempotency-key': 'review-record-fault' });
+    expect(retry.statusCode).toBe(200);
+    expect(retry.headers['idempotent-replayed']).toBeUndefined();
+    expect(h.review.calls).toBe(2);
   });
 
   it('bounds the request through the shared schema before any work happens', async () => {

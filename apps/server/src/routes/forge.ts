@@ -274,6 +274,8 @@ export function registerForgeRoutes(
    */
   interface ReviewSubject {
     body: z.infer<typeof MediaVisualReviewRequestSchema>;
+    /** Decoded frame: part of the subject, so a replay can be checked against it. */
+    png: Buffer;
     media: MediaService;
     selected: Array<{ id: string; revision: number; excerpt: string; text: string }>;
     generation:
@@ -288,11 +290,13 @@ export function registerForgeRoutes(
   }
 
   // Idempotency-Key (D049) applies here too: one review is a paid vision call,
-  // and the frame plus the pinned selection is a stable identity for it. A
-  // client that retried — or a user who clicked twice on the same captured
-  // frame — gets the recorded answer back with `idempotent-replayed: 1` instead
-  // of a second dispatch. Failures are never recorded, so a refusal can be
-  // retried once the underlying cause is fixed.
+  // and the frame plus the pinned selection is a stable identity for it. A client
+  // that retried — or a user who clicked twice on the same captured frame — gets the
+  // recorded answer back with `idempotent-replayed: 1` instead of a second dispatch.
+  // Two things keep that honest: failures are never recorded, so a refusal stays
+  // retryable; and a replay is checked against the subject it claims to answer (same
+  // frame, same decisions at the same revisions, same generation), so one key can
+  // never serve feedback about a different question.
   app.post(
     '/api/forge/projects/:id/visual-review',
     { bodyLimit: FORGE_MODIFY_BODY_LIMIT_BYTES },
@@ -408,11 +412,29 @@ export function registerForgeRoutes(
             };
           }
 
-          return { body, media, selected, generation };
+          // The frame belongs to the subject, not to the dispatch: a replay has to
+          // answer a review of *this* picture, so the bytes are decoded and
+          // fingerprinted before the record is consulted rather than after.
+          return { body, media, selected, generation, png: decodePng(body.screenshot_data_url) };
         })) as ReviewSubject | undefined;
         if (preflight === undefined) return undefined; // the guard answered already
 
         if (attempt.state === 'replay') {
+          // The key is client-supplied, so it is not evidence of identity. A replay
+          // is only honest when the stored answer describes the same frame, the same
+          // decisions at the same revisions, and the same generation; otherwise one
+          // key could serve feedback that belongs to a different question, which is
+          // exactly the stale-subject failure the revision pin exists to prevent.
+          if (!recordedReviewMatches(attempt.record.body, preflight)) {
+            return reply
+              .status(409)
+              .send(
+                apiFailure(
+                  'idempotency_key_reused',
+                  'That Idempotency-Key already answered a different question: a different frame, a different decision selection, or a different generation. Use a new key for this review.',
+                ),
+              );
+          }
           reply.header('idempotent-replayed', '1');
           return reply.status(attempt.record.status).send(attempt.record.body as never);
         }
@@ -428,7 +450,7 @@ export function registerForgeRoutes(
         }
 
         const runResult = await guard(reply, async () => {
-          const png = decodePng(preflight.body.screenshot_data_url);
+          const png = preflight.png;
           const outcome = await preflight.media.reviewScreenshot({
             bytes: png,
             mime: 'image/png',
@@ -467,10 +489,19 @@ export function registerForgeRoutes(
           );
         });
 
-        // Only a completed review is recorded, so a refusal never becomes a
-        // cached answer and the same key stays retryable.
-        if (attempt.state === 'run' && runResult !== undefined) {
-          deps.idempotency.record(attempt.route, attempt.key, 200, runResult);
+        // Only a completed review is recorded, so a refusal never becomes a cached
+        // answer and the same key stays retryable. `reply.sent` is the authority on
+        // whether the guard answered for us: Fastify's Reply is thenable, so a
+        // returned Reply resolves to undefined here and the type alone cannot tell a
+        // sent error apart from a value.
+        if (attempt.state === 'run' && runResult !== undefined && !reply.sent) {
+          try {
+            deps.idempotency.record(attempt.route, attempt.key, 200, runResult);
+          } catch (error) {
+            // The caller already paid for this answer. Losing the replay record is a
+            // logging event, not a reason to fail a completed review.
+            request.log.error({ err: error }, 'visual review result could not be recorded');
+          }
         }
         return runResult;
       } finally {
@@ -897,6 +928,51 @@ function decodePng(dataUrl: string): Buffer {
     throw new ForgeError('invalid_screenshot', 'Screenshot is too small to be a preview capture.');
   }
   return buffer;
+}
+
+/**
+ * Does a stored replay answer describe *this* review?
+ *
+ * A key alone cannot say: the client chooses it, and the same key can arrive with a
+ * different frame, a different selection, or a different generation. Comparing the
+ * recorded answer's frame fingerprint, the decision ids at the revisions it
+ * assessed, and the generation it was filed against keeps a replay from standing in
+ * for feedback about something else.
+ */
+function recordedReviewMatches(
+  recordBody: unknown,
+  subject: {
+    png: Buffer;
+    selected: Array<{ id: string; revision: number }>;
+    generation: { id: string } | undefined;
+  },
+): boolean {
+  const data = (
+    recordBody as {
+      data?: {
+        screenshot_sha256?: unknown;
+        generation?: { id?: unknown } | null;
+        findings?: Array<{ decision_id?: unknown; decision_revision?: unknown }>;
+        unverified?: Array<{ decision_id?: unknown; decision_revision?: unknown }>;
+      };
+    }
+  )?.data;
+  if (data === undefined) return false;
+  const frame = createHash('sha256').update(subject.png).digest('hex');
+  if (data.screenshot_sha256 !== frame) return false;
+  if ((data.generation?.id ?? null) !== (subject.generation?.id ?? null)) return false;
+  const asked = new Set(subject.selected.map((entry) => `${entry.id}@${String(entry.revision)}`));
+  const answered = new Set<string>();
+  for (const entry of [...(data.findings ?? []), ...(data.unverified ?? [])]) {
+    if (typeof entry.decision_id === 'string' && typeof entry.decision_revision === 'number') {
+      answered.add(`${entry.decision_id}@${String(entry.decision_revision)}`);
+    }
+  }
+  if (answered.size !== asked.size) return false;
+  for (const entry of asked) {
+    if (!answered.has(entry)) return false;
+  }
+  return true;
 }
 
 async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<unknown> {
