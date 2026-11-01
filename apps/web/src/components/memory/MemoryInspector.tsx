@@ -262,6 +262,29 @@ export function MemoryInspector({
     }
   }
 
+  async function handleProposal(id: string, action: 'accept' | 'reject') {
+    setBusy(true);
+    try {
+      if (action === 'accept') {
+        await api.acceptMemory(id, 'Accepted in memory review');
+        await refresh();
+        setDetail(await api.memory(id));
+        setSelectedId(id);
+        flash('ok', 'Proposal accepted — it is now an active project decision.');
+      } else {
+        await api.rejectMemory(id, 'Rejected in memory review');
+        setSelectedId(null);
+        setDetail(null);
+        await refresh();
+        flash('ok', 'Proposal rejected — it never enters active memory.');
+      }
+    } catch (cause) {
+      flash('err', describeError(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleEdit(submission: EditSubmission) {
     if (!detail) return;
     setBusy(true);
@@ -585,6 +608,8 @@ export function MemoryInspector({
               onCorrect={(submission) => void handleCorrect(submission)}
               onEdit={(submission) => void handleEdit(submission)}
               onDelete={(reason) => void handleDelete(reason)}
+              onAccept={() => void handleProposal(detail.memory.id, 'accept')}
+              onReject={() => void handleProposal(detail.memory.id, 'reject')}
               onSelect={setSelectedId}
             />
           ) : (

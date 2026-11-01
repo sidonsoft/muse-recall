@@ -301,6 +301,20 @@ export const api = {
       (data) => MemoryCreateResultSchema.parse(data),
     ),
 
+  acceptMemory: (id: string, reason?: string) =>
+    request<Memory>(
+      `/api/memories/${id}/accept`,
+      { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) },
+      (data) => MemoryCreateResultSchema.shape.memory.parse(data),
+    ),
+
+  rejectMemory: (id: string, reason?: string) =>
+    request<{ id: string; deleted: true }>(
+      `/api/memories/${id}/reject`,
+      { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) },
+      (data) => DeleteResultSchema.parse(data),
+    ),
+
   updateMemory: (id: string, input: MemoryUpdateInput) =>
     request<Memory>(
       `/api/memories/${id}`,
