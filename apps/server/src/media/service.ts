@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import {
   MEDIA_UPLOAD_MAX_BYTES,
+  type MediaClipResponse,
   type MediaImageSize,
+  type MediaProposalItem,
+  type MediaProposalResult,
   type MediaSegmentResponse,
+  type MediaSourceMime,
+  type MediaSourceRecordView,
   type MediaSuggestResponse,
+  type MediaTranscribeMode,
+  type MediaTranscript,
 } from '@mml/shared';
 import {
   type MediaAssetStore,
@@ -22,6 +29,8 @@ import {
   renderCutoutBounded,
   renderMatchPreview,
 } from './segment.js';
+import type { MediaSourceRecord, MediaSourceStore } from './sources.js';
+import type { MediaVoice } from './voice.js';
 
 /**
  * Batch B — orchestration between the asset store, the job store and the
@@ -44,7 +53,10 @@ export type MediaServiceErrorCode =
   | 'unsupported_parent'
   | 'job_not_found'
   | 'segment_not_found'
-  | 'match_not_found';
+  | 'match_not_found'
+  | 'media_source_not_found'
+  | 'media_source_invalid'
+  | 'proposal_conflict';
 
 export class MediaServiceError extends Error {
   constructor(
@@ -95,6 +107,27 @@ export interface MediaVisionDeps {
   understand?: MediaUnderstand | null;
 }
 
+export interface MediaSourceDeps {
+  sources?: MediaSourceStore | null;
+  voice?: MediaVoice | null;
+  engine?: { propose: MemoryEnginePropose } | null;
+}
+
+type MemoryEnginePropose = (
+  input: {
+    type: MediaProposalItem['memory_type'];
+    scope: 'project';
+    project_id: string;
+    content: string;
+    source: { session_id: string | null; reference: string | null };
+    confidence: number;
+    validation_status: 'unverified';
+    expires_at: string | null;
+    tags: string[];
+  },
+  actor?: 'agent' | 'system' | 'user',
+) => { memory: { id: string; status: string; content: string }; created: boolean };
+
 interface SegmentSession {
   id: string;
   projectId: string;
@@ -119,7 +152,229 @@ export class MediaService {
     private readonly jobs: MediaJobStore,
     private readonly operations: MediaOperations | null,
     private readonly vision: MediaVisionDeps = {},
+    private readonly sourceDeps: MediaSourceDeps = {},
   ) {}
+
+  private requireSources(): MediaSourceStore {
+    if (this.sourceDeps.sources === null || this.sourceDeps.sources === undefined) {
+      throw new MediaServiceError(
+        'media_unconfigured',
+        'Voice and video sources are not configured.',
+      );
+    }
+    return this.sourceDeps.sources;
+  }
+
+  private requireVoice(): MediaVoice {
+    if (this.sourceDeps.voice === null || this.sourceDeps.voice === undefined) {
+      throw new MediaServiceError(
+        'media_unconfigured',
+        'Voice and video are not configured: set the provider API key to enable transcription and clip understanding.',
+      );
+    }
+    return this.sourceDeps.voice;
+  }
+
+  private requireProposalEngine(): NonNullable<MediaSourceDeps['engine']> {
+    if (this.sourceDeps.engine === null || this.sourceDeps.engine === undefined) {
+      throw new MediaServiceError('media_unconfigured', 'Memory proposals are not configured.');
+    }
+    return this.sourceDeps.engine;
+  }
+
+  async uploadSource(
+    projectId: string,
+    input: {
+      mime: MediaSourceMime;
+      bytes: Buffer;
+      origin?: 'upload' | 'recording';
+      original_name?: string;
+    },
+  ): Promise<MediaSourceRecordView> {
+    return this.requireSources().create(projectId, input);
+  }
+
+  async listSources(projectId: string): Promise<MediaSourceRecordView[]> {
+    return this.requireSources().list(projectId);
+  }
+
+  async getSource(projectId: string, sourceId: string): Promise<MediaSourceRecord> {
+    return this.requireSources().get(projectId, sourceId);
+  }
+
+  async readSourceBytes(projectId: string, sourceId: string): Promise<Buffer> {
+    return this.requireSources().readBytes(projectId, sourceId);
+  }
+
+  /**
+   * Batch D — transcribe an uploaded audio source. The response is a
+   * transcript draft; it writes nothing to memory and starts no Forge job.
+   */
+  async transcribeSource(
+    projectId: string,
+    sourceId: string,
+    options: {
+      mode?: MediaTranscribeMode;
+      languageBias?: string[];
+      keywords?: string[];
+      signal?: AbortSignal;
+    } = {},
+  ): Promise<MediaTranscript> {
+    const voice = this.requireVoice();
+    const sources = this.requireSources();
+    const record = await sources.get(projectId, sourceId);
+    if (record.kind !== 'audio') {
+      throw new MediaServiceError(
+        'media_source_invalid',
+        `Source ${sourceId} is ${record.mime}, not audio.`,
+      );
+    }
+    const bytes = await sources.readBytes(projectId, sourceId);
+    return voice.transcribe(
+      sourceId,
+      { bytes, mime: 'audio/wav', durationMs: record.duration_ms },
+      {
+        ...(options.mode !== undefined ? { mode: options.mode } : {}),
+        ...(options.languageBias !== undefined ? { languageBias: options.languageBias } : {}),
+        ...(options.keywords !== undefined ? { keywords: options.keywords } : {}),
+        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      },
+    );
+  }
+
+  /**
+   * Batch D — inspect a bounded MP4 clip. Observations are drafts with
+   * provider timestamps validated against the measured file duration.
+   */
+  async understandClip(
+    projectId: string,
+    sourceId: string,
+    options: { prompt?: string; signal?: AbortSignal } = {},
+  ): Promise<MediaClipResponse> {
+    const voice = this.requireVoice();
+    const sources = this.requireSources();
+    const record = await sources.get(projectId, sourceId);
+    if (record.kind !== 'video') {
+      throw new MediaServiceError(
+        'media_source_invalid',
+        `Source ${sourceId} is ${record.mime}, not video.`,
+      );
+    }
+    const bytes = await sources.readBytes(projectId, sourceId);
+    return voice.understandClip(
+      sourceId,
+      { bytes, mime: 'video/mp4', durationMs: record.duration_ms },
+      {
+        ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
+        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      },
+    );
+  }
+
+  /**
+   * Batch D — record ONLY the proposals the user explicitly selected, after
+   * the transcript/observation text was edited in the UI. Everything is
+   * validated before the first write; the engine stores proposals with
+   * status `proposed`, which retrieval excludes until a human accepts them.
+   * No proposal is ever auto-generated or auto-accepted here.
+   */
+  async proposeFromSource(
+    projectId: string,
+    sourceId: string,
+    items: MediaProposalItem[],
+  ): Promise<MediaProposalResult> {
+    const sources = this.requireSources();
+    const engine = this.requireProposalEngine();
+    const record = await sources.get(projectId, sourceId);
+    const expectedKind = record.kind === 'audio' ? 'transcript' : 'clip_observation';
+    const validated = items.map((item, index) => {
+      if (item.kind !== expectedKind) {
+        throw new MediaServiceError(
+          'media_source_invalid',
+          `Proposal ${String(index)} is ${item.kind}, but source ${sourceId} is ${record.kind}.`,
+        );
+      }
+      const content = item.content.trim();
+      if (content.length === 0) {
+        throw new MediaServiceError(
+          'media_source_invalid',
+          `Proposal ${String(index)} has no content after trimming.`,
+        );
+      }
+      const hasStart = item.start_ms !== undefined;
+      const hasEnd = item.end_ms !== undefined;
+      if (hasStart !== hasEnd) {
+        throw new MediaServiceError(
+          'media_source_invalid',
+          `Proposal ${String(index)} must provide both start_ms and end_ms, or neither.`,
+        );
+      }
+      const start = item.start_ms;
+      const end = item.end_ms;
+      if (hasStart && hasEnd && start !== undefined && end !== undefined) {
+        if (end < start) {
+          throw new MediaServiceError(
+            'media_source_invalid',
+            `Proposal ${String(index)} end_ms precedes start_ms.`,
+          );
+        }
+        if (end > record.duration_ms) {
+          throw new MediaServiceError(
+            'media_source_invalid',
+            `Proposal ${String(index)} timestamp exceeds the ${String(record.duration_ms)} ms source duration.`,
+          );
+        }
+      }
+      if (item.kind === 'clip_observation' && (start === undefined || end === undefined)) {
+        throw new MediaServiceError(
+          'media_source_invalid',
+          `Proposal ${String(index)} is a clip observation and needs both timestamps.`,
+        );
+      }
+      const reference =
+        item.kind === 'clip_observation'
+          ? `muse-source://${sourceId}/clip?start_ms=${String(start)}&end_ms=${String(end)}`
+          : `muse-source://${sourceId}/transcript`;
+      return {
+        item,
+        content,
+        reference,
+        kind: item.kind,
+        memory_type: item.memory_type,
+      };
+    });
+    const proposed: MediaProposalResult['proposed'] = [];
+    for (const entry of validated) {
+      const result = engine.propose(
+        {
+          type: entry.memory_type,
+          scope: 'project',
+          project_id: projectId,
+          content: entry.content,
+          source: { session_id: null, reference: entry.reference },
+          confidence: 0.7,
+          validation_status: 'unverified',
+          expires_at: null,
+          tags: ['media-source', record.kind === 'audio' ? 'voice' : 'video'],
+        },
+        'agent',
+      );
+      if (result.memory.status !== 'proposed') {
+        throw new MediaServiceError(
+          'proposal_conflict',
+          `This proposal matches an already-established memory (${result.memory.id}); review it in the memory inspector instead.`,
+        );
+      }
+      proposed.push({
+        memory_id: result.memory.id,
+        content: result.memory.content,
+        memory_type: entry.memory_type,
+        reference: entry.reference,
+        created: result.created,
+      });
+    }
+    return { source_id: sourceId, proposed };
+  }
 
   private requireOperations(): MediaOperations {
     if (this.operations === null) {

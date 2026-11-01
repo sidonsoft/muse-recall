@@ -393,3 +393,215 @@ export const MediaSuggestResponseSchema = z.object({
   provider_attempts: z.number().int().min(1),
 });
 export type MediaSuggestResponse = z.infer<typeof MediaSuggestResponseSchema>;
+
+/**
+ * Batch D — voice and video source contracts.
+ *
+ * These are SOURCE inputs, not embeddable app assets: the existing image
+ * asset store (and its approval/embed/rollback contract) is unchanged. A
+ * source record is an immutable, project-scoped upload whose bytes, MIME and
+ * measured duration are validated before any provider call. Transcripts and
+ * clip observations are proposals: nothing here writes project memory, and
+ * nothing here starts a Forge generation job.
+ *
+ * Documented provider limits (dev.meta.ai, checked 1 November 2026):
+ * - Muse Voice Transcribe accepts mono 16-bit PCM WAV at 16 kHz or 24 kHz,
+ *   up to 10 minutes and 32 MB per request.
+ * - Muse Spark video understanding accepts MP4 uploaded through the Files
+ *   API (`purpose: "user_data"`) and referenced by `file_id`.
+ *
+ * The product bounds below are deliberately narrower than the transport
+ * limits so a beta request stays inspectable and cheap.
+ */
+
+export const MEDIA_AUDIO_MIME_TYPES = ['audio/wav'] as const;
+export const MediaAudioMimeSchema = z.enum(MEDIA_AUDIO_MIME_TYPES);
+export type MediaAudioMime = z.infer<typeof MediaAudioMimeSchema>;
+
+export const MEDIA_VIDEO_MIME_TYPES = ['video/mp4'] as const;
+export const MediaVideoMimeSchema = z.enum(MEDIA_VIDEO_MIME_TYPES);
+export type MediaVideoMime = z.infer<typeof MediaVideoMimeSchema>;
+
+export const MEDIA_SOURCE_MIME_TYPES = [
+  ...MEDIA_AUDIO_MIME_TYPES,
+  ...MEDIA_VIDEO_MIME_TYPES,
+] as const;
+export const MediaSourceMimeSchema = z.enum(MEDIA_SOURCE_MIME_TYPES);
+export type MediaSourceMime = z.infer<typeof MediaSourceMimeSchema>;
+
+export const MEDIA_SOURCE_KINDS = ['audio', 'video'] as const;
+export const MediaSourceKindSchema = z.enum(MEDIA_SOURCE_KINDS);
+export type MediaSourceKindName = z.infer<typeof MediaSourceKindSchema>;
+
+export const MEDIA_SOURCE_ORIGINS = ['upload', 'recording'] as const;
+export const MediaSourceOriginSchema = z.enum(MEDIA_SOURCE_ORIGINS);
+export type MediaSourceOriginName = z.infer<typeof MediaSourceOriginSchema>;
+
+/** Decoded byte caps for stored sources (strictly below provider caps). */
+export const MEDIA_AUDIO_MAX_BYTES = 16 * 1024 * 1024;
+export const MEDIA_VIDEO_MAX_BYTES = 32 * 1024 * 1024;
+/** Base64 expansion plus a bounded JSON envelope for the upload route. */
+export const MEDIA_AUDIO_MAX_BASE64_CHARS = Math.ceil(MEDIA_AUDIO_MAX_BYTES / 3) * 4 + 64;
+export const MEDIA_VIDEO_MAX_BASE64_CHARS = Math.ceil(MEDIA_VIDEO_MAX_BYTES / 3) * 4 + 64;
+export const MEDIA_AUDIO_UPLOAD_BODY_LIMIT_BYTES = MEDIA_AUDIO_MAX_BASE64_CHARS + 16_384;
+export const MEDIA_VIDEO_UPLOAD_BODY_LIMIT_BYTES = MEDIA_VIDEO_MAX_BASE64_CHARS + 16_384;
+
+/** Product duration bounds for one beta request. */
+export const MEDIA_AUDIO_MAX_DURATION_MS = 3 * 60_000;
+export const MEDIA_VIDEO_MAX_DURATION_MS = 30_000;
+/** Provider-reported duration drift tolerated against the measured file. */
+export const MEDIA_DURATION_TOLERANCE_MS = 1_000;
+
+export function mediaSourceKindForMime(mime: MediaSourceMime): MediaSourceKindName {
+  return (MEDIA_AUDIO_MIME_TYPES as readonly string[]).includes(mime) ? 'audio' : 'video';
+}
+
+export function mediaSourceMaxBytes(kind: MediaSourceKindName): number {
+  return kind === 'audio' ? MEDIA_AUDIO_MAX_BYTES : MEDIA_VIDEO_MAX_BYTES;
+}
+
+export function mediaSourceMaxDurationMs(kind: MediaSourceKindName): number {
+  return kind === 'audio' ? MEDIA_AUDIO_MAX_DURATION_MS : MEDIA_VIDEO_MAX_DURATION_MS;
+}
+
+export const MediaSourceRecordSchema = z.object({
+  source_id: z.uuid(),
+  project_id: ForgeProjectIdSchema,
+  kind: MediaSourceKindSchema,
+  mime: MediaSourceMimeSchema,
+  duration_ms: z.number().int().min(1).max(600_000),
+  byte_size: z.number().int().min(1).max(MEDIA_VIDEO_MAX_BYTES),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  origin: MediaSourceOriginSchema,
+  original_name: z.string().max(120).nullable(),
+  created_at: z.iso.datetime(),
+});
+export type MediaSourceRecordView = z.infer<typeof MediaSourceRecordSchema>;
+
+export const MediaSourceListSchema = z.object({
+  items: z.array(MediaSourceRecordSchema).max(200),
+});
+export type MediaSourceList = z.infer<typeof MediaSourceListSchema>;
+
+export const MediaSourceUploadRequestSchema = z.object({
+  mime: MediaSourceMimeSchema,
+  /** Base64 (no data-URL prefix); magic bytes must agree with `mime`. */
+  data_base64: z.string().min(1).max(MEDIA_VIDEO_MAX_BASE64_CHARS),
+  origin: MediaSourceOriginSchema.default('upload'),
+  original_name: z.string().max(120).optional(),
+});
+export type MediaSourceUploadRequest = z.infer<typeof MediaSourceUploadRequestSchema>;
+
+export const MEDIA_TRANSCRIBE_MODES = ['PUSH_TO_TALK', 'ENDPOINTING', 'DIARIZATION'] as const;
+export const MediaTranscribeModeSchema = z.enum(MEDIA_TRANSCRIBE_MODES);
+export type MediaTranscribeMode = z.infer<typeof MediaTranscribeModeSchema>;
+
+/** Documented Muse Voice Transcribe default model. */
+export const DEFAULT_TRANSCRIBE_MODEL = 'muse-voice-transcribe-1.0';
+/** Documented Muse Spark model used for video understanding. */
+export const DEFAULT_VIDEO_MODEL = 'muse-spark-1.3';
+
+export const MediaTranscribeRequestSchema = z.object({
+  mode: MediaTranscribeModeSchema.default('PUSH_TO_TALK'),
+  /** Documented language hints; the model still detects language itself. */
+  language_bias: z.array(z.string().min(1).max(40)).max(4).default([]),
+  /** Vocabulary biasing terms (product names, acronyms). */
+  keywords: z.array(z.string().min(1).max(60)).max(20).default([]),
+});
+export type MediaTranscribeRequest = z.infer<typeof MediaTranscribeRequestSchema>;
+
+export const MediaTranscriptTurnSchema = z.object({
+  turn_id: z.number().int().min(0).max(10_000),
+  text: z.string().max(5_000),
+  start_ms: z.number().int().min(0).max(600_000),
+  end_ms: z.number().int().min(0).max(600_000),
+  speaker: z.string().min(1).max(8).optional(),
+});
+export type MediaTranscriptTurn = z.infer<typeof MediaTranscriptTurnSchema>;
+
+export const MediaTranscriptSchema = z.object({
+  source_id: z.uuid(),
+  transcript: z.string().max(20_000),
+  turns: z.array(MediaTranscriptTurnSchema).max(200),
+  /** Duration measured from the uploaded file, not from the provider. */
+  duration_ms: z.number().int().min(1).max(600_000),
+  /** Duration the provider reported processing, when it reported one. */
+  audio_duration_ms: z.number().int().min(0).max(600_000).nullable(),
+  model: z.string().min(1).max(120),
+  observed_model: z.string().min(1).max(120).nullable(),
+  session_id: z.string().min(1).max(200).nullable(),
+  provider_attempts: z.number().int().min(1),
+});
+export type MediaTranscript = z.infer<typeof MediaTranscriptSchema>;
+
+export const MediaClipRequestSchema = z.object({
+  /** Optional focus for the observations, e.g. "navigation and layout". */
+  prompt: z.string().min(1).max(500).optional(),
+});
+export type MediaClipRequest = z.infer<typeof MediaClipRequestSchema>;
+
+export const MediaClipObservationSchema = z.object({
+  observation: z.string().min(1).max(500),
+  start_ms: z.number().int().min(0).max(600_000),
+  end_ms: z.number().int().min(0).max(600_000),
+  confidence: z.number().min(0).max(1),
+});
+export type MediaClipObservation = z.infer<typeof MediaClipObservationSchema>;
+
+export const MediaClipResponseSchema = z.object({
+  source_id: z.uuid(),
+  duration_ms: z.number().int().min(1).max(600_000),
+  observations: z.array(MediaClipObservationSchema).max(8),
+  model: z.string().min(1).max(120),
+  observed_model: z.string().min(1).max(120).nullable(),
+  provider_attempts: z.number().int().min(1),
+  /** Bounded provider file id used for the clip; retained for inspection. */
+  file_id: z.string().min(1).max(200).nullable(),
+});
+export type MediaClipResponse = z.infer<typeof MediaClipResponseSchema>;
+
+/** Memory kinds a selected source observation may propose (never auto-accepted). */
+export const MEDIA_PROPOSAL_MEMORY_TYPES = [
+  'preference',
+  'constraint',
+  'technical_decision',
+  'project',
+  'goal',
+] as const;
+export const MediaProposalMemoryTypeSchema = z.enum(MEDIA_PROPOSAL_MEMORY_TYPES);
+export type MediaProposalMemoryType = z.infer<typeof MediaProposalMemoryTypeSchema>;
+
+export const MEDIA_PROPOSAL_KINDS = ['transcript', 'clip_observation'] as const;
+export const MediaProposalKindSchema = z.enum(MEDIA_PROPOSAL_KINDS);
+export type MediaProposalKind = z.infer<typeof MediaProposalKindSchema>;
+
+export const MediaProposalItemSchema = z.object({
+  kind: MediaProposalKindSchema,
+  memory_type: MediaProposalMemoryTypeSchema,
+  /** The user-edited text; always required, never inferred server-side. */
+  content: z.string().min(1).max(2_000),
+  start_ms: z.number().int().min(0).max(600_000).optional(),
+  end_ms: z.number().int().min(0).max(600_000).optional(),
+});
+export type MediaProposalItem = z.infer<typeof MediaProposalItemSchema>;
+
+export const MediaProposalRequestSchema = z.object({
+  proposals: z.array(MediaProposalItemSchema).min(1).max(8),
+});
+export type MediaProposalRequest = z.infer<typeof MediaProposalRequestSchema>;
+
+export const MediaProposalResultSchema = z.object({
+  source_id: z.uuid(),
+  proposed: z
+    .array(
+      z.object({
+        memory_id: z.uuid(),
+        content: z.string().max(2_000),
+        memory_type: MediaProposalMemoryTypeSchema,
+        reference: z.string().max(300),
+        created: z.boolean(),
+      }),
+    )
+    .max(8),
+});
+export type MediaProposalResult = z.infer<typeof MediaProposalResultSchema>;

@@ -11,6 +11,8 @@ import {
   apiSuccess,
   DEFAULT_MEDIA_IMAGE_MODEL,
   DEFAULT_SAM_MODEL,
+  DEFAULT_TRANSCRIBE_MODEL,
+  DEFAULT_VIDEO_MODEL,
   DEFAULT_VISION_MODEL,
   ERROR_CATALOG_VERSION,
   ErrorCatalogSchema,
@@ -43,6 +45,8 @@ import { MediaJobStore } from './media/jobs.js';
 import { MediaOperations } from './media/operations.js';
 import { MediaSegmentation, MediaUnderstand } from './media/segment.js';
 import { MediaService } from './media/service.js';
+import { MediaSourceStore } from './media/sources.js';
+import { MediaVoice } from './media/voice.js';
 import { evaluateRequestOrigin } from './origin-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { registerForgeRoutes } from './routes/forge.js';
@@ -72,7 +76,9 @@ export interface AppDependencies {
   /** Batch B media stores/service; created under the Forge workspace when omitted. */
   mediaAssets?: MediaAssetStore;
   mediaJobs?: MediaJobStore;
+  mediaSources?: MediaSourceStore;
   mediaOperations?: MediaOperations | null;
+  mediaVoice?: MediaVoice | null;
   mediaService?: MediaService;
   /**
    * Injectable fetch used by the media adapter when the app constructs it.
@@ -129,6 +135,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   const forgeWorkspace = dependencies.forgeWorkspace ?? new ForgeWorkspace(config.workspaceRoot);
   const mediaAssets = dependencies.mediaAssets ?? new MediaAssetStore(forgeWorkspace);
   const mediaJobs = dependencies.mediaJobs ?? new MediaJobStore(forgeWorkspace);
+  const mediaSources = dependencies.mediaSources ?? new MediaSourceStore(forgeWorkspace);
   const mediaModel = config.media?.model ?? DEFAULT_MEDIA_IMAGE_MODEL;
   const mediaFetch = dependencies.mediaFetch;
   const mediaAdapter =
@@ -168,12 +175,29 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
         })
       : null;
+  const mediaVoice =
+    dependencies.mediaVoice !== undefined
+      ? dependencies.mediaVoice
+      : mediaAdapter?.configured === true
+        ? new MediaVoice(mediaAdapter, {
+            ...(config.media?.transcribeModel
+              ? { transcribeModel: config.media.transcribeModel }
+              : {}),
+            ...(config.media?.videoModel ? { videoModel: config.media.videoModel } : {}),
+          })
+        : null;
   const mediaService =
     dependencies.mediaService ??
-    new MediaService(mediaAssets, mediaJobs, mediaOperations, {
-      ...(mediaSegmentation === null ? {} : { segmentation: mediaSegmentation }),
-      ...(mediaUnderstand === null ? {} : { understand: mediaUnderstand }),
-    });
+    new MediaService(
+      mediaAssets,
+      mediaJobs,
+      mediaOperations,
+      {
+        ...(mediaSegmentation === null ? {} : { segmentation: mediaSegmentation }),
+        ...(mediaUnderstand === null ? {} : { understand: mediaUnderstand }),
+      },
+      { sources: mediaSources, voice: mediaVoice, engine },
+    );
   const forgeManager =
     dependencies.forgeManager ??
     new ForgeJobManager({
@@ -626,6 +650,8 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         image_model: mediaModel,
         sam_model: config.media?.samModel ?? DEFAULT_SAM_MODEL,
         vision_model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        transcribe_model: config.media?.transcribeModel ?? DEFAULT_TRANSCRIBE_MODEL,
+        video_model: config.media?.videoModel ?? DEFAULT_VIDEO_MODEL,
         max_retries: config.media?.maxRetries ?? 1,
       },
       modules: {

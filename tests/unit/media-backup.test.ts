@@ -19,6 +19,8 @@ import {
   restoreMedia,
 } from '../../apps/server/src/media/backup.js';
 import { MediaJobStore } from '../../apps/server/src/media/jobs.js';
+import { MediaSourceStore } from '../../apps/server/src/media/sources.js';
+import { wavBytes } from '../helpers/media-fixtures.js';
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -46,12 +48,18 @@ async function seed() {
     kind: 'generate',
     params: { prompt: 'backup' },
   });
-  return { dir, workspace, asset, job };
+  const sources = new MediaSourceStore(workspace);
+  const source = await sources.create('backup-project', {
+    mime: 'audio/wav',
+    bytes: wavBytes({ durationMs: 1_000 }),
+    origin: 'recording',
+  });
+  return { dir, workspace, asset, job, source };
 }
 
 describe('media backup/restore (Batch B5)', () => {
   it('round-trips every media version and job record', async () => {
-    const { dir, workspace, asset, job } = await seed();
+    const { dir, workspace, asset, job, source } = await seed();
     const bundle = join(dir, 'bundle');
     const backup = await backupMedia(workspace, bundle);
     expect(backup.totals.files).toBeGreaterThan(0);
@@ -65,6 +73,9 @@ describe('media backup/restore (Batch B5)', () => {
     expect((await assets.readBytes('backup-project', asset.asset_id, 1)).equals(PNG)).toBe(true);
     const jobs = await new MediaJobStore(target).loadAll({ projectId: 'backup-project' });
     expect(jobs.jobs.map((entry) => entry.id)).toEqual([job.id]);
+    const sources = new MediaSourceStore(target);
+    expect((await sources.verifyProjectSources('backup-project')).ok).toBe(true);
+    expect((await sources.get('backup-project', source.source_id)).sha256).toBe(source.sha256);
   });
 
   it('refuses a tampered bundle before writing the target', async () => {
@@ -118,7 +129,7 @@ describe('media backup/restore (Batch B5)', () => {
   });
 
   it('rolls back earlier subtrees when a later swap fails', async () => {
-    const { dir, workspace, asset, job } = await seed();
+    const { dir, workspace, asset, job, source } = await seed();
     const bundle = join(dir, 'bundle');
     await backupMedia(workspace, bundle);
     const target = new ForgeWorkspace(join(dir, 'target'));
@@ -146,6 +157,9 @@ describe('media backup/restore (Batch B5)', () => {
     expect(after.equals(before)).toBe(true);
     const jobs = await new MediaJobStore(target).loadAll({ projectId: 'backup-project' });
     expect(jobs.jobs.map((entry) => entry.id)).toEqual([job.id]);
+    const sources = new MediaSourceStore(target);
+    expect((await sources.verifyProjectSources('backup-project')).ok).toBe(true);
+    expect((await sources.get('backup-project', source.source_id)).sha256).toBe(source.sha256);
   });
 
   it('removes a partial copy without touching the target', async () => {
@@ -232,8 +246,8 @@ describe('media backup/restore (Batch B5)', () => {
       }) as typeof realRmSync,
     };
     const restored = await restoreMedia(bundle, target, { force: true, fs });
-    // Both subtrees (media and media-jobs) parked an original, so both cleanups warn.
-    expect(restored.warnings).toHaveLength(2);
+    // All three subtrees (media, media-jobs, media-sources) parked an original.
+    expect(restored.warnings).toHaveLength(3);
     for (const warning of restored.warnings) expect(warning).toMatch(/\.restore-previous-/);
     // The restore itself committed: the new bytes verify.
     expect((await new MediaAssetStore(target).verifyProjectMedia('backup-project')).ok).toBe(true);

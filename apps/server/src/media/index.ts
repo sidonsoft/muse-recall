@@ -82,5 +82,16 @@ export type {
 export { MediaJobError, MediaJobStore } from './jobs.js';
 export type { MediaEditInput, MediaGenerateInput, MediaImageOutput } from './operations.js';
 export { MEDIA_DOWNLOAD_HOSTS, MediaOperations } from './operations.js';
-export type { UploadInput } from './service.js';
+export type { MediaSourceDeps, MediaVisionDeps, UploadInput } from './service.js';
 export { MediaService, MediaServiceError } from './service.js';
+export type { InspectedSource, MediaSourceErrorCode } from './source-format.js';
+export { inspectSourceBytes, MediaSourceError } from './source-format.js';
+export type {
+  CreateSourceInput,
+  MediaSourceManifestEntry,
+  MediaSourceRecord,
+  MediaSourceVerifyResult,
+} from './sources.js';
+export { MediaSourceStore } from './sources.js';
+export type { ClipOptions, MediaVoiceSource, TranscribeOptions } from './voice.js';
+export { MediaVoice, parseClipResponse, parseTranscribeResponse } from './voice.js';

@@ -14,6 +14,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { FORGE_PROJECT_ID_PATTERN } from '@mml/shared';
 import type { ForgeWorkspace } from '../forge/workspace.js';
 import { MediaAssetStore } from './assets.js';
+import { MediaSourceStore } from './sources.js';
 
 /**
  * Batch B — complete media backup and restore.
@@ -23,6 +24,7 @@ import { MediaAssetStore } from './assets.js';
  *   <bundle>/manifest.json
  *   <bundle>/forge/<project>/media/<asset>/<version>.bin|.json|asset.json
  *   <bundle>/forge/<project>/media-jobs/<job>.json
+ *   <bundle>/forge/<project>/media-sources/<source>/source.bin|source.json
  *
  * Nothing is copied before the SOURCE store re-hashes every version (drifted
  * bytes are refused, not backed up as if healthy), and nothing is restored
@@ -78,7 +80,8 @@ export interface MediaRestoreFs {
   mkdirSync?: typeof mkdirSync;
 }
 
-const FILE_PATH = /^forge\/([a-z0-9][a-z0-9-]{1,63})\/(media|media-jobs)(\/[A-Za-z0-9._-]+)*$/;
+const FILE_PATH =
+  /^forge\/([a-z0-9][a-z0-9-]{1,63})\/(media|media-jobs|media-sources)(\/[A-Za-z0-9._-]+)*$/;
 
 function timestamp(date: Date): string {
   return date.toISOString().replaceAll(':', '-');
@@ -150,6 +153,7 @@ export async function backupMedia(
   }
   const sourceRoot = workspace.getRoot();
   const store = new MediaAssetStore(workspace);
+  const sourceStore = new MediaSourceStore(workspace);
   const projects = projectDirs(workspace);
   const tag = `${process.pid}-${randomBytes(6).toString('hex')}`;
   const temp = `${target}.tmp-${tag}`;
@@ -166,7 +170,16 @@ export async function backupMedia(
               .join('; '),
         );
       }
-      for (const sub of ['media', 'media-jobs'] as const) {
+      const verifiedSources = await sourceStore.verifyProjectSources(project);
+      if (!verifiedSources.ok) {
+        throw new Error(
+          `Media backup refused: project ${project} has ${verifiedSources.mismatches.length} corrupt source(s): ` +
+            verifiedSources.mismatches
+              .map((mismatch) => `${mismatch.source_id} (${mismatch.reason})`)
+              .join('; '),
+        );
+      }
+      for (const sub of ['media', 'media-jobs', 'media-sources'] as const) {
         const from = join(sourceRoot, project, sub);
         if (!existsSync(from)) continue;
         const to = join(temp, 'forge', project, sub);
@@ -241,7 +254,7 @@ function readManifest(root: string): MediaBackupManifest {
 
 interface Subtree {
   project: string;
-  sub: 'media' | 'media-jobs';
+  sub: 'media' | 'media-jobs' | 'media-sources';
 }
 
 export async function restoreMedia(

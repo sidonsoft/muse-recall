@@ -3,19 +3,34 @@ import {
   API_ERROR_CODES,
   apiFailure,
   ForgeProjectIdSchema,
+  MEDIA_AUDIO_MAX_BASE64_CHARS,
+  MEDIA_AUDIO_MAX_BYTES,
+  MEDIA_AUDIO_UPLOAD_BODY_LIMIT_BYTES,
   MEDIA_UPLOAD_BODY_LIMIT_BYTES,
   MEDIA_UPLOAD_MAX_BASE64_CHARS,
   MEDIA_UPLOAD_MAX_BYTES,
+  MEDIA_VIDEO_MAX_BASE64_CHARS,
+  MEDIA_VIDEO_MAX_BYTES,
+  MEDIA_VIDEO_UPLOAD_BODY_LIMIT_BYTES,
   MediaAssetListSchema,
+  MediaClipRequestSchema,
+  MediaClipResponseSchema,
   MediaCutoutRequestSchema,
   MediaEditRequestSchema,
   MediaGenerateRequestSchema,
   MediaJobListSchema,
   MediaJobSchema,
+  MediaProposalRequestSchema,
+  MediaProposalResultSchema,
   MediaSegmentRequestSchema,
   MediaSegmentResponseSchema,
+  MediaSourceListSchema,
+  MediaSourceRecordSchema,
+  MediaSourceUploadRequestSchema,
   MediaSuggestRequestSchema,
   MediaSuggestResponseSchema,
+  MediaTranscribeRequestSchema,
+  MediaTranscriptSchema,
   MediaUploadRequestSchema,
   MediaVersionListSchema,
   MediaVersionRecordSchema,
@@ -25,6 +40,7 @@ import { z } from 'zod';
 import { MediaError } from '../media/assets.js';
 import { MediaJobError } from '../media/jobs.js';
 import { type MediaService, MediaServiceError } from '../media/service.js';
+import { MediaSourceError } from '../media/source-format.js';
 
 const ProjectParams = z.object({ id: ForgeProjectIdSchema });
 const AssetParams = z.object({
@@ -44,8 +60,41 @@ const JobParams = z.object({
   id: ForgeProjectIdSchema,
   jobId: z.uuid(),
 });
+const SourceParams = z.object({
+  id: ForgeProjectIdSchema,
+  sourceId: z.uuid(),
+});
 
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+function decodeSourceUpload(mime: 'audio/wav' | 'video/mp4', dataBase64: string): Buffer {
+  const maxChars =
+    mime === 'audio/wav' ? MEDIA_AUDIO_MAX_BASE64_CHARS : MEDIA_VIDEO_MAX_BASE64_CHARS;
+  const maxBytes = mime === 'audio/wav' ? MEDIA_AUDIO_MAX_BYTES : MEDIA_VIDEO_MAX_BYTES;
+  if (!BASE64.test(dataBase64) || dataBase64.length % 4 !== 0) {
+    throw new MediaSourceError(
+      'malformed_media',
+      'Source payload is not canonical base64; refusing to decode ambiguous bytes.',
+    );
+  }
+  if (dataBase64.length > maxChars) {
+    throw new MediaSourceError(
+      'size_exceeded',
+      `Source payload is ${String(dataBase64.length)} base64 chars, above the ${String(maxChars)}-char bound.`,
+    );
+  }
+  const bytes = Buffer.from(dataBase64, 'base64');
+  if (bytes.length > maxBytes) {
+    throw new MediaSourceError(
+      'size_exceeded',
+      `Source is ${String(bytes.length)} bytes, above the ${String(maxBytes)}-byte limit.`,
+    );
+  }
+  if (bytes.length === 0) {
+    throw new MediaSourceError('malformed_media', 'The uploaded source is empty.');
+  }
+  return bytes;
+}
 
 function decodeUpload(dataBase64: string): Buffer {
   if (!BASE64.test(dataBase64) || dataBase64.length % 4 !== 0) {
@@ -79,6 +128,89 @@ function decodeUpload(dataBase64: string): Buffer {
  */
 export function registerMediaRoutes(app: FastifyInstance, deps: { service: MediaService }): void {
   const { service } = deps;
+
+  // --- Batch D: voice and video sources ----------------------------------
+  // Static `/media/sources` routes are registered before `/media/:assetId`
+  // so a source id can never be mistaken for an image asset id.
+  app.get('/api/forge/projects/:id/media/sources', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      return envelope(MediaSourceListSchema.parse({ items: await service.listSources(id) }));
+    });
+  });
+
+  app.post(
+    '/api/forge/projects/:id/media/sources',
+    {
+      bodyLimit: Math.max(MEDIA_AUDIO_UPLOAD_BODY_LIMIT_BYTES, MEDIA_VIDEO_UPLOAD_BODY_LIMIT_BYTES),
+    },
+    async (request, reply) => {
+      return guard(reply, async () => {
+        const { id } = ProjectParams.parse(request.params);
+        const body = MediaSourceUploadRequestSchema.parse(request.body ?? {});
+        const record = await service.uploadSource(id, {
+          mime: body.mime,
+          bytes: decodeSourceUpload(body.mime, body.data_base64),
+          origin: body.origin,
+          ...(body.original_name !== undefined ? { original_name: body.original_name } : {}),
+        });
+        return reply.status(201).send(envelope(MediaSourceRecordSchema.parse(record)));
+      });
+    },
+  );
+
+  app.get('/api/forge/projects/:id/media/sources/:sourceId/bytes', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id, sourceId } = SourceParams.parse(request.params);
+      const record = await service.getSource(id, sourceId);
+      const bytes = await service.readSourceBytes(id, sourceId);
+      return reply
+        .status(200)
+        .header('content-type', record.mime)
+        .header('content-length', String(bytes.length))
+        .header('cache-control', 'no-store')
+        .header('x-content-type-options', 'nosniff')
+        .header('content-security-policy', "default-src 'none'; sandbox")
+        .header(
+          'content-disposition',
+          `inline; filename="${record.source_id}.${record.mime.split('/')[1] ?? 'bin'}"`,
+        )
+        .send(bytes);
+    });
+  });
+
+  app.post('/api/forge/projects/:id/media/sources/:sourceId/transcribe', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id, sourceId } = SourceParams.parse(request.params);
+      const body = MediaTranscribeRequestSchema.parse(request.body ?? {});
+      const transcript = await service.transcribeSource(id, sourceId, {
+        mode: body.mode,
+        languageBias: body.language_bias,
+        keywords: body.keywords,
+      });
+      return envelope(MediaTranscriptSchema.parse(transcript));
+    });
+  });
+
+  app.post('/api/forge/projects/:id/media/sources/:sourceId/clip', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id, sourceId } = SourceParams.parse(request.params);
+      const body = MediaClipRequestSchema.parse(request.body ?? {});
+      const clip = await service.understandClip(id, sourceId, {
+        ...(body.prompt !== undefined ? { prompt: body.prompt } : {}),
+      });
+      return envelope(MediaClipResponseSchema.parse(clip));
+    });
+  });
+
+  app.post('/api/forge/projects/:id/media/sources/:sourceId/proposals', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id, sourceId } = SourceParams.parse(request.params);
+      const body = MediaProposalRequestSchema.parse(request.body ?? {});
+      const result = await service.proposeFromSource(id, sourceId, body.proposals);
+      return reply.status(201).send(envelope(MediaProposalResultSchema.parse(result)));
+    });
+  });
 
   app.get('/api/forge/projects/:id/media', async (request, reply) => {
     return guard(reply, async () => {
@@ -289,13 +421,33 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
         error: { code: error.code, message: error.message },
       });
     }
+    if (error instanceof MediaSourceError) {
+      const status =
+        error.code === 'source_not_found'
+          ? 404
+          : error.code === 'size_exceeded'
+            ? 413
+            : error.code === 'persistence_failed'
+              ? 503
+              : error.code === 'source_corrupt'
+                ? 409
+                : 400;
+      return reply.status(status).send({
+        ok: false,
+        error: { code: error.code, message: error.message },
+      });
+    }
     if (error instanceof MediaServiceError) {
       const status =
         error.code === 'media_unconfigured'
           ? 503
-          : error.code === 'job_not_found' || error.code === 'segment_not_found'
+          : error.code === 'job_not_found' ||
+              error.code === 'segment_not_found' ||
+              error.code === 'media_source_not_found'
             ? 404
-            : 400;
+            : error.code === 'proposal_conflict'
+              ? 409
+              : 400;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message },
