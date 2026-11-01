@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH, ForgeProjectIdSchema } from './forge.js';
+import {
+  FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH,
+  ForgeJobKindSchema,
+  ForgeJobStatusSchema,
+  ForgeProjectIdSchema,
+} from './forge.js';
 
 /**
  * Media capability contracts (Batch A1).
@@ -454,9 +459,26 @@ export type VisualReviewUnverified = z.infer<typeof VisualReviewUnverifiedSchema
 export const MediaVisualReviewRequestSchema = z.object({
   /** PNG capture of the running app, same bound as a modify-job screenshot. */
   screenshot_data_url: z.string().min(100).max(FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH),
-  /** Accepted decision ids to review against; resolved from the store. */
-  decisions: z.array(z.uuid()).min(1).max(16),
-  /** Optional generation this review describes; never a write target. */
+  /**
+   * Accepted decisions to review against, named by id plus the revision the
+   * caller is looking at. Text always comes from the store, and a revision the
+   * screen did not see is a conflict: otherwise an in-place edit between the
+   * listing and the POST would be reviewed and reported as the decision the
+   * user selected.
+   */
+  decisions: z
+    .array(
+      z.object({
+        memory_id: z.uuid(),
+        expected_revision: z.number().int().min(1).optional(),
+      }),
+    )
+    .min(1)
+    .max(16),
+  /**
+   * Optional generation this review describes. Validated against the project's
+   * own job history and echoed back in the response; never a write target.
+   */
   job_id: z.uuid().optional(),
 });
 export type MediaVisualReviewRequest = z.infer<typeof MediaVisualReviewRequestSchema>;
@@ -466,6 +488,21 @@ export const MediaVisualReviewResponseSchema = z.object({
   /** Always false: reviewing a screenshot cannot touch an artifact. */
   artifact_changed: z.literal(false),
   screenshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  /**
+   * The generation this review was attached to, echoed from the server's own
+   * job record. Absent when the caller named no generation. This is identity
+   * for the reader, not a verdict: it says which generation the frame was
+   * reviewed beside, not whether that generation satisfied anything.
+   */
+  generation: z
+    .object({
+      id: z.uuid(),
+      kind: ForgeJobKindSchema,
+      status: ForgeJobStatusSchema,
+      version: z.number().int().min(1).nullable(),
+      created_at: z.iso.datetime(),
+    })
+    .optional(),
   findings: z.array(VisualReviewFindingSchema).max(16),
   unverified: z.array(VisualReviewUnverifiedSchema).max(16),
   /** Entries the output supplied for decisions that were not selected. */

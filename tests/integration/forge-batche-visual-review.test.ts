@@ -282,7 +282,15 @@ async function approveGenerate(app: FastifyInstance): Promise<string> {
 }
 
 function reviewBody(decisions: string[], screenshot = SCREENSHOT) {
-  return { screenshot_data_url: screenshot, decisions };
+  return {
+    screenshot_data_url: screenshot,
+    decisions: decisions.map((memory_id) => ({ memory_id })),
+  };
+}
+
+/** The shape a real screen sends: each id pinned to the revision it showed. */
+function pinnedBody(selection: Array<{ memory_id: string; expected_revision: number }>) {
+  return { screenshot_data_url: SCREENSHOT, decisions: selection };
 }
 
 async function postReview(app: FastifyInstance, body: unknown) {
@@ -485,6 +493,74 @@ describe('screenshot advisory review against accepted decisions', () => {
     const response = await postReview(h.app, reviewBody([theme.id]));
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe('media_unconfigured');
+  });
+
+  it('refuses a decision whose wording moved under the screen, before any provider call', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: ocean.');
+    await approveGenerate(h.app);
+
+    // The screen is showing revision 1. The user edits the decision in place,
+    // which keeps the same id and bumps the revision.
+    const revised = h.engine.update(theme.id, { content: 'Theme: woodland.' }, 'user');
+    expect(revised.revision).toBe(2);
+    expect(revised.id).toBe(theme.id);
+
+    const stale = await postReview(
+      h.app,
+      pinnedBody([{ memory_id: theme.id, expected_revision: 1 }]),
+    );
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('decision_revision_conflict');
+    expect(stale.json().error.message).toContain('revision 2');
+    // Reviewing the *current* wording is fine, and it says which revision that
+    // was, so the response cannot be mistaken for the one the screen displayed.
+    const fresh = await postReview(
+      h.app,
+      pinnedBody([{ memory_id: theme.id, expected_revision: 2 }]),
+    );
+    expect(fresh.statusCode).toBe(200);
+    const payload = MediaVisualReviewResponseSchema.parse(fresh.json().data);
+    expect(payload.findings[0]?.decision_revision).toBe(2);
+    expect(payload.findings[0]?.decision_excerpt).toBe('Theme: woodland.');
+    // Only the accepted review reached the model.
+    expect(h.review.calls).toBe(1);
+  });
+
+  it('attaches a review to a generation of this project and to no other', async () => {
+    const h = await harness();
+    await createProject(h.app);
+    const theme = decision(h.engine, 'Theme: woodland.');
+    const jobId = await approveGenerate(h.app);
+
+    const pinned = await postReview(h.app, {
+      ...reviewBody([theme.id]),
+      job_id: jobId,
+    });
+    expect(pinned.statusCode).toBe(200);
+    const payload = MediaVisualReviewResponseSchema.parse(pinned.json().data);
+    // The identity echoed back comes from the server's job record.
+    expect(payload.generation).toMatchObject({ id: jobId, kind: 'generate', version: 1 });
+    expect(payload.artifact_changed).toBe(false);
+
+    // A job id from another project, or one that does not exist, is refused
+    // rather than quietly reviewed against the wrong generation.
+    const foreignJob = h.manager
+      .list(PROJECT)
+      .map((job) => job.id)
+      .concat(['9c1f2a3b-4d5e-4f60-8a71-8b9c0d0e0f02']);
+    const other = h.manager.get(foreignJob[0] as string) as { project_id: string };
+    expect(other.project_id).toBe(PROJECT);
+    for (const candidate of [
+      '9c1f2a3b-4d5e-4f60-8a71-8b9c0d0e0f02',
+      '00000000-0000-4000-8000-000000000000',
+    ]) {
+      const response = await postReview(h.app, { ...reviewBody([theme.id]), job_id: candidate });
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error.code).toBe('invalid_job_id');
+    }
+    expect(h.review.calls).toBe(1);
   });
 
   it('bounds the request through the shared schema before any work happens', async () => {

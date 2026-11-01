@@ -285,7 +285,11 @@ export function registerForgeRoutes(
 
         const now = new Date().toISOString();
         const selected: Array<{ id: string; revision: number; excerpt: string; text: string }> = [];
-        for (const memoryId of [...new Set(body.decisions)]) {
+        const seen = new Set<string>();
+        for (const entry of body.decisions) {
+          if (seen.has(entry.memory_id)) continue;
+          seen.add(entry.memory_id);
+          const memoryId = entry.memory_id;
           const memory = deps.engine.get(memoryId, { includeDeleted: true });
           if (memory === null) {
             throw new ForgeError(
@@ -311,12 +315,47 @@ export function registerForgeRoutes(
               `Decision ${memoryId} is ${memory.status}${memory.expires_at !== null ? ' past its expiry' : ''}, not an accepted decision, so there is nothing accepted to review against.`,
             );
           }
+          // A decision edited in place keeps its id, so id-only selection would
+          // silently review the new wording and report it as the one the user
+          // picked. The revision the screen displayed has to still be current.
+          if (
+            entry.expected_revision !== undefined &&
+            entry.expected_revision !== memory.revision
+          ) {
+            throw new ForgeError(
+              'decision_revision_conflict',
+              `Decision ${memoryId} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decisions before reviewing the screenshot.`,
+            );
+          }
           selected.push({
             id: memory.id,
             revision: memory.revision,
             excerpt: decisionExcerpt(memory.content),
             text: memory.content,
           });
+        }
+
+        // A review may name the generation the frame belongs to. It is resolved
+        // from this project's own job history, so feedback cannot be attached to
+        // another project's generation or to a job id that does not exist.
+        let generation:
+          | { id: string; kind: string; status: string; version: number | null; created_at: string }
+          | undefined;
+        if (body.job_id !== undefined) {
+          const job = manager.get(body.job_id);
+          if (job === undefined || job.project_id !== id) {
+            throw new ForgeError(
+              'invalid_job_id',
+              `Job ${body.job_id} is not a Forge job of project ${id}, so this review cannot be attached to it.`,
+            );
+          }
+          generation = {
+            id: job.id,
+            kind: job.kind,
+            status: job.status,
+            version: job.version,
+            created_at: job.created_at,
+          };
         }
 
         const png = decodePng(body.screenshot_data_url);
@@ -332,6 +371,7 @@ export function registerForgeRoutes(
             advisory: true,
             artifact_changed: false,
             screenshot_sha256: createHash('sha256').update(png).digest('hex'),
+            ...(generation === undefined ? {} : { generation }),
             findings: outcome.findings.map((finding) => ({
               ...finding,
               decision_excerpt: (byId.get(finding.decision_id) as { excerpt: string }).excerpt,
