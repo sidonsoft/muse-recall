@@ -10,7 +10,12 @@ import {
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { api } from '../../lib/api.ts';
 import { Icon } from '../Icon.tsx';
-import { playbackMessage, useSourceDownload, useSourcePlayback } from './source-playback.ts';
+import {
+  playbackMessage,
+  playbackView,
+  useSourceDownload,
+  useSourcePlayback,
+} from './source-playback.ts';
 import {
   clipTarget,
   initialState,
@@ -244,6 +249,12 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
     active?.source_id ?? null,
     active?.mime ?? null,
   );
+  // A prop change renders once before the playback effect re-runs, so the
+  // snapshot still belongs to the PREVIOUS project+source on that render.
+  // Filtering by the exact current key keeps an old blob URL from appearing
+  // under the new selection; the panel shows a neutral loading state instead.
+  const playbackForActive =
+    active === null ? null : playbackView(playback, projectId, active.source_id);
 
   const advanceToken = useCallback((): number => {
     const token = Math.max(seqRef.current, stateRef.current.operationToken) + 1;
@@ -717,15 +728,15 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
         )}
       </ul>
 
-      {active ? (
+      {active !== null && playbackForActive !== null ? (
         <div className="space-y-2 border-t border-line/70 px-3 py-2.5">
           {active.kind === 'audio' ? (
-            playback.status === 'ready' && playback.objectUrl !== null ? (
+            playbackForActive.status === 'ready' && playbackForActive.objectUrl !== null ? (
               <audio
-                key={playback.sourceKey}
+                key={playbackForActive.sourceKey}
                 controls
                 preload="metadata"
-                src={playback.objectUrl}
+                src={playbackForActive.objectUrl}
                 className="h-8 w-full"
               >
                 <track kind="captions" />
@@ -734,21 +745,21 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
               <p
                 role="status"
                 className={
-                  playback.status === 'error'
+                  playbackForActive.status === 'error'
                     ? 'text-[10.5px] text-err'
                     : 'text-[10.5px] text-muted'
                 }
               >
-                {playbackMessage(playback)}
+                {playbackMessage(playbackForActive)}
               </p>
             )
-          ) : playback.status === 'ready' && playback.objectUrl !== null ? (
+          ) : playbackForActive.status === 'ready' && playbackForActive.objectUrl !== null ? (
             <video
-              key={playback.sourceKey}
+              key={playbackForActive.sourceKey}
               controls
               playsInline
               preload="metadata"
-              src={playback.objectUrl}
+              src={playbackForActive.objectUrl}
               className="max-h-40 w-full rounded border border-line bg-black"
             >
               <track kind="captions" />
@@ -757,10 +768,12 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
             <p
               role="status"
               className={
-                playback.status === 'error' ? 'text-[10.5px] text-err' : 'text-[10.5px] text-muted'
+                playbackForActive.status === 'error'
+                  ? 'text-[10.5px] text-err'
+                  : 'text-[10.5px] text-muted'
               }
             >
-              {playbackMessage(playback)}
+              {playbackMessage(playbackForActive)}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">

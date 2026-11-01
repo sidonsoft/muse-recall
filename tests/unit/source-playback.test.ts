@@ -4,10 +4,14 @@ import type { DownloadDeps } from '../../apps/web/src/components/studio/source-p
 import {
   downloadSource,
   filenameFor,
+  IDLE_DOWNLOAD,
   IDLE_SNAPSHOT,
   type PlaybackDeps,
+  type PlaybackSnapshot,
   playbackKey,
   playbackMessage,
+  playbackView,
+  SourceDownload,
   SourcePlayback,
 } from '../../apps/web/src/components/studio/source-playback.ts';
 import { ApiError, api, type SourceBytes } from '../../apps/web/src/lib/api.ts';
@@ -58,12 +62,18 @@ function makeFakes(
   };
 }
 
-function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (error: unknown) => void;
+} {
   let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((done) => {
+  let reject: (error: unknown) => void = () => undefined;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function bytesFor(projectId: string, sourceId: string): SourceBytes {
@@ -288,6 +298,166 @@ describe('api.mediaSourceBytes request plumbing', () => {
     expect((actual as ApiError).code).toBe('source_too_large');
   });
 });
+
+describe('playbackView selection gating', () => {
+  const readyForA: PlaybackSnapshot = {
+    sourceKey: playbackKey('alpha', 'src-a'),
+    status: 'ready',
+    objectUrl: 'blob:previous-source',
+    blob: new Blob(['a']),
+    mime: 'audio/wav',
+    byteLength: 1,
+    error: null,
+  };
+
+  it('hides a ready snapshot that belongs to another source', () => {
+    // Exactly the render that happens after a selection change but before the
+    // playback effect runs: the old blob URL must not reach the element.
+    const view = playbackView(readyForA, 'alpha', 'src-b');
+    expect(view.status).toBe('loading');
+    expect(view.objectUrl).toBeNull();
+    expect(view.blob).toBeNull();
+    expect(view.sourceKey).toBe(playbackKey('alpha', 'src-b'));
+    expect(playbackMessage(view)).toBe('Loading source bytes\u2026');
+  });
+
+  it('hides it across a project switch even when the source id matches', () => {
+    const view = playbackView(readyForA, 'beta', 'src-a');
+    expect(view.objectUrl).toBeNull();
+    expect(view.status).toBe('loading');
+    expect(view.sourceKey).toBe(playbackKey('beta', 'src-a'));
+  });
+
+  it('passes the snapshot through for the exact current selection', () => {
+    expect(playbackView(readyForA, 'alpha', 'src-a')).toBe(readyForA);
+  });
+
+  it('shows an error only for the source it came from', () => {
+    const failed: PlaybackSnapshot = {
+      ...readyForA,
+      status: 'error',
+      objectUrl: null,
+      error: { code: 'unauthorized', message: 'Missing or invalid bearer token.' },
+    };
+    expect(playbackView(failed, 'alpha', 'src-b').status).toBe('loading');
+    expect(playbackView(failed, 'alpha', 'src-b').error).toBeNull();
+    const same = playbackView(failed, 'alpha', 'src-a');
+    expect(same.status).toBe('error');
+    expect(playbackMessage(same)).toBe('Playback unavailable: Missing or invalid bearer token.');
+  });
+});
+
+describe('SourceDownload selection fence', () => {
+  it('never downloads for a source that is no longer selected', async () => {
+    const pending = deferred<SourceBytes>();
+    const fakes = makeFakes(() => pending.promise);
+    const downloads = new SourceDownload(fakes.deps);
+    downloads.select('alpha', 'src-a');
+    const started = downloads.download('alpha', 'src-a', 'audio/wav');
+    expect(downloads.current()).toEqual({
+      sourceKey: playbackKey('alpha', 'src-a'),
+      pending: true,
+      error: null,
+    });
+    // The person switches source while the byte fetch is still running.
+    downloads.select('alpha', 'src-b');
+    expect(downloads.current()).toEqual(IDLE_DOWNLOAD_EXT('alpha', 'src-b'));
+    pending.resolve(bytesFor('alpha', 'src-a'));
+    expect(await started).toBe('stale');
+    // No URL was ever made, and no download fires against the new selection.
+    expect(fakes.created).toEqual([]);
+    expect(fakes.revoked).toEqual([]);
+    expect(fakes.triggerCalls).toEqual([]);
+    expect(downloads.current()).toEqual(IDLE_DOWNLOAD_EXT('alpha', 'src-b'));
+  });
+
+  it('suppresses a late failure instead of showing it on the new selection', async () => {
+    const pending = deferred<SourceBytes>();
+    const fakes = makeFakes(() => pending.promise);
+    const downloads = new SourceDownload(fakes.deps);
+    downloads.select('alpha', 'src-a');
+    const started = downloads.download('alpha', 'src-a', 'audio/wav');
+    downloads.select('beta', 'src-z');
+    pending.reject(new ApiError('unauthorized', 'Missing or invalid bearer token.', 401));
+    expect(await started).toBe('stale');
+    expect(downloads.current().error).toBeNull();
+    expect(downloads.current().pending).toBe(false);
+    expect(downloads.current().sourceKey).toBe(playbackKey('beta', 'src-z'));
+  });
+
+  it('reports progress, downloads, and clears it for the selected source', async () => {
+    const fakes = makeFakes(async (projectId, sourceId) => bytesFor(projectId, sourceId));
+    const downloads = new SourceDownload(fakes.deps);
+    downloads.select('alpha', 'src-a');
+    const started = downloads.download('alpha', 'src-a', 'audio/wav');
+    expect(downloads.current().pending).toBe(true);
+    expect(await started).toBe('downloaded');
+    expect(fakes.triggerCalls).toEqual([
+      { url: fakes.created[0] as string, filename: 'src-a.wav' },
+    ]);
+    expect(fakes.revoked).toEqual(fakes.created);
+    expect(downloads.current()).toEqual({
+      sourceKey: playbackKey('alpha', 'src-a'),
+      pending: false,
+      error: null,
+    });
+  });
+
+  it('surfaces a failure for the source it belongs to', async () => {
+    const fakes = makeFakes(() => Promise.reject(new ApiError('source_too_large', 'too big', 200)));
+    const downloads = new SourceDownload(fakes.deps);
+    downloads.select('alpha', 'src-a');
+    expect(await downloads.download('alpha', 'src-a', 'audio/wav')).toBe('failed');
+    expect(downloads.current().error).toBe('too big');
+    expect(downloads.current().sourceKey).toBe(playbackKey('alpha', 'src-a'));
+    expect(fakes.created).toEqual([]);
+  });
+
+  it('refuses to start a download once the selection has already moved', async () => {
+    const fakes = makeFakes(async (projectId, sourceId) => bytesFor(projectId, sourceId));
+    const downloads = new SourceDownload(fakes.deps);
+    downloads.select('alpha', 'src-b');
+    expect(await downloads.download('alpha', 'src-a', 'audio/wav')).toBe('stale');
+    expect(fakes.fetches).toEqual([]);
+  });
+
+  it('stops before creating a URL when the selection moves mid-fetch', async () => {
+    const pending = deferred<SourceBytes>();
+    const fakes = makeFakes(() => pending.promise);
+    let current = true;
+    const started = downloadSource(
+      { ...fakes.deps, isCurrent: () => current },
+      'alpha',
+      'src-a',
+      'src-a.wav',
+      null,
+    );
+    current = false;
+    pending.resolve(bytesFor('alpha', 'src-a'));
+    expect(await started).toBe('stale');
+    expect(fakes.created).toEqual([]);
+    expect(fakes.triggerCalls).toEqual([]);
+    expect(fakes.revoked).toEqual([]);
+  });
+
+  it('drops pending work on unmount', async () => {
+    const pending = deferred<SourceBytes>();
+    const fakes = makeFakes(() => pending.promise);
+    const downloads = new SourceDownload(fakes.deps);
+    downloads.select('alpha', 'src-a');
+    const started = downloads.download('alpha', 'src-a', 'audio/wav');
+    downloads.dispose();
+    pending.resolve(bytesFor('alpha', 'src-a'));
+    expect(await started).toBe('stale');
+    expect(fakes.created).toEqual([]);
+    expect(fakes.triggerCalls).toEqual([]);
+    expect(downloads.current()).toEqual(IDLE_DOWNLOAD);
+  });
+});
+
+function IDLE_DOWNLOAD_EXT(projectId: string, sourceId: string) {
+  return { sourceKey: playbackKey(projectId, sourceId), pending: false, error: null };
+}
 
 describe('download without a token in the URL', () => {
   it('reuses the authenticated blob and revokes the temporary URL', async () => {

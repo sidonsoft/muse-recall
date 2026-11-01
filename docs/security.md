@@ -219,6 +219,18 @@ warning naming the exposed addresses. Browser clients pick the secret up from
 `GET /api/meta` reports `safety.authentication` as `loopback-only` or `shared-token` —
 the server states its own posture instead of letting operators infer it.
 
+Because the token lives in a header, a `<audio>`/`<video src>` or a download `href`
+pointed straight at `/media/sources/:id/bytes` cannot authenticate: the element issues a
+bare GET and gets `401`. Voice/video bytes are therefore fetched through the API client and
+handed to the element as a `blob:` object URL (revoked when the selection changes or the
+panel unmounts), so the token never enters a URL, a bookmark, or a Referer, and downloads
+reuse the already-authenticated bytes instead of issuing a second bare request. Wire-verified
+1 Nov 2026 with production bundles in real Chromium under a real `ACCESS_TOKEN`
+(`pnpm verify:batchd-playback-auth`, 9 checks): element `src` scheme `blob:`, exactly one
+authorized byte fetch returning the full fixture, no download with a credential in its URL,
+zero failed HTTP requests, zero server-side dispatches, and the token absent from server logs;
+the same checks pass with `ACCESS_TOKEN` unset.
+
 Wire-verified 31 Oct 2026 (built server, fresh port, real curl): no token → `401
 {code: unauthorized}`; correct bearer → `200`; wrong bearer → `401`; `GET /api/health`
 open (`200`) while `GET /api/live` requires the token — the exemption boundary the README
