@@ -7,10 +7,15 @@ import {
   MEDIA_UPLOAD_MAX_BASE64_CHARS,
   MEDIA_UPLOAD_MAX_BYTES,
   MediaAssetListSchema,
+  MediaCutoutRequestSchema,
   MediaEditRequestSchema,
   MediaGenerateRequestSchema,
   MediaJobListSchema,
   MediaJobSchema,
+  MediaSegmentRequestSchema,
+  MediaSegmentResponseSchema,
+  MediaSuggestRequestSchema,
+  MediaSuggestResponseSchema,
   MediaUploadRequestSchema,
   MediaVersionListSchema,
   MediaVersionRecordSchema,
@@ -25,6 +30,10 @@ const ProjectParams = z.object({ id: ForgeProjectIdSchema });
 const AssetParams = z.object({
   id: ForgeProjectIdSchema,
   assetId: z.uuid(),
+});
+const SegmentParams = z.object({
+  id: ForgeProjectIdSchema,
+  segmentId: z.uuid(),
 });
 const VersionParams = z.object({
   id: ForgeProjectIdSchema,
@@ -145,6 +154,53 @@ export function registerMediaRoutes(app: FastifyInstance, deps: { service: Media
     });
   });
 
+  /**
+   * Batch C track 1 — reference-image suggestions. Inference only: the
+   * response carries drafts for review, and nothing is written to memory
+   * until the caller proposes a confirmed suggestion through the memory
+   * engine. Dismissed suggestions never enter memory at all.
+   */
+  app.post('/api/forge/projects/:id/media/suggest', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      const body = MediaSuggestRequestSchema.parse(request.body ?? {});
+      const response = await service.suggestDecisions(id, {
+        asset_id: body.asset_id,
+        ...(body.version !== undefined ? { version: body.version } : {}),
+        ...(body.guidance !== undefined ? { guidance: body.guidance } : {}),
+        ...(body.count !== undefined ? { count: body.count } : {}),
+      });
+      return envelope(MediaSuggestResponseSchema.parse(response));
+    });
+  });
+
+  /**
+   * Batch C track 2 — SAM segmentation. Returns inspectable matches with
+   * previews; an empty match list is valid (zero matches), not an error.
+   * The session id selects the match to save without re-calling SAM.
+   */
+  app.post('/api/forge/projects/:id/media/segment', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      const body = MediaSegmentRequestSchema.parse(request.body ?? {});
+      const response = await service.runSegmentation(id, {
+        asset_id: body.asset_id,
+        ...(body.version !== undefined ? { version: body.version } : {}),
+        concept: body.concept,
+      });
+      return envelope(MediaSegmentResponseSchema.parse(response));
+    });
+  });
+
+  app.post('/api/forge/projects/:id/media/segments/:segmentId/cutout', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id, segmentId } = SegmentParams.parse(request.params);
+      const body = MediaCutoutRequestSchema.parse(request.body ?? {});
+      const record = await service.saveCutout(id, segmentId, body.match_index);
+      return envelope(MediaVersionRecordSchema.parse(record));
+    });
+  });
+
   app.post('/api/forge/projects/:id/media/jobs/:jobId/cancel', async (request, reply) => {
     return guard(reply, async () => {
       const { id, jobId } = JobParams.parse(request.params);
@@ -235,7 +291,11 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
     }
     if (error instanceof MediaServiceError) {
       const status =
-        error.code === 'media_unconfigured' ? 503 : error.code === 'job_not_found' ? 404 : 400;
+        error.code === 'media_unconfigured'
+          ? 503
+          : error.code === 'job_not_found' || error.code === 'segment_not_found'
+            ? 404
+            : 400;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message },

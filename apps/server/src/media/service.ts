@@ -1,4 +1,10 @@
-import type { MediaImageSize } from '@mml/shared';
+import { randomUUID } from 'node:crypto';
+import {
+  MEDIA_UPLOAD_MAX_BYTES,
+  type MediaImageSize,
+  type MediaSegmentResponse,
+  type MediaSuggestResponse,
+} from '@mml/shared';
 import {
   type MediaAssetStore,
   type MediaAssetSummary,
@@ -8,6 +14,14 @@ import {
 } from './assets.js';
 import type { MediaJob, MediaJobLoadResult, MediaJobStore } from './jobs.js';
 import type { MediaImageOutput, MediaOperations } from './operations.js';
+import {
+  decodeImage,
+  type MediaSegmentation,
+  type MediaUnderstand,
+  type ParsedSegmentMatch,
+  renderCutoutBounded,
+  renderMatchPreview,
+} from './segment.js';
 
 /**
  * Batch B — orchestration between the asset store, the job store and the
@@ -28,7 +42,9 @@ export type MediaServiceErrorCode =
   | 'media_unconfigured'
   | 'unsupported_job'
   | 'unsupported_parent'
-  | 'job_not_found';
+  | 'job_not_found'
+  | 'segment_not_found'
+  | 'match_not_found';
 
 export class MediaServiceError extends Error {
   constructor(
@@ -74,13 +90,35 @@ function providerModelName(output: MediaImageOutput): {
   };
 }
 
+export interface MediaVisionDeps {
+  segmentation?: MediaSegmentation | null;
+  understand?: MediaUnderstand | null;
+}
+
+interface SegmentSession {
+  id: string;
+  projectId: string;
+  assetId: string;
+  version: number;
+  concept: string;
+  model: string;
+  matches: ParsedSegmentMatch[];
+  createdAt: number;
+}
+
+/** Segment sessions expire; a stale select fails closed, never mismatched. */
+const SEGMENT_SESSION_TTL_MS = 30 * 60_000;
+const SEGMENT_SESSION_MAX = 50;
+
 export class MediaService {
   private readonly active = new Map<string, AbortController>();
+  private readonly segments = new Map<string, SegmentSession>();
 
   constructor(
     private readonly assets: MediaAssetStore,
     private readonly jobs: MediaJobStore,
     private readonly operations: MediaOperations | null,
+    private readonly vision: MediaVisionDeps = {},
   ) {}
 
   private requireOperations(): MediaOperations {
@@ -205,6 +243,169 @@ export class MediaService {
 
   async reject(projectId: string, assetId: string, version: number): Promise<MediaVersionRecord> {
     return this.assets.reject(projectId, assetId, version);
+  }
+
+  private requireSegmentation(): MediaSegmentation {
+    if (this.vision.segmentation === null || this.vision.segmentation === undefined) {
+      throw new MediaServiceError(
+        'media_unconfigured',
+        'Segmentation is not configured: set the provider API key to enable SAM object extraction.',
+      );
+    }
+    return this.vision.segmentation;
+  }
+
+  private requireUnderstand(): MediaUnderstand {
+    if (this.vision.understand === null || this.vision.understand === undefined) {
+      throw new MediaServiceError(
+        'media_unconfigured',
+        'Understanding is not configured: set the provider API key to enable reference-image suggestions.',
+      );
+    }
+    return this.vision.understand;
+  }
+
+  private async resolveVersion(
+    projectId: string,
+    assetId: string,
+    version?: number,
+  ): Promise<MediaVersionRecord> {
+    if (version === undefined) return this.latestVersion(projectId, assetId);
+    return this.assets.getVersion(projectId, assetId, version);
+  }
+
+  /**
+   * Batch C track 1 — reference-image suggestions. Inference only: nothing
+   * is written to memory here. The caller reviews the drafts and proposes
+   * the confirmed ones through the memory engine, so rejected suggestions
+   * never enter memory at all.
+   */
+  async suggestDecisions(
+    projectId: string,
+    input: { asset_id: string; version?: number; guidance?: string; count?: number },
+  ): Promise<MediaSuggestResponse> {
+    const understand = this.requireUnderstand();
+    const record = await this.resolveVersion(projectId, input.asset_id, input.version);
+    const bytes = await this.assets.readBytes(projectId, input.asset_id, record.version);
+    const result = await understand.suggest(
+      { bytes, mime: record.mime },
+      {
+        ...(input.guidance !== undefined ? { guidance: input.guidance } : {}),
+        ...(input.count !== undefined ? { count: input.count } : {}),
+      },
+    );
+    return { asset_id: input.asset_id, version: record.version, suggestions: result.suggestions };
+  }
+
+  /**
+   * Batch C track 2 — SAM segmentation. Returns inspectable matches with
+   * previews and keeps a short-lived session so the chosen match can be
+   * saved as a cutout without re-calling the provider.
+   */
+  async runSegmentation(
+    projectId: string,
+    input: { asset_id: string; version?: number; concept: string },
+  ): Promise<MediaSegmentResponse> {
+    const segmentation = this.requireSegmentation();
+    const record = await this.resolveVersion(projectId, input.asset_id, input.version);
+    const bytes = await this.assets.readBytes(projectId, input.asset_id, record.version);
+    const decoded = await decodeImage(bytes, record.mime);
+    const result = await segmentation.segment(decoded, input.concept);
+    const session: SegmentSession = {
+      id: randomUUID(),
+      projectId,
+      assetId: input.asset_id,
+      version: record.version,
+      concept: input.concept,
+      model: result.model,
+      matches: result.matches,
+      createdAt: Date.now(),
+    };
+    this.rememberSession(session);
+    return {
+      segment_id: session.id,
+      asset_id: input.asset_id,
+      version: record.version,
+      concept: input.concept,
+      matches: result.matches.map((match, index) => ({
+        match_index: index,
+        box: match.box,
+        ...(match.confidence !== undefined ? { confidence: match.confidence } : {}),
+        preview_data_url: renderMatchPreview(decoded, match),
+      })),
+    };
+  }
+
+  /**
+   * Save the chosen match as a trimmed transparent PNG: a new asset whose
+   * parent points at the source version and whose source carries the SAM
+   * provenance. The cutout then flows through the normal candidate,
+   * approval, Insert, embedding, and rollback paths unchanged.
+   */
+  async saveCutout(
+    projectId: string,
+    segmentId: string,
+    matchIndex: number,
+  ): Promise<MediaVersionRecord> {
+    const session = this.takeSession(projectId, segmentId);
+    const match = session.matches[matchIndex];
+    if (match === undefined) {
+      throw new MediaServiceError(
+        'match_not_found',
+        `Segment match ${matchIndex} does not exist in this session.`,
+      );
+    }
+    const record = await this.assets.getVersion(projectId, session.assetId, session.version);
+    const bytes = await this.assets.readBytes(projectId, session.assetId, session.version);
+    const decoded = await decodeImage(bytes, record.mime);
+    const cutout = renderCutoutBounded(decoded, match, MEDIA_UPLOAD_MAX_BYTES);
+    return this.assets.createAsset(projectId, {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: cutout.bytes,
+      parent: { asset_id: session.assetId, version: session.version, project_id: projectId },
+      source: {
+        kind: 'segment',
+        text: session.concept,
+        segment: {
+          concept: session.concept,
+          box: cutout.box,
+          ...(match.confidence !== undefined ? { confidence: match.confidence } : {}),
+          mask_width: match.maskWidth,
+          mask_height: match.maskHeight,
+        },
+      },
+      model: { provider: 'meta', model: session.model },
+    });
+  }
+
+  private rememberSession(session: SegmentSession): void {
+    const now = Date.now();
+    for (const [id, entry] of this.segments) {
+      if (now - entry.createdAt > SEGMENT_SESSION_TTL_MS) this.segments.delete(id);
+    }
+    while (this.segments.size >= SEGMENT_SESSION_MAX) {
+      const oldest = this.segments.keys().next();
+      if (oldest.done === true) break;
+      this.segments.delete(oldest.value);
+    }
+    this.segments.set(session.id, session);
+  }
+
+  private takeSession(projectId: string, segmentId: string): SegmentSession {
+    const session = this.segments.get(segmentId);
+    if (
+      session === undefined ||
+      session.projectId !== projectId ||
+      Date.now() - session.createdAt > SEGMENT_SESSION_TTL_MS
+    ) {
+      if (session !== undefined) this.segments.delete(segmentId);
+      throw new MediaServiceError(
+        'segment_not_found',
+        'Segment session is unknown or expired; run segmentation again.',
+      );
+    }
+    return session;
   }
 
   private launch(projectId: string, jobId: string, kind: 'generate' | 'edit'): void {

@@ -78,9 +78,17 @@ export interface MediaParentRef {
 }
 
 export interface MediaSource {
-  kind?: 'prompt' | 'upload' | 'edit';
+  kind?: 'prompt' | 'upload' | 'edit' | 'segment';
   text?: string;
   job_id?: string;
+  /** SAM cutout provenance, mirroring the shared contract. */
+  segment?: {
+    concept: string;
+    box: { x1: number; y1: number; x2: number; y2: number };
+    confidence?: number;
+    mask_width: number;
+    mask_height: number;
+  };
 }
 
 export interface MediaMemoryRef {
@@ -605,16 +613,22 @@ function validateSource(input: unknown): MediaSource | null {
   if (typeof input !== 'object' || Array.isArray(input)) {
     throw new MediaError('malformed_media', 'Malformed media metadata: source must be an object.');
   }
-  const candidate = input as { kind?: unknown; text?: unknown; job_id?: unknown };
+  const candidate = input as {
+    kind?: unknown;
+    text?: unknown;
+    job_id?: unknown;
+    segment?: unknown;
+  };
   if (
     candidate.kind !== undefined &&
     candidate.kind !== 'prompt' &&
     candidate.kind !== 'upload' &&
-    candidate.kind !== 'edit'
+    candidate.kind !== 'edit' &&
+    candidate.kind !== 'segment'
   ) {
     throw new MediaError(
       'malformed_media',
-      'Malformed media metadata: source.kind must be prompt, upload or edit.',
+      'Malformed media metadata: source.kind must be prompt, upload, edit or segment.',
     );
   }
   if (
@@ -639,7 +653,91 @@ function validateSource(input: unknown): MediaSource | null {
   if (candidate.kind !== undefined) source.kind = candidate.kind;
   if (typeof candidate.text === 'string') source.text = candidate.text;
   if (typeof candidate.job_id === 'string') source.job_id = candidate.job_id;
+  const segment = validateSegmentProvenance(candidate.segment);
+  if (segment !== undefined) source.segment = segment;
   return Object.keys(source).length === 0 ? null : source;
+}
+
+/** Closed shape for SAM cutout provenance: bounded, no secret room. */
+function validateSegmentProvenance(input: unknown): MediaSource['segment'] | undefined {
+  if (input === undefined || input === null) return undefined;
+  if (typeof input !== 'object' || Array.isArray(input)) {
+    throw new MediaError(
+      'malformed_media',
+      'Malformed media metadata: source.segment must be an object.',
+    );
+  }
+  const candidate = input as {
+    concept?: unknown;
+    box?: unknown;
+    confidence?: unknown;
+    mask_width?: unknown;
+    mask_height?: unknown;
+  };
+  if (
+    typeof candidate.concept !== 'string' ||
+    candidate.concept.length < 1 ||
+    candidate.concept.length > 120
+  ) {
+    throw new MediaError(
+      'malformed_media',
+      'Malformed media metadata: source.segment.concept is bounded to 1..120 chars.',
+    );
+  }
+  const box = candidate.box;
+  if (box === null || typeof box !== 'object' || Array.isArray(box)) {
+    throw new MediaError(
+      'malformed_media',
+      'Malformed media metadata: source.segment.box must be an object.',
+    );
+  }
+  const coords = box as Record<string, unknown>;
+  for (const key of ['x1', 'y1', 'x2', 'y2'] as const) {
+    if (
+      typeof coords[key] !== 'number' ||
+      !Number.isSafeInteger(coords[key]) ||
+      (coords[key] as number) < 0
+    ) {
+      throw new MediaError(
+        'malformed_media',
+        `Malformed media metadata: source.segment.box.${key} must be a safe non-negative integer.`,
+      );
+    }
+  }
+  if (
+    candidate.confidence !== undefined &&
+    (typeof candidate.confidence !== 'number' ||
+      !(candidate.confidence >= 0 && candidate.confidence <= 1))
+  ) {
+    throw new MediaError(
+      'malformed_media',
+      'Malformed media metadata: source.segment.confidence must be within [0, 1].',
+    );
+  }
+  for (const key of ['mask_width', 'mask_height'] as const) {
+    if (
+      typeof candidate[key] !== 'number' ||
+      !Number.isSafeInteger(candidate[key]) ||
+      (candidate[key] as number) < 1
+    ) {
+      throw new MediaError(
+        'malformed_media',
+        `Malformed media metadata: source.segment.${key} must be a positive integer.`,
+      );
+    }
+  }
+  return {
+    concept: candidate.concept,
+    box: {
+      x1: coords.x1 as number,
+      y1: coords.y1 as number,
+      x2: coords.x2 as number,
+      y2: coords.y2 as number,
+    },
+    ...(typeof candidate.confidence === 'number' ? { confidence: candidate.confidence } : {}),
+    mask_width: candidate.mask_width as number,
+    mask_height: candidate.mask_height as number,
+  };
 }
 
 export class MediaAssetStore {

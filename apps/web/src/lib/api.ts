@@ -25,6 +25,10 @@ import {
   type MediaJob,
   MediaJobListSchema,
   MediaJobSchema,
+  type MediaSegmentResponse,
+  MediaSegmentResponseSchema,
+  type MediaSuggestResponse,
+  MediaSuggestResponseSchema,
   MediaVersionListSchema,
   MediaVersionRecordSchema,
   type MediaVersionRecordView,
@@ -286,6 +290,13 @@ export const api = {
   createMemory: (input: MemoryCreateRequest) =>
     request<MemoryCreateResult>(
       '/api/memories',
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => MemoryCreateResultSchema.parse(data),
+    ),
+
+  proposeMemory: (input: MemoryCreateRequest) =>
+    request<MemoryCreateResult>(
+      '/api/memories/proposals',
       { method: 'POST', body: JSON.stringify(input) },
       (data) => MemoryCreateResultSchema.parse(data),
     ),
@@ -582,6 +593,55 @@ export const api = {
 
   mediaBytesUrl: (projectId: string, assetId: string, version: number) =>
     apiUrl(`/api/forge/projects/${projectId}/media/${assetId}/versions/${version}/bytes`),
+
+  // --- Visual references and SAM cutouts (Batch C) ------------------------
+
+  mediaSuggest: (
+    projectId: string,
+    input: { assetId: string; version?: number; guidance?: string; count?: number },
+  ) =>
+    request<MediaSuggestResponse>(
+      `/api/forge/projects/${projectId}/media/suggest`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          asset_id: input.assetId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+          ...(input.guidance !== undefined ? { guidance: input.guidance } : {}),
+          ...(input.count !== undefined ? { count: input.count } : {}),
+        }),
+      },
+      (data) => MediaSuggestResponseSchema.parse(data),
+    ),
+
+  mediaSegment: (
+    projectId: string,
+    input: { assetId: string; version?: number; concept: string },
+  ) =>
+    request<MediaSegmentResponse>(
+      `/api/forge/projects/${projectId}/media/segment`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          asset_id: input.assetId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+          concept: input.concept,
+        }),
+      },
+      (data) => MediaSegmentResponseSchema.parse(data),
+    ),
+
+  mediaCutout: (projectId: string, segmentId: string, matchIndex: number) =>
+    request<MediaVersionRecordView>(
+      `/api/forge/projects/${projectId}/media/segments/${segmentId}/cutout`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          match_index: matchIndex,
+        }),
+      },
+      (data) => MediaVersionRecordSchema.parse(data),
+    ),
 
   // --- Tools --------------------------------------------------------------
 

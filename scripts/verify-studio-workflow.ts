@@ -340,11 +340,16 @@ async function main(): Promise<void> {
     // The damaged-state segment deliberately makes the project view return
     // 500; its resource-loader console message is expected and allowed.
     let allowResourceErrors = false;
+    // The reference-reset regression below deliberately triggers the offline
+    // unconfigured suggest path; its 503 console message carries no URL,
+    // so it is allowlisted by window rather than by URL.
+    let allowSuggest503 = false;
     page.on('console', (message) => {
       const text = message.text();
       const ignorable =
         text.toLowerCase().includes('favicon') ||
         /Failed to load resource.*404/i.test(text) ||
+        (allowSuggest503 && /Failed to load resource.*503/i.test(text)) ||
         (allowResourceErrors && /Failed to load resource/i.test(text));
       if (message.type() === 'error' && !ignorable) errors.push(text);
     });
@@ -356,6 +361,8 @@ async function main(): Promise<void> {
     page.on('response', (response) => {
       if (response.url().toLowerCase().includes('favicon')) return;
       if (response.status() === 404) return;
+      // Same deliberate offline-503 as the console gate above.
+      if (response.status() === 503 && /\/media\/suggest$/.test(response.url())) return;
       if (allowResourceErrors) return;
       if (response.status() >= 400) {
         errors.push(`HTTP ${response.status()} ${response.request().method()} ${response.url()}`);
@@ -632,6 +639,74 @@ async function main(): Promise<void> {
       throw new Error('Generate change is enabled after clearing the draft');
     }
     check('change draft returns to empty with a disabled action after Insert');
+
+    // ---- Reference state resets across source versions (Batch C P2) ---------
+    // Suggest/segment inputs are keyed by project/asset/version: switching
+    // the reference target drops stale drafts and errors instead of
+    // misattributing v1 inference to a newer version. Offline uploads
+    // always create new assets (which unmount anyway), so the second
+    // version is seeded directly into the asset store and the page
+    // reloads — both reference buttons below belong to the same asset,
+    // proving the keyed remount rather than a cross-asset unmount.
+    const listedAssets = (await (
+      await fetch(`${apiBase}/api/forge/projects/${PROJECT}/media`)
+    ).json()) as { data: { items: Array<{ asset_id: string }> } };
+    const seededAssetId = listedAssets.data.items[0]?.asset_id;
+    if (!seededAssetId) throw new Error('media asset missing for reference-reset regression');
+    const { ForgeWorkspace: SeededWorkspace } = await import(
+      '../apps/server/src/forge/workspace.js'
+    );
+    const { MediaAssetStore: SeededStore } = await import('../apps/server/src/media/assets.js');
+    await new SeededStore(new SeededWorkspace(join(dataRoot, 'workspaces'))).addVersion(
+      PROJECT,
+      seededAssetId,
+      {
+        kind: 'image',
+        mime: 'image/png',
+        bytes: readFileSync(uploadPng),
+        parent: { asset_id: seededAssetId, version: 1, project_id: PROJECT },
+        source: { kind: 'upload', text: 'seeded v2' },
+      },
+    );
+    await page.reload();
+    await assertStudio(page);
+    await openProject(page, PROJECT, 'v1 approved');
+    const referenceButtons = media.getByTitle(
+      'Suggest decisions or extract a cutout from this version',
+    );
+    await referenceButtons.nth(1).waitFor({ timeout: 15_000 });
+    // Poll for disappearance: React flushes the remount asynchronously
+    // after the click, so an immediate count would race it.
+    const waitForGone = async (label: string): Promise<void> => {
+      const deadline = Date.now() + 10_000;
+      for (;;) {
+        if ((await media.getByLabel(label).count()) === 0) return;
+        if (Date.now() > deadline) {
+          throw new Error(`${label} survived switching the reference target`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    };
+    await referenceButtons.nth(0).click();
+    await media.getByTitle('Suggest project decisions from this image').click();
+    await media.getByLabel('Suggestion guidance').fill('guidance-alpha');
+    allowSuggest503 = true;
+    await media.getByRole('button', { name: 'Suggest', exact: true }).click();
+    await media.getByText(/not configured/).waitFor({ timeout: 10_000 });
+    allowSuggest503 = false;
+    // Switch versions while the v1 error is showing: drafts and errors
+    // must not follow the reference to v2.
+    await referenceButtons.nth(1).click();
+    await waitForGone('Suggestion guidance');
+    if ((await media.getByText(/not configured/).count()) !== 0) {
+      throw new Error('stale provider error survived switching the reference target');
+    }
+    // Same-asset switch back with segment state showing.
+    await media.getByTitle('Extract an object cutout with SAM').click();
+    await media.getByLabel('Segmentation concept').fill('concept-beta');
+    await referenceButtons.nth(0).click();
+    await waitForGone('Segmentation concept');
+    check('reference state resets when the source version changes');
 
     // Version summary uses the recorded request, not a generic model phrase.
     await review

@@ -10,6 +10,8 @@ import {
   apiFailure,
   apiSuccess,
   DEFAULT_MEDIA_IMAGE_MODEL,
+  DEFAULT_SAM_MODEL,
+  DEFAULT_VISION_MODEL,
   ERROR_CATALOG_VERSION,
   ErrorCatalogSchema,
   HealthResponseSchema,
@@ -38,6 +40,7 @@ import { MediaAdapter } from './media/adapter.js';
 import { MediaAssetStore } from './media/assets.js';
 import { MediaJobStore } from './media/jobs.js';
 import { MediaOperations } from './media/operations.js';
+import { MediaSegmentation, MediaUnderstand } from './media/segment.js';
 import { MediaService } from './media/service.js';
 import { evaluateRequestOrigin } from './origin-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
@@ -146,8 +149,26 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
             ...(mediaFetch ? { fetchImpl: mediaFetch } : {}),
           })
         : null;
+  // SAM and vision use their own documented models: the adapter's targeted
+  // model is image-scoped, and the coding model is valid on neither endpoint.
+  const mediaSegmentation =
+    mediaAdapter?.configured === true
+      ? new MediaSegmentation(mediaAdapter, {
+          model: config.media?.samModel ?? DEFAULT_SAM_MODEL,
+        })
+      : null;
+  const mediaUnderstand =
+    mediaAdapter?.configured === true
+      ? new MediaUnderstand(mediaAdapter, {
+          model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        })
+      : null;
   const mediaService =
-    dependencies.mediaService ?? new MediaService(mediaAssets, mediaJobs, mediaOperations);
+    dependencies.mediaService ??
+    new MediaService(mediaAssets, mediaJobs, mediaOperations, {
+      ...(mediaSegmentation === null ? {} : { segmentation: mediaSegmentation }),
+      ...(mediaUnderstand === null ? {} : { understand: mediaUnderstand }),
+    });
   const forgeManager =
     dependencies.forgeManager ??
     new ForgeJobManager({

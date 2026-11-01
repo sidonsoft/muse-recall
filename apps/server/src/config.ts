@@ -17,6 +17,8 @@ import {
 import {
   DEFAULT_MEDIA_IMAGE_MODEL,
   DEFAULT_RETRIEVAL_BUDGET,
+  DEFAULT_SAM_MODEL,
+  DEFAULT_VISION_MODEL,
   type RetrievalBudget,
 } from '@mml/shared';
 import { z } from 'zod';
@@ -133,6 +135,8 @@ const EnvSchema = z
      * images endpoints do not accept the Studio coding model ids.
      */
     FORGE_MEDIA_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_SAM_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_VISION_MODEL: z.string().min(2).max(200).optional(),
     FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
     FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
     FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
@@ -171,6 +175,10 @@ export interface AppConfig {
    */
   media?: {
     model: string;
+    /** Segmentation model; never the coding or image model. */
+    samModel: string;
+    /** Vision-language model for reference-image understanding. */
+    visionModel: string;
   };
   forge?: {
     maxRuntimeMs: number;
@@ -249,6 +257,8 @@ export function loadConfig(
     toolApprovalPolicy: value.TOOL_APPROVAL_POLICY,
     media: {
       model: value.FORGE_MEDIA_MODEL ?? DEFAULT_MEDIA_IMAGE_MODEL,
+      samModel: value.FORGE_SAM_MODEL ?? DEFAULT_SAM_MODEL,
+      visionModel: value.FORGE_VISION_MODEL ?? DEFAULT_VISION_MODEL,
     },
     forge: {
       maxRuntimeMs: value.FORGE_MAX_RUNTIME_MS,

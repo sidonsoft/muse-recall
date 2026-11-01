@@ -133,8 +133,11 @@ interface ProbeCheck {
   summary: string;
 }
 
-/** Result of parsing a Responses API envelope (shared by text/segment/video). */
-interface ResponsesEnvelope {
+/**
+ * Result of parsing a Responses API envelope (shared by text/segment/video,
+ * and by the Batch C understand/segment operations).
+ */
+export interface ResponsesEnvelope {
   ok: boolean;
   summary: string;
   /** Complete output items when the envelope parsed; null otherwise. */
@@ -164,7 +167,7 @@ function parseJsonObject(body: string): Record<string, unknown> | null {
  * (`error` field or a failed status) and incomplete/truncated results are
  * reported explicitly so callers can distinguish refusal from success.
  */
-function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope {
+export function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope {
   const json = parseJsonObject(body);
   if (!json)
     return {
@@ -220,18 +223,21 @@ function parseResponsesEnvelope(body: string, label: string): ResponsesEnvelope 
   };
 }
 
-interface TextPart {
+export interface TextPart {
   kind: 'text';
   text: string;
 }
 
-interface RefusalPart {
+export interface RefusalPart {
   kind: 'refusal';
   text: string;
 }
 
 /** Walk output items and collect typed text/refusal parts (parsed, not grepped). */
-function collectOutputParts(output: unknown[]): { texts: TextPart[]; refusals: RefusalPart[] } {
+export function collectOutputParts(output: unknown[]): {
+  texts: TextPart[];
+  refusals: RefusalPart[];
+} {
   const texts: TextPart[] = [];
   const refusals: RefusalPart[] = [];
   for (const item of output) {

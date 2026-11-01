@@ -2,6 +2,7 @@ import type { MediaAssetSummaryView, MediaJob, MediaVersionRecordView } from '@m
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api.ts';
 import { Icon } from '../Icon.tsx';
+import { ReferencePanel } from './ReferencePanel.tsx';
 
 const SIZES = ['512x512', '1024x1024', '1024x1536', '1536x1024'] as const;
 const MIME_BY_TYPE: Record<string, string> = {
@@ -62,6 +63,7 @@ export function MediaPanel({
   const [prompt, setPrompt] = useState('');
   const [size, setSize] = useState<(typeof SIZES)[number]>('1024x1024');
   const [editTarget, setEditTarget] = useState<{ assetId: string; version: number } | null>(null);
+  const [refTarget, setRefTarget] = useState<{ assetId: string; version: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
@@ -326,9 +328,33 @@ export function MediaPanel({
                     >
                       edit
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRefTarget((current) =>
+                          current?.assetId === asset.asset_id &&
+                          current?.version === version.version
+                            ? null
+                            : { assetId: asset.asset_id, version: version.version },
+                        )
+                      }
+                      className="underline decoration-dotted"
+                      title="Suggest decisions or extract a cutout from this version"
+                    >
+                      reference
+                    </button>
                   </span>
                 ))}
               </div>
+              {refTarget?.assetId === asset.asset_id ? (
+                <ReferencePanel
+                  key={`${projectId}:${refTarget.assetId}:${refTarget.version}`}
+                  projectId={projectId}
+                  assetId={refTarget.assetId}
+                  version={refTarget.version}
+                  onChanged={() => void refresh()}
+                />
+              ) : null}
             </li>
           );
         })}

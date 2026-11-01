@@ -114,9 +114,29 @@ export const MEDIA_UPLOAD_BODY_LIMIT_BYTES = MEDIA_UPLOAD_MAX_BASE64_CHARS + 16_
 
 export const MediaSourceSchema = z
   .object({
-    kind: z.enum(['prompt', 'upload', 'edit']).optional(),
+    kind: z.enum(['prompt', 'upload', 'edit', 'segment']).optional(),
     text: z.string().max(2_000).optional(),
     job_id: z.uuid().optional(),
+    /**
+     * SAM cutout provenance: the concept described, the source-pixel box
+     * the mask covered, and the mask raster dims. Present only when
+     * `kind` is `segment`, so an approved cutout stays linked to the exact
+     * match it was cut from.
+     */
+    segment: z
+      .object({
+        concept: z.string().min(1).max(120),
+        box: z.object({
+          x1: z.number().int().min(0),
+          y1: z.number().int().min(0),
+          x2: z.number().int().min(0),
+          y2: z.number().int().min(0),
+        }),
+        confidence: z.number().min(0).max(1).optional(),
+        mask_width: z.number().int().min(1),
+        mask_height: z.number().int().min(1),
+      })
+      .optional(),
   })
   .nullable();
 
@@ -266,3 +286,83 @@ export const MediaEditRequestSchema = z.object({
   }),
 });
 export type MediaEditRequest = z.infer<typeof MediaEditRequestSchema>;
+
+/**
+ * Batch C — visual references and SAM object extraction.
+ *
+ * Documented defaults for the Responses API models. Like the image model,
+ * these are independent settings: the segmentation and vision endpoints do
+ * not accept the Studio coding model ids.
+ */
+export const DEFAULT_SAM_MODEL = 'sam-3.1';
+export const DEFAULT_VISION_MODEL = 'muse-spark-1.3';
+
+/** Short noun-phrase concept prompt per the SAM prompting rules. */
+export const MediaSegmentConceptSchema = z.string().min(1).max(120);
+
+export const MediaSegmentRequestSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1).optional(),
+  concept: MediaSegmentConceptSchema,
+});
+export type MediaSegmentRequest = z.infer<typeof MediaSegmentRequestSchema>;
+
+export const MediaSegmentMatchSchema = z.object({
+  /** Zero-based index into the segment session; used to save the cutout. */
+  match_index: z.number().int().min(0),
+  box: z.object({
+    x1: z.number().int().min(0),
+    y1: z.number().int().min(0),
+    x2: z.number().int().min(0),
+    y2: z.number().int().min(0),
+  }),
+  confidence: z.number().min(0).max(1).optional(),
+  /**
+   * Downscaled overlay preview (PNG data URL): the source with the match
+   * highlighted, so matches can be inspected without downloading masks.
+   */
+  preview_data_url: z.string().max(2_000_000),
+});
+export type MediaSegmentMatch = z.infer<typeof MediaSegmentMatchSchema>;
+
+export const MediaSegmentResponseSchema = z.object({
+  segment_id: z.uuid(),
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  concept: z.string().min(1).max(120),
+  /** Empty when SAM reports zero matches: valid, not an error. */
+  matches: z.array(MediaSegmentMatchSchema).max(16),
+});
+export type MediaSegmentResponse = z.infer<typeof MediaSegmentResponseSchema>;
+
+export const MediaCutoutRequestSchema = z.object({
+  match_index: z.number().int().min(0),
+});
+export type MediaCutoutRequest = z.infer<typeof MediaCutoutRequestSchema>;
+
+/** Memory types a reference image may suggest (style or requirements). */
+export const MediaSuggestionKindSchema = z.enum(['preference', 'constraint', 'technical_decision']);
+export type MediaSuggestionKind = z.infer<typeof MediaSuggestionKindSchema>;
+
+export const MediaSuggestRequestSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1).optional(),
+  /** Optional guidance for what to look for (style, palette, requirements). */
+  guidance: z.string().min(1).max(500).optional(),
+  count: z.number().int().min(1).max(5).default(3),
+});
+export type MediaSuggestRequest = z.infer<typeof MediaSuggestRequestSchema>;
+
+export const MediaSuggestionSchema = z.object({
+  type: MediaSuggestionKindSchema,
+  content: z.string().min(1).max(1_000),
+  confidence: z.number().min(0).max(1),
+});
+export type MediaSuggestion = z.infer<typeof MediaSuggestionSchema>;
+
+export const MediaSuggestResponseSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  suggestions: z.array(MediaSuggestionSchema).max(5),
+});
+export type MediaSuggestResponse = z.infer<typeof MediaSuggestResponseSchema>;

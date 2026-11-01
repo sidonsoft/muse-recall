@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider } from '@mml/muse-provider';
+import { DEFAULT_SAM_MODEL, DEFAULT_VISION_MODEL } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
@@ -82,7 +83,15 @@ async function buildHarness(options: HarnessOptions = {}): Promise<Harness> {
   const base = config(root);
   const appConfig: AppConfig = {
     ...base,
-    ...(options.mediaModel !== undefined ? { media: { model: options.mediaModel } } : {}),
+    ...(options.mediaModel !== undefined
+      ? {
+          media: {
+            model: options.mediaModel,
+            samModel: DEFAULT_SAM_MODEL,
+            visionModel: DEFAULT_VISION_MODEL,
+          },
+        }
+      : {}),
     forge: {
       maxRuntimeMs: 600_000,
       maxCalls: 25,

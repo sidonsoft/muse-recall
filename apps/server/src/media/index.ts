@@ -31,10 +31,18 @@ export type {
 export { MediaAssetStore, MediaError } from './assets.js';
 export type { EmbedMediaVersionInput } from './bridge.js';
 export { mediaStoreToEmbedStore, mediaVersionToEmbeddable } from './bridge.js';
-export type { MediaProbeFn, MediaProbeOptions } from './capabilities.js';
+export type {
+  MediaProbeFn,
+  MediaProbeOptions,
+  RefusalPart,
+  ResponsesEnvelope,
+  TextPart,
+} from './capabilities.js';
 export {
+  collectOutputParts,
   MEDIA_PROBE_MODELS,
   mediaAdapterFromEnv,
+  parseResponsesEnvelope,
   probeMediaCapabilities,
   probeMediaCapability,
 } from './capabilities.js';
