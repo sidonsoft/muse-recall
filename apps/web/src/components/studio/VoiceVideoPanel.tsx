@@ -3,16 +3,20 @@ import {
   MEDIA_AUDIO_MAX_DURATION_MS,
   MEDIA_VIDEO_MAX_BYTES,
   type MediaClipObservation,
-  type MediaClipResponse,
   type MediaProposalMemoryType,
   type MediaSourceMime,
-  type MediaSourceRecordView,
   type MediaTranscribeMode,
-  type MediaTranscript,
 } from '@mml/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { api } from '../../lib/api.ts';
 import { Icon } from '../Icon.tsx';
+import {
+  clipTarget,
+  initialState,
+  transcriptTarget,
+  type VoiceVideoNotice,
+  voiceVideoReducer,
+} from './voice-video-state.ts';
 
 /**
  * Voice and video studio (Batch D).
@@ -26,6 +30,11 @@ import { Icon } from '../Icon.tsx';
  * project memory until the person edits the text, selects observations, and
  * presses Propose. Proposals are stored with status `proposed`; retrieval
  * ignores them until a reviewer accepts them in Memory Review.
+ *
+ * Every draft and in-flight result is bound to its exact project and source.
+ * Switching sources, uploading, or changing project clears drafts and advances
+ * an operation token, so a late response cannot be shown or proposed against
+ * a different source.
  */
 
 const TARGET_SAMPLE_RATE = 24_000;
@@ -194,21 +203,28 @@ function RecordingControls({
 }
 
 export function VoiceVideoPanel({ projectId }: { projectId: string }) {
-  const [sources, setSources] = useState<MediaSourceRecordView[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+  const [state, dispatch] = useReducer(voiceVideoReducer, projectId, initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const seqRef = useRef(0);
   const [recording, setRecording] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [mode, setMode] = useState<MediaTranscribeMode>('PUSH_TO_TALK');
-  const [transcript, setTranscript] = useState<MediaTranscript | null>(null);
-  const [transcriptText, setTranscriptText] = useState('');
-  const [transcriptType, setTranscriptType] =
-    useState<MediaProposalMemoryType>('technical_decision');
-  const [clip, setClip] = useState<MediaClipResponse | null>(null);
-  const [clipPrompt, setClipPrompt] = useState('');
-  const [selectedClips, setSelectedClips] = useState<Set<number>>(() => new Set());
-  const [clipType, setClipType] = useState<MediaProposalMemoryType>('preference');
+
+  const stateMatchesProject = state.projectId === projectId;
+  const sources = stateMatchesProject ? state.sources : [];
+  const activeId = stateMatchesProject ? state.activeId : null;
+  const busy = stateMatchesProject ? state.busy : false;
+  const notice: VoiceVideoNotice | null = stateMatchesProject ? state.notice : null;
+  const transcriptDraft = stateMatchesProject ? transcriptTarget(state) : null;
+  const clipDraft = stateMatchesProject ? clipTarget(state) : null;
+  const clipPrompt = stateMatchesProject ? state.clipPrompt : '';
+  const transcript = transcriptDraft?.transcript ?? null;
+  const transcriptText = transcriptDraft?.text ?? '';
+  const transcriptType = transcriptDraft?.memoryType ?? 'technical_decision';
+  const clip = clipDraft?.clip ?? null;
+  const selectedClips = clipDraft?.selected ?? [];
+  const clipType = clipDraft?.memoryType ?? 'preference';
   const fileInput = useRef<HTMLInputElement | null>(null);
   const recordingRef = useRef(false);
   const chunksRef = useRef<Float32Array[]>([]);
@@ -219,24 +235,17 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
 
   const active = sources.find((source) => source.source_id === activeId) ?? null;
 
-  const refresh = useCallback(async () => {
-    try {
-      const list = await api.mediaSources(projectId);
-      setSources(list.items);
-      setActiveId((current) => {
-        if (current !== null && list.items.some((item) => item.source_id === current)) {
-          return current;
-        }
-        return list.items[0]?.source_id ?? null;
-      });
-    } catch (error) {
-      setNotice({ tone: 'err', text: messageOf(error) });
-    }
-  }, [projectId]);
+  const advanceToken = useCallback((): number => {
+    const token = Math.max(seqRef.current, stateRef.current.operationToken) + 1;
+    seqRef.current = token;
+    return token;
+  }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const beginOperation = useCallback((): number => {
+    const token = advanceToken();
+    dispatch({ type: 'operationStarted', token });
+    return token;
+  }, [advanceToken]);
 
   const releaseCapture = useCallback(async () => {
     recordingRef.current = false;
@@ -252,6 +261,29 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
   }, []);
 
   useEffect(() => {
+    setRecording(false);
+    setElapsedMs(0);
+    chunksRef.current = [];
+    void releaseCapture();
+    const token = advanceToken();
+    dispatch({ type: 'resetProject', token, projectId });
+    let cancelled = false;
+    void api
+      .mediaSources(projectId)
+      .then((list) => {
+        if (cancelled) return;
+        dispatch({ type: 'sourcesLoaded', projectId, items: list.items });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        dispatch({ type: 'notice', notice: { tone: 'err', text: messageOf(error) } });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [advanceToken, projectId, releaseCapture]);
+
+  useEffect(() => {
     return () => {
       void releaseCapture();
     };
@@ -259,28 +291,31 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
 
   const upload = useCallback(
     async (
+      token: number,
       mime: MediaSourceMime,
       dataBase64: string,
       origin: 'upload' | 'recording',
       originalName: string,
     ): Promise<void> => {
-      const record = await api.mediaSourceUpload(projectId, {
-        mime,
-        dataBase64,
-        origin,
-        originalName,
-      });
-      setActiveId(record.source_id);
-      await refresh();
-      setNotice({
-        tone: 'ok',
-        text:
-          origin === 'recording'
-            ? 'Recording ready. Transcribe it, edit the draft, then choose what to propose.'
-            : 'Source ready. Nothing has been sent to a model yet.',
-      });
+      try {
+        const record = await api.mediaSourceUpload(projectId, {
+          mime,
+          dataBase64,
+          origin,
+          originalName,
+        });
+        dispatch({ type: 'uploadSucceeded', token, record });
+      } catch (error) {
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
+        });
+      } finally {
+        dispatch({ type: 'operationFinished', token });
+      }
     },
-    [projectId, refresh],
+    [projectId],
   );
 
   const stopRecording = useCallback(
@@ -296,24 +331,34 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
       const captured = trimChunks(chunks, maxSamples);
       const samples = captured.reduce((total, chunk) => total + chunk.length, 0);
       if (samples < rate * MIN_RECORDING_SECONDS) {
-        setNotice({ tone: 'err', text: 'The recording was too short to use.' });
+        dispatch({
+          type: 'notice',
+          notice: { tone: 'err', text: 'The recording was too short to use.' },
+        });
         return;
       }
-      setBusy(true);
+      const token = beginOperation();
+      dispatch({ type: 'notice', notice: null });
       try {
         const wav = encodeWav(captured, rate);
         if (wav.byteLength > MEDIA_AUDIO_MAX_BYTES) {
-          setNotice({ tone: 'err', text: 'The recording exceeds the 16 MB audio limit.' });
+          dispatch({
+            type: 'operationFailed',
+            token,
+            notice: { tone: 'err', text: 'The recording exceeds the 16 MB audio limit.' },
+          });
           return;
         }
-        await upload('audio/wav', bytesToBase64(wav), 'recording', 'recording.wav');
+        await upload(token, 'audio/wav', bytesToBase64(wav), 'recording', 'recording.wav');
       } catch (error) {
-        setNotice({ tone: 'err', text: messageOf(error) });
-      } finally {
-        setBusy(false);
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
+        });
       }
     },
-    [releaseCapture, upload],
+    [beginOperation, releaseCapture, upload],
   );
 
   useEffect(() => {
@@ -329,11 +374,14 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
   }, [recording, stopRecording]);
 
   const startRecording = useCallback(async (): Promise<void> => {
-    setNotice(null);
+    dispatch({ type: 'notice', notice: null });
     if (typeof navigator === 'undefined' || navigator.mediaDevices?.getUserMedia === undefined) {
-      setNotice({
-        tone: 'err',
-        text: 'Microphone capture is unavailable here. Upload a mono 16-bit PCM WAV instead.',
+      dispatch({
+        type: 'notice',
+        notice: {
+          tone: 'err',
+          text: 'Microphone capture is unavailable here. Upload a mono 16-bit PCM WAV instead.',
+        },
       });
       return;
     }
@@ -341,13 +389,16 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
       window.AudioContext ??
       (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (AudioContextCtor === undefined) {
-      setNotice({
-        tone: 'err',
-        text: 'Web Audio capture is unavailable here. Upload a mono 16-bit PCM WAV instead.',
+      dispatch({
+        type: 'notice',
+        notice: {
+          tone: 'err',
+          text: 'Web Audio capture is unavailable here. Upload a mono 16-bit PCM WAV instead.',
+        },
       });
       return;
     }
-    setBusy(true);
+    const token = beginOperation();
     let stream: MediaStream | null = null;
     let context: AudioContext | null = null;
     try {
@@ -356,6 +407,13 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
       });
       context = new AudioContextCtor();
       await context.resume();
+      if (token !== seqRef.current || token !== stateRef.current.operationToken) {
+        stream.getTracks().forEach((track) => {
+          track.stop();
+        });
+        await context.close().catch(() => undefined);
+        return;
+      }
       const source = context.createMediaStreamSource(stream);
       const processor = context.createScriptProcessor(4096, 1, 1);
       const mute = context.createGain();
@@ -384,75 +442,90 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
       if (context !== null && context.state !== 'closed') {
         await context.close().catch(() => undefined);
       }
-      setNotice({
-        tone: 'err',
-        text: `Microphone unavailable (${messageOf(error)}). Upload a WAV file instead.`,
+      dispatch({
+        type: 'operationFailed',
+        token,
+        notice: {
+          tone: 'err',
+          text: `Microphone unavailable (${messageOf(error)}). Upload a WAV file instead.`,
+        },
       });
+      return;
     } finally {
-      setBusy(false);
+      dispatch({ type: 'operationFinished', token });
     }
-  }, []);
+  }, [beginOperation]);
 
   const pickFile = (file: File | undefined): void => {
     if (!file) return;
     const mime = sourceMimeForFile(file);
     if (mime === null) {
-      setNotice({
-        tone: 'err',
-        text: 'Unsupported file. Use mono 16-bit PCM WAV (16/24 kHz) or an MP4 video.',
+      dispatch({
+        type: 'notice',
+        notice: {
+          tone: 'err',
+          text: 'Unsupported file. Use mono 16-bit PCM WAV (16/24 kHz) or an MP4 video.',
+        },
       });
       return;
     }
     const limit = mime === 'audio/wav' ? MEDIA_AUDIO_MAX_BYTES : MEDIA_VIDEO_MAX_BYTES;
     if (file.size > limit) {
-      setNotice({
-        tone: 'err',
-        text: `${mime === 'audio/wav' ? 'Audio' : 'Video'} is ${formatBytes(file.size)}; the limit is ${formatBytes(limit)}.`,
+      dispatch({
+        type: 'notice',
+        notice: {
+          tone: 'err',
+          text: `${mime === 'audio/wav' ? 'Audio' : 'Video'} is ${formatBytes(file.size)}; the limit is ${formatBytes(limit)}.`,
+        },
       });
       return;
     }
-    setBusy(true);
-    setNotice(null);
+    const token = beginOperation();
+    dispatch({ type: 'notice', notice: null });
     void readFileBase64(file)
-      .then((data) => upload(mime, data, 'upload', file.name))
-      .catch((error: unknown) => setNotice({ tone: 'err', text: messageOf(error) }))
-      .finally(() => setBusy(false));
+      .then((data) => upload(token, mime, data, 'upload', file.name))
+      .catch((error: unknown) => {
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
+        });
+      });
   };
 
   const selectSource = (sourceId: string): void => {
-    setActiveId(sourceId);
-    setTranscript(null);
-    setTranscriptText('');
-    setClip(null);
-    setSelectedClips(new Set());
-    setNotice(null);
+    if (sourceId === activeId) return;
+    const token = advanceToken();
+    dispatch({ type: 'select', token, projectId, sourceId });
   };
 
   const transcribe = (): void => {
     if (active === null || active.kind !== 'audio') return;
-    setBusy(true);
-    setNotice(null);
+    const key = { project_id: projectId, source_id: active.source_id };
+    const token = beginOperation();
+    dispatch({ type: 'notice', notice: null });
     void api
       .mediaSourceTranscribe(projectId, active.source_id, { mode })
       .then((result) => {
-        setTranscript(result);
-        setTranscriptText(result.transcript);
-        setNotice({
-          tone: 'ok',
-          text:
-            result.transcript.trim().length === 0
-              ? 'No speech was detected. You can still type what the recording meant.'
-              : 'Transcript draft ready. Correct it before proposing anything.',
+        dispatch({ type: 'transcriptLoaded', token, key, transcript: result });
+      })
+      .catch((error: unknown) => {
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
         });
       })
-      .catch((error: unknown) => setNotice({ tone: 'err', text: messageOf(error) }))
-      .finally(() => setBusy(false));
+      .finally(() => {
+        dispatch({ type: 'operationFinished', token });
+      });
   };
 
   const understand = (): void => {
     if (active === null || active.kind !== 'video') return;
-    setBusy(true);
-    setNotice(null);
+    const key = { project_id: projectId, source_id: active.source_id };
+    const token = beginOperation();
+    dispatch({ type: 'notice', notice: null });
     void api
       .mediaSourceClip(
         projectId,
@@ -460,72 +533,94 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
         clipPrompt.trim().length > 0 ? clipPrompt.trim() : undefined,
       )
       .then((result) => {
-        setClip(result);
-        setSelectedClips(new Set());
-        setNotice({
-          tone: 'ok',
-          text:
-            result.observations.length === 0
-              ? 'The model found no supported observations in this clip.'
-              : 'Observations are drafts. Select only the ones the clip actually supports.',
+        dispatch({ type: 'clipLoaded', token, key, clip: result });
+      })
+      .catch((error: unknown) => {
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
         });
       })
-      .catch((error: unknown) => setNotice({ tone: 'err', text: messageOf(error) }))
-      .finally(() => setBusy(false));
+      .finally(() => {
+        dispatch({ type: 'operationFinished', token });
+      });
   };
 
   const proposeTranscript = (): void => {
-    if (active === null) return;
-    const content = transcriptText.trim();
+    const draft = transcriptTarget(stateRef.current);
+    if (draft === null || draft.key.project_id !== projectId) return;
+    const content = draft.text.trim();
     if (content.length === 0) return;
-    setBusy(true);
-    setNotice(null);
+    const token = beginOperation();
+    dispatch({ type: 'notice', notice: null });
     void api
-      .mediaSourcePropose(projectId, active.source_id, [
-        { kind: 'transcript', memory_type: transcriptType, content },
+      .mediaSourcePropose(draft.key.project_id, draft.key.source_id, [
+        { kind: 'transcript', memory_type: draft.memoryType, content },
       ])
       .then((result) => {
-        setNotice({
-          tone: 'ok',
-          text: `Recorded ${String(result.proposed.length)} proposal(s). They stay proposed until accepted in Memory Review.`,
+        dispatch({
+          type: 'operationSucceeded',
+          token,
+          notice: {
+            tone: 'ok',
+            text: `Recorded ${String(result.proposed.length)} proposal(s). They stay proposed until accepted in Memory Review.`,
+          },
         });
       })
-      .catch((error: unknown) => setNotice({ tone: 'err', text: messageOf(error) }))
-      .finally(() => setBusy(false));
+      .catch((error: unknown) => {
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
+        });
+      })
+      .finally(() => {
+        dispatch({ type: 'operationFinished', token });
+      });
   };
 
   const proposeClips = (): void => {
-    if (active === null || clip === null) return;
-    const chosen = clip.observations.filter((_item, index) => selectedClips.has(index));
+    const draft = clipTarget(stateRef.current);
+    if (draft === null || draft.key.project_id !== projectId) return;
+    const chosen = draft.clip.observations.filter((_item, index) => draft.selected.includes(index));
     if (chosen.length === 0) return;
     const proposals = chosen.map((observation) => ({
       kind: 'clip_observation' as const,
-      memory_type: clipType,
+      memory_type: draft.memoryType,
       content: observation.observation,
       start_ms: observation.start_ms,
       end_ms: observation.end_ms,
     }));
-    setBusy(true);
-    setNotice(null);
+    const token = beginOperation();
+    dispatch({ type: 'notice', notice: null });
     void api
-      .mediaSourcePropose(projectId, active.source_id, proposals)
+      .mediaSourcePropose(draft.key.project_id, draft.key.source_id, proposals)
       .then((result) => {
-        setNotice({
-          tone: 'ok',
-          text: `Recorded ${String(result.proposed.length)} proposal(s). They stay proposed until accepted in Memory Review.`,
+        dispatch({
+          type: 'operationSucceeded',
+          token,
+          notice: {
+            tone: 'ok',
+            text: `Recorded ${String(result.proposed.length)} proposal(s). They stay proposed until accepted in Memory Review.`,
+          },
         });
       })
-      .catch((error: unknown) => setNotice({ tone: 'err', text: messageOf(error) }))
-      .finally(() => setBusy(false));
+      .catch((error: unknown) => {
+        dispatch({
+          type: 'operationFailed',
+          token,
+          notice: { tone: 'err', text: messageOf(error) },
+        });
+      })
+      .finally(() => {
+        dispatch({ type: 'operationFinished', token });
+      });
   };
 
   const toggleClip = (index: number): void => {
-    setSelectedClips((current) => {
-      const next = new Set(current);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+    if (clipDraft === null) return;
+    dispatch({ type: 'clipToggled', key: clipDraft.key, index });
   };
 
   return (
@@ -669,7 +764,14 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
                 <>
                   <textarea
                     value={transcriptText}
-                    onChange={(event) => setTranscriptText(event.target.value)}
+                    onChange={(event) => {
+                      if (transcriptDraft === null) return;
+                      dispatch({
+                        type: 'transcriptEdited',
+                        key: transcriptDraft.key,
+                        text: event.target.value,
+                      });
+                    }}
                     aria-label="Editable transcript"
                     rows={4}
                     className="w-full rounded border border-line bg-surface px-2 py-1 text-[11px] text-ink"
@@ -677,9 +779,14 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
                   <div className="flex items-center gap-1.5">
                     <select
                       value={transcriptType}
-                      onChange={(event) =>
-                        setTranscriptType(event.target.value as MediaProposalMemoryType)
-                      }
+                      onChange={(event) => {
+                        if (transcriptDraft === null) return;
+                        dispatch({
+                          type: 'transcriptTypeChanged',
+                          key: transcriptDraft.key,
+                          memoryType: event.target.value as MediaProposalMemoryType,
+                        });
+                      }}
                       aria-label="Transcript memory type"
                       className="min-w-0 flex-1 rounded border border-line bg-surface px-1.5 py-1 text-[10.5px] text-ink"
                     >
@@ -710,7 +817,9 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
               <div className="flex items-center gap-1.5">
                 <input
                   value={clipPrompt}
-                  onChange={(event) => setClipPrompt(event.target.value)}
+                  onChange={(event) =>
+                    dispatch({ type: 'clipPromptChanged', text: event.target.value })
+                  }
                   placeholder="What should the clip focus on?"
                   aria-label="Clip focus"
                   className="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-[11px] text-ink placeholder:text-muted"
@@ -736,7 +845,7 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
                         <ClipObservationRow
                           key={`${String(observation.start_ms)}-${String(index)}`}
                           observation={observation}
-                          checked={selectedClips.has(index)}
+                          checked={selectedClips.includes(index)}
                           onToggle={() => toggleClip(index)}
                         />
                       ))}
@@ -745,9 +854,14 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
                   <div className="flex items-center gap-1.5">
                     <select
                       value={clipType}
-                      onChange={(event) =>
-                        setClipType(event.target.value as MediaProposalMemoryType)
-                      }
+                      onChange={(event) => {
+                        if (clipDraft === null) return;
+                        dispatch({
+                          type: 'clipTypeChanged',
+                          key: clipDraft.key,
+                          memoryType: event.target.value as MediaProposalMemoryType,
+                        });
+                      }}
                       aria-label="Clip memory type"
                       className="min-w-0 flex-1 rounded border border-line bg-surface px-1.5 py-1 text-[10.5px] text-ink"
                     >
@@ -759,11 +873,11 @@ export function VoiceVideoPanel({ projectId }: { projectId: string }) {
                     </select>
                     <button
                       type="button"
-                      disabled={busy || selectedClips.size === 0}
+                      disabled={busy || selectedClips.length === 0}
                       onClick={proposeClips}
                       className="rounded border border-line px-2 py-1 text-[10.5px] text-ink disabled:opacity-50"
                     >
-                      Propose selected ({selectedClips.size})
+                      Propose selected ({selectedClips.length})
                     </button>
                   </div>
                   <p className="font-mono text-[9.5px] text-muted">
