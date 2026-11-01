@@ -52,8 +52,10 @@ describe('MediaAdapter retry budget (P2)', () => {
     const failure = await adapter
       .call('/v1/responses', { model: 'muse-spark-1.3', input: [] })
       .catch((error: unknown) => error);
+    // A 429 is a provider refusal (quota or rate limit), not a malformed request,
+    // and with retries disabled it is terminal rather than silently retried.
     expect(failure).toMatchObject({
-      code: 'invalid_request',
+      code: 'provider_auth_failed',
       details: { status: 429, attempts: 1 },
     });
     expect(attempts).toBe(1);

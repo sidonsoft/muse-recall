@@ -13,6 +13,7 @@
  * accuracy claim, and clip observations are reported for a human to read.
  */
 
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { redactSecrets } from '../../packages/shared/src/index.js';
 
@@ -27,9 +28,12 @@ export const DEFAULT_SPEECH_KEYWORDS = ['woodland', 'palette', 'never', 'countdo
 export const DEFAULT_CLIP_TOKENS = ['red', 'green', 'square'];
 
 /** ffmpeg/ffprobe live in the same environment the gates already require. */
-const SAY_BIN = '/usr/bin/say';
-const FFMPEG_BIN = 'ffmpeg';
-const FFPROBE_BIN = 'ffprobe';
+// The recipe names the binaries a run will actually execute, honouring the same
+// overrides a harness passes to its probes. A harness that checks `ffprobe` while
+// the recipe runs plain `ffmpeg` would certify a tool the run never calls.
+export const SAY_BIN = process.env.SAY_BIN ?? '/usr/bin/say';
+export const FFMPEG_BIN = process.env.FFMPEG_BIN ?? 'ffmpeg';
+export const FFPROBE_BIN = process.env.FFPROBE_BIN ?? 'ffprobe';
 
 export interface FixtureStep {
   command: string;
@@ -138,7 +142,12 @@ export function clipFixturePlan(dir: string, mp4Path?: string): ClipFixturePlan 
         ],
       },
     ],
-    prompt: 'Describe what is shown and what changes over time.',
+    // The prompt must name what the recipe draws, otherwise an empty observation
+    // is ambiguous: the model may have failed to describe the scene, or it was
+    // never asked about it. `clipPromptIssues` checks this wording against the
+    // filter graph above.
+    prompt:
+      'Describe the scene: a red background with a small green square moving across it from left to right. Say what is shown and what changes over time.',
     expectedTokens: [...DEFAULT_CLIP_TOKENS],
     expect: { codec: 'h264', width: 96, height: 96, durationSeconds: 2 },
   };
@@ -426,8 +435,6 @@ export function tallyAttempts(
   };
 }
 
-export { FFPROBE_BIN };
-
 function numberOrNull(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -436,3 +443,181 @@ function numberOrNull(value: unknown): number | null {
   }
   return null;
 }
+
+/**
+ * Reserve an ephemeral loopback port and hand it back.
+ *
+ * `listen(0)` is asynchronous: `address()` returns null until the socket is
+ * actually bound. Reading the address straight after the call used to yield null,
+ * null collapsed to port 0, and the server was started with `PORT=0` — a port the
+ * OS picks again — while the harness probed a port nothing had reserved. A live run
+ * could therefore never reach a provider call, and its failure message said nothing
+ * about the reservation. A null address is now a loud failure.
+ */
+export async function reserveLoopbackPort(): Promise<number> {
+  const listener = createServer();
+  await new Promise<void>((resolve, reject) => {
+    listener.once('error', reject);
+    listener.listen(0, '127.0.0.1', resolve);
+  });
+  const address = listener.address();
+  const port = typeof address === 'object' && address !== null ? address.port : 0;
+  await new Promise<void>((resolve) => listener.close(() => resolve()));
+  if (port === 0) {
+    throw new Error(
+      'could not reserve a loopback port: the listener bound but reported no address',
+    );
+  }
+  return port;
+}
+
+/**
+ * Wait until the server actually answers, instead of assuming a bound port is a
+ * running service.
+ *
+ * `server.listen(0)` returns before the socket is bound, and a process that exits
+ * on a configuration error leaves the port in use for nothing. Both look like an
+ * unexplained failure unless readiness is probed. A probe that throws (for example
+ * ECONNREFUSED while the listener is still opening) counts as "not yet", and the
+ * outcome says whether the port ever answered at all.
+ */
+export async function waitForServerReady(options: {
+  port: number;
+  probe: (port: number) => Promise<boolean>;
+  timeoutMs?: number;
+  pollMs?: number;
+  sleep?: (milliseconds: number) => Promise<void>;
+}): Promise<{ ready: boolean; attempts: number; lastError?: string }> {
+  const sleep =
+    options.sleep ??
+    ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const deadline = Date.now() + (options.timeoutMs ?? SERVER_READY_TIMEOUT_MS);
+  let attempts = 0;
+  let lastError: string | undefined;
+  while (Date.now() < deadline) {
+    attempts += 1;
+    try {
+      if (await options.probe(options.port)) return { ready: true, attempts };
+      lastError = undefined; // the port answered; it just was not ready yet
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await sleep(options.pollMs ?? 100);
+  }
+  return { ready: false, attempts, ...(lastError === undefined ? {} : { lastError }) };
+}
+
+export const SERVER_READY_TIMEOUT_MS = 20_000;
+
+/** The ffprobe arguments used to measure a media fixture. */
+export function ffprobeArgs(path: string): string[] {
+  return [
+    '-v',
+    'error',
+    '-show_entries',
+    'format=duration,size:stream=codec_name,codec_type,width,height,sample_rate,channels,nb_frames',
+    '-of',
+    'json',
+    path,
+  ];
+}
+
+/** The command sequence that turns a known sentence into the audio fixture. */
+/**
+ * What a live run needs before it may spend anything.
+ *
+ * A missing `say`, ffmpeg or ffprobe is a local prerequisite, not a provider
+ * result. The run must name it before the first dispatch rather than transcribing
+ * an empty file — or failing inside a fixture recipe — and leave the reader to
+ * guess whether the model or the machine was at fault.
+ */
+export function missingLivePrerequisites(options: {
+  scope: LiveScope;
+  audioSupplied: boolean;
+  videoSupplied: boolean;
+  videoPresent: boolean;
+  platform: NodeJS.Platform;
+  hasSay: boolean;
+  hasFfmpeg: boolean;
+  hasFfprobe: boolean;
+}): string[] {
+  const missing: string[] = [];
+  if (options.scope.audio && !options.audioSupplied) {
+    if (options.platform !== 'darwin' || !options.hasSay) {
+      missing.push(
+        'this host has no macOS `say` to speak the target sentence: supply BATCHD_SMOKE_AUDIO_WAV, a recording that says it',
+      );
+    }
+    if (!options.hasFfmpeg) missing.push('ffmpeg (to normalise the recording to 16 kHz mono PCM)');
+    if (!options.hasFfprobe) {
+      missing.push('ffprobe (to measure the audio before transcribing it)');
+    }
+  }
+  if (options.scope.video) {
+    if (!options.videoSupplied) {
+      if (!options.hasFfmpeg) missing.push('ffmpeg (to render the clip fixture)');
+      if (!options.hasFfprobe) missing.push('ffprobe (to measure the clip fixture)');
+    } else if (!options.videoPresent) {
+      missing.push('the MP4 named by BATCHD_SMOKE_VIDEO_MP4 could not be read');
+    }
+  }
+  return missing;
+}
+
+/**
+ * Does the observation prompt name what the clip recipe draws?
+ *
+ * The fixture is only a control if the request asks about the thing that was
+ * rendered: an empty observation then means the model did not describe the scene,
+ * rather than that it was never asked to. The checks mirror the recipe — a red
+ * frame, a green square, motion across it.
+ */
+export function clipPromptIssues(prompt: string): string[] {
+  const text = prompt.toLowerCase();
+  const issues: string[] = [];
+  for (const needed of ['red background', 'green square']) {
+    if (!text.includes(needed)) {
+      issues.push(`the prompt does not name the ${needed} the fixture renders`);
+    }
+  }
+  if (!/(moving|changes|across|left to right)/.test(text)) {
+    issues.push('the prompt does not ask what changes, although the fixture is defined by motion');
+  }
+  return issues;
+}
+
+/** Problems with what `/api/meta` reports about media configuration; empty if sound. */
+export function mediaMetaIssues(media: unknown): string[] {
+  if (media === null || typeof media !== 'object') {
+    return [
+      'the running server reports no media configuration at all (`/api/meta` has no `media` object), so the zero-retry rule cannot be confirmed',
+    ];
+  }
+  const reported = media as { max_retries?: unknown };
+  if (reported.max_retries !== 0) {
+    return [
+      `the running server reports media.max_retries=${String(reported.max_retries)}; this run requires 0, otherwise a failure could be retried and the call budget would be wrong`,
+    ];
+  }
+  // Every paid capability must be nameable from the running server. A run that
+  // cannot say which model it called has spent quota it cannot account for.
+  const unnamed = MEDIA_MODEL_FIELDS.filter((field) => {
+    const value = (media as Record<string, unknown>)[field];
+    return typeof value !== 'string' || value.length === 0;
+  });
+  if (unnamed.length > 0) {
+    return [
+      `the running server does not name ${unnamed.join(', ')} in /api/meta, so the run cannot say which model a call paid for`,
+    ];
+  }
+  return [];
+}
+
+/** The media models `/api/meta` must name for a live run to be accountable. */
+export const MEDIA_MODEL_FIELDS = [
+  'image_model',
+  'sam_model',
+  'vision_model',
+  'transcribe_model',
+  'video_model',
+] as const;

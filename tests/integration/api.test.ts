@@ -7,6 +7,7 @@ import { buildApp } from '../../apps/server/src/app.js';
 import type { AppConfig } from '../../apps/server/src/config.js';
 import { SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
+import { ServiceMetaSchema } from '../../packages/shared/src/index.js';
 
 /**
  * HTTP contract tests.
@@ -245,6 +246,26 @@ describe('GET /api/meta', () => {
     expect(data.modules.memory_engine).toBe('complete');
     expect(data.modules.ui_protocol).toBe('complete');
     expect(data.safety.generated_code_execution).toBe(false);
+  });
+
+  it('names every media model a paid call could use, and the retry knob', async () => {
+    // A live acceptance run has to say which model it spent quota on. If the
+    // contract only lists some of them, "we called X" is an assertion the running
+    // server cannot confirm — and the shared schema silently strips the extras.
+    const app = await createTestApp();
+    const response = await app.inject({ method: 'GET', url: '/api/meta' });
+    const meta = ServiceMetaSchema.parse(response.json().data);
+    expect(meta.media).toEqual({
+      image_model: expect.any(String),
+      sam_model: expect.any(String),
+      vision_model: expect.any(String),
+      transcribe_model: expect.any(String),
+      video_model: expect.any(String),
+      max_retries: expect.any(Number),
+    });
+    // The beta ships with transport retries off; the value a run asserts on must be
+    // readable from the same object, not only from the environment it was set in.
+    expect(meta.media.max_retries).toBeGreaterThanOrEqual(0);
   });
 });
 

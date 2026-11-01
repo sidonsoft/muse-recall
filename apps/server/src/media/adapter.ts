@@ -130,6 +130,12 @@ function toProviderCode(status: number | null, message: string): ProviderErrorCo
   ) {
     return 'provider_auth_failed';
   }
+  // 429 is the provider refusing on quota or rate limits, not the client writing a
+  // bad request. It fell through to the 4xx bucket below, which told operators to
+  // fix a request that was already correct and hid a quota wall behind a
+  // client-shaped error. Under the beta's zero-retry rule nothing retries it, so it
+  // has to be legible on its own.
+  if (status === 429) return 'provider_auth_failed';
   if (status === 400 || status === 404 || status === 405 || status === 422)
     return 'invalid_request';
   if (status !== null && status >= 400 && status < 500) return 'invalid_request';

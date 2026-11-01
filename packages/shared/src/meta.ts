@@ -46,6 +46,12 @@ export const ServiceMetaSchema = z.object({
     image_model: z.string(),
     sam_model: z.string(),
     vision_model: z.string(),
+    // The voice and video models belong in the contract, not just in the response:
+    // a live run has to name which model it paid, and a client typed from this
+    // schema could not read them before. `max_retries` is the call-budget knob the
+    // same runs assert on.
+    transcribe_model: z.string(),
+    video_model: z.string(),
     max_retries: z.number().int().min(0),
   }),
   modules: z.object({

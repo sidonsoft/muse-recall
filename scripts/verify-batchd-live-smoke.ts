@@ -64,21 +64,30 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MediaClipResponseSchema, MediaTranscriptSchema } from '../packages/shared/src/index.js';
 import {
   boundedExcerpt,
   clipFixturePlan,
+  clipPromptIssues,
   clipTokenMatch,
+  FFMPEG_BIN,
+  FFPROBE_BIN,
+  ffprobeArgs,
   liveScope,
+  MEDIA_MODEL_FIELDS,
+  mediaMetaIssues,
+  missingLivePrerequisites,
   parseProbe,
   probeIssues,
+  reserveLoopbackPort,
+  SERVER_READY_TIMEOUT_MS,
   speechFixturePlan,
   tallyAttempts,
   timestampIssues,
   transcriptMatch,
+  waitForServerReady,
 } from './lib/batchd-live.js';
 import { parseMediaTrace } from './lib/media-trace.js';
 
@@ -106,7 +115,7 @@ const LIMITS = [
   'A word-overlap ratio measures whether the recorded words came back; it is not a transcription accuracy score.',
   'Clip observations are reported for a human to read. Lexical agreement with the clip is a signal, not a judgement of model quality.',
   'This harness drives the HTTP surface. Studio UI wiring for transcripts is covered offline by verify:batchd-playback-auth and the fixture suites, not here.',
-  '/api/meta reports image, SAM and vision models plus max_retries; the transcription and clip models are proven per response (model, observed_model) and per trace line instead.',
+  '/api/meta names all five media models (image, SAM, vision, transcription, video) and max_retries; each response additionally reports the model it observed, and every dispatch leaves its own trace line.',
   'One call per capability is a sample, not a distribution. Do not read a single pass as reliability.',
 ];
 
@@ -133,7 +142,8 @@ function writeReport(status: string, error?: string): void {
   writeFileSync(join(EVIDENCE, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 }
 
-const FFPROBE = process.env.FFPROBE_BIN ?? 'ffprobe';
+const FFPROBE = FFPROBE_BIN;
+const FFMPEG = FFMPEG_BIN;
 
 function run(command: string, args: string[], cwd: string): void {
   const result = spawnSync(command, args, {
@@ -171,28 +181,10 @@ async function postJson(
   return { status: response.status, json };
 }
 
-async function waitForHttp(url: string, timeoutMs = 30_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-    } catch {
-      // still starting
-    }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-  fail(`server never became healthy at ${url}`);
-}
-
-function freePort(): number {
-  const listener = createServer();
-  listener.listen(0, '127.0.0.1');
-  const address = listener.address();
-  const port = typeof address === 'object' && address !== null ? address.port : 0;
-  listener.close();
-  if (port === 0) fail('could not reserve a free port');
-  return port;
+/** Is an external tool present? A missing one is a local blocker, not a result. */
+function toolAvailable(command: string): boolean {
+  const probe = spawnSync(command, ['-version'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  return probe.error === undefined && probe.status === 0;
 }
 
 async function main(): Promise<void> {
@@ -203,45 +195,58 @@ async function main(): Promise<void> {
     `Batch D live smoke — scope ${scope.audio ? 'audio ' : ''}${scope.video ? 'video' : ''}${fixtureOnly ? ' (fixtures only, no network)' : ''}`,
   );
 
-  // ---- fixtures: generated, probed, hashed (never committed) ----------------
+  // ---- plans first, then the local prerequisites ---------------------------
+  // Planning is pure: it names the recipe without touching the filesystem. The
+  // prerequisite check has to come before the recipe runs so a host without `say`
+  // or ffmpeg hears "this machine cannot build the fixture" rather than watching a
+  // half-built fixture fail its probe, or — worse — being handed a silent WAV that a
+  // model then fails to transcribe.
   const speech = speechFixturePlan(EVIDENCE, {
     phrase: scope.phrase,
     rate: Number(process.env.BATCHD_SMOKE_SPEECH_RATE ?? 165),
   });
   const clip = clipFixturePlan(EVIDENCE);
   const audioOverride = process.env.BATCHD_SMOKE_AUDIO_WAV;
+  const videoOverride = process.env.BATCHD_SMOKE_VIDEO_MP4;
+  const wavPath = audioOverride ?? speech.wavPath;
+  const mp4Path = videoOverride ?? clip.mp4Path;
+
+  const prerequisites = missingLivePrerequisites({
+    scope,
+    audioSupplied: audioOverride !== undefined,
+    videoSupplied: videoOverride !== undefined,
+    videoPresent: !scope.video || existsSync(mp4Path),
+    platform: process.platform,
+    hasSay: existsSync('/usr/bin/say'),
+    hasFfmpeg: toolAvailable(FFMPEG),
+    hasFfprobe: toolAvailable(FFPROBE),
+  });
+  if (prerequisites.length > 0) {
+    observations.blocker = prerequisites;
+    writeReport('BLOCKED before any provider call: local prerequisites missing');
+    for (const line of prerequisites) console.error(`FAIL: missing prerequisite: ${line}`);
+    console.error(`evidence: ${EVIDENCE}`);
+    process.exitCode = 2;
+    return;
+  }
+  check(
+    `this host can build the fixtures for scope ${scope.audio ? 'audio ' : ''}${scope.video ? 'video' : ''} before any credential or dispatch`,
+  );
+
+  // ---- fixtures: generated, probed, hashed (never committed) ----------------
   if (audioOverride === undefined) {
-    if (!existsSync('/usr/bin/say')) {
-      fail(
-        'the speech fixture needs /usr/bin/say (macOS) or BATCHD_SMOKE_AUDIO_WAV pointing at a recorded WAV',
-      );
-    }
     for (const step of speech.steps) run(step.command, step.args, ROOT);
   }
-  const wavPath = audioOverride ?? speech.wavPath;
   if (!existsSync(wavPath)) fail(`audio fixture missing at ${wavPath}`);
   const wav = readFileSync(wavPath);
   if (scope.video) {
     for (const step of clip.steps) run(step.command, step.args, ROOT);
   }
-  const mp4Path = process.env.BATCHD_SMOKE_VIDEO_MP4 ?? clip.mp4Path;
   if (scope.video && !existsSync(mp4Path)) fail(`video fixture missing at ${mp4Path}`);
   const mp4 = scope.video ? readFileSync(mp4Path) : Buffer.alloc(0);
 
-  const probeOf = (path: string): ReturnType<typeof parseProbe> => {
-    const dump = spawnText(FFPROBE, [
-      '-v',
-      'error',
-      '-show_entries',
-      'stream=codec_type,codec_name,sample_rate,channels,width,height',
-      '-show_entries',
-      'format=duration,size',
-      '-of',
-      'json',
-      path,
-    ]);
-    return parseProbe(JSON.parse(dump));
-  };
+  const probeOf = (path: string): ReturnType<typeof parseProbe> =>
+    parseProbe(JSON.parse(spawnText(FFPROBE, ffprobeArgs(path))));
   const audioProbe = probeOf(wavPath);
   const audioIssues = probeIssues(audioProbe, {
     codec: speech.expect.codec,
@@ -269,10 +274,20 @@ async function main(): Promise<void> {
     if (videoIssues.issues.length > 0) {
       fail(`video fixture does not match its recipe: ${videoIssues.issues.join('; ')}`);
     }
+    // A control is only a control if the request asks about what was rendered:
+    // otherwise empty observations could mean the model failed to describe the
+    // scene, or that it was never asked about it.
+    const promptIssues = clipPromptIssues(clip.prompt);
+    if (promptIssues.length > 0) {
+      fail(`the clip prompt does not match the clip recipe: ${promptIssues.join('; ')}`);
+    }
+    check('the clip prompt names what the clip recipe renders, so a refusal is a model result');
     observations.videoFixture = {
       path: mp4Path,
       bytes: mp4.length,
       sha256: sha256(mp4),
+      prompt: clip.prompt,
+      expected_tokens: clip.expectedTokens,
       probe: videoProbe,
       recipe: process.env.BATCHD_SMOKE_VIDEO_MP4
         ? 'provided by BATCHD_SMOKE_VIDEO_MP4'
@@ -308,7 +323,12 @@ async function main(): Promise<void> {
 
   // ---- the server under test: production bundle, one attempt per call -------
   const dataRoot = mkdtempSync(join(tmpdir(), 'batchd-live-'));
-  const serverPort = freePort();
+  // The reservation belongs to this harness and must succeed before a server
+  // starts: `PORT=0` would let the OS pick a different port while this process
+  // probed the one it thought it had.
+  const serverPort = await reserveLoopbackPort().catch((error: unknown) =>
+    fail(error instanceof Error ? error.message : String(error)),
+  );
   const apiBase = `http://127.0.0.1:${serverPort}`;
   const serverLog = join(EVIDENCE, 'server.log');
   const env: NodeJS.ProcessEnv = {
@@ -342,16 +362,36 @@ async function main(): Promise<void> {
   server.stderr.on('data', (chunk: Buffer) => appendFileSync(serverLog, chunk));
   const projectId = `batchd-live-${STAMP}`;
   try {
-    await waitForHttp(`${apiBase}/api/health`);
+    // A bound port is not a running service. Probe until the health endpoint
+    // answers, and if it never does say whether the process is still alive: an
+    // unparseable config error and a slow cold start look identical otherwise.
+    const ready = await waitForServerReady({
+      port: serverPort,
+      timeoutMs: SERVER_READY_TIMEOUT_MS,
+      probe: async (port) => (await fetch(`http://127.0.0.1:${port}/api/health`)).status === 200,
+    });
+    if (!ready.ready) {
+      const state =
+        server.exitCode === null && server.signalCode === null
+          ? 'the process stayed running'
+          : `the process exited with code ${String(server.exitCode)} signal ${String(server.signalCode)}`;
+      fail(
+        `the server never became healthy on port ${String(serverPort)} after ${String(ready.attempts)} probes over ${String(SERVER_READY_TIMEOUT_MS)}ms (${state})${ready.lastError === undefined ? '' : `: ${ready.lastError}`}`,
+      );
+    }
+    observations.server_ready_after_probes = ready.attempts;
+    check(`the server answered readiness probes on the reserved port ${String(serverPort)}`);
+
     const metaResponse = (await (await fetch(`${apiBase}/api/meta`)).json().catch(() => null)) as {
-      data?: { media?: { max_retries?: number; vision_model?: string } };
+      data?: { media?: unknown };
     } | null;
     const media = metaResponse?.data?.media;
-    if (media?.max_retries !== 0) {
-      fail(`/api/meta reports media.max_retries ${JSON.stringify(media?.max_retries)}, expected 0`);
-    }
+    const metaIssues = mediaMetaIssues(media);
+    if (metaIssues.length > 0) fail(metaIssues.join('; '));
     observations.server_media_config = media ?? null;
-    check('server is live with zero transport retries (media.max_retries 0)');
+    check(
+      `server is live with zero transport retries and names every model a call could pay (${MEDIA_MODEL_FIELDS.join(', ')})`,
+    );
 
     const projectId_ = projectId;
     const upload = async (mime: 'audio/wav' | 'video/mp4', bytes: Buffer, name: string) => {
@@ -375,7 +415,51 @@ async function main(): Promise<void> {
       return record as { source_id: string; sha256: string; byte_size: number };
     };
 
+    // Per-operation dispatch accounting. The closing sweep over known provider
+    // paths cannot attribute a dispatch to the call that caused it: `/v1/responses`
+    // is the path clip observation, vision and coding all share, so a coding call
+    // hiding inside a clip step would look like the clip's own dispatch. Slicing the
+    // trace by what was already written before the operation ran pins the budget to
+    // the operation that spent it.
+    const tracedSoFar = (): number => parseMediaTrace(readFileSync(serverLog, 'utf8')).length;
+    const accountOperation = (
+      label: string,
+      from: number,
+      allowedPaths: readonly string[],
+      maxDispatches: number,
+    ): void => {
+      const fresh = parseMediaTrace(readFileSync(serverLog, 'utf8')).slice(from);
+      const paths = [...new Set(fresh.map((entry) => entry.path ?? '(unattributed)'))];
+      const maxAttempt = fresh.reduce((max, entry) => Math.max(max, entry.attempt), 0);
+      observations[`trace_${label.replace(/\W+/g, '_')}`] = {
+        dispatches: fresh.length,
+        paths,
+        maxAttempt,
+      };
+      if (fresh.length === 0) {
+        fail(
+          `${label} produced no traced provider dispatch, so its call budget cannot be accounted for`,
+        );
+      }
+      const unexpected = paths.filter((path) => !allowedPaths.includes(path));
+      if (unexpected.length > 0) {
+        fail(`${label} dispatched on paths it must not touch: ${unexpected.join(', ')}`);
+      }
+      if (maxAttempt > 1) {
+        fail(`${label} was retried: a dispatch reached attempt ${String(maxAttempt)}`);
+      }
+      if (fresh.length > maxDispatches) {
+        fail(
+          `${label} spent ${String(fresh.length)} dispatches where this run allows at most ${String(maxDispatches)}`,
+        );
+      }
+      check(
+        `${label} accounted for ${String(fresh.length)} dispatch(es) on ${paths.join(', ')}, none beyond attempt 1`,
+      );
+    };
+
     if (scope.audio) {
+      const traceBefore = tracedSoFar();
       const record = await upload('audio/wav', wav, 'speech.wav');
       const response = await postJson(
         `${apiBase}/api/forge/projects/${projectId_}/media/sources/${record.source_id}/transcribe`,
@@ -443,9 +527,11 @@ async function main(): Promise<void> {
       check(
         `live transcription heard ${String(match.matchedWords)}/${String(match.spokenWords)} content words (model ${transcript.observed_model ?? transcript.model}, one dispatch)`,
       );
+      accountOperation('transcription', traceBefore, ['/v1/asr/transcribe'], 1);
     }
 
     if (scope.video) {
+      const traceBefore = tracedSoFar();
       const record = await upload('video/mp4', mp4, 'clip.mp4');
       const response = await postJson(
         `${apiBase}/api/forge/projects/${projectId_}/media/sources/${record.source_id}/clip`,
@@ -507,9 +593,16 @@ async function main(): Promise<void> {
       check(
         `live clip observation returned ${String(clipResponse.observations.length)} bounded observations (lexical match ${String(tokenMatch.found.length)}/${String(clip.expectedTokens.length)}: ${tokenMatch.found.join(', ') || 'none'})`,
       );
+      // A clip call is one observation dispatch, and may first push the frame
+      // through the file upload path; both belong to this operation, and nothing
+      // else may appear inside its slice of the trace.
+      accountOperation('clip observation', traceBefore, ['/v1/files', '/v1/responses'], 2);
     }
 
     // ---- the boundary claim: one attempt per call, no credential in the log --
+    // A coarse sweep across every provider path: it catches a retry wherever it
+    // happened, but it cannot say which operation caused a dispatch. The
+    // per-operation accounting above is what pins each budget to its own call.
     const log = readFileSync(serverLog, 'utf8');
     const trace = parseMediaTrace(log);
     for (const path of [

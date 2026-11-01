@@ -1,15 +1,25 @@
+import { createServer } from 'node:http';
 import { describe, expect, it } from 'vitest';
 import {
   boundedExcerpt,
   clipFixturePlan,
+  clipPromptIssues,
   clipTokenMatch,
+  FFMPEG_BIN,
+  FFPROBE_BIN,
   liveScope,
+  MEDIA_MODEL_FIELDS,
+  mediaMetaIssues,
+  missingLivePrerequisites,
   parseProbe,
   probeIssues,
+  reserveLoopbackPort,
+  SAY_BIN,
   speechFixturePlan,
   tallyAttempts,
   timestampIssues,
   transcriptMatch,
+  waitForServerReady,
 } from '../../scripts/lib/batchd-live.js';
 
 const AUDIO_DUMP = {
@@ -205,5 +215,192 @@ describe('run scope and dispatch accounting', () => {
       { attempt: 2, path: '/v1/asr/transcribe' },
     ];
     expect(tallyAttempts(retried, '/v1/asr/transcribe').maxAttempt).toBe(2);
+  });
+});
+
+describe('Batch D live prerequisites and readiness', () => {
+  it('waits for the port to answer instead of trusting a bind', async () => {
+    // `listen(0)` returns before the socket is bound, so readiness has to be
+    // probed: a false answer means "not yet", and the probe count is evidence of
+    // how long the run waited.
+    let probes = 0;
+    const ready = await waitForServerReady({
+      port: 4321,
+      probe: async () => {
+        probes += 1;
+        return probes === 3;
+      },
+      sleep: async () => undefined,
+    });
+    expect(ready).toEqual({ ready: true, attempts: 3 });
+  });
+
+  it('names the transport error when a port never answers', async () => {
+    // A server that died at startup leaves the port closed. Collapsing that into a
+    // generic "never became healthy" hid whether the process, the port or the probe
+    // was at fault.
+    const outcome = await waitForServerReady({
+      port: 4321,
+      probe: async () => {
+        throw new Error('connect ECONNREFUSED 127.0.0.1:4321');
+      },
+      timeoutMs: 250,
+      pollMs: 0,
+      sleep: async () => undefined,
+    });
+    expect(outcome.ready).toBe(false);
+    expect(outcome.attempts).toBeGreaterThan(1);
+    expect(outcome.lastError).toContain('ECONNREFUSED');
+  });
+
+  it('recovers from a probe that throws before the server is up', async () => {
+    let probes = 0;
+    const outcome = await waitForServerReady({
+      port: 4321,
+      probe: async () => {
+        probes += 1;
+        if (probes === 1) throw new Error('socket hang up');
+        return true;
+      },
+      sleep: async () => undefined,
+    });
+    expect(outcome).toEqual({ ready: true, attempts: 2 });
+  });
+
+  it('reserves a real port and then sees a server bound to it', async () => {
+    // The reservation is the point: `listen(0)` reports no address until the socket
+    // is bound, so reading it synchronously yields null. A harness that turns that
+    // into port 0 can never reach the server it means to probe.
+    const port = await reserveLoopbackPort();
+    expect(port).toBeGreaterThan(1023);
+    expect(await reserveLoopbackPort()).not.toBe(port);
+
+    // An HTTP server, because the readiness probe speaks HTTP: the reserved port
+    // has to be one a health check can actually answer on.
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end('{"ok":true}');
+    });
+    await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve));
+    try {
+      const ready = await waitForServerReady({
+        port,
+        probe: async (probePort) =>
+          (await fetch(`http://127.0.0.1:${String(probePort)}/api/health`)).status === 200,
+        sleep: async () => undefined,
+      });
+      expect(ready).toEqual({ ready: true, attempts: 1 });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it('calls a missing fixture tool a local blocker, not a provider result', () => {
+    const audio = liveScope({ BATCHD_SMOKE_SCOPE: 'audio' });
+    // Without `say` there is no known sentence to speak, so the run has nothing to
+    // measure; it must say so instead of transcribing silence.
+    const problems = missingLivePrerequisites({
+      scope: audio,
+      audioSupplied: false,
+      videoSupplied: false,
+      videoPresent: true,
+      platform: 'linux',
+      hasSay: false,
+      hasFfmpeg: true,
+      hasFfprobe: true,
+    });
+    expect(problems).toEqual([expect.stringContaining('BATCHD_SMOKE_AUDIO_WAV')]);
+
+    const videoOnly = missingLivePrerequisites({
+      scope: liveScope({ BATCHD_SMOKE_SCOPE: 'video' }),
+      audioSupplied: false,
+      videoSupplied: false,
+      videoPresent: true,
+      platform: 'darwin',
+      hasSay: true,
+      hasFfmpeg: false,
+      hasFfprobe: true,
+    });
+    expect(videoOnly).toEqual([expect.stringContaining('ffmpeg')]);
+
+    // A supplied recording or MP4 removes the local requirement entirely.
+    const supplied = missingLivePrerequisites({
+      scope: liveScope({ BATCHD_SMOKE_SCOPE: 'both' }),
+      audioSupplied: true,
+      videoSupplied: true,
+      videoPresent: true,
+      platform: 'linux',
+      hasSay: false,
+      hasFfmpeg: false,
+      hasFfprobe: false,
+    });
+    expect(supplied).toEqual([]);
+
+    expect(
+      missingLivePrerequisites({
+        scope: liveScope({ BATCHD_SMOKE_SCOPE: 'video' }),
+        audioSupplied: false,
+        videoSupplied: true,
+        videoPresent: false,
+        platform: 'darwin',
+        hasSay: true,
+        hasFfmpeg: true,
+        hasFfprobe: true,
+      }),
+    ).toEqual([expect.stringContaining('BATCHD_SMOKE_VIDEO_MP4')]);
+  });
+
+  it('refuses to assume zero retries when the server says nothing about media', () => {
+    expect(mediaMetaIssues(undefined)).toEqual([expect.stringContaining('/api/meta')]);
+    expect(mediaMetaIssues({ max_retries: 2 })).toEqual([
+      expect.stringContaining('media.max_retries=2'),
+    ]);
+    const complete = {
+      max_retries: 0,
+      image_model: 'muse-image-1.0',
+      sam_model: 'sam-3.1',
+      vision_model: 'muse-spark-1.3',
+      transcribe_model: 'muse-voice-transcribe-1.0',
+      video_model: 'muse-spark-1.3',
+    };
+    expect(mediaMetaIssues(complete)).toEqual([]);
+    // A server that reports the retry knob but not the voice model cannot support
+    // the claim "this call paid for transcription".
+    expect(mediaMetaIssues({ ...complete, transcribe_model: '' })).toEqual([
+      expect.stringContaining('transcribe_model'),
+    ]);
+    expect(MEDIA_MODEL_FIELDS).toContain('video_model');
+  });
+
+  it('asks the clip prompt about exactly what the recipe renders', async () => {
+    const plan = clipFixturePlan('/tmp/run');
+    // The recipe is the control; the prompt must name it, or an empty observation
+    // cannot be read as a model result.
+    expect(clipPromptIssues(plan.prompt)).toEqual([]);
+    expect(clipPromptIssues('Describe what is shown and what changes over time.')).toEqual(
+      expect.arrayContaining([expect.stringContaining('red background')]),
+    );
+    // The observation tokens the match is scored against appear in both.
+    for (const token of plan.expectedTokens) {
+      expect(plan.prompt.toLowerCase()).toContain(token);
+    }
+    const graph = plan.steps[0]?.args.join(' ') ?? '';
+    expect(graph).toContain('red');
+    expect(graph).toContain('green');
+    expect(plan.prompt).toContain('green square');
+  });
+
+  it('names the binaries a run will actually execute', () => {
+    // A prerequisite check that tests one binary while the recipe runs another
+    // certifies a tool the run never calls.
+    const speech = speechFixturePlan('/tmp/run');
+    const clip = clipFixturePlan('/tmp/run');
+    expect(speech.steps[0]?.command).toBe(SAY_BIN);
+    expect(speech.steps[1]?.command).toBe(FFMPEG_BIN);
+    expect(clip.steps[0]?.command).toBe(FFMPEG_BIN);
+    // ...and those constants follow the same overrides a harness passes to its
+    // probes, so a prerequisite check cannot certify a binary the run never calls.
+    expect(FFMPEG_BIN).toBe(process.env.FFMPEG_BIN ?? 'ffmpeg');
+    expect(FFPROBE_BIN).toBe(process.env.FFPROBE_BIN ?? 'ffprobe');
   });
 });
