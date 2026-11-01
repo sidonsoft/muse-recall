@@ -48,6 +48,7 @@ import { MediaAssetStore } from '../apps/server/src/media/assets.js';
 import { MediaJobStore } from '../apps/server/src/media/jobs.js';
 import type { MediaSegmentation, MediaUnderstand } from '../apps/server/src/media/segment.js';
 import { MediaService } from '../apps/server/src/media/service.js';
+import { MediaSourceStore } from '../apps/server/src/media/sources.js';
 import { MemoryEngine, openDatabase } from '../packages/memory-engine/src/index.js';
 import { EchoProvider } from '../packages/muse-provider/src/index.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
@@ -403,10 +404,17 @@ async function main(): Promise<void> {
     const workspace = new ForgeWorkspace(config.workspaceRoot);
     const assets = new MediaAssetStore(workspace);
     const jobs = new MediaJobStore(workspace);
-    const mediaService = new MediaService(assets, jobs, null, {
-      segmentation: segmentation as unknown as MediaSegmentation,
-      understand: understand as unknown as MediaUnderstand,
-    });
+    const mediaSources = new MediaSourceStore(workspace);
+    const mediaService = new MediaService(
+      assets,
+      jobs,
+      null,
+      {
+        segmentation: segmentation as unknown as MediaSegmentation,
+        understand: understand as unknown as MediaUnderstand,
+      },
+      { sources: mediaSources },
+    );
     app = await buildApp({
       config,
       db: database.db,
@@ -416,6 +424,7 @@ async function main(): Promise<void> {
       forgeWorkspace: workspace,
       mediaAssets: assets,
       mediaJobs: jobs,
+      mediaSources,
       mediaService,
       startedAt: Date.now(),
     });

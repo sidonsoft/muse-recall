@@ -1,5 +1,6 @@
 import { MEDIA_AUDIO_MAX_BYTES, MEDIA_VIDEO_MAX_BYTES } from '@mml/shared';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { DownloadDeps } from '../../apps/web/src/components/studio/source-playback.ts';
 import {
   downloadSource,
   filenameFor,
@@ -21,10 +22,11 @@ import { ApiError, api, type SourceBytes } from '../../apps/web/src/lib/api.ts';
  */
 
 interface Fakes {
-  deps: PlaybackDeps & { triggerCalls: Array<{ url: string; filename: string }> };
+  deps: PlaybackDeps & DownloadDeps;
   created: string[];
   revoked: string[];
   fetches: Array<{ projectId: string; sourceId: string }>;
+  triggerCalls: Array<{ url: string; filename: string }>;
 }
 
 function makeFakes(
@@ -211,7 +213,7 @@ describe('api.mediaSourceBytes request plumbing', () => {
             ? spec.body
             : new Uint8Array(spec.body);
       return Promise.resolve(
-        new Response(body as BodyInit, { status: spec.status ?? 200, headers: headersOut }),
+        new Response(body, { status: spec.status ?? 200, headers: headersOut }),
       );
     };
     return calls;
