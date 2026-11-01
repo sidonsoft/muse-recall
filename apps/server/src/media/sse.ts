@@ -242,56 +242,79 @@ export function assembleResponsesStream(events: SseEvent[], label: string): Asse
   let deltaEvents = 0;
   let ignoredEvents = 0;
   let seen = 0;
-  for (const { event, data } of events) {
-    seen += 1;
-    if (event === 'response.output_text.delta') {
-      const payload = parseEventData(data, trimmedLabel, event);
-      const delta: unknown = payload.delta;
-      if (typeof delta !== 'string') {
+  try {
+    for (const { event, data } of events) {
+      seen += 1;
+      if (event === 'response.output_text.delta') {
+        const payload = parseEventData(data, trimmedLabel, event);
+        const delta: unknown = payload.delta;
+        if (typeof delta !== 'string') {
+          throw streamError(
+            `${trimmedLabel} stream event ${event} carries a non-string delta.`,
+            seen,
+            deltaEvents,
+            ignoredEvents,
+          );
+        }
+        lane += delta;
+        deltaEvents += 1;
+      } else if (event === 'response.completed') {
+        if (terminal === null) {
+          terminal = terminalResponse(
+            parseEventData(data, trimmedLabel, event),
+            trimmedLabel,
+            event,
+          );
+        }
+      } else if (event === 'response.failed' || event === 'response.incomplete') {
+        const payload = data.trim().length > 0 ? parseEventData(data, trimmedLabel, event) : {};
+        const inner: unknown = payload.response;
+        const detail =
+          inner !== null && typeof inner === 'object' && !Array.isArray(inner)
+            ? failureMessage(inner as Record<string, unknown>, event)
+            : failureMessage(payload, event);
         throw streamError(
-          `${trimmedLabel} stream event ${event} carries a non-string delta.`,
+          boundedRedacted(`${trimmedLabel} stream terminal ${event}: ${detail}`),
           seen,
           deltaEvents,
           ignoredEvents,
         );
+      } else if (event === 'error') {
+        const detail =
+          data.trim().length > 0
+            ? failureMessage(parseEventData(data, trimmedLabel, event), event)
+            : event;
+        throw streamError(
+          boundedRedacted(`${trimmedLabel} stream error event: ${detail}`),
+          seen,
+          deltaEvents,
+          ignoredEvents,
+        );
+      } else if (data === '[DONE]') {
+        // OpenAI-compatible end-of-stream marker: only meaningful after a
+        // terminal event; otherwise the stream below reports it missing.
+        if (terminal !== null) break;
+      } else {
+        ignoredEvents += 1;
       }
-      lane += delta;
-      deltaEvents += 1;
-    } else if (event === 'response.completed') {
-      if (terminal === null) {
-        terminal = terminalResponse(parseEventData(data, trimmedLabel, event), trimmedLabel, event);
-      }
-    } else if (event === 'response.failed' || event === 'response.incomplete') {
-      const payload = data.trim().length > 0 ? parseEventData(data, trimmedLabel, event) : {};
-      const inner: unknown = payload.response;
-      const detail =
-        inner !== null && typeof inner === 'object' && !Array.isArray(inner)
-          ? failureMessage(inner as Record<string, unknown>, event)
-          : failureMessage(payload, event);
-      throw streamError(
-        boundedRedacted(`${trimmedLabel} stream terminal ${event}: ${detail}`),
-        seen,
-        deltaEvents,
-        ignoredEvents,
-      );
-    } else if (event === 'error') {
-      const detail =
-        data.trim().length > 0
-          ? failureMessage(parseEventData(data, trimmedLabel, event), event)
-          : event;
-      throw streamError(
-        boundedRedacted(`${trimmedLabel} stream error event: ${detail}`),
-        seen,
-        deltaEvents,
-        ignoredEvents,
-      );
-    } else if (data === '[DONE]') {
-      // OpenAI-compatible end-of-stream marker: only meaningful after a
-      // terminal event; otherwise the stream below reports it missing.
-      if (terminal !== null) break;
-    } else {
-      ignoredEvents += 1;
     }
+  } catch (error) {
+    // parseEventData/terminalResponse throw directly (non-JSON data,
+    // missing response object) before streamError adds counts. Attach the
+    // exact counts seen so far so no post-dispatch failure loses them;
+    // errors that already carry counts pass through untouched.
+    if (ProviderError.isProviderError(error)) {
+      const details = error.details as Record<string, unknown>;
+      if (typeof details.events !== 'number') {
+        throw new ProviderError(error.code, error.message, {
+          ...details,
+          events: seen,
+          deltaEvents,
+          ignoredEvents,
+        });
+      }
+    }
+    throw error;
   }
   if (terminal === null) {
     throw streamError(

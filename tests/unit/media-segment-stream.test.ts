@@ -209,6 +209,57 @@ describe('assembleResponsesStream', () => {
     expect(() => assembleResponsesStream(noObjectEvents, 'segment')).toThrow(/no response object/);
   });
 
+  it('attaches exact counts to direct parse throws', async () => {
+    // Non-JSON delta data: parseEventData throws before streamError runs.
+    const nonJson = await readEvents(
+      sseResponse('event: response.output_text.delta\ndata: not-json\n\n'),
+    );
+    let first: unknown = null;
+    try {
+      assembleResponsesStream(nonJson, 'segment');
+    } catch (e) {
+      first = e;
+    }
+    expect((first as { details?: Record<string, unknown> }).details).toEqual({
+      events: 1,
+      deltaEvents: 0,
+      ignoredEvents: 0,
+    });
+
+    // Completed event without a response object: terminalResponse throws.
+    const noObject = await readEvents(
+      sseResponse('event: response.completed\ndata: {"nope":true}\n\n'),
+    );
+    let second: unknown = null;
+    try {
+      assembleResponsesStream(noObject, 'segment');
+    } catch (e) {
+      second = e;
+    }
+    expect((second as { details?: Record<string, unknown> }).details).toEqual({
+      events: 1,
+      deltaEvents: 0,
+      ignoredEvents: 0,
+    });
+
+    // Counts already present are never overwritten: a later failure keeps
+    // the exact position where it was diagnosed.
+    const late =
+      `${deltaEvent('ab')}\n\n` + 'event: response.output_text.delta\ndata: not-json\n\n';
+    const lateEvents = await readEvents(sseResponse(late));
+    let third: unknown = null;
+    try {
+      assembleResponsesStream(lateEvents, 'segment');
+    } catch (e) {
+      third = e;
+    }
+    expect((third as { details?: Record<string, unknown> }).details).toEqual({
+      events: 2,
+      deltaEvents: 1,
+      ignoredEvents: 0,
+    });
+  });
+
   it('rejects malformed terminal objects instead of reporting zero matches', async () => {
     const malformed: Array<{ name: string; response: unknown }> = [
       { name: 'empty object', response: {} },
@@ -491,6 +542,22 @@ describe('MediaSegmentation over streaming', () => {
       new MediaSegmentation(streamAdapter(garbage)).segment(twoTone(), 'dot'),
     ).rejects.toThrow(/no usable matches/);
   });
+});
+
+it('preserves exact counts on direct parse failures', async () => {
+  const raw = 'event: response.output_text.delta\ndata: not-json\n\n';
+  const broken = vi.fn(async () => sseResponse(raw));
+  const failure = await new MediaSegmentation(streamAdapter(broken))
+    .segment(twoTone(), 'dot')
+    .catch((e: Error) => e);
+  expect(failure).toMatchObject({ code: 'provider_invalid_output' });
+  const details = (failure as { details?: Record<string, unknown> }).details ?? {};
+  expect(details.attempts).toBe(1);
+  expect(details.stream_events).toBe(1);
+  expect(details.delta_events).toBe(0);
+  expect(details.ignored_events).toBe(0);
+  expect(details.stream_bytes).toBeGreaterThan(0);
+  expect(details.response_sha256).toBe(createHash('sha256').update(raw).digest('hex'));
 });
 
 it('preserves attempts and stream evidence on validation failures', async () => {

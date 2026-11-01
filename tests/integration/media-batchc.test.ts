@@ -477,6 +477,25 @@ describe('Batch C SAM cutouts (segment)', () => {
     expect(badError.details?.attempts).toBe(1);
     expect(badError.details?.delta_events).toBe(0);
     expect(badError.details?.ignored_events).toBe(0);
+
+    // Direct parse throw: non-JSON delta data carries exact counts too.
+    const rawFetch = async (): Promise<Response> =>
+      stream('event: response.output_text.delta\ndata: not-json\n\n');
+    const rawHarness = await buildHarness({ realSegmentation: real(rawFetch) });
+    const rawAsset = await upload(rawHarness.app);
+    const raw = await segment(rawHarness.app, rawAsset.asset_id);
+    expect(raw.statusCode).toBe(502);
+    const rawError = (raw.json().error ?? {}) as {
+      code?: unknown;
+      details?: Record<string, unknown>;
+    };
+    expect(rawError.code).toBe('provider_invalid_output');
+    expect(rawError.details?.attempts).toBe(1);
+    expect(rawError.details?.stream_events).toBe(1);
+    expect(rawError.details?.delta_events).toBe(0);
+    expect(rawError.details?.ignored_events).toBe(0);
+    expect(rawError.details?.stream_bytes).toBeGreaterThan(0);
+    expect(rawError.details?.response_sha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('fails closed on unknown, expired-scope, and out-of-range sessions', async () => {
