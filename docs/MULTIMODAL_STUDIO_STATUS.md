@@ -1,7 +1,7 @@
 # Multimodal studio — status against the beta v0.1 plan
 
 **Written:** 2026-11-01
-**Commit under review:** `7cf3e63` (`git status --porcelain` empty)
+**Commit under review:** `8148cf0` (`git status --porcelain` empty)
 **Scope:** the five expansion batches in the multimodal studio plan (§4) plus the
 release gate (§5). The pre-expansion product (memory, chat, approval, rollback,
 research trials) is covered by the earlier phase docs; this file only records the
@@ -71,21 +71,30 @@ Documentation states these gaps rather than leaving them implied:
 
 Offline, no provider key, no external network:
 
-- `npx vitest run`: **106 files, 1332 passed, 3 skipped, 0 failed**.
+- `npx vitest run`: **107 files, 1347 passed, 3 skipped, 0 failed**.
 - `pnpm -r run typecheck`: no `error TS`.
 - `npx biome check .`: 0 errors (4 warnings, 18 infos pre-existing).
 - `pnpm exec tsx scripts/build-production-bundles.ts` after the commit: server
-  `buildHash 1e8ea69c1ec8…` (`sourceHash 73d120b89e63…`, 128 inputs), web
-  `buildHash ed405f622a6f…` (`sourceHash 40f681cf17f2…`, 74 inputs); both manifests
-  carry `commit 7cf3e63…` and `treeClean: true`.
+  `buildHash 9aee0aa6100d…` (`sourceHash caab73193ed2…`, 128 inputs), web
+  `buildHash ed405f622a6f…` (`sourceHash 4c64ac308585…`, 74 inputs); both manifests
+  carry `commit 8148cf0…` and `treeClean: true`. The web bundle's emitted bytes are
+  unchanged from the last UI commit even though its source hash moved, because the
+  changed inputs are scripts and docs, not app sources.
 - `pnpm verify:batche-review-ui`: **PASS 20 checks** (`test-results/batche-review-ui`).
 - `pnpm verify:batchd-playback-auth`: **PASS 15 checks**
-  (`test-results/batchd-playback-auth/2026-11-01-1621`), and it asserts that the
+  (`test-results/batchd-playback-auth/2026-11-01-1641`), and it asserts that the
   *running* server's identity equals the verified build:
-  `commit 7cf3e63…`, `treeClean true`.
+  `commit 8148cf0…`, `treeClean: true`, `serverBuildHash 9aee0aa6100d…`,
+  `webBuildHash ed405f622a6f…`.
 - `pnpm verify:batchc-ui`: **PASS 22 checks** (`test-results/batchc-ui`).
 - `pnpm verify:studio-workflow`: **56 checks passed** (project
   `studio-workflow-y1m2i4`; logs and screenshots in `test-results/studio-after/`).
+- `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
+  **PASS 2 checks with no network call** — the live harness's fixture plumbing
+  (`speech.wav` 16 kHz mono, 5 139 ms, 164 524 bytes; `clip.mp4` H.264 96×96,
+  2 000 ms, 3 305 bytes). The same command without a key writes
+  `BLOCKED before any provider call` and exits 2. The live path itself has not been
+  run: no transcription or clip call has been made in this tree.
 - Evidence directories under `test-results/` are gitignored local artifacts, not
   repository content: the offline gates re-create them on any machine, but the live
   Batch C runs cannot be re-created without spending quota again, so those recorded
@@ -127,12 +136,19 @@ and excerpts while hashes stay over raw bytes.
 
 Still open before a beta cut, none of which is a code question I should answer alone:
 
-1. **Live results for the four capabilities above.** Until then they are advertised
-   as configured-but-unverified, and the beta cut should say so.
-2. **Fresh-install demonstration** on each claimed environment with the browser and
-   ffmpeg prerequisites written down; only this machine has been exercised.
-3. **Independent review of `7cf3e63` and `4aa1282`** — the idempotency and
-   failure-coverage work is mine and has not been reviewed by anyone else.
+1. **Live results for the four capabilities above.** Each now has a harness that
+   records it (`verify:media`, `verify:media-live-smoke`, `verify:batchd-live-smoke`,
+   and an authorized live review run for Batch E), and each still has no recorded
+   result. Until they exist these capabilities are advertised as
+   configured-but-unverified, and the beta cut should say so. Running any of them
+   spends real quota and needs an explicit go-ahead.
+2. **Fresh-install demonstration** on each claimed environment with the browser,
+   Node, and ffmpeg prerequisites written down; only this machine has been exercised.
+3. **Independent review of the last four commits** (`4aa1282` idempotency,
+   `7cf3e63` failure coverage, `5bed18b` status doc, `8148cf0` voice/video live
+   harness) — all of it is my own work and none of it has been reviewed by anyone
+   else. The coordinator reviews that covered earlier Batch E commits do not extend
+   to these.
 4. **A release decision.** `main` still points at the known-working candidate. There
    is no tag, no beta branch, and no merge from this line; nothing here publishes
    anything.
