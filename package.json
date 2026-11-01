@@ -65,7 +65,8 @@
     "verify:batchc-live-smoke": "tsx scripts/verify-batchc-live-smoke.ts",
     "verify:batchc-resume-staged": "tsx scripts/verify-batchc-resume-staged.ts",
     "verify:batchd-playback-auth": "tsx scripts/verify-batchd-playback-auth.ts",
-    "verify:batchc-ui": "tsx scripts/verify-batchc-ui.ts"
+    "verify:batchc-ui": "tsx scripts/verify-batchc-ui.ts",
+    "verify:batche-review-ui": "tsx scripts/verify-batche-review-ui.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

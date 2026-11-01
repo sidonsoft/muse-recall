@@ -613,10 +613,19 @@ export function StudioView({
       );
       return;
     }
-    // Only an approved generation may be named, and only the one in view. A
-    // staged, running, or failed job is not a generation.
+    // Only an approved generation may be named, and only the one actually in
+    // view: the generation the listing records for the version on screen. A
+    // staged, running, or failed run is a job, not a generation, and the server
+    // checks this again before accepting it.
+    const shownVersion = artifact?.version ?? project?.state.current_version ?? null;
+    const listed =
+      shownVersion === null
+        ? undefined
+        : generations?.items.find((item) => item.version === shownVersion);
     const generationJobId =
-      job !== null && job.status === 'succeeded' && job.version !== null ? job.id : null;
+      listed !== undefined && listed.job_id !== null && listed.job_status === 'succeeded'
+        ? listed.job_id
+        : null;
     setReviewBusy(true);
     setReview(null);
     setReviewError(null);
