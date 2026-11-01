@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ForgeProjectIdSchema } from './forge.js';
+import { FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH, ForgeProjectIdSchema } from './forge.js';
 
 /**
  * Media capability contracts (Batch A1).
@@ -393,6 +393,92 @@ export const MediaSuggestResponseSchema = z.object({
   provider_attempts: z.number().int().min(1),
 });
 export type MediaSuggestResponse = z.infer<typeof MediaSuggestResponseSchema>;
+
+/**
+ * Batch E — advisory visual review of a screenshot against accepted decisions.
+ *
+ * The user picks the decisions and supplies a screenshot; the server resolves
+ * the decision text from the memory store, asks the vision model to describe
+ * how the frame relates to each one, and validates that answer server-side.
+ * Three rules keep this advisory rather than a verdict:
+ *
+ * - every finding must name evidence *in the frame* and state what a single
+ *   still cannot establish — a finding without both is reported as unverified;
+ * - a decision the model did not address is listed as unverified, never
+ *   assumed consistent;
+ * - the response carries fixed `advisory: true` / `artifact_changed: false`
+ *   flags and the limits text, so no surface can present it as an approval or
+ *   as measured compliance.
+ */
+
+export const VISUAL_REVIEW_VERDICTS = ['consistent', 'possible_conflict', 'unclear'] as const;
+/**
+ * What a screenshot review can and cannot establish. Sent with every response
+ * so a client cannot render a verdict without also rendering its limits.
+ */
+export const VISUAL_REVIEW_LIMITS: readonly string[] = [
+  'A screenshot is one still frame: it cannot show behaviour over time, interaction, input handling, or anything off-screen.',
+  'These findings are advisory. They never approve, reject, or change an artifact, and they do not prove the app follows or violates a decision.',
+  'confidence is the model’s own self-report, not a measured accuracy.',
+  'A decision listed as unverified was not assessed; it is never assumed consistent.',
+];
+
+export const VisualReviewVerdictSchema = z.enum(VISUAL_REVIEW_VERDICTS);
+export type VisualReviewVerdict = z.infer<typeof VisualReviewVerdictSchema>;
+
+export const VisualReviewFindingSchema = z.object({
+  decision_id: z.uuid(),
+  /** The decision as stored, resolved by the server rather than the model. */
+  decision_excerpt: z.string().min(1).max(200),
+  decision_revision: z.number().int().min(1),
+  verdict: VisualReviewVerdictSchema,
+  /** What in the screenshot the model pointed to. */
+  evidence: z.string().min(1).max(600),
+  /** What this one frame cannot prove. */
+  uncertainty: z.string().min(1).max(400),
+  /** The model's own confidence, not a measured accuracy. */
+  confidence: z.number().min(0).max(1),
+});
+export type VisualReviewFinding = z.infer<typeof VisualReviewFindingSchema>;
+
+/** A selected decision the output left unusable: no finding was fabricated. */
+export const VisualReviewUnverifiedSchema = z.object({
+  decision_id: z.uuid(),
+  decision_excerpt: z.string().min(1).max(200),
+  decision_revision: z.number().int().min(1),
+  reason: z.string().min(1).max(300),
+  uncertainty: z.string().min(1).max(400),
+});
+export type VisualReviewUnverified = z.infer<typeof VisualReviewUnverifiedSchema>;
+
+export const MediaVisualReviewRequestSchema = z.object({
+  /** PNG capture of the running app, same bound as a modify-job screenshot. */
+  screenshot_data_url: z.string().min(100).max(FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH),
+  /** Accepted decision ids to review against; resolved from the store. */
+  decisions: z.array(z.uuid()).min(1).max(16),
+  /** Optional generation this review describes; never a write target. */
+  job_id: z.uuid().optional(),
+});
+export type MediaVisualReviewRequest = z.infer<typeof MediaVisualReviewRequestSchema>;
+
+export const MediaVisualReviewResponseSchema = z.object({
+  advisory: z.literal(true),
+  /** Always false: reviewing a screenshot cannot touch an artifact. */
+  artifact_changed: z.literal(false),
+  screenshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  findings: z.array(VisualReviewFindingSchema).max(16),
+  unverified: z.array(VisualReviewUnverifiedSchema).max(16),
+  /** Entries the output supplied for decisions that were not selected. */
+  ignored_entries: z.number().int().min(0),
+  limits: z.array(z.string().min(1).max(240)).min(1).max(4),
+  provider: z.object({
+    provider: z.string().min(1),
+    model: z.string().min(1).optional(),
+    observed: z.string().min(1).optional(),
+  }),
+  provider_attempts: z.number().int().min(1),
+});
+export type MediaVisualReviewResponse = z.infer<typeof MediaVisualReviewResponseSchema>;
 
 /**
  * Batch D — voice and video source contracts.

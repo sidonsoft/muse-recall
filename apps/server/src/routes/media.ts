@@ -411,87 +411,105 @@ function mediaStatus(error: MediaError | MediaJobError): number {
   return 400;
 }
 
+/**
+ * Media and provider failures → HTTP reply, shared with the Forge surface.
+ * Batch E's screenshot review is a Forge route that performs a media call, so
+ * a media or provider failure has to mean the same thing on both surfaces.
+ * Returns false when `error` is not a media failure, leaving the caller's own
+ * mapping untouched.
+ */
+export function sendMediaError(reply: FastifyReply, error: unknown): boolean {
+  if (error instanceof MediaError || error instanceof MediaJobError) {
+    reply.status(mediaStatus(error)).send({
+      ok: false,
+      error: { code: error.code, message: error.message },
+    });
+    return true;
+  }
+  if (error instanceof MediaSourceError) {
+    const status =
+      error.code === 'source_not_found'
+        ? 404
+        : error.code === 'size_exceeded'
+          ? 413
+          : error.code === 'persistence_failed'
+            ? 503
+            : error.code === 'source_corrupt'
+              ? 409
+              : 400;
+    reply.status(status).send({
+      ok: false,
+      error: { code: error.code, message: error.message },
+    });
+    return true;
+  }
+  if (error instanceof MediaServiceError) {
+    const status =
+      error.code === 'media_unconfigured'
+        ? 503
+        : error.code === 'job_not_found' ||
+            error.code === 'segment_not_found' ||
+            error.code === 'media_source_not_found'
+          ? 404
+          : error.code === 'proposal_conflict'
+            ? 409
+            : 400;
+    reply.status(status).send({
+      ok: false,
+      error: { code: error.code, message: error.message },
+    });
+    return true;
+  }
+  if (ProviderError.isProviderError(error)) {
+    const status =
+      error.code === 'invalid_request'
+        ? 400
+        : error.code === 'provider_timeout'
+          ? 504
+          : error.code === 'provider_cancelled'
+            ? 409
+            : error.code === 'provider_auth_failed'
+              ? 502
+              : 502;
+    // Surface only the bounded, non-secret provider telemetry the
+    // adapter attaches (HTTP status, dispatch count, bounded stream
+    // evidence) so acceptance harnesses can account exact attempts
+    // even on failure.
+    const details: Record<string, unknown> = {};
+    if (typeof error.details.status === 'number') details.status = error.details.status;
+    if (typeof error.details.attempts === 'number') details.attempts = error.details.attempts;
+    if (typeof error.details.stream_events === 'number')
+      details.stream_events = error.details.stream_events;
+    if (typeof error.details.stream_bytes === 'number')
+      details.stream_bytes = error.details.stream_bytes;
+    if (
+      typeof error.details.response_sha256 === 'string' &&
+      /^[0-9a-f]{64}$/.test(error.details.response_sha256)
+    )
+      details.response_sha256 = error.details.response_sha256;
+    if (typeof error.details.delta_events === 'number')
+      details.delta_events = error.details.delta_events;
+    if (typeof error.details.ignored_events === 'number')
+      details.ignored_events = error.details.ignored_events;
+    reply.status(status).send({
+      ok: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(Object.keys(details).length > 0 ? { details } : {}),
+      },
+    });
+    return true;
+  }
+  return false;
+}
+
 async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<unknown> {
   try {
     return await run();
   } catch (error) {
-    if (error instanceof MediaError || error instanceof MediaJobError) {
-      return reply.status(mediaStatus(error)).send({
-        ok: false,
-        error: { code: error.code, message: error.message },
-      });
-    }
-    if (error instanceof MediaSourceError) {
-      const status =
-        error.code === 'source_not_found'
-          ? 404
-          : error.code === 'size_exceeded'
-            ? 413
-            : error.code === 'persistence_failed'
-              ? 503
-              : error.code === 'source_corrupt'
-                ? 409
-                : 400;
-      return reply.status(status).send({
-        ok: false,
-        error: { code: error.code, message: error.message },
-      });
-    }
-    if (error instanceof MediaServiceError) {
-      const status =
-        error.code === 'media_unconfigured'
-          ? 503
-          : error.code === 'job_not_found' ||
-              error.code === 'segment_not_found' ||
-              error.code === 'media_source_not_found'
-            ? 404
-            : error.code === 'proposal_conflict'
-              ? 409
-              : 400;
-      return reply.status(status).send({
-        ok: false,
-        error: { code: error.code, message: error.message },
-      });
-    }
-    if (ProviderError.isProviderError(error)) {
-      const status =
-        error.code === 'invalid_request'
-          ? 400
-          : error.code === 'provider_timeout'
-            ? 504
-            : error.code === 'provider_cancelled'
-              ? 409
-              : error.code === 'provider_auth_failed'
-                ? 502
-                : 502;
-      // Surface only the bounded, non-secret provider telemetry the
-      // adapter attaches (HTTP status, dispatch count, bounded stream
-      // evidence) so acceptance harnesses can account exact attempts
-      // even on failure.
-      const details: Record<string, unknown> = {};
-      if (typeof error.details.status === 'number') details.status = error.details.status;
-      if (typeof error.details.attempts === 'number') details.attempts = error.details.attempts;
-      if (typeof error.details.stream_events === 'number')
-        details.stream_events = error.details.stream_events;
-      if (typeof error.details.stream_bytes === 'number')
-        details.stream_bytes = error.details.stream_bytes;
-      if (
-        typeof error.details.response_sha256 === 'string' &&
-        /^[0-9a-f]{64}$/.test(error.details.response_sha256)
-      )
-        details.response_sha256 = error.details.response_sha256;
-      if (typeof error.details.delta_events === 'number')
-        details.delta_events = error.details.delta_events;
-      if (typeof error.details.ignored_events === 'number')
-        details.ignored_events = error.details.ignored_events;
-      return reply.status(status).send({
-        ok: false,
-        error: {
-          code: error.code,
-          message: error.message,
-          ...(Object.keys(details).length > 0 ? { details } : {}),
-        },
-      });
+    if (sendMediaError(reply, error)) {
+      return undefined;
     }
     if (error instanceof z.ZodError) {
       return reply.status(400).send(

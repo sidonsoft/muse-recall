@@ -20,10 +20,17 @@ import {
   ForgeRepairResultSchema,
   ForgeStateInspectionSchema,
   ForgeStateSchema,
+  MediaVisualReviewRequestSchema,
+  MediaVisualReviewResponseSchema,
+  VISUAL_REVIEW_LIMITS,
 } from '@mml/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { buildGenerationList, isActiveProjectDecision } from '../forge/decision-reference.js';
+import {
+  buildGenerationList,
+  decisionExcerpt,
+  isActiveProjectDecision,
+} from '../forge/decision-reference.js';
 import type { ForgeJobManager } from '../forge/runner.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
 import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
@@ -34,6 +41,8 @@ import {
   verifyArtifact,
 } from '../media/artifact.js';
 import type { MediaAssetStore } from '../media/assets.js';
+import { type MediaService, MediaServiceError } from '../media/service.js';
+import { sendMediaError } from './media.js';
 
 const ProjectParams = z.object({ id: z.string().min(2).max(64) });
 const JobParams = z.object({ jobId: z.uuid() });
@@ -70,6 +79,8 @@ export function registerForgeRoutes(
     idempotency: IdempotencyStore;
     /** Null/absent disables staged preview media resolution. */
     mediaAssets?: MediaAssetStore;
+    /** Null/absent disables Batch E screenshot review (advisory only). */
+    media?: MediaService;
   },
 ): void {
   const { manager, workspace } = deps;
@@ -240,6 +251,113 @@ export function registerForgeRoutes(
       );
     });
   });
+
+  /**
+   * Batch E — advisory review of a screenshot against the accepted decisions the
+   * user selects.
+   *
+   * Two boundaries make this advisory rather than a verdict. The decision text is
+   * resolved from the memory store, so the request can only name ids and a stale
+   * selection is refused instead of quietly reviewed against old guidance; and
+   * this route touches no Forge state at all — no staging write, no promotion, no
+   * memory write — which the response states as `artifact_changed: false`.
+   *
+   * The model's answer is validated server-side: a finding must name evidence in
+   * the frame and state what a still image cannot establish, entries for
+   * decisions nobody selected are counted and dropped, and a decision the answer
+   * skipped is reported as unverified rather than assumed consistent.
+   */
+  app.post(
+    '/api/forge/projects/:id/visual-review',
+    { bodyLimit: FORGE_MODIFY_BODY_LIMIT_BYTES },
+    async (request, reply) => {
+      return guard(reply, async () => {
+        const { id } = ProjectParams.parse(request.params);
+        const body = MediaVisualReviewRequestSchema.parse(request.body ?? {});
+        await workspace.ensureProject(id);
+        const media = deps.media;
+        if (media === undefined || media === null) {
+          throw new MediaServiceError(
+            'media_unconfigured',
+            'Visual review is not configured on this server.',
+          );
+        }
+
+        const now = new Date().toISOString();
+        const selected: Array<{ id: string; revision: number; excerpt: string; text: string }> = [];
+        for (const memoryId of [...new Set(body.decisions)]) {
+          const memory = deps.engine.get(memoryId, { includeDeleted: true });
+          if (memory === null) {
+            throw new ForgeError(
+              'decision_not_found',
+              `Decision ${memoryId} no longer exists, so a screenshot cannot be reviewed against it.`,
+            );
+          }
+          if (memory.project_id !== null && memory.project_id !== id) {
+            throw new ForgeError(
+              'decision_cross_project',
+              `Decision ${memoryId} belongs to project ${memory.project_id}, not ${id}.`,
+            );
+          }
+          if (memory.superseded_by !== null) {
+            throw new ForgeError(
+              'decision_superseded',
+              `Decision ${memoryId} was corrected: ${memory.superseded_by} is current. Review against the current decision.`,
+            );
+          }
+          if (!isActiveProjectDecision(memory, id, now)) {
+            throw new ForgeError(
+              'decision_not_active',
+              `Decision ${memoryId} is ${memory.status}${memory.expires_at !== null ? ' past its expiry' : ''}, not an accepted decision, so there is nothing accepted to review against.`,
+            );
+          }
+          selected.push({
+            id: memory.id,
+            revision: memory.revision,
+            excerpt: decisionExcerpt(memory.content),
+            text: memory.content,
+          });
+        }
+
+        const png = decodePng(body.screenshot_data_url);
+        const outcome = await media.reviewScreenshot({
+          bytes: png,
+          mime: 'image/png',
+          decisions: selected.map((entry) => ({ id: entry.id, text: entry.text })),
+        });
+        const byId = new Map(selected.map((entry) => [entry.id, entry]));
+
+        return envelope(
+          MediaVisualReviewResponseSchema.parse({
+            advisory: true,
+            artifact_changed: false,
+            screenshot_sha256: createHash('sha256').update(png).digest('hex'),
+            findings: outcome.findings.map((finding) => ({
+              ...finding,
+              decision_excerpt: (byId.get(finding.decision_id) as { excerpt: string }).excerpt,
+              decision_revision: (byId.get(finding.decision_id) as { revision: number }).revision,
+            })),
+            unverified: outcome.unverified.map((entry) => ({
+              decision_id: entry.decision_id,
+              decision_excerpt: (byId.get(entry.decision_id) as { excerpt: string }).excerpt,
+              decision_revision: (byId.get(entry.decision_id) as { revision: number }).revision,
+              reason: entry.reason,
+              uncertainty:
+                'No usable assessment exists for this decision, so its relationship to the frame stays unknown.',
+            })),
+            ignored_entries: outcome.ignored,
+            limits: [...VISUAL_REVIEW_LIMITS],
+            provider: {
+              provider: 'meta',
+              ...(outcome.model.length > 0 ? { model: outcome.model } : {}),
+              ...(outcome.observedModel !== null ? { observed: outcome.observedModel } : {}),
+            },
+            provider_attempts: outcome.attempts,
+          }),
+        );
+      });
+    },
+  );
 
   app.get('/api/forge/jobs/:jobId', async (request, reply) => {
     return guard(reply, async () => {
@@ -665,6 +783,12 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
   try {
     return await run();
   } catch (error) {
+    // A screenshot review performs a media call from a Forge route: a media or
+    // provider failure must mean the same status and telemetry here as it does
+    // on the media surface, rather than collapsing into a Forge conflict.
+    if (sendMediaError(reply, error)) {
+      return undefined;
+    }
     if (error instanceof ForgeError) {
       const status =
         error.code === 'invalid_job_id'

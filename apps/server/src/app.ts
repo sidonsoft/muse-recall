@@ -43,7 +43,7 @@ import { MediaAdapter } from './media/adapter.js';
 import { MediaAssetStore } from './media/assets.js';
 import { MediaJobStore } from './media/jobs.js';
 import { MediaOperations } from './media/operations.js';
-import { MediaSegmentation, MediaUnderstand } from './media/segment.js';
+import { MediaSegmentation, MediaUnderstand, MediaVisualReview } from './media/segment.js';
 import { MediaService } from './media/service.js';
 import { MediaSourceStore } from './media/sources.js';
 import { MediaVoice } from './media/voice.js';
@@ -175,6 +175,14 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
         })
       : null;
+  const mediaVisualReview =
+    mediaAdapter?.configured === true
+      ? new MediaVisualReview(mediaAdapter, {
+          // Same vision model as reference suggestions: a screenshot review is
+          // an image-conditioned instruction call, not a coding or SAM request.
+          model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        })
+      : null;
   const mediaVoice =
     dependencies.mediaVoice !== undefined
       ? dependencies.mediaVoice
@@ -195,6 +203,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       {
         ...(mediaSegmentation === null ? {} : { segmentation: mediaSegmentation }),
         ...(mediaUnderstand === null ? {} : { understand: mediaUnderstand }),
+        ...(mediaVisualReview === null ? {} : { visualReview: mediaVisualReview }),
       },
       { sources: mediaSources, voice: mediaVoice, engine },
     );
@@ -485,6 +494,10 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     engine,
     idempotency,
     mediaAssets,
+    // Batch E screenshot review is a Forge advisory, but the inference itself
+    // belongs to the media layer: the route resolves decisions from memory and
+    // the media service performs the vision call.
+    media: mediaService,
   });
   registerMediaRoutes(app, { service: mediaService });
 

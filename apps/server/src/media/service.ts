@@ -25,9 +25,11 @@ import {
   decodeImage,
   type MediaSegmentation,
   type MediaUnderstand,
+  type MediaVisualReview,
   type ParsedSegmentMatch,
   renderCutoutBounded,
   renderMatchPreview,
+  type VisualReviewOutcome,
 } from './segment.js';
 import type { MediaSourceRecord, MediaSourceStore } from './sources.js';
 import type { MediaVoice } from './voice.js';
@@ -105,6 +107,7 @@ function providerModelName(output: MediaImageOutput): {
 export interface MediaVisionDeps {
   segmentation?: MediaSegmentation | null;
   understand?: MediaUnderstand | null;
+  visualReview?: MediaVisualReview | null;
 }
 
 export interface MediaSourceDeps {
@@ -520,6 +523,16 @@ export class MediaService {
     return this.vision.understand;
   }
 
+  private requireVisualReview(): MediaVisualReview {
+    if (this.vision.visualReview === null || this.vision.visualReview === undefined) {
+      throw new MediaServiceError(
+        'media_unconfigured',
+        'Visual review is not configured: set the provider API key to enable screenshot review.',
+      );
+    }
+    return this.vision.visualReview;
+  }
+
   private async resolveVersion(
     projectId: string,
     assetId: string,
@@ -555,6 +568,24 @@ export class MediaService {
       suggestions: result.suggestions,
       provider_attempts: result.attempts,
     };
+  }
+
+  /**
+   * Batch E — advisory review of a screenshot against decisions the caller has
+   * already resolved from memory. Inference only: this cannot read, restage,
+   * approve, or rewrite a Forge artifact, and it writes no memory. An answer
+   * that names no evidence or no uncertainty for a decision is reported as
+   * unverified, and a decision the model skipped is listed as unverified rather
+   * than assumed consistent.
+   */
+  async reviewScreenshot(
+    input: { bytes: Buffer; mime: string; decisions: { id: string; text: string }[] },
+    options: { signal?: AbortSignal } = {},
+  ): Promise<VisualReviewOutcome> {
+    const review = this.requireVisualReview();
+    return review.review({ bytes: input.bytes, mime: input.mime }, input.decisions, {
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    });
   }
 
   /**

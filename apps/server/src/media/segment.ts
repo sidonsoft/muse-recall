@@ -762,6 +762,220 @@ export class MediaUnderstand {
   }
 }
 
+export interface VisualReviewDecision {
+  id: string;
+  text: string;
+}
+
+export interface VisualReviewFindingDraft {
+  decision_id: string;
+  verdict: 'consistent' | 'possible_conflict' | 'unclear';
+  evidence: string;
+  uncertainty: string;
+  confidence: number;
+}
+
+export interface VisualReviewOutcome {
+  findings: VisualReviewFindingDraft[];
+  /** Selected decisions the output left unusable, with the reason. */
+  unverified: { decision_id: string; reason: string }[];
+  /** Output entries for decisions that were never selected. */
+  ignored: number;
+  model: string;
+  observedModel: string | null;
+  attempts: number;
+}
+
+const REVIEW_VERDICTS = ['consistent', 'possible_conflict', 'unclear'] as const;
+
+/**
+ * Screenshot review against decisions the user selected. Inference only: the
+ * result is advisory data, and this module has no access to Forge state, so it
+ * cannot approve, restage, or rewrite anything.
+ *
+ * Validation is deliberately unforgiving. A finding needs both evidence in the
+ * frame and a statement of what a still image cannot prove; anything else is
+ * reported as unverified instead of being polished into a finding. Entries that
+ * name a decision the user did not select are counted and dropped, so a model
+ * cannot introduce its own scope.
+ */
+export class MediaVisualReview {
+  private readonly model: string;
+  private readonly timeoutMs: number;
+
+  constructor(
+    private readonly adapter: MediaAdapter,
+    options: UnderstandOperationOptions = {},
+  ) {
+    this.model = options.model?.trim() ? options.model.trim() : DEFAULT_VISION_MODEL;
+    this.timeoutMs = options.timeoutMs ?? 120_000;
+  }
+
+  get targetedModel(): string {
+    return this.model;
+  }
+
+  async review(
+    image: { bytes: Buffer; mime: string },
+    decisions: VisualReviewDecision[],
+    options: { signal?: AbortSignal } = {},
+  ): Promise<VisualReviewOutcome> {
+    if (decisions.length === 0) {
+      throw new ProviderError('invalid_request', 'Visual review needs at least one decision.');
+    }
+    const catalogue = decisions
+      .map(
+        (entry) => `{"id":"${entry.id}","decision":${JSON.stringify(entry.text.slice(0, 1_000))}}`,
+      )
+      .join('\n');
+    const prompt =
+      'Review this screenshot of a running web application against the project decisions below.\n' +
+      'For each decision id, report how the frame relates to that decision: "consistent" if the frame appears to follow it, "possible_conflict" if the frame appears to contradict it, or "unclear" if the frame does not show enough to tell.\n' +
+      'For every entry name the specific part of the screenshot you based that on, and state what a single still image cannot establish about that decision.\n' +
+      'Do not invent decisions, do not propose changes, and use only the ids given below.\n' +
+      'Respond with JSON only, no prose or fences: {"findings":[{"decision_id":"<id>","verdict":"consistent|possible_conflict|unclear","evidence":"what in the frame","uncertainty":"what a still image cannot tell","confidence":0.0-1.0}]}\n' +
+      `Decisions:\n${catalogue}`;
+    const dataUrl = `data:${image.mime};base64,${image.bytes.toString('base64')}`;
+    const result = await this.adapter.call(
+      '/v1/responses',
+      {
+        model: this.model,
+        input: [
+          {
+            role: 'user',
+            content: [
+              { type: 'input_text', text: prompt },
+              { type: 'input_image', image_url: dataUrl },
+            ],
+          },
+        ],
+        max_output_tokens: 1_536,
+      },
+      {
+        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+        timeoutMs: this.timeoutMs,
+      },
+    );
+    return {
+      ...parseVisualReview(result.body, new Set(decisions.map((entry) => entry.id))),
+      model: this.model,
+      observedModel: observedModelOf(result.body),
+      attempts: result.attempts,
+    };
+  }
+}
+
+/** Bounded, credential-free JSON validation of a visual review response. */
+export function parseVisualReview(
+  body: string,
+  allowedIds: Set<string>,
+): Pick<VisualReviewOutcome, 'findings' | 'unverified' | 'ignored'> {
+  const envelope = parseResponsesEnvelope(body, 'visual_review');
+  if (!envelope.ok || envelope.output === null) {
+    throw new ProviderError(
+      'provider_invalid_output',
+      `Visual review failed: ${envelope.summary} ${envelope.error ?? ''}`.slice(0, 300),
+    );
+  }
+  const { texts, refusals } = collectOutputParts(envelope.output);
+  if (refusals.length > 0) {
+    throw new ProviderError(
+      'provider_invalid_output',
+      `Visual review refused: ${(refusals[0]?.text ?? 'refused').slice(0, 200)}`,
+    );
+  }
+  const raw = texts
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
+  if (raw.length === 0) {
+    throw new ProviderError('provider_invalid_output', 'Visual review returned no text.');
+  }
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse((fenced?.[1] ?? raw).trim());
+  } catch {
+    throw new ProviderError(
+      'provider_invalid_output',
+      `Visual review did not return review JSON: ${raw.slice(0, 200)}`,
+    );
+  }
+  const list =
+    parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>).findings
+      : null;
+  if (!Array.isArray(list)) {
+    throw new ProviderError('provider_invalid_output', 'Visual review JSON has no findings[].');
+  }
+
+  const findings: VisualReviewFindingDraft[] = [];
+  const unverified: { decision_id: string; reason: string }[] = [];
+  const reported = new Set<string>();
+  let ignored = 0;
+  for (const entry of list.slice(0, 64)) {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      ignored += 1;
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const id = typeof record.decision_id === 'string' ? record.decision_id : '';
+    // A decision the user never selected is out of scope, and a duplicate does
+    // not get a second chance to assert something about the same decision.
+    if (!allowedIds.has(id) || reported.has(id)) {
+      ignored += 1;
+      continue;
+    }
+    reported.add(id);
+    if (
+      typeof record.verdict !== 'string' ||
+      !(REVIEW_VERDICTS as readonly string[]).includes(record.verdict)
+    ) {
+      unverified.push({
+        decision_id: id,
+        reason: 'the answer did not name one of the three verdicts',
+      });
+      continue;
+    }
+    const evidence = typeof record.evidence === 'string' ? record.evidence.trim() : '';
+    if (evidence.length === 0) {
+      unverified.push({
+        decision_id: id,
+        reason: 'no evidence in the screenshot was named, so there is nothing to inspect',
+      });
+      continue;
+    }
+    const uncertainty = typeof record.uncertainty === 'string' ? record.uncertainty.trim() : '';
+    if (uncertainty.length === 0) {
+      unverified.push({
+        decision_id: id,
+        reason: 'no uncertainty was stated for a single still frame',
+      });
+      continue;
+    }
+    const confidence =
+      typeof record.confidence === 'number' && Number.isFinite(record.confidence)
+        ? Math.max(0, Math.min(1, record.confidence))
+        : 0.5;
+    findings.push({
+      decision_id: id,
+      verdict: record.verdict as VisualReviewFindingDraft['verdict'],
+      evidence: evidence.slice(0, 600),
+      uncertainty: uncertainty.slice(0, 400),
+      confidence,
+    });
+  }
+  for (const id of allowedIds) {
+    if (!reported.has(id)) {
+      unverified.push({
+        decision_id: id,
+        reason: 'the review did not report on this decision at all',
+      });
+    }
+  }
+  return { findings, unverified, ignored };
+}
+
 function parseSuggestions(body: string, count: number): SuggestionDraft[] {
   const envelope = parseResponsesEnvelope(body, 'understand');
   if (!envelope.ok || envelope.output === null) {
