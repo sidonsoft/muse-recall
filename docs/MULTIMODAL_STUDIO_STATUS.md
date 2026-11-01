@@ -25,7 +25,7 @@ Status words mean exactly one thing here:
 | B — Muse Image and integration | built and verified offline; **live image result outstanding** | media API/journey suites, `verify:media-journey`, embedded-asset verification in `verify:studio-workflow` | **none recorded in this tree** — `pnpm verify:media` reports `unconfigured (FORGE_MUSE_API_KEY is not set)` and exits 2 |
 | C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package, plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
 | D — voice and video | built and verified offline for access and playback; **transcription and clip observation built and fixture-verified, live result outstanding** — the live harness exists and, after review, was repaired to the point where it can reach a dispatch (see Corrections after review) | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts` | transcript/clip understanding: **none recorded** |
-| E — visual and decision-change review | built and verified offline, **live review quality outstanding** | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (18), `tests/integration/forge-batche-generations.test.ts` (6), `tests/unit/studio-batch-e.test.ts` (29) | **none recorded** — every Batch E gate uses a deterministic stub by design |
+| E — visual and decision-change review | built and verified offline, **live review quality outstanding** | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (22, including replay-subject and record-fault cases), `tests/integration/forge-batche-generations.test.ts` (6), `tests/unit/studio-batch-e.test.ts` (29) | **none recorded** — every Batch E gate uses a deterministic stub by design |
 
 ## What the live evidence actually shows
 
@@ -73,30 +73,39 @@ Documentation states these gaps rather than leaving them implied:
 
 Offline, no provider key, no external network:
 
-- `npx vitest run`: **107 files, 1347 passed, 3 skipped, 0 failed**.
+- `npx vitest run`: **107 files, 1360 passed, 3 skipped, 0 failed**.
 - `pnpm -r run typecheck`: no `error TS`.
 - `npx biome check .`: 0 errors (4 warnings, 18 infos pre-existing).
-- `pnpm exec tsx scripts/build-production-bundles.ts` after the commit: server
-  `buildHash 9aee0aa6100d…` (`sourceHash caab73193ed2…`, 128 inputs), web
-  `buildHash ed405f622a6f…` (`sourceHash 4c64ac308585…`, 74 inputs); both manifests
-  carry `commit 8148cf0…` and `treeClean: true`. The web bundle's emitted bytes are
-  unchanged from the last UI commit even though its source hash moved, because the
-  changed inputs are scripts and docs, not app sources.
-- `pnpm verify:batche-review-ui`: **PASS 20 checks** (`test-results/batche-review-ui`).
+- **Commit gated: `76ed12e`** (`git status --porcelain` empty). The two commits it
+  reviews (`e0cd2eb`, `8250b44`) touch server, shared contract and script sources; this
+  file's own commit is documentation only, and docs are not build inputs.
+- `pnpm exec tsx scripts/build-production-bundles.ts` after that commit: server
+  `buildHash 393316bc724767af47af08291f4621d30625f755c61f5114e73a2f3aa241a9d0`, web
+  `buildHash 53bb67170dbdfac6ec0297839505bfd172fa7414fcef03a792dd7f61c5f98306`; both
+  manifests carry `commit 76ed12e…` and `treeClean: true`. The web bundle changed this
+  time because `packages/shared` is a web input and the media/meta contracts moved.
+- `pnpm verify:batche-review-ui`: **PASS 20 checks** (`test-results/batche-review-ui`),
+  including the one-paid-call check (same frame and selection sends the same
+  Idempotency-Key and costs one stub dispatch) and the stale-selection refusal.
 - `pnpm verify:batchd-playback-auth`: **PASS 15 checks**
-  (`test-results/batchd-playback-auth/2026-11-01-1641`), and it asserts that the
+  (`test-results/batchd-playback-auth/2026-11-01-1741`), and it asserts that the
   *running* server's identity equals the verified build:
-  `commit 8148cf0…`, `treeClean: true`, `serverBuildHash 9aee0aa6100d…`,
-  `webBuildHash ed405f622a6f…`.
+  `commit 76ed12ed10d77bf3fc982794f6bfd740f654e514`, `treeClean: true`,
+  `serverBuildHash 393316bc7247…`, `webBuildHash 53bb67170dbd…`.
 - `pnpm verify:batchc-ui`: **PASS 22 checks** (`test-results/batchc-ui`).
 - `pnpm verify:studio-workflow`: **56 checks passed** (project
   `studio-workflow-y1m2i4`; logs and screenshots in `test-results/studio-after/`).
 - `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
-  **PASS 2 checks with no network call** — the live harness's fixture plumbing
-  (`speech.wav` 16 kHz mono, 5 139 ms, 164 524 bytes; `clip.mp4` H.264 96×96,
-  2 000 ms, 3 305 bytes). The same command without a key writes
-  `BLOCKED before any provider call` and exits 2. The live path itself has not been
-  run: no transcription or clip call has been made in this tree.
+  **PASS 4 checks with no network call**
+  (`test-results/batchd-live/2026-11-01-1742`) — the host can build the fixtures for
+  the requested scope before any credential or dispatch; `speech.wav` is real 16 kHz
+  mono PCM (5 139 ms, 164 524 bytes); `clip.mp4` is real H.264 96×96 (2 000 ms,
+  3 305 bytes); and the clip prompt names what the recipe renders. It was 2 checks
+  before the review corrections: the prerequisite gate and the prompt/recipe agreement
+  check are new. The same command without a key writes `BLOCKED before any provider
+  call` and exits 2. **The live path itself has still not been run**: no transcription
+  or clip call has been made in this tree, and a fixture-only pass is plumbing
+  evidence, not model evidence.
 - Evidence directories under `test-results/` are gitignored local artifacts, not
   repository content: the offline gates re-create them on any machine, but the live
   Batch C runs cannot be re-created without spending quota again, so those recorded
@@ -121,7 +130,9 @@ Offline, no provider key, no external network:
 - **`/usr/bin/say` (macOS)** to build the live transcription fixture, or
   `BATCHD_SMOKE_AUDIO_WAV=/path/to.wav` to supply a recorded one. The harness probes
   what it builds (16 kHz mono `pcm_s16le`) and refuses a fixture that does not match
-  its recipe. `BATCHD_SMOKE_FIXTURE_ONLY=1` runs that plumbing check with no network
+  its recipe. Missing tools are named as prerequisites before any credential, port or
+  dispatch, and the recipe binaries follow `SAY_BIN` / `FFMPEG_BIN` / `FFPROBE_BIN` so a
+  prerequisite check cannot certify a tool the run never calls. `BATCHD_SMOKE_FIXTURE_ONLY=1` runs that plumbing check with no network
   call at all; without `FORGE_MUSE_API_KEY` the live mode reports `BLOCKED before any
   provider call` and exits 2.
 - **No provider key** for any gate listed above; the Batch C/D/E gates exit 2 if one
@@ -156,7 +167,11 @@ Still open before a beta cut, none of which is a code question I should answer a
    is no tag, no beta branch, and no merge from this line; nothing here publishes
    anything.
 
-## Corrections made after that review
+## Corrections made after independent review
+
+An independent read-only review of the four commits that added idempotency,
+failure coverage, this status file and the voice/video live harness is the antecedent for
+everything below.
 
 The review found claims in this file and in the harness that were stronger than the
 evidence. Each was fixed rather than reworded:
