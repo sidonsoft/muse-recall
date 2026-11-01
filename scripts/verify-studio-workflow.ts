@@ -457,7 +457,13 @@ async function main(): Promise<void> {
     await page.getByLabel('Decision type').selectOption('constraint');
     await page.getByRole('button', { name: 'Save decision' }).click();
     await page.getByText('Decision saved to this project.').waitFor({ timeout: 15_000 });
-    await page.getByText('Never use countdown timers.').waitFor({ timeout: 10_000 });
+    // Scoped to Project memory: the same decision text is also offered as a
+    // review selection in the Batch E Decision review panel, so a bare
+    // getByText would no longer be unique.
+    await page
+      .getByRole('region', { name: 'Project memory' })
+      .getByText('Never use countdown timers.')
+      .waitFor({ timeout: 10_000 });
     await page.getByText('No project decisions to check.').waitFor({ state: 'hidden' });
     check('explicitly added a scoped project decision');
 
