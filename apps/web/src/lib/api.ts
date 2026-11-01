@@ -22,13 +22,27 @@ import {
   HealthResponseSchema,
   type MediaAssetList,
   MediaAssetListSchema,
+  type MediaClipResponse,
+  MediaClipResponseSchema,
   type MediaJob,
   MediaJobListSchema,
   MediaJobSchema,
+  type MediaProposalItem,
+  type MediaProposalResult,
+  MediaProposalResultSchema,
   type MediaSegmentResponse,
   MediaSegmentResponseSchema,
+  type MediaSourceList,
+  MediaSourceListSchema,
+  type MediaSourceMime,
+  MediaSourceRecordSchema,
+  type MediaSourceRecordView,
   type MediaSuggestResponse,
   MediaSuggestResponseSchema,
+  type MediaTranscribeMode,
+  MediaTranscribeRequestSchema,
+  type MediaTranscript,
+  MediaTranscriptSchema,
   MediaVersionListSchema,
   MediaVersionRecordSchema,
   type MediaVersionRecordView,
@@ -607,6 +621,75 @@ export const api = {
 
   mediaBytesUrl: (projectId: string, assetId: string, version: number) =>
     apiUrl(`/api/forge/projects/${projectId}/media/${assetId}/versions/${version}/bytes`),
+
+  // --- Voice and video sources (Batch D) ----------------------------------
+
+  mediaSources: (projectId: string) =>
+    request<MediaSourceList>(
+      `/api/forge/projects/${projectId}/media/sources`,
+      { method: 'GET' },
+      (data) => MediaSourceListSchema.parse(data),
+    ),
+
+  mediaSourceUpload: (
+    projectId: string,
+    input: {
+      mime: MediaSourceMime;
+      dataBase64: string;
+      origin?: 'upload' | 'recording';
+      originalName?: string;
+    },
+  ) =>
+    request<MediaSourceRecordView>(
+      `/api/forge/projects/${projectId}/media/sources`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          mime: input.mime,
+          data_base64: input.dataBase64,
+          ...(input.origin !== undefined ? { origin: input.origin } : {}),
+          ...(input.originalName !== undefined ? { original_name: input.originalName } : {}),
+        }),
+      },
+      (data) => MediaSourceRecordSchema.parse(data),
+    ),
+
+  mediaSourceTranscribe: (
+    projectId: string,
+    sourceId: string,
+    input: { mode?: MediaTranscribeMode; languageBias?: string[]; keywords?: string[] } = {},
+  ) =>
+    request<MediaTranscript>(
+      `/api/forge/projects/${projectId}/media/sources/${sourceId}/transcribe`,
+      {
+        method: 'POST',
+        body: JSON.stringify(
+          MediaTranscribeRequestSchema.parse({
+            ...(input.mode !== undefined ? { mode: input.mode } : {}),
+            ...(input.languageBias !== undefined ? { language_bias: input.languageBias } : {}),
+            ...(input.keywords !== undefined ? { keywords: input.keywords } : {}),
+          }),
+        ),
+      },
+      (data) => MediaTranscriptSchema.parse(data),
+    ),
+
+  mediaSourceClip: (projectId: string, sourceId: string, prompt?: string) =>
+    request<MediaClipResponse>(
+      `/api/forge/projects/${projectId}/media/sources/${sourceId}/clip`,
+      { method: 'POST', body: JSON.stringify(prompt !== undefined ? { prompt } : {}) },
+      (data) => MediaClipResponseSchema.parse(data),
+    ),
+
+  mediaSourcePropose: (projectId: string, sourceId: string, proposals: MediaProposalItem[]) =>
+    request<MediaProposalResult>(
+      `/api/forge/projects/${projectId}/media/sources/${sourceId}/proposals`,
+      { method: 'POST', body: JSON.stringify({ proposals }) },
+      (data) => MediaProposalResultSchema.parse(data),
+    ),
+
+  mediaSourceBytesUrl: (projectId: string, sourceId: string) =>
+    apiUrl(`/api/forge/projects/${projectId}/media/sources/${sourceId}/bytes`),
 
   // --- Visual references and SAM cutouts (Batch C) ------------------------
 

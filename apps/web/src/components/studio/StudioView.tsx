@@ -21,6 +21,7 @@ import { ArtifactFooter, ReviewPanel } from './ReviewPanel.tsx';
 import { DiffPanel, PanelEmpty, SourcePanel } from './SourceAndDiff.tsx';
 import { StudioActivity } from './StudioActivity.tsx';
 import { StudioMemory } from './StudioMemory.tsx';
+import { VoiceVideoPanel } from './VoiceVideoPanel.tsx';
 
 const DEMO_PROJECT_ID = 'forge-demo';
 const PROJECT_KEY = 'muse-recall.project';
@@ -995,6 +996,7 @@ export function StudioView({
             }
             onChanged={() => void loadProject(projectId, false)}
           />
+          <VoiceVideoPanel key={projectId} projectId={projectId} />
           <StudioMemory
             key={projectId}
             projectId={projectId}
