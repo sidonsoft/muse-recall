@@ -68,7 +68,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MediaClipResponseSchema, MediaTranscriptSchema } from '../packages/shared/src/index.js';
 import {
+  accountClipCalls,
   boundedExcerpt,
+  CLIP_MODEL_PATH,
+  CLIP_UPLOAD_PATH,
   clipFixturePlan,
   clipPromptIssues,
   clipTokenMatch,
@@ -89,7 +92,7 @@ import {
   transcriptMatch,
   waitForServerReady,
 } from './lib/batchd-live.js';
-import { parseMediaTrace } from './lib/media-trace.js';
+import { accountDispatches, type DispatchAccount, parseMediaTrace } from './lib/media-trace.js';
 
 const ROOT = process.cwd();
 const STAMP = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
@@ -427,35 +430,58 @@ async function main(): Promise<void> {
       from: number,
       allowedPaths: readonly string[],
       maxDispatches: number,
-    ): void => {
+    ): DispatchAccount => {
       const fresh = parseMediaTrace(readFileSync(serverLog, 'utf8')).slice(from);
-      const paths = [...new Set(fresh.map((entry) => entry.path ?? '(unattributed)'))];
-      const maxAttempt = fresh.reduce((max, entry) => Math.max(max, entry.attempt), 0);
+      // Two log lines per call (start + outcome). Counting lines double-charged
+      // every call and turned each outcome line into a phantom path, so a single
+      // permitted call read as a dispatch on "(unattributed)".
+      const accounted = accountDispatches(fresh);
+      const paths = accounted.paths;
       observations[`trace_${label.replace(/\W+/g, '_')}`] = {
-        dispatches: fresh.length,
+        trace_lines: fresh.length,
+        dispatches: accounted.dispatches.length,
         paths,
-        maxAttempt,
+        attempts: accounted.dispatches.map((entry) => ({
+          attempt: entry.attempt,
+          path: entry.path,
+          outcome: entry.outcome ?? null,
+          status: entry.status ?? null,
+        })),
+        maxAttempt: accounted.maxAttempt,
+        unpaired_outcomes: accounted.unpairedOutcomes.length,
+        unanswered: accounted.unanswered.length,
       };
-      if (fresh.length === 0) {
+      if (accounted.dispatches.length === 0) {
         fail(
           `${label} produced no traced provider dispatch, so its call budget cannot be accounted for`,
+        );
+      }
+      if (accounted.unpairedOutcomes.length > 0) {
+        fail(
+          `${label} has ${String(accounted.unpairedOutcomes.length)} provider outcome(s) no start line accounts for`,
+        );
+      }
+      if (accounted.unanswered.length > 0) {
+        fail(
+          `${label} has ${String(accounted.unanswered.length)} dispatch(es) whose outcome never arrived`,
         );
       }
       const unexpected = paths.filter((path) => !allowedPaths.includes(path));
       if (unexpected.length > 0) {
         fail(`${label} dispatched on paths it must not touch: ${unexpected.join(', ')}`);
       }
-      if (maxAttempt > 1) {
-        fail(`${label} was retried: a dispatch reached attempt ${String(maxAttempt)}`);
+      if (accounted.maxAttempt > 1) {
+        fail(`${label} was retried: a dispatch reached attempt ${String(accounted.maxAttempt)}`);
       }
-      if (fresh.length > maxDispatches) {
+      if (accounted.dispatches.length > maxDispatches) {
         fail(
-          `${label} spent ${String(fresh.length)} dispatches where this run allows at most ${String(maxDispatches)}`,
+          `${label} spent ${String(accounted.dispatches.length)} dispatches where this run allows at most ${String(maxDispatches)}`,
         );
       }
       check(
-        `${label} accounted for ${String(fresh.length)} dispatch(es) on ${paths.join(', ')}, none beyond attempt 1`,
+        `${label} accounted for ${String(accounted.dispatches.length)} dispatch(es) on ${paths.join(', ')}, none beyond attempt 1`,
       );
+      return accounted;
     };
 
     if (scope.audio) {
@@ -580,11 +606,10 @@ async function main(): Promise<void> {
           text: boundedExcerpt(entry.observation, 200),
         })),
       };
-      if (clipResponse.provider_attempts !== 1) {
-        fail(
-          `clip observation took ${String(clipResponse.provider_attempts)} dispatches, expected exactly 1`,
-        );
-      }
+      // provider_attempts covers the whole operation, upload included; the model
+      // call is counted from the trace afterwards, because the dispatches are the
+      // evidence, and the two figures are checked against each other rather than
+      // one being assumed to mean the other.
       if (clipResponse.observations.length === 0) {
         fail('the provider returned no observations for a clip with visible motion');
       }
@@ -596,7 +621,30 @@ async function main(): Promise<void> {
       // A clip call is one observation dispatch, and may first push the frame
       // through the file upload path; both belong to this operation, and nothing
       // else may appear inside its slice of the trace.
-      accountOperation('clip observation', traceBefore, ['/v1/files', '/v1/responses'], 2);
+      const clipTrace = accountOperation(
+        'clip observation',
+        traceBefore,
+        [CLIP_UPLOAD_PATH, CLIP_MODEL_PATH],
+        2,
+      );
+      const clipAccount = accountClipCalls(
+        clipTrace.dispatches.map((entry) => ({ path: entry.path })),
+        clipResponse.provider_attempts,
+      );
+      calls.clip = clipAccount.modelDispatches;
+      observations.clip_call_account = {
+        model_dispatches: clipAccount.modelDispatches,
+        model_path: CLIP_MODEL_PATH,
+        upload_dispatches: clipAccount.uploadDispatches,
+        upload_path: CLIP_UPLOAD_PATH,
+        provider_attempts_reported: clipResponse.provider_attempts,
+      };
+      if (clipAccount.issues.length > 0) {
+        fail(`clip call accounting: ${clipAccount.issues.join('; ')}`);
+      }
+      check(
+        'clip call accounting: exactly one model dispatch and one upload, and the route attempt count agrees with the observed dispatches',
+      );
     }
 
     // ---- the boundary claim: one attempt per call, no credential in the log --

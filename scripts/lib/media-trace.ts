@@ -100,3 +100,65 @@ export function assertSingleProviderAttempt(input: {
     );
   }
 }
+
+/** One provider dispatch: a start line paired with the outcome line it answers. */
+export interface TracedDispatch {
+  attempt: number;
+  path: string;
+  model?: string;
+  outcome?: string;
+  status?: number;
+}
+
+export interface DispatchAccount {
+  /** Distinct dispatches, counted from start lines, never from log lines. */
+  dispatches: TracedDispatch[];
+  paths: string[];
+  maxAttempt: number;
+  /** Outcome lines with no start line to answer: the provider did something we cannot attribute. */
+  unpairedOutcomes: MediaTraceEntry[];
+  /** Start lines whose outcome never arrived: the transport died mid-call. */
+  unanswered: TracedDispatch[];
+}
+
+/**
+ * Pair trace lines into dispatches.
+ *
+ * A single call writes two lines: `attempt=1 path=… model=…` then
+ * `outcome=response attempt=1 status=200 bytes=…`. Counting lines counted every
+ * call twice and made the outcome line look like a dispatch on an unknown path,
+ * so a live run that paid for exactly one permitted call reported a forbidden
+ * path `(unattributed)`. Pairing by attempt number inside the slice fixes both,
+ * and keeps the status visible as evidence.
+ */
+export function accountDispatches(entries: readonly MediaTraceEntry[]): DispatchAccount {
+  const dispatches: TracedDispatch[] = [];
+  const unpairedOutcomes: MediaTraceEntry[] = [];
+  for (const entry of entries) {
+    if (entry.path !== undefined) {
+      dispatches.push({
+        attempt: entry.attempt,
+        path: entry.path,
+        ...(entry.model === undefined ? {} : { model: entry.model }),
+      });
+      continue;
+    }
+    if (entry.outcome === undefined) continue;
+    const open = dispatches.find(
+      (dispatch) => dispatch.attempt === entry.attempt && dispatch.outcome === undefined,
+    );
+    if (open === undefined) {
+      unpairedOutcomes.push(entry);
+      continue;
+    }
+    open.outcome = entry.outcome;
+    if (entry.status !== undefined) open.status = entry.status;
+  }
+  return {
+    dispatches,
+    paths: [...new Set(dispatches.map((dispatch) => dispatch.path))],
+    maxAttempt: dispatches.reduce((max, dispatch) => Math.max(max, dispatch.attempt), 0),
+    unpairedOutcomes,
+    unanswered: dispatches.filter((dispatch) => dispatch.outcome === undefined),
+  };
+}

@@ -9,6 +9,7 @@ import {
 } from '../../apps/server/src/media/adapter.js';
 import {
   MEDIA_PROBE_MODELS,
+  parseResponsesEnvelope,
   probeMediaCapabilities,
   probeMediaCapability,
 } from '../../apps/server/src/media/capabilities.js';
@@ -530,5 +531,58 @@ describe('probeMediaCapabilities (documented contracts)', () => {
     await expect(adapter.call('/v1/responses', {})).rejects.toMatchObject({
       code: 'provider_auth_failed',
     });
+  });
+});
+
+describe('a terminal status that is not "completed" says why (live clip finding)', () => {
+  it('reports the provider reason and token count for an incomplete response', () => {
+    const envelope = parseResponsesEnvelope(
+      JSON.stringify({
+        status: 'incomplete',
+        incomplete_details: { reason: 'max_output_tokens' },
+        usage: { output_tokens: 1200 },
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'SECRETFRAME' }] }],
+      }),
+      'video',
+    );
+    expect(envelope.ok).toBe(false);
+    expect(envelope.status).toBe('incomplete');
+    expect(envelope.output).toBeNull();
+    expect(envelope.summary).toContain('reason=max_output_tokens');
+    expect(envelope.summary).toContain('output_tokens=1200');
+    // The reason is a bounded control-plane field; the payload never travels.
+    expect(envelope.summary).not.toContain('SECRETFRAME');
+  });
+
+  it('still refuses an incomplete response that states no reason, in bounded words', () => {
+    const envelope = parseResponsesEnvelope(
+      JSON.stringify({ status: 'incomplete', output: [] }),
+      'video',
+    );
+    expect(envelope.ok).toBe(false);
+    expect(envelope.summary).toContain('terminal status "incomplete"');
+    expect(envelope.summary.length).toBeLessThanOrEqual(160);
+  });
+
+  it('does not invent a reason out of a non-numeric usage field', () => {
+    const envelope = parseResponsesEnvelope(
+      JSON.stringify({
+        status: 'incomplete',
+        incomplete_details: { reason: 'content_filter' },
+        usage: { output_tokens: 'many' },
+      }),
+      'understand',
+    );
+    expect(envelope.summary).toContain('reason=content_filter');
+    expect(envelope.summary).not.toContain('output_tokens');
+  });
+
+  it('a completed response still yields its output items', () => {
+    const envelope = parseResponsesEnvelope(
+      JSON.stringify({ status: 'completed', output: [{ type: 'message' }] }),
+      'video',
+    );
+    expect(envelope.ok).toBe(true);
+    expect(envelope.output).toHaveLength(1);
   });
 });

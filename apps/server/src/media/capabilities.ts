@@ -174,6 +174,35 @@ function parseJsonObject(body: string): Record<string, unknown> | null {
 }
 
 /**
+ * Why the provider stopped early, in its own bounded words.
+ *
+ * A terminal `incomplete` used to be reported as exactly that word, which left an
+ * operator guessing whether the model was cut off by the token budget or refused
+ * the input. Only the documented reason string and the token count are read out;
+ * no output text, no payload, nothing that could carry user content.
+ */
+function terminalStopReason(json: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  const details: unknown = json.incomplete_details;
+  const reason: unknown =
+    details !== null && typeof details === 'object'
+      ? (details as Record<string, unknown>).reason
+      : undefined;
+  if (typeof reason === 'string' && reason.trim() !== '') {
+    parts.push(`reason=${reason.trim().slice(0, 60)}`);
+  }
+  const usage: unknown = json.usage;
+  const tokens: unknown =
+    usage !== null && typeof usage === 'object'
+      ? (usage as Record<string, unknown>).output_tokens
+      : undefined;
+  if (typeof tokens === 'number' && Number.isFinite(tokens)) {
+    parts.push(`output_tokens=${String(tokens)}`);
+  }
+  return parts.length === 0 ? null : parts.join(' ').slice(0, 120);
+}
+
+/**
  * Parse a Responses API envelope into typed parts. Never serializes-and-
  * searches: output items are walked as structures. Error envelopes
  * (`error` field or a failed status) and incomplete/truncated results are
@@ -208,9 +237,12 @@ export function parseResponsesEnvelope(body: string, label: string): ResponsesEn
   const status: unknown = json.status;
   const statusText = typeof status === 'string' ? status : null;
   if (statusText !== null && statusText !== 'completed') {
+    const reason = terminalStopReason(json);
     return {
       ok: false,
-      summary: `${label} terminal status ${JSON.stringify(statusText)} (not completed)`,
+      summary:
+        `${label} terminal status ${JSON.stringify(statusText)} (not completed)` +
+        (reason === null ? '' : `: ${reason}`),
       output: null,
       status: statusText,
       error: null,

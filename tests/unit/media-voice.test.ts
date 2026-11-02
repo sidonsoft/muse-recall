@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseClipResponse, parseTranscribeResponse } from '../../apps/server/src/media/voice.js';
+import {
+  CLIP_MAX_OUTPUT_TOKENS,
+  MAX_OBSERVATION_CHARS,
+  MAX_OBSERVATIONS,
+} from '../../apps/server/src/media/voice.js';
 
 const SOURCE = '00000000-0000-4000-8000-000000000001';
 
@@ -180,5 +185,23 @@ describe('clip observation validation', () => {
         { sourceId: SOURCE, durationMs: 5_000, model: 'muse-spark-1.3', fileId: null },
       ),
     ).toThrow(/refused/);
+  });
+});
+
+describe('clip output budget (sized from the schema, not guessed)', () => {
+  it('never caps the answer below what its own schema permits the model to write', () => {
+    // The live failure was truncation at the cap, so an incomplete result here
+    // means the request asked for less output than the response format allows.
+    const worstCaseTextTokens = Math.ceil(
+      (MAX_OBSERVATIONS * MAX_OBSERVATION_CHARS) / 4 +
+        // the array wrapper, keys, numbers and separators a strict answer spends
+        MAX_OBSERVATIONS * 12,
+    );
+    expect(CLIP_MAX_OUTPUT_TOKENS).toBeGreaterThanOrEqual(worstCaseTextTokens);
+  });
+
+  it('stays inside a sane ceiling so a runaway budget cannot replace a runaway answer', () => {
+    expect(CLIP_MAX_OUTPUT_TOKENS).toBeLessThanOrEqual(4_000);
+    expect(CLIP_MAX_OUTPUT_TOKENS).toBeGreaterThan(1_200);
   });
 });

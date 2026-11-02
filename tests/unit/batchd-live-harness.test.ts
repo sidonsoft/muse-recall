@@ -1,7 +1,10 @@
 import { createServer } from 'node:http';
 import { describe, expect, it } from 'vitest';
 import {
+  accountClipCalls,
   boundedExcerpt,
+  CLIP_MODEL_PATH,
+  CLIP_UPLOAD_PATH,
   clipFixturePlan,
   clipPromptIssues,
   clipTokenMatch,
@@ -402,5 +405,46 @@ describe('Batch D live prerequisites and readiness', () => {
     // probes, so a prerequisite check cannot certify a binary the run never calls.
     expect(FFMPEG_BIN).toBe(process.env.FFMPEG_BIN ?? 'ffmpeg');
     expect(FFPROBE_BIN).toBe(process.env.FFPROBE_BIN ?? 'ffprobe');
+  });
+});
+
+describe('clip call accounting (model call vs file upload)', () => {
+  // The two dispatches one live clip actually wrote on 2 Nov
+  // (test-results/batchd-live/2026-11-02-0356: files 200, responses 200).
+  const REAL = [{ path: '/v1/files' }, { path: '/v1/responses' }];
+
+  it('counts one model call even though the route reports two attempts', () => {
+    // The successful live clip returned five correct timed observations and the
+    // harness still failed it, because provider_attempts (upload + model) was
+    // read as the model call count.
+    const account = accountClipCalls(REAL, 2);
+    expect(account.modelDispatches).toBe(1);
+    expect(account.uploadDispatches).toBe(1);
+    expect(account.issues).toEqual([]);
+  });
+
+  it('names the paths it expects, and rejects a call that skipped the upload', () => {
+    expect(CLIP_MODEL_PATH).toBe('/v1/responses');
+    expect(CLIP_UPLOAD_PATH).toBe('/v1/files');
+    expect(accountClipCalls([{ path: CLIP_MODEL_PATH }], 1).issues).toContain(
+      'expected exactly one file upload on /v1/files, saw 0',
+    );
+  });
+
+  it('refuses a second model dispatch instead of accepting two paid calls', () => {
+    const account = accountClipCalls(
+      [{ path: CLIP_UPLOAD_PATH }, { path: CLIP_MODEL_PATH }, { path: CLIP_MODEL_PATH }],
+      3,
+    );
+    expect(account.modelDispatches).toBe(2);
+    expect(account.issues).toContain('expected exactly one model dispatch on /v1/responses, saw 2');
+  });
+
+  it('catches a route whose attempt count disagrees with the trace', () => {
+    // Either the adapter is not counting, or a dispatch happened that the route
+    // never saw. Both mean the paid-call ledger cannot be trusted.
+    expect(accountClipCalls(REAL, 1).issues).toContain(
+      'the route reported 1 attempt(s) for 2 observed dispatch(es)',
+    );
   });
 });

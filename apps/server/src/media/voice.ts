@@ -66,6 +66,22 @@ const MAX_TURNS = 200;
 const MAX_TURN_CHARS = 5_000;
 const MAX_OBSERVATIONS = 8;
 const MAX_OBSERVATION_CHARS = 500;
+
+/**
+ * Output budget for the clip request, sized from the schema it must satisfy.
+ *
+ * The first live attempt (2 Nov, `test-results/batchd-live/2026-11-02-0354`)
+ * proved the budget was the limit rather than the model: the provider answered
+ * `incomplete / max_output_tokens` with `output_tokens` exactly equal to the cap
+ * the request asked for. A strict-schema answer may legitimately write
+ * MAX_OBSERVATIONS observations of MAX_OBSERVATION_CHARS each, so the cap is
+ * derived from those two numbers — at roughly four characters per token, plus the
+ * array/field envelope, doubled for the whitespace and numbers a strict answer
+ * actually spends — instead of being guessed once and never revisited.
+ */
+export const CLIP_MAX_OUTPUT_TOKENS =
+  2 * Math.ceil((MAX_OBSERVATIONS * (MAX_OBSERVATION_CHARS + 24) + 256) / 4);
+export { MAX_OBSERVATIONS, MAX_OBSERVATION_CHARS };
 const FILE_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,200}$/;
 
 function parseJsonObject(body: string): Record<string, unknown> | null {
@@ -464,7 +480,7 @@ export class MediaVoice {
             ],
           },
         ],
-        max_output_tokens: 1_200,
+        max_output_tokens: CLIP_MAX_OUTPUT_TOKENS,
         text: {
           format: {
             type: 'json_schema',

@@ -621,3 +621,50 @@ export const MEDIA_MODEL_FIELDS = [
   'transcribe_model',
   'video_model',
 ] as const;
+
+/** The clip operation touches exactly these two provider paths. */
+export const CLIP_MODEL_PATH = '/v1/responses';
+export const CLIP_UPLOAD_PATH = '/v1/files';
+
+export interface ClipCallAccount {
+  modelDispatches: number;
+  uploadDispatches: number;
+  /** Empty when the operation stayed inside its allowance. */
+  issues: string[];
+}
+
+/**
+ * Account for one clip observation from the dispatches actually observed.
+ *
+ * The route reports `provider_attempts` for the whole operation, which includes
+ * the file upload that must precede the model call. Reading that number as
+ * "model calls" charged every successful clip run twice and failed the run on
+ * its own bookkeeping — on 2 Nov a live clip returned five correct timed
+ * observations and was still reported as a failure. So the model call and the
+ * upload are counted from the trace separately, and the route's own total is
+ * checked against them instead of being trusted as the call count.
+ */
+export function accountClipCalls(
+  dispatches: readonly { path: string }[],
+  providerAttempts: number,
+): ClipCallAccount {
+  const modelDispatches = dispatches.filter((entry) => entry.path === CLIP_MODEL_PATH).length;
+  const uploadDispatches = dispatches.filter((entry) => entry.path === CLIP_UPLOAD_PATH).length;
+  const issues: string[] = [];
+  if (modelDispatches !== 1) {
+    issues.push(
+      `expected exactly one model dispatch on ${CLIP_MODEL_PATH}, saw ${String(modelDispatches)}`,
+    );
+  }
+  if (uploadDispatches !== 1) {
+    issues.push(
+      `expected exactly one file upload on ${CLIP_UPLOAD_PATH}, saw ${String(uploadDispatches)}`,
+    );
+  }
+  if (providerAttempts !== dispatches.length) {
+    issues.push(
+      `the route reported ${String(providerAttempts)} attempt(s) for ${String(dispatches.length)} observed dispatch(es)`,
+    );
+  }
+  return { modelDispatches, uploadDispatches, issues };
+}
