@@ -352,7 +352,8 @@ const APP_FACTS_SCRIPT = String.raw`(function () {
     return base;
   }
   const named = [];
-  let unlabeled = 0;
+  let unlabeledControls = 0;
+  let unlabeledFields = 0;
   for (const el of document.querySelectorAll('button, a[href], input, select, textarea, [role="button"]')) {
     const name =
       el.getAttribute('aria-label') || el.getAttribute('title') || (el.textContent || '').trim() || el.id || '';
@@ -360,7 +361,12 @@ const APP_FACTS_SCRIPT = String.raw`(function () {
       const label = name.slice(0, 24);
       if (named.indexOf(label) === -1) named.push(label);
     }
-    if ((el.textContent || '').trim() === '' && name !== '') unlabeled += 1;
+    // Counted apart from fields on purpose: a text input can never have text
+    // content of its own, so mixing the two makes one number meaningless.
+    if ((el.textContent || '').trim() === '' && name !== '') {
+      if (el.matches('input, textarea, select')) unlabeledFields += 1;
+      else unlabeledControls += 1;
+    }
   }
   const statusTexts = Array.from(document.querySelectorAll('[role="status"], [aria-live], .status'))
     .map(function (node) {
@@ -400,7 +406,8 @@ const APP_FACTS_SCRIPT = String.raw`(function () {
   });
   const facts = {
     named_controls: named.slice(0, 24),
-    controls_without_visible_label: unlabeled,
+    controls_without_visible_label: unlabeledControls,
+    fields_without_visible_label: unlabeledFields,
     status_texts: statusTexts,
     contrast: { checked: checked, below_4_5: below, worst: measured.slice(0, 3), skipped: skipped },
   };

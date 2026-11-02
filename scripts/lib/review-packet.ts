@@ -95,8 +95,14 @@ export interface PacketFacts {
      */
     app_facts?: {
       named_controls: string[];
-      /** Controls with an accessible name and no visible text of their own. */
+      /** Icon-only or unnamed-text controls with an accessible name. */
       controls_without_visible_label: number;
+      /**
+       * Text fields, counted separately because a field can never have text
+       * content of its own, so folding them into the count above would make the
+       * number meaningless.
+       */
+      fields_without_visible_label?: number;
       /** Text the app put in a status region, which is how it reports results. */
       status_texts: string[];
       contrast: {
@@ -259,8 +265,11 @@ export function renderReviewPacket(facts: PacketFacts, issues: readonly string[]
     );
     lines.push(
       row(
-        'controls with an accessible name but no visible label',
-        String(app.controls_without_visible_label),
+        'controls with an accessible name but no visible text of their own',
+        `${String(app.controls_without_visible_label)} control(s)` +
+          (typeof app.fields_without_visible_label === 'number'
+            ? `, ${String(app.fields_without_visible_label)} text field(s)`
+            : ''),
       ),
     );
     lines.push(

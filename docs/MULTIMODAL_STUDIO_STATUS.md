@@ -822,6 +822,18 @@ app through the product's own path and writes a packet for a human to fill in.
   characters of visible text, 492 distinct colours, 0 console errors, 0 failed requests, and zero
   external URL references in the saved HTML — the self-containment the brief asked for, proven
   against the bytes rather than asserted.
+- **The app is captured in a used state, and the measurement is separate from the
+  verdict.** `REVIEW_APP_STEPS` drives the app (type a seed, press Generate, press
+  Export) and every step taken is written into the capture labels. For Palette Bench
+  that produced measurable facts without a score: 64 text elements measured against a
+  flat background with **0** below 4.5:1 (worst 6.70:1), **0** native dialogs raised,
+  inline status text as the reporting channel, 17 named controls of which 5 are
+  icon-only, and the export area holding all five generated hexes after Export.
+  Getting there took three harness defects that a reader would never have seen:
+  `page.evaluate` through TypeScript dies on `__name`, the same code in a plain
+  template literal silently loses its regex backslashes and reports `0 measured` as
+  though it had looked, and a failed capture left the browser connected so the run
+  died on an external timeout with no verdict. KI-73.
 - **The sheet is blank on purpose.** `review-packet.md` carries one row per quality dimension
   (`REVIEW_DIMENSIONS` in `scripts/lib/review-packet.ts` — the document names no count so it cannot
   drift from the code) and one row per pinned decision, and refuses to carry any score of ours. The only machine contribution is

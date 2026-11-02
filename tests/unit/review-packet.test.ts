@@ -116,7 +116,8 @@ describe('human review packet', () => {
   it('reports what the app named and how it reported results, without grading either', () => {
     const facts = withFacts(BASE, {
       named_controls: ['Generate', 'Export', 'Clear'],
-      controls_without_visible_label: 7,
+      controls_without_visible_label: 5,
+      fields_without_visible_label: 2,
       status_texts: ['Generated five colours from seed 42.'],
       contrast: {
         checked: 64,
@@ -128,7 +129,9 @@ describe('human review packet', () => {
     const rendered = renderReviewPacket(facts, packetIssues(facts));
     expect(rendered).toContain('Generated five colours from seed 42.');
     expect(rendered).toContain('6.70:1 — "Generate"');
-    expect(rendered).toContain('controls with an accessible name but no visible label | 7');
+    expect(rendered).toContain(
+      'controls with an accessible name but no visible text of their own | 5 control(s), 2 text field(s)',
+    );
   });
 
   it('pins the exact decision wording a reviewer is being asked about', () => {

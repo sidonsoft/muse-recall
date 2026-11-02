@@ -1615,14 +1615,23 @@ against the artifact itself.
 
 What the fixed measurement then showed, as facts rather than scores: 64 text
 elements measured against a flat background, **0** below 4.5:1 with the worst at
-6.70:1; **0** native dialogs raised across generate/export; 7 controls with an
-accessible name and no visible label of their own; the export text area holding all
-five generated hexes after Export. The judgement stays the reviewer's — the
+6.70:1; **0** native dialogs raised across generate/export; 5 icon-only controls
+with an accessible name and no visible text of their own (the five swatch copy
+buttons) alongside 2 text fields; and the export area holding all five generated
+hexes after Export, which is visible in the retained used-state capture.
+
+One more conflation caught before it reached a reviewer: that count of controls
+initially lumped text fields in with icon-only buttons and reported **7**, which
+mean nothing — a text input can never have text content of its own, so folding the
+two together turns a legibility signal into noise. Controls and fields are counted
+apart now, and the packet labels each kind. The judgement stays the reviewer's — the
 harness's job is that these are measurements rather than impressions.
 
 Evidence lineage, all retained: `-2026-11-02-2148` (the paid run, with the KI-71
 false flag), `-2026-11-02-2151` (KI-71 correction), `-2026-11-02-2204/-2205`
 (used-state captures while the facts block was still wrong), `-2026-11-02-2207`,
 `-2218`, `-2233`, `-2244` (the runs that hung or failed on the way), and
-`test-results/human-review/palette-bench-2026-11-02-2245` as the packet a reviewer
+`-2026-11-02-2245` (used-state captures with the corrected facts block, before the
+control/field conflation was split), and
+`test-results/human-review/palette-bench-2026-11-02-2250` as the packet a reviewer
 should read.
