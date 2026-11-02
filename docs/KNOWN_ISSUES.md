@@ -1027,6 +1027,27 @@ the deadline, and a destination that exists being refused before any copy runs.
 `Tests 1466 passed | 3 skipped (1469)`, no timeouts and no stall messages, after the file had
 been failing 3/3.
 
+**It was not one file, and the deadline is what proved it.** The next fresh-install rehearsal
+(a clean clone of the same commit) failed its in-clone `pnpm run verify` on a different test
+that the author's checkout had passed twice:
+
+```
+tests/unit/data-at-rest.test.ts > backs up a live WAL database with the same rows
+online backup of …/source.db did not produce a usable copy after 15005ms (the online copy was
+still running after 15000ms and was given up on); the partial copy was parked as
+…/source.db.backup-….unfinished-f633f19d rather than left under the backup name
+```
+
+Same stall, third environment, different file — and it arrived naming its cause instead of
+"Test timed out in 30000ms". Any test that awaits the online copy inside a suite worker is
+exposed, so the remaining call sites moved too: `data-at-rest` copies through a plain child
+process against the WAL database its test left open (`tests/helpers/online-copy-child.ts`;
+the other child seeds its own database, which is a different claim), and `health-alerts` uses
+the synchronous seam because what it judges is the health signal, not the copy API. The
+rehearsal then passed 17 checks at that commit.
+
+The knob is `FORGE_BACKUP_TIMEOUT_MS` (default 15 000). A `0` value disables the deadline.
+
 **What is still open**: why the promise does not settle in that worker context. The product
 answer is that a bounded wait now names the stall in 15 s instead of hanging, and the
 test answer is that the API is measured in a plain process. If a future deployment runs the

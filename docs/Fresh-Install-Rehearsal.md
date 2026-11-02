@@ -132,3 +132,26 @@ is stricter and the re-run proves the stricter version passes:
   warnings such as KI-52 are stripped.
 - **timing is reported apart**: ~1.0 s to ready, walkthrough measured separately. A previous
   line folded an 800 ms-per-screen walk into "startup".
+
+## Re-run at `9a5b610`: the rehearsal caught something real
+
+The first run at this commit **failed** its in-clone `pnpm run verify`, on a test the author's
+checkout had passed twice:
+
+```
+tests/unit/data-at-rest.test.ts > backs up a live WAL database with the same rows
+online backup of …/source.db did not produce a usable copy after 15005ms (the online copy was
+still running after 15000ms and was given up on); the partial copy was parked as
+…/source.db.backup-….unfinished-f633f19d rather than left under the backup name
+```
+
+A clean clone reached a state the author's long-lived checkout did not: node:sqlite's online
+backup promise does not settle inside a full-suite Vitest worker (KI-56). What made that
+diagnosable was the product's new backup deadline — elapsed time, cause, and the parked partial
+copy — where the older behaviour was a bare 30 s test timeout. The two remaining in-suite
+call sites moved to the process shape the product uses (the WAL copy runs in a plain child
+process; `health-alerts` uses a synchronous copy seam because what it judges is the health
+signal), and the rehearsal then passed **17 checks** at this commit.
+
+That is the argument for running the first run: not that the fresh clone is more correct, but
+that it is a different environment, and this one was holding a defect.
