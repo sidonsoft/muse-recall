@@ -822,8 +822,9 @@ app through the product's own path and writes a packet for a human to fill in.
   characters of visible text, 492 distinct colours, 0 console errors, 0 failed requests, and zero
   external URL references in the saved HTML — the self-containment the brief asked for, proven
   against the bytes rather than asserted.
-- **The sheet is blank on purpose.** `review-packet.md` lists eight quality dimensions and one row
-  per pinned decision, and refuses to carry any score of ours. The only machine contribution is
+- **The sheet is blank on purpose.** `review-packet.md` carries one row per quality dimension
+  (`REVIEW_DIMENSIONS` in `scripts/lib/review-packet.ts` — the document names no count so it cannot
+  drift from the code) and one row per pinned decision, and refuses to carry any score of ours. The only machine contribution is
   `evidence quality`, which exists to stop a person judging from a capture that cannot support it.
 - **A mis-measured packet is corrected without paying again.**
   `REVIEW_APP_REMEASURE_DIR=<packet> pnpm run review:app` re-measures retained bytes for zero

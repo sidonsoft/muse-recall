@@ -111,6 +111,19 @@ describe('human review packet', () => {
     expect(rendered.match(/^\| 22222222 r3:/m)).not.toBeNull();
   });
 
+  it('emits exactly one judgement row per dimension, so the sheet cannot silently gain or lose one', () => {
+    const rendered = renderReviewPacket(BASE, []);
+    const sheetLines = rendered.split('\n').filter((line) => line.startsWith('| '));
+    const dimensionRows = sheetLines.filter((line) =>
+      REVIEW_DIMENSIONS.some((dimension) => line.startsWith(`| ${dimension}`)),
+    );
+    expect(dimensionRows).toHaveLength(REVIEW_DIMENSIONS.length);
+    // A sheet with a pre-filled score cell is not the sheet this packet promises.
+    for (const row of dimensionRows) {
+      expect(row).toBe(`| ${row.slice(2, row.indexOf(' | ', 2))} |  |  |`);
+    }
+  });
+
   it('refuses to score the app itself, in words and in fact', () => {
     const rendered = renderReviewPacket(BASE, []);
     expect(rendered).toContain('**No automatic score.**');
