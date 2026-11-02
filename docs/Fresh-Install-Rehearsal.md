@@ -47,6 +47,12 @@ PASS, 17 checks (`test-results/fresh-install/2026-11-02-0613/`):
   environment `development`, no console errors on any screen, nothing contacted
   outside the allowlist;
 - first run shut down with no listener left behind;
+- **what a brand-new install actually contacts**: in the clone the walk contacted **no
+  host at all**, while the same walk in the author's long-used checkout contacted
+  `cdn.jsdelivr.net`. The difference is data, not configuration — the author's checkout
+  holds a project whose artifact preview loads the engine, a fresh clone has no artifact
+  yet. So KI-53's dependency bites once a generated game exists, not at bare first paint,
+  and the gate accepts both because the rule is "nothing outside the allowlist";
 - media and database restore drills passed;
 - the production browser gate passed inside the clone;
 - a live smoke in the clone exited 2 rather than spending a call.
@@ -93,9 +99,11 @@ actually do and what `verify:runtime` now proves.
   walk is `verify:studio-workflow`'s job, and the live provider's first-run experience is
   a separate, authorized concern.
 
-## Re-run at `b698070`, after the second review hardened the first-run gate
+## Re-run at `c9c18cf` (and earlier at `b698070`, after the first-run gate was hardened)
 
-PASS, 17 checks (`test-results/fresh-install/2026-11-02-0759/`): clone at `b698070ed151`
+PASS, 17 checks — latest at `c9c18cfa5b4b` (`test-results/fresh-install/2026-11-02-1045/`, clone
+bundles server `920c6036a536`, web `065ee809a766`), previously at `b698070ed151`
+(`test-results/fresh-install/2026-11-02-0759/`): clone
 on a clean tree, install with 0 downloads, `pnpm run verify` inside the clone, bundles built
 by the clone naming its own commit (server `50edca5dea45`, web `065ee809a766`), the first
 run, both restore drills, the production browser gate inside the clone, and a live smoke that

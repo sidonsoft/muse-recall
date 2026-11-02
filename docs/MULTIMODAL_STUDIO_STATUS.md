@@ -133,8 +133,9 @@ that approve or preview a Phaser artifact reach the one host the product allowli
 answers `cdn.jsdelivr.net` with HTTP 200 in 1 181 917 bytes. `pnpm verify:runtime` now says so
 instead of hiding it, and exits 2 when that host is unreachable rather than reporting a product
 failure. The numbers below are the
-gates run at `b698070`, the commit that fixed the read-only-route write (KI-54) and the
-gate-accounting defects (KI-55) found by the second independent review. This
+gates run at `c9c18cf`, the commit that enforced the paid-call budgets the accounting
+previously only reported (KI-55 items 9-12); it also ran the gates at `b698070`, which
+fixed the read-only-route write (KI-54). This
 documentation commit moves the build *identity* again without moving bundle contents
 (docs are not hashed inputs); the identity pair for the newest commit is recorded by the
 identity gate named below, and `verify:batchd-playback-auth` refuses to run a gate against
@@ -142,15 +143,17 @@ bundles that do not match the checkout running it.
 
 - `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
   Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
-  `pnpm run typecheck:tests` exit 0, Vitest **113 files / 1 424 passed / 3 skipped / 0
+  `pnpm run typecheck:tests` exit 0, Vitest **114 files / 1 437 passed / 3 skipped / 0
   failed**. The lint counts are read from Biome's summary line, not from an output tail —
   a previous report of "0 errors" was a tail misread while HEAD had four errors.
-- `pnpm verify:fresh-install`: **PASS 17 checks** at `b698070`
-  (`test-results/fresh-install/2026-11-02-0759/report.json`), and earlier at `1d32761`
+- `pnpm verify:fresh-install`: **PASS 17 checks** at `c9c18cf`
+  (`test-results/fresh-install/2026-11-02-1045/report.json`, clone bundles server
+  `920c6036a536` / web `065ee809a766`), and earlier at `b698070`
+  (`test-results/fresh-install/2026-11-02-0759/report.json`) and at `1d32761`
   (`…/2026-11-02-0613`). A clean clone installed with `--frozen-lockfile` with **no
   provider credential exported** ran the aggregate check and built production bundles
-  naming the **clone's own commit** on a clean tree (`b698070ed151`: server
-  `50edca5dea45…`, web `065ee809a766…`). Then the documented first run, both restore
+  naming the **clone's own commit** on a clean tree (`c9c18cfa5b4b`: server `920c6036a536…`,
+  web `065ee809a766…`; at `b698070ed151`: server `50edca5dea45…`). Then the documented first run, both restore
   drills, and the production browser gate — inside the clone — and a live smoke that
   refuses instead of spending a call. The environment manifest records tool presence, not
   values; on this machine `say` is not on the PATH that probe reads, which blocks the live
@@ -191,17 +194,20 @@ bundles that do not match the checkout running it.
   matching the preserved values). `eval:guard` and `evidence:phase14a` were **not** run:
   they regenerate tracked evidence files, and their committed numbers remain as recorded.
 
-**Which gate ran at which commit.** The aggregate check, the browser gates
-(`verify:batchc-ui`, `verify:batche-review-ui`, `verify:runtime`, `verify:studio-workflow`),
-the fixture-only live-smoke legs and `verify:first-run` ran at `b698070`; the fresh-install
-rehearsal ran there too (`test-results/fresh-install/2026-11-02-0759`). At the newest commit
-`f763ef9` — docs-only relative to `b698070` — `pnpm run verify` re-ran (113 files, 1 424
-passed, 3 skipped) and `verify:batchd-playback-auth` re-ran: PASS 15 checks with the running
-server proving commit `f763ef9f881e`, `treeClean: true`, server build
-`40beb7e158db…`, web build `065ee809a766…` unchanged
-(`test-results/batchd-playback-auth/2026-11-02-0804`). Gates not named at a commit did not
-run at it; the only thing a docs commit proves about them is that the source they measured
-has not moved.
+**Which gate ran at which commit.** Everything below ran at `c9c18cf`, the newest source
+commit: `pnpm run verify`; `verify:batchd-playback-auth` (PASS 15, running server proving
+`c9c18cfa5b4b` on a clean tree, server build `34f23e8a44df…`, web build `065ee809a766…`
+unchanged — `test-results/batchd-playback-auth/2026-11-02-1040`); `verify:batche-review-ui`
+(PASS 20); `verify:batchc-ui` (PASS 22); `verify:runtime` (PASS 5);
+`verify:studio-workflow` (56 checks); `verify:first-run` (PASS 4 — 1 039 ms to ready,
+4 861 ms walking the screens, `test-results/first-run/2026-11-02-1041`); the fixture-only and
+boot-only live legs (batchd PASS 4 with an empty ledger at
+`test-results/batchd-live/2026-11-02-1039`, image boot-only PASS, review-live refusing with
+exit 2); and the whole fresh-install rehearsal (PASS 17,
+`test-results/fresh-install/2026-11-02-1045`). The same gates ran at `b698070` and
+`f763ef9` before it (`test-results/batchd-playback-auth/2026-11-02-0804` records that
+identity pair). Gates not named at a commit did not run at it; the only thing a docs commit
+proves about them is that the source they measured has not moved.
 
 **Identity moves across documentation commits, and the rule is easy to over-read.** The
 build identity (commit, source hash, build time) is baked into the server bundle, so the
