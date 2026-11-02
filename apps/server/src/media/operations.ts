@@ -381,6 +381,10 @@ export class MediaOperations {
         timeoutMs: options.timeoutMs ?? this.generationTimeoutMs,
         rawBody: form,
         // Content-Type is intentionally omitted so fetch writes the multipart boundary.
+        // The model travels as a form field, so the adapter cannot read it from a JSON
+        // payload: say it explicitly, or the trace reports `model=(none)` for a call
+        // that did name its model and a live run cannot attribute its paid edit.
+        traceModel: this.model,
       },
     );
     return this.toOutput(result.body, result.latency_ms, options);

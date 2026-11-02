@@ -71,6 +71,32 @@ export interface MediaRequestOptions {
    */
   rawBody?: RequestInit['body'];
   contentType?: string;
+  /**
+   * The model this dispatch pays for, when the model is not a JSON field the
+   * adapter can read. A multipart edit request carries `model` as a form field,
+   * so the trace line would otherwise report `model=(none)` for a call that did
+   * name its model — and a live run could not say what its paid edit cost.
+   */
+  traceModel?: string;
+}
+
+/**
+ * Name the model a dispatch pays for, for the `[media-trace]` line.
+ *
+ * Preference order is deliberate: an explicit `traceModel` from the caller wins
+ * (multipart calls know their model but cannot express it in a JSON payload),
+ * then the JSON payload's own `model`, then `(none)` — which means the ledger
+ * genuinely cannot attribute this dispatch, and must read as that.
+ */
+export function traceModelName(
+  options: { traceModel?: string },
+  payload: Record<string, unknown>,
+): string {
+  const explicit = typeof options.traceModel === 'string' ? options.traceModel.trim() : '';
+  if (explicit.length > 0) return explicit;
+  const fromPayload = typeof payload.model === 'string' ? payload.model.trim() : '';
+  if (fromPayload.length > 0) return fromPayload;
+  return '(none)';
 }
 
 export interface MediaCallResult {
@@ -351,8 +377,7 @@ export class MediaAdapter {
         );
       }
       if (this.traceAttempts) {
-        const traceModel =
-          typeof payload.model === 'string' && payload.model.length > 0 ? payload.model : '(none)';
+        const traceModel = traceModelName(options, payload);
         console.error(
           `[media-trace] attempt=${attempt + 1} path=${path} model=${traceModel.slice(0, 120)}`,
         );
@@ -522,8 +547,7 @@ export class MediaAdapter {
         );
       }
       if (this.traceAttempts) {
-        const traceModel =
-          typeof payload.model === 'string' && payload.model.length > 0 ? payload.model : '(none)';
+        const traceModel = traceModelName(options, payload);
         console.error(
           `[media-trace] attempt=${attempt + 1} path=${path} model=${traceModel.slice(0, 120)}`,
         );
