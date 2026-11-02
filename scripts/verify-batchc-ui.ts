@@ -52,6 +52,11 @@ import { MediaSourceStore } from '../apps/server/src/media/sources.js';
 import { MemoryEngine, openDatabase } from '../packages/memory-engine/src/index.js';
 import { EchoProvider } from '../packages/muse-provider/src/index.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
+import {
+  classifyGateFailure,
+  describeGateOutcome,
+  PrerequisiteRefusal,
+} from './lib/gate-outcome.js';
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, 'test-results', 'batchc-ui');
@@ -306,10 +311,14 @@ async function main(): Promise<void> {
   };
   await walk(join(ROOT, 'apps/web/src'));
   if (newestSource > distMtime + 1_000) {
-    fail('the web build is older than apps/web/src — run `pnpm --filter @mml/web build`.');
+    throw new PrerequisiteRefusal(
+      'the web build is older than apps/web/src — run `pnpm --filter @mml/web build`.',
+    );
   }
   if (process.env.FORGE_MUSE_API_KEY || process.env.FORGE_FALLBACK_API_KEY) {
-    fail('paid provider keys are set in the environment; this script must run with stubs only.');
+    throw new PrerequisiteRefusal(
+      'paid provider keys are set in the environment; this script must run with stubs only.',
+    );
   }
 
   const serverPort = await freePort();
@@ -864,29 +873,49 @@ async function main(): Promise<void> {
     await rm(dataRoot, { recursive: true, force: true }).catch(() => undefined);
   }
 
+  writeSummary('PASS');
+  console.log(`\nPASS: ${checks.length} checks — evidence in ${OUT}`);
+}
+
+/**
+ * The evidence file has to say what the run concluded, not only what it managed
+ * to do. Until now `summary.json` carried no status at all, so a record with 21
+ * of 22 checks was indistinguishable from a complete pass, and a failed run
+ * produced no structured record whatsoever — only a `failure.txt` blob.
+ */
+function writeSummary(status: string, extra: Record<string, unknown> = {}): void {
   const summary = {
     project: PROJECT,
+    ok: status === 'PASS',
+    status,
     checks,
+    completed_checks: checks.length,
+    observations: extra,
     screenshots: join(OUT, 'screenshots'),
     finished_at: new Date().toISOString(),
   };
   writeFileSync(join(OUT, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
-  console.log(`\nPASS: ${checks.length} checks — evidence in ${OUT}`);
 }
 
 main().catch(async (error: unknown) => {
-  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
-  console.error(`\nFAIL: ${message}`);
+  const outcome = classifyGateFailure(error);
+  const stack = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  console.error(`\n${describeGateOutcome(outcome)}`);
+  if (outcome.kind === 'failed') console.error(stack);
   if (checks.length > 0) {
-    console.error(`Checks that passed before the failure:\n  - ${checks.join('\n  - ')}`);
+    console.error(`Checks completed before the run stopped:\n  - ${checks.join('\n  - ')}`);
   }
+  writeSummary(
+    outcome.kind === 'blocked' ? `BLOCKED: ${outcome.reason}` : `FAILED: ${outcome.reason}`,
+    { exit_code: outcome.exitCode },
+  );
   try {
     writeFileSync(
       join(OUT, 'failure.txt'),
-      `${message}\n\nPassed checks:\n${checks.join('\n')}\n\nBrowser/network observations:\n${errors.length > 0 ? errors.join('\n') : '(none captured)'}\n`,
+      `${outcome.kind === 'blocked' ? 'BLOCKED (prerequisite, nothing measured)\n' : ''}${stack}\n\nChecks completed:\n${checks.join('\n')}\n\nBrowser/network observations:\n${errors.length > 0 ? errors.join('\n') : '(none captured)'}\n`,
     );
   } catch {
     // Evidence is best effort.
   }
-  process.exitCode = 1;
+  process.exitCode = outcome.exitCode;
 });

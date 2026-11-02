@@ -631,6 +631,11 @@ async function probeOne(
   const started = Date.now();
   const probe = requestFor(capability, model, options);
   const passthrough: MediaRequestOptions = {
+    // A probe pays real money, so the ledger must be able to say what it paid.
+    // The transcribe probe sends its model inside a multipart `request` part,
+    // where the adapter cannot read it from a JSON payload (KI-61's defect, in
+    // the probe path). Stating it covers every probe, JSON ones included.
+    traceModel: model,
     ...(options.signal !== undefined ? { signal: options.signal } : {}),
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),

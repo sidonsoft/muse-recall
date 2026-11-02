@@ -1453,3 +1453,66 @@ rather than as the newest claim, drops the unmeasured "content unchanged" assert
 the field values, and attributes the rehearsal records to the commits that produced them
 (`2026-11-02-1300` at `9a5b610`, `2026-11-02-1531` at `a131c5e`). The phantom field names were
 replaced everywhere they appeared, including in KI-58's own text.
+
+## KI-69 — three browser gates could not say how they ended (closed)
+
+The paid gates learned to distinguish "measured a failure" from "refused before
+measuring" in `KI-57`/`KI-63`. The three **offline browser** gates never learned it, and the
+delta review's own numbers showed the consequence without anyone noticing: it reported
+`verify:batchc-ui` as **21** checks where the gate has 22 call sites at every commit in the
+range. Nothing in that gate's evidence could confirm or refute the difference.
+
+What each gate actually recorded:
+
+- `verify:batchc-ui` wrote `summary.json` with keys `project`, `checks`, `screenshots`,
+  `finished_at` — **no status at all**. A record with 21 of 22 checks looked exactly like a
+  complete pass. A failed run wrote no structured record whatsoever, only a `failure.txt` blob.
+- `verify:batchd-playback-auth` — the gate whose report this document cites as release identity —
+  wrote `status: checks.length > 0 ? 'live browser results' : 'no checks completed'`. That
+  describes the directory, not the outcome: a blocked run and a passing run carried different
+  words for the same meaning ("something ran here"), and neither said PASS.
+- A missing Chromium exited **1** with a Playwright stack, identical to a product defect, even
+  though it is a prerequisite the same machine cannot satisfy on re-run.
+
+Fix: `scripts/lib/browser.ts` now raises a named `BrowserUnavailableError` carrying the install
+instruction, and `scripts/lib/gate-outcome.ts` classifies an ended run as blocked (exit 2) or
+failed (exit 1), with `describeGateFailure` printing the reason before any stack — the discipline
+KI-57 established for paid gates. Prerequisite conditions that used to be `fail()` calls (stale
+web build, provider keys present) are `PrerequisiteRefusal`s. Each gate writes its classified
+status into its evidence file, including on the blocked path.
+
+Measured, both directions:
+
+- provider key exported → `BLOCKED before measuring anything: paid provider keys are set in the
+  environment; this script must run with stubs only.`, exit **2**, and
+  `summary.json` records `ok: false`, `status: "BLOCKED: …"`, `completed_checks: 0`;
+- same gate without keys → `PASS: 22 checks`, and `summary.json` records `ok: true`,
+  `status: "PASS"`, `completed_checks: 22`.
+
+Six tests in `tests/unit/gate-outcome.test.ts` pin the classification, the exit codes, the
+terminal wording, the non-`Error` thrown value, and that a launcher that cannot start a browser
+raises the *named* refusal with the fix in its message. The 21-vs-22 discrepancy is now checkable
+from the evidence rather than from a log line.
+
+## KI-70 — capability probes paid for models the ledger could not name, and the ledger-damage fix had no test (closed)
+
+Two leftovers from the previous round, found by checking the review's claim ("which other call
+sites pay without naming the model?") against every adapter caller:
+
+1. **Probes were unattributable.** `apps/server/src/media/capabilities.ts` issues real provider
+   calls to decide whether a capability works. The `transcribe` probe posts multipart, with
+   `model` inside the `request` part, so its `[media-trace]` line read `model=(none)`: the run
+   knew it had spent quota and could not say on which model. Every probe now states
+   `traceModel`, which also makes the JSON probes explicit instead of relying on the payload
+   shape. Pinned by a test that runs the transcribe probe through a real adapter with a scripted
+   fetch and asserts the trace line for `/v1/asr/transcribe` names the probe model and that no
+   trace line says `(none)`.
+2. **The parser fix was untested.** KI-65 changed `parseMediaTrace` to keep unparseable tagged
+   lines, but no test covered it — a regression would have been invisible, which is how the
+   original defect survived. Seven tests in `tests/unit/media-trace-damage.test.ts` now pin: a
+   tagged line kept rather than dropped; the review's probe (one answered call plus two
+   unreadable lines) reported as damage; an `attempt`-only truncated write as damage; unmarked
+   server output *not* counted as damage; damage between a start line and its outcome not
+   breaking pairing or faking an unanswered call; the live chain gate refusing its own budget when
+   the counts match but the ledger is corrupt; and a zero-dispatch boot-only ledger reading clean
+   while a damaged one reads damaged.

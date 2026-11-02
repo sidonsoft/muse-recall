@@ -71,6 +71,11 @@ import {
   type Memory,
 } from '../packages/shared/src/index.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
+import {
+  classifyGateFailure,
+  describeGateOutcome,
+  PrerequisiteRefusal,
+} from './lib/gate-outcome.js';
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, 'test-results', 'batche-review-ui');
@@ -291,10 +296,14 @@ async function main(): Promise<void> {
   };
   await walk(join(ROOT, 'apps/web/src'));
   if (newestSource > distMtime + 1_000) {
-    fail('the web build is older than apps/web/src — run `pnpm --filter @mml/web build`.');
+    throw new PrerequisiteRefusal(
+      'the web build is older than apps/web/src — run `pnpm --filter @mml/web build`.',
+    );
   }
   if (process.env.FORGE_MUSE_API_KEY || process.env.FORGE_FALLBACK_API_KEY) {
-    fail('paid provider keys are set in the environment; this gate must run with stubs only.');
+    throw new PrerequisiteRefusal(
+      'paid provider keys are set in the environment; this gate must run with stubs only.',
+    );
   }
 
   const serverPort = await freePort();
@@ -957,16 +966,42 @@ async function main(): Promise<void> {
 }
 
 main().catch(async (error: unknown) => {
+  const outcome = classifyGateFailure(error);
   const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  // A failed run used to leave only a text blob: no status, no machine-checkable
+  // record, and the same exit code for "no Chromium on this machine" as for a
+  // product defect. The report is written even when the run stopped early, with
+  // the reason and the checks that did complete.
   try {
     writeFileSync(
-      join(OUT, 'failure.txt'),
-      `${message}\n\nchecks completed:\n${checks.join('\n')}\n`,
+      join(OUT, 'report.json'),
+      `${JSON.stringify(
+        {
+          ok: false,
+          status:
+            outcome.kind === 'blocked' ? `BLOCKED: ${outcome.reason}` : `FAILED: ${outcome.reason}`,
+          outcome: outcome.kind,
+          completed_checks: checks.length,
+          checks,
+          generated_at: new Date().toISOString(),
+        },
+        null,
+        2,
+      )}\n`,
     );
   } catch {
     // evidence is best effort
   }
-  console.error(`\nFAIL: ${message}`);
+  try {
+    writeFileSync(
+      join(OUT, 'failure.txt'),
+      `${outcome.kind === 'blocked' ? 'BLOCKED (prerequisite, nothing measured)\n' : ''}${message}\n\nchecks completed:\n${checks.join('\n')}\n`,
+    );
+  } catch {
+    // evidence is best effort
+  }
+  console.error(`\n${describeGateOutcome(outcome)}`);
+  if (outcome.kind === 'failed') console.error(message);
   console.error(`evidence: ${OUT}`);
-  process.exitCode = 1;
+  process.exitCode = outcome.exitCode;
 });

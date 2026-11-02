@@ -50,6 +50,7 @@ import {
 } from '../packages/shared/src/media.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 import { describeBundleIdentity, verifyBuildProvenance } from './lib/build-provenance.js';
+import { classifyGateFailure, describeGateOutcome } from './lib/gate-outcome.js';
 
 const ROOT = process.cwd();
 const TOKEN = 'browser-check-shared-secret-1234567890';
@@ -59,6 +60,13 @@ const EVIDENCE = join(ROOT, 'test-results', 'batchd-playback-auth', STAMP);
 const checks: string[] = [];
 const observations: Record<string, unknown> = {};
 let evidenceWritten = false;
+// The report has to be able to say "this run did not measure what it came to
+// measure", and say why. A status of "live browser results" described the
+// evidence directory, not the outcome, and a blocked run looked the same as a
+// passing one.
+let reportStatus = 'PASS';
+let reportOk = true;
+let stoppedAt: string | null = null;
 
 function check(label: string): void {
   checks.push(label);
@@ -677,7 +685,10 @@ function writeEvidence(): void {
   mkdirSync(EVIDENCE, { recursive: true });
   const report = {
     kind: 'Batch D token-gated source playback, audio + video (production builds, offline, no provider)',
-    status: checks.length > 0 ? 'live browser results' : 'no checks completed',
+    ok: reportOk,
+    status: reportStatus,
+    completed_checks: checks.length,
+    ...(stoppedAt === null ? {} : { stopped_at: stoppedAt }),
     generated_at: new Date().toISOString(),
     calls: { vision: 0, sam: 0, coding: 0, imageGeneration: 0, transcription: 0, clip: 0 },
     scope: 'offline-browser',
@@ -1058,13 +1069,22 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  observations.error = error instanceof Error ? error.message : String(error);
+  const outcome = classifyGateFailure(error);
+  reportOk = false;
+  reportStatus =
+    outcome.kind === 'blocked' ? `BLOCKED: ${outcome.reason}` : `FAILED: ${outcome.reason}`;
+  stoppedAt = outcome.reason;
+  console.error(describeGateOutcome(outcome));
+  if (outcome.kind === 'failed' && error instanceof Error && error.stack) {
+    console.error(error.stack);
+  }
+  observations.error = outcome.reason;
+  observations.outcome = outcome.kind;
   evidenceWritten = false;
   try {
     writeEvidence();
   } catch {
     /* evidence is best effort on failure */
   }
-  process.exitCode = 1;
+  process.exitCode = outcome.exitCode;
 });

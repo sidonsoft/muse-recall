@@ -588,6 +588,36 @@ in its own checkout, so its server bundle hash for the same commit differs (`ad6
 the author's `c9d6c613…`) because the manifest carries build-time metadata; the web hash
 matched byte for byte.
 
+### After the review: the items it left actionable, and what they turned out to be
+
+The six findings were fixed and committed. Checking the review's *claims* rather than only its
+list turned up four more, all closed:
+
+- **`KI-69` — the three offline browser gates could not say how they ended.** Batch C's
+  `summary.json` had no status field at all, Batch D's report (the one this document cites for
+  release identity) recorded `status: "live browser results"`, and a missing Chromium exited 1
+  with a stack like a product defect. The review's own count — `verify:batchc-ui` at **21** checks
+  where the script has 22 call sites at every commit in the range — could be neither confirmed nor
+  refuted from evidence. `scripts/lib/gate-outcome.ts` now classifies an ended run (blocked →
+  exit 2, failed → exit 1, pass → 0) and every gate writes that classification into its evidence.
+  Measured both ways: an exported provider key produces
+  `BLOCKED before measuring anything: paid provider keys are set in the environment…` with exit 2
+  and `summary.json` at `ok: false`, `completed_checks: 0`; the same gate without keys produces
+  `PASS: 22 checks` with `ok: true`, `status: "PASS"`, `completed_checks: 22`.
+- **`KI-70` — capability probes paid for models the ledger could not name.** The `transcribe`
+  probe posts multipart with `model` inside the `request` part, so its trace line read
+  `model=(none)`: quota spent, model unknown. Every probe now states `traceModel`. Pinned with a
+  real adapter and a scripted fetch.
+- **`KI-70` — the ledger-damage parser fix shipped with no test.** Seven tests now pin it,
+  including the review's own probe (one answered call plus two unreadable `[media-trace]` lines)
+  and the case where unmarked server output must *not* be counted as damage.
+- **A suite run whose failure name I did not capture.** The first full run after these changes
+  reported `1 failed | 1521 passed`; my grep pattern omitted `FAIL`, so the failing test never
+  appeared in the output. Four subsequent full runs (one through `pnpm run verify`, three direct)
+  were green: **120 files / 1 522 passed / 3 skipped**. The failure is recorded as unreproduced
+  rather than dismissed — and the harness lesson is the one `KI-57` already taught: a gate's
+  output has to name what failed, even when the person reading it is me.
+
 ### The third review: `f79dfb7..d00d4d2`, verdict needs-work
 
 A fresh `codex/gpt-6.1-sol` session at medium effort reviewed the KI-56 backup work, the ledger

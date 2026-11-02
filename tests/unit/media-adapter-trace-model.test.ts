@@ -4,6 +4,10 @@ import {
   type MediaFetch,
   traceModelName,
 } from '../../apps/server/src/media/adapter.js';
+import {
+  MEDIA_PROBE_MODELS,
+  probeMediaCapability,
+} from '../../apps/server/src/media/capabilities.js';
 
 /**
  * A live run must be able to say which model every paid dispatch used. The image
@@ -84,5 +88,37 @@ describe('media trace names the model a dispatch pays for', () => {
     );
     expect(traceModelName({}, { model: 'sam-3.1' })).toBe('sam-3.1');
     expect(traceModelName({ traceModel: '   ' }, {})).toBe('(none)');
+  });
+});
+
+describe('a capability probe names the model it paid for', () => {
+  it('names the model of a transcribe probe, whose model travels inside a multipart part', async () => {
+    // Probes are not free. `/v1/asr/transcribe` carries `model` inside the
+    // multipart `request` part, so the probe ledger line used to read
+    // `model=(none)`: the run knew it had spent a call and could not say on what.
+    const out = capture();
+    const adapter = new MediaAdapter({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      traceAttempts: true,
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ text: 'a red square' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    });
+    const probe = await probeMediaCapability('transcribe', adapter);
+    out.restore();
+    expect(probe.status).toBe('available');
+    const trace = out.lines.filter((line) => line.includes('[media-trace]'));
+    expect(trace.some((line) => line.includes('path=/v1/asr/transcribe'))).toBe(true);
+    expect(
+      trace.some(
+        (line) =>
+          line.includes('path=/v1/asr/transcribe') &&
+          line.includes(`model=${MEDIA_PROBE_MODELS.transcribe}`),
+      ),
+    ).toBe(true);
+    expect(trace.some((line) => line.includes('model=(none)'))).toBe(false);
   });
 });
