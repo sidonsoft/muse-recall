@@ -97,6 +97,8 @@ async function harness(
   runtimeCheck: (html: string) => Promise<{
     ok: boolean;
     errors: string[];
+    /** Loads the allowlist permitted but the network refused. */
+    remote_failures?: string[];
     browser?: string | null;
     browser_selection?: ForgeRuntimeBrowserSelection;
   }> = async () => ({
@@ -763,6 +765,60 @@ describe('forge workflow', () => {
 
     const after = await job(h.app, generated);
     expect(after.status).toBe('failed');
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('names the approved CDN when the game engine could not be fetched', async () => {
+    // Copied from what the real verifier returns when the permitted engine load
+    // fails (see pnpm verify:runtime): the browser's own errors are only
+    // "Phaser is not defined" plus a reason code with no host in it. A reviewer
+    // has to be told which host could not be reached, because that is the
+    // difference between a broken game and a machine with no network.
+    const engineFailure =
+      'A load the allowlist permitted failed (https://cdn.jsdelivr.net): net::ERR_UNSAFE_PORT. ' +
+      'An application that gets its engine from the approved CDN cannot be approved while that host is unreachable.';
+    const h = await harness('auto', {}, async () => ({
+      ok: false,
+      errors: [
+        'The application did not render visible content.',
+        'No canvas element was created.',
+        engineFailure,
+        'Failed to load resource: net::ERR_UNSAFE_PORT',
+        'Phaser is not defined',
+      ],
+      remote_failures: [engineFailure],
+    }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(422);
+    const issues = approve.json().error.issues as string[];
+    expect(issues.join(' ')).toContain('https://cdn.jsdelivr.net');
+    expect(issues.join(' ')).toContain('approved CDN');
+    // Origin only: the path is the artifact's business, and a query string built
+    // from page data must not be echoed into a job record.
+    expect(issues.join(' ')).not.toContain('phaser.min.js');
+    for (const issue of issues) expect(issue.length).toBeLessThanOrEqual(300);
+
+    const recorded = await h.app.inject({ method: 'GET', url: `/api/forge/jobs/${generated}` });
+    const failed = recorded.json().data as {
+      status: string;
+      version: number | null;
+      approval_verification: { runtime: { errors: string[] } } | null;
+    };
+    expect(failed.status).toBe('failed');
+    expect(failed.version).toBeNull();
+    expect(failed.approval_verification?.runtime.errors.join(' ')).toContain(
+      'https://cdn.jsdelivr.net',
+    );
+
     const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
     expect(state.json().data.state.current_version).toBeNull();
   });

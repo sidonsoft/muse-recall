@@ -144,6 +144,12 @@ If runtime verification fails, the job becomes `failed` with bounded diagnostics
 created. The same is true when the browser cannot launch; the error is actionable rather than
 silently falling back.
 
+A game that loads Phaser from the approved CDN needs that host reachable **at approval time** too.
+When the permitted load fails, the diagnostics say so — `A load the allowlist permitted failed
+(https://cdn.jsdelivr.net): <reason>` — instead of leaving `Phaser is not defined` as the only clue.
+On a machine with no network, self-contained applications still approve normally while games are
+refused; KI-53 in `docs/KNOWN_ISSUES.md` records the measurement.
+
 ### What the approval check does not prove
 
 It is a **load-time** verification. It does not click controls, play a game, inspect pixels, test

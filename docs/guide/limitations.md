@@ -110,6 +110,11 @@ See [HTML Studio](html-studio.md) for the review workflow and the seven rules.
 - **One `index.html` only.** No multi-file project, package installation, build step, server-side
   execution or arbitrary host. Network assets are limited to `cdn.jsdelivr.net`; games may use
   Phaser 3 from that CDN.
+  That CDN must be **reachable** for a game to work: the Studio preview and the approval runtime
+  check both load the script. With the host unreachable the preview shows an empty frame and no
+  in-frame explanation (Studio cannot read a sandboxed document's console), and approval is
+  refused with the origin named in the diagnostics. KI-53 records what was measured; a genuinely
+  offline game would need the engine vendored into the server, which this beta does not do.
 - **Export is not a self-contained bundle.** The download is the artifact as-is. A CDN reference
   still needs network access, and opening the file from disk runs it **without** the Studio sandbox.
 - **Preview storage is temporary.** The sandboxed preview installs an in-document storage shim

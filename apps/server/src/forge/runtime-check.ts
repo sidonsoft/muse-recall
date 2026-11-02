@@ -25,6 +25,13 @@ export interface RuntimeCheckResult {
   errors: string[];
   /** Requests aborted by the verification allowlist (credentials stripped). */
   blocked: string[];
+  /**
+   * Loads the allowlist *permitted* but the network refused, named by origin.
+   * An approved-CDN failure is the difference between "the game is broken" and
+   * "this machine cannot reach the engine the game needs", and a reviewer can
+   * only act on the second one if the report says so.
+   */
+  remote_failures: string[];
   /** Browser identity/version, when the checker can report it. */
   browser?: string | null;
   /** Explicit launch policy and bounded diagnostics. */
@@ -51,6 +58,23 @@ export function isAllowedRuntimeRequest(raw: string): boolean {
   if (isLocalScheme(url.protocol)) return true;
   if (url.protocol !== 'https:') return false;
   return ALLOWED_REMOTE_HOSTS.has(url.hostname.toLowerCase());
+}
+
+/**
+ * How a permitted-but-failed load is reported. Origin only: the path and any
+ * query the generated page built are deliberately dropped, the same rule the
+ * blocked-request text follows. 300 is the shared schema bound for one error.
+ */
+export function remoteLoadFailure(origin: string, errorText: string): string {
+  const reason = boundedRedacted(
+    errorText.trim().length > 0 ? errorText : 'the connection failed',
+    80,
+  );
+  return boundedRedacted(
+    `A load the allowlist permitted failed (${origin}): ${reason}. ` +
+      'An application that gets its engine from the approved CDN cannot be approved while that host is unreachable.',
+    MAX_DIAGNOSTIC_TEXT,
+  );
 }
 
 type BrowserPolicy = 'managed' | 'chrome';
@@ -150,6 +174,7 @@ export async function checkGameRuntime(
       rendered: false,
       errors: [launched.error],
       blocked: [],
+      remote_failures: [],
       browser: null,
       browser_selection: launched.selection,
     };
@@ -169,7 +194,20 @@ export async function checkGameRuntime(
     const page = await browser.newPage();
     const errors: string[] = [];
     const blocked: string[] = [];
+    const remoteFailures: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    // A load the allowlist permitted but the network refused. Requests the
+    // allowlist rejects never reach here: they are recorded in `blocked`.
+    page.on('requestfailed', (request) => {
+      const url = request.url();
+      if (!isAllowedRuntimeRequest(url)) return;
+      try {
+        const line = remoteLoadFailure(new URL(url).origin, request.failure()?.errorText ?? '');
+        if (!remoteFailures.includes(line)) remoteFailures.push(line);
+      } catch {
+        // Unparseable URL: the browser's own page/console error still reports it.
+      }
+    });
     page.on('console', (message) => {
       if (message.type() !== 'error') return;
       const text = message.text();
@@ -227,7 +265,7 @@ export async function checkGameRuntime(
         return 'Blocked network request.';
       }
     });
-    const failure = [...blockedErrors, ...errors];
+    const failure = [...blockedErrors, ...remoteFailures, ...errors];
     const reason =
       canvas || rendered
         ? []
@@ -241,6 +279,7 @@ export async function checkGameRuntime(
       rendered,
       errors: [...reason, ...failure],
       blocked,
+      remote_failures: remoteFailures,
       browser: browserIdentity,
       browser_selection: selection,
     };

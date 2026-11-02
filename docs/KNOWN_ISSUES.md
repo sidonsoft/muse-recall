@@ -729,29 +729,58 @@ screens in the managed browser, and fails on any console error on any screen. It
 is wired into both browser legs of CI, because dev-mode warnings are a class that
 production-bundle gates cannot cover.
 
-## KI-53 — a generated game needs the CDN, so "local" is not the same as "offline" (open)
+## KI-53 — a generated game needs the CDN, so "local" is not the same as "offline" (measured; dependency remains by design)
 
-**Observed.** A freshly installed app, opened for the first time with the offline
-echo provider, contacts `https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js`.
-This is the product's own documented choice: the generation prompt names that
-script, the preview CSP allowlists `script-src … https://cdn.jsdelivr.net`, and
-`apps/server/src/forge/runtime-check.ts` treats that one host as the only
-permitted remote.
+**Observed.** A freshly installed app, opened for the first time with the offline echo provider,
+requests `https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js`. This is the product's own
+documented choice: the generation prompt names that script, the preview CSP allowlists
+`script-src … https://cdn.jsdelivr.net`, and `apps/server/src/forge/runtime-check.ts` treats that
+one host as the only permitted remote. This machine reaches it: HTTP 200, 1 181 917 bytes, 0.5 s.
 
-**Consequence.** Local does not mean offline. With no network, the Phaser-backed
-artifact cannot fetch its engine, so a game's behaviour depends on an external
-service that a loopback beta otherwise needs none of. `docs/guide/limitations.md`
-already records the CDN allowlist and the same dependency for exported files;
-this entry records that the **Studio preview** has it too, on first paint, with no
-project of its own involved.
+**What was measured on 2026-11-02**, in managed Chromium, with the engine request failed while the
+allowlist still permitted it:
 
-**Not measured.** What a game does when the CDN is unreachable was not observed —
-the request succeeded in every run recorded here. A blank preview, a partially
-rendered shell, and an error state are different outcomes and are not conflated
-here.
+| Surface | Engine reachable | Engine load fails |
+| --- | --- | --- |
+| Working Phaser scene | canvas created, visible content, no errors | no `<canvas>` at all |
+| Page signal | — | page error `Phaser is not defined`; console `Failed to load resource: net::ERR_*` |
+| Approval | passes verification | **refused**: `422 runtime_failed`, no version, `current_version` stays null |
+| Studio preview | renders | blank frame, and Studio has **no** signal about why |
 
-**What would close it.** Vendor Phaser into the server's static bundle and point
-generated artifacts (and the CSP) at the local copy, or add a gate that blocks the
-CDN and asserts which of the outcomes above the product actually produces. Either
-way the first-run gate now records the outbound hosts it saw, so a silent change in
-this dependency shows up as a check line rather than a footnote.
+Three things follow, and the third is the one that was wrong.
+
+1. The verifier already refused such an artifact, so no broken game was ever approved. Good.
+2. The dependency is real: approval of a game needs outbound HTTPS to that host, not just the
+   browser. Gates that approve a Phaser artifact have always depended on egress, which an earlier
+   version of `docs/MULTIMODAL_STUDIO_STATUS.md` described as "no external network". That wording
+   was wrong and is corrected: the gates make no **provider** call and refuse to run when a provider
+   credential is present; the browser gates do reach the one allowlisted host.
+3. **The refusal blamed the artifact instead of the network.** Reported errors were "The
+   application did not render visible content", "No canvas element was created", an unattributed
+   `Failed to load resource: net::ERR_*` and `Phaser is not defined`. Nothing named the host, so a
+   user with no connectivity was told their game was broken. `checkGameRuntime` now records loads
+   the allowlist permitted but the network refused (`requestfailed` on an allowed origin) and
+   reports them as `A load the allowlist permitted failed (<origin>): <reason>` — origin only, never
+   the path or a query the generated page built from page data, the same rule the blocked-request
+   text follows, bounded to the schema's 300 characters and redacted. `RuntimeCheckResult` gained
+   `remote_failures`; the line reaches the job's `validation.issues` and so the review panel.
+   Blocked hosts are still reported through `blocked`, never as a permitted failure, so this cannot
+   launder a refused destination into a network complaint.
+
+**Net added.** `pnpm verify:runtime` grew from three cases to five, and its engine-failure case needs
+no egress: the artifact requests the approved host on port 1, which the allowlist permits and the
+browser refuses to attempt, producing a permitted-load-failure deterministically. Assertions require
+the refusal to name `https://cdn.jsdelivr.net` and forbid the report from leaking `phaser.min.js`.
+A blocked host must not appear in `remote_failures`, and a scene that loads its engine and then
+throws must not be blamed on the CDN. Exit codes are separated honestly: `1` is a verifier defect,
+`2` means the approved CDN is unreachable here, so the reachable-engine cases cannot be measured —
+which is the same fact this entry is about, reported rather than hidden.
+
+**Still open, deliberately.** The dependency itself. Closing it means vendoring Phaser into the
+server's static bundle and pointing the prompt, the CSP and the runtime allowlist at the local copy
+(~1.18 MB, one version, its own update and licence questions), or accepting that games need network.
+The preview surface also stays unsatisfying: a sandboxed preview document gives Studio no console
+access, so a game that cannot fetch its engine shows an empty frame with no in-frame message. A
+message there needs a bridge inside the preview document — a separate change with its own review,
+not something to bolt onto this fix.
+

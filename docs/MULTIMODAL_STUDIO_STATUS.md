@@ -111,6 +111,7 @@ not exist until they were written and paid for. What remains:
 | Review quality on a **Muse-built** app | the live review probe used a frame of a hand-authored app whose contents were known by construction. Judging a real Muse artifact — where "correct" is not precomputable — is unmeasured, and is the reason review stays advisory | a live review run against a frame from an approved generation; no automatic score is possible, a human must read the findings |
 | Vision draft **usefulness** | the live vision call returned three drafts and one was approved offline, but no gate measures whether drafts are good guidance | human review of `test-results/batchc-live/*/02-vision-drafts.png` |
 | ~~Fresh-install demonstration (§5 gate 7)~~ | **done 2026-11-02 at `1d32761`**: clean clone → frozen-lockfile install → aggregate check → production bundles naming the clone's own commit → documented first run → both restore drills → production browser gate inside the clone → a live smoke that refuses without a credential | `pnpm verify:fresh-install`, PASS 17 checks; `docs/Fresh-Install-Rehearsal.md` |
+| Offline behaviour of a generated game | measured on 2026-11-02: no canvas, approval refused, preview shows a blank frame with no message; the refusal now names the CDN origin | closing it is a product decision: vendor Phaser locally, or accept that games need network; a preview-level message needs an in-document bridge |
 | Multi-server idempotency | the in-flight dedup is per-process; two servers could both pay for one key | documented as a single-server beta limit; needs a shared store to close |
 
 Already closed by live runs, with the evidence named above:
@@ -125,7 +126,13 @@ Documentation states these gaps rather than leaving them implied:
 
 ## Verified at the commit the gates ran against
 
-Offline: no provider key, no external network, no paid call. The numbers below are the
+Offline: no provider key and no paid model call. That phrase needs its precise meaning stated,
+because it was previously written as "no external network" and that is wrong. The gates make no
+provider request and refuse to start when a provider credential is present; but the browser gates
+that approve or preview a Phaser artifact reach the one host the product allowlists — this machine
+answers `cdn.jsdelivr.net` with HTTP 200 in 1 181 917 bytes. `pnpm verify:runtime` now says so
+instead of hiding it, and exits 2 when that host is unreachable rather than reporting a product
+failure. The numbers below are the
 gates run at `1d32761`, the commit that fixed KI-52 and added the first-run checks. This
 documentation commit moves the build *identity* again without moving bundle contents
 (docs are not hashed inputs); the identity pair for the newest commit is recorded by the
@@ -152,6 +159,11 @@ bundles that do not match the checkout running it.
   in-script H.264 clip, blob bytes hash-matched to the stored source, one credential-free
   download per source in each trust model, and the running server proving it is the
   verified clean-tree build.
+- `pnpm verify:runtime`: **PASS 5 checks**, including the case where the allowlist permits an
+  engine load and the network refuses it — the approval refusal must name
+  `https://cdn.jsdelivr.net` and must not leak the script path; a blocked host must never be
+  reported as a permitted failure; and a scene that throws after its engine loads must not be
+  blamed on the CDN (KI-53).
 - `pnpm verify:batchc-ui`: PASS 22 checks. `pnpm verify:batche-review-ui`: PASS 20 checks,
   including the one-paid-call check and the stale-selection refusal.
   `pnpm verify:studio-workflow`: 56 checks.
@@ -194,6 +206,11 @@ expected signature of the `StudioView` key fix and not of the documentation.
   prerequisite check cannot certify a tool the run never calls. `BATCHD_SMOKE_FIXTURE_ONLY=1` runs that plumbing check with no network
   call at all; without `FORGE_MUSE_API_KEY` the live mode reports `BLOCKED before any
   provider call` and exits 2.
+- **`cdn.jsdelivr.net` reachable** for the gates that approve or preview a Phaser artifact
+  (`verify:runtime`, `verify:studio-workflow`, `verify:batchc-ui`): the generated artifact's engine
+  is a network dependency, and `verify:runtime` exits 2 with the reason when the host is
+  unreachable, rather than reporting a verifier defect. The game engine is a real dependency of a
+  "local" beta — KI-53.
 - **No provider key** for any gate listed above; the Batch C/D/E gates exit 2 if one
   is present, so a green run is also proof that no paid call happened.
 - **Rehearsal refusal**: `verify:fresh-install` and `verify:first-run` refuse outright if
@@ -302,12 +319,16 @@ limits. Two findings:
   per panel, and `pnpm verify:first-run` (documented dev start → open `:5173` → walk the
   documented screens → fail on any console error) runs on both CI browser legs, because
   dev-mode React is a surface those gates structurally cannot see.
-- **KI-53, recorded not fixed.** The fresh app requests Phaser from `cdn.jsdelivr.net`,
-  the one host the product allowlists in its prompt, its preview CSP and its runtime
-  network check. Local therefore is not offline: a game preview depends on an external
-  service the rest of the beta needs none of. The gate now names the outbound hosts it saw
-  instead of reporting a clean "no network" line, and behaviour when the CDN is
-  unreachable is unmeasured.
+- **KI-53, measured and partly fixed.** The fresh app requests Phaser from `cdn.jsdelivr.net`,
+  the one host the product allowlists in its prompt, its preview CSP and its runtime network check.
+  Local therefore is not offline. Measured since: with the permitted engine load failed, the
+  artifact creates no canvas, approval is refused (`422 runtime_failed`, no version), and the Studio
+  preview shows a blank frame with no signal. The refusal previously blamed the artifact
+  (`Phaser is not defined`, "did not render visible content") and never named the host, so a user
+  with no connectivity was told their game was broken; `checkGameRuntime` now reports
+  `A load the allowlist permitted failed (<origin>)`, and `verify:runtime` grew the no-egress case
+  that proves it. The dependency itself stays: vendoring Phaser or accepting the dependency is a
+  product decision, not a bug fix.
 
 ## What running against live providers changed
 

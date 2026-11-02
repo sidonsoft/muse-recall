@@ -66,12 +66,14 @@ React strips that warning, so four production-bundle gates and CI's browser legs
 silent about a defect a newcomer sees on the first screen. Keys are now prefixed per
 panel; `verify:first-run` exists so the class cannot regress.
 
-**KI-53 (recorded, not fixed).** The fresh app requests Phaser from
+**KI-53 (recorded here, measured and partly fixed since).** The fresh app requests Phaser from
 `cdn.jsdelivr.net` — the host the product allowlists in its prompt, its preview CSP and
 its runtime network check. So the Studio preview of a game depends on the network even
 though everything else about the beta is loopback. The gate now names the outbound hosts
 it saw instead of reporting a clean "no network" line. What happens when the CDN is
-unreachable was **not** measured.
+unreachable was not measured at rehearsal time; it has since been measured, and the approval
+refusal was found to blame the artifact instead of the network — see KI-53 for what the two surfaces
+actually do and what `verify:runtime` now proves.
 
 ## What the rehearsal does not prove
 
