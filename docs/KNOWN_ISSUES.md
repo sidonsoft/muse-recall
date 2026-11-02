@@ -695,3 +695,63 @@ decodes the stored bytes with a real browser and refuses when the manifest
 disagrees with `naturalWidth`/`naturalHeight` — that comparison is what surfaced
 this, and it is the reason the measurement gate reads the bytes the product
 stored rather than the bytes the transport returned.
+## KI-52 — three Studio panels shared one React key, and only development React said so (closed)
+
+**Symptom.** On a freshly installed app opened in dev mode, the console logged
+`Encountered two children with the same key` eight times, with the offending key
+being the current project id.
+
+**Root cause.** `StudioView` remounts `MediaPanel`, `VoiceVideoPanel` and
+`StudioMemory` when the project changes, by giving each `key={projectId}` — added
+in the Batch C/D work so the previous project's thumbnails and prompt draft
+cannot survive a switch. Those three elements are siblings in the same children
+array, so the array held three identical keys. React requires keys to be unique
+*among siblings*, not merely per component.
+
+**Why no gate saw it.** React strips these warnings from production builds. Every
+browser gate in this repository runs against production bundles (`verify:batchc-ui`,
+`verify:batche-review-ui`, `verify:studio-workflow`, `verify:batchd-playback-auth`),
+and CI builds production artifacts before running them. The defect was therefore
+invisible to exactly the checks that look cleanest. It surfaced on the first run
+of `pnpm verify:fresh-install`.
+
+**Why it matters anyway.** A duplicated sibling key is not cosmetic: it tells the
+reconciler that two different elements are the same item, which is the same class
+of bug Batch D fixed for playback state — one element's state attributed to
+another, here visible as panels that may not remount when the project does.
+
+**Fix.** The keys are prefixed per panel (`media:` / `voice:` / `memory:`), which
+keeps the documented remount behaviour and makes the siblings distinguishable.
+
+**Net added.** `verify:first-run` runs the command README documents —
+`MODEL_PROVIDER=echo pnpm dev`, open `http://127.0.0.1:5173` — walks the documented
+screens in the managed browser, and fails on any console error on any screen. It
+is wired into both browser legs of CI, because dev-mode warnings are a class that
+production-bundle gates cannot cover.
+
+## KI-53 — a generated game needs the CDN, so "local" is not the same as "offline" (open)
+
+**Observed.** A freshly installed app, opened for the first time with the offline
+echo provider, contacts `https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js`.
+This is the product's own documented choice: the generation prompt names that
+script, the preview CSP allowlists `script-src … https://cdn.jsdelivr.net`, and
+`apps/server/src/forge/runtime-check.ts` treats that one host as the only
+permitted remote.
+
+**Consequence.** Local does not mean offline. With no network, the Phaser-backed
+artifact cannot fetch its engine, so a game's behaviour depends on an external
+service that a loopback beta otherwise needs none of. `docs/guide/limitations.md`
+already records the CDN allowlist and the same dependency for exported files;
+this entry records that the **Studio preview** has it too, on first paint, with no
+project of its own involved.
+
+**Not measured.** What a game does when the CDN is unreachable was not observed —
+the request succeeded in every run recorded here. A blank preview, a partially
+rendered shell, and an error state are different outcomes and are not conflated
+here.
+
+**What would close it.** Vendor Phaser into the server's static bundle and point
+generated artifacts (and the CSP) at the local copy, or add a gate that blocks the
+CDN and asserts which of the outcomes above the product actually produces. Either
+way the first-run gate now records the outbound hosts it saw, so a silent change in
+this dependency shows up as a check line rather than a footnote.

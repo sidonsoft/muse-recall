@@ -370,8 +370,12 @@ async function main(): Promise<void> {
   if (runIssues.length > 0)
     fail('the documented first run does not work in a clean install', runIssues.join('; '));
   pass(
-    'the first run serves a mounted app on the echo provider, with no non-local requests',
-    `provider ${String(observation.provider)}, environment ${String(observation.environment)}`,
+    'the first run serves a mounted app on the echo provider, contacting nothing outside the allowlist',
+    `provider ${String(observation.provider)}, environment ${String(observation.environment)}, outbound ${
+      observation.nonLocalRequests.length > 0
+        ? [...new Set(observation.nonLocalRequests)].join(',')
+        : 'none'
+    }`,
   );
   if (!firstRun.portsReleased) {
     fail(

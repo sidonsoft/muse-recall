@@ -110,7 +110,7 @@ not exist until they were written and paid for. What remains:
 | Image asset **inside a generation** — image assets embedded in a shipped artifact from a live pipeline | embedding, CSP and byte identity are proven with live image bytes *and* with fixture-driven generation, but no run has yet gone live image → asset → coding model → artifact in one chain | `pnpm verify:media-live-smoke` (Studio journey incl. code and rollback; spends vision + coding calls, so it needs its own authorization) |
 | Review quality on a **Muse-built** app | the live review probe used a frame of a hand-authored app whose contents were known by construction. Judging a real Muse artifact — where "correct" is not precomputable — is unmeasured, and is the reason review stays advisory | a live review run against a frame from an approved generation; no automatic score is possible, a human must read the findings |
 | Vision draft **usefulness** | the live vision call returned three drafts and one was approved offline, but no gate measures whether drafts are good guidance | human review of `test-results/batchc-live/*/02-vision-drafts.png` |
-| Fresh-install demonstration (§5 gate 7) | not run: no clean-clone install, first-run, browser and backup/restore demonstration on a current build | a clean-clone rehearsal against the current commit |
+| ~~Fresh-install demonstration (§5 gate 7)~~ | **done 2026-11-02 at `1d32761`**: clean clone → frozen-lockfile install → aggregate check → production bundles naming the clone's own commit → documented first run → both restore drills → production browser gate inside the clone → a live smoke that refuses without a credential | `pnpm verify:fresh-install`, PASS 17 checks; `docs/Fresh-Install-Rehearsal.md` |
 | Multi-server idempotency | the in-flight dedup is per-process; two servers could both pay for one key | documented as a single-server beta limit; needs a shared store to close |
 
 Already closed by live runs, with the evidence named above:
@@ -125,48 +125,53 @@ Documentation states these gaps rather than leaving them implied:
 
 ## Verified at the commit the gates ran against
 
-Offline, no provider key, no external network. Gates run at `8fed969`; the
-bundles for that commit were rebuilt first and the identity gate records them:
+Offline: no provider key, no external network, no paid call. The numbers below are the
+gates run at `1d32761`, the commit that fixed KI-52 and added the first-run checks. This
+documentation commit moves the build *identity* again without moving bundle contents
+(docs are not hashed inputs); the identity pair for the newest commit is recorded by the
+identity gate named below, and `verify:batchd-playback-auth` refuses to run a gate against
+bundles that do not match the checkout running it.
 
-- `pnpm run verify` (lint → product typecheck → test-scope typecheck → Vitest)
-  passes as one command: **110 files, 1397 passed, 3 skipped, 0 failed**.
-- `npx biome check .`: **0 errors**, 3 warnings, 15 infos. See the correction
-  below — this gate had four errors at HEAD and my reports of "0 errors" were
-  misreads of the output tail.
-- `pnpm run typecheck:tests`: exits 0 (KI-50).
-- **Running build identity** (`test-results/batchd-playback-auth/2026-11-02-0456`):
-  manifest commit `8fed96980cbe1ac96af1e27eae6ec4a2d56bf830`, `treeClean: true`,
-  server `aaf5e74f21ff00ef112c7c5c79a931c158b7717272edf280913dd8c718989972`,
-  web `53bb67170dbdfac6ec0297839505bfd172fa7414fcef03a792dd7f61c5f98306`.
-- `pnpm verify:batchd-playback-auth`: **PASS 15 checks** — real `<video>` decode
-  of the generated H.264 clip, blob bytes hash-matched to the stored source, one
-  credential-free download per source in each trust model.
-- `pnpm verify:batchc-ui`: **PASS 22 checks**. `pnpm verify:studio-workflow`:
-  **56 checks passed** (`studio-workflow-ysfm6v`). `pnpm verify:batche-review-ui`:
-  **PASS 20 checks**, including the one-paid-call check and the stale-selection
-  refusal.
+- `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
+  Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
+  `pnpm run typecheck:tests` exit 0, Vitest **112 files / 1 410 passed / 3 skipped / 0
+  failed**. The lint counts are read from Biome's summary line, not from an output tail —
+  a previous report of "0 errors" was a tail misread while HEAD had four errors.
+- `pnpm verify:fresh-install`: **PASS 17 checks** at `1d32761`
+  (`test-results/fresh-install/2026-11-02-0613/report.json`). A clean clone of this
+  repository installed with `--frozen-lockfile`, ran the aggregate check, and built
+  production bundles that name the **clone's own commit** on a clean tree: server
+  `26f285ab601a…`, web `065ee809a766…`. Then the documented first run, both restore
+  drills, and the production browser gate — inside the clone.
+- `pnpm verify:first-run`: **PASS 4 checks** (`test-results/first-run/2026-11-02-0612`):
+  `MODEL_PROVIDER=echo pnpm dev`, `http://127.0.0.1:5173` in managed Chromium, mounted
+  app on the `echo` provider with `environment: development`, HTML Studio / Memory /
+  Conversations / System all reachable with a clean console, outbound hosts limited to the
+  allowlisted Phaser CDN, and no listener left on `8787`/`5173` afterwards.
+- `pnpm verify:batchd-playback-auth`: PASS 15 checks — real `<video>` decode of the
+  in-script H.264 clip, blob bytes hash-matched to the stored source, one credential-free
+  download per source in each trust model, and the running server proving it is the
+  verified clean-tree build.
+- `pnpm verify:batchc-ui`: PASS 22 checks. `pnpm verify:batche-review-ui`: PASS 20 checks,
+  including the one-paid-call check and the stale-selection refusal.
+  `pnpm verify:studio-workflow`: 56 checks.
 - `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
-  **PASS 4 checks, no network** (`test-results/batchd-live/2026-11-02-0456`).
-- `pnpm verify:image-live-smoke` with `IMAGE_SMOKE_BOOT_ONLY=1`: exits 0 without
-  dispatching (live gates refuse to spend a call unless a key is present).
-- `pnpm verify:review-live-smoke` without a key: `live review smoke: unconfigured
-  (need FORGE_MUSE_API_KEY; no call made)`, exit 2.
+  PASS 4 checks with no network. `pnpm verify:image-live-smoke` with
+  `IMAGE_SMOKE_BOOT_ONLY=1` exits 0 without dispatching; `pnpm verify:review-live-smoke`
+  without a key reports `unconfigured (need FORGE_MUSE_API_KEY; no call made)` and exits 2.
 - **Research gates re-ran read-only and reproduce their preserved numbers**:
   `verify:research` (v1 5/16 and 15/16, p=6.351663e-4; v2 0/16 and 15/16,
-  p=5.656481e-8; 32/32 raw output hashes, 72/72 recovered hashes),
-  `verify:research16`, and `verify:research17` (lock metadata `6640e83f3c99…`,
-  as-run analysis hash and p-values matching the preserved values).
-  `eval:guard` and `evidence:phase14a` were **not** run: they regenerate tracked
-  evidence files. Their recorded numbers remain exactly as committed.
+  p=5.656481e-8; 32/32 raw output hashes, 72/72 recovered hashes), `verify:research16`,
+  and `verify:research17` (lock metadata `6640e83f3c99…`, as-run analysis hash and p-values
+  matching the preserved values). `eval:guard` and `evidence:phase14a` were **not** run:
+  they regenerate tracked evidence files, and their committed numbers remain as recorded.
 
-**Identity moves across documentation commits, and the rule is easy to over-read.**
-Documentation is not a hashed build input, but the build *identity* (commit, source
-hash, build time) is baked into the server bundle, so the server hash moves at every
-commit while the web bundle's emitted bytes can stay byte-identical — as they did
-here: web stayed `53bb6717…` from the Batch E work through this stretch while the
-server hash moved at each commit. The gates above ran against bundles rebuilt at
-`d007e7e`; the bundles for this documentation commit are rebuilt after it, and the
-identity gate of the next refresh records that pair.
+**Identity moves across documentation commits, and the rule is easy to over-read.** The
+build identity (commit, source hash, build time) is baked into the server bundle, so the
+server hash moves at every commit, while web bundles are content hashes over web sources —
+so a web-hash change means the web sources changed. Web stayed `53bb6717…` through the
+whole live-acceptance stretch, then moved to `065ee809…` at `1d32761`, which is the
+expected signature of the `StudioView` key fix and not of the documentation.
 
 ## Prerequisites for reproducing the checks
 
@@ -191,6 +196,12 @@ identity gate of the next refresh records that pair.
   provider call` and exits 2.
 - **No provider key** for any gate listed above; the Batch C/D/E gates exit 2 if one
   is present, so a green run is also proof that no paid call happened.
+- **Rehearsal refusal**: `verify:fresh-install` and `verify:first-run` refuse outright if
+  `FORGE_MUSE_API_KEY`, `FORGE_FALLBACK_API_KEY` or `META_API_KEY` is exported, and record
+  only whether credentials are set, never their values.
+- **Free ports `8787` and `5173`** for `verify:first-run` and `verify:fresh-install`: both
+  block and name the occupied port instead of failing inside the app, and neither kills a
+  process it did not start.
 
 ## Release gate position
 
@@ -211,8 +222,13 @@ Still open before a beta cut, none of which is a code question I should answer a
    (`verify:media-live-smoke`, needs vision + coding authorization) and a live
    review of a **Muse-built** app, where no automatic score is possible. Everything
    else in the multimodal list is no longer "configured but unverified".
-2. **Fresh-install demonstration** on each claimed environment with the browser,
-   Node, and ffmpeg prerequisites written down; only this machine has been exercised.
+2. **Fresh-install rehearsal: done here, not elsewhere.** `pnpm verify:fresh-install`
+   rehearses the clean-clone path and passed 17 checks at `1d32761`, with the prerequisites
+   and the environment manifest written down in `docs/Fresh-Install-Rehearsal.md`. What it
+   does **not** cover: any platform other than this `darwin arm64` machine, a cold package
+   cache or restricted network, upgrade paths (existing database, stale `dist/`, leftover
+   `node_modules`), or an installer — the repository ships none, so "fresh install" means
+   "clean clone plus `pnpm install`", which is what the README documents.
 3. **Independent review of the newest commits.** A read-only review of
    `4aa1282`, `7cf3e63`, `5bed18b` and `8148cf0` was carried out by a separate agent
    (verdict: ship-with-fixes); its findings are addressed in `e0cd2eb` and `8250b44`.
@@ -270,6 +286,28 @@ evidence. Each was fixed rather than reworded:
   so typed clients could not see them and validation stripped them. They are in the
   contract now, and the live harness refuses to run against a server that cannot name
   all five media models.
+
+## What rehearsing the first run changed
+
+`pnpm verify:fresh-install` (release gate §5 item 7) passed with 17 checks at `1d32761`,
+and `docs/Fresh-Install-Rehearsal.md` records the steps, the environment manifest and the
+limits. Two findings:
+
+- **KI-52, fixed here.** Three sibling Studio panels each carried `key={projectId}`, so
+  development React logged "Encountered two children with the same key" on every mount.
+  Production React strips those warnings, so the four production-bundle gates and CI's
+  browser legs were silent about a defect a newcomer sees on the first screen — and
+  duplicate sibling keys are the same class of bug Batch D fixed for playback state:
+  mis-keyed siblings make one element's state attributed to another. Keys are now prefixed
+  per panel, and `pnpm verify:first-run` (documented dev start → open `:5173` → walk the
+  documented screens → fail on any console error) runs on both CI browser legs, because
+  dev-mode React is a surface those gates structurally cannot see.
+- **KI-53, recorded not fixed.** The fresh app requests Phaser from `cdn.jsdelivr.net`,
+  the one host the product allowlists in its prompt, its preview CSP and its runtime
+  network check. Local therefore is not offline: a game preview depends on an external
+  service the rest of the beta needs none of. The gate now names the outbound hosts it saw
+  instead of reporting a clean "no network" line, and behaviour when the CDN is
+  unreachable is unmeasured.
 
 ## What running against live providers changed
 
