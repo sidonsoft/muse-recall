@@ -94,6 +94,34 @@ call. Total: 9 paid calls, zero transport retries, and every failure was in this
 repository's code — never a provider refusal. Failed attempts keep their evidence
 directories rather than being deleted, so the cost stays visible.
 
+### Live chain run on 2026-11-02 (`2026-11-02T13-53-08`): image → coding → artifact
+
+Later the same day, the last remaining live gap was closed by one paid run of
+`pnpm verify:media-live-smoke` (21 checks, `test-results/media-live/2026-11-02T13-53-08`):
+a live generated image, approved, edited live, approved as v2, inserted as an
+`muse-asset://` reference into a change request, handed to the real coding model, rendered in
+the staged preview, approved, kept **byte-identical across a server restart**, changed again to
+v3, and rolled back to byte-identical v2 with the image still embedded.
+
+Its cost, read from both accounts rather than asserted:
+
+| rail | measured |
+| --- | --- |
+| media ledger | 1 dispatch on `/v1/images/generations`, 1 on `/v1/images/edits`, attempt 1, HTTP 200, **no other path, no retry** |
+| coding jobs (from each job record) | `generate` 6 calls → v1, `modify` 4 calls → v2 (asset embedded), `modify` 4 calls → v3; all `muse-wonder-1.0`, matching what `/api/meta` reported configuring; cap 15/job |
+
+So this run adds 2 media calls plus 14 coding-internal calls (16 paid calls in total for the
+day, zero transport retries). The version HTML that shipped through the chain is
+`e17df26f578d99f1ca6a5ffcefea26384422490e59d95a64b8662b93cf3f1007`.
+
+That gate had also been the one live gate with no accounting at all, so it was hardened
+first (`711de72`): media trace, zero-retry pin read back from `/api/meta`, an inverse-allowlist
+path policy, a coding account read from the job records, build provenance before any call,
+credential check against log contents, `report.json` plus the isolate on **every** exit path,
+and `MEDIA_LIVE_BOOT_ONLY=1` to validate the harness for free. Then the run's own ledger
+exposed one more defect — the edit dispatch reported `model=(none)` (KI-61) — fixed in `81ad991`
+after the run, so the retained ledger line in that evidence predates the fix.
+
 Everything after `2026-11-01-0755` — the offline resume package, Batch D's
 token-gated playback, Batch E — was verified **without any provider call**. The
 Batch C and D gates refuse to start when `FORGE_MUSE_API_KEY` or
@@ -101,24 +129,26 @@ Batch C and D gates refuse to start when `FORGE_MUSE_API_KEY` or
 
 ## What is not proven, and what would prove it
 
-Four of the five live gaps that this file listed a day ago are now closed (the
-rows marked **closed** below), because the harnesses that would prove them did
-not exist until they were written and paid for. What remains:
+Every live capability gap this file listed two days ago is now closed, because the
+harnesses that would prove them did not exist until they were written and paid for.
+What remains is not a capability gap but a judgement gap (review quality on a
+Muse-built app, vision-draft usefulness) and one documented single-server limit:
 
 | Capability | Gap | Command that records the evidence |
 | --- | --- | --- |
-| Image asset **inside a generation** — image assets embedded in a shipped artifact from a live pipeline | embedding, CSP and byte identity are proven with live image bytes *and* with fixture-driven generation, but no run has yet gone live image → asset → coding model → artifact in one chain | `pnpm verify:media-live-smoke` (Studio journey incl. code and rollback; spends vision + coding calls, so it needs its own authorization) |
+| ~~Image asset **inside a generation**~~ | **closed 2026-11-02 at `711de72`**: live image → approved asset → `muse-asset://` insert → real coding model → preview + diff → approve → restart keeps v2 bytes → rollback restores them with the image embedded. 21 checks, 2 media calls + 14 coding calls | `pnpm verify:media-live-smoke` (paid: 1 generation, 1 edit, 3 coding jobs capped at 15 calls each; `MEDIA_LIVE_BOOT_ONLY=1` proves the harness for free) |
 | Review quality on a **Muse-built** app | the live review probe used a frame of a hand-authored app whose contents were known by construction. Judging a real Muse artifact — where "correct" is not precomputable — is unmeasured, and is the reason review stays advisory | a live review run against a frame from an approved generation; no automatic score is possible, a human must read the findings |
 | Vision draft **usefulness** | the live vision call returned three drafts and one was approved offline, but no gate measures whether drafts are good guidance | human review of `test-results/batchc-live/*/02-vision-drafts.png` |
 | ~~Fresh-install demonstration (§5 gate 7)~~ | **done 2026-11-02 at `1d32761`**: clean clone → frozen-lockfile install → aggregate check → production bundles naming the clone's own commit → documented first run → both restore drills → production browser gate inside the clone → a live smoke that refuses without a credential | `pnpm verify:fresh-install`, PASS 17 checks; `docs/Fresh-Install-Rehearsal.md` |
 | Offline behaviour of a generated game | measured on 2026-11-02: no canvas, approval refused, preview shows a blank frame with no message; the refusal now names the CDN origin | closing it is a product decision: vendor Phaser locally, or accept that games need network; a preview-level message needs an in-document bridge |
 | Multi-server idempotency | the in-flight dedup is per-process; two servers could both pay for one key | documented as a single-server beta limit; needs a shared store to close |
 
-Already closed by live runs, with the evidence named above:
+Closed by live runs, with the evidence named above:
 `muse-image-1.0` generate and edit (**closed**, `2026-11-02-0445`),
 `muse-voice-transcribe-1.0` (**closed**, `2026-11-02-0458`), video clip
-observation (**closed**, `2026-11-02-0400`), and screenshot review finding
-quality on a known frame (**closed**, `2026-11-02-0451`).
+observation (**closed**, `2026-11-02-0400`), screenshot review finding quality on a
+known frame (**closed**, `2026-11-02-0451`), and the live image → coding → artifact
+chain with restart and rollback (**closed**, `2026-11-02T13-53-08`).
 
 Documentation states these gaps rather than leaving them implied:
 `docs/BatchB-Media-Decisions.md` (§live provider), `docs/BatchE-Decision-Review.md`
@@ -313,7 +343,7 @@ Still open before a beta cut, none of which is a code question I should answer a
    review now have live evidence, each from a harness that fixes the call budget
    and scores the provider's answer against content this repository controls.
    Still unexercised end to end: a **live image asset inside a generated artifact**
-   (`verify:media-live-smoke`, needs vision + coding authorization) and a live
+   (`verify:media-live-smoke`, run and closed on 2026-11-02 at `711de72`) and a live
    review of a **Muse-built** app, where no automatic score is possible. Everything
    else in the multimodal list is no longer "configured but unverified".
 2. **Fresh-install rehearsal: done here, not elsewhere.** `pnpm verify:fresh-install`

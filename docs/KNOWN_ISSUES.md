@@ -1233,3 +1233,36 @@ The valid `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1` run still passes
 now reports `scope: "fixtures only, no network (audio + clip observation would be the live
 scope)"`. Four unit tests pin the refusal wording, the accepted set, the labels, and the rule
 that an audio fallback must never be labelled a clip run.
+
+## KI-61 — a paid image edit was billed to no model at all, because the trace read the wrong place (closed)
+
+The first live chain run's ledger came back like this:
+
+```json
+{"path": "/v1/images/generations", "attempt": 1, "model": "muse-image-1.0", "status": 200}
+{"path": "/v1/images/edits",       "attempt": 1, "model": "(none)",         "status": 200}
+```
+
+The request was fine: `apps/server/src/media/operations.ts` sends the model for an edit as a
+multipart form field (`form.append('model', this.model)`). The **trace** was wrong: the adapter
+builds its `[media-trace]` line from `payload.model`, and a raw-body call has no JSON payload,
+so the line read `(none)`.
+
+Why it matters even though the call succeeded: every exact-call claim this repository makes is
+built from that ledger. A dispatch whose model is `(none)` can support "one call on
+`/v1/images/edits`" but not "one call on `muse-image-1.0`", which is the claim the live image
+acceptance actually rests on. An unattributable line is not a cosmetic gap in a system whose
+whole paid-call discipline is the ledger.
+
+Fix (`81ad991`): `MediaCallOptions.traceModel`, passed by the edit operation from the same
+value it puts in the form. Preference is caller-stated → payload → `(none)`, and
+whitespace-only names count as absent, so `(none)` now means "nothing in this request names
+the dispatch" rather than "the trace looked in the wrong place". Four tests pin the JSON case,
+the multipart case, the honest `(none)`, and the preference order.
+
+Retained-evidence note: the ledger line inside
+`test-results/media-live/2026-11-02T13-53-08/report.json` still says `model=(none)` for the
+edit, because that run happened before the fix. It is not rewritten — it is the evidence that
+found the defect. The edit's model for that run is known from the server configuration recorded
+in the same report (`media_config.image_model = muse-image-1.0`) and from the operation code
+path, and future runs state it in the line itself.
