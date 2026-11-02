@@ -172,17 +172,22 @@ identity gate named below, and `verify:batchd-playback-auth` refuses to run a ga
 bundles that do not match the checkout running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-02-2110/report.json`: commit `41770e07fe6c`,
+`test-results/batchd-playback-auth/2026-11-02-2155/report.json`: commit `80c0780de044`,
 `treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
-`supportsCommitIdentity: true`, server build `59deb4ab3232…`, web build `065ee809a766…`
-unchanged — the server bundle moved because `voice.ts` and `capabilities.ts` are hashed
-production inputs and both changed in the trace-model fix; the web bundle contains neither.
-This is also the first run of that gate whose report states a verdict at all: `ok: true`,
-`status: "PASS"`, `completed_checks: 15` (`KI-69`). The same round re-ran the offline media
-journey (`test-results/media-journey/2026-11-02-21104842`: 6 checks, **0** dispatches,
-`ledger_issues: []`) and `verify:runtime` (5 checks), and `verify:batchc-ui` twice on purpose —
-once blocked by an exported provider key (exit 2, `ok: false`, `completed_checks: 0`) and once
-passing (22 checks, `status: "PASS"`). The prior pairs (`2026-11-02-1529` at `340ff79`, server
+`supportsCommitIdentity: true`, server build `a2db64a54269…`, web build `065ee809a766…`
+unchanged — the server bundle moved because `apps/server/src/backup-copy.ts` is a hashed
+production input and the online backup copy now runs in a killable child process; the web bundle
+contains neither. The previous pair (`2026-11-02-2110` at `41770e0`, server `59deb4ab3232…`) is
+kept: it was the first run of that gate whose report stated a verdict at all — `ok: true`,
+`status: "PASS"`, `completed_checks: 15` (`KI-69`), and the run before the KI-69 change carried no
+verdict field at all. The same round at `80c0780` re-ran `pnpm run verify` (121 files, 1531 passed,
+3 skipped; Biome 0 errors / 3 warnings / 15 infos), the offline media
+journey (`test-results/media-journey/2026-11-02-21553846`: 6 checks, **0** dispatches,
+`ledger_issues: []`) and `verify:runtime` (5 checks). It did **not** re-run `verify:batchc-ui` or
+`verify:batche-review-ui`: neither those scripts nor any hashed input they exercise changed, and
+their last measured runs belong to the `41770e0` round, where `verify:batchc-ui` was run twice on
+purpose — once blocked by an exported provider key (exit 2, `ok: false`, `completed_checks: 0`) and
+once passing (22 checks, `status: "PASS"`). The prior pairs (`2026-11-02-1529` at `340ff79`, server
 `67f1ad14942b…`; `2026-11-02-1445` at `9ffa49d`, server `44c67eb0345c…`) are kept, and
 the earlier `2026-11-02-1226` at `398e124` stays as the record of the first run that printed the
 `identity_note` wording (`KI-58`).
