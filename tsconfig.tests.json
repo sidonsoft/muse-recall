@@ -82,11 +82,12 @@
     // artifacts by design and permanently OUT OF SCOPE for B-7.
     "scripts/verify-phase16.ts",
     "scripts/verify-phase17.ts",
-    "scripts/verify-phase17-sums.ts"
-    // verify-phase17-strict.ts is ALSO protocol-locked but cannot be excluded:
-    // tests/research/phase17-evidence.test.ts imports its closeRelative helper,
-    // so it rides the import graph (17 errors in-scope-by-accident). Post-judging
-    // B-7 option: carve the tested math into a shared module, then exclude the
-    // locked script cleanly. Until then the denominator counts them knowingly.
+    "scripts/verify-phase17-sums.ts",
+    // verify-phase17-strict.ts was the fourth locked script: the research test
+    // imported its closeRelative helper, so it rode the import graph and its
+    // frozen errors counted as in-scope-by-accident. The math now lives in
+    // tests/research/phase17-math.ts and a drift guard compares the two copies
+    // text by text, so the locked script can sit out of the denominator.
+    "scripts/verify-phase17-strict.ts"
   ]
 }
