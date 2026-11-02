@@ -172,15 +172,18 @@ identity gate named below, and `verify:batchd-playback-auth` refuses to run a ga
 bundles that do not match the checkout running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-02-1529/report.json`: commit `340ff79f4b91`,
+`test-results/batchd-playback-auth/2026-11-02-2110/report.json`: commit `41770e07fe6c`,
 `treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
-`supportsCommitIdentity: true`, server build `67f1ad14942b…`, web build `065ee809a766…`
-(unchanged: this round touched harness scripts, tests and the server's backup path, none of which
-the web bundle contains). The gate run also re-ran the offline media journey
-(`test-results/media-journey/2026-11-02-15294475`: 6 checks, **0** dispatches, trace log present at
-426 bytes, `ledger_issues: []`) and `verify:runtime` (5 checks). The prior pair
-(`2026-11-02-1445` at `9ffa49d`, server `44c67eb0345c…`) and the one at `d00d4d2`
-(`2026-11-02-1400`, server `3ab82ac61022…`) are kept, and
+`supportsCommitIdentity: true`, server build `59deb4ab3232…`, web build `065ee809a766…`
+unchanged — the server bundle moved because `voice.ts` and `capabilities.ts` are hashed
+production inputs and both changed in the trace-model fix; the web bundle contains neither.
+This is also the first run of that gate whose report states a verdict at all: `ok: true`,
+`status: "PASS"`, `completed_checks: 15` (`KI-69`). The same round re-ran the offline media
+journey (`test-results/media-journey/2026-11-02-21104842`: 6 checks, **0** dispatches,
+`ledger_issues: []`) and `verify:runtime` (5 checks), and `verify:batchc-ui` twice on purpose —
+once blocked by an exported provider key (exit 2, `ok: false`, `completed_checks: 0`) and once
+passing (22 checks, `status: "PASS"`). The prior pairs (`2026-11-02-1529` at `340ff79`, server
+`67f1ad14942b…`; `2026-11-02-1445` at `9ffa49d`, server `44c67eb0345c…`) are kept, and
 the earlier `2026-11-02-1226` at `398e124` stays as the record of the first run that printed the
 `identity_note` wording (`KI-58`).
 
