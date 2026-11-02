@@ -44,6 +44,73 @@ export interface ProvenanceReport {
   web: BuildManifest;
 }
 
+/**
+ * The report's `commit` is the tested checkout, and the gate proves the bundles' hashed
+ * inputs match it. That is not the same fact as which commit the bundles were built at:
+ * documentation and verification-script commits move HEAD without moving anything the
+ * production build hashes, so a gate can legitimately pass against bundles whose manifest
+ * names an older commit. A run that hides that difference invites a reader to believe the
+ * bundle bytes were produced from the newest commit. This names both.
+ */
+export interface BundleIdentity {
+  testedCommit: string;
+  builtAtCommit: string;
+  builtAtHead: boolean;
+  builtFromCleanTree: boolean;
+  supportsCommitIdentity: boolean;
+  serverBuiltAt: string;
+  webBuiltAt: string;
+  serverBuildHash: string;
+  webBuildHash: string;
+  note: string;
+}
+
+const shortCommit = (commit: string): string => commit.slice(0, 7);
+
+export function describeBundleIdentity(report: ProvenanceReport): BundleIdentity {
+  const built = [report.server.commit, report.web.commit];
+  const atHead = built.every((commit) => commit === report.commit);
+  // A manifest also records whether the working tree was clean when the build ran. A bundle
+  // built from a dirty tree contains work that no commit names, so it cannot anchor a commit
+  // identity claim even when the commit fields agree.
+  const cleanBuild = report.server.treeClean && report.web.treeClean;
+  const parts: string[] = [];
+  if (atHead) {
+    parts.push(`both bundles were built at ${shortCommit(report.commit)}`);
+  } else {
+    parts.push(
+      `the bundles were built at ${built.map(shortCommit).join(' / ')} while the tested commit is ` +
+        `${shortCommit(report.commit)}: the build gate accepted them because every file the production ` +
+        `build hashes is identical between those commits, so the difference is confined to files it does ` +
+        `not hash (documentation, verification scripts) — the bundle bytes were not produced from ${shortCommit(report.commit)}`,
+    );
+  }
+  if (!cleanBuild) {
+    const files = report.server.treeStatus
+      .trim()
+      .split('\n')
+      .filter((line) => line !== '').length;
+    parts.push(
+      `the build recorded an uncommitted working tree (${String(files)} file(s) changed at build ` +
+        `time), so these bundle bytes include work no commit names and cannot carry a commit identity claim`,
+    );
+  } else if (atHead) {
+    parts.push('the build ran over a clean tree at that commit');
+  }
+  return {
+    testedCommit: report.commit,
+    builtAtCommit: atHead ? report.commit : built.join(','),
+    builtAtHead: atHead,
+    builtFromCleanTree: cleanBuild,
+    supportsCommitIdentity: atHead && cleanBuild,
+    serverBuiltAt: report.server.builtAt,
+    webBuiltAt: report.web.builtAt,
+    serverBuildHash: report.server.buildHash,
+    webBuildHash: report.web.buildHash,
+    note: parts.join('; '),
+  };
+}
+
 const MANIFEST_NAME = '.build-manifest.json';
 const MAX_TREE_STATUS_CHARS = 2_000;
 

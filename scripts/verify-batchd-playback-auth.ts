@@ -49,7 +49,7 @@ import {
   MEDIA_VIDEO_MAX_DURATION_MS,
 } from '../packages/shared/src/media.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
-import { verifyBuildProvenance } from './lib/build-provenance.js';
+import { describeBundleIdentity, verifyBuildProvenance } from './lib/build-provenance.js';
 
 const ROOT = process.cwd();
 const TOKEN = 'browser-check-shared-secret-1234567890';
@@ -691,15 +691,28 @@ function writeEvidence(): void {
 async function main(): Promise<void> {
   mkdirSync(EVIDENCE, { recursive: true });
   const provenance = verifyBuildProvenance({ root: ROOT });
+  const identity = describeBundleIdentity(provenance);
   observations.buildProvenance = {
     commit: provenance.commit,
     treeClean: provenance.treeClean,
     serverBuildHash: provenance.server.buildHash,
     webBuildHash: provenance.web.buildHash,
+    bundlesBuiltAtCommit: identity.builtAtCommit,
+    bundlesBuiltAtHead: identity.builtAtHead,
+    bundlesBuiltFromCleanTree: identity.builtFromCleanTree,
+    supportsCommitIdentity: identity.supportsCommitIdentity,
+    serverBuiltAt: identity.serverBuiltAt,
+    webBuiltAt: identity.webBuiltAt,
+    identity_note: identity.note,
   };
   check(
     `production builds match the tested source (server ${provenance.server.buildHash.slice(0, 12)}…, web ${provenance.web.buildHash.slice(0, 12)}…)`,
   );
+  if (!identity.supportsCommitIdentity) {
+    // Say it out loud rather than letting a newer commit in the report imply the bundle
+    // bytes came from it.
+    check(identity.note);
+  }
 
   const wav = wavBytes();
   const clip = videoFixture();

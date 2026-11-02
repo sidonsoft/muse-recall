@@ -1072,3 +1072,38 @@ reproduce the bug. Ledger mutations must match the real line shape (the
 documented `[media-trace] attempt=…` and `[media-trace] outcome=…` forms from
 `scripts/lib/media-trace.ts`), or they test the parser's filter rather than the
 assertion.
+
+## KI-58 — a build-identity report named the tested commit, not the commit the bytes came from (closed)
+
+**Symptom.** A `verify:batchd-playback-auth` run printed
+`"commit": "09d2258…", "treeClean": false` while `apps/server/dist/.build-manifest.json`
+and the web manifest both said `94d3c62`, built `2026-11-02T11:50:48Z`.
+
+**Why it happened.** `verifyBuildProvenance` returns `commit` from `git rev-parse HEAD` at
+gate time. Its actual guarantees are: a manifest exists for each component, the recorded
+`sourceHash` equals the hash of the **current** tree's hashed inputs, and the recorded
+`buildHash` equals the current dist outputs. Those are about content, and they are strong.
+Which commit was checked out when the compiler ran is a different fact, recorded in the
+manifest and never surfaced by the gate.
+
+**Both ways this misleads.**
+1. A commit that touches only files the build does not hash (documentation,
+   `scripts/verify-*.ts` — `SERVER_INPUTS`/`WEB_INPUTS` list product sources, package
+   manifests, the lockfile, `scripts/build-production-bundles.ts` and
+   `scripts/lib/build-provenance.ts`) leaves the bundles valid, so the gate correctly
+   passes at the newer commit while the bytes were produced from the older one.
+2. `treeClean: false` meant the build ran over a dirty tree. Commit fields agreeing does
+   not help: the bytes contain work no commit names.
+
+**Fix.** `describeBundleIdentity()` in `scripts/lib/build-provenance.ts` reports
+`testedCommit`, `builtAtCommit`, `builtAtHead`, `builtFromCleanTree`,
+`supportsCommitIdentity` and a prose `note`; the identity gate records all of them and adds the
+note as a check line whenever `supportsCommitIdentity` is false. The status document's
+mechanical rule now requires the newest `test-results/batchd-playback-auth/` run to have
+`supports_commit_identity: true` before its pair can stand for a beta cut.
+
+**Proof the drift gate itself still bites.** With `build-provenance.ts` edited but the bundles
+not yet rebuilt, the same gate refused before any browser or server work:
+`server sources changed since the production build (recorded 528a6c5feff6 over 128 files,
+current 59d02a18924a over 128 files)`, exit 1, zero checks printed. So "hashed inputs match"
+is enforced, not assumed; the gap was only in *reporting* which commit produced the bytes.

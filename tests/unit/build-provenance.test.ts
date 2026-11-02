@@ -10,9 +10,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   type BuildManifest,
+  type BundleIdentity,
   collectDistFiles,
   collectInputFiles,
   collectSourceFiles,
+  describeBundleIdentity,
   hashFiles,
   readManifest,
   verifyBuildProvenance,
@@ -306,4 +308,122 @@ describe('verifyBuildProvenance', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+});
+
+function manifestFor(component: 'server' | 'web', commit: string, builtAt: string): BuildManifest {
+  return {
+    kind: 'batchc-build-manifest',
+    component,
+    commit,
+    treeClean: true,
+    treeStatus: '',
+    sourceHash: 's'.repeat(64),
+    sourceFiles: 10,
+    sourceInputs: [],
+    buildHash: component === 'server' ? 'b1'.repeat(32) : 'b2'.repeat(32),
+    buildFiles: 3,
+    builtAt,
+    identity: null,
+  };
+}
+
+describe('describeBundleIdentity', () => {
+  it('says the bundles came from the tested commit when the manifests agree', () => {
+    const identity: BundleIdentity = describeBundleIdentity({
+      commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      treeClean: true,
+      treeStatus: '',
+      server: manifestFor(
+        'server',
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        '2026-11-02T00:00:00.000Z',
+      ),
+      web: manifestFor(
+        'web',
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        '2026-11-02T00:00:00.000Z',
+      ),
+    });
+    expect(identity.builtAtHead).toBe(true);
+    expect(identity.builtFromCleanTree).toBe(true);
+    expect(identity.supportsCommitIdentity).toBe(true);
+    expect(identity.note).toContain('both bundles were built at aaaaaaa');
+    expect(identity.note).toContain('the build ran over a clean tree at that commit');
+  });
+
+  it('names both commits when the bundles predate the tested commit, and refuses to imply otherwise', () => {
+    const identity = describeBundleIdentity({
+      commit: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      treeClean: true,
+      treeStatus: '',
+      server: manifestFor(
+        'server',
+        '94d3c62c52225b5a8fe4e2a4e3bc8ddee99fa3f4',
+        '2026-11-02T11:50:48.105Z',
+      ),
+      web: manifestFor(
+        'web',
+        '94d3c62c52225b5a8fe4e2a4e3bc8ddee99fa3f4',
+        '2026-11-02T11:50:48.105Z',
+      ),
+    });
+    expect(identity.builtAtHead).toBe(false);
+    // Both commits are named, and the note never claims the bundle bytes were built at HEAD.
+    expect(identity.note).toContain('94d3c62');
+    expect(identity.note).toContain('bbbbbbb');
+    expect(identity.note).toContain('the bundle bytes were not produced from bbbbbbb');
+    expect(identity.note).toContain('documentation, verification scripts');
+    expect(identity.note).not.toContain('were built at bbbbbbb');
+    expect(identity.builtAtCommit).toBe(
+      '94d3c62c52225b5a8fe4e2a4e3bc8ddee99fa3f4,94d3c62c52225b5a8fe4e2a4e3bc8ddee99fa3f4',
+    );
+  });
+
+  it('reports each component separately when only one manifest is stale', () => {
+    const identity = describeBundleIdentity({
+      commit: 'cccccccccccccccccccccccccccccccccccccccc',
+      treeClean: true,
+      treeStatus: '',
+      server: manifestFor(
+        'server',
+        'cccccccccccccccccccccccccccccccccccccccc',
+        '2026-11-02T01:00:00.000Z',
+      ),
+      web: manifestFor(
+        'web',
+        'dddddddddddddddddddddddddddddddddddddddd',
+        '2026-11-02T00:30:00.000Z',
+      ),
+    });
+    expect(identity.builtAtHead).toBe(false);
+    expect(identity.note).toContain('ccccccc / ddddddd');
+    expect(identity.serverBuiltAt).toBe('2026-11-02T01:00:00.000Z');
+    expect(identity.webBuiltAt).toBe('2026-11-02T00:30:00.000Z');
+  });
+});
+
+it('refuses to carry a commit identity claim when the build came from a dirty tree', () => {
+  const dirty = (component: 'server' | 'web'): BuildManifest => ({
+    ...manifestFor(
+      component,
+      'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+      '2026-11-02T02:00:00.000Z',
+    ),
+    treeClean: false,
+    treeStatus: ' M apps/server/src/routes/forge.ts\n?? scratch.txt\n',
+  });
+  const identity = describeBundleIdentity({
+    commit: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+    treeClean: false,
+    treeStatus: ' M apps/server/src/routes/forge.ts\n',
+    server: dirty('server'),
+    web: dirty('web'),
+  });
+  // The commit fields agree, yet the bundles contain work no commit names.
+  expect(identity.builtAtHead).toBe(true);
+  expect(identity.builtFromCleanTree).toBe(false);
+  expect(identity.supportsCommitIdentity).toBe(false);
+  expect(identity.note).toContain('uncommitted working tree');
+  expect(identity.note).toContain('2 file(s) changed at build time');
+  expect(identity.note).toContain('cannot carry a commit identity claim');
 });

@@ -215,9 +215,25 @@ clean tree, server build `975f6fc62745…`, web `065ee809a766…` unchanged
 (`test-results/batchd-playback-auth/2026-11-02-1105`). Recording every further docs commit
 this way would recurse, so the rule for later ones is mechanical: the identity a beta cut
 would carry is the `buildProvenance` block of the **newest** `test-results/batchd-playback-auth/`
-directory, and it is only trustworthy if that run happened after the last commit. Gates not
-named at a commit did not run at it; the only thing a docs commit proves about them is that
-the source they measured has not moved.
+directory **whose `observations.buildProvenance.supports_commit_identity` is `true`**. That
+flag is what makes the pair mean what it says: the commit recorded in each build manifest
+equals the tested commit, and the build recorded a clean working tree. A run where the flag
+is false still measures the product honestly — it simply cannot anchor a release identity,
+and the report now says so in words (`KI-58`). Gates not named at a commit did not run at
+it; the only thing a docs commit proves about them is that the source they measured has not
+moved.
+
+**Which commit the bundle bytes came from is a separate fact from which commit was tested** (`KI-58`).
+`verifyBuildProvenance` reports `commit` = the tested checkout, and proves the bundles' hashed
+inputs equal that checkout's inputs. It does not, by itself, say which commit produced the bytes.
+A run at `09d2258` passed with manifests naming `94d3c62` — legitimate, because the two commits
+differ only in documentation and `scripts/verify-*.ts`, none of which the production build hashes
+— but the report printed `commit: 09d2258…` and a reader could take that to mean the bytes were
+built there. The same run printed `treeClean: false`, because the working tree carried uncommitted
+edits while the gate ran: those bundles contained work no commit names. `describeBundleIdentity()`
+now separates the facts and the gate records `bundlesBuiltAtCommit`, `bundlesBuiltFromCleanTree` and
+`supports_commit_identity`, printing the explanation as a check line whenever it is not safe to read
+the pair as release identity.
 
 **Identity moves across documentation commits, and the rule is easy to over-read.** The
 build identity (commit, source hash, build time) is baked into the server bundle, so the
