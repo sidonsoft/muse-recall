@@ -797,3 +797,45 @@ and unit-tested where they are library behaviour.
   `tests/research/phase17-math.ts`, and a test compares the two copies text by text
   so the locked script and the tested helper cannot disagree. KI-50 records the
   measured path and the reasoning.
+
+## Handing the judgement questions to a person
+
+The capability gaps are closed; the remaining release questions are judgement, and the honest
+answer is that no gate can settle them. So the repository gained a producer of review material
+rather than another score: `pnpm run review:app` (`scripts/build-review-app.ts`) builds one real
+app through the product's own path and writes a packet for a human to fill in.
+
+- **One app, one job, stated cost.** `docs/review-apps/palette-bench-brief.md` went in as the
+  prompt; `docs/review-apps/palette-bench-decisions.json` seeded four project decisions at pinned
+  revisions that the brief never mentions, so the app had to infer them from the project. One
+  `generate` job under an Idempotency-Key, capped at 12 internal calls, ended `succeeded` with
+  **3** calls, model `muse-wonder-1.0`, and the media ledger recorded **zero** provider media
+  calls. Paid basis in the packet: the logged-in coding CLI, because no `FORGE_MUSE_API_KEY` was
+  set and the run said so instead of guessing.
+- **The artifact is real bytes with a real hash.** v1, 19,409 bytes, 464 lines, sha256
+  `b306418d95dbed9582d9709470fb5c9298f5eacb116aa8c9b38a371efba50dde`, 7 interactive controls, 491
+  characters of visible text, 492 distinct colours, 0 console errors, 0 failed requests, and zero
+  external URL references in the saved HTML — the self-containment the brief asked for, proven
+  against the bytes rather than asserted.
+- **The sheet is blank on purpose.** `review-packet.md` lists eight quality dimensions and one row
+  per pinned decision, and refuses to carry any score of ours. The only machine contribution is
+  `evidence quality`, which exists to stop a person judging from a capture that cannot support it.
+- **A mis-measured packet is corrected without paying again.**
+  `REVIEW_APP_REMEASURE_DIR=<packet> pnpm run review:app` re-measures retained bytes for zero
+  provider calls, refuses if the bytes no longer match the hash the original report recorded, and
+  writes a new directory rather than editing the old packet.
+
+Two harness defects found on the way, recorded rather than smoothed over: KI-71 (a self-contained
+app was flagged as a network violator because egress was measured by hostname instead of protocol,
+and 464 lines of source were reported as 12,189 characters of "visible text") and KI-72 (the
+harness passed an empty `FORGE_MUSE_API_KEY` through, killing the server on a key-length rule, and
+then reported a dead socket instead of the server's own cause line — KI-59's rule, skipped).
+
+Evidence: `test-results/human-review/palette-bench-2026-11-02-2148` (the paid run and its bogus
+flag, kept), `-2026-11-02-2146` (the zero-cost refusal that exposed KI-72, kept), and
+`-2026-11-02-2151` (the corrected packet, 0 provider calls).
+
+What this does **not** settle stays open and is now the list: whether the review model's findings
+about a Muse-built app match what a person would notice; whether a vision draft is worth the call
+that produces it; whether generated apps are good enough to ship. Those need a person with the
+packet in front of them, and the packets now exist.

@@ -1516,3 +1516,65 @@ sites pay without naming the model?") against every adapter caller:
    breaking pairing or faking an unanswered call; the live chain gate refusing its own budget when
    the counts match but the ledger is corrupt; and a zero-dispatch boot-only ledger reading clean
    while a damaged one reads damaged.
+
+## KI-71 — the review harness called a self-contained app a network violator, and its own source code the app's copy (closed)
+
+The first packet for a real Muse-built app flagged one evidence issue:
+
+> the brief forbade network use and 1 non-local request(s) were recorded:
+
+with nothing after the colon. Both halves of that line were wrong, and a human
+reading the packet would have judged an app for a violation it did not commit.
+
+- **Network egress was measured by hostname, not protocol.** `new URL(request.url()).hostname`
+  is the empty string for any non-HTTP scheme, so the app's own `file:`/`data:` traffic landed in
+  `non_local_requests` as `""`. The brief asked for a self-contained artifact, the artifact
+  delivered exactly that — the retained bytes contain zero external URL references — and the
+  harness reported the compliance as the offence. Requests are now classified by protocol: only
+  non-local `http:`/`https:` counts as egress, and `data:`/`blob:`/`file:` traffic is recorded
+  separately as `non_http_requests`.
+- **"Visible text" included the app's source.** The page fact was `document.body.textContent`,
+  which counts `<script>` and `<style>` bodies. A 464-line single-file app reported 12,189
+  characters of text, a number a reviewer would read as walls of copy. The measurement now
+  strips `script`/`style`/`noscript`/`template` before counting: 491 characters, which is what
+  is actually on screen.
+
+A false "evidence quality" flag is worse than a missing one: the whole purpose of that section is
+to stop a person judging from a capture that cannot support it, and it pointed at nothing. So the
+correction is not silent. The original packet stays at
+`test-results/human-review/palette-bench-2026-11-02-2148` with its bogus issue; the corrected one
+is `test-results/human-review/palette-bench-2026-11-02-2151`, produced by a new mode —
+`REVIEW_APP_REMEASURE_DIR=<packet-dir> pnpm run review:app` — which re-measures retained bytes for
+**zero** provider calls, refuses if the bytes no longer match the hash the original report
+recorded, writes a new evidence directory rather than editing the old one, and carries the paid
+run's cost record forward unchanged. Fixing a measurement must never require paying for the app
+again, and must never rewrite what was already reported.
+
+Pinned by `tests/unit/review-packet.test.ts`, which now also fails a packet whose capture cannot
+support a visual claim, and refuses any score-like output from the packet itself.
+
+## KI-72 — the review harness injected an empty credential and then failed without saying why (closed)
+
+`scripts/build-review-app.ts` handed the server `FORGE_MUSE_API_KEY: key` unconditionally, with
+`key = ''` when nothing was configured. The config schema declares that key
+`z.string().min(10).optional()`, and an empty string is not absent: the server died with
+
+> Fatal startup error: Invalid environment configuration — FORGE_MUSE_API_KEY: Too small: expected
+> string to have >=10 characters
+
+while the gate's own terminal said only `timed out waiting for http://127.0.0.1:62771/api/health:
+fetch failed`. Two lessons, both already learned elsewhere and skipped here:
+
+1. **An unset credential must be deleted, not blanked.** The live media gates already scrub empty
+   credential variables for exactly this reason (`verify-image-live-smoke.ts` deletes
+   `FORGE_FALLBACK_API_KEY` rather than passing it through). The new harness now only adds the key
+   when it is real, and scrubs any empty `FORGE_MUSE_API_KEY` / `FORGE_FALLBACK_API_KEY` /
+   `META_API_KEY` inherited from the caller.
+2. **KI-59's startup-cause rule applies to every harness that boots the server.** A gate that
+   waits on `/api/health` must surface the server's own cause line — the shared
+   `startupFailureExcerpt()` from `scripts/lib/server-startup.ts`, not a local reimplementation.
+   Re-running the failed step now prints the config error instead of a dead socket.
+
+No call was made in that attempt: it never reached a job. The failed evidence stays at
+`test-results/human-review/palette-bench-2026-11-02-2146` — a run that cost nothing, said nothing,
+and is the record of both defects.

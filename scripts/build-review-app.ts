@@ -47,7 +47,7 @@ import {
 } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { Browser } from 'playwright-core';
 import { PNG } from 'pngjs';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
@@ -61,6 +61,7 @@ import {
 import { readCodingJobs, totalCodingCalls } from './lib/media-live.js';
 import { accountDispatches, ledgerEvidence, readMediaTrace } from './lib/media-trace.js';
 import { type PacketFacts, packetIssues, renderReviewPacket } from './lib/review-packet.js';
+import { startupFailureExcerpt } from './lib/server-startup.js';
 
 const ROOT = process.cwd();
 const APP = process.env.REVIEW_APP_SLUG?.trim() || 'palette-bench';
@@ -154,7 +155,7 @@ async function freePort(): Promise<number> {
   return address.port;
 }
 
-async function waitForHttp(url: string, timeoutMs = 30_000): Promise<void> {
+async function waitForHttp(url: string, timeoutMs = 30_000, logPath?: string): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let last = '';
   while (Date.now() < deadline) {
@@ -167,7 +168,9 @@ async function waitForHttp(url: string, timeoutMs = 30_000): Promise<void> {
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
-  throw new Error(`timed out waiting for ${url}: ${last}`);
+  throw new Error(
+    `timed out waiting for ${url}: ${last}${logPath ? ` — server log: ${startupFailureExcerpt(readFileSync(logPath, 'utf8'))}` : ''}`,
+  );
 }
 
 function dataOf(body: unknown): Record<string, unknown> {
@@ -236,7 +239,187 @@ function writeReport(status: string, extra: Record<string, unknown> = {}): void 
   writeFileSync(join(OUT, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 }
 
+/**
+ * Re-measure an artifact that has already been paid for.
+ *
+ * A packet is for a person, and a harness defect that mis-measures it (a `data:`
+ * fetch counted as network egress, say) must not force a second paid job to
+ * correct the numbers. This mode loads the retained bytes, writes a **new**
+ * evidence directory with fresh screenshots and a fresh packet, and carries the
+ * original run's cost record forward unchanged. The retained packet is not
+ * touched: a corrected number and the number it replaced both stay readable.
+ */
+async function remeasure(sourceDir: string): Promise<void> {
+  const sourceReport = JSON.parse(readFileSync(join(sourceDir, 'report.json'), 'utf8')) as {
+    observations?: Record<string, unknown>;
+    paid?: Record<string, unknown>;
+    app?: string;
+  };
+  const htmlPath = join(sourceDir, 'artifact.html');
+  if (!existsSync(htmlPath))
+    throw new PrerequisiteRefusal(`${sourceDir} holds no artifact.html to re-measure`);
+  const sourceObservations = sourceReport.observations ?? {};
+  const html = readFileSync(htmlPath, 'utf8');
+  const recordedSha = String(
+    ((sourceObservations.artifact as Record<string, unknown> | undefined)?.sha256 as string) ?? '',
+  );
+  if (recordedSha.length > 0 && recordedSha !== sha256(html)) {
+    throw new Error(
+      `the retained artifact no longer matches the hash its own report recorded (${recordedSha.slice(0, 12)}... expected): refusing to publish a packet about bytes that changed`,
+    );
+  }
+
+  const launched = await launchVerificationBrowser();
+  const browser = launched.browser;
+  const page = await browser.newPage();
+  const consoleErrors: string[] = [];
+  const httpFailures: string[] = [];
+  const nonLocal: string[] = [];
+  const nonHttp: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 200));
+  });
+  page.on('pageerror', (error) => consoleErrors.push(error.message.slice(0, 200)));
+  page.on('requestfailed', (request) =>
+    httpFailures.push(`${request.method()} ${request.url()}`.slice(0, 200)),
+  );
+  page.on('response', (response) => {
+    if (response.status() >= 400)
+      httpFailures.push(`${String(response.status())} ${response.url()}`.slice(0, 200));
+  });
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      nonHttp.push(url.protocol);
+      return;
+    }
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') nonLocal.push(url.hostname);
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`file://${htmlPath}`, { waitUntil: 'load' });
+  await page.waitForTimeout(1_500);
+  const shot = await page.screenshot({ path: join(OUT, 'app-1280.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  const mobile = await page.screenshot({ path: join(OUT, 'app-390.png'), fullPage: true });
+  const domFacts = await page.evaluate(() => ({
+    title: document.title,
+    controls: document.querySelectorAll('button, input, select, a[href], textarea').length,
+    text_length: (() => {
+      const clone = document.body?.cloneNode(true) as HTMLElement | null;
+      clone?.querySelectorAll('script,style,noscript,template').forEach((node) => {
+        node.remove();
+      });
+      return (clone?.textContent ?? '').replace(/\s+/g, ' ').trim().length;
+    })(),
+  }));
+  await page.close();
+  await browser.close().catch(() => undefined);
+
+  copyFileSync(htmlPath, join(OUT, 'artifact.html'));
+  writeFileSync(join(OUT, 'brief.md'), readFileSync(join(sourceDir, 'brief.md'), 'utf8'));
+  copyFileSync(join(sourceDir, 'decisions-requested.json'), join(OUT, 'decisions-requested.json'));
+
+  const pageInfo: PageFacts = {
+    title: domFacts.title,
+    interactive_controls: domFacts.controls,
+    distinct_colors: distinctColors(shot),
+    console_errors: consoleErrors.length,
+    http_failures: httpFailures.length,
+    non_local_requests: [...new Set(nonLocal)],
+  };
+  observations.remeasured_from = sourceDir;
+  observations.non_http_requests = [...new Set(nonHttp)];
+  observations.page = { ...pageInfo, visible_text_characters: domFacts.text_length };
+  observations.artifact_endpoint_content_type =
+    sourceObservations.artifact_endpoint_content_type ?? 'not recorded';
+  observations.credential_basis = sourceObservations.credential_basis ?? 'not recorded';
+  observations.coding_cli = sourceObservations.coding_cli ?? 'not recorded';
+  observations.decisions = sourceObservations.decisions ?? [];
+  observations.buildProvenance = sourceObservations.buildProvenance ?? {};
+  observations.coding_job_records = sourceObservations.coding_job_records ?? [];
+  observations.artifact = sourceObservations.artifact ?? {};
+  observations.media_dispatches = sourceObservations.media_dispatches ?? 0;
+  observations.media_ledger = sourceObservations.media_ledger ?? {};
+  check(
+    `re-measured the retained artifact at no cost: ${String(pageInfo.interactive_controls)} control(s), ${String(pageInfo.distinct_colors)} colour(s), ${String(pageInfo.console_errors)} console error(s)`,
+  );
+
+  const facts: PacketFacts = {
+    project: PROJECT,
+    app_name: APP,
+    brief_path: BRIEF_FILE,
+    created_at: new Date().toISOString(),
+    commit: String(
+      (observations.buildProvenance as Record<string, unknown>).commit ?? 'not recorded',
+    ),
+    bundle_identity: {
+      server_build_hash: String(
+        (observations.buildProvenance as Record<string, unknown>).serverBuildHash ?? '',
+      ),
+      web_build_hash: String(
+        (observations.buildProvenance as Record<string, unknown>).webBuildHash ?? '',
+      ),
+      supports_commit_identity: Boolean(
+        (observations.buildProvenance as Record<string, unknown>).supportsCommitIdentity,
+      ),
+      note: String(
+        (observations.buildProvenance as Record<string, unknown>).identity_note ?? 'not recorded',
+      ),
+    },
+    decisions: observations.decisions as PacketFacts['decisions'],
+    job: {
+      id: String(
+        ((sourceObservations.job as Record<string, unknown> | undefined)?.id as string) ??
+          'not recorded',
+      ),
+      coding_cli: String(observations.coding_cli),
+      kind: 'generate',
+      status: String(
+        (observations.coding_job_records as Record<string, unknown>[])[0]?.status ?? 'succeeded',
+      ),
+      usage_calls: Number(
+        ((observations.coding_job_records as Record<string, unknown>[])[0]
+          ?.usage_calls as number) ?? 0,
+      ),
+      model_observed:
+        String(
+          ((observations.coding_job_records as Record<string, unknown>[])[0]
+            ?.model_observed as string) ?? 'not recorded',
+        ) ?? null,
+    },
+    artifact: {
+      version: Number((observations.artifact as Record<string, unknown>).version ?? 1),
+      sha256: String((observations.artifact as Record<string, unknown>).sha256 ?? ''),
+      bytes: Buffer.byteLength(html, 'utf8'),
+      saved_to: join('test-results', 'human-review', `${APP}-${STAMP}`, 'artifact.html'),
+    },
+    media_dispatches: Number(observations.media_dispatches ?? 0),
+    screenshots: [
+      { name: 'app-1280.png', label: 'desktop 1280×800, full page', bytes: shot.length },
+      { name: 'app-390.png', label: 'phone 390×844, full page', bytes: mobile.length },
+    ],
+    page: pageInfo,
+    loaded_via: `${LOADED_VIA}; re-measured from the retained bytes without a second job`,
+    credential_basis: String(observations.credential_basis),
+  };
+  const issues = packetIssues(facts);
+  writeFileSync(join(OUT, 'review-packet.md'), renderReviewPacket(facts, issues));
+  observations.packet_issues = issues;
+  reportStatus = 'PASS (re-measured, no provider call)';
+  writeReport(reportStatus, { paid_basis_carried_forward: sourceReport.paid ?? null });
+  console.log(
+    `\nPASS (re-measured): ${String(checks.length)} check(s) — packet: ${join(OUT, 'review-packet.md')} — 0 provider calls`,
+  );
+}
+
 async function main(): Promise<void> {
+  const remeasureDir = process.env.REVIEW_APP_REMEASURE_DIR?.trim();
+  if (remeasureDir && remeasureDir.length > 0) {
+    mkdirp(OUT);
+    await remeasure(isAbsolute(remeasureDir) ? remeasureDir : join(ROOT, remeasureDir));
+    return;
+  }
   const briefPath = join(ROOT, BRIEF_FILE);
   const decisionsPath = join(ROOT, DECISIONS_FILE);
   if (!existsSync(briefPath)) {
@@ -324,7 +507,6 @@ async function main(): Promise<void> {
     MODEL_PROVIDER: 'echo',
     LOG_LEVEL: 'warn',
     FORGE_MUSE_BIN: bin,
-    FORGE_MUSE_API_KEY: key,
     FORGE_MUSE_MODEL: CODING_MODEL,
     FORGE_REASONING_EFFORT: 'low',
     FORGE_MAX_CALLS: String(MAX_CALLS_PER_JOB),
@@ -333,6 +515,13 @@ async function main(): Promise<void> {
     FORGE_MEDIA_MAX_RETRIES: '0',
     FORGE_MEDIA_TRACE: '1',
   };
+  // A credential set to the empty string is not "unset" to the config parser: it
+  // fails the >=10-character rule and the server dies with a message about key
+  // length. The key is only ever added when it is real.
+  for (const name of ['FORGE_MUSE_API_KEY', 'FORGE_FALLBACK_API_KEY', 'META_API_KEY']) {
+    if ((serverEnv[name] ?? '').trim().length === 0) delete serverEnv[name];
+  }
+  if (key.length > 0) serverEnv.FORGE_MUSE_API_KEY = key;
   const server = start(
     'api',
     process.execPath,
@@ -340,7 +529,7 @@ async function main(): Promise<void> {
     serverEnv,
   );
   try {
-    await waitForHttp(`${apiBase}/api/health`);
+    await waitForHttp(`${apiBase}/api/health`, 30_000, server.log);
     check('started the production API on an isolated database and workspace');
 
     await apiJson(apiBase, '/api/forge/projects', {
@@ -479,6 +668,7 @@ async function main(): Promise<void> {
     const consoleErrors: string[] = [];
     const httpFailures: string[] = [];
     const nonLocal: string[] = [];
+    const nonHttp: string[] = [];
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 200));
     });
@@ -491,8 +681,15 @@ async function main(): Promise<void> {
         httpFailures.push(`${String(response.status())} ${response.url()}`.slice(0, 200));
     });
     page.on('request', (request) => {
-      const host = new URL(request.url()).hostname;
-      if (host !== '127.0.0.1' && host !== 'localhost') nonLocal.push(host);
+      const url = new URL(request.url());
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        // A data:/blob: fetch is the app carrying its own bytes, which is what
+        // a self-contained brief asks for. Counting it as network egress would
+        // flag the compliance as a violation.
+        nonHttp.push(url.protocol);
+        return;
+      }
+      if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') nonLocal.push(url.hostname);
     });
     // The artifact endpoint answers with a JSON envelope, which is what the
     // Studio reads to render its sandboxed preview. Judging the app means
@@ -512,7 +709,15 @@ async function main(): Promise<void> {
     const domFacts = await page.evaluate(() => ({
       title: document.title,
       controls: document.querySelectorAll('button, input, select, a[href], textarea').length,
-      text_length: (document.body?.textContent ?? '').length,
+      // textContent alone would count the app's own <script> and <style> source
+      // as visible text, which is how a 464-line file looks like an essay.
+      text_length: (() => {
+        const clone = document.body?.cloneNode(true) as HTMLElement | null;
+        clone?.querySelectorAll('script,style,noscript,template').forEach((node) => {
+          node.remove();
+        });
+        return (clone?.textContent ?? '').replace(/\s+/g, ' ').trim().length;
+      })(),
     }));
     await page.close();
 
@@ -524,6 +729,7 @@ async function main(): Promise<void> {
       http_failures: httpFailures.length,
       non_local_requests: [...new Set(nonLocal)],
     };
+    observations.non_http_requests = [...new Set(nonHttp)];
     observations.page = { ...pageInfo, visible_text_characters: domFacts.text_length };
     observations.console_errors = consoleErrors;
     check(
