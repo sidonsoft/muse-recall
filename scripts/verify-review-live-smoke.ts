@@ -477,11 +477,18 @@ async function main(): Promise<void> {
 
     process.stdout.write('\nBatch E live review smoke: PASS\n');
   } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
     if (!(error instanceof SmokeFailure)) {
       const name = error instanceof Error ? error.constructor.name : typeof error;
-      process.stderr.write(`[${name}] ${error instanceof Error ? error.message : String(error)}\n`);
+      process.stderr.write(`[${name}] ${reason}\n`);
     }
-    blockedAt = error instanceof Error ? error.message : String(error);
+    // Every fail() raised SmokeFailure and was swallowed above, so a measured failure
+    // exited 1 with no reason on the terminal. The operator should not have to open
+    // report.json to learn what the gate objected to. Designed stops (no credential,
+    // blocked before dispatch) set exitCode 2 and return without throwing, so anything
+    // reaching this catch is a measured failure.
+    process.stderr.write(`FAILED before completion: ${reason}\n`);
+    blockedAt = reason;
     exitCode = 1;
   } finally {
     await stopProcess(server);

@@ -1007,3 +1007,68 @@ What would close it: reproduce under a deliberately loaded machine (`stress`/par
 browser gates) with `--reporter=verbose` durations, then either isolate the backup/restore
 file to its own pool or split the two slow cases. Until then, a red `verify` on this test
 is re-run once before it is treated as a code failure, and the re-run is recorded.
+
+## KI-57 — a paid gate could fail and print nothing (closed)
+
+**Symptom.** `verify:image-live-smoke` exited 1 with no reason on the terminal.
+The last visible lines were the two successful checks, then
+`ELIFECYCLE Command failed with exit code 1`:
+
+```
+  ✓ the server answered readiness probes
+  ✓ the live configuration gate passed and the image model is muse-image-1.0
+evidence: test-results/image-live/2026-11-02-1153
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+**What actually happened.** The run had failed a real check — `report.json` for
+that run says
+`blocked_at: "boot-only mode has no trace log, so \"zero provider calls\" is not
+evidenced"`. The reason was recorded twice on disk (`report.json` and
+`FAILED.md`) and never once on the terminal.
+
+**Root cause.** Each live gate wraps its body in a catch that separates
+"expected failure" from "crash":
+
+```ts
+if (!(error instanceof SmokeFailure) && !(error instanceof EarlyExit)) {
+  process.stderr.write(`[${ctor}] ${message}\n`);
+}
+```
+
+Every `fail()` raises `SmokeFailure`, so the branch that prints exists only for
+unexpected errors — the one case that was never silent. The intended failures,
+raised by the gate's own assertions, were the ones thrown away.
+
+**Fix.** The catch now prints the reason for any measured failure:
+
+```ts
+if (!(error instanceof EarlyExit)) {
+  process.stderr.write(`FAILED before completion: ${reason}\n`);
+  blockedAt = reason;
+  exitCode = 1;
+}
+```
+
+`EarlyExit` stays quiet because it means a designed stop, and `verify:review-live-smoke`
+keeps its exit 2 refusal path unchanged: without a credential it prints
+`unconfigured` and does **not** print a FAILED line.
+
+**Why it matters for paid runs.** A run that spent quota and then failed must be
+legible where it was run. Silent exit 1 invites the operator to re-run the gate,
+which spends the call again — the exact behaviour KI-55 is about.
+
+**Proof.** A boot-only run mutated to feed the ledger one real-shaped dispatch
+line (`[media-trace] attempt=1 path=/v1/images/generations model=muse-image-1.0`
+plus its outcome line) now ends with exit 1 and the line
+`FAILED before completion: boot-only mode dispatched 1 time(s)`. The clean
+boot-only run still passes:
+`zero provider calls were made (0 bytes of trace read, 0 dispatch lines)`.
+
+**Method note — a mutation that proves nothing.** The first mutation attempt
+fed `parseMediaTrace()` lines without the `[media-trace]` prefix. The parser
+ignores such lines, the gate passed, and the mutation looked like a failure to
+reproduce the bug. Ledger mutations must match the real line shape (the
+documented `[media-trace] attempt=…` and `[media-trace] outcome=…` forms from
+`scripts/lib/media-trace.ts`), or they test the parser's filter rather than the
+assertion.

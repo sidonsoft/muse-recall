@@ -346,12 +346,29 @@ async function main(): Promise<void> {
 
     const traceSoFar = (): number => parseMediaTrace(readFileSync(serverLog, 'utf8')).length;
     if (process.env.IMAGE_SMOKE_BOOT_ONLY === '1') {
-      const dispatches = accountDispatches(
-        parseMediaTrace(readFileSync(serverLog, 'utf8')),
-      ).dispatches;
-      if (dispatches.length !== 0)
-        fail(`boot-only mode dispatched ${String(dispatches.length)} time(s)`);
-      check('boot-only mode: the live configuration gate passed and zero provider calls were made');
+      // The zero-call claim gets the same treatment as a paid run's: say which log it
+      // read, and require that log to be a complete, in-scope, empty ledger rather
+      // than an absent file.
+      const bootEvidence = ledgerEvidence(serverLog);
+      observations.ledger_evidence = bootEvidence;
+      if (!bootEvidence.logPresent) {
+        fail('boot-only mode has no trace log, so "zero provider calls" is not evidenced');
+      }
+      const bootLedger = accountDispatches(
+        parseMediaTrace(bootEvidence.logPresent ? readFileSync(serverLog, 'utf8') : ''),
+      );
+      if (bootLedger.dispatches.length !== 0) {
+        fail(`boot-only mode dispatched ${String(bootLedger.dispatches.length)} time(s)`);
+      }
+      const bootIssues = imageLedgerIssues(bootLedger, { generate: 0, edit: 0 });
+      observations.ledger_issues = bootIssues;
+      observations.dispatch_paths = bootLedger.paths;
+      if (bootIssues.length > 0) {
+        fail(`boot-only ledger is not clean: ${bootIssues.join('; ')}`);
+      }
+      check(
+        `boot-only mode: the live configuration gate passed and zero provider calls were made (${String(bootEvidence.logBytes)} bytes of trace read, ${String(bootLedger.dispatches.length)} dispatch lines)`,
+      );
       process.stdout.write('\nBatch B live image smoke: PASS (boot-only, no paid call)\n');
       throw new EarlyExit();
     }
@@ -625,13 +642,19 @@ async function main(): Promise<void> {
 
     process.stdout.write('\nBatch B live image smoke: PASS\n');
   } catch (error) {
+    // A paid gate must say why it stopped, where the operator sees it. SmokeFailure
+    // (every fail() call) used to be swallowed here: the reason reached report.json
+    // and FAILED.md while the terminal showed only a bare exit 1, which makes a
+    // measured failure indistinguishable from a crash. An EarlyExit is a designed stop.
+    const reason = error instanceof Error ? error.message : String(error);
     if (!(error instanceof SmokeFailure) && !(error instanceof EarlyExit)) {
       process.stderr.write(
-        `[${error instanceof Error ? error.constructor.name : typeof error}] ${error instanceof Error ? error.message : String(error)}\n`,
+        `[${error instanceof Error ? error.constructor.name : typeof error}] ${reason}\n`,
       );
     }
     if (!(error instanceof EarlyExit)) {
-      blockedAt = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`FAILED before completion: ${reason}\n`);
+      blockedAt = reason;
       exitCode = 1;
     }
   } finally {

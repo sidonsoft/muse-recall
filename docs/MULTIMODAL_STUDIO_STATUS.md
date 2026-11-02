@@ -478,6 +478,41 @@ in its own checkout, so its server bundle hash for the same commit differs (`ad6
 the author's `c9d6c613…`) because the manifest carries build-time metadata; the web hash
 matched byte for byte.
 
+## Self-review of the fix passes, in a new session
+
+The newest commits (`c9c18cf`, `36a861a`, `1bf4a82`) were unreviewed, so the author reviewed
+them in a fresh session with the delta reviewer's rules. Four defects found, all fixed in
+`94d3c62` and recorded as `KI-55` items 13-16:
+
+- **The grounding rule was still wrong** after the last fix. Any "not … near countdown" was
+  read as the model denying the frame, which fails a correct answer that quotes the decision
+  ("despite the instruction **not** to show a timer"). Clause-by-clause rules plus suppression
+  for decision language now decide that case **ambiguous** and report
+  `evidence_negation_quotes_decision`, while plain denials still fail. Cost if left: a false
+  negative about a model that cost quota, and a probe too twitchy to re-run.
+- **Batch C had no whole-run budget** — vision and SAM share `/v1/responses`, so a stray
+  dispatch was invisible. `batchcExpectedCalls` / `batchcLedgerIssues` now gate by scope
+  (`full` 1+1, `vision-only` 1+0, `resume` 0+1, `resume-cutout` 0+0) before a PASS is printed.
+- **A missing trace log read as a clean empty ledger.** Fixture-only Batch D reported
+  `ledger_issues: []` over a file that was never written. `ledgerEvidence()` now names the log
+  and its byte count, and the report keeps the issue list `null` when nothing was read.
+- **The new rules were tested against lines the product never writes.** Synthetic outcome lines
+  carried path and model; real ones are `[media-trace] outcome=response attempt=1 …`. Six
+  verbatim real logs (0106, 0755, 0400, 0458, 0451, 0445) are now test inputs, and every policy
+  must find no violation in ledgers that were paid for.
+
+**A fifth defect found while proving the fourth** (`KI-57`, fixed in the same commit
+that adds this section): `verify:image-live-smoke` and `verify:review-live-smoke` printed **no reason** when
+their own assertions failed. The catch printed only unexpected errors, and every `fail()` raises
+the expected type, so a paid gate could exit 1 in silence — the condition that makes an operator
+re-run a run that already spent quota. Reasons now print as `FAILED before completion: …`;
+designed refusals (exit 2, no credential) stay unchanged.
+
+**Method warning from this pass.** The first mutation used trace lines without the
+`[media-trace]` prefix. The parser ignores such lines, the gate passed, and the fix looked
+unbreakable. Ledger mutations must use the documented line shape, or they test the parser's
+filter instead of the assertion.
+
 ## What rehearsing the first run changed
 
 `pnpm verify:fresh-install` (release gate §5 item 7) passed with 17 checks at `1d32761`,
