@@ -69,61 +69,41 @@ Documentation states these gaps rather than leaving them implied:
 `docs/BatchB-Media-Decisions.md` (§live provider), `docs/BatchE-Decision-Review.md`
 (§Limits to keep honest), and the limits text shipped inside every review payload.
 
-## Verified at this commit
+## Verified at the commit the gates ran against
 
-Offline, no provider key, no external network:
+Offline, no provider key, no external network. Gates run at `5e4a0c6` (the last
+commit changing sources or gates in this stretch); the bundles for that commit
+were rebuilt first, and the identity gate records them:
 
-- `npx vitest run`: **107 files, 1360 passed, 3 skipped, 0 failed**.
-- `pnpm -r run typecheck`: no `error TS`.
-- `npx biome check .`: 0 errors (4 warnings, 18 infos pre-existing).
-- **Commit gated: `76ed12e`** (`git status --porcelain` empty). The two commits it
-  reviews (`e0cd2eb`, `8250b44`) touch server, shared-contract and script sources.
-- **Identity is re-proved at every commit that touches this file, and the rule is
-  worth stating because it is easy to over-read.** Documentation is not a hashed build
-  input, but the build *identity* (commit, source hash, build time) is baked into the
-  server bundle, so the server hash moves at each commit while the web bundle's emitted
-  bytes can stay identical. A status refresh therefore records the gates run against the
-  bundles rebuilt at the commit it names, and the bundles for its own commit are rebuilt
-  after it and proved by the next refresh. Most recent such proof recorded here:
-  `test-results/batchd-playback-auth/2026-11-01-1743`, whose manifest commit is
-  `38d7c3923027611893e48ac9e489eca66f185c59` with `treeClean: true`, server
-  `9a07b8c4e847…` and web `53bb67170dbd…` — the web bytes unchanged across two
-  documentation commits, the server bytes not.
-- `pnpm exec tsx scripts/build-production-bundles.ts` after that commit: server
-  `buildHash 393316bc724767af47af08291f4621d30625f755c61f5114e73a2f3aa241a9d0`, web
-  `buildHash 53bb67170dbdfac6ec0297839505bfd172fa7414fcef03a792dd7f61c5f98306`; both
-  manifests carry `commit 76ed12e…` and `treeClean: true`. The web bundle changed from
-  the previous record because `packages/shared` is a web input and the media/meta
-  contracts moved.
+- `npx vitest run`: **107 files, 1360 passed, 3 skipped, 0 failed** — the same
+  counts as before the typing work, so no coverage was lost on the way.
+- `pnpm -r run typecheck`: no `error TS`. `npx biome check .`: 0 errors
+  (4 warnings, 18 infos pre-existing).
+- **Running build identity** (`test-results/batchd-playback-auth/2026-11-02-0123`):
+  manifest commit `5e4a0c66894beb1df7250525f87d883c90752fda`, `treeClean: true`,
+  server `b05c93cfdf024c9b26a6149d1ceddc82232133e88933b45af1555e37ffba1841`,
+  web `53bb67170dbdfac6ec0297839505bfd172fa7414fcef03a792dd7f61c5f98306`.
+- `pnpm verify:batchd-playback-auth`: **PASS 15 checks** in that same run, which
+  is also the browser proof for the voice/video branch — real `<video>` decode of
+  the generated H.264 clip, blob bytes hash-matched to the stored source, and one
+  credential-free download per source in each trust model.
+- `pnpm verify:batchc-ui`: **PASS 22 checks**.
+- `pnpm verify:studio-workflow`: **56 checks passed**.
 - `pnpm verify:batche-review-ui`: **PASS 20 checks** (`test-results/batche-review-ui`),
   including the one-paid-call check (same frame and selection sends the same
   Idempotency-Key and costs one stub dispatch) and the stale-selection refusal.
-- `pnpm verify:batchd-playback-auth`: **PASS 15 checks**
-  (`test-results/batchd-playback-auth/2026-11-01-1741`), and it asserts that the
-  *running* server's identity equals the verified build:
-  `commit 76ed12ed10d77bf3fc982794f6bfd740f654e514`, `treeClean: true`,
-  `serverBuildHash 393316bc7247…`, `webBuildHash 53bb67170dbd…`.
-- `pnpm verify:batchc-ui`: **PASS 22 checks** (`test-results/batchc-ui`).
-- `pnpm verify:studio-workflow`: **56 checks passed** (project
-  `studio-workflow-y1m2i4`; logs and screenshots in `test-results/studio-after/`).
 - `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
-  **PASS 4 checks with no network call**
-  (`test-results/batchd-live/2026-11-01-1742`) — the host can build the fixtures for
-  the requested scope before any credential or dispatch; `speech.wav` is real 16 kHz
-  mono PCM (5 139 ms, 164 524 bytes); `clip.mp4` is real H.264 96×96 (2 000 ms,
-  3 305 bytes); and the clip prompt names what the recipe renders. It was 2 checks
-  before the review corrections: the prerequisite gate and the prompt/recipe agreement
-  check are new. The same command without a key writes `BLOCKED before any provider
-  call` and exits 2. **The live path itself has still not been run**: no transcription
-  or clip call has been made in this tree, and a fixture-only pass is plumbing
-  evidence, not model evidence.
-- Evidence directories under `test-results/` are gitignored local artifacts, not
-  repository content: the offline gates re-create them on any machine, but the live
-  Batch C runs cannot be re-created without spending quota again, so those recorded
-  results exist only here.
-- Preserved evidence untouched: `test-results/batchc-live/2026-11-01-0755/` and
-  `test-results/batchc-resume-staged/2026-11-01-0824/` keep their original mtimes
-  and hashes.
+  **PASS 4 checks, no network** (`test-results/batchd-live/2026-11-02-0125`).
+- `pnpm verify:batchc-live-smoke` without a key: writes a report saying
+  `BLOCKED before any provider call` and exits 2 (zero calls, zero dispatches).
+
+**Identity moves across documentation commits, and the rule is easy to over-read.**
+Documentation is not a hashed build input, but the build *identity* (commit,
+source hash, build time) is baked into the server bundle, so the server hash moves
+at each commit while the web bundle's emitted bytes can stay byte-identical. The
+gates above were therefore run against bundles rebuilt at `5e4a0c6`; the bundles
+for this documentation commit are rebuilt after it and are proved by the identity
+gate of the next refresh.
 
 ## Prerequisites for reproducing the checks
 
@@ -239,5 +219,12 @@ evidence. Each was fixed rather than reworded:
 - **Reopening the same project keeps earlier review feedback on screen** as history;
   switching projects clears it. The stale-refusal and one-call-per-question rules
   still apply on every attempt.
-- **Test and script type debt**: `tsconfig.tests.json` is still unwired, so test files
+- **Test and script type debt is tracked as KI-50.** `tsconfig.tests.json` is still
+  unwired. Its diagnostics went from 311 to **131** at `5e4a0c6`: the config now
+  declares the DOM lib, `jsx` and the `react`/`react-dom`/`pngjs` type mappings that
+  pnpm keeps out of the root, and the Batch B–E tests plus the live-gate scripts carry
+  types that say what the code does. No check was relaxed and no assertion removed.
+  The remaining families, and the one design call deliberately left to the owner
+  (`MemoryEngine.create` takes the schema's parsed output type, so `.default()`ed
+  fields read as mandatory even though the runtime accepts their absence), are in KI-50.
   are not typechecked by `pnpm -r run typecheck`; the suites are the check for them.
