@@ -200,6 +200,15 @@ dirty tree; and a dead server was reported by the last characters of its stack i
 own `Fatal startup error` line. All three are reporting defects — the measurements were right,
 the narration was not, which is how an operator re-runs a run that already spent quota.
 
+- **at `340ff79`, the third-review remediation commit**: `pnpm run verify` → Biome 0 errors
+  (3 warnings, 15 infos), product typecheck clean, `pnpm run typecheck:tests` exit 0, Vitest
+  **118 files / 1 507 passed / 3 skipped** (+8 tests: gate-lifecycle refusals, trace-model
+  classification, malformed ledger lines, coding-record structure, copy-process lifetime). Offline
+  gates re-run at that commit: `verify:batchd-playback-auth` 15 checks
+  (`test-results/batchd-playback-auth/2026-11-02-1529`), `verify:media-journey-offline` 6 checks
+  with 0 dispatches (`test-results/media-journey/2026-11-02-15294475`), `verify:runtime` 5 checks.
+  No paid call: the live chain gate ran only unconfigured (exit 2, `status: "BLOCKED"`) and in
+  boot-only mode (exit 0, `status: "PASS (boot-only, no paid call)"`).
 - `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
   Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
   `pnpm run typecheck:tests` exit 0, Vitest **114 files / 1 448 passed / 3 skipped**.
