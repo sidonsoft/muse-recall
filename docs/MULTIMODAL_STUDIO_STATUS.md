@@ -172,10 +172,15 @@ identity gate named below, and `verify:batchd-playback-auth` refuses to run a ga
 bundles that do not match the checkout running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-02-1445/report.json`: commit `9ffa49d5efd4`,
+`test-results/batchd-playback-auth/2026-11-02-1529/report.json`: commit `340ff79f4b91`,
 `treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
-`supportsCommitIdentity: true`, server build `44c67eb0345c…`, web build `065ee809a766…`.
-The pair two commits back (`2026-11-02-1400` at `d00d4d2`, server `3ab82ac61022…`) is kept, and
+`supportsCommitIdentity: true`, server build `67f1ad14942b…`, web build `065ee809a766…`
+(unchanged: this round touched harness scripts, tests and the server's backup path, none of which
+the web bundle contains). The gate run also re-ran the offline media journey
+(`test-results/media-journey/2026-11-02-15294475`: 6 checks, **0** dispatches, trace log present at
+426 bytes, `ledger_issues: []`) and `verify:runtime` (5 checks). The prior pair
+(`2026-11-02-1445` at `9ffa49d`, server `44c67eb0345c…`) and the one at `d00d4d2`
+(`2026-11-02-1400`, server `3ab82ac61022…`) are kept, and
 the earlier `2026-11-02-1226` at `398e124` stays as the record of the first run that printed the
 `identity_note` wording (`KI-58`).
 
