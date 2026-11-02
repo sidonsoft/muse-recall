@@ -29,6 +29,48 @@ export interface DatabaseBackup {
   pages: number;
 }
 
+/**
+ * How long an online backup may take before the caller gives up on it. Configurable because
+ * a real database on slow storage legitimately needs more than a laptop-sized default; the
+ * default exists so that a stalled copy becomes a named failure instead of an open-ended
+ * await (KI-56).
+ */
+export const DEFAULT_BACKUP_TIMEOUT_MS = Number(process.env.FORGE_BACKUP_TIMEOUT_MS ?? '15000');
+
+export interface BackupOptions {
+  /**
+   * Bound on the online copy. `node:sqlite`'s backup promise has no abort path, and on
+   * 2 Nov a full-suite run left it unsettled long enough to consume the whole 30 s test
+   * timeout (KI-56) with nothing to show but "Test timed out". An unbounded await turns a
+   * stall into a hang, and a hang in a release drill silently blocks the drill.
+   */
+  timeoutMs?: number;
+  /** Seam for tests: the SQLite copy itself. */
+  copy?: (source: DatabaseSync, destination: string) => Promise<number>;
+}
+
+/**
+ * A copy that never finished is never kept at its destination path. It is parked under a
+ * different name first: the SQLite handle is still attached to that file, so deleting the
+ * destination outright would let a late-finishing copy recreate the path with a truncated
+ * database and a name that reads like a backup.
+ */
+function parkUnfinished(destination: string): string {
+  const parked = `${destination}.unfinished-${randomBytes(4).toString('hex')}`;
+  try {
+    renameSync(destination, parked);
+  } catch {
+    // Nothing to park: the copy failed before it created anything, or the path is gone.
+    return destination;
+  }
+  try {
+    rmSync(parked, { force: true });
+  } catch {
+    /* the handle may still hold it; it is out of the backup namespace either way */
+  }
+  return parked;
+}
+
 function timestamp(date: Date): string {
   return date
     .toISOString()
@@ -56,11 +98,14 @@ export function resolveBackupDestination(
 export async function backupDatabase(
   source: string,
   destination?: string,
+  options: BackupOptions = {},
 ): Promise<DatabaseBackup> {
   if (!existsSync(source)) {
     throw new Error(`Database not found: ${source}`);
   }
 
+  const timeoutMs = options.timeoutMs ?? DEFAULT_BACKUP_TIMEOUT_MS;
+  const copy = options.copy ?? ((db: DatabaseSync, path: string) => backup(db, path));
   const target = resolveBackupDestination(source, destination);
   const database = new DatabaseSync(source, { readOnly: true });
   let created = false;
@@ -73,15 +118,64 @@ export async function backupDatabase(
     closeSync(openSync(target, 'wx', 0o600));
     created = true;
 
-    const pages = await backup(database, target);
+    let pages: number;
+    const started = performance.now();
+    try {
+      pages = await settledWithin(copy(database, target), timeoutMs);
+    } catch (error) {
+      const parked = created ? parkUnfinished(target) : target;
+      const why = error instanceof BackupDeadlineError ? error.message : String(error);
+      throw new Error(
+        `online backup of ${source} did not produce a usable copy after ` +
+          `${(performance.now() - started).toFixed(0)}ms (${why}); the partial copy was parked as ` +
+          `${parked} rather than left under the backup name`,
+      );
+    }
     return { source, destination: target, pages };
   } catch (error) {
-    if (created) rmSync(target, { force: true });
+    if (created && existsSync(target)) rmSync(target, { force: true });
     throw error;
   } finally {
     database.close();
     if (created && existsSync(target)) chmodSync(target, 0o600);
   }
+}
+
+class BackupDeadlineError extends Error {
+  constructor(timeoutMs: number) {
+    super(`the online copy was still running after ${String(timeoutMs)}ms and was given up on`);
+    this.name = 'BackupDeadlineError';
+  }
+}
+
+/**
+ * Settle with the copy's page count, or fail at the deadline. The abandoned promise is left
+ * attached to the parked file, which is why the parked name matters more than the timer.
+ */
+function settledWithin(promise: Promise<number>, timeoutMs: number): Promise<number> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  return new Promise<number>((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new BackupDeadlineError(timeoutMs));
+    }, timeoutMs);
+    promise.then(
+      (pages) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(pages);
+      },
+      (error: unknown) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
 }
 
 /**

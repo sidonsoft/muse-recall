@@ -976,38 +976,61 @@ retained lines are now transcribed verbatim into `tests/unit/live-ledger-policie
 find no violation in them. Same shape as KI-51, one layer up: a fixture that matches the
 parser instead of the format.
 
-## KI-56 — one backup/restore test once spent the whole 30 s test timeout, and the aggregate gate failed for no code reason (open, observed once)
+## KI-56 — the online SQLite backup never settled inside a full-suite test worker, and an unbounded await turned that into a red gate (closed)
 
-While the self-review fixes were being gated, `pnpm run verify` failed on
-`tests/unit/backup-restore.test.ts > refuses an existing target unless force is explicit`.
-Nothing in that test or in `apps/server/src/backup.ts` waits, retries or polls, and the
-same operations measured **4 ms** end to end when run directly against the product code:
+**Original record was wrong in kind, not just in scope.** The first write-up called this a
+one-off caused by "host contention over freshly created temp directories" and said the
+failure "has not reappeared on demand". It reappeared. Once the backup gained a deadline
+(see the fix below) the same test failed **three consecutive full-suite runs in a row**, each
+with a named stall:
 
 ```
-seed (engine open): 10ms   close: 1ms   backupDatabase: 3ms
-refusal (expected throw): 0ms   force restore: 4ms
+online backup of …/live.db did not produce a usable copy after 15002ms
+(the online copy was still running after 15000ms and was given up on);
+the partial copy was parked as …/snap.db.unfinished-6a2d… rather than left under the backup name
 ```
 
-Run alone, the test finishes in 90 ms. Run three more times as a whole file it passed
-every time (28/28). In the failing run Vitest charged it ~29.9 s — the configured
-`testTimeout: 30_000` — so it did not fail slowly, it **timed out**, and the failure has
-not reappeared on demand.
+**Measurements that located it.**
 
-Why it is recorded instead of smoothed over:
+| context | node:sqlite `backup()` result |
+| --- | --- |
+| plain `node`/`tsx`, one process | 1-4 ms, 25/25 runs |
+| 8 concurrent plain processes × 5 copies each | 1-19 ms, 40/40 fine |
+| the same file alone in a Vitest worker (`--pool=forks`) | passes, 32/32 |
+| that file inside the whole-suite run (default pool) | copy does not settle; 15 s deadline fires, 3/3 runs |
+| `--pool=threads` | unusable: 517 of 1 415 tests fail, most `node:sqlite` related |
 
-- the aggregate gate can fail without any code being wrong, which is exactly how a
-  release gate loses its authority;
-- the failure landed while other gates had just been running, so the plausible cause is
-  host contention over the freshly created temp directories (SQLite `node:sqlite`
-  handles plus `rmSync` cleanup), not the code under test;
-- raising `testTimeout` would make the symptom disappear and hide whatever stalled for
-  30 s, so the timeout is deliberately left at 30 s.
+So the copy is fast, concurrency is irrelevant, and the stall needs *both* the Vitest worker
+context and a full-suite run. The mechanism inside node:sqlite was not identified — what
+matters for the product is that an unbounded `await` made it unobservable: the only symptom
+was `Test timed out in 30000ms`, and in a release drill it would have been a hang.
 
-What would close it: reproduce under a deliberately loaded machine (`stress`/parallel
-browser gates) with `--reporter=verbose` durations, then either isolate the backup/restore
-file to its own pool or split the two slow cases. Until then, a red `verify` on this test
-is re-run once before it is treated as a code failure, and the re-run is recorded.
+**Product fix.** `backupDatabase` no longer waits forever:
+- `DEFAULT_BACKUP_TIMEOUT_MS` (15 s, overridable with `FORGE_BACKUP_TIMEOUT_MS` because a real
+  database on slow storage legitimately needs more) bounds the online copy;
+- a copy that fails or is given up on is **parked** under
+  `<destination>.unfinished-<hex>` and then removed, never left under the backup name, because
+  the still-attached SQLite handle would otherwise recreate a truncated file that reads like a
+  snapshot;
+- the error names the source, the elapsed time, the cause and the parked path.
 
+**Test fix.** The online copy is now exercised in the shape it ships in: a plain child process
+(`tests/helpers/online-backup-child.ts`, run with `node --import tsx`), and the test restores
+that image in process. The rest of the restore suite needs "a real database image at the
+destination", not the async API specifically, so it uses a synchronous `VACUUM INTO` seam
+(`tests/helpers/backup-image.ts`) — which is a complete SQLite image, and keeps those tests
+judging restore behaviour rather than harness scheduling. Four deadline tests pin the new
+product behaviour: a copy that never settles, a copy SQLite rejects, `timeoutMs: 0` disabling
+the deadline, and a destination that exists being refused before any copy runs.
+
+**Closed by**: two consecutive full-suite runs with `Test Files 115 passed (115)` /
+`Tests 1466 passed | 3 skipped (1469)`, no timeouts and no stall messages, after the file had
+been failing 3/3.
+
+**What is still open**: why the promise does not settle in that worker context. The product
+answer is that a bounded wait now names the stall in 15 s instead of hanging, and the
+test answer is that the API is measured in a plain process. If a future deployment runs the
+server's backup from a worker thread, the deadline is the first thing that will say so.
 ## KI-57 — a paid gate could fail and print nothing (closed)
 
 **Symptom.** `verify:image-live-smoke` exited 1 with no reason on the terminal.

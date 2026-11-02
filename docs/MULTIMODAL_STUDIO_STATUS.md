@@ -159,9 +159,12 @@ the narration was not, which is how an operator re-runs a run that already spent
 - `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
   Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
   `pnpm run typecheck:tests` exit 0, Vitest **114 files / 1 448 passed / 3 skipped**.
-  One run of that suite failed on `tests/unit/backup-restore.test.ts` for no code reason
-  (KI-56): the test consumed the whole 30 s timeout and has not reproduced in three reruns
-  or in direct measurement (4 ms). The lint counts are read from Biome's summary line, not from an output tail —
+  The `tests/unit/backup-restore.test.ts` timeouts that earlier failed this gate are now
+  explained and closed (KI-56): node:sqlite's online backup promise does not settle inside a
+  full-suite Vitest worker, while it returns in 1-19 ms in plain processes even 8-way
+  concurrent. The product now bounds that copy (15 s, `FORGE_BACKUP_TIMEOUT_MS`) and parks
+  unfinished copies instead of leaving a truncated file under the backup name; the online API
+  is tested in a plain child process, the way it ships. The lint counts are read from Biome's summary line, not from an output tail —
   a previous report of "0 errors" was a tail misread while HEAD had four errors.
 - `pnpm verify:fresh-install`: **PASS 17 checks** at `c9c18cf`
   (`test-results/fresh-install/2026-11-02-1045/report.json`, clone bundles server

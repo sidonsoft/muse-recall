@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -17,10 +18,13 @@ import { MemoryEngine, MIGRATIONS, openDatabase } from '@mml/memory-engine';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   backupDatabase,
+  type DatabaseBackup,
+  DEFAULT_BACKUP_TIMEOUT_MS,
   defaultBackupPath,
   resolveBackupDestination,
   restoreDatabase,
 } from '../../apps/server/src/backup.js';
+import { vacuumIntoCopy } from '../helpers/backup-image.js';
 
 /**
  * The restore half of the backup story (roadmap §8): integrity-checked
@@ -37,6 +41,19 @@ function workspace(): string {
   const dir = mkdtempSync(join(tmpdir(), 'backup-restore-'));
   dirs.push(dir);
   return dir;
+}
+
+const ROOT = join(import.meta.dirname, '..', '..');
+const ONLINE_BACKUP_CHILD = join(ROOT, 'tests', 'helpers', 'online-backup-child.ts');
+
+/**
+ * The restore suite needs "a real database image at the destination", not the async online
+ * copy specifically. It uses the synchronous copy seam because node:sqlite's online backup
+ * promise does not settle inside a full-suite Vitest worker (KI-56); the online API itself is
+ * covered by the child-process test below.
+ */
+function imageFrom(source: string, destination?: string): Promise<DatabaseBackup> {
+  return backupDatabase(source, destination, { copy: vacuumIntoCopy });
 }
 
 async function seeded(path: string): Promise<void> {
@@ -58,12 +75,30 @@ async function seeded(path: string): Promise<void> {
 }
 
 describe('restoreDatabase (roadmap §8)', () => {
-  it('round-trips an online backup into an isolated target', async () => {
+  it('round-trips an online backup made in a plain process into an isolated target', async () => {
+    // The online copy runs where it ships: a plain node process, the way the server and
+    // `pnpm backup:drill` run it. Inside a full-suite Vitest worker that promise does not
+    // settle (KI-56), so keeping it here would fail a restore test for a harness reason.
     const dir = workspace();
-    const source = join(dir, 'live.db');
-    await seeded(source);
-    const backup = await backupDatabase(source, join(dir, 'snap.db'));
-    const restored = restoreDatabase(backup.destination, join(dir, 'isolated.db'));
+    const child = spawnSync(process.execPath, ['--import', 'tsx', ONLINE_BACKUP_CHILD, dir], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      timeout: 90_000,
+    });
+    expect(child.status, `child stderr: ${child.stderr.slice(-400)}`).toBe(0);
+    const made = JSON.parse(child.stdout.trim().split('\n').at(-1) ?? '{}') as {
+      ok?: boolean;
+      source?: string;
+      destination?: string;
+      pages?: number;
+    };
+    expect(made.ok).toBe(true);
+    expect(made.pages ?? 0).toBeGreaterThan(0);
+    expect(typeof made.destination).toBe('string');
+    const image = made.destination as string;
+    expect(existsSync(image)).toBe(true);
+
+    const restored = restoreDatabase(image, join(dir, 'isolated.db'));
     expect(restored.counts['memories']).toBe(1);
     expect(restored.counts['projects']).toBe(1);
     expect(restored.schema_version).toBeGreaterThanOrEqual(6);
@@ -71,13 +106,13 @@ describe('restoreDatabase (roadmap §8)', () => {
     const engine = new MemoryEngine(database.db);
     expect(engine.list({ all_projects: true }).items[0]?.content).toContain('survive restore');
     database.close();
-  });
+  }, 120_000);
 
   it('refuses an existing target unless force is explicit', async () => {
     const dir = workspace();
     const source = join(dir, 'live.db');
     await seeded(source);
-    const backup = await backupDatabase(source);
+    const backup = await imageFrom(source);
     const target = join(dir, 'existing.db');
     writeFileSync(target, 'do not clobber', 'utf8');
 
@@ -111,7 +146,7 @@ describe('restoreDatabase (roadmap §8)', () => {
     const dir = workspace();
     const source = join(dir, 'live.db');
     await seeded(source);
-    const backup = await backupDatabase(source);
+    const backup = await imageFrom(source);
     const target = join(dir, 'mode.db');
     restoreDatabase(backup.destination, target);
     expect(existsSync(target)).toBe(true);
@@ -138,7 +173,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const live = join(dir, 'live.db');
       await seeded(live);
-      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const backup = await imageFrom(live, join(dir, 'snap.db'));
       const corrupt = join(dir, 'corrupt.db');
       const backupBytes = readFileSync(backup.destination);
       const damaged = Buffer.from(backupBytes);
@@ -160,7 +195,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const live = join(dir, 'live.db');
       await seeded(live);
-      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const backup = await imageFrom(live, join(dir, 'snap.db'));
       const before = readFileSync(backup.destination);
 
       expect(() =>
@@ -173,7 +208,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const live = join(dir, 'live.db');
       await seeded(live);
-      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const backup = await imageFrom(live, join(dir, 'snap.db'));
       const alias = join(dir, 'alias.db');
       try {
         symlinkSync(backup.destination, alias);
@@ -225,7 +260,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const live = join(dir, 'live.db');
       await seeded(live);
-      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const backup = await imageFrom(live, join(dir, 'snap.db'));
       const target = join(dir, 'target.db');
       writeFileSync(target, 'target bytes that must survive a failed copy');
       const before = readFileSync(target);
@@ -243,7 +278,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const live = join(dir, 'live.db');
       await seeded(live);
-      const backup = await backupDatabase(live, join(dir, 'snap.db'));
+      const backup = await imageFrom(live, join(dir, 'snap.db'));
       const target = join(dir, 'target.db');
       writeFileSync(target, 'target bytes that must survive a failed swap');
       const before = readFileSync(target);
@@ -277,7 +312,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       return (async () => {
         const source = join(dir, name);
         await seeded(source);
-        return (await backupDatabase(source, join(dir, `snap-${name}`))).destination;
+        return (await imageFrom(source, join(dir, `snap-${name}`))).destination;
       })();
     }
 
@@ -407,7 +442,7 @@ describe('restoreDatabase (roadmap §8)', () => {
     async function v8Backup(dir: string, name: string): Promise<string> {
       const source = join(dir, name);
       await seeded(source);
-      return (await backupDatabase(source, join(dir, `snap-${name}`))).destination;
+      return (await imageFrom(source, join(dir, `snap-${name}`))).destination;
     }
 
     async function existingTarget(dir: string): Promise<{ target: string; before: Buffer }> {
@@ -574,7 +609,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const source = join(dir, 'live.db');
       await seeded(source);
-      const backup = await backupDatabase(source, join(dir, 'snap.db'));
+      const backup = await imageFrom(source, join(dir, 'snap.db'));
       const target = join(dir, 'target.db');
       await seeded(target);
       const before = readFileSync(target);
@@ -595,7 +630,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const source = join(dir, 'live.db');
       await seeded(source);
-      const backup = await backupDatabase(source, join(dir, 'snap.db'));
+      const backup = await imageFrom(source, join(dir, 'snap.db'));
 
       const target = join(dir, 'target.db');
       await seeded(target);
@@ -625,7 +660,7 @@ describe('restoreDatabase (roadmap §8)', () => {
       const dir = workspace();
       const source = join(dir, 'live.db');
       await seeded(source); // holds "a fact that must survive restore"
-      const backup = await backupDatabase(source, join(dir, 'snap.db'));
+      const backup = await imageFrom(source, join(dir, 'snap.db'));
 
       const target = join(dir, 'target.db');
       const other = openDatabase({ path: target, wal: true });
@@ -646,5 +681,73 @@ describe('restoreDatabase (roadmap §8)', () => {
       reopened.close();
       expect(contents).toContain('a fact that must survive restore');
     });
+  });
+});
+
+describe('backupDatabase deadlines (KI-56 escalation)', () => {
+  it('gives up on a copy that never settles and keeps no partial backup', async () => {
+    const dir = workspace();
+    const source = join(dir, 'live.db');
+    await seeded(source);
+    const target = join(dir, 'snap.db');
+
+    const failure = await backupDatabase(source, target, {
+      timeoutMs: 150,
+      copy: () => new Promise<number>(() => undefined),
+    }).catch((error: unknown) => error as Error);
+
+    expect(failure).toBeInstanceOf(Error);
+    const message = (failure as Error).message;
+    expect(message).toContain('did not produce a usable copy');
+    expect(message).toContain('still running after 150ms');
+    expect(message).toContain('parked');
+    // A truncated file must not sit under the backup name, where a later restore drill
+    // would treat it as a real snapshot.
+    expect(existsSync(target)).toBe(false);
+    expect(readdirSync(dir).some((name) => name === 'snap.db')).toBe(false);
+  }, 10_000);
+
+  it('names the copy failure when SQLite rejects the copy outright', async () => {
+    const dir = workspace();
+    const source = join(dir, 'live.db');
+    await seeded(source);
+    const target = join(dir, 'snap.db');
+
+    const failure = await backupDatabase(source, target, {
+      copy: () => Promise.reject(new Error('SQLITE_BUSY: database is locked')),
+    }).catch((error: unknown) => error as Error);
+
+    expect((failure as Error).message).toContain('SQLITE_BUSY: database is locked');
+    expect((failure as Error).message).toContain('did not produce a usable copy');
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('still returns the page count on the normal path, and honours a disabled deadline', async () => {
+    const dir = workspace();
+    const source = join(dir, 'live.db');
+    await seeded(source);
+    const backup = await backupDatabase(source, join(dir, 'snap.db'), { timeoutMs: 0 });
+    expect(backup.pages).toBeGreaterThan(0);
+    expect(DEFAULT_BACKUP_TIMEOUT_MS).toBeGreaterThan(0);
+    expect(DEFAULT_BACKUP_TIMEOUT_MS).toBeLessThan(30_000);
+  });
+
+  it('refuses a destination that already exists before any copy runs', async () => {
+    const dir = workspace();
+    const source = join(dir, 'live.db');
+    await seeded(source);
+    const target = join(dir, 'taken.db');
+    writeFileSync(target, 'existing', 'utf8');
+    let copyCalled = false;
+    await expect(
+      backupDatabase(source, target, {
+        copy: () => {
+          copyCalled = true;
+          return Promise.resolve(1);
+        },
+      }),
+    ).rejects.toThrow(/Backup destination already exists/);
+    expect(copyCalled).toBe(false);
+    expect(readFileSync(target, 'utf8')).toBe('existing');
   });
 });
