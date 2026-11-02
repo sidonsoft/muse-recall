@@ -1429,3 +1429,27 @@ involved.
 
 Fix: the transcription call site states `traceModel` from the same value it puts in the request,
 and the doc claim is scoped to what is actually true of the code.
+
+## KI-68 — the status document quoted a release pair two commits back, and a field the report never emits (closed)
+
+The identity discipline this repository added in `KI-58` was itself violated by the document that
+explains it. `docs/MULTIMODAL_STUDIO_STATUS.md` claimed "**the newest** identity pair that may
+stand for a beta cut" while naming `test-results/batchd-playback-auth/2026-11-02-1226` — four
+commits behind at the time — and described that record as having `supports_commit_identity: true`,
+a field the report does not emit. The real field is
+`observations.buildProvenance.supportsCommitIdentity`; the neighbouring keys are
+`bundlesBuiltAtCommit`, `bundlesBuiltAtHead` and `bundlesBuiltFromCleanTree`, not
+`builtFromCleanTree`. A third error attributed the newest fresh-install rehearsal to `c9c18cf` when
+the newest record was `2026-11-02-1300`, produced at `9a5b610`; and the paragraph asserted that
+production content was unchanged, which no gate had just measured.
+
+Why it matters: that paragraph is the thing a release would be cut from. A reader who cannot find
+the field it names cannot check the claim, and a stale pair silently certifies an older build.
+
+Fix: the paragraph now cites `test-results/batchd-playback-auth/2026-11-02-1529` at `340ff79f4b91`
+(server `67f1ad14942b…`, web `065ee809a766…`, `treeClean`, `bundlesBuiltAtHead`,
+`bundlesBuiltFromCleanTree`, `supportsCommitIdentity` all true), keeps the older pairs as history
+rather than as the newest claim, drops the unmeasured "content unchanged" assertion in favour of
+the field values, and attributes the rehearsal records to the commits that produced them
+(`2026-11-02-1300` at `9a5b610`, `2026-11-02-1531` at `a131c5e`). The phantom field names were
+replaced everywhere they appeared, including in KI-58's own text.
