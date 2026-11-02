@@ -96,7 +96,10 @@ export interface FirstRunServerOptions {
 
 export interface FirstRunServer<T> {
   value: T;
+  /** Milliseconds until both documented ports answered, not the whole run. */
   startupMs: number;
+  /** Milliseconds spent inside the measurement work, reported separately. */
+  walkthroughMs: number;
   /** False when a listener survived the shutdown — a first run should be stoppable. */
   portsReleased: boolean;
 }
@@ -139,10 +142,15 @@ export async function withDocumentedFirstRun<T>(
     detached: true,
     stdio: ['ignore', log, log],
   });
+  let readyAt: number | null = null;
   let value: T;
   try {
     const apiUp = await waitUntil(() => httpOk(ready.apiUrl), timeoutMs);
     const webUp = await waitUntil(() => httpOk(ready.webUrl), timeoutMs);
+    // Readiness is timed on its own. Reporting the whole run as `startupMs` would
+    // fold an 800 ms-per-screen walkthrough into "startup", which tells a reader
+    // nothing about how long the app actually took to come up.
+    if (apiUp && webUp) readyAt = Date.now();
     if (!apiUp || !webUp) {
       const died = child.exitCode !== null;
       throw new FirstRunBlocked(
@@ -165,7 +173,13 @@ export async function withDocumentedFirstRun<T>(
     async () => !(await portBusy(ports.web)) && !(await portBusy(ports.api)),
     15_000,
   );
-  return { value, startupMs: Date.now() - started, portsReleased: released };
+  const finished = Date.now();
+  return {
+    value,
+    startupMs: (readyAt ?? finished) - started,
+    walkthroughMs: readyAt === null ? 0 : finished - readyAt,
+    portsReleased: released,
+  };
 }
 
 export interface FirstRunObservation {
@@ -190,12 +204,15 @@ export interface FirstRunObservation {
   tabsVisited: string[];
   /** Named nav destinations the shell no longer offers. */
   missingTabs: string[];
+  /** Nav destinations clicked but whose screen never rendered. */
+  screensThatNeverRendered: string[];
 }
 
 /**
- * Read `/api/meta` through the envelope the server actually sends. The success
- * body is wrapped in `{ ok: true, data: … }`; guessing either shape would let a
- * contract change pass as "the field was absent".
+ * Read `/api/meta` through the envelope the server actually sends: a success is
+ * `{ ok: true, data: … }`. Falling back to an unwrapped body would accept a
+ * failure envelope (`{ ok: false, error: … }`) or a proxy error page as long as
+ * some plausible-looking object happened to be inside it.
  */
 export function readServiceMeta(envelope: { status: number; body: unknown }): {
   meta: ServiceMeta | null;
@@ -206,7 +223,10 @@ export function readServiceMeta(envelope: { status: number; body: unknown }): {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return { meta: null, violation: true };
   }
-  const data = (body as { data?: unknown }).data ?? body;
+  const { ok, data } = body as { ok?: unknown; data?: unknown };
+  if (ok !== true || data === null || typeof data !== 'object') {
+    return { meta: null, violation: true };
+  }
   const parsed = ServiceMetaSchema.safeParse(data);
   return parsed.success ? { meta: parsed.data, violation: false } : { meta: null, violation: true };
 }
@@ -230,6 +250,21 @@ export function firstRunIssues(run: FirstRunObservation): string[] {
   }
   if (run.provider !== null && run.provider !== 'echo') {
     issues.push(`the first run started with provider "${run.provider}", not echo`);
+  }
+  // The documented first run is a development run. `production` here means the
+  // check measured something else (a built bundle, a stale server behind a proxy),
+  // and accepting it would let a production build stand in for the experience a
+  // newcomer actually gets — including the dev-only React warnings this gate
+  // exists to see.
+  if (!run.metaContractViolation && run.environment !== 'development') {
+    issues.push(
+      `the first run reported environment ${String(run.environment)}, not the development environment the README command produces`,
+    );
+  }
+  if (run.screensThatNeverRendered.length > 0) {
+    issues.push(
+      `these screens were clicked but never rendered: ${run.screensThatNeverRendered.join(', ')}`,
+    );
   }
   if (run.buildIdentity !== null) {
     issues.push(
@@ -288,6 +323,12 @@ export async function inspectFirstRun(options: {
     const text = message.text().slice(0, 240);
     consoleErrors.push(args.length > 0 ? `${text} [${args.join(', ')}]`.slice(0, 320) : text);
   });
+  // An uncaught exception is a different signal from a console.error: a page can
+  // keep a populated root element and still be broken. Watching only console
+  // output misses it entirely.
+  page.on('pageerror', (error) => {
+    consoleErrors.push(`page error: ${error.message.slice(0, 300)}`);
+  });
   page.on('request', (request) => {
     const host = new URL(request.url()).hostname;
     if (host !== '127.0.0.1' && host !== 'localhost') nonLocal.push(host);
@@ -318,6 +359,7 @@ export async function inspectFirstRun(options: {
   if (screenshotTo) await page.screenshot({ path: screenshotTo });
   const tabsVisited: string[] = [];
   const missingTabs: string[] = [];
+  const screensNotRendered: string[] = [];
   for (const label of visitTabs ?? []) {
     // The shell's screens are buttons, not anchors: asking only for links would
     // report a missing screen that is plainly on the page.
@@ -331,10 +373,46 @@ export async function inspectFirstRun(options: {
     }
     await link.click();
     await page.waitForLoadState('domcontentloaded');
+    // Clicking a nav control and waiting a fixed beat proves only that a click was
+    // dispatched. Each screen must then *render*: the shell marks the active nav
+    // item `aria-current="page"`, and the screen puts its content under <main>.
+    // Without that assertion a screen that threw during its own effects would be
+    // counted as visited, and the run would report a walkthrough that never
+    // happened.
+    let rendered = false;
+    try {
+      await page.waitForFunction(
+        `(() => {
+             const label = ${JSON.stringify(label)};
+             const active = Array.from(
+               document.querySelectorAll('nav[aria-label="Primary"] button'),
+             ).find((item) => item.getAttribute('aria-current') === 'page');
+             if (!active || (active.textContent ?? '').trim() !== label) return false;
+             const headings = Array.from(document.querySelectorAll('main h1')).map(
+               (heading) => (heading.textContent ?? '').trim(),
+             );
+             if (headings.length === 0) return false;
+             // HTML Studio renders the artifact's title as its heading, not its own
+             // label (measured: ["Farmyard Memory Match"] with an empty heading list
+             // before the first click). Its ready marker is the named Development
+             // panel instead; every other screen puts its label in the heading.
+             if (label === 'HTML Studio') {
+               return document.querySelector('main section[aria-label="Development"]') !== null;
+             }
+             return headings.some((heading) => heading === label);
+           })()`,
+        null,
+        { timeout: 10_000 },
+      );
+      rendered = true;
+    } catch {
+      rendered = false;
+    }
     // A screen's own effects run after paint; give them a beat before deciding
     // the console is clean.
     await page.waitForTimeout(800);
-    tabsVisited.push(label);
+    if (rendered) tabsVisited.push(label);
+    else screensNotRendered.push(label);
   }
   await page.close();
   return {
@@ -349,5 +427,6 @@ export async function inspectFirstRun(options: {
     metaContractViolation: violation,
     tabsVisited,
     missingTabs,
+    screensThatNeverRendered: screensNotRendered,
   };
 }

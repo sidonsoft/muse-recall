@@ -11,6 +11,22 @@ import {
   shouldStopAfterVisionOnly,
 } from '../../scripts/lib/media-trace.js';
 
+it('counts two independent first attempts as two dispatches', () => {
+  // Attempt numbers restart per operation. A counter keyed on them reports one
+  // call where the adapter logged two, which would let a run that paid twice
+  // claim it paid once.
+  const two = parseMediaTrace(
+    [
+      '[media-trace] attempt=1 path=/v1/responses model=muse-spark-1.3',
+      '[media-trace] outcome=response attempt=1 status=200 bytes=10',
+      '[media-trace] attempt=1 path=/v1/responses model=muse-spark-1.3',
+      '[media-trace] outcome=response attempt=1 status=200 bytes=10',
+    ].join('\n'),
+  );
+  expect(countModelAttempts(two, 'muse-spark')).toBe(2);
+  expect(accountDispatches(two).dispatches).toHaveLength(2);
+});
+
 describe('media trace reader (P2)', () => {
   it('parses attempt lines and ignores unrelated lines', () => {
     const entries = parseMediaTrace(
@@ -39,15 +55,30 @@ describe('media trace reader (P2)', () => {
     expect(readMediaTrace(join(dir, 'missing.log'))).toEqual([]);
   });
 
-  it('counts distinct attempts, not duplicate log lines', () => {
+  it('counts one per start line, never one per attempt number', () => {
+    // The outcome line answers a start and is not a second dispatch. Two start
+    // lines are two dispatches even when both carry attempt=1, because attempt
+    // numbering restarts for every operation.
     const entries = parseMediaTrace(
       [
-        '[media-trace] attempt=1 model=muse-spark-1.3',
+        '[media-trace] attempt=1 path=/v1/responses model=muse-spark-1.3',
         '[media-trace] outcome=response attempt=1 status=200',
-        '[media-trace] attempt=1 model=muse-spark-1.3',
+        '[media-trace] attempt=1 path=/v1/responses model=muse-spark-1.3',
       ].join('\n'),
     );
-    expect(countModelAttempts(entries, 'muse-spark')).toBe(1);
+    expect(countModelAttempts(entries, 'muse-spark')).toBe(2);
+    // A retry of the same operation is still two dispatches: the second attempt
+    // is a second paid call, not the same call seen again.
+    const retried = parseMediaTrace(
+      [
+        '[media-trace] attempt=1 path=/v1/responses model=muse-spark-1.3',
+        '[media-trace] outcome=error attempt=1 status=500',
+        '[media-trace] attempt=2 path=/v1/responses model=muse-spark-1.3',
+        '[media-trace] outcome=response attempt=2 status=200',
+      ].join('\n'),
+    );
+    expect(countModelAttempts(retried, 'muse-spark')).toBe(2);
+    expect(countModelAttempts(entries, 'sam-')).toBe(0);
   });
 
   it('single-provider-attempt success requires response and trace to agree', () => {

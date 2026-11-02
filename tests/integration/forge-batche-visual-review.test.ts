@@ -7,6 +7,7 @@ import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { EchoProvider, ProviderError } from '@mml/muse-provider';
 import {
   FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH,
+  ForgeGenerationListSchema,
   MediaVisualReviewRequestSchema,
   MediaVisualReviewResponseSchema,
 } from '@mml/shared';
@@ -423,6 +424,16 @@ async function artifactFingerprint(h: Harness) {
   };
 }
 
+/** The Forge project directories that exist on disk. A missing root is empty. */
+async function projectDirs(root: string): Promise<string[]> {
+  try {
+    return await readdir(join(root, 'forge'));
+  } catch (error) {
+    if ((error as { code?: string }).code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
 describe('screenshot advisory review against accepted decisions', () => {
   it('reports findings with evidence and uncertainty and touches nothing', async () => {
     const h = await harness();
@@ -482,6 +493,63 @@ describe('screenshot advisory review against accepted decisions', () => {
     expect(state.current_version).toBe(1);
     expect(state.versions[0]?.job_id).toBe(jobId);
     expect(h.manager.list(PROJECT).every((job) => job.id === jobId)).toBe(true);
+  });
+
+  it('creates no Forge state for a project the workspace has never staged', async () => {
+    // The advisory route promises to write nothing. `ensureProject` creates the
+    // project directory and an empty `state.json`, so calling it here made the
+    // promise false in exactly the case a fingerprint can see: a project that did
+    // not exist before the request.
+    const h = await harness();
+    const cold = 'never-staged';
+    h.engine.ensureProject(cold);
+    const theme = decision(h.engine, 'Theme: woodland, ocean only for the background.', cold);
+
+    const before = await projectDirs(h.root);
+    const response = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${cold}/visual-review`,
+      payload: reviewBody([pick(theme)]),
+    });
+    expect(response.statusCode).toBe(200);
+    const payload = MediaVisualReviewResponseSchema.parse(response.json().data);
+    expect(payload.advisory).toBe(true);
+    expect(h.review.calls).toBe(1);
+    expect(await projectDirs(h.root)).toEqual(before);
+    expect(await projectDirs(h.root)).not.toContain(cold);
+  });
+
+  it('creates no Forge state while refusing a stale selection', async () => {
+    const h = await harness();
+    const cold = 'never-staged-refused';
+    h.engine.ensureProject(cold);
+    const theme = decision(h.engine, 'Never show a countdown timer.', cold);
+    const before = await projectDirs(h.root);
+
+    const response = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/projects/${cold}/visual-review`,
+      payload: reviewBody([{ memory_id: theme.id, expected_revision: theme.revision + 1 }]),
+    });
+    expect(response.statusCode).toBe(409);
+    expect(h.review.calls).toBe(0);
+    expect(await projectDirs(h.root)).toEqual(before);
+    expect(await projectDirs(h.root)).not.toContain(cold);
+  });
+
+  it('lists nothing for a project the workspace has never seen, and creates nothing', async () => {
+    const h = await harness();
+    const before = await projectDirs(h.root);
+    const response = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/never-listed/generations',
+    });
+    expect(response.statusCode).toBe(200);
+    const listed = ForgeGenerationListSchema.parse(response.json().data);
+    expect(listed.items).toEqual([]);
+    expect(listed.current_version).toBeNull();
+    expect(await projectDirs(h.root)).toEqual(before);
+    expect(await projectDirs(h.root)).not.toContain('never-listed');
   });
 
   it('refuses a selection that is not a current accepted decision, without calling the provider', async () => {

@@ -49,17 +49,20 @@ export function readMediaTrace(logPath: string): MediaTraceEntry[] {
 }
 
 /**
- * Count distinct provider dispatches for a model needle. Start lines carry the
- * model; each dispatch has one start line, so this counts attempts rather than
- * log lines. Outcome lines are deliberately not counted a second time.
+ * Count provider dispatches for a model needle by counting **start lines**
+ * (a start line is the one that carries both `path` and `model`).
+ *
+ * Counting distinct attempt *numbers* was wrong: attempt numbering restarts per
+ * operation, so two independent calls that each made their first attempt —
+ * exactly what a zero-retry run looks like — collapsed into one. That let a run
+ * that paid twice claim it paid once.
  */
 export function countModelAttempts(entries: MediaTraceEntry[], modelNeedle: string): number {
-  const attempts = new Set(
-    entries
-      .filter((entry) => entry.model?.includes(modelNeedle) === true)
-      .map((entry) => entry.attempt),
-  );
-  return attempts.size;
+  // A start line is the one that names the model and carries no outcome; outcome
+  // lines answer a start and must not be counted a second time.
+  return entries.filter(
+    (entry) => entry.outcome === undefined && entry.model?.includes(modelNeedle) === true,
+  ).length;
 }
 
 /**

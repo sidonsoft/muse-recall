@@ -11,6 +11,14 @@
  * narrow: it asks whether the model pointed at the right decision for the right
  * visible reason, and whether it invented a conflict where the frame shows
  * agreement. It does not claim to measure whether the app is good.
+ *
+ * What the grounding check is, precisely: a **lexical** test over the evidence
+ * string of the finding that raised the conflict. It requires that string to name
+ * a fact the frame really contains, and refuses evidence that says that fact is
+ * absent ("there is no countdown timer anywhere"). It cannot decide whether the
+ * model actually saw the frame — an answer that paraphrases well is not proof of
+ * perception. That limit travels with the score under the name `lexicalGrounding`,
+ * so no reader takes it for a semantic judgement.
  */
 import type {
   VisualReviewFinding,
@@ -64,7 +72,26 @@ export interface ProbeScore {
   readonly flagged: boolean;
   /** Did the satisfied decision get flagged as if it were in conflict? */
   readonly falseConflict: boolean;
-  readonly groundedEvidence: boolean;
+  /** The flagging finding's own evidence names a fact the frame contains. */
+  readonly lexicalGrounding: boolean;
+  /** The flagging finding's evidence says such a fact is *not* in the frame. */
+  readonly evidenceDeniesTheFrame: boolean;
+  /** Rules this score applies, kept beside the score so a reader sees the bar. */
+  readonly limits: readonly string[];
+}
+
+/**
+ * Words that turn "mentions countdown" into "says countdown is absent".
+ */
+// Word-boundary matched, so `note` or `anchor` cannot trip it. `zero` is
+// deliberately absent: a game frame legitimately says "when the count reaches
+// zero", and a scoring rule must not read that as a denial.
+const DENIAL_TERMS =
+  /\b(no|not|never|none|without|absent|missing|lacks?|lack of|cannot|can't|doesn'?t|does not|didn'?t|isn'?t|aren'?t|free of|clear of)\b/i;
+
+/** True when an evidence string denies the presence of what it appears to cite. */
+export function evidenceDeniesFrame(evidence: string): boolean {
+  return DENIAL_TERMS.test(evidence);
 }
 
 /**
@@ -97,13 +124,21 @@ export function scoreReviewProbe(
   const contradicted = findings.filter((finding) => finding.decision_id === contradictedId);
   const honoured = findings.filter((finding) => finding.decision_id === honouredId);
 
-  const flagged = contradicted.some((finding) => finding.verdict === 'possible_conflict');
+  const flagging = contradicted.filter((finding) => finding.verdict === 'possible_conflict');
+  const flagged = flagging.length > 0;
   const falseConflict = honoured.some((finding) => finding.verdict === 'possible_conflict');
-  const groundedEvidence = contradicted.some((finding) =>
-    REVIEW_PROBE.contradictedEvidenceTokens.some((token) =>
-      finding.evidence.toLowerCase().includes(token),
-    ),
+  // Grounding belongs to the finding that raised the conflict. A separate,
+  // well-worded finding about the same decision cannot ground somebody else's
+  // verdict, so the check runs over the flagging findings themselves.
+  const groundedRows = flagging.filter(
+    (finding) =>
+      !evidenceDeniesFrame(finding.evidence) &&
+      REVIEW_PROBE.contradictedEvidenceTokens.some((token) =>
+        finding.evidence.toLowerCase().includes(token),
+      ),
   );
+  const lexicalGrounding = groundedRows.length > 0;
+  const evidenceDeniesTheFrame = flagging.some((finding) => evidenceDeniesFrame(finding.evidence));
 
   if (!flagged) {
     issues.push(
@@ -115,9 +150,14 @@ export function scoreReviewProbe(
       'the frame shows the score in the top bar, and a finding called that a possible conflict',
     );
   }
-  if (!groundedEvidence) {
+  if (!lexicalGrounding) {
     issues.push(
-      `no evidence string for the countdown decision mentions any of: ${REVIEW_PROBE.contradictedEvidenceTokens.join(', ')}`,
+      `the finding that flagged the countdown decision cites none of the facts the frame contains: ${REVIEW_PROBE.contradictedEvidenceTokens.join(', ')}`,
+    );
+  }
+  if (evidenceDeniesTheFrame) {
+    issues.push(
+      'the flagging evidence says a countdown/timer is *not* in the frame, which is the opposite of what the fixture renders',
     );
   }
   if (findings.length === 0 && unverified.length === 0) {
@@ -125,5 +165,18 @@ export function scoreReviewProbe(
       'the model returned neither findings nor unverified entries — nothing was assessed',
     );
   }
-  return { issues, rows, flagged, falseConflict, groundedEvidence };
+  return {
+    issues,
+    rows,
+    flagged,
+    falseConflict,
+    lexicalGrounding,
+    evidenceDeniesTheFrame,
+    limits: [
+      'grounding is lexical: the flagging evidence must name a fact the frame contains and must not deny it',
+      'a lexical pass is not proof that the model perceived the frame; a human still reads the wording',
+      'one still frame, one frame of one hand-authored app; nothing here measures app quality',
+      'silence counts as nothing assessed, not as agreement',
+    ],
+  };
 }

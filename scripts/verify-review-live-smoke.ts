@@ -51,7 +51,8 @@ const calls: Record<string, number> = {
   vision: 0,
   imageGeneration: 0,
   transcribe: 0,
-  coding: 0,
+  /** Dispatches on paths this review-only run must never touch. */
+  otherPaidPaths: 0,
 };
 
 function check(label: string): void {
@@ -385,7 +386,9 @@ async function main(): Promise<void> {
     observations.score = {
       flagged: score.flagged,
       false_conflict: score.falseConflict,
-      grounded_evidence: score.groundedEvidence,
+      lexical_grounding: score.lexicalGrounding,
+      evidence_denies_the_frame: score.evidenceDeniesTheFrame,
+      score_limits: score.limits,
       rows: score.rows.map((row) => ({
         decision_key: Object.keys(ids).find((k) => ids[k] === row.decision_id) ?? 'unknown',
         verdict: row.verdict,
@@ -420,7 +423,9 @@ async function main(): Promise<void> {
       fail(`${String(wholeRun.length)} provider dispatch(es) in a run allowed exactly one`);
     }
     if (wholeRun.some((entry) => entry.attempt > 1)) fail('a transport retry happened');
-    calls.coding = wholeRun.filter((entry) => entry.path !== '/v1/responses').length;
+    // Anything on a path other than the review path is a forbidden dispatch, not
+    // a coding call: this run has no coding path to attribute it to.
+    calls.otherPaidPaths = wholeRun.filter((entry) => entry.path !== '/v1/responses').length;
     check(
       'the replay cost nothing (idempotent-replayed: 1) and the whole run touched exactly one paid path, once',
     );
@@ -446,8 +451,13 @@ async function main(): Promise<void> {
       'the review wrote nothing: no version, no job, and the two decisions are still the only rows',
     );
 
-    if (serverLog.includes(key)) fail('the API token appears in the server log');
-    check('the API token does not appear in the server log');
+    // Contents, not the file name: a path string certifies any log, including
+    // one that in fact holds the credential.
+    const logBody = readFileSync(serverLog, 'utf8');
+    if (logBody.includes(key)) fail('the API token appears in the server log contents');
+    check(
+      `the API token does not appear in the ${String(logBody.length)} bytes of server log the run produced`,
+    );
 
     process.stdout.write('\nBatch E live review smoke: PASS\n');
   } catch (error) {
@@ -460,6 +470,26 @@ async function main(): Promise<void> {
   } finally {
     await stopProcess(server);
     if (browser.close) await browser.close().catch(() => undefined);
+    // The ledger is read last, so it reports every dispatch the adapter made —
+    // including any made before a failure stopped the run.
+    try {
+      const ledger = accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')));
+      calls.review = ledger.dispatches.filter((entry) => entry.path === '/v1/responses').length;
+      calls.vision = calls.review;
+      calls.otherPaidPaths = ledger.dispatches.filter(
+        (entry) => entry.path !== '/v1/responses',
+      ).length;
+      observations.dispatch_ledger = ledger.dispatches.map((entry) => ({
+        path: entry.path,
+        attempt: entry.attempt,
+        outcome: entry.outcome ?? null,
+        status: entry.status ?? null,
+      }));
+      observations.unpaired_outcome_lines = ledger.unpairedOutcomes.length;
+      observations.unanswered_dispatches = ledger.unanswered.length;
+    } catch {
+      observations.dispatch_ledger = 'the server log could not be read for the ledger';
+    }
     const summary = {
       ok: exitCode === 0,
       blocked_at: blockedAt ?? null,

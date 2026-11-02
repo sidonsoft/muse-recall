@@ -784,3 +784,106 @@ access, so a game that cannot fetch its engine shows an empty frame with no in-f
 message there needs a bridge inside the preview document — a separate change with its own review,
 not something to bolt onto this fix.
 
+
+## KI-54 — a route that promised to change nothing created the Forge project anyway (closed)
+
+**Symptom.** `POST /api/forge/projects/:id/visual-review` and
+`GET /api/forge/projects/:id/generations` both returned the right answer for the
+right reasons, and both created `<data>/forge/<id>/state.json` on disk for a
+project that had never been staged.
+
+**Root cause.** Each route opened with `await workspace.ensureProject(id)` — a
+holdover from the routes that legitimately need state — before validating the
+request. `ForgeWorkspace.ensureProject()` calls `state(id)`, which loads, creates
+the directory tree and writes when the file is missing. Every later guard was
+read-only; the first line was not.
+
+**Why the tests missed it.** The suite seeds its own Forge state in `beforeEach`,
+so there was never a cold project to observe. Every "advisory, writes nothing"
+assertion in the visual-review tests checked versions, jobs, staging files and
+memory rows — the state the route could corrupt — and none looked at the
+filesystem the route touched first.
+
+**Fix.** The `ensureProject()` calls are gone from both read-only paths: reading
+state that does not exist returns `null` and renders "no generations"/"nothing on
+record", which is the honest answer for a project that has never been used. The
+routes that legitimately write state (`generate`, `modify`, `approve`, `rollback`,
+`reset`) still initialise it.
+
+**Regression tests.**
+`tests/integration/forge-batche-visual-review.test.ts` now adds a project id that
+exists only as a database row and asserts (a) a refused stale-selection review
+creates no `<root>/forge` directory, (b) a successful review creates none either,
+and (c) listing generations for an id the workspace has never seen returns
+`{ items: [], current_version: null }` and creates none.
+
+## KI-55 — the live gates' own accounting was wrong, in ways that could report paid work that never happened (closed)
+
+An independent review of the live-acceptance chain (`d69b798..549dc93`) found
+these; each was reproduced before being fixed. None invalidated a recorded live
+result — the paid runs' own dispatch assertions still hold — but the reported
+numbers were not trustworthy, and two of the gates could pass on a broken run.
+
+**1. A retry could be counted as one call.** `countModelAttempts()` in
+`scripts/lib/media-trace.ts` counted *distinct attempt numbers* per model.
+Attempt numbering restarts for each operation, so two independent first attempts
+scored as one dispatch — exactly the count the zero-retry budget exists to catch.
+It now counts `callDispatch` start lines, and a second `attempt=1` line for the
+same model fails the budget. A retry correctly counts as two dispatches.
+`tests/unit/media-trace.test.ts` pins all three cases.
+
+**2. A harness failure erased its own ledger.** `verify:batchd-live-smoke.ts` and
+`verify:image-live-smoke.ts` set `calls` only on the success path, so any measured
+failure — failed clip check, timed-out job, failed pixel assertion — was reported
+with `calls.* = 0` and an empty `dispatch_ledger` while the server log held the
+real `callDispatch`/`callOutcome` lines. Call counts now come from the trace in
+`writeReport()` / a `finally` block, so every exit path reports what the server
+actually dispatched.
+
+**3. Forbidden paths were attributed to real capabilities.** Both harnesses
+counted `/v1/responses` dispatches into `calls.coding` (and the image run copied
+that into `calls.vision`) while simultaneously checking that `/v1/responses` was
+never called. The forbidden-path count now goes to `calls.otherPaidPaths`, which
+is what the budget assertion reads.
+
+**4. The clip budget was asserted against a number that is not call count.**
+`verify-batchd-live-smoke.ts` read `observations.clip_route_attempts`, which
+includes the file upload, and wrote it into `calls.clip`. It also used
+`countModelAttempts(trace, 'muse-spark')` over the *whole run*, so a coding or
+vision dispatch would have been billed as a clip call. Now: the ledger-derived
+count is authoritative, the route's own attempt number is kept only for
+cross-checking, and the clip check runs against an operation-scoped slice.
+`clipPromptIssues()` refuses a prompt that does not mention both scene colours,
+so an empty observation cannot be read as a model result.
+
+**5. The credential check read the wrong artifact.** Both harnesses searched the
+*filename* of the server log for the API key, which can never match. They now read
+the log body and fail if the key appears in it, and report the byte length of what
+they searched.
+
+**6. A "no network used" claim that was true of the model path only.**
+`verify:batchd-playback-auth.ts` asserted no *provider* host was contacted and
+printed "no network used" while the same page approved a Phaser artifact that
+loads `cdn.jsdelivr.net` (see KI-53). The output now names the non-local hosts it
+saw and says "no provider host".
+
+**7. The first-run gate asserted clicks, not screens.** `inspectFirstRun()`
+clicked each documented nav item, waited 800 ms and counted the screen as visited.
+A screen that threw during its own effects would have been counted as visited.
+Each screen must now render: the shell marks the active nav item
+`aria-current="page"`, and the screen must put a heading under `<main>` (for HTML
+Studio, the named `Development` panel, because that screen's heading is the
+artifact title — measured `["Farmyard Memory Match"]`, with no heading at all
+before the first click). Uncaught exceptions are captured through `pageerror`,
+which is a different signal from `console.error`.
+
+**8. The first-run environment was asserted nowhere, and the meta envelope was
+read too loosely.** `readServiceMeta()` accepted an unwrapped body as well as the
+shipped `{ ok: true, data: … }` envelope, so a failure envelope carrying a
+plausible `data`, or a proxy error page, would have read as success. It now
+requires `ok === true` and an object `data`. The gate also refuses a run whose
+reported environment is not `development`: a production build is a different
+thing from the README's first run, and it is exactly the build in which the
+dev-only React warnings (KI-52) are absent. Startup time and walkthrough time are
+reported separately — folding them together had labelled an 800 ms-per-screen walk
+"startup".

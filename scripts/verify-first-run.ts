@@ -120,7 +120,12 @@ async function main(): Promise<void> {
   await browser.close();
 
   const observation = run.value;
-  pass('both documented ports answered', `${String(run.startupMs)}ms to ready`);
+  // Readiness and the screen walkthrough are printed apart: folding them together
+  // would call a multi-second walkthrough "startup".
+  pass(
+    'both documented ports answered',
+    `${String(run.startupMs)}ms to ready, ${String(run.walkthroughMs)}ms walking the screens`,
+  );
   const issues = firstRunIssues(observation);
   if (issues.length > 0) fail('the documented first run does not hold up', issues.join('; '));
   pass(

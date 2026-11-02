@@ -66,6 +66,8 @@ const observations: Record<string, unknown> = {};
 const calls: Record<string, number> = {
   generate: 0,
   edit: 0,
+  /** Dispatches on any path this image-only run must not touch. */
+  otherPaidPaths: 0,
   vision: 0,
   transcribe: 0,
   clip: 0,
@@ -252,6 +254,17 @@ async function main(): Promise<void> {
   const workspaceRoot = join(dataRoot, 'workspaces');
   const serverLog = join(evidenceDir, 'server.log');
   writeFileSync(serverLog, '');
+
+  /**
+   * The dispatch ledger, taken from what the adapter actually logged rather than
+   * from what the harness remembered to count. It is read on every exit path —
+   * including one that threw part-way through — because a run that paid for a
+   * call and then failed must still say it paid.
+   */
+  const drainedLedger = (): ReturnType<typeof accountDispatches> =>
+    accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')));
+  const sliceLedger = (from: number): ReturnType<typeof accountDispatches> =>
+    accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')).slice(from));
   let server: Managed | undefined;
   const closeBrowser = async (): Promise<void> => {
     if (browser.close) await browser.close();
@@ -340,10 +353,30 @@ async function main(): Promise<void> {
     let traceBeforeEdit = 0;
 
     const runJob = async (path: string, body: unknown): Promise<MediaJobView> => {
+      const operationMark = traceSoFar();
+      /** A paid call that produced no usable job is still a paid call. */
+      const ledgerOnFailure = (kind: string): void => {
+        const slice = sliceLedger(operationMark);
+        const failed: Array<Record<string, unknown>> =
+          (observations.failed_operations as Array<Record<string, unknown>> | undefined) ?? [];
+        failed.push({
+          operation: path,
+          at: kind,
+          dispatches: slice.dispatches.map((entry) => ({
+            path: entry.path,
+            attempt: entry.attempt,
+            outcome: entry.outcome ?? null,
+            status: entry.status ?? null,
+          })),
+          unanswered: slice.unanswered.length,
+        });
+        observations.failed_operations = failed;
+      };
       const started = await postJson(`${apiBase}/api/forge/projects/${PROJECT_ID}/${path}`, body);
       const accepted =
         started.status === 202 ? MediaJobSchema.safeParse(started.envelope.data) : null;
       if (accepted === null || !accepted.success) {
+        ledgerOnFailure('accept');
         fail(
           `${path} returned HTTP ${String(started.status)} without a media job: ${JSON.stringify(started.envelope.error ?? {}).slice(0, 200)}`,
         );
@@ -358,12 +391,15 @@ async function main(): Promise<void> {
         const job = MediaJobSchema.parse(polled.envelope.data);
         if (job.status === 'succeeded') return job;
         if (job.status === 'failed' || job.status === 'cancelled') {
+          ledgerOnFailure(job.status);
           fail(
             `${path} ended ${job.status}: ${String(job.error ?? 'no error recorded')} (logs: ${(job.logs ?? []).slice(-3).join(' | ').slice(0, 300)})`,
           );
         }
-        if (Date.now() > deadline)
+        if (Date.now() > deadline) {
+          ledgerOnFailure('timeout');
           fail(`${path} did not finish within ${String(JOB_TIMEOUT_MS)} ms (status ${job.status})`);
+        }
         await sleep(POLL_MS);
       }
     };
@@ -547,10 +583,12 @@ async function main(): Promise<void> {
         `forbidden paths were dispatched: ${forbiddenSeen.map((entry) => entry.path).join(', ')}`,
       );
     }
-    calls.coding = wholeRun.dispatches
-      .filter((entry) => entry.path === '/v1/responses')
-      .reduce((sum, entry) => sum + entry.attempt, 0);
-    calls.vision = calls.coding;
+    // A coding or vision dispatch would be a forbidden path here, not a call to
+    // attribute to either capability: this run has no legitimate /v1/responses
+    // traffic at all. Counting it as a forbidden path is the honest ledger.
+    calls.otherPaidPaths = wholeRun.dispatches.filter(
+      (entry) => !ALLOWED_IMAGE_PATHS.includes(entry.path),
+    ).length;
     if (wholeRun.dispatches.some((entry) => entry.attempt > 1)) {
       fail('at least one dispatch recorded more than one attempt — a transport retry happened');
     }
@@ -558,8 +596,13 @@ async function main(): Promise<void> {
       `the whole run touched only ${ALLOWED_IMAGE_PATHS.join(', ')}: ${String(wholeRun.dispatches.length)} dispatch(es), every one at attempt 1`,
     );
 
-    if (serverLog.includes(key)) fail('the API token appears in the server log');
-    check('the API token does not appear in the server log');
+    // Contents, not the file name: a check that searches a path string certifies
+    // any log, including one that holds the credential.
+    const logBody = readFileSync(serverLog, 'utf8');
+    if (logBody.includes(key)) fail('the API token appears in the server log contents');
+    check(
+      `the API token does not appear in the ${String(logBody.length)} bytes of server log the run produced`,
+    );
 
     const projectView = await getJson(`${apiBase}/api/forge/projects/${PROJECT_ID}`);
     const versions = ForgeProjectViewSchema.parse(projectView.envelope.data).state.versions;
@@ -584,6 +627,32 @@ async function main(): Promise<void> {
   } finally {
     if (server !== undefined) await stopProcess(server);
     await closeBrowser().catch(() => undefined);
+    // The ledger is the last thing read, so it reflects every dispatch the
+    // adapter made — before or after the point the run stopped.
+    try {
+      const ledger = drainedLedger();
+      const byPath = new Map<string, number>();
+      for (const entry of ledger.dispatches) {
+        byPath.set(entry.path, (byPath.get(entry.path) ?? 0) + 1);
+      }
+      calls.generate = byPath.get('/v1/images/generations') ?? 0;
+      calls.edit = byPath.get('/v1/images/edits') ?? 0;
+      calls.imageGeneration = calls.generate + calls.edit;
+      calls.otherPaidPaths = ledger.dispatches.filter(
+        (entry) => !ALLOWED_IMAGE_PATHS.includes(entry.path),
+      ).length;
+      observations.dispatch_ledger = ledger.dispatches.map((entry) => ({
+        path: entry.path,
+        attempt: entry.attempt,
+        outcome: entry.outcome ?? null,
+        status: entry.status ?? null,
+      }));
+      observations.dispatch_paths = [...byPath].map(([path, dispatches]) => ({ path, dispatches }));
+      observations.unpaired_outcome_lines = ledger.unpairedOutcomes.length;
+      observations.unanswered_dispatches = ledger.unanswered.length;
+    } catch {
+      observations.dispatch_ledger = 'the server log could not be read for the ledger';
+    }
     const summary = {
       ok: exitCode === 0,
       blocked_at: blockedAt ?? null,

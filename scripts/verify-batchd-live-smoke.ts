@@ -112,7 +112,17 @@ interface Report {
 
 const checks: Array<{ name: string; ok: boolean }> = [];
 const observations: Record<string, unknown> = {};
-const calls = { transcribe: 0, clip: 0, vision: 0, imageGeneration: 0, coding: 0 };
+const calls = {
+  transcribe: 0,
+  clip: 0,
+  vision: 0,
+  imageGeneration: 0,
+  coding: 0,
+  /** Uploads are a provider request but not a model call; counted separately. */
+  uploads: 0,
+  /** Dispatches on paths this run's scope does not authorize. */
+  otherPaidPaths: 0,
+};
 
 const LIMITS = [
   'A word-overlap ratio measures whether the recorded words came back; it is not a transcription accuracy score.',
@@ -132,6 +142,34 @@ function fail(message: string): never {
 }
 
 function writeReport(status: string, error?: string): void {
+  // The ledger is read from the adapter's own trace every time a report is
+  // written — pass, blocked, or failed. Counters that only advanced on a success
+  // path hide the cost of a run that paid for a call and then failed, which is
+  // exactly what a reader of the evidence needs to see.
+  try {
+    const logPath = join(EVIDENCE, 'server.log');
+    const ledger = accountDispatches(
+      parseMediaTrace(existsSync(logPath) ? readFileSync(logPath, 'utf8') : ''),
+    );
+    const countOn = (path: string): number =>
+      ledger.dispatches.filter((entry) => entry.path === path).length;
+    calls.transcribe = countOn('/v1/asr/transcribe');
+    calls.clip = countOn(CLIP_MODEL_PATH);
+    calls.uploads = countOn(CLIP_UPLOAD_PATH);
+    calls.otherPaidPaths = ledger.dispatches.filter(
+      (entry) => ![CLIP_MODEL_PATH, CLIP_UPLOAD_PATH, '/v1/asr/transcribe'].includes(entry.path),
+    ).length;
+    observations.dispatch_ledger = ledger.dispatches.map((entry) => ({
+      path: entry.path,
+      attempt: entry.attempt,
+      outcome: entry.outcome ?? null,
+      status: entry.status ?? null,
+    }));
+    observations.unpaired_outcome_lines = ledger.unpairedOutcomes.length;
+    observations.unanswered_dispatches = ledger.unanswered.length;
+  } catch {
+    observations.dispatch_ledger = 'the server log could not be read for the ledger';
+  }
   const report: Report = {
     status,
     scope: `${process.env.BATCHD_SMOKE_FIXTURE_ONLY ? 'fixtures only, no network' : `live ${process.env.BATCHD_SMOKE_SCOPE ?? 'audio'}`}`,
@@ -574,7 +612,10 @@ async function main(): Promise<void> {
         );
       }
       const clipResponse = MediaClipResponseSchema.parse(response.json.data);
-      calls.clip = clipResponse.provider_attempts;
+      // `provider_attempts` is not a model-call count: a clip call also pushes the
+      // frame through the upload path. The count comes from the trace below; the
+      // route's number is kept only as a cross-check.
+      observations.clip_route_attempts = clipResponse.provider_attempts;
       const issues = timestampIssues(
         clipResponse.observations.map((entry) => ({
           start_ms: entry.start_ms,

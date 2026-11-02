@@ -227,7 +227,10 @@ export function registerForgeRoutes(
   app.get('/api/forge/projects/:id/generations', async (request, reply) => {
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
-      await workspace.ensureProject(id);
+      // No `ensureProject` here: that call creates directories and writes an
+      // empty `state.json`, and a route that documents itself as read-only must
+      // not create the project it came to read. `state()` is side-effect free,
+      // and an unknown project simply lists nothing.
       const state = await workspace.state(id);
       const listed = deps.engine.list({
         project_id: id,
@@ -314,7 +317,12 @@ export function registerForgeRoutes(
         const preflight = (await guard(reply, async () => {
           const { id } = ProjectParams.parse(request.params);
           const body = MediaVisualReviewRequestSchema.parse(request.body ?? {});
-          await workspace.ensureProject(id);
+          // No `ensureProject` here either. This route is advisory and promises
+          // to write nothing, so it must not create a workspace directory and an
+          // empty state file for a project it has never staged — not even when
+          // the request is later refused. An id with no decisions surfaces as
+          // `decision_not_found` from the store lookup below, which is the
+          // honest answer: nothing is known about that project.
           const media = deps.media;
           if (media === undefined || media === null) {
             throw new MediaServiceError(

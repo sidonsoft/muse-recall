@@ -40,7 +40,8 @@ describe('scoring one live screenshot review', () => {
     expect(score.issues).toEqual([]);
     expect(score.flagged).toBe(true);
     expect(score.falseConflict).toBe(false);
-    expect(score.groundedEvidence).toBe(true);
+    expect(score.lexicalGrounding).toBe(true);
+    expect(score.evidenceDeniesTheFrame).toBe(false);
   });
 
   it('fails an answer that never flags the countdown the frame is showing', () => {
@@ -93,10 +94,88 @@ describe('scoring one live screenshot review', () => {
       [],
       IDS,
     );
-    expect(score.groundedEvidence).toBe(false);
-    expect(score.issues.join(' ')).toContain(
-      'no evidence string for the countdown decision mentions',
+    expect(score.lexicalGrounding).toBe(false);
+    expect(score.issues.join(' ')).toContain('cites none of the facts the frame contains');
+  });
+
+  it('refuses an evidence string that names the fact in order to deny it', () => {
+    // The substring test alone passed this answer: it contains "countdown" and
+    // "timer", while saying the frame shows neither. A flagging finding whose own
+    // evidence denies the visible fact cannot be grounding for a conflict.
+    const score = scoreReviewProbe(
+      [
+        finding(
+          CONTRADICTED,
+          'possible_conflict',
+          'There is no countdown timer visible anywhere in this frame.',
+        ),
+      ],
+      [],
+      IDS,
     );
+    expect(score.flagged).toBe(true);
+    expect(score.lexicalGrounding).toBe(false);
+    expect(score.evidenceDeniesTheFrame).toBe(true);
+    expect(score.issues.join(' ')).toContain('opposite of what the fixture renders');
+  });
+
+  it('grounds a verdict only in the finding that raised it', () => {
+    // One finding raises the conflict with vague wording; another finding about
+    // the same decision describes the frame but calls it consistent. The second
+    // cannot retrofit grounding onto the first.
+    const score = scoreReviewProbe(
+      [
+        finding(CONTRADICTED, 'possible_conflict', 'The interface is visually busy.'),
+        finding(CONTRADICTED, 'consistent', 'A COUNTDOWN 10 label is displayed.'),
+      ],
+      [],
+      IDS,
+    );
+    expect(score.flagged).toBe(true);
+    expect(score.lexicalGrounding).toBe(false);
+  });
+
+  it('accepts the wording the retained live run actually produced', () => {
+    // Verbatim evidence from test-results/review-live/2026-11-02-0451, re-scored
+    // offline against the tightened rule: the run still passes it.
+    const score = scoreReviewProbe(
+      [
+        finding(
+          CONTRADICTED,
+          'possible_conflict',
+          "there is a large centered yellow text reading 'COUNTDOWN 10' with subtext below it that mentions the round starting when the count reaches zero",
+          0.95,
+        ),
+        finding(
+          HONOURED,
+          'consistent',
+          "the top bar of the interface shows 'SCORE 120' in the upper-right corner",
+          0.9,
+        ),
+      ],
+      [],
+      IDS,
+    );
+    expect(score.issues).toEqual([]);
+    expect(score.lexicalGrounding).toBe(true);
+    expect(score.evidenceDeniesTheFrame).toBe(false);
+    expect(score.limits.join(' ')).toContain('lexical');
+  });
+
+  it('does not let a denial word inside another word trip the check', () => {
+    const score = scoreReviewProbe(
+      [
+        finding(
+          CONTRADICTED,
+          'possible_conflict',
+          'A prominent COUNTDOWN 10 counter sits above the note panel.',
+        ),
+      ],
+      [],
+      IDS,
+    );
+    expect(score.lexicalGrounding).toBe(true);
+    expect(score.evidenceDeniesTheFrame).toBe(false);
   });
 
   it('refuses a finding about a decision that was never selected', () => {

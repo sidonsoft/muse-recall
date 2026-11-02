@@ -27,6 +27,7 @@ describe('the documented first run', () => {
       metaContractViolation: false,
       tabsVisited: ['Memory'],
       missingTabs: [],
+      screensThatNeverRendered: [],
     };
     expect(firstRunIssues(good)).toEqual([]);
     expect(firstRunIssues({ ...good, mounted: false }).join(' ')).toContain('never mounted');
@@ -37,6 +38,15 @@ describe('the documented first run', () => {
     );
     expect(firstRunIssues({ ...good, nonLocalRequests: ['api.example.com'] }).join(' ')).toContain(
       'does not allowlist',
+    );
+    // A production build is a different thing from the README's first run, and the
+    // dev-only warnings this gate exists to see would be absent from it.
+    expect(firstRunIssues({ ...good, environment: 'production' }).join(' ')).toContain(
+      'not the development environment',
+    );
+    // A nav click that never produced the screen is not a visited screen.
+    expect(firstRunIssues({ ...good, screensThatNeverRendered: ['Memory'] }).join(' ')).toContain(
+      'clicked but never rendered',
     );
     // The approved Phaser CDN is the product's documented exception. Recording it
     // is honest; calling it a leak would be wrong, and pretending it is not there
@@ -95,12 +105,19 @@ describe('the documented first run', () => {
       safety: { tool_approval_policy: 'always', generated_code_execution: false },
       build: null,
     };
-    // The server wraps success in { ok: true, data: … }. Reading the unwrapped
-    // shape is what makes "the contract changed underneath us" a failure.
+    // The server wraps success in { ok: true, data: … }. Accepting the unwrapped
+    // shape as well means a failure envelope that happens to carry a plausible
+    // `data` is read as success.
     const wrapped = readServiceMeta({ status: 200, body: { ok: true, data: meta } });
     expect(wrapped.violation).toBe(false);
     expect(wrapped.meta?.provider.id).toBe('echo');
-    expect(readServiceMeta({ status: 200, body: meta }).meta?.provider.id).toBe('echo');
+    // An unwrapped body is no longer accepted, even a well-shaped one.
+    expect(readServiceMeta({ status: 200, body: meta }).violation).toBe(true);
+    // A failure envelope whose `data` still parses is refused because `ok` is false.
+    expect(readServiceMeta({ status: 200, body: { ok: false, data: meta } }).violation).toBe(true);
+    // A proxy error page with no `data` at all is refused too.
+    expect(readServiceMeta({ status: 200, body: { ok: true } }).violation).toBe(true);
+    expect(readServiceMeta({ status: 200, body: { ok: true, data: null } }).violation).toBe(true);
     expect(readServiceMeta({ status: 500, body: null }).violation).toBe(true);
     expect(readServiceMeta({ status: 200, body: { ok: true, data: { nope: 1 } } }).violation).toBe(
       true,
@@ -118,6 +135,7 @@ describe('the documented first run', () => {
         metaContractViolation: true,
         tabsVisited: [],
         missingTabs: [],
+        screensThatNeverRendered: [],
       }).join(' '),
     ).toContain('ServiceMetaSchema');
   });
