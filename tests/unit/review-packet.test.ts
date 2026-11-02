@@ -58,6 +58,13 @@ const BASE: PacketFacts = {
   },
 };
 
+function withFacts(base: PacketFacts, app: Record<string, unknown>): PacketFacts {
+  return {
+    ...base,
+    page: { ...base.page, app_facts: app as PacketFacts['page']['app_facts'] },
+  };
+}
+
 describe('human review packet', () => {
   it('gives a clean capture no issues, so the packet does not cry wolf', () => {
     expect(packetIssues(BASE)).toEqual([]);
@@ -90,6 +97,38 @@ describe('human review packet', () => {
     });
     expect(issues.join(' ')).toContain('the brief forbade network use');
     expect(issues.join(' ')).toContain('cdn.jsdelivr.net');
+  });
+
+  it('says when a contrast measurement was impossible instead of letting zero read as a pass', () => {
+    const facts = withFacts(BASE, {
+      named_controls: ['Generate', 'Export'],
+      controls_without_visible_label: 0,
+      status_texts: [],
+      contrast: { checked: 0, below_4_5: 0, worst: [], skipped: 61 },
+      contrast_note: 'nothing was measurable',
+    });
+    const nothing = packetIssues(facts);
+    const rendered = renderReviewPacket(facts, nothing);
+    expect(rendered).toContain('nothing was measurable');
+    expect(rendered).not.toContain('no measured element fell below 4.5:1');
+  });
+
+  it('reports what the app named and how it reported results, without grading either', () => {
+    const facts = withFacts(BASE, {
+      named_controls: ['Generate', 'Export', 'Clear'],
+      controls_without_visible_label: 7,
+      status_texts: ['Generated five colours from seed 42.'],
+      contrast: {
+        checked: 64,
+        below_4_5: 0,
+        worst: [{ ratio: 6.7, text: 'Generate' }],
+        skipped: 0,
+      },
+    });
+    const rendered = renderReviewPacket(facts, packetIssues(facts));
+    expect(rendered).toContain('Generated five colours from seed 42.');
+    expect(rendered).toContain('6.70:1 — "Generate"');
+    expect(rendered).toContain('controls with an accessible name but no visible label | 7');
   });
 
   it('pins the exact decision wording a reviewer is being asked about', () => {

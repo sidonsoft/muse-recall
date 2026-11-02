@@ -1578,3 +1578,51 @@ fetch failed`. Two lessons, both already learned elsewhere and skipped here:
 No call was made in that attempt: it never reached a job. The failed evidence stays at
 `test-results/human-review/palette-bench-2026-11-02-2146` — a run that cost nothing, said nothing,
 and is the record of both defects.
+
+## KI-73 — the review harness measured the wrong things, and two of the three mistakes looked like results (closed)
+
+Everything in this record was found while trying to hand a person an app worth
+judging. None of it was visible in the packet until the numbers were checked
+against the artifact itself.
+
+1. **A page-side measurement can be destroyed by the toolchain, silently.** The
+   contrast measurement first went into `page.evaluate` as TypeScript with named
+   arrow functions, and died at runtime with `ReferenceError: __name is not
+   defined` — a compile-time naming helper that exists in the bundle and not in
+   the browser. Moving the same code into a template-literal string made it run,
+   and made it *wrong*: a template literal eats regex backslashes, so the colour
+   parser became `/rgba?(([^)]*))/` and the whitespace collapse became `/s+/g`.
+   The parser matched nothing, and the packet cheerfully reported
+   `contrast: {checked: 0, skipped: 64}` — indistinguishable from "this app's text
+   could not be measured", and one step from reading as "nothing failed". The page
+   code now travels as `String.raw`, and when `checked === 0` the facts block
+   carries an explicit note that the numbers say nothing about legibility.
+2. **A screenshot of an empty state is not evidence about the app's function.**
+   The first packets of Palette Bench showed "No palette yet" at both widths: a
+   reviewer cannot judge palette quality, contrast, or the one-accent decision from
+   an ungenerated palette. `REVIEW_APP_STEPS` now names the interactions that bring
+   an app to a used state (type a seed, press Generate, press Export), the captures
+   are labelled with every step taken, and if the visible text does not change the
+   label says so, because "after I pressed Generate" is a claim about state.
+   Clicking prefers a real control by role: `getByText("Generate")` also matches
+   the helper sentence "Press Enter to generate", and clicking a paragraph
+   succeeds while accomplishing nothing.
+3. **A failed capture hung the run instead of reporting a verdict.** The
+   re-measure path never closed its browser, so any throw left the process
+   attached until something external killed it: three attempts ended at
+   `exit=124` with no status line, which is the same legibility failure KI-57 and
+   KI-63 are about. Page and browser are now closed in a `finally`.
+
+What the fixed measurement then showed, as facts rather than scores: 64 text
+elements measured against a flat background, **0** below 4.5:1 with the worst at
+6.70:1; **0** native dialogs raised across generate/export; 7 controls with an
+accessible name and no visible label of their own; the export text area holding all
+five generated hexes after Export. The judgement stays the reviewer's — the
+harness's job is that these are measurements rather than impressions.
+
+Evidence lineage, all retained: `-2026-11-02-2148` (the paid run, with the KI-71
+false flag), `-2026-11-02-2151` (KI-71 correction), `-2026-11-02-2204/-2205`
+(used-state captures while the facts block was still wrong), `-2026-11-02-2207`,
+`-2218`, `-2233`, `-2244` (the runs that hung or failed on the way), and
+`test-results/human-review/palette-bench-2026-11-02-2245` as the packet a reviewer
+should read.

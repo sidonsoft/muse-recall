@@ -35,6 +35,20 @@ run refuses with exit 2 rather than quietly substituting the deterministic fixtu
 CLI. If a fixture CLI *is* used, the packet names it, so a plumbing run can never
 be mistaken for a model-quality run.
 
+## Getting the app into a state worth judging
+
+An app in its empty state cannot be judged at its main function, so a run may name
+the interactions that bring it to a used state. The steps are app-specific on
+purpose, and every step taken is written into the screenshot labels:
+
+```
+REVIEW_APP_STEPS='[{"fill":"Seed","value":"42"},{"clickText":"Generate"},{"clickText":"Export"}]'
+```
+
+If the visible text does not change after the steps, the labels say so: "after I
+pressed Generate" is a claim about state, and a harness that cannot verify it says
+so rather than implying it.
+
 ## Reading a packet
 
 `report.json` next to it holds the machine facts: job id, internal calls, media
@@ -74,6 +88,10 @@ Each run is one coding job. Nothing in this flow makes a media call.
 
 ## What a packet cannot claim
 
+- The measured facts (text contrast against a flat background, native dialogs
+  raised, named controls, status text) are measurements, not verdicts. A packet
+  that could measure nothing says it measured nothing rather than showing a zero
+  that reads like a pass.
 - It cannot score the app. The sheet is for a person, and the packet refuses to
   contain a score of ours.
 - A screenshot is of the artifact bytes as a document, not of the product's

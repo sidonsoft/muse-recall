@@ -48,7 +48,7 @@ import {
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
-import type { Browser } from 'playwright-core';
+import type { Browser, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 import { describeBundleIdentity, verifyBuildProvenance } from './lib/build-provenance.js';
@@ -74,6 +74,8 @@ const PROJECT = `review-${APP}`;
 const STAMP = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);
 const OUT = join(ROOT, 'test-results', 'human-review', `${APP}-${STAMP}`);
 const JOB_TIMEOUT_MS = Number(process.env.REVIEW_APP_JOB_TIMEOUT_MS ?? '900000');
+/** Steps that bring the app to a used state before the second pair of captures. */
+const CAPTURE_STEPS = JSON.parse(process.env.REVIEW_APP_STEPS ?? '[]') as CaptureStep[];
 
 const LOADED_VIA =
   'the artifact bytes loaded as a document from disk (the artifact endpoint itself answers with a JSON envelope for the Studio preview)';
@@ -201,6 +203,225 @@ function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
+/**
+ * An interaction the harness performs before taking the second pair of captures.
+ *
+ * A screenshot of an app sitting in its empty state cannot support a judgement
+ * about the thing the app is for: an ungenerated palette tells a reviewer nothing
+ * about contrast, colour or hierarchy. So a run may name the steps that get it to
+ * a used state. The steps are app-specific on purpose, and every step taken is
+ * written into the packet labels, because "the app looked good" and "the app
+ * looked good after I pressed Generate" are different observations.
+ */
+export interface CaptureStep {
+  /** Label or `id` of a field to type into. */
+  fill?: string;
+  /** Value to type, when `fill` is set. */
+  value?: string;
+  /** Visible text of the control to click. */
+  clickText?: string;
+}
+
+const STEP_TIMEOUT_MS = 8_000;
+
+/**
+ * Apply the steps and return a description of each one actually taken. A step
+ * whose target cannot be found fails the run instead of skipping quietly: the
+ * capture a reviewer is handed has to say what was done to reach it.
+ */
+async function runCaptureSteps(page: Page, steps: readonly CaptureStep[]): Promise<string[]> {
+  const taken: string[] = [];
+  for (const step of steps) {
+    if (typeof step.fill === 'string') {
+      const field = page
+        .getByLabel(step.fill)
+        .or(page.locator(`#${step.fill}`))
+        .first();
+      await field.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
+      const value = step.value ?? '';
+      await field.fill(value);
+      taken.push(`typed "${value}" into the field labelled "${step.fill}"`);
+    }
+    if (typeof step.clickText === 'string') {
+      // Prefer a real control. `getByText("Generate")` also matches the helper
+      // sentence "Press Enter to generate", and clicking a paragraph succeeds
+      // while doing nothing - which would let the packet claim a state change
+      // that never happened.
+      const button = page.getByRole('button', { name: step.clickText, exact: false }).first();
+      if (await button.isVisible().catch(() => false)) {
+        await button.click({ timeout: STEP_TIMEOUT_MS });
+        taken.push(`clicked the button "${step.clickText}"`);
+      } else {
+        const fallback = page.getByText(step.clickText, { exact: false }).first();
+        await fallback.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
+        await fallback.click();
+        taken.push(
+          `clicked "${step.clickText}" (no button with that name was found; a text match was used)`,
+        );
+      }
+      await page.waitForTimeout(600);
+    }
+  }
+  return taken;
+}
+
+/**
+ * Measurable facts about how the app presents itself.
+ *
+ * None of this is a judgement. A reviewer still decides whether five saturated
+ * hues on one screen is a violation of a decision or the whole point of the app.
+ * What belongs in the packet is the part that is checkable: which controls have
+ * names, how the app reports results, and the measured contrast of text drawn
+ * over a solid background - because a decision that says "at least 4.5:1" cannot
+ * be judged from the app's own badges, which are self-report.
+ *
+ * Text over a gradient, an image or a transparent layer counts as not measurable
+ * rather than guessed at, and the count travels with the number. The page code
+ * travels as a string: `page.evaluate` runs in the browser, and an arrow function
+ * compiled by tsx arrives wrapped in a helper that does not exist there.
+ */
+type AppFacts = NonNullable<PacketFacts['page']['app_facts']>;
+
+async function captureAppFacts(page: Page): Promise<AppFacts | undefined> {
+  const facts = await page.evaluate(APP_FACTS_SCRIPT);
+  return facts as AppFacts | undefined;
+}
+
+/**
+ * The page-side measurement, written as plain JavaScript in `String.raw`.
+ *
+ * Two failure modes this choice avoids, both of which produce a wrong number
+ * rather than an error: a function written in TypeScript reaches the browser
+ * wrapped in a compile-time helper that does not exist there (`__name is not
+ * defined`), and the same code in a plain template literal loses its regex
+ * backslashes, so the colour parser silently matches nothing and the contrast
+ * count comes back zero — a measurement that reads like a clean result.
+ */
+const APP_FACTS_SCRIPT = String.raw`(function () {
+  function parse(color) {
+    const match = /rgba?\(([^)]*)\)/.exec(color);
+    const raw = match === null ? '' : match[1];
+    if (!raw) return null;
+    const values = raw
+      .split(/[,\s/]+/)
+      .filter(function (v) {
+        return v.length > 0;
+      })
+      .map(Number);
+    if (values.length < 3) return null;
+    for (const value of values) {
+      if (Number.isNaN(value)) return null;
+    }
+    return {
+      r: values[0],
+      g: values[1],
+      b: values[2],
+      a: values.length > 3 ? values[3] : 1,
+    };
+  }
+  function channel(v) {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  function luminance(c) {
+    return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+  }
+  function composite(fg, bg) {
+    return {
+      r: fg.r * fg.a + bg.r * (1 - fg.a),
+      g: fg.g * fg.a + bg.g * (1 - fg.a),
+      b: fg.b * fg.a + bg.b * (1 - fg.a),
+      a: 1,
+    };
+  }
+  function backgroundOf(el) {
+    const layers = [];
+    let node = el;
+    while (node !== null) {
+      const style = getComputedStyle(node);
+      if (style.backgroundImage !== 'none') return null;
+      const color = parse(style.backgroundColor);
+      if (color !== null && color.a > 0) {
+        layers.push(color);
+        if (color.a === 1) break;
+      }
+      node = node.parentElement;
+    }
+    let base = { r: 255, g: 255, b: 255, a: 1 };
+    for (let i = layers.length - 1; i >= 0; i -= 1) base = composite(layers[i], base);
+    return base;
+  }
+  const named = [];
+  let unlabeled = 0;
+  for (const el of document.querySelectorAll('button, a[href], input, select, textarea, [role="button"]')) {
+    const name =
+      el.getAttribute('aria-label') || el.getAttribute('title') || (el.textContent || '').trim() || el.id || '';
+    if (name !== '') {
+      const label = name.slice(0, 24);
+      if (named.indexOf(label) === -1) named.push(label);
+    }
+    if ((el.textContent || '').trim() === '' && name !== '') unlabeled += 1;
+  }
+  const statusTexts = Array.from(document.querySelectorAll('[role="status"], [aria-live], .status'))
+    .map(function (node) {
+      return (node.textContent || '').replace(/\s+/g, ' ').trim();
+    })
+    .filter(function (text) {
+      return text.length > 0;
+    })
+    .slice(0, 4);
+  let checked = 0;
+  let below = 0;
+  let skipped = 0;
+  const measured = [];
+  for (const el of Array.from(document.querySelectorAll('body *'))) {
+    const ownText = Array.from(el.childNodes).some(function (node) {
+      return node.nodeType === Node.TEXT_NODE && (node.textContent || '').trim().length > 0;
+    });
+    if (!ownText) continue;
+    const box = el.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) continue;
+    const fg = parse(getComputedStyle(el).color);
+    const bg = backgroundOf(el);
+    if (fg === null || bg === null) {
+      skipped += 1;
+      continue;
+    }
+    const fgSolid = composite(fg, bg);
+    const a = luminance(fgSolid);
+    const b = luminance(bg);
+    const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    checked += 1;
+    if (ratio < 4.5) below += 1;
+    measured.push({ ratio: ratio, text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 44) });
+  }
+  measured.sort(function (x, y) {
+    return x.ratio - y.ratio;
+  });
+  const facts = {
+    named_controls: named.slice(0, 24),
+    controls_without_visible_label: unlabeled,
+    status_texts: statusTexts,
+    contrast: { checked: checked, below_4_5: below, worst: measured.slice(0, 3), skipped: skipped },
+  };
+  if (checked === 0) {
+    facts.contrast_note =
+      'no text element could be measured against a flat background, so these contrast numbers say nothing about legibility';
+  }
+  return facts;
+})()`;
+
+/** Visible text of the page, excluding the app's own script and style source. */
+async function visibleText(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const clone = document.body?.cloneNode(true) as HTMLElement | null;
+    clone?.querySelectorAll('script,style,noscript,template').forEach((node) => {
+      node.remove();
+    });
+    return (clone?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  });
+}
+
 /** Distinct colours in a PNG, as a blank-page detector and nothing more. */
 function distinctColors(pngBytes: Buffer): number {
   const png = PNG.sync.read(pngBytes);
@@ -249,7 +470,76 @@ function writeReport(status: string, extra: Record<string, unknown> = {}): void 
  * original run's cost record forward unchanged. The retained packet is not
  * touched: a corrected number and the number it replaced both stay readable.
  */
+/**
+ * Drive the app into a used state and capture it, returning screenshot entries.
+ */
+async function captureUsedState(page: Page, prefix: string): Promise<ScreenshotEntry[]> {
+  observations.app_facts_initial = await captureAppFacts(page);
+  const before = await visibleText(page);
+  const taken = await runCaptureSteps(page, CAPTURE_STEPS);
+  const after = await visibleText(page);
+  const changed = before !== after;
+  observations.capture_steps = taken;
+  observations.capture_changed_the_page = changed;
+  if (!changed) {
+    // Say it out loud: the second pair of captures is not a different state, and
+    // a reviewer must not be told it is.
+    taken.push(
+      'the visible text did not change after these steps, so the "used state" captures show the same screen',
+    );
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(400);
+  const desktop = await page.screenshot({
+    path: join(OUT, `${prefix}-used-1280.png`),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+  const phone = await page.screenshot({
+    path: join(OUT, `${prefix}-used-390.png`),
+    fullPage: true,
+  });
+  observations.distinct_colors_used_state = distinctColors(desktop);
+  observations.app_facts = await captureAppFacts(page);
+  const label = `after ${taken.join('; ')}`;
+  return [
+    {
+      name: `${prefix}-used-1280.png`,
+      label: `desktop 1280×800, full page, ${label}`,
+      bytes: desktop.length,
+    },
+    {
+      name: `${prefix}-used-390.png`,
+      label: `phone 390×844, full page, ${label}`,
+      bytes: phone.length,
+    },
+  ];
+}
+
+type ScreenshotEntry = PacketFacts['screenshots'][number];
+let usedStateShots: ScreenshotEntry[] = [];
+
+/**
+ * The re-measure path owns a browser. A failure inside it must not leave that
+ * browser connected: the run would then sit until something external kills it,
+ * which is how a broken capture turned into a timeout with no verdict.
+ */
+let activePage: Page | null = null;
+let activeBrowser: Browser | null = null;
+
 async function remeasure(sourceDir: string): Promise<void> {
+  try {
+    await remeasureFromBytes(sourceDir);
+  } finally {
+    await activePage?.close().catch(() => undefined);
+    await activeBrowser?.close().catch(() => undefined);
+    activePage = null;
+    activeBrowser = null;
+  }
+}
+
+async function remeasureFromBytes(sourceDir: string): Promise<void> {
   const sourceReport = JSON.parse(readFileSync(join(sourceDir, 'report.json'), 'utf8')) as {
     observations?: Record<string, unknown>;
     paid?: Record<string, unknown>;
@@ -272,14 +562,20 @@ async function remeasure(sourceDir: string): Promise<void> {
   const launched = await launchVerificationBrowser();
   const browser = launched.browser;
   const page = await browser.newPage();
+  activeBrowser = browser;
+  activePage = page;
   const consoleErrors: string[] = [];
   const httpFailures: string[] = [];
   const nonLocal: string[] = [];
   const nonHttp: string[] = [];
+  const nativeDialogs: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 200));
   });
   page.on('pageerror', (error) => consoleErrors.push(error.message.slice(0, 200)));
+  page.on('dialog', (dialog) =>
+    nativeDialogs.push(`${dialog.type()}: ${dialog.message().slice(0, 80)}`),
+  );
   page.on('requestfailed', (request) =>
     httpFailures.push(`${request.method()} ${request.url()}`.slice(0, 200)),
   );
@@ -302,6 +598,9 @@ async function remeasure(sourceDir: string): Promise<void> {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(500);
   const mobile = await page.screenshot({ path: join(OUT, 'app-390.png'), fullPage: true });
+  if (CAPTURE_STEPS.length > 0) {
+    usedStateShots = await captureUsedState(page, 'app');
+  }
   const domFacts = await page.evaluate(() => ({
     title: document.title,
     controls: document.querySelectorAll('button, input, select, a[href], textarea').length,
@@ -313,8 +612,6 @@ async function remeasure(sourceDir: string): Promise<void> {
       return (clone?.textContent ?? '').replace(/\s+/g, ' ').trim().length;
     })(),
   }));
-  await page.close();
-  await browser.close().catch(() => undefined);
 
   copyFileSync(htmlPath, join(OUT, 'artifact.html'));
   writeFileSync(join(OUT, 'brief.md'), readFileSync(join(sourceDir, 'brief.md'), 'utf8'));
@@ -322,6 +619,14 @@ async function remeasure(sourceDir: string): Promise<void> {
 
   const pageInfo: PageFacts = {
     title: domFacts.title,
+    distinct_colors_used_state:
+      typeof observations.distinct_colors_used_state === 'number'
+        ? observations.distinct_colors_used_state
+        : undefined,
+    native_dialogs: Array.isArray(observations.native_dialogs)
+      ? (observations.native_dialogs as string[])
+      : undefined,
+    app_facts: (observations.app_facts as PacketFacts['page']['app_facts']) ?? undefined,
     interactive_controls: domFacts.controls,
     distinct_colors: distinctColors(shot),
     console_errors: consoleErrors.length,
@@ -330,6 +635,7 @@ async function remeasure(sourceDir: string): Promise<void> {
   };
   observations.remeasured_from = sourceDir;
   observations.non_http_requests = [...new Set(nonHttp)];
+  observations.native_dialogs = nativeDialogs;
   observations.page = { ...pageInfo, visible_text_characters: domFacts.text_length };
   observations.artifact_endpoint_content_type =
     sourceObservations.artifact_endpoint_content_type ?? 'not recorded';
@@ -396,8 +702,17 @@ async function remeasure(sourceDir: string): Promise<void> {
     },
     media_dispatches: Number(observations.media_dispatches ?? 0),
     screenshots: [
-      { name: 'app-1280.png', label: 'desktop 1280×800, full page', bytes: shot.length },
-      { name: 'app-390.png', label: 'phone 390×844, full page', bytes: mobile.length },
+      {
+        name: 'app-1280.png',
+        label: 'desktop 1280×800, full page, initial state',
+        bytes: shot.length,
+      },
+      {
+        name: 'app-390.png',
+        label: 'phone 390×844, full page, initial state',
+        bytes: mobile.length,
+      },
+      ...usedStateShots,
     ],
     page: pageInfo,
     loaded_via: `${LOADED_VIA}; re-measured from the retained bytes without a second job`,
@@ -669,10 +984,14 @@ async function main(): Promise<void> {
     const httpFailures: string[] = [];
     const nonLocal: string[] = [];
     const nonHttp: string[] = [];
+    const nativeDialogs: string[] = [];
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 200));
     });
     page.on('pageerror', (error) => consoleErrors.push(error.message.slice(0, 200)));
+    page.on('dialog', (dialog) =>
+      nativeDialogs.push(`${dialog.type()}: ${dialog.message().slice(0, 80)}`),
+    );
     page.on('requestfailed', (request) =>
       httpFailures.push(`${request.method()} ${request.url()}`.slice(0, 200)),
     );
@@ -706,6 +1025,9 @@ async function main(): Promise<void> {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(500);
     const mobile = await page.screenshot({ path: join(OUT, 'app-390.png'), fullPage: true });
+    if (CAPTURE_STEPS.length > 0) {
+      usedStateShots = await captureUsedState(page, 'app');
+    }
     const domFacts = await page.evaluate(() => ({
       title: document.title,
       controls: document.querySelectorAll('button, input, select, a[href], textarea').length,
@@ -723,6 +1045,14 @@ async function main(): Promise<void> {
 
     const pageInfo: PageFacts = {
       title: domFacts.title,
+      distinct_colors_used_state:
+        typeof observations.distinct_colors_used_state === 'number'
+          ? observations.distinct_colors_used_state
+          : undefined,
+      native_dialogs: Array.isArray(observations.native_dialogs)
+        ? (observations.native_dialogs as string[])
+        : undefined,
+      app_facts: (observations.app_facts as PacketFacts['page']['app_facts']) ?? undefined,
       interactive_controls: domFacts.controls,
       distinct_colors: distinctColors(shot),
       console_errors: consoleErrors.length,
@@ -730,6 +1060,7 @@ async function main(): Promise<void> {
       non_local_requests: [...new Set(nonLocal)],
     };
     observations.non_http_requests = [...new Set(nonHttp)];
+    observations.native_dialogs = nativeDialogs;
     observations.page = { ...pageInfo, visible_text_characters: domFacts.text_length };
     observations.console_errors = consoleErrors;
     check(
@@ -765,8 +1096,17 @@ async function main(): Promise<void> {
       },
       media_dispatches: observations.media_dispatches as number,
       screenshots: [
-        { name: 'app-1280.png', label: 'desktop 1280×800, full page', bytes: shot.length },
-        { name: 'app-390.png', label: 'phone 390×844, full page', bytes: mobile.length },
+        {
+          name: 'app-1280.png',
+          label: 'desktop 1280×800, full page, initial state',
+          bytes: shot.length,
+        },
+        {
+          name: 'app-390.png',
+          label: 'phone 390×844, full page, initial state',
+          bytes: mobile.length,
+        },
+        ...usedStateShots,
       ],
       page: pageInfo,
       loaded_via: LOADED_VIA,
