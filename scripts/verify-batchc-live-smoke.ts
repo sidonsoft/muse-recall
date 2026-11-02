@@ -76,11 +76,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
+import {
+  BATCHC_ALLOWED_PATHS,
+  batchcExpectedCalls,
+  batchcLedgerIssues,
+} from './lib/batchc-scope.js';
 import { verifyBuildProvenance } from './lib/build-provenance.js';
 import { seedForgeDemo } from './lib/demo-seed.js';
 import {
+  accountDispatches,
   assertSingleProviderAttempt,
   countModelAttempts,
+  ledgerEvidence,
   readMediaTrace,
   shouldStopAfterVisionOnly,
 } from './lib/media-trace.js';
@@ -301,6 +308,33 @@ async function captureHttpFailure(
   fail(`${label} failed (HTTP ${response.status()}): ${raw.slice(0, 300) || '<non-text body>'}`);
 }
 
+/**
+ * The whole-run paid-call budget, asserted rather than reported.
+ *
+ * Per-operation checks (`assertSingleProviderAttempt`) only bound the call being made
+ * now; they say nothing about an extra dispatch somewhere else in the run. This reads
+ * the same trace the run wrote and refuses a pass when the run touched a path its scope
+ * never authorised, left a dispatch unanswered, answered one it never started, retried,
+ * or spent more than one vision/SAM call. Coding is excluded by construction: the Muse
+ * CLI never writes a media-trace line, so its calls come from the job's own usage.
+ */
+function assertPaidCallBudget(): void {
+  const evidence = ledgerEvidence(SERVER_LOG);
+  const ledger = accountDispatches(readMediaTrace(SERVER_LOG));
+  const expected = batchcExpectedCalls(runScope);
+  const issues = batchcLedgerIssues(ledger, expected);
+  observations.batchcLedgerEvidence = evidence;
+  observations.batchcDispatchPaths = ledger.paths;
+  observations.batchcExpectedCalls = expected;
+  observations.batchcLedgerIssues = issues;
+  if (issues.length > 0) {
+    fail(`the paid-call budget does not hold: ${issues.join(' | ')}`.slice(0, 600));
+  }
+  check(
+    `whole-run paid-call budget holds: ${String(expected.vision)} vision + ${String(expected.sam)} SAM on ${BATCHC_ALLOWED_PATHS.join(', ')}, nothing else (${evidence.logBytes} bytes of trace read)`,
+  );
+}
+
 async function writeEvidence(): Promise<void> {
   if (evidenceWritten) return;
   evidenceWritten = true;
@@ -323,6 +357,9 @@ async function writeEvidence(): Promise<void> {
       'FORGE_MEDIA_MAX_RETRIES=0 (transport retries disabled); FORGE_MEDIA_TRACE=1',
     provider_attempts: observations.providerAttempts ?? null,
     media_trace_path: 'server.log (bounded [media-trace] lines; no credential values)',
+    media_trace_evidence: observations.batchcLedgerEvidence ?? {
+      note: 'the trace log was never read for this report: it was written after the ledger check, which runs only on a passing run',
+    },
     requested_models: {
       vision: observations.requestedVisionModel ?? null,
       sam: observations.requestedSamModel ?? null,
@@ -744,6 +781,7 @@ async function main(): Promise<void> {
             'vision-only: single vision attempt recorded; SAM/coding paused pending explicit scope';
           await page.screenshot({ path: join(EVIDENCE, '01-vision-drafts.png'), fullPage: false });
           check('vision-only scope complete; SAM/coding paused');
+          assertPaidCallBudget();
           console.log(`\nlive Batch C smoke (vision-only): PASS (${checks.length} checks)`);
           console.log(
             `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,
@@ -1288,6 +1326,7 @@ async function main(): Promise<void> {
     check('rollback restored exact v1 HTML; v2 HTML/embedded bytes remain intact');
 
     if (errors.length > 0) fail(`console/page errors: ${errors.join(' | ').slice(0, 500)}`);
+    assertPaidCallBudget();
     console.log(`\nlive Batch C smoke: PASS (${checks.length} checks)`);
     console.log(
       `calls: vision=${calls.vision} sam=${calls.sam} coding=${calls.coding} imageGeneration=${calls.imageGeneration}`,

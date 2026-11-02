@@ -143,8 +143,10 @@ bundles that do not match the checkout running it.
 
 - `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
   Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
-  `pnpm run typecheck:tests` exit 0, Vitest **114 files / 1 437 passed / 3 skipped / 0
-  failed**. The lint counts are read from Biome's summary line, not from an output tail —
+  `pnpm run typecheck:tests` exit 0, Vitest **114 files / 1 448 passed / 3 skipped**.
+  One run of that suite failed on `tests/unit/backup-restore.test.ts` for no code reason
+  (KI-56): the test consumed the whole 30 s timeout and has not reproduced in three reruns
+  or in direct measurement (4 ms). The lint counts are read from Biome's summary line, not from an output tail —
   a previous report of "0 errors" was a tail misread while HEAD had four errors.
 - `pnpm verify:fresh-install`: **PASS 17 checks** at `c9c18cf`
   (`test-results/fresh-install/2026-11-02-1045/report.json`, clone bundles server
@@ -201,9 +203,10 @@ unchanged — `test-results/batchd-playback-auth/2026-11-02-1040`); `verify:batc
 (PASS 20); `verify:batchc-ui` (PASS 22); `verify:runtime` (PASS 5);
 `verify:studio-workflow` (56 checks); `verify:first-run` (PASS 4 — 1 039 ms to ready,
 4 861 ms walking the screens, `test-results/first-run/2026-11-02-1041`); the fixture-only and
-boot-only live legs (batchd PASS 4 with an empty ledger at
-`test-results/batchd-live/2026-11-02-1039`, image boot-only PASS, review-live refusing with
-exit 2); and the whole fresh-install rehearsal (PASS 17,
+boot-only live legs (batchd PASS 4 with **no trace log at all** — the fixtures-only path
+returns before the server starts, so no ledger rule was checkable, and the report now says
+so instead of printing `ledger_issues: []`; `test-results/batchd-live/2026-11-02-1039` and
+`2026-11-02-1135`), image boot-only PASS, review-live refusing with exit 2); and the whole fresh-install rehearsal (PASS 17,
 `test-results/fresh-install/2026-11-02-1045`). The same gates ran at `b698070` and
 `f763ef9` before it (`test-results/batchd-playback-auth/2026-11-02-0804` records that
 identity pair). The docs commit that records this re-ran the aggregate check (identical
@@ -423,6 +426,51 @@ records this paragraph:
 Two smaller honesties from the same review: `walkthroughMs` had included the shutdown
 wait (it now measures the walkthrough only, and a test asserts the split), and this
 file's test counts for two Batch E suites had gone stale (25 and 8, not 22 and 6).
+
+**Then I reviewed those fixes myself: `f79dfb7..` the commit that records this.** Four
+defects, all of them in the fixes rather than in the code they were fixing, each
+reproduced without a provider call (KI-55 items 13-16):
+
+- **the grounding rule was still too broad.** It required an absence construction *about*
+  the countdown, which fixed the reviewer's sentence and left the class open: "despite the
+  instruction **not to show** a **timer**" and "**told not to display** a countdown, and one
+  appears" both read as denials. Since the probe's decisions literally say "Never show a
+  countdown timer in the game UI.", a correct model answer is *likely* to echo them, and the
+  harness would have burned a paid call reporting a correct answer as a model failure.
+  Denial is now judged clause by clause, directive language suppresses it, and a clause where
+  the readings collide is reported as ambiguous
+  (`evidence_negation_quotes_decision`) instead of scored either way. The first narrowing
+  attempt also went the other way, swallowing "the frame contains no timer, so the decision
+  is honoured" — thirteen probe sentences pin **both** directions.
+- **the most expensive paid gate had no budget.** The path/integrity rule was copied gate by
+  gate and Batch C — the gate that spends coding calls — was missed. `scripts/lib/batchc-scope.ts`
+  plus `assertPaidCallBudget()` now bound it, respecting the two facts that make it not a
+  copy: vision and SAM share `/v1/responses` (so the counts must match the model on each
+  start line), and coding runs through the Muse CLI, which never writes a media-trace line
+  (so an extra media path is an extra media *media* call, never the coding job). The scope
+  budgets match the retained runs: `vision-only` 1+0, `resume` 0+1, `resume-cutout` 0+0,
+  `full` 1+1.
+- **a ledger claim rested on a log that did not exist.** The fixtures-only Batch D run
+  printed `ledger_issues: []`, `dispatch_ledger: []` and `unanswered_dispatches: 0` with **no
+  `server.log` in its evidence**: that path returns before the server starts, and
+  `readMediaTrace` turns a missing file into an empty trace. `ledgerEvidence()` now records
+  log presence and byte size, and a run with no log reports `ledger_issues: null` plus a note.
+  The previous paragraph's own wording ("PASS 4 with an empty ledger") was that overclaim in
+  print, and is corrected above rather than left standing.
+- **the new policies were tested against traces the product does not write.** My synthetic
+  outcome lines carried paths and models; every retained paid log writes
+  `outcome=response attempt=1 status=200 bytes=…` with neither. A rule matching needles
+  against outcome lines would have called every real run's ledger incomplete — a false alarm
+  the next live acceptance would pay for twice. The retained lines are now transcribed
+  verbatim into `tests/unit/live-ledger-policies.test.ts` (six real logs: the 0106 and 0755
+  Batch C runs, the 0400 and 0458 Batch D runs, the 0451 review and the 0445 image run) and
+  every policy must find **no** violation in them. Same failure shape as KI-51, one layer up:
+  a fixture that matches the parser instead of the format.
+
+The four policies were then run against the real retained logs as a check, not just as test
+literals: clip, audio, review and image all come back with no path outside scope and no
+integrity issue, so the tightened rules do not invent violations on ledgers that were paid
+for.
 
 **Scope limit of the first review**: it covered `d69b798..549dc93`. The KI-53 runtime fix (`55204f5`) and
 these corrections (`b698070`) have not been reviewed by anyone but the author. The review ran

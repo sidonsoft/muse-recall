@@ -53,7 +53,12 @@ import {
   MIN_EDIT_DIFF_SHARE,
   measurePng,
 } from './lib/image-live.js';
-import { accountDispatches, type DispatchAccount, parseMediaTrace } from './lib/media-trace.js';
+import {
+  accountDispatches,
+  type DispatchAccount,
+  ledgerEvidence,
+  parseMediaTrace,
+} from './lib/media-trace.js';
 
 const ROOT = process.cwd();
 const PROJECT_ID = 'image-live';
@@ -575,7 +580,13 @@ async function main(): Promise<void> {
     );
 
     // ---- run-wide invariants ---------------------------------------------
-    const wholeRun = accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')));
+    // Record what was read before making claims about it: an empty ledger from a
+    // log that does not exist proves nothing about a run.
+    const logEvidence = ledgerEvidence(serverLog);
+    observations.ledger_evidence = logEvidence;
+    const wholeRun = accountDispatches(
+      parseMediaTrace(logEvidence.logPresent ? readFileSync(serverLog, 'utf8') : ''),
+    );
     observations.dispatches = wholeRun.dispatches;
     calls.otherPaidPaths = wholeRun.dispatches.filter(
       (entry) => !ALLOWED_IMAGE_PATHS.includes(entry.path),

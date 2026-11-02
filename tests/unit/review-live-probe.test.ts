@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VisualReviewFinding } from '../../packages/shared/src/media.js';
-import { REVIEW_PROBE, scoreReviewProbe } from '../../scripts/lib/review-live.js';
+import { frameDenial, REVIEW_PROBE, scoreReviewProbe } from '../../scripts/lib/review-live.js';
 
 const CONTRADICTED = '11111111-1111-4111-8111-111111111111';
 const HONOURED = '22222222-2222-4222-8222-222222222222';
@@ -181,6 +181,64 @@ describe('scoring one live screenshot review', () => {
     expect(score.lexicalGrounding).toBe(true);
     expect(score.evidenceDeniesTheFrame).toBe(false);
     expect(score.issues).toEqual([]);
+  });
+
+  it('does not fail a correct answer that quotes the decision wording', () => {
+    // Self-review found the narrowed rule was still too broad. The probe's decisions
+    // literally read "Never show a countdown timer in the game UI.", so a model that
+    // answers correctly is likely to echo that wording, and each sentence below puts an
+    // absence construction right next to "timer" while asserting the opposite of a
+    // denial. Failing them would burn a paid call on a harness defect — the KI-51
+    // shape again, one layer up: a fixture (here, a mental model of English) that
+    // matches the parser instead of the world.
+    for (const evidence of [
+      'The UI shows a countdown timer despite the instruction not to show a timer.',
+      'The score sits in the top bar; the developer was told not to display a countdown, and one appears here.',
+      'The rule says no countdown timer may appear, and one does, large and centred.',
+    ]) {
+      const score = scoreReviewProbe(
+        [finding(CONTRADICTED, 'possible_conflict', evidence)],
+        [],
+        IDS,
+      );
+      expect(score.evidenceDeniesTheFrame).toBe(false);
+      expect(score.issues).toEqual([]);
+    }
+  });
+
+  it('separates a denial of the frame from a quotation of the decision', () => {
+    // What the score cannot decide lexically it reports instead of guessing: an
+    // ambiguous clause is surfaced, and the wording still reaches the human reader.
+    expect(frameDenial('No countdown timer is present in the frame')).toEqual({
+      denies: true,
+      ambiguous: false,
+    });
+    expect(frameDenial('No countdown timer was asked for, and one is on screen.')).toEqual({
+      denies: false,
+      ambiguous: true,
+    });
+    expect(frameDenial('The countdown is absent from this screenshot.')).toEqual({
+      denies: true,
+      ambiguous: false,
+    });
+    expect(frameDenial('The top bar reads SCORE 120 in the corner.')).toEqual({
+      denies: false,
+      ambiguous: false,
+    });
+  });
+
+  it('keeps denying the frame in sentences that mention the decision in passing', () => {
+    // The other direction, found by self-review of the first narrowing attempt: the
+    // draft list treated any mention of "decision", "conflict" or "violates" as a quote
+    // of the instruction, which swallowed a plain denial. Both sentences below assert
+    // that the frame lacks the thing the frame contains, whatever else they mention.
+    for (const evidence of [
+      'The frame contains no timer, so the decision is honoured.',
+      'This conflicts with the recorded rule, and no counter appears anywhere.',
+      'The decision is violated: a countdown never shows up in this screenshot.',
+    ]) {
+      expect(frameDenial(evidence).denies).toBe(true);
+    }
   });
 
   it('still catches an absence claim about the countdown itself', () => {

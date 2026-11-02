@@ -38,7 +38,7 @@ import {
 } from '../packages/shared/src/index.js';
 import { mediaMetaIssues, SERVER_READY_TIMEOUT_MS } from './lib/batchd-live.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
-import { accountDispatches, parseMediaTrace } from './lib/media-trace.js';
+import { accountDispatches, ledgerEvidence, parseMediaTrace } from './lib/media-trace.js';
 import {
   REVIEW_ALLOWED_PATHS,
   REVIEW_PROBE,
@@ -393,6 +393,7 @@ async function main(): Promise<void> {
       false_conflict: score.falseConflict,
       lexical_grounding: score.lexicalGrounding,
       evidence_denies_the_frame: score.evidenceDeniesTheFrame,
+      evidence_negation_quotes_decision: score.evidenceIsAmbiguous,
       score_limits: score.limits,
       rows: score.rows.map((row) => ({
         decision_key: Object.keys(ids).find((k) => ids[k] === row.decision_id) ?? 'unknown',
@@ -422,7 +423,11 @@ async function main(): Promise<void> {
     if (JSON.stringify(replayPayload) !== JSON.stringify(payload)) {
       fail('the replayed answer differs from the recorded answer');
     }
-    const wholeRun = accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')));
+    const reviewLogEvidence = ledgerEvidence(serverLog);
+    observations.ledger_evidence = reviewLogEvidence;
+    const wholeRun = accountDispatches(
+      parseMediaTrace(reviewLogEvidence.logPresent ? readFileSync(serverLog, 'utf8') : ''),
+    );
     observations.dispatches = wholeRun.dispatches;
     calls.otherPaidPaths = wholeRun.dispatches.filter(
       (entry) => entry.path !== '/v1/responses',

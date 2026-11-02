@@ -817,7 +817,7 @@ creates no `<root>/forge` directory, (b) a successful review creates none either
 and (c) listing generations for an id the workspace has never seen returns
 `{ items: [], current_version: null }` and creates none.
 
-## KI-55 — the live gates' own accounting was wrong, in ways that could report paid work that never happened (closed, then reopened by the review of the fix: items 9-12)
+## KI-55 — the live gates' own accounting was wrong, in ways that could report paid work that never happened (closed, reopened by the review of the fix: items 9-12, reopened again by self-review: items 13-16)
 
 An independent review of the live-acceptance chain (`d69b798..549dc93`) found
 these; each was reproduced before being fixed. None invalidated a recorded live
@@ -918,3 +918,92 @@ echoed a path that can name the generated page and a query that can hold its dat
 inside the reason are reduced to origins before bounding. The earlier long-URL test passed
 because truncation removed the checked suffix, not because anything sanitized the URL — the
 new test uses a URL short enough to survive the bound.
+
+### Reopened a second time: by reviewing the review-fix myself
+
+The follow-up review of `549dc93..f79dfb7` closed items 9-12, and then a self-review of
+those closures (`f79dfb7..HEAD`) found four more, all of them defects **in the fixes**.
+Each was reproduced without a provider call.
+
+**13. The narrowed grounding rule still failed correct answers.** Item 11's fix required
+an absence construction *about* the countdown rather than any negation word, which fixed
+one counterexample and left the class open: "The UI shows a countdown timer despite the
+instruction not to show a timer" and "the developer was told not to display a countdown,
+and one appears" both put `not … show` next to `timer` while asserting the opposite of a
+denial. The probe's decisions literally read "Never show a countdown timer in the game
+UI.", so a model that answers correctly is *likely* to echo that wording, and the harness
+would have burned a paid call reporting a correct answer as a model failure. Denial is now
+judged clause by clause with directive language (`instruction`, `rule`, `brief`,
+`forbade`, `may not`, an infinitive like `not to show`) suppressing it, and a clause where
+the readings collide is reported as ambiguous (`evidence_negation_quotes_decision`) rather
+than scored either way. The first narrowing attempt went the other way too — it swallowed
+"the frame contains no timer, so the decision is honoured" because it treated `decision`,
+`conflict` and `violates` as quotients of the instruction, when those are how a finding
+talks about the frame. Both directions are pinned, thirteen sentences in the probe plus
+the retained live wording.
+
+**14. The most expensive paid gate was never bounded.** Items 9-10 put whole-run path
+budgets into the image, Batch D and review gates by copying the rule gate by gate, and
+Batch C — the gate that spends coding calls — was left out. `pathsOutside` and
+`ledgerIntegrityIssues` now sit beside a Batch C policy
+(`scripts/lib/batchc-scope.ts`), and `assertPaidCallBudget()` runs before either PASS
+line. Two facts it has to respect: vision and SAM share `/v1/responses`, so a path budget
+alone cannot catch a vision-only run that also paid for SAM — the counts must match the
+model on each start line; and coding runs through the Muse CLI, which never writes a
+media-trace line, so any extra media path is an extra media call, never the coding job.
+Expectations match the retained runs: `vision-only` → 1 vision + 0 SAM, `resume` → 0 + 1,
+`resume-cutout` → 0 + 0, `full` → 1 + 1.
+
+**15. A ledger claim rested on a log that did not exist.** The fixtures-only Batch D run
+reports `ledger_issues: []`, `dispatch_ledger: []` and `unanswered_dispatches: 0` while
+its evidence directory contains **no `server.log` at all** — that path returns before the
+server starts, and `readMediaTrace` turns a missing file into an empty trace. "The ledger
+is clean and empty" was a claim about an empty string. `ledgerEvidence()` now records
+whether a log exists and how many bytes were read, and a run with no log reports
+`ledger_issues: null` plus an explicit note instead of a clean bill of health. My previous
+status wording ("PASS 4 with an empty ledger") was the overclaim in print.
+
+**16. The policies were tested against traces the product does not write.** The new
+ledger tests used synthetic lines whose outcome lines carried a path and a model. Real
+outcome lines carry neither: every retained paid log writes
+`outcome=response attempt=1 status=200 bytes=…`. A rule that matched needles against
+outcome lines would have reported every real run as having unanswered dispatches and
+unattributable outcomes — a false alarm the next live acceptance would pay for twice. The
+retained lines are now transcribed verbatim into `tests/unit/live-ledger-policies.test.ts`
+(from `batchc-live/2026-11-01-0106`, `batchc-live/2026-11-01-0755`,
+`batchd-live/2026-11-02-0400`, `batchd-live/2026-11-02-0458`,
+`review-live/2026-11-02-0451`, `image-live/2026-11-02-0445`) and each gate's policy must
+find no violation in them. Same shape as KI-51, one layer up: a fixture that matches the
+parser instead of the format.
+
+## KI-56 — one backup/restore test once spent the whole 30 s test timeout, and the aggregate gate failed for no code reason (open, observed once)
+
+While the self-review fixes were being gated, `pnpm run verify` failed on
+`tests/unit/backup-restore.test.ts > refuses an existing target unless force is explicit`.
+Nothing in that test or in `apps/server/src/backup.ts` waits, retries or polls, and the
+same operations measured **4 ms** end to end when run directly against the product code:
+
+```
+seed (engine open): 10ms   close: 1ms   backupDatabase: 3ms
+refusal (expected throw): 0ms   force restore: 4ms
+```
+
+Run alone, the test finishes in 90 ms. Run three more times as a whole file it passed
+every time (28/28). In the failing run Vitest charged it ~29.9 s — the configured
+`testTimeout: 30_000` — so it did not fail slowly, it **timed out**, and the failure has
+not reappeared on demand.
+
+Why it is recorded instead of smoothed over:
+
+- the aggregate gate can fail without any code being wrong, which is exactly how a
+  release gate loses its authority;
+- the failure landed while other gates had just been running, so the plausible cause is
+  host contention over the freshly created temp directories (SQLite `node:sqlite`
+  handles plus `rmSync` cleanup), not the code under test;
+- raising `testTimeout` would make the symptom disappear and hide whatever stalled for
+  30 s, so the timeout is deliberately left at 30 s.
+
+What would close it: reproduce under a deliberately loaded machine (`stress`/parallel
+browser gates) with `--reporter=verbose` durations, then either isolate the backup/restore
+file to its own pool or split the two slow cases. Until then, a red `verify` on this test
+is re-run once before it is treated as a code failure, and the re-run is recorded.

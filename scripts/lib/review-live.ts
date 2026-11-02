@@ -77,34 +77,86 @@ export interface ProbeScore {
   readonly lexicalGrounding: boolean;
   /** The flagging finding's evidence says such a fact is *not* in the frame. */
   readonly evidenceDeniesTheFrame: boolean;
+  /** The flagging wording is ambiguous: an absence construction quoting the decision. */
+  readonly evidenceIsAmbiguous: boolean;
   /** Rules this score applies, kept beside the score so a reader sees the bar. */
   readonly limits: readonly string[];
 }
 
-/**
- * Evidence that names a countdown/timer in order to say it is **not in the frame**.
- *
- * A bare negation word anywhere is not enough, and the first version of this rule
- * proved it: "A countdown timer is visible despite the instruction not to show one"
- * is a correct reading of the fixture, yet it was scored as if the model had denied
- * the timer — turning a good paid answer into a reported model failure. So the
- * denial has to be an absence construction *about* the countdown/timer, within one
- * clause of it. Ambiguous negation is left alone: the score stops asserting that the
- * evidence denies the frame, and the wording still reaches a human reader.
- */
 const FRAME_FACT = 'countdown|timer|counter';
 const ABSENCE_BEFORE_FACT = new RegExp(
   String.raw`\b(no|not|never|none|without|absent|missing|lacks?|free of|clear of|devoid of)\b[^.!?;]{0,40}\b(?:${FRAME_FACT})\b`,
   'i',
 );
 const ABSENCE_AFTER_FACT = new RegExp(
-  String.raw`\b(?:${FRAME_FACT})\b[^.!?;]{0,40}\b(absent|missing|nowhere|not\s+(?:present|visible|shown|displayed|there|to\s+be\s+seen))\b`,
+  String.raw`\b(?:${FRAME_FACT})\b[^.!?;]{0,40}\b(absent|missing|nowhere|never\s+(?:appears?|shows?|is\s+shown|is\s+present|is\s+visible|is\s+rendered|exists)|not\s+(?:present|visible|shown|displayed|rendered|appearing|there|to\s+be\s+seen)|doesn'?t\s+(?:appear|show|exist))\b`,
   'i',
 );
 
-/** True when the evidence says the frame does *not* contain the fact it cites. */
+/**
+ * Wording that quotes the *decision* instead of describing the frame.
+ *
+ * The absence grammar alone was still too broad, and the second version of this rule
+ * proved that: "The UI shows a countdown timer despite the instruction not to show a
+ * timer" and "the developer was told not to display a countdown, and one appears" are
+ * both correct readings of the probe frame, and both contain an absence construction
+ * next to the word timer. A model answering this probe correctly is *likely* to echo
+ * the decision's own wording — the decisions are literally "Never show a countdown
+ * timer in the game UI."
+ *
+ * So a clause that names a **directive** (an instruction, rule, brief, prohibition, or
+ * an infinitive like "not to show") is never treated as a denial of the frame; it is
+ * reported as ambiguous instead, and the wording still reaches the human reader. The
+ * list is directive language only: a self-review caught a draft that also swallowed
+ * "decision", "conflict" and "violates", which is how a finding talks about the frame —
+ * "the frame contains no timer, so the decision is honoured" is a denial and must stay
+ * one. When readings collide, ambiguity is the cheaper error: a false denial fails a
+ * paid answer that was correct.
+ */
+const QUOTES_THE_DECISION =
+  /\b(instruct(?:ion|ions|ed)?|rule|policy|guideline|brief|forb(?:ad|ade|ids|idding)|prohibit(?:s|ed|ion)?|allowed|permitted|banned?|ask(?:ed|s)?|told|tell(?:s|ing)?|want(?:ed|s)?|require(?:s|d|ment)?|request(?:ed|s)?|despite|even\s+though|may\s+not|cannot)\b|\bto\s+(?:show|display|render|depict|include|put|place|add|feature|design|use)\b/i;
+
+export interface FrameDenial {
+  /** The evidence says the frame does not contain the fact it cites. */
+  readonly denies: boolean;
+  /** An absence construction sits next to the fact, but the clause quotes the decision. */
+  readonly ambiguous: boolean;
+}
+
+/**
+ * Does this evidence deny that the frame contains the fact it names?
+ *
+ * Judged clause by clause: an absence construction counts only in a clause that is
+ * describing the frame rather than restating what the app was told to do.
+ */
+export function frameDenial(evidence: string): FrameDenial {
+  let ambiguous = false;
+  // Comma as well as sentence-end: "This conflicts with the recorded rule, and no
+  // counter appears anywhere" is one denial plus one passing mention of a rule, and
+  // treating the whole sentence as one clause let the mention swallow the denial.
+  for (const clause of evidence.split(/[.,;:!?]+/)) {
+    const construction = ABSENCE_BEFORE_FACT.test(clause) || ABSENCE_AFTER_FACT.test(clause);
+    if (!construction) continue;
+    if (QUOTES_THE_DECISION.test(clause)) {
+      ambiguous = true;
+      continue;
+    }
+    return { denies: true, ambiguous };
+  }
+  return { denies: false, ambiguous };
+}
+
+/**
+ * True when the evidence says the frame does *not* contain the fact it cites.
+ *
+ * The first version of this check failed on any negation word; the second still failed
+ * on correct answers that quote the decision ("despite the instruction not to show a
+ * timer"). Both errors turned a good paid answer into a reported model failure, which
+ * is the worst direction for a gate to err on a run that already cost real money. The
+ * rule now reads clause by clause and reports ambiguity instead of asserting denial.
+ */
 export function evidenceDeniesFrame(evidence: string): boolean {
-  return ABSENCE_BEFORE_FACT.test(evidence) || ABSENCE_AFTER_FACT.test(evidence);
+  return frameDenial(evidence).denies;
 }
 
 /**
@@ -151,7 +203,9 @@ export function scoreReviewProbe(
       ),
   );
   const lexicalGrounding = groundedRows.length > 0;
-  const evidenceDeniesTheFrame = flagging.some((finding) => evidenceDeniesFrame(finding.evidence));
+  const denials = flagging.map((finding) => frameDenial(finding.evidence));
+  const evidenceDeniesTheFrame = denials.some((denial) => denial.denies);
+  const evidenceIsAmbiguous = denials.some((denial) => denial.ambiguous);
 
   if (!flagged) {
     issues.push(
@@ -185,6 +239,7 @@ export function scoreReviewProbe(
     falseConflict,
     lexicalGrounding,
     evidenceDeniesTheFrame,
+    evidenceIsAmbiguous,
     limits: [
       'grounding is lexical: the flagging evidence must name a fact the frame contains and must not deny it',
       'a lexical pass is not proof that the model perceived the frame; a human still reads the wording',

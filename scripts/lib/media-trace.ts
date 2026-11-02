@@ -8,7 +8,7 @@
  *   [media-trace] outcome=response attempt=1 status=200 bytes=123
  *   [media-trace] outcome=error attempt=1 error=...
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 
 export interface MediaTraceEntry {
   attempt: number;
@@ -45,6 +45,35 @@ export function readMediaTrace(logPath: string): MediaTraceEntry[] {
     return parseMediaTrace(readFileSync(logPath, 'utf8'));
   } catch {
     return [];
+  }
+}
+
+export interface LedgerEvidence {
+  readonly logPresent: boolean;
+  readonly logBytes: number;
+  readonly note: string;
+}
+
+/**
+ * Whether a ledger claim is backed by a log at all.
+ *
+ * `readMediaTrace` returns an empty trace when the file is missing, which is the right
+ * tolerance for an optional log and the wrong one for a gate. A fixtures-only run that
+ * never started a server reported `ledger_issues: []` and `dispatch_ledger: []` beside
+ * evidence that contained no server log: "the ledger is clean and empty" was true of an
+ * empty string, not of a run. Every ledger claim now records what it actually read, so a
+ * reader can tell "no dispatches were logged" from "nothing was logged".
+ */
+export function ledgerEvidence(logPath: string): LedgerEvidence {
+  try {
+    const bytes = statSync(logPath).size;
+    return { logPresent: true, logBytes: bytes, note: `trace log read: ${String(bytes)} bytes` };
+  } catch {
+    return {
+      logPresent: false,
+      logBytes: 0,
+      note: 'no trace log at this path: an empty ledger here means nothing was read, not that no call was made',
+    };
   }
 }
 

@@ -95,7 +95,12 @@ import {
   transcriptMatch,
   waitForServerReady,
 } from './lib/batchd-live.js';
-import { accountDispatches, type DispatchAccount, parseMediaTrace } from './lib/media-trace.js';
+import {
+  accountDispatches,
+  type DispatchAccount,
+  ledgerEvidence,
+  parseMediaTrace,
+} from './lib/media-trace.js';
 
 const ROOT = process.cwd();
 const STAMP = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
@@ -151,8 +156,10 @@ function writeReport(status: string, error?: string): void {
   // exactly what a reader of the evidence needs to see.
   try {
     const logPath = join(EVIDENCE, 'server.log');
+    const evidence = ledgerEvidence(logPath);
+    observations.ledger_evidence = evidence;
     const ledger = accountDispatches(
-      parseMediaTrace(existsSync(logPath) ? readFileSync(logPath, 'utf8') : ''),
+      parseMediaTrace(evidence.logPresent ? readFileSync(logPath, 'utf8') : ''),
     );
     const countOn = (path: string): number =>
       ledger.dispatches.filter((entry) => entry.path === path).length;
@@ -178,11 +185,20 @@ function writeReport(status: string, error?: string): void {
     // dispatch, saw 0" next to a run that never contacted a provider would read as
     // a missing call rather than as the point of the check.
     const expectLive = !process.env.BATCHD_SMOKE_FIXTURE_ONLY;
-    observations.ledger_issues = batchdLedgerIssues(
-      ledger,
-      reportScope,
-      expectLive ? expectedBatchdCalls(reportScope) : { transcribe: 0, clipModel: 0, uploads: 0 },
-    );
+    if (!evidence.logPresent) {
+      // No log means this run never started the server, so no ledger rule can be
+      // applied. Calling the ledger "clean" would be a claim about an empty string:
+      // the fixtures-only run reports no issues only because nothing was read.
+      observations.ledger_issues = null;
+      observations.ledger_note =
+        'this run started no server and wrote no trace log, so no ledger rule was checked; it authorises no paid call';
+    } else {
+      observations.ledger_issues = batchdLedgerIssues(
+        ledger,
+        reportScope,
+        expectLive ? expectedBatchdCalls(reportScope) : { transcribe: 0, clipModel: 0, uploads: 0 },
+      );
+    }
   } catch {
     observations.dispatch_ledger = 'the server log could not be read for the ledger';
   }
