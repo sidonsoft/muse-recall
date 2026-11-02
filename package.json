@@ -46,6 +46,8 @@
     "typecheck:tests": "tsc -p tsconfig.tests.json",
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run typecheck:tests && pnpm run test",
     "verify:browser": "tsx scripts/verify-ui.ts",
+    "verify:fresh-install": "tsx scripts/verify-fresh-install.ts",
+    "verify:first-run": "tsx scripts/verify-first-run.ts",
     "verify:forge": "tsx scripts/verify-forge.ts",
     "verify:runtime": "tsx scripts/verify-runtime.ts",
     "verify:security": "tsx scripts/verify-origin-guard.ts",

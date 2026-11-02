@@ -1113,8 +1113,10 @@ export function StudioView({
           <MediaPanel
             // Remount on project switch: without this the previous project's
             // thumbnails render once under the new id, firing cross-project
-            // bytes requests (and leaking the old prompt draft).
-            key={projectId}
+            // bytes requests (and leaking the old prompt draft). The prefix is
+            // not decoration — these panels are siblings, and React rejects a
+            // children array where three elements share one key.
+            key={`media:${projectId}`}
             projectId={projectId}
             onInsert={(placeholder) =>
               updateDraft(
@@ -1124,7 +1126,7 @@ export function StudioView({
             }
             onChanged={() => void loadProject(projectId, false)}
           />
-          <VoiceVideoPanel key={projectId} projectId={projectId} />
+          <VoiceVideoPanel key={`voice:${projectId}`} projectId={projectId} />
           <GenerationsPanel
             generations={generations}
             loading={generationsLoading}
@@ -1146,7 +1148,7 @@ export function StudioView({
             suppliedLine={suppliedRevisionsLine(job)}
           />
           <StudioMemory
-            key={projectId}
+            key={`memory:${projectId}`}
             projectId={projectId}
             memories={memories}
             loading={memoriesLoading}

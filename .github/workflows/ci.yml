@@ -124,6 +124,18 @@ jobs:
       - name: Install Playwright Chromium${{ matrix.extra_browser && ' + Firefox' || '' }}
         run: pnpm exec playwright-core install --with-deps chromium ${{ matrix.extra_browser }}
 
+      # The first run README tells a newcomer to do is `MODEL_PROVIDER=echo
+      # pnpm dev`, then open http://127.0.0.1:5173. That path is checked here
+      # rather than assumed, because development React keeps warnings that
+      # production bundles strip: a duplicated sibling key — the defect this
+      # gate found on its first run — passes every production-bundle gate and
+      # still lands in front of a new user.
+      - name: Run the documented first run
+        run: pnpm verify:first-run
+        env:
+          MODEL_PROVIDER: echo
+          LOG_LEVEL: warn
+
       - name: Build production artifacts
         run: pnpm run build
         env:
