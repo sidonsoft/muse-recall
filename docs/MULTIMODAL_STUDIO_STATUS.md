@@ -23,7 +23,7 @@ Status words mean exactly one thing here:
 | --- | --- | --- | --- |
 | A — access, storage, recovery | built and verified offline | asset store, versioning, CSP-inline embedding, backup/restore drill (`pnpm media:drill`), provenance gate | see Batch B note on image calls |
 | B — Muse Image and integration | built and verified offline, **and** live measured | media API/journey suites, `verify:media-journey`, embedded-asset verification in `verify:studio-workflow`, plus `verify:image-live-smoke` (`2026-11-02-0445`) | **yes** — one generate and one edit call, measured in pixels (see below) |
-| C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package, plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
+| C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package (PASS 14 at `2026-11-01-0824`; that fixture is now consumed, so the gate refuses to re-run it), plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
 | D — voice and video | built and verified offline for access and playback, **and** live for transcription and clip observation | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts`, plus `verify:batchd-live-smoke` (`2026-11-02-0458` audio, `2026-11-02-0400` video) | **yes** — one transcription and one clip observation, both scored against what the fixtures actually contain |
 | E — visual and decision-change review | built and verified offline, **and** live for one scored frame | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (22, including replay-subject and record-fault cases), `tests/integration/forge-batche-generations.test.ts` (6), `tests/unit/studio-batch-e.test.ts` (29) | **yes, one call** — `verify:review-live-smoke` (`2026-11-02-0451`); every other Batch E gate keeps using a deterministic stub by design |
 
@@ -133,7 +133,8 @@ that approve or preview a Phaser artifact reach the one host the product allowli
 answers `cdn.jsdelivr.net` with HTTP 200 in 1 181 917 bytes. `pnpm verify:runtime` now says so
 instead of hiding it, and exits 2 when that host is unreachable rather than reporting a product
 failure. The numbers below are the
-gates run at `1d32761`, the commit that fixed KI-52 and added the first-run checks. This
+gates run at `b698070`, the commit that fixed the read-only-route write (KI-54) and the
+gate-accounting defects (KI-55) found by the second independent review. This
 documentation commit moves the build *identity* again without moving bundle contents
 (docs are not hashed inputs); the identity pair for the newest commit is recorded by the
 identity gate named below, and `verify:batchd-playback-auth` refuses to run a gate against
@@ -141,20 +142,25 @@ bundles that do not match the checkout running it.
 
 - `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
   Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
-  `pnpm run typecheck:tests` exit 0, Vitest **112 files / 1 410 passed / 3 skipped / 0
+  `pnpm run typecheck:tests` exit 0, Vitest **113 files / 1 424 passed / 3 skipped / 0
   failed**. The lint counts are read from Biome's summary line, not from an output tail —
   a previous report of "0 errors" was a tail misread while HEAD had four errors.
-- `pnpm verify:fresh-install`: **PASS 17 checks** at `1d32761`
-  (`test-results/fresh-install/2026-11-02-0613/report.json`). A clean clone of this
-  repository installed with `--frozen-lockfile`, ran the aggregate check, and built
-  production bundles that name the **clone's own commit** on a clean tree: server
-  `26f285ab601a…`, web `065ee809a766…`. Then the documented first run, both restore
-  drills, and the production browser gate — inside the clone.
-- `pnpm verify:first-run`: **PASS 4 checks** (`test-results/first-run/2026-11-02-0612`):
-  `MODEL_PROVIDER=echo pnpm dev`, `http://127.0.0.1:5173` in managed Chromium, mounted
-  app on the `echo` provider with `environment: development`, HTML Studio / Memory /
-  Conversations / System all reachable with a clean console, outbound hosts limited to the
-  allowlisted Phaser CDN, and no listener left on `8787`/`5173` afterwards.
+- `pnpm verify:fresh-install`: **PASS 17 checks** at `b698070`
+  (`test-results/fresh-install/2026-11-02-0759/report.json`), and earlier at `1d32761`
+  (`…/2026-11-02-0613`). A clean clone installed with `--frozen-lockfile` with **no
+  provider credential exported** ran the aggregate check and built production bundles
+  naming the **clone's own commit** on a clean tree (`b698070ed151`: server
+  `50edca5dea45…`, web `065ee809a766…`). Then the documented first run, both restore
+  drills, and the production browser gate — inside the clone — and a live smoke that
+  refuses instead of spending a call. The environment manifest records tool presence, not
+  values; on this machine `say` is not on the PATH that probe reads, which blocks the live
+  audio fixture path and nothing in the rehearsal.
+- `pnpm verify:first-run`: **PASS 4 checks** (`test-results/first-run/2026-11-02-0751`,
+  ~1.0 s to ready): `MODEL_PROVIDER=echo pnpm dev`, `http://127.0.0.1:5173` in managed
+  Chromium, mounted app on the `echo` provider with `environment: development`, HTML Studio
+  / Memory / Conversations / System each **asserted to render** (not merely clicked) with a
+  clean console including `pageerror`, outbound hosts limited to the allowlisted Phaser CDN,
+  and no listener left on `8787`/`5173` afterwards.
 - `pnpm verify:batchd-playback-auth`: PASS 15 checks — real `<video>` decode of the
   in-script H.264 clip, blob bytes hash-matched to the stored source, one credential-free
   download per source in each trust model, and the running server proving it is the
@@ -167,6 +173,13 @@ bundles that do not match the checkout running it.
 - `pnpm verify:batchc-ui`: PASS 22 checks. `pnpm verify:batche-review-ui`: PASS 20 checks,
   including the one-paid-call check and the stale-selection refusal.
   `pnpm verify:studio-workflow`: 56 checks.
+- `pnpm verify:batchc-resume-staged` **cannot be re-run at this commit, and refuses rather
+  than pretending**: `job already published version 2; this isolate is consumed and cannot
+  be re-approved offline` (`test-results/batchc-resume-staged/2026-11-02-0758`). The gate
+  approves a *retained* staging state inside a copy of a live isolate, so its fixture is
+  single-use by construction. The recorded PASS stands at `2026-11-01-0824` (14 checks);
+  re-running it would need a fresh consumed-but-unapproved isolate, i.e. another paid coding
+  run.
 - `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
   PASS 4 checks with no network. `pnpm verify:image-live-smoke` with
   `IMAGE_SMOKE_BOOT_ONLY=1` exits 0 without dispatching; `pnpm verify:review-live-smoke`
@@ -303,6 +316,55 @@ evidence. Each was fixed rather than reworded:
   so typed clients could not see them and validation stripped them. They are in the
   contract now, and the live harness refuses to run against a server that cannot name
   all five media models.
+
+### The second review: `d69b798..549dc93`, verdict needs-work
+
+`codex/gpt-6.1-sol` at `xhigh` reviewed the live-acceptance and fresh-install chain in a
+detached clean checkout with the evidence copied in. No P1; one P2; six gate-accounting
+findings. Every one reproduced against the code as shipped, and all are fixed in `b698070`:
+
+- **the advisory route wrote.** `POST …/visual-review` and `GET …/generations` opened with
+  `ensureProject()`, which creates `state.json`, while promising to change nothing. The suite
+  seeded its own Forge state in `beforeEach`, so there was never a cold project to observe.
+  See `KI-54`.
+- **`countModelAttempts()` could report two paid dispatches as one**, because it counted
+  distinct attempt numbers while attempt numbering restarts per operation. The zero-retry
+  budget rested on that function. See `KI-55`.
+- **a failed live run erased its own ledger**: `calls` were assigned on the success path only,
+  so a measured failure printed `calls.* = 0` and an empty ledger while the server log held
+  the dispatches. Counts now come from the trace on every exit path.
+- **forbidden paths were attributed to real capabilities**: both harnesses billed
+  `/v1/responses` to `calls.coding` (the image run copied that into `calls.vision`) while
+  asserting that path was never used. Forbidden paths now go to `calls.otherPaidPaths`, which
+  is what the budget assertion reads.
+- **the clip budget was asserted against the wrong number** (`provider_attempts`, which
+  includes the file upload) and against a whole-run model count rather than an
+  operation-scoped slice.
+- **the credential-leak check searched the log's filename for the API key**, so it could never
+  have matched. It reads the log body now.
+- **the first-run gate asserted clicks, not screens**: 800 ms after a nav click, a screen that
+  threw in its own effects counted as visited; an unwrapped `/api/meta` body was accepted; the
+  environment was never asserted, so a production build — exactly the build where the KI-52
+  React warning is absent — would have passed as "the README's first run". Readiness is now
+  asserted per screen (active nav marked `aria-current`, a heading under `<main>`, and the
+  named `Development` panel for HTML Studio, whose heading is the artifact title: measured
+  `["Farmyard Memory Match"]`, with no heading at all before the first click). `pageerror` is
+  captured apart from `console.error`; startup time and walkthrough time are reported apart.
+
+One figure in that review needs correcting against the recorded evidence: it counted the
+retained review run's `provider_attempts: 2` as a second paid call. That run paid **one**
+dispatch (one `callDispatch`/`callOutcome` pair on `/v1/responses`); the second attempt is the
+replay, which cost nothing and returned the byte-identical answer with
+`idempotent-replayed: 1`. `calls.review` and `calls.vision` in that report are two names for
+the same single dispatch, as `observations.paths` shows — a naming wart in the harness, not a
+second charge. Renaming those fields would rewrite retained live evidence, so they are left as
+recorded and stated here.
+
+**Scope limit**: that review covered `d69b798..549dc93`. The KI-53 runtime fix (`55204f5`) and
+these corrections (`b698070`) have not been reviewed by anyone but the author. The review ran
+in its own checkout, so its server bundle hash for the same commit differs (`ad6f9dfb…` against
+the author's `c9d6c613…`) because the manifest carries build-time metadata; the web hash
+matched byte for byte.
 
 ## What rehearsing the first run changed
 

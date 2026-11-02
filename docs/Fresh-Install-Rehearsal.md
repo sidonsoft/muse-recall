@@ -16,7 +16,7 @@ covers, what it found, and what it does **not** prove.
 | lint, product typecheck, test typecheck and the suite **inside the clone** | a clean clone that cannot check itself |
 | `pnpm build` and `scripts/build-production-bundles.ts` | a clone that cannot build |
 | build manifests in the clone | a bundle that names another commit, or a dirty tree |
-| the documented first run | an app that never mounts, is not on the offline provider, logs a console error on any documented screen, or contacts a host outside the allowlist |
+| the documented first run | an app that never mounts, is not on the offline provider, is not a development build, fails to render any documented screen, logs a console error or an uncaught exception on any of them, or contacts a host outside the allowlist |
 | the first run stopping | a listener left behind on `8787`/`5173` |
 | media and database restore drills | a backup that cannot be restored |
 | the newest production browser gate inside the clone | bundles that fail when nobody's `node_modules` was already warm |
@@ -92,3 +92,35 @@ actually do and what `verify:runtime` now proves.
   provider. It is not a first-run *tutorial* check: the guided create-generate-approve
   walk is `verify:studio-workflow`'s job, and the live provider's first-run experience is
   a separate, authorized concern.
+
+## Re-run at `b698070`, after the second review hardened the first-run gate
+
+PASS, 17 checks (`test-results/fresh-install/2026-11-02-0759/`): clone at `b698070ed151`
+on a clean tree, install with 0 downloads, `pnpm run verify` inside the clone, bundles built
+by the clone naming its own commit (server `50edca5dea45`, web `065ee809a766`), the first
+run, both restore drills, the production browser gate inside the clone, and a live smoke that
+exits 2 instead of spending a call. No provider credential was exported. The environment
+manifest records tool *presence*: on this machine `say` is not on the PATH that probe reads,
+which would block the live audio fixture (`verify:batchd-live-smoke` without
+`BATCHD_SMOKE_FIXTURE_ONLY=1`) and changes nothing about the rehearsal itself.
+
+The second independent review found that the first-run gate asserted too little, so the gate
+is stricter and the re-run proves the stricter version passes:
+
+- **a screen must render, not just be clicked.** Clicking a nav control and waiting 800 ms
+  counted HTML Studio, Memory, Conversations and System as visited even if the screen threw
+  during its own effects. Each screen now has to show up: the active nav item carries
+  `aria-current="page"`, and `<main>` must contain the screen's heading. HTML Studio is
+  special-cased honestly — its heading is the *artifact* title, measured
+  `["Farmyard Memory Match"]`, and there was no heading at all before the first click — so
+  its marker is the named `Development` panel.
+- **uncaught exceptions count.** `pageerror` is captured separately from `console.error`; a
+  page can keep a populated `#root` and still be broken.
+- **`/api/meta` must arrive in the envelope the server ships.** The reader used to fall back
+  to an unwrapped body, so a failure envelope with a plausible `data`, or a proxy error page,
+  would have read as success. It now requires `ok: true` plus an object `data`.
+- **the environment is asserted.** A run reporting `production` is refused: that is not the
+  first run the README describes, and it is exactly the build in which dev-only React
+  warnings such as KI-52 are stripped.
+- **timing is reported apart**: ~1.0 s to ready, walkthrough measured separately. A previous
+  line folded an 800 ms-per-screen walk into "startup".
