@@ -1,13 +1,27 @@
 // Staged artifact for post-judging action B-7 (test typechecking in CI).
 // NOT wired: no script and no CI step references this yet, so current gates are
-// unaffected. Measured 31 Oct: first run 270 errors; after completing module
-// mappings (@mml/agent-core, @mml/ui-protocol, fastify resolved via apps/server's
-// deps - pnpm does not hoist it to root) 261 with zero unresolved-module errors,
-// then 254 with allowImportingTsExtensions on (noEmit-only check; .ts specifiers
-// are the vite/tsx convention of the imported sources - zero source files were
-// edited to get here). Remaining: TS2739 x87 (partial fixtures vs full
-// interfaces), TS2345 x53, TS18048 x24 / TS2532 x19 (strict undefined/index
-// access) - all substantive fix work, no plumbing noise.
+// unaffected. History of the denominator: 31 Oct first run 270 -> 261 with module
+// mappings complete (@mml/agent-core, @mml/ui-protocol, fastify via apps/server's
+// deps - pnpm does not hoist it to root) -> 254 with allowImportingTsExtensions on
+// (noEmit-only; .ts specifiers are the vite/tsx convention of the imported
+// sources, no source file was edited to get there).
+//
+// 1 Nov, while fixing Batch B-E tests: the config was missing three facts about
+// the environment these files actually run in, and each absence masqueraded as
+// test-code errors: no DOM lib (tests and browser gates touch `document`,
+// `window`, `HTMLSelectElement`), no JSX setting (the web component suites import
+// `.tsx` panels through react-dom/server), and no type mappings for the packages
+// pnpm keeps out of the root (`react`, `react-dom`, `pngjs` - their @types live
+// under apps/web and apps/server). Those are now declared; nothing was relaxed to
+// get there, and strictness is inherited from tsconfig.base.json unchanged.
+//
+// Measured on 1 Nov, in order: the batch that added Batch B-E work put the
+// denominator at 311; declaring the three facts above took it to 278 with no
+// source file touched; typing the Batch B-E tests and live-gate scripts (same
+// day, see docs/KNOWN_ISSUES.md) took it to its current count. What still
+// reports is in-test/script work, not configuration: partial fixtures against
+// the full memory-record interfaces (TS2739/TS2741), strict undefined and
+// index access (TS18048/TS2532), and the older phase-gate scripts.
 // B-7 plan: fix tests/scripts against this config, then add a "typecheck:tests"
 // script and a ci.yml step; decide whether partial fixtures get Partial<> types
 // or explicit fields (the 87 TS2739s are a design call, not busywork).
@@ -20,6 +34,13 @@
     // (vite/tsx convention); this check is noEmit-only, so accept them.
     "allowImportingTsExtensions": true,
     "types": ["node"],
+    // The environment these files really run in: vitest jsdom suites touch the DOM,
+    // the browser gates evaluate DOM inside page.evaluate, and the React panel
+    // suites render .tsx components. Without lib/jsx declared, every one of those
+    // call sites reports a fake "error" in the test rather than a missing fact in
+    // this config.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "paths": {
       "@mml/shared": ["./packages/shared/src/index.ts"],
       "@mml/memory-engine": ["./packages/memory-engine/src/index.ts"],
@@ -30,7 +51,15 @@
       "@mml/agent-core": ["./packages/agent-core/src/index.ts"],
       "@mml/ui-protocol": ["./packages/ui-protocol/src/index.ts"],
       "fastify": ["./apps/server/node_modules/fastify"],
-      "fastify/*": ["./apps/server/node_modules/fastify/*"]
+      "fastify/*": ["./apps/server/node_modules/fastify/*"],
+      // Same reason as the fastify mapping: pnpm keeps these out of the root, so
+      // their declarations have to be named explicitly.
+      "react": ["./apps/web/node_modules/@types/react"],
+      "react/jsx-runtime": ["./apps/web/node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": ["./apps/web/node_modules/@types/react/jsx-dev-runtime.d.ts"],
+      "react-dom": ["./apps/web/node_modules/@types/react-dom"],
+      "react-dom/server": ["./apps/web/node_modules/@types/react-dom/server.d.ts"],
+      "pngjs": ["./apps/server/node_modules/@types/pngjs/index.d.ts"]
     }
   },
   "include": ["tests/**/*.ts", "scripts/**/*.ts"],
