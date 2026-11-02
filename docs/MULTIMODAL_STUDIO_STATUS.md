@@ -191,6 +191,18 @@ bundles that do not match the checkout running it.
   matching the preserved values). `eval:guard` and `evidence:phase14a` were **not** run:
   they regenerate tracked evidence files, and their committed numbers remain as recorded.
 
+**Which gate ran at which commit.** The aggregate check, the browser gates
+(`verify:batchc-ui`, `verify:batche-review-ui`, `verify:runtime`, `verify:studio-workflow`),
+the fixture-only live-smoke legs and `verify:first-run` ran at `b698070`; the fresh-install
+rehearsal ran there too (`test-results/fresh-install/2026-11-02-0759`). At the newest commit
+`f763ef9` — docs-only relative to `b698070` — `pnpm run verify` re-ran (113 files, 1 424
+passed, 3 skipped) and `verify:batchd-playback-auth` re-ran: PASS 15 checks with the running
+server proving commit `f763ef9f881e`, `treeClean: true`, server build
+`40beb7e158db…`, web build `065ee809a766…` unchanged
+(`test-results/batchd-playback-auth/2026-11-02-0804`). Gates not named at a commit did not
+run at it; the only thing a docs commit proves about them is that the source they measured
+has not moved.
+
 **Identity moves across documentation commits, and the rule is easy to over-read.** The
 build identity (commit, source hash, build time) is baked into the server bundle, so the
 server hash moves at every commit, while web bundles are content hashes over web sources —
