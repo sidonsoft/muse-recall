@@ -101,6 +101,7 @@ import {
   ledgerEvidence,
   parseMediaTrace,
 } from './lib/media-trace.js';
+import { startupFailureExcerpt } from './lib/server-startup.js';
 
 const ROOT = process.cwd();
 const STAMP = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
@@ -448,8 +449,21 @@ async function main(): Promise<void> {
         server.exitCode === null && server.signalCode === null
           ? 'the process stayed running'
           : `the process exited with code ${String(server.exitCode)} signal ${String(server.signalCode)}`;
+      // Name the reason the server gave rather than only the probe count: a rejected
+      // configuration exits immediately, and "stayed running"/"exited with code 1" alone
+      // sends the operator to read the log by hand.
+      let detail = ready.lastError ?? '';
+      if (server.exitCode !== null || server.signalCode !== null) {
+        let excerpt = '(the server log could not be read)';
+        try {
+          excerpt = startupFailureExcerpt(readFileSync(serverLog, 'utf8'));
+        } catch {
+          /* keep the placeholder */
+        }
+        detail = excerpt;
+      }
       fail(
-        `the server never became healthy on port ${String(serverPort)} after ${String(ready.attempts)} probes over ${String(SERVER_READY_TIMEOUT_MS)}ms (${state})${ready.lastError === undefined ? '' : `: ${ready.lastError}`}`,
+        `the server never became healthy on port ${String(serverPort)} after ${String(ready.attempts)} probes over ${String(SERVER_READY_TIMEOUT_MS)}ms (${state})${detail === '' ? '' : `: ${detail}`}`,
       );
     }
     observations.server_ready_after_probes = ready.attempts;

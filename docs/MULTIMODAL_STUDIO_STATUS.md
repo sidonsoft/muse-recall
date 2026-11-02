@@ -141,6 +141,21 @@ documentation commit moves the build *identity* again without moving bundle cont
 identity gate named below, and `verify:batchd-playback-auth` refuses to run a gate against
 bundles that do not match the checkout running it.
 
+**The newest identity pair that may stand for a beta cut** comes from
+`test-results/batchd-playback-auth/2026-11-02-1226/report.json`: commit `398e124aa938`,
+`treeClean: true`, `supports_commit_identity: true`, server build `e8927f732b08…`, web build
+`065ee809a766…`. Later commits in this stretch changed only harness scripts and tests, which the
+production build does not hash, so the pair's *content* identity still holds; a later gate run
+names that out loud through `identity_note` instead of leaving the reader to assume it (`KI-58`).
+
+**Three more gate defects found while reviewing this fix pass** (`KI-57`, `KI-58`, `KI-59`): a
+paid gate could exit 1 without printing its reason (the catch printed only crashes, and every
+deliberate `fail()` was the expected type); the build-identity report named the tested commit
+rather than the commit the bundle bytes came from, and stayed silent about a build made over a
+dirty tree; and a dead server was reported by the last characters of its stack instead of its
+own `Fatal startup error` line. All three are reporting defects — the measurements were right,
+the narration was not, which is how an operator re-runs a run that already spent quota.
+
 - `pnpm run verify` as one command (lint → product typecheck → test-scope typecheck →
   Vitest): **0 lint errors** (3 warnings, 15 infos), 0 product typecheck diagnostics,
   `pnpm run typecheck:tests` exit 0, Vitest **114 files / 1 448 passed / 3 skipped**.

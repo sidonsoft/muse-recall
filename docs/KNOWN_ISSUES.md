@@ -1107,3 +1107,48 @@ not yet rebuilt, the same gate refused before any browser or server work:
 `server sources changed since the production build (recorded 528a6c5feff6 over 128 files,
 current 59d02a18924a over 128 files)`, exit 1, zero checks printed. So "hashed inputs match"
 is enforced, not assumed; the gap was only in *reporting* which commit produced the bytes.
+
+## KI-59 — a live gate quoted the bottom of the server's stack instead of its reason (closed)
+
+**Symptom.** Boot-only `verify:image-live-smoke` exited 1 with:
+
+```
+FAILED before completion: the server process exited (1) before becoming ready: e:///…apps/server/dist/index.js:7488:11)
+```
+
+The fragment `e:///…index.js:7488:11)` is the tail of a stack frame, truncated mid-word.
+The actual cause, at the top of the same log, was:
+
+```
+Fatal startup error: Invalid environment configuration — FORGE_MUSE_API_KEY: Too small: expected string to have >=10 characters
+```
+
+(The trigger was mine: the harness was passed a 5-character dummy key, and the config schema
+requires at least 10. The harness was right to refuse to start; it just couldn't say why.)
+
+**Root cause.** Three live gates built the "server never became ready" message with
+`readFileSync(logPath,'utf8').slice(-500)` / `.slice(-400)`. Reading a log from the end
+guarantees a stack frame, because that is where logs end.
+
+**Fix.** `scripts/lib/server-startup.ts` exports `startupFailureExcerpt(log, limit = 300)`:
+prefer a cause line (`Fatal startup error`, `Error:`, `FATAL`), continue onto the next line
+when the cause line ends in `:` or `—` (the config validator wraps that way and the field name
+is what matters), otherwise fall back to the first line, collapse whitespace, bound the result
+and mark the cut, and never return an empty string — an empty log yields
+`(the server wrote nothing to its log)` so the message cannot read as "nothing to report".
+Wired at all three call sites: image boot-only, review boot, and the Batch D readiness
+failure (which previously reported only probe counts and an exit code).
+
+**Proof.** The same failing command now prints:
+`FAILED before completion: the server process exited (1) before becoming ready: Fatal startup
+error: Invalid environment configuration — FORGE_MUSE_API_KEY: Too small: expected string to have …`
+and the corrected command (`FORGE_MUSE_API_KEY=dummy-key-for-boot-test`) passes boot-only again:
+`zero provider calls were made (0 bytes of trace read, 0 dispatch lines)`.
+Six unit tests in `tests/unit/server-startup-excerpt.test.ts` pin the cause-over-stack
+preference, the wrapped-cause continuation, the bound, the empty-log placeholder, and the
+real captured startup log as a fixture.
+
+**Limit of the proof.** The image and review call sites were exercised with a real dying
+server. The Batch D call site is wired and its helper is unit-tested, but Batch D was not
+made to fail at readiness during this pass, so that path is covered by the helper's tests
+rather than by a live run.

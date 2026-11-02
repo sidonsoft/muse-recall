@@ -45,6 +45,7 @@ import {
   reviewLedgerIssues,
   scoreReviewProbe,
 } from './lib/review-live.js';
+import { startupFailureExcerpt } from './lib/server-startup.js';
 
 const ROOT = process.cwd();
 const PROJECT_ID = 'review-live';
@@ -197,7 +198,7 @@ async function waitForReady(
     }
     if (server.child.exitCode !== null) {
       throw new Error(
-        `the server exited (${String(server.child.exitCode)}) before ready: ${readFileSync(server.logPath, 'utf8').slice(-400)}`,
+        `the server exited (${String(server.child.exitCode)}) before ready: ${startupFailureExcerpt(readFileSync(server.logPath, 'utf8'))}`,
       );
     }
     if (Date.now() > deadline) fail(`the health probe never answered (${String(last)})`);
