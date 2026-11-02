@@ -11,6 +11,7 @@ import { backupDatabase } from '../../apps/server/src/backup.js';
 import type { AppConfig } from '../../apps/server/src/config.js';
 import { SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
+import { vacuumIntoCopy } from '../helpers/backup-image.js';
 
 /**
  * Alert signals inside GET /api/health (roadmap §8 groundwork, D050). The
@@ -101,7 +102,9 @@ describe('health alert signals (D050)', () => {
 
   it('a real db:backup snapshot next to the DB flips the signal to ok', async () => {
     const { app, dbFile } = await fileDbApp();
-    await backupDatabase(dbFile);
+    // The seam keeps this test about the health signal rather than about the async
+    // copy API, which does not settle inside a full-suite Vitest worker (KI-56).
+    await backupDatabase(dbFile, undefined, { copy: vacuumIntoCopy });
     const payload = await health(app);
     expect(payload.alerts?.backup.state).toBe('ok');
     expect(payload.alerts?.backup.backup_count).toBe(1);
