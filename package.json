@@ -43,6 +43,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "pnpm -r run typecheck",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "verify:browser": "tsx scripts/verify-ui.ts",
     "verify:forge": "tsx scripts/verify-forge.ts",

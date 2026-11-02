@@ -53,6 +53,12 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      # Tests and gate scripts are typed against the same strict compiler
+      # options as the product, so a fixture cannot drift from the contract it
+      # claims to exercise. No provider, no network: this only reads sources.
+      - name: Typecheck test and gate sources
+        run: pnpm run typecheck:tests
+
       - name: Test
         run: pnpm test
 

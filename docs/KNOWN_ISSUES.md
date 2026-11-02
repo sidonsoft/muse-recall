@@ -609,47 +609,60 @@ env-forwarding surface).
 
 ## Test typechecking (post-judging action B-7)
 
-### KI-50 — `tsconfig.tests.json` is staged but not yet green, and not wired
+### KI-50 — `tsconfig.tests.json` is green and wired to a gate (closed 2 Nov)
 
-**Severity:** Low for the running beta (no gate depends on it); Medium for future
-regression coverage, because untyped test code hides real defects.
-**Detail:** `tsconfig.tests.json` typechecks `tests/**` and `scripts/**` against
-the same strict base the products use. It is deliberately not wired to any script
-or CI step yet, because the declared scope does not pass. Measured 2 Nov at
-commit 5e4a0c6: **131 errors**, down from 311 at 5651c19. The fixes landed in
-three steps, none of which relaxed a check or removed an assertion:
+**Severity:** was Medium for future regression coverage: untyped test code hides
+real defects. **Status: closed.** `pnpm run typecheck:tests` passes and CI runs it
+as "Typecheck test and gate sources" in the `verify` job, between the product
+typecheck and the test run. Measured path: **311 → 278 → 131 → 41 → 0** errors
+(from 5651c19 through 3ea5944). No check was loosened, no assertion removed, no
+`any`/`@ts-ignore`/`@ts-expect-error` introduced.
 
-- 311 → 278: the config declared no DOM lib, no `jsx`, and no type mappings for
-  `react`, `react-dom` and `pngjs` (pnpm keeps them under `apps/web` /
-  `apps/server`, not the root). Every absence reported as a test-code error.
-- 278 → ~145: Batch B–E tests and the forge/memory/media integration suites now
-  carry types that match what the code does — `NonNullable<InjectOptions['payload']>`
-  for request bodies (one `unknown` there collapsed fastify's `inject()`
-  overloads and produced 75 bogus property errors in one file), named job/view
-  types instead of `as { error: string }` casts, real `PNG` instances, fixtures
-  that state the fields the memory-engine input type requires.
-- ~145 → 131: the live-gate scripts' own bookkeeping (flow-terminating failure
-  paths, `execFileSync`'s undocumented `stderr`, closure-written call counters,
-  indexed reads).
+How the families were closed:
 
-**Remaining 131, by cause:** 79 TS2739/TS2741 — partial memory-record fixtures in
-the Batch A-era suites (`memory-engine-phase2`, `memory-context`, `agent-core`,
-`memory-record-contract`, `reading-nook`, `memory-graph`, `memory-export`,
-`tool-runtime`); 18 TS2345 / 11 TS2532 / 11 TS2322 and the rest in the older
-phase-gate scripts (`verify-phase17-strict` 17, `verify-phase15b` 3,
-`benchmark-retrieval` 3, `showcase` 2, `phase14a-rehearsal` 2,
-`phase12e/12c-guard-evaluation` 3) and the evaluation harnesses.
-**Design call still open (owner):** `MemoryEngine.create` and friends take the
-schema's *parsed output* type, which makes `.default()`ed fields (`source`,
-`confidence`, `validation_status`, `expires_at`, `tags`) mandatory at the type
-level even though the runtime accepts their absence — that mismatch is most of
-the 79. `packages/shared` already exports the looser input alias for exactly this
-(`MemoryCreateRequest = z.input<typeof MemoryCreateInputSchema>`), but switching
-the engine signatures to it is a contract-visible change in a shipped package,
-not a test fix, so it was left for the owner. Where a test *deliberately* omits a
-defaulted field to prove the default applies, filling it in would weaken the
-test, so this cannot be done mechanically across those suites.
-**Next bounded step:** the older phase-gate scripts and evaluation harnesses
-(≈45 errors, all local plumbing: indexed access, `string | undefined` arguments,
-`InfluenceRecord` shape), then the memory-record fixture decision, then wire
-`typecheck:tests` and a CI step once the declared scope is honestly green.
+- 311 → 278 — the config declared no DOM lib, no `jsx`, and no type mappings for
+  `react`, `react-dom`, `pngjs` (pnpm keeps them under `apps/web` / `apps/server`,
+  not the root), and no Vite client types for `import.meta.env`. Each absence
+  reported as a test-code error.
+- 278 → 131 — Batch B–E tests and the forge/memory/media suites now carry types
+  that match what the code does: `NonNullable<InjectOptions['payload']>` for
+  request bodies (one `unknown` there collapsed fastify's `inject()` overloads and
+  produced 75 bogus property errors in a single file), named job/view types
+  instead of `as { error: string }` casts, real `PNG` instances for `pngjs`.
+- 131 → 41 — `tests/helpers/memory-fixtures.ts` mirrors the defaults declared by
+  `MemoryCreateInputSchema` / `MemoryCorrectionFieldsSchema`, so a fixture states
+  the fields the input type carries instead of leaning on the runtime to fill
+  them. The suites whose purpose IS proving a default applies (`memory-defaults`,
+  `memory-terms`, `memory-status`) deliberately keep omitting those fields.
+- 41 → 0 — the Phase 12/14/15 gate scripts and evaluation harnesses: the recorded
+  pilot JSON now states the fields the rehearsal reads instead of
+  `Record<string, unknown>` plus two casts; rubric and `SHA256SUMS` reads name the
+  malformed case; the evaluation harnesses import `ModelProvider` from
+  `@mml/shared` (it is declared locally in `@mml/muse-provider` and never
+  re-exported).
+
+**The memory-engine signature call, resolved as: not taken.** `MemoryEngine.create`
+and friends keep taking the schema's parsed shape. Changing them to
+`MemoryCreateRequest = z.input<typeof MemoryCreateInputSchema>` would be a
+contract-visible change in a shipped package for the sake of test ergonomics, and
+the fixtures now state the values anyway. Revisit only if a real client is
+hand-building partial inputs at the type level.
+
+**What the gate does NOT cover, deliberately:** `scripts/verify-phase16.ts`,
+`verify-phase17.ts` and `verify-phase17-sums.ts` are protocol-locked (their own
+bytes are hashed by the Phase 16/17 chain, so a type-only edit breaks the
+evidence chain). `verify-phase17-strict.ts` is locked too, and used to drag its
+frozen errors into scope because `tests/research/phase17-evidence.test.ts`
+imported its `closeRelative` helper. That math now lives in
+`tests/research/phase17-math.ts`; the locked script keeps its own copy (it cannot
+import anything), and a test compares the two copies text by text so neither can
+change the comparison unnoticed. With nothing in scope importing it, the script
+sits outside the denominator honestly rather than by omission.
+
+**Latent defects this gate had already reported and nobody had acted on:**
+`engine.correct({ reason: null })` against an `.optional()` (non-nullable) field in
+the decision-evaluation harness; `rubric[r.id].child_safety` in the Phase 15b
+verifier; a `stamp(offset: string)` helper called with numbers; `ProviderError`
+constructed with a code its own union does not declare; a contract resource read
+as `contents[0]?.text ?? "{}"`, which would have turned a binary or missing
+resource into an empty object and failed on an unrelated field.
