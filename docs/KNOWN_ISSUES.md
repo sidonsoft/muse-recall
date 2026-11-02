@@ -604,3 +604,52 @@ a wrapper requiring stripped server configuration (a `DOCKER_HOST`-style sentine
 passed boot and exited mid-job; a pinned sentinel regression refuses such wrappers at
 BOTH probes, and wrapper configuration is policy-stated as self-contained (no new
 env-forwarding surface).
+
+---
+
+## Test typechecking (post-judging action B-7)
+
+### KI-50 — `tsconfig.tests.json` is staged but not yet green, and not wired
+
+**Severity:** Low for the running beta (no gate depends on it); Medium for future
+regression coverage, because untyped test code hides real defects.
+**Detail:** `tsconfig.tests.json` typechecks `tests/**` and `scripts/**` against
+the same strict base the products use. It is deliberately not wired to any script
+or CI step yet, because the declared scope does not pass. Measured 2 Nov at
+commit 5e4a0c6: **131 errors**, down from 311 at 5651c19. The fixes landed in
+three steps, none of which relaxed a check or removed an assertion:
+
+- 311 → 278: the config declared no DOM lib, no `jsx`, and no type mappings for
+  `react`, `react-dom` and `pngjs` (pnpm keeps them under `apps/web` /
+  `apps/server`, not the root). Every absence reported as a test-code error.
+- 278 → ~145: Batch B–E tests and the forge/memory/media integration suites now
+  carry types that match what the code does — `NonNullable<InjectOptions['payload']>`
+  for request bodies (one `unknown` there collapsed fastify's `inject()`
+  overloads and produced 75 bogus property errors in one file), named job/view
+  types instead of `as { error: string }` casts, real `PNG` instances, fixtures
+  that state the fields the memory-engine input type requires.
+- ~145 → 131: the live-gate scripts' own bookkeeping (flow-terminating failure
+  paths, `execFileSync`'s undocumented `stderr`, closure-written call counters,
+  indexed reads).
+
+**Remaining 131, by cause:** 79 TS2739/TS2741 — partial memory-record fixtures in
+the Batch A-era suites (`memory-engine-phase2`, `memory-context`, `agent-core`,
+`memory-record-contract`, `reading-nook`, `memory-graph`, `memory-export`,
+`tool-runtime`); 18 TS2345 / 11 TS2532 / 11 TS2322 and the rest in the older
+phase-gate scripts (`verify-phase17-strict` 17, `verify-phase15b` 3,
+`benchmark-retrieval` 3, `showcase` 2, `phase14a-rehearsal` 2,
+`phase12e/12c-guard-evaluation` 3) and the evaluation harnesses.
+**Design call still open (owner):** `MemoryEngine.create` and friends take the
+schema's *parsed output* type, which makes `.default()`ed fields (`source`,
+`confidence`, `validation_status`, `expires_at`, `tags`) mandatory at the type
+level even though the runtime accepts their absence — that mismatch is most of
+the 79. `packages/shared` already exports the looser input alias for exactly this
+(`MemoryCreateRequest = z.input<typeof MemoryCreateInputSchema>`), but switching
+the engine signatures to it is a contract-visible change in a shipped package,
+not a test fix, so it was left for the owner. Where a test *deliberately* omits a
+defaulted field to prove the default applies, filling it in would weaken the
+test, so this cannot be done mechanically across those suites.
+**Next bounded step:** the older phase-gate scripts and evaluation harnesses
+(≈45 errors, all local plumbing: indexed access, `string | undefined` arguments,
+`InfluenceRecord` shape), then the memory-record fixture decision, then wire
+`typecheck:tests` and a CI step once the declared scope is honestly green.
