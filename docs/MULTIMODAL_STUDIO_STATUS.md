@@ -200,6 +200,12 @@ dirty tree; and a dead server was reported by the last characters of its stack i
 own `Fatal startup error` line. All three are reporting defects — the measurements were right,
 the narration was not, which is how an operator re-runs a run that already spent quota.
 
+- **rehearsal re-run at `a131c5e`** (`test-results/fresh-install/2026-11-02-1531`): **PASS 17
+  checks** on the child-process backup path — install, full suite, typechecks, bundles
+  (server `bfb8b17afee8`, web `065ee809a766`), first run contacting `outbound none`, **both backup
+  drills green through the new killed-at-deadline copy**, production browser gate, and a live run
+  blocked with exit 2. The earlier rehearsal at `2026-11-02-1300` (commit `9a5b610`) is kept as the
+  run that *caught* KI-56's second occurrence.
 - **at `340ff79`, the third-review remediation commit**: `pnpm run verify` → Biome 0 errors
   (3 warnings, 15 infos), product typecheck clean, `pnpm run typecheck:tests` exit 0, Vitest
   **118 files / 1 507 passed / 3 skipped** (+8 tests: gate-lifecycle refusals, trace-model
