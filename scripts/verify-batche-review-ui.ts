@@ -346,6 +346,9 @@ async function main(): Promise<void> {
     await writeFile(appPath, canvasApp, 'utf8');
 
     let reviewCalls = 0;
+    // The counter is written from inside the stub's request handler, so the
+    // compiler cannot track its value: read it through a call each time.
+    const reviewCallCount = (): number => reviewCalls;
     const reviewPrompts: string[][] = [];
     const visualReview = {
       targetedModel: 'muse-spark-1.3',
@@ -720,8 +723,8 @@ async function main(): Promise<void> {
     if (afterReviewState.jobs.length !== before.jobs.length) {
       fail('the review started a Forge job');
     }
-    if (reviewCalls !== 1)
-      fail(`the stub review ran ${String(reviewCalls)} times, expected exactly 1`);
+    if (reviewCallCount() !== 1)
+      fail(`the stub review ran ${String(reviewCallCount())} times, expected exactly 1`);
     check('the review wrote nothing: identical artifact sha, version count, and memory rows');
 
     // ---- One question, one paid call: asking again replays the answer -------
@@ -741,9 +744,9 @@ async function main(): Promise<void> {
       );
     }
     await reviewPanel.getByText('the frame may conflict').first().waitFor({ timeout: 10_000 });
-    if (reviewCalls !== 1) {
+    if (reviewCallCount() !== 1) {
       fail(
-        `the same frame and selection cost ${String(reviewCalls)} dispatches, expected exactly 1`,
+        `the same frame and selection cost ${String(reviewCallCount())} dispatches, expected exactly 1`,
       );
     }
     await screenshot(page, '03b-replayed-review');
@@ -778,8 +781,8 @@ async function main(): Promise<void> {
       .getByText('A selected decision was edited after this screen loaded')
       .first()
       .waitFor({ timeout: 15_000 });
-    if (reviewCalls !== 1)
-      fail(`a stale selection reached the provider (${String(reviewCalls)} calls)`);
+    if (reviewCallCount() !== 1)
+      fail(`a stale selection reached the provider (${String(reviewCallCount())} calls)`);
     const refusals = httpFailures.filter((line) => line.includes(' 409 '));
     if (refusals.length !== 1) {
       fail(`the stale selection produced ${refusals.length} refusals, expected exactly one 409`);
@@ -804,8 +807,8 @@ async function main(): Promise<void> {
         `reopened selection pinned ${JSON.stringify(pinned ?? latest.decisions)}, expected revision 2`,
       );
     }
-    if (reviewCalls !== 2)
-      fail(`expected two stub review calls in total, saw ${String(reviewCalls)}`);
+    if (reviewCallCount() !== 2)
+      fail(`expected two stub review calls in total, saw ${String(reviewCallCount())}`);
     check('after reopening, the selection pins the current revision and the review runs once');
 
     // ---- Retire a decision: history must call it retired -----------------

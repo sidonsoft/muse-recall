@@ -208,8 +208,17 @@ function videoFixture(): VideoFixture {
     try {
       execFileSync('ffmpeg', args, { stdio: 'pipe' });
     } catch (error) {
-      const detail =
-        error instanceof Error ? `${error.message} ${String(error.stderr ?? '')}` : String(error);
+      // execFileSync attaches the child's stderr to the error it throws, which
+      // the Error type does not declare; read it structurally rather than cast.
+      const attached =
+        error && typeof error === 'object' && 'stderr' in error
+          ? Buffer.isBuffer(error.stderr)
+            ? error.stderr.toString('utf8')
+            : typeof error.stderr === 'string'
+              ? error.stderr
+              : ''
+          : '';
+      const detail = error instanceof Error ? `${error.message} ${attached}` : String(error);
       fail(
         `cannot build the video fixture with local ffmpeg (offline; install ffmpeg or set BATCHD_VIDEO_MP4): ${detail.slice(0, 300)}`,
       );

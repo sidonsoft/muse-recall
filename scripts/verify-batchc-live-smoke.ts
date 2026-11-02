@@ -693,6 +693,9 @@ async function main(): Promise<void> {
           suggestEnvelope.data === undefined
         ) {
           await captureHttpFailure('vision', suggestResponse, '01-vision-failure.png');
+          // The capture writes the evidence and the report; state the outcome
+          // here as well so the narrowed envelope below is honest, not assumed.
+          fail('the vision call returned no usable suggest envelope');
         }
         suggestData = suggestEnvelope.data as {
           suggestions: Array<{ type: string; content: string; confidence: number }>;

@@ -1088,7 +1088,9 @@ async function main(): Promise<void> {
     if (archived.length !== 1) {
       throw new Error(`expected exactly one archived damaged state, found ${archived.join(', ')}`);
     }
-    if ((await readFile(join(forgeDir, archived[0]), 'utf8')) !== damagedBytes) {
+    const [archivedState] = archived;
+    if (!archivedState) throw new Error('expected exactly one archived damaged state, found none');
+    if ((await readFile(join(forgeDir, archivedState), 'utf8')) !== damagedBytes) {
       throw new Error('the archived state file does not preserve the damaged bytes');
     }
     allowResourceErrors = false;
