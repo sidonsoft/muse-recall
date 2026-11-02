@@ -666,3 +666,32 @@ verifier; a `stamp(offset: string)` helper called with numbers; `ProviderError`
 constructed with a code its own union does not declare; a contract resource read
 as `contents[0]?.text ?? "{}"`, which would have turned a binary or missing
 resource into an empty object and failed on an unrelated field.
+
+## KI-51 — the product recorded wrong dimensions for the images its own model returns (closed)
+
+**Symptom.** The first live image run stored a frame and reported it as unusable:
+the gate said the stored bytes did not match the manifest, and the manifest said
+**1×1600** for a picture the provider returned at 1600×1600.
+
+**Root cause.** `parseWebpDimensions()` in `apps/server/src/media/assets.ts` read
+VP8X canvas size one byte early. VP8X lays out a flags byte, reserved bits, then
+canvas width and height as 24-bit little-endian minus-one values at payload
+offsets 4 and 7; the parser read offsets 1 and 4. The flags byte is `0x04` for
+the "extended" bit, which is exactly the number the model's header carries, so
+the width it read was never a width. Nothing downstream noticed: preview sizing
+and reference scaling would simply have used the wrong canvas.
+
+**Why the tests did not catch it.** The fixture was a hand-written header stub
+(`RIFF…WEBPVP8X` and nothing else) shaped to match the parser's mistake rather
+than the format. A real VP8X chunk from the live model disagreed with it.
+
+**Fix.** Offsets corrected and bounds-checked; the fixture replaced with a
+spec-shaped VP8X builder, and both a square (1600×1600, flags `0x02`) and a
+rectangular (640×1024) frame are pinned, including the flags byte the live
+response carries.
+
+**What would have caught it earlier.** Independent measurement. The live gate now
+decodes the stored bytes with a real browser and refuses when the manifest
+disagrees with `naturalWidth`/`naturalHeight` — that comparison is what surfaced
+this, and it is the reason the measurement gate reads the bytes the product
+stored rather than the bytes the transport returned.
