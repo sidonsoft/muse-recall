@@ -433,9 +433,14 @@ function parseWebpDimensions(bytes: Buffer): { width: number; height: number } {
       return checkDimensions((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1, 'image/webp');
     }
     if (tag === 'VP8X') {
-      if (data + 7 > bytes.length) break;
-      const width = bytes.readUIntLE(data + 1, 3) + 1;
-      const height = bytes.readUIntLE(data + 4, 3) + 1;
+      // The VP8X payload starts with four flag bytes, then canvas width minus 1
+      // and canvas height minus 1 as three-byte little-endian values. Reading
+      // the dimensions one byte in reported the width from flag padding: a real
+      // 1600x1600 WebP from the live image model was stored as 1x1600, which
+      // would have mis-scaled every downstream reference and preview.
+      if (data + 10 > bytes.length) break;
+      const width = bytes.readUIntLE(data + 4, 3) + 1;
+      const height = bytes.readUIntLE(data + 7, 3) + 1;
       return checkDimensions(width, height, 'image/webp');
     }
     pos = data + size + (size % 2);

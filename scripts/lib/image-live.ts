@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 /**
  * What a live image call is allowed to claim.
  *
@@ -156,3 +158,23 @@ export const IMAGE_PROMPTS = {
 
 /** An edit that changed almost nothing is not an edit. */
 export const MIN_EDIT_DIFF_SHARE = 0.005;
+
+/**
+ * Where the product stores an image asset version.
+ *
+ * The live harness reads these bytes to measure a paid call. Guessing the
+ * layout is not acceptable: the first live generate wrote a real image and the
+ * harness looked in the wrong place, then deleted the isolate. This helper is
+ * pinned by a test that writes through the real asset store.
+ */
+export function assetVersionPaths(
+  workspaceRoot: string,
+  projectId: string,
+  assetId: string,
+  version: number,
+): { bytes: string; manifest: string; dir: string } {
+  // <WORKSPACE_ROOT>/forge/<project_id>/media/<asset_id>/<version>.bin
+  const dir = join(workspaceRoot, 'forge', projectId, 'media', assetId);
+  const suffix = String(version);
+  return { dir, bytes: join(dir, `${suffix}.bin`), manifest: join(dir, `${suffix}.json`) };
+}

@@ -22,16 +22,18 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   appendFileSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PNG } from 'pngjs';
 import {
   ForgeProjectViewSchema,
   MediaJobSchema,
@@ -39,7 +41,10 @@ import {
   ServiceMetaSchema,
 } from '../packages/shared/src/index.js';
 import { mediaMetaIssues, SERVER_READY_TIMEOUT_MS } from './lib/batchd-live.js';
+import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
+import { type DecodedImage, decodeImageWithBrowser } from './lib/browser-decode.js';
 import {
+  assetVersionPaths,
   checkRegions,
   diffShare,
   IMAGE_PROMPTS,
@@ -74,6 +79,9 @@ function check(label: string): void {
 }
 
 class SmokeFailure extends Error {}
+
+/** Raised by boot-only mode so the finally block still writes the report. */
+class EarlyExit extends Error {}
 
 function fail(message: string): never {
   throw new SmokeFailure(message);
@@ -134,9 +142,13 @@ function startProcess(
   env: NodeJS.ProcessEnv,
   logPath: string,
 ): Managed {
+  const merged: NodeJS.ProcessEnv = { ...process.env, ...env };
+  // An empty ACCESS_TOKEN is rejected by config validation, and the intent of an
+  // empty value is "no bearer token at all": drop it so the run is tokenless.
+  if (merged.ACCESS_TOKEN === '') delete merged.ACCESS_TOKEN;
   const child = spawn(command, args, {
     cwd: ROOT,
-    env: { ...process.env, ...env },
+    env: merged,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const sink = (chunk: Buffer | string): void => {
@@ -169,26 +181,40 @@ async function stopProcess(item: Managed): Promise<void> {
  * what a later approve, embed or reference would actually use.
  */
 function readAssetVersion(
-  dataRoot: string,
+  workspaceRoot: string,
   assetId: string,
   version: number,
-): { png: PNG; bytes: Buffer; manifest: Record<string, unknown> } {
-  const dir = join(dataRoot, 'projects', PROJECT_ID, 'media', assetId);
-  const bytesPath = join(dir, `${String(version)}.bin`);
-  const manifestPath = join(dir, `${String(version)}.json`);
+): { bytes: Buffer; manifest: Record<string, unknown> } {
+  const paths = assetVersionPaths(workspaceRoot, PROJECT_ID, assetId, version);
+  const dir = paths.dir;
+  const bytesPath = paths.bytes;
+  const manifestPath = paths.manifest;
   if (!existsSync(bytesPath)) fail(`the asset bytes are missing at ${bytesPath}`);
   if (!existsSync(manifestPath)) fail(`the asset manifest is missing at ${manifestPath}`);
   const bytes = read(bytesPath);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
-  let png: PNG;
-  try {
-    png = PNG.sync.read(bytes);
-  } catch (cause) {
+  return { bytes, manifest };
+}
+
+/**
+ * The manifest carries the dimensions the product recorded when it stored the
+ * bytes; the browser reports what those bytes actually are. Reading one against
+ * the other is how the WebP header bug stayed hidden: a 1600x1600 frame from the
+ * live model was recorded as 1x1600, and every preview built from that number
+ * would have been wrong.
+ */
+function checkRecordedSize(
+  label: string,
+  manifest: Record<string, unknown>,
+  decoded: DecodedImage,
+): void {
+  const recordedWidth = typeof manifest.width === 'number' ? manifest.width : Number.NaN;
+  const recordedHeight = typeof manifest.height === 'number' ? manifest.height : Number.NaN;
+  if (recordedWidth !== decoded.naturalWidth || recordedHeight !== decoded.naturalHeight) {
     fail(
-      `the stored image is not a decodable PNG (${cause instanceof Error ? cause.message : String(cause)}); the measurement cannot be made`,
+      `${label}: the manifest records ${String(recordedWidth)}x${String(recordedHeight)} but the stored bytes decode to ${String(decoded.naturalWidth)}x${String(decoded.naturalHeight)}`,
     );
   }
-  return { png, bytes, manifest };
 }
 
 async function main(): Promise<void> {
@@ -208,14 +234,29 @@ async function main(): Promise<void> {
     );
   }
 
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16).replace('T', '-');
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
   const evidenceDir = join(ROOT, 'test-results', 'image-live', stamp);
   mkdirSync(evidenceDir, { recursive: true });
 
+  const launched = await launchVerificationBrowser();
+  const browser = launched.browser;
+  if (!browser) {
+    process.stderr.write(
+      'live image smoke: no verification browser is available to decode the stored frames\n',
+    );
+    process.exitCode = 2;
+    return;
+  }
+  reportBrowserSelection(launched.selection);
+
   const dataRoot = mkdtempSync(join(tmpdir(), 'image-live-smoke-'));
+  const workspaceRoot = join(dataRoot, 'workspaces');
   const serverLog = join(evidenceDir, 'server.log');
   writeFileSync(serverLog, '');
   let server: Managed | undefined;
+  const closeBrowser = async (): Promise<void> => {
+    if (browser.close) await browser.close();
+  };
   let blockedAt: string | undefined;
   let exitCode = 0;
 
@@ -225,13 +266,18 @@ async function main(): Promise<void> {
       check('FORGE_FALLBACK_API_KEY is scrubbed, so no call in this run can take a fallback route');
     }
 
-    const apiBase = `http://127.0.0.1:${String(await reservePort())}`;
+    const serverPort = await reservePort();
+    const apiBase = `http://127.0.0.1:${String(serverPort)}`;
     server = startProcess(
       process.execPath,
       [serverBundle],
       {
+        // Without PORT the server would listen on its default and the reserved
+        // port would sit unused; the health probe would then fail with no crash
+        // in the log, which is exactly what the first run of this script did.
+        PORT: String(serverPort),
         DATA_ROOT: join(dataRoot, 'data'),
-        WORKSPACE_ROOT: join(dataRoot, 'workspaces'),
+        WORKSPACE_ROOT: workspaceRoot,
         ACCESS_TOKEN: '',
         FORGE_MUSE_BIN: join(ROOT, 'tests', 'fixtures', 'fake-muse.mjs'),
         FORGE_MUSE_API_KEY: key,
@@ -280,6 +326,17 @@ async function main(): Promise<void> {
       fail(`project setup returned HTTP ${String(project.status)}`);
 
     const traceSoFar = (): number => parseMediaTrace(readFileSync(serverLog, 'utf8')).length;
+    if (process.env.IMAGE_SMOKE_BOOT_ONLY === '1') {
+      const dispatches = accountDispatches(
+        parseMediaTrace(readFileSync(serverLog, 'utf8')),
+      ).dispatches;
+      if (dispatches.length !== 0)
+        fail(`boot-only mode dispatched ${String(dispatches.length)} time(s)`);
+      check('boot-only mode: the live configuration gate passed and zero provider calls were made');
+      process.stdout.write('\nBatch B live image smoke: PASS (boot-only, no paid call)\n');
+      throw new EarlyExit();
+    }
+
     let traceBeforeGenerate = 0;
     let traceBeforeEdit = 0;
 
@@ -355,23 +412,27 @@ async function main(): Promise<void> {
       `call 1: one dispatch on ${String(generateAccount.dispatches[0]?.path)} (HTTP ${String(generateAccount.dispatches[0]?.status)}) stored asset ${String(genResult.asset_id).slice(0, 8)} v${String(genResult.version)}`,
     );
 
-    const first = readAssetVersion(dataRoot, genResult.asset_id, genResult.version);
+    const first = readAssetVersion(workspaceRoot, genResult.asset_id, genResult.version);
     if (sha256(first.bytes) !== genResult.sha256) {
       fail('the stored asset bytes do not match the sha256 the job reported');
     }
-    const firstMeasurement = measurePng(
-      new Uint8Array(first.png.data),
-      first.png.width,
-      first.png.height,
+    const firstDecoded = await decodeImageWithBrowser(
+      browser,
+      typeof first.manifest.mime === 'string' ? first.manifest.mime : 'image/png',
+      first.bytes,
     );
+    checkRecordedSize('generated frame', first.manifest, firstDecoded);
+    const firstMeasurement = measurePng(firstDecoded.rgba, firstDecoded.width, firstDecoded.height);
     const generateRegions = checkRegions(firstMeasurement, IMAGE_PROMPTS.generate.expected);
     observations.generate = {
       asset_id: genResult.asset_id,
       version: genResult.version,
       bytes: first.bytes.length,
       sha256: genResult.sha256,
-      width: first.png.width,
-      height: first.png.height,
+      width: firstDecoded.naturalWidth,
+      height: firstDecoded.naturalHeight,
+      measured_at: `${String(firstDecoded.width)}x${String(firstDecoded.height)}`,
+      measurement_scale: Number(firstDecoded.scale.toFixed(3)),
       stored_mime: typeof first.manifest.mime === 'string' ? first.manifest.mime : null,
       prompt: IMAGE_PROMPTS.generate.prompt,
       requested_size: IMAGE_PROMPTS.generate.size,
@@ -392,7 +453,7 @@ async function main(): Promise<void> {
       );
     }
     check(
-      `the generated frame measures ${String(first.png.width)}x${String(first.png.height)}, ${String(firstMeasurement.distinctColors)} distinct colours, red/green share ${(generateRegions.shares.red * 100).toFixed(1)}% / ${(generateRegions.shares.green * 100).toFixed(1)}% — the picture matches the subject it was asked for`,
+      `the generated frame measures ${String(firstDecoded.naturalWidth)}x${String(firstDecoded.naturalHeight)} (decoded at ${String(firstDecoded.width)}x${String(firstDecoded.height)}), ${String(firstMeasurement.distinctColors)} distinct colours, red/green share ${(generateRegions.shares.red * 100).toFixed(1)}% / ${(generateRegions.shares.green * 100).toFixed(1)}% — the picture matches the subject it was asked for`,
     );
 
     // ---- call 2: edit -----------------------------------------------------
@@ -415,33 +476,36 @@ async function main(): Promise<void> {
       `call 2: one dispatch on ${String(editAccount.dispatches[0]?.path)} (HTTP ${String(editAccount.dispatches[0]?.status)}) stored v${String(editResult.version)} of the same asset`,
     );
 
-    const second = readAssetVersion(dataRoot, editResult.asset_id, editResult.version);
+    const second = readAssetVersion(workspaceRoot, editResult.asset_id, editResult.version);
     if (sha256(second.bytes) !== editResult.sha256) {
       fail('the stored edited bytes do not match the sha256 the job reported');
     }
     writeFileSync(join(evidenceDir, 'edited.png'), second.bytes);
+    const secondDecoded = await decodeImageWithBrowser(
+      browser,
+      typeof second.manifest.mime === 'string' ? second.manifest.mime : 'image/png',
+      second.bytes,
+    );
+    checkRecordedSize('edited frame', second.manifest, secondDecoded);
     const secondMeasurement = measurePng(
-      new Uint8Array(second.png.data),
-      second.png.width,
-      second.png.height,
+      secondDecoded.rgba,
+      secondDecoded.width,
+      secondDecoded.height,
     );
     const editRegions = checkRegions(secondMeasurement, IMAGE_PROMPTS.edit.expected);
     const changed =
-      first.png.width === second.png.width && first.png.height === second.png.height
-        ? diffShare(
-            new Uint8Array(first.png.data),
-            new Uint8Array(second.png.data),
-            first.png.width,
-            first.png.height,
-          )
+      firstDecoded.width === secondDecoded.width && firstDecoded.height === secondDecoded.height
+        ? diffShare(firstDecoded.rgba, secondDecoded.rgba, firstDecoded.width, firstDecoded.height)
         : Number.NaN;
     observations.edit = {
       asset_id: editResult.asset_id,
       version: editResult.version,
       bytes: second.bytes.length,
       sha256: editResult.sha256,
-      width: second.png.width,
-      height: second.png.height,
+      width: secondDecoded.naturalWidth,
+      height: secondDecoded.naturalHeight,
+      measured_at: `${String(secondDecoded.width)}x${String(secondDecoded.height)}`,
+      measurement_scale: Number(secondDecoded.scale.toFixed(3)),
       prompt: IMAGE_PROMPTS.edit.prompt,
       distinct_colors: secondMeasurement.distinctColors,
       mean_channels: secondMeasurement.mean,
@@ -456,7 +520,7 @@ async function main(): Promise<void> {
     };
     if (Number.isNaN(changed)) {
       fail(
-        `the edit returned ${String(second.png.width)}x${String(second.png.height)} where the baseline was ${String(first.png.width)}x${String(first.png.height)}`,
+        `the edit decoded to ${String(secondDecoded.width)}x${String(secondDecoded.height)} where the baseline decoded to ${String(firstDecoded.width)}x${String(firstDecoded.height)} — the frames cannot be compared pixel by pixel`,
       );
     }
     if (changed < MIN_EDIT_DIFF_SHARE) {
@@ -509,15 +573,18 @@ async function main(): Promise<void> {
 
     process.stdout.write('\nBatch B live image smoke: PASS\n');
   } catch (error) {
-    if (!(error instanceof SmokeFailure)) {
+    if (!(error instanceof SmokeFailure) && !(error instanceof EarlyExit)) {
       process.stderr.write(
         `[${error instanceof Error ? error.constructor.name : typeof error}] ${error instanceof Error ? error.message : String(error)}\n`,
       );
     }
-    blockedAt = error instanceof Error ? error.message : String(error);
-    exitCode = 1;
+    if (!(error instanceof EarlyExit)) {
+      blockedAt = error instanceof Error ? error.message : String(error);
+      exitCode = 1;
+    }
   } finally {
     if (server !== undefined) await stopProcess(server);
+    await closeBrowser().catch(() => undefined);
     const summary = {
       ok: exitCode === 0,
       blocked_at: blockedAt ?? null,
@@ -538,6 +605,38 @@ async function main(): Promise<void> {
       join(evidenceDir, 'summary.txt'),
       `${exitCode === 0 ? 'PASS' : 'FAILED'}: ${String(checks.length)} checks; calls ${JSON.stringify(calls)}\n`,
     );
+    if (exitCode !== 0) {
+      // Whatever the model returned has already been paid for. Copy the stored
+      // assets and job records into the evidence directory before the isolate
+      // goes away, so a harness-side failure cannot destroy the measurement.
+      const projectRoot = join(workspaceRoot, 'forge', PROJECT_ID);
+      for (const subdir of ['media', 'media-jobs']) {
+        const source = join(projectRoot, subdir);
+        if (!existsSync(source)) continue;
+        const target = join(evidenceDir, 'isolate', subdir);
+        mkdirSync(target, { recursive: true });
+        for (const entry of readdirSync(source)) {
+          const from = join(source, entry);
+          try {
+            if (statSync(from).isFile()) {
+              copyFileSync(from, join(target, entry));
+            } else {
+              // Asset versions live one level down: media/<asset_id>/<n>.bin.
+              for (const inner of readdirSync(from)) {
+                const innerFrom = join(from, inner);
+                if (statSync(innerFrom).isFile()) {
+                  const innerTarget = join(target, entry);
+                  mkdirSync(innerTarget, { recursive: true });
+                  copyFileSync(innerFrom, join(innerTarget, inner));
+                }
+              }
+            }
+          } catch {
+            // A copy failure must not mask the run's own failure reason.
+          }
+        }
+      }
+    }
     rmSync(dataRoot, { recursive: true, force: true });
     process.stdout.write(`evidence: ${evidenceDir}\n`);
   }

@@ -109,19 +109,31 @@ function jpeg1x1(): Buffer {
   ]);
 }
 
-/** Minimal VP8X WebP declaring 1x1. */
-function webp1x1(): Buffer {
-  const riff = Buffer.from('RIFF', 'ascii');
+/**
+ * A spec-correct VP8X WebP header for the given canvas.
+ *
+ * VP8X payload is four flag bytes, then canvas width minus one and canvas
+ * height minus one as three-byte little-endian values. An earlier fixture put
+ * the dimensions one byte in, matching a parser bug rather than the format.
+ */
+function webpVp8x(width: number, height: number, flags = 0): Buffer {
   const size = Buffer.alloc(4);
-  const webp = Buffer.from('WEBP', 'ascii');
-  const vp8x = Buffer.from('VP8X', 'ascii');
   const chunkSize = Buffer.alloc(4);
-  chunkSize.writeUInt32LE(7, 0);
-  // flags(1) + canvas width-1 (3) + canvas height-1 (3): 1x1 => zeros.
-  const payload = Buffer.alloc(7, 0);
-  const total = 4 + 8 + 7; // "WEBP" + chunk header + payload
+  chunkSize.writeUInt32LE(10, 0);
+  const payload = Buffer.alloc(10, 0);
+  payload.writeUInt8(flags, 0);
+  payload.writeUIntLE(width - 1, 4, 3);
+  payload.writeUIntLE(height - 1, 7, 3);
+  const total = 4 + 8 + 10; // "WEBP" + chunk header + payload
   size.writeUInt32LE(total, 0);
-  return Buffer.concat([riff, size, webp, vp8x, chunkSize, payload]);
+  return Buffer.concat([
+    Buffer.from('RIFF', 'ascii'),
+    size,
+    Buffer.from('WEBP', 'ascii'),
+    Buffer.from('VP8X', 'ascii'),
+    chunkSize,
+    payload,
+  ]);
 }
 
 describe('media assets', () => {
@@ -162,9 +174,28 @@ describe('media assets', () => {
     const webp = await assets.createAsset('demo', {
       kind: 'image',
       mime: 'image/webp',
-      bytes: webp1x1(),
+      bytes: webpVp8x(1, 1),
     });
     expect([webp.width, webp.height]).toEqual([1, 1]);
+  });
+
+  it('reads VP8X canvas dimensions from the spec offsets, not one byte early', async () => {
+    // The live image model returns 1600x1600 VP8X WebP. Reading the dimensions
+    // one byte in reported 1x1600 and stored that in the asset manifest, which
+    // would have mis-scaled every preview and reference built from it.
+    const { assets } = await setup();
+    const wide = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/webp',
+      bytes: webpVp8x(1600, 1600, 0x02),
+    });
+    expect([wide.width, wide.height]).toEqual([1600, 1600]);
+    const portrait = await assets.createAsset('demo', {
+      kind: 'image',
+      mime: 'image/webp',
+      bytes: webpVp8x(640, 1024),
+    });
+    expect([portrait.width, portrait.height]).toEqual([640, 1024]);
   });
 
   it('refuses SVG and HTML masquerading as images', async () => {
