@@ -187,17 +187,24 @@ async function startModify(app: FastifyInstance, id = 'demo-game') {
   return response.json().data.id as string;
 }
 
-async function job(app: FastifyInstance, jobId: string) {
+/** The slice of a job payload these tests read, fields named as the API sends them. */
+type JobView = {
+  id: string;
+  status: string;
+  version: number | null;
+  base_version: number | null;
+  validation: { ok: boolean; issues: string[] } | null;
+  usage: { calls: number } | null;
+  model_observed: string | null;
+  memory_ids: string[];
+  error: string | null;
+  logs: string[];
+};
+
+async function job(app: FastifyInstance, jobId: string): Promise<JobView> {
   const response = await app.inject({ method: 'GET', url: `/api/forge/jobs/${jobId}` });
   expect(response.statusCode).toBe(200);
-  return response.json().data as {
-    status: string;
-    version: number | null;
-    validation: { ok: boolean; issues: string[] } | null;
-    usage: { calls: number } | null;
-    model_observed: string | null;
-    memory_ids: string[];
-  };
+  return response.json().data as JobView;
 }
 
 async function waitForFinish(app: FastifyInstance, jobId: string) {
@@ -694,7 +701,7 @@ describe('forge workflow', () => {
     const generated = await startGenerate(h.app);
     const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('failed');
-    expect((finished as { error: string }).error).toMatch(/fake failure|exited/);
+    expect(finished.error ?? '').toMatch(/fake failure|exited/);
   });
 
   it('rejects malformed generated HTML', async () => {
@@ -715,6 +722,9 @@ describe('forge workflow', () => {
       project_id: 'demo-game',
       content: 'The game is a colourful farmyard memory game for children with twelve cards.',
       confidence: 0.9,
+      source: { session_id: null, reference: null },
+      expires_at: null,
+      tags: [],
       validation_status: 'verified',
     });
     const generated = await startGenerate(h.app);
@@ -876,11 +886,9 @@ describe('forge workflow', () => {
     const h = await harness('quota-usage', {}, async () => ({ ok: true, errors: [] }), true);
     await createProject(h.app);
     const generated = await startGenerate(h.app);
-    const finished = (await waitForFinish(h.app, generated)) as unknown as {
-      usage: { calls: number };
-    };
+    const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('succeeded');
-    expect(finished.usage.calls).toBe(5);
+    expect(finished.usage?.calls).toBe(5);
   });
 
   it('does not let the fallback bypass validation or approval', async () => {
@@ -905,7 +913,7 @@ describe('forge workflow', () => {
     const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('succeeded');
     const detail = await job(h.app, generated);
-    expect((detail as { logs: string[] }).logs.join(' ')).toMatch(/retrying with fake-spark/);
+    expect(detail.logs.join(' ')).toMatch(/retrying with fake-spark/);
   });
 
   it('fails without a fallback key when the subscription is out of quota', async () => {
@@ -914,7 +922,7 @@ describe('forge workflow', () => {
     const generated = await startGenerate(h.app);
     const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('failed');
-    expect((finished as { error: string }).error).toMatch(/quota|429/i);
+    expect(finished.error ?? '').toMatch(/quota|429/i);
   });
 
   it('refuses a stale approval after another change lands', async () => {
@@ -1641,6 +1649,9 @@ describe('forge workflow', () => {
       content: `Art direction: use a warm sunset palette. ${hostile}`,
       source: { session_id: null, reference: 'forge:hostile-test' },
       validation_status: 'verified',
+      confidence: 0.7,
+      expires_at: null,
+      tags: [],
     });
 
     const generated = await startGenerate(h.app);

@@ -145,6 +145,9 @@ function decision(engine: MemoryEngine, projectId: string, content: string) {
     content,
     confidence: 0.9,
     validation_status: 'verified',
+    source: { session_id: null, reference: null },
+    expires_at: null,
+    tags: [],
   }).memory;
 }
 
@@ -163,6 +166,7 @@ type JobView = {
   version: number | null;
   memory_reference: Array<Record<string, unknown>> | null;
   decision_revisions_supplied: Array<Record<string, unknown>> | null;
+  logs: string[];
 };
 
 async function startGenerate(app: FastifyInstance, body: Record<string, unknown> = {}) {
@@ -295,6 +299,7 @@ describe('prior generations carry their decision reference', () => {
         confidence: 0.9,
         validation_status: 'verified',
         source: { session_id: null, reference: null },
+        tags: [],
       },
       'user',
     ).memory;
@@ -382,7 +387,8 @@ describe('prior generations carry their decision reference', () => {
     const started = response.json().data as { id: string };
     const reviewed = await finished(h.app, started.id);
 
-    const [supplied] = reviewed.decision_revisions_supplied as Array<Record<string, unknown>>;
+    const supplied = (reviewed.decision_revisions_supplied as Array<Record<string, unknown>>)[0];
+    if (!supplied) throw new Error('the job recorded no decision reference to inspect');
     // The stored decision is recorded whole …
     expect(supplied.content_sha256).toBe(decisionContentSha256(long));
     // … but the injection fingerprint covers only the truncated prefix.
@@ -410,6 +416,7 @@ describe('prior generations carry their decision reference', () => {
         confidence: 0.9,
         validation_status: 'verified',
         source: { session_id: null, reference: null },
+        tags: [],
       },
       'user',
     );
@@ -486,6 +493,7 @@ describe('prior generations carry their decision reference', () => {
         confidence: 0.9,
         validation_status: 'verified',
         source: { session_id: null, reference: null },
+        tags: [],
       },
       'user',
     ).memory;

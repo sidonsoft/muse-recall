@@ -10,6 +10,13 @@ import type { AppConfig } from '../../apps/server/src/config.js';
 import { SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
 
+/** The part of an inject response a catalogue probe is judged on. */
+type ErrorProbe = {
+  statusCode: number;
+  json(): { error?: { code?: string } };
+};
+
+
 /**
  * The machine-readable error catalogue (roadmap §3 remainder) must MIRROR the
  * server's real mappings — so every probe here compares a live response
@@ -114,7 +121,7 @@ describe('machine-readable error catalogue (GET /api/errors)', () => {
 
     const probes: Array<{
       code: string;
-      run: () => Promise<{ statusCode: number; body: { error?: { code?: string } } }>;
+      run: () => Promise<ErrorProbe>;
     }> = [
       {
         code: 'invalid_host',
@@ -283,7 +290,7 @@ describe('catalogue v3 additions (KI-43 / KI-45 / KI-48 lockstep)', () => {
     app: FastifyInstance,
     catalog: ErrorCatalog,
     code: string,
-    run: () => Promise<{ statusCode: number; body: { error?: { code?: string } } }>,
+    run: () => Promise<ErrorProbe>,
   ): Promise<void> {
     const entry = Object.values(catalog.groups)
       .flatMap((entries) => entries)

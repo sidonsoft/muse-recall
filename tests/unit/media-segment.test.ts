@@ -201,7 +201,9 @@ describe('renderMatchPreview (Batch C)', () => {
 describe('decodeImage (Batch C)', () => {
   it('round-trips PNG bytes', async () => {
     const src = twoTone();
-    const bytes = PNG.sync.write({ width: src.width, height: src.height, data: src.data });
+    const png = new PNG({ width: src.width, height: src.height });
+    png.data = src.data;
+    const bytes = PNG.sync.write(png);
     const decoded = await decodeImage(bytes, 'image/png');
     expect(decoded.width).toBe(8);
     expect(decoded.height).toBe(8);
@@ -251,7 +253,7 @@ describe('decodeImage (Batch C)', () => {
       width: 8,
       height: 8,
     });
-    const decoded = await decodeImage(Buffer.from(bytes as ArrayBuffer), 'image/webp');
+    const decoded = await decodeImage(Buffer.from(bytes), 'image/webp');
     expect(decoded.width).toBe(8);
     expect(decoded.height).toBe(8);
   });
@@ -358,7 +360,11 @@ describe('MediaUnderstand (Batch C)', () => {
     );
     const understand = new MediaUnderstand(adapter(fetchImpl));
     const result = await understand.suggest({
-      bytes: PNG.sync.write({ width: 1, height: 1, data: Buffer.alloc(4) }),
+      bytes: (() => {
+        const dot = new PNG({ width: 1, height: 1 });
+        dot.data = Buffer.alloc(4);
+        return PNG.sync.write(dot);
+      })(),
       mime: 'image/png',
     });
     expect(understand.targetedModel).toBe('muse-spark-1.3');
@@ -590,14 +596,14 @@ describe('MediaSegmentation lane validation (Batch C P2)', () => {
     const width = 3000;
     const height = 2000;
     const src: RgbaImage = { width, height, data: Buffer.alloc(width * height * 4, 128) };
-    let sent: { width: number; height: number } | null = null;
+    const sent: Array<{ width: number; height: number }> = [];
     const fetchImpl = vi.fn(async (_url: unknown, init: { body?: unknown }) => {
       const body = JSON.parse(String((init as { body: string }).body)) as {
         input: Array<{ content: Array<{ image_url?: string }> }>;
       };
       const imageUrl = body.input[0]?.content[1]?.image_url ?? '';
       const decoded = PNG.sync.read(Buffer.from(imageUrl.split(',')[1] ?? '', 'base64'));
-      sent = { width: decoded.width, height: decoded.height };
+      sent.push({ width: decoded.width, height: decoded.height });
       const box = { x1: 100, y1: 100, x2: 500, y2: 400 };
       return textLane(
         `<0f>0<|box;x1=${box.x1};y1=${box.y1};x2=${box.x2};y2=${box.y2};w=${decoded.width};h=${decoded.height}|>` +
@@ -605,8 +611,8 @@ describe('MediaSegmentation lane validation (Batch C P2)', () => {
       );
     });
     const result = await new MediaSegmentation(adapter(fetchImpl)).segment(src, 'dot');
-    expect(sent).not.toBeNull();
-    const sentDims = sent as { width: number; height: number };
+    const [sentDims] = sent;
+    if (!sentDims) throw new Error('the segmentation request never carried an image');
     expect(Math.max(sentDims.width, sentDims.height)).toBeLessThanOrEqual(2048);
     expect(result.matches).toHaveLength(1);
     // The parser exposes half-open bounds; mapping must carry them back to

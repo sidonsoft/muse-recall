@@ -43,7 +43,8 @@ describe('MediaOperations (Batch B1)', () => {
   });
 
   it('downloads a provider URL from the allowlist with no credentials', async () => {
-    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      void init;
       if (String(input).includes('/v1/images/generations')) {
         return jsonResponse({ data: [{ url: 'https://api.meta.ai/assets/one.png' }] });
       }

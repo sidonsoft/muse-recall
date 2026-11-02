@@ -193,7 +193,10 @@ describe('adversarial boundary suite (§5 release criterion)', () => {
 
     it('malformed Authorization shapes all 401 with a challenge', async () => {
       const app = await appWith({ port: 8787, accessToken: TOKEN });
-      const shapes: Array<string | string[]> = [
+      // Every shape is a single header value: inject cannot put two
+      // Authorization headers on the wire, so the duplicate case arrives
+      // already comma-joined, exactly as Node hands it to a real handler.
+      const shapes: string[] = [
         'bearer ' + TOKEN, // wrong case: exact-match contract (D045)
         'Basic ' + TOKEN,
         'Bearer  ' + TOKEN, // extra space

@@ -10,7 +10,10 @@ import {
   MediaVisualReviewRequestSchema,
   MediaVisualReviewResponseSchema,
 } from '@mml/shared';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, InjectOptions } from 'fastify';
+
+/** What fastify's light-my-request harness accepts as a request body. */
+type ReviewPayload = NonNullable<InjectOptions['payload']>;
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
@@ -302,6 +305,9 @@ function decision(engine: MemoryEngine, content: string, projectId = PROJECT) {
     content,
     confidence: 0.9,
     validation_status: 'verified',
+    source: { session_id: null, reference: null },
+    expires_at: null,
+    tags: [],
   }).memory;
 }
 
@@ -371,7 +377,11 @@ async function generateOnly(app: FastifyInstance): Promise<string> {
   return jobId;
 }
 
-async function postReview(app: FastifyInstance, body: unknown, headers?: Record<string, string>) {
+async function postReview(
+  app: FastifyInstance,
+  body: ReviewPayload,
+  headers?: Record<string, string>,
+) {
   return app.inject({
     method: 'POST',
     url: `/api/forge/projects/${PROJECT}/visual-review`,
@@ -488,6 +498,7 @@ describe('screenshot advisory review against accepted decisions', () => {
         confidence: 0.9,
         validation_status: 'verified',
         source: { session_id: null, reference: null },
+        tags: [],
       },
       'user',
     ).memory;
@@ -495,6 +506,9 @@ describe('screenshot advisory review against accepted decisions', () => {
       type: 'preference',
       scope: 'project',
       project_id: PROJECT,
+      source: { session_id: null, reference: null },
+      expires_at: null,
+      tags: [],
       content: 'Maybe add a sunset background.',
       confidence: 0.5,
       validation_status: 'unverified',
@@ -505,7 +519,7 @@ describe('screenshot advisory review against accepted decisions', () => {
 
     await approveGenerate(h.app);
 
-    const cases: Array<{ body: unknown; status: number; code: string }> = [
+    const cases: Array<{ body: ReviewPayload; status: number; code: string }> = [
       { body: reviewBody([pick(stale)]), status: 422, code: 'decision_superseded' },
       { body: reviewBody([pick(proposed)]), status: 422, code: 'decision_not_active' },
       { body: reviewBody([pick(foreign)]), status: 422, code: 'decision_cross_project' },

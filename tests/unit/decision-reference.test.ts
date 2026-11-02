@@ -390,8 +390,8 @@ describe('buildGenerationList', () => {
         summary: `v${String(entry.version)}`,
         job_id: entry.job_id,
       })),
-      recovery: { issues: [], acknowledged: [] },
-    } as ForgeState;
+      can_rollback: versions.length > 1,
+    };
   }
 
   it('lists every generation with its stored reference, newest first', () => {

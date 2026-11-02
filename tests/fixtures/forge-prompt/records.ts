@@ -21,6 +21,9 @@ export const FORGE_PROMPT_MEMORIES: RetrievedMemory[] = [
       confidence: 0.95,
       validation_status: 'verified',
       status: 'active',
+      // A decision the user stated and Forge stored.
+      actor: 'user',
+      revision: 1,
       created_at: '2026-10-01T00:00:00.000Z',
       updated_at: '2026-10-01T00:00:00.000Z',
       expires_at: null,
@@ -54,6 +57,9 @@ export const FORGE_PROMPT_MEMORIES: RetrievedMemory[] = [
       confidence: 0.8,
       validation_status: 'unverified',
       status: 'active',
+      // A fact the agent recorded from its own session.
+      actor: 'agent',
+      revision: 1,
       created_at: '2026-10-02T00:00:00.000Z',
       updated_at: '2026-10-02T00:00:00.000Z',
       expires_at: null,

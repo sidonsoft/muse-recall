@@ -85,12 +85,22 @@ describe('data at rest', () => {
         scope: 'project',
         project_id: 'backup-test',
         content: 'Keep the backup consistent with the live database.',
+        source: { session_id: null, reference: null },
+        confidence: 0.7,
+        validation_status: 'unverified',
+        expires_at: null,
+        tags: [],
       });
       engine.create({
         type: 'constraint',
         scope: 'global',
         project_id: null,
         content: 'Backups must not expose world-readable files.',
+        source: { session_id: null, reference: null },
+        confidence: 0.7,
+        validation_status: 'unverified',
+        expires_at: null,
+        tags: [],
       });
 
       // The source stays open so at least one row lives only in the WAL when

@@ -417,7 +417,7 @@ describe('GenerationsPanel', () => {
 
   it('is a reader: the panel offers no approve, restore, or regenerate control', () => {
     const labels = [...markup.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)]
-      .map((match) => match[1].replace(/<[^>]*>/g, '').trim())
+      .map((match) => (match[1] ?? '').replace(/<[^>]*>/g, '').trim())
       .filter((label) => label.length > 0);
     expect(labels.length).toBeGreaterThan(0);
     for (const label of labels) {

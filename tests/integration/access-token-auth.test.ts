@@ -140,7 +140,7 @@ describe('shared bearer token (G-6 groundwork)', () => {
 
   it('/api/meta states which trust model is active', async () => {
     const open = await appWith();
-    expect(open.json).toBeUndefined(); // sanity: inject only
+    expect(typeof open.inject).toBe('function'); // the harness talks to the app by inject only
     const metaOpen = await open.inject({ method: 'GET', url: '/api/meta' });
     expect(metaOpen.json().data.safety.authentication).toBe('loopback-only');
 
