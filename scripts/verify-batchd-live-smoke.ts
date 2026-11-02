@@ -82,6 +82,8 @@ import {
   ffprobeArgs,
   liveScope,
   liveScopeAllowedPaths,
+  liveScopeLabel,
+  liveScopeNameIssues,
   MEDIA_MODEL_FIELDS,
   mediaMetaIssues,
   missingLivePrerequisites,
@@ -110,7 +112,11 @@ const KEY = process.env.FORGE_MUSE_API_KEY ?? '';
 
 interface Report {
   status: string;
+  /** The scope the policies actually enforced, derived from the parsed scope. */
   scope: string;
+  /** What the operator asked for, kept separate so a fallback can never be hidden. */
+  scope_requested: string;
+  scope_source: 'default' | 'env';
   completed_checks: number;
   checks: Array<{ name: string; ok: boolean }>;
   observations: Record<string, unknown>;
@@ -151,6 +157,9 @@ function fail(message: string): never {
 }
 
 function writeReport(status: string, error?: string): void {
+  // Derived here rather than from a main-local binding, because writeReport runs on every
+  // path (blocked, failed, passed) including paths that never reached main()'s scope work.
+  const appliedScope = liveScope(process.env);
   // The ledger is read from the adapter's own trace every time a report is
   // written — pass, blocked, or failed. Counters that only advanced on a success
   // path hide the cost of a run that paid for a call and then failed, which is
@@ -205,7 +214,11 @@ function writeReport(status: string, error?: string): void {
   }
   const report: Report = {
     status,
-    scope: `${process.env.BATCHD_SMOKE_FIXTURE_ONLY ? 'fixtures only, no network' : `live ${process.env.BATCHD_SMOKE_SCOPE ?? 'audio'}`}`,
+    scope: process.env.BATCHD_SMOKE_FIXTURE_ONLY
+      ? `fixtures only, no network (${liveScopeLabel(appliedScope)} would be the live scope)`
+      : `live ${liveScopeLabel(appliedScope)}`,
+    scope_requested: (process.env.BATCHD_SMOKE_SCOPE ?? 'audio').trim().toLowerCase(),
+    scope_source: process.env.BATCHD_SMOKE_SCOPE === undefined ? 'default' : 'env',
     completed_checks: checks.filter((entry) => entry.ok).length,
     checks,
     observations,
@@ -284,6 +297,20 @@ async function main(): Promise<void> {
   const videoOverride = process.env.BATCHD_SMOKE_VIDEO_MP4;
   const wavPath = audioOverride ?? speech.wavPath;
   const mp4Path = videoOverride ?? clip.mp4Path;
+
+  // A scope name this harness does not know is refused here, before any prerequisite work,
+  // credential read, port reservation or dispatch: guessing would spend quota on a
+  // different capability than the one that was asked for.
+  const scopeNameIssues = liveScopeNameIssues(process.env);
+  if (scopeNameIssues.length > 0) {
+    observations.blocker = scopeNameIssues;
+    observations.scope_applied = liveScopeLabel(scope);
+    writeReport('BLOCKED before any provider call: unknown BATCHD_SMOKE_SCOPE');
+    for (const line of scopeNameIssues) console.error(`FAIL: ${line}`);
+    console.error(`evidence: ${EVIDENCE}`);
+    process.exitCode = 2;
+    return;
+  }
 
   const prerequisites = missingLivePrerequisites({
     scope,

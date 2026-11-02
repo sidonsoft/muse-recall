@@ -384,6 +384,32 @@ export interface LiveScope {
  * is the cheapest live answer that still measures something, and a run that wants
  * the video call has to say so.
  */
+/** The only scope names this harness accepts. */
+export const LIVE_SCOPE_NAMES: readonly string[] = ['audio', 'video', 'both'];
+
+/**
+ * A scope name the harness does not know must be refused, not reinterpreted. `liveScope`
+ * falls back to the cheapest scope when handed an unknown string (defence in depth for
+ * programmatic callers), but a CLI typo then pays for a different capability than the one
+ * the operator asked for — on 2 Nov `BATCHD_SMOKE_SCOPE=clip` fell back to audio while the
+ * report still said "live clip", so the ledger rules enforced audio counts against a run
+ * described as a clip run.
+ */
+export function liveScopeNameIssues(env: NodeJS.ProcessEnv): string[] {
+  const named = (env.BATCHD_SMOKE_SCOPE ?? '').trim().toLowerCase();
+  if (named === '' || LIVE_SCOPE_NAMES.includes(named)) return [];
+  return [
+    `BATCHD_SMOKE_SCOPE="${named}" is not one of ${LIVE_SCOPE_NAMES.join(' | ')} — this harness will not guess which capability to pay for`,
+  ];
+}
+
+/** How the applied scope should be described, derived from the parsed scope, never the raw env string. */
+export function liveScopeLabel(scope: LiveScope): string {
+  if (scope.audio && scope.video) return 'audio + clip observation';
+  if (scope.video) return 'clip observation only';
+  return 'audio only';
+}
+
 export function liveScope(env: NodeJS.ProcessEnv): LiveScope {
   const named = (env.BATCHD_SMOKE_SCOPE ?? 'audio').trim().toLowerCase();
   // An unrecognised scope never means "call everything": it falls back to the

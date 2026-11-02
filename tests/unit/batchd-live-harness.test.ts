@@ -11,6 +11,8 @@ import {
   FFMPEG_BIN,
   FFPROBE_BIN,
   liveScope,
+  liveScopeLabel,
+  liveScopeNameIssues,
   MEDIA_MODEL_FIELDS,
   mediaMetaIssues,
   missingLivePrerequisites,
@@ -446,5 +448,43 @@ describe('clip call accounting (model call vs file upload)', () => {
     expect(accountClipCalls(REAL, 1).issues).toContain(
       'the route reported 1 attempt(s) for 2 observed dispatch(es)',
     );
+  });
+});
+
+describe('scope naming and reporting', () => {
+  it('refuses a scope name the harness does not know, naming the value and the legal set', () => {
+    // The real trigger: BATCHD_SMOKE_SCOPE=clip fell back to audio while the report said
+    // "live clip", so audio ledger rules were enforced against a run described as a clip run.
+    const issues = liveScopeNameIssues({ BATCHD_SMOKE_SCOPE: 'clip' });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toContain('BATCHD_SMOKE_SCOPE="clip"');
+    expect(issues[0]).toContain('audio | video | both');
+    expect(issues[0]).toContain('will not guess which capability to pay for');
+  });
+
+  it('accepts the three documented names and the empty default', () => {
+    for (const value of ['audio', 'video', 'both', '  BOTH ', '']) {
+      expect(liveScopeNameIssues({ BATCHD_SMOKE_SCOPE: value })).toEqual([]);
+    }
+    expect(liveScopeNameIssues({})).toEqual([]);
+  });
+
+  it('describes the applied scope from the parsed scope, never the raw string', () => {
+    expect(liveScopeLabel(liveScope({}))).toBe('audio only');
+    expect(liveScopeLabel(liveScope({ BATCHD_SMOKE_SCOPE: 'video' }))).toBe(
+      'clip observation only',
+    );
+    expect(liveScopeLabel(liveScope({ BATCHD_SMOKE_SCOPE: 'both' }))).toBe(
+      'audio + clip observation',
+    );
+  });
+
+  it('never labels an audio fallback as a clip run', () => {
+    // liveScope keeps its cheap-scope fallback for programmatic callers; the label must
+    // then tell the truth about what is actually enforced.
+    const parsed = liveScope({ BATCHD_SMOKE_SCOPE: 'clip' });
+    expect(parsed.audio).toBe(true);
+    expect(parsed.video).toBe(false);
+    expect(liveScopeLabel(parsed)).toBe('audio only');
   });
 });

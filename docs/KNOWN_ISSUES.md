@@ -1152,3 +1152,40 @@ real captured startup log as a fixture.
 server. The Batch D call site is wired and its helper is unit-tested, but Batch D was not
 made to fail at readiness during this pass, so that path is covered by the helper's tests
 rather than by a live run.
+
+## KI-60 — an unknown scope name was silently reinterpreted, and the report described the run that was asked for, not the one that was measured (closed)
+
+**Symptom.** `BATCHD_SMOKE_SCOPE=clip pnpm verify:batchd-live-smoke` reported
+`"scope": "live clip"` while its ledger rule complained
+`expected 1 transcription dispatch(es), saw 0`. A run described as a clip run was being
+scored against audio expectations.
+
+**Cause.** Two independent places derived the word "scope":
+- `liveScope()` maps any unrecognised name to the cheapest scope (audio). That fallback is
+  deliberate defence in depth for programmatic callers, and the comment even says an
+  unrecognised scope "never means call everything".
+- the report's `scope` field was built from the **raw env string**
+  (`live ${process.env.BATCHD_SMOKE_SCOPE ?? 'audio'}`), while every policy — allowed paths,
+  expected counts, fixture prerequisites — used the parsed scope.
+
+The fallback is safe against overspending; the labelling is what made it invisible. A typo
+cost the operator an audio measurement they did not ask for, and the evidence file claimed a
+clip measurement had been attempted.
+
+**Fix.**
+- `liveScopeNameIssues()` refuses a name outside `audio | video | both`, before prerequisites,
+  credential read, port reservation or any dispatch:
+  `BATCHD_SMOKE_SCOPE="clip" is not one of audio | video | both — this harness will not guess
+  which capability to pay for`, exit 2, status `BLOCKED before any provider call: unknown
+  BATCHD_SMOKE_SCOPE`.
+- `liveScopeLabel()` derives the report label from the parsed scope, and the report keeps the
+  raw request separately (`scope_requested`, `scope_source: default | env`), so a fallback can
+  never be hidden — it is visible as a disagreement between the two fields.
+
+**Proof.** Re-running the same typo now ends before any server starts:
+`exit 2`, `scope: "live audio only"`, `scope_requested: "clip"`, all call counters zero, and
+`ledger_evidence.logPresent: false` with the standing note that an absent log proves nothing.
+The valid `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1` run still passes (4 checks) and
+now reports `scope: "fixtures only, no network (audio + clip observation would be the live
+scope)"`. Four unit tests pin the refusal wording, the accepted set, the labels, and the rule
+that an audio fallback must never be labelled a clip run.
