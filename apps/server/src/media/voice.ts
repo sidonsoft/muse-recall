@@ -81,7 +81,8 @@ const MAX_OBSERVATION_CHARS = 500;
  */
 export const CLIP_MAX_OUTPUT_TOKENS =
   2 * Math.ceil((MAX_OBSERVATIONS * (MAX_OBSERVATION_CHARS + 24) + 256) / 4);
-export { MAX_OBSERVATIONS, MAX_OBSERVATION_CHARS };
+export { MAX_OBSERVATION_CHARS, MAX_OBSERVATIONS };
+
 const FILE_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,200}$/;
 
 function parseJsonObject(body: string): Record<string, unknown> | null {

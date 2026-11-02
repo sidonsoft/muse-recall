@@ -186,10 +186,9 @@ function readAssetVersion(
   version: number,
 ): { bytes: Buffer; manifest: Record<string, unknown> } {
   const paths = assetVersionPaths(workspaceRoot, PROJECT_ID, assetId, version);
-  const dir = paths.dir;
   const bytesPath = paths.bytes;
   const manifestPath = paths.manifest;
-  if (!existsSync(bytesPath)) fail(`the asset bytes are missing at ${bytesPath}`);
+  if (!existsSync(bytesPath)) fail(`the asset bytes are missing under ${paths.dir}`);
   if (!existsSync(manifestPath)) fail(`the asset manifest is missing at ${manifestPath}`);
   const bytes = read(bytesPath);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;

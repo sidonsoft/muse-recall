@@ -115,7 +115,7 @@ describe('machine-readable error catalogue (GET /api/errors)', () => {
     ).json().data as ErrorCatalog;
     const entryFor = (code: string) =>
       Object.values(catalog.groups)
-        .flatMap((entries) => entries)
+        .flat()
         .find((e) => e.code === code);
 
     const probes: Array<{
@@ -219,7 +219,7 @@ describe('machine-readable error catalogue (GET /api/errors)', () => {
     expect(live.statusCode).toBe(401);
     expect(live.json().error.code).toBe('unauthorized');
     const entry = Object.values(catalog.groups)
-      .flatMap((entries) => entries)
+      .flat()
       .find((e) => e.code === 'unauthorized');
     expect(entry?.http_status).toBe(401);
   });
@@ -286,13 +286,15 @@ describe('catalogue v3 additions (KI-43 / KI-45 / KI-48 lockstep)', () => {
   }
 
   async function expectProbe(
-    app: FastifyInstance,
+    // The app is passed so a failing probe can be traced to the instance that
+    // produced it; the probe itself carries the request.
+    _app: FastifyInstance,
     catalog: ErrorCatalog,
     code: string,
     run: () => Promise<ErrorProbe>,
   ): Promise<void> {
     const entry = Object.values(catalog.groups)
-      .flatMap((entries) => entries)
+      .flat()
       .find((candidate) => candidate.code === code);
     expect(entry, `catalogue is missing ${code}`).toBeDefined();
     const response = await run();

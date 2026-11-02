@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseClipResponse, parseTranscribeResponse } from '../../apps/server/src/media/voice.js';
 import {
   CLIP_MAX_OUTPUT_TOKENS,
   MAX_OBSERVATION_CHARS,
   MAX_OBSERVATIONS,
+  parseClipResponse,
+  parseTranscribeResponse,
 } from '../../apps/server/src/media/voice.js';
 
 const SOURCE = '00000000-0000-4000-8000-000000000001';
