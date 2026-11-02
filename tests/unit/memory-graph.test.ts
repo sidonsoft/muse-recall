@@ -1,5 +1,6 @@
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { afterEach, describe, expect, it } from 'vitest';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 /**
  * Relationship graph + timeline over supersession edges (gap G-9 remainder,
@@ -20,6 +21,7 @@ function newEngine(): MemoryEngine {
 
 function buildChain(engine: MemoryEngine, projectId: string) {
   const a = engine.create({
+    ...CREATE_DEFAULTS,
     type: 'technical_decision',
     scope: 'project',
     project_id: projectId,
@@ -27,6 +29,7 @@ function buildChain(engine: MemoryEngine, projectId: string) {
     confidence: 0.8,
   }).memory;
   const result = engine.correct({
+    ...CORRECTION_DEFAULTS,
     type: 'technical_decision',
     scope: 'project',
     project_id: projectId,
@@ -59,12 +62,15 @@ describe('MemoryEngine.graph (D052)', () => {
     const engine = newEngine();
     buildChain(engine, 'p-a');
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'preference',
       scope: 'global',
+      project_id: null,
       content: 'Prefer explicit fail-fast over silent fallback',
       confidence: 0.7,
     }).memory;
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'goal',
       scope: 'project',
       project_id: 'p-b',
@@ -91,8 +97,10 @@ describe('MemoryEngine.graph (D052)', () => {
     const engine = newEngine();
     for (let i = 0; i < 5; i += 1) {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'goal',
         scope: 'global',
+        project_id: null,
         content: `goal number ${String(i)}`,
         confidence: 0.5,
       });

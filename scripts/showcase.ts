@@ -61,7 +61,13 @@ interface Surface {
 }
 
 const checks: { name: string; pass: boolean; detail: string }[] = [];
-const transcript: Record<string, unknown> = {};
+/** The scripted run records each demo's exchanges for the written evidence trail. */
+const transcript: Record<'demoA' | 'demoB' | 'demoD' | 'demoE', Record<string, unknown>> = {
+  demoA: {},
+  demoB: {},
+  demoD: {},
+  demoE: {},
+};
 
 function check(name: string, pass: boolean, detail: string): void {
   checks.push({ name, pass, detail });

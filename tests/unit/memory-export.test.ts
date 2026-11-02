@@ -1,6 +1,7 @@
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { MEMORY_EXPORT_FORMAT, MEMORY_EXPORT_FORMAT_VERSION } from '@mml/shared';
 import { describe, expect, it } from 'vitest';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 /**
  * Export/import contract (roadmap §6 "Make changes safe", gap G-4):
@@ -15,6 +16,7 @@ function seededEngine(): { engine: MemoryEngine; close: () => void } {
   engine.ensureProject('other-game', 'Other Game');
 
   const first = engine.create({
+    ...CREATE_DEFAULTS,
     type: 'technical_decision',
     scope: 'project',
     project_id: 'demo-game',
@@ -22,6 +24,7 @@ function seededEngine(): { engine: MemoryEngine; close: () => void } {
   });
   // A correction chain leaves superseded + active records and an edge behind.
   engine.correct({
+    ...CORRECTION_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: 'demo-game',
@@ -29,14 +32,17 @@ function seededEngine(): { engine: MemoryEngine; close: () => void } {
     supersedes: [first.memory.id],
   });
   engine.propose({
+    ...CREATE_DEFAULTS,
     type: 'preference',
     scope: 'project',
     project_id: 'other-game',
     content: 'A candidate nobody has reviewed yet',
   });
   const doomed = engine.create({
+    ...CREATE_DEFAULTS,
     type: 'contextual_fact',
     scope: 'global',
+    project_id: null,
     content: 'A fact that was later removed',
   });
   engine.softDelete(doomed.memory.id);
@@ -174,13 +180,17 @@ describe('importExport', () => {
         }),
       ).toThrowError(expect.objectContaining({ code: 'memory_invalid' }));
 
+      // A replayed audit id must be refused. The history is non-empty in any
+      // real export, but the index is checked rather than assumed.
+      const [firstHistoryEntry] = envelope.history;
+      if (!firstHistoryEntry) throw new Error('the export carries audit history');
       expect(() =>
         targetEngine.importExport({
           ...envelope,
           history: [
             ...envelope.history,
             {
-              id: envelope.history[0].id,
+              id: firstHistoryEntry.id,
               memory_id: '00000000-0000-4000-8000-000000000000',
               action: 'created',
               previous_status: null,

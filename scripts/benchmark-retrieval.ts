@@ -99,6 +99,10 @@ try {
       const token = `sigil${projectIdIndex}${index}`;
       const content = `${projectId} ${type.replace(/_/g, ' ')} ${index}: ${token} concerns storage and rendering.`;
       const result = engine.create({
+        // Stated, not inherited: the seeded corpus must not shift if a schema
+        // default changes under a rerun of the benchmark.
+        source: { session_id: null, reference: 'benchmark-seed' },
+        expires_at: null,
         type,
         scope: 'project',
         project_id: projectId,
@@ -115,11 +119,15 @@ try {
     const type = index % 2 === 0 ? 'preference' : 'constraint';
     const content = `Global ${type.replace(/_/g, ' ')}: prefer-global-${index} for all projects.`;
     engine.create({
+      source: { session_id: null, reference: 'benchmark-seed' },
+      expires_at: null,
       type,
       scope: 'global',
       project_id: null,
       content,
       confidence: 0.9,
+      validation_status: 'unverified',
+      tags: [],
     });
   }
 
@@ -178,12 +186,15 @@ try {
   for (const [index, memory] of correctionSample.entries()) {
     const revisedToken = `revisedsigil${index}`;
     engine.correct({
+      source: { session_id: null, reference: 'benchmark-supersede' },
       supersedes: [memory.id],
       type: memory.type,
       project_id: memory.projectId,
       content: `${memory.projectId} corrected decision: ${revisedToken} supersedes the earlier storage choice.`,
       confidence: 0.95,
       validation_status: 'verified',
+      scope: 'project',
+      tags: [],
     });
 
     const result = engine.retrieve({ project_id: memory.projectId, query: revisedToken });

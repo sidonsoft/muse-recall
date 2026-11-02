@@ -61,7 +61,7 @@ describe('ProviderHealthTracker cache + in-flight + hygiene', () => {
       name: 'fake',
       capabilities: () => ({}),
       generate: async () => {
-        throw new ProviderError('overloaded', 'token sk-SUPERSECRET rejected');
+        throw new ProviderError('provider_unavailable', 'token sk-SUPERSECRET rejected');
       },
     } as unknown as ModelProvider;
     const t = new ProviderHealthTracker(provider, 0);

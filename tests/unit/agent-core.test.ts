@@ -21,6 +21,7 @@ import {
   parseMemoryCommand,
   selectSupersessionCandidate,
 } from '../../packages/agent-core/src/index.js';
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 const open: { close: () => void }[] = [];
 
@@ -117,12 +118,14 @@ describe('memory capture parsing', () => {
     open.push(engineOpen);
     const engine = new MemoryEngine(engineOpen.db);
     const existing = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo',
       content: 'The target platform is mobile web',
     });
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: 'demo',
@@ -153,6 +156,7 @@ describe('context assembly', () => {
     open.push(opened);
     const engine = new MemoryEngine(opened.db);
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo',
@@ -190,6 +194,7 @@ describe('context assembly', () => {
     open.push(opened);
     const engine = new MemoryEngine(opened.db);
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: 'demo',
@@ -217,6 +222,7 @@ describe('context assembly', () => {
     open.push(opened);
     const engine = new MemoryEngine(opened.db);
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: 'demo',
@@ -224,6 +230,7 @@ describe('context assembly', () => {
       source: { session_id: null, reference: `constraint:${'c'.repeat(120)}` },
     });
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo',
@@ -547,6 +554,7 @@ describe('agent runtime turns', () => {
     const session = runtime.createSession({ project_id: 'demo-game' });
 
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: 'demo-game',
@@ -577,6 +585,7 @@ describe('agent runtime turns', () => {
     const { runtime, engine } = createRuntime();
     const session = runtime.createSession({ project_id: 'demo-game' });
     const memory = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo-game',
@@ -647,6 +656,7 @@ describe('agent runtime turns', () => {
   it('keeps a global memory global when correcting it from a project session', async () => {
     const { runtime, engine } = createRuntime();
     const original = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'global',
       project_id: null,
@@ -935,12 +945,14 @@ describe('session lifecycle', () => {
     const { runtime, engine } = createRuntime({ provider });
 
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'project-a',
       content: 'Project Alpha uses SQLite',
     });
     engine.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'project-b',

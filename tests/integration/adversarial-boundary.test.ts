@@ -209,8 +209,9 @@ describe('adversarial boundary suite (§5 release criterion)', () => {
         // headers on the wire: one comma-joined string (inject cannot send
         // real duplicates) — the digest comparison must refuse it.
         `Bearer ${TOKEN}, Bearer other`,
-        [],
       ];
+      // An array-valued `authorization` (what Node reserves for `cookie`) is not a
+      // reachable shape for this header, so no fake entry is asserted for it.
       for (const header of shapes) {
         const response = await app.inject({
           method: 'GET',

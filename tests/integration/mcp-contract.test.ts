@@ -7,7 +7,19 @@ import { TOOL_CONTRACT_VERSION } from '@mml/shared';
 import { createDefaultToolRegistry } from '@mml/tool-runtime';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, describe, expect, it } from 'vitest';
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
+
+/**
+ * A resource response is text or binary; this contract resource must be text.
+ * Falling back to `{}` would turn a contract break into a confusing field diff.
+ */
+function textContent(contents: ReadResourceResult['contents']): string {
+  const first = contents[0];
+  if (!first || !('text' in first)) throw new Error('the contract resource carried no text');
+  return first.text;
+}
 
 /**
  * Gap G-5 conformance: the MCP surface, the session tool registry, and the
@@ -29,6 +41,7 @@ async function connect(
   const engine = new MemoryEngine(database.db);
   engine.ensureProject('demo');
   engine.create({
+    ...CREATE_DEFAULTS,
     type: 'contextual_fact',
     scope: 'project',
     project_id: 'demo',
@@ -97,7 +110,7 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
   it('publishes the contract resource pinning version, scope, and write policy', async () => {
     const { client, ids } = await connect({ allowWrites: true });
     const resource = await client.readResource({ uri: CONTRACT_RESOURCE_URI });
-    const document = JSON.parse(resource.contents[0]?.text ?? '{}') as {
+    const document = JSON.parse(textContent(resource.contents)) as {
       contract_version: string;
       project_id: string | null;
       write_policy: string;
@@ -115,7 +128,7 @@ describe('MCP conformance: one registry, versioned contract (G-5)', () => {
 
     const closed = await connect();
     const closedDoc = JSON.parse(
-      (await closed.client.readResource({ uri: CONTRACT_RESOURCE_URI })).contents[0]?.text ?? '{}',
+      textContent((await closed.client.readResource({ uri: CONTRACT_RESOURCE_URI })).contents),
     ) as { write_policy: string; write_execution: string; per_write_review: boolean };
     expect(closedDoc.write_policy).toBe('disabled-at-startup');
     expect(closedDoc.write_execution).toBe('refused-at-startup');

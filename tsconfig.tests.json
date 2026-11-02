@@ -62,7 +62,15 @@
       "pngjs": ["./apps/server/node_modules/@types/pngjs/index.d.ts"]
     }
   },
-  "include": ["tests/**/*.ts", "scripts/**/*.ts"],
+  "include": [
+    "tests/**/*.ts",
+    "scripts/**/*.ts",
+    // The web client reads Vite's build-time env (`import.meta.env.VITE_API_BASE_URL`),
+    // and Vite's own client types declare that surface. A `types` entry cannot be
+    // redirected through `paths`, and pnpm keeps the package under apps/web, so the
+    // declaration file is named here.
+    "apps/web/node_modules/vite/client.d.ts"
+  ],
   "exclude": [
     "**/dist/**",
     "node_modules",
