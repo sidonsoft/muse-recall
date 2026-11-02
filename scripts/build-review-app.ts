@@ -255,12 +255,22 @@ async function main(): Promise<void> {
       `FORGE_MUSE_BIN must name a real coding CLI (got "${bin || '(unset)'}")`,
     );
   }
+  // The product's own rule is that an unset Forge key means the coding CLI rides
+  // its own login (.env says so; the runner only passes --api-key-stdin when a
+  // key exists). A review run has to say who paid, so the basis is either the
+  // key or an explicit opt-in to the CLI login.
   const key = process.env.FORGE_MUSE_API_KEY?.trim() ?? '';
-  if (key.length === 0) {
+  const storedCliAuth = process.env.REVIEW_APP_ALLOW_STORED_CLI_AUTH === '1';
+  if (key.length === 0 && !storedCliAuth) {
     throw new PrerequisiteRefusal(
-      'FORGE_MUSE_API_KEY is not set: an app produced by the deterministic fake CLI is not evidence of model quality, so this gate refuses rather than fake it',
+      'no FORGE_MUSE_API_KEY in the environment and REVIEW_APP_ALLOW_STORED_CLI_AUTH is not set: this run would spend against the logged-in coding CLI, and the packet has to name that basis. Set the key, or set REVIEW_APP_ALLOW_STORED_CLI_AUTH=1 to accept the CLI login as the basis.',
     );
   }
+  const credentialBasis =
+    key.length > 0
+      ? 'FORGE_MUSE_API_KEY, delivered to the coding CLI over stdin like every other credential'
+      : 'the logged-in coding CLI: no FORGE_MUSE_API_KEY was set, so the spend lands on whatever account that CLI is authenticated to';
+  observations.credential_basis = credentialBasis;
   if (!Number.isInteger(MAX_CALLS_PER_JOB) || MAX_CALLS_PER_JOB < 1 || MAX_CALLS_PER_JOB > 30) {
     throw new PrerequisiteRefusal(
       `REVIEW_APP_MAX_CALLS must be an integer between 1 and 30 (got ${String(MAX_CALLS_PER_JOB)})`,
@@ -554,6 +564,7 @@ async function main(): Promise<void> {
       ],
       page: pageInfo,
       loaded_via: LOADED_VIA,
+      credential_basis: credentialBasis,
     };
     const issues = packetIssues(facts);
     writeFileSync(join(OUT, 'review-packet.md'), renderReviewPacket(facts, issues));

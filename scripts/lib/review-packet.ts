@@ -61,6 +61,12 @@ export interface PacketFacts {
    * bytes as a document are different observations and must not be conflated.
    */
   loaded_via?: string;
+  /**
+   * Who paid for the app. A key delivered by the harness and a CLI riding its
+   * own login are different spends, and a reviewer comparing two packets needs
+   * to know which one they are reading.
+   */
+  credential_basis?: string;
   page: {
     title: string;
     interactive_controls: number;
@@ -176,6 +182,7 @@ export function renderReviewPacket(facts: PacketFacts, issues: readonly string[]
   );
   lines.push(`- Coding CLI that produced it: \`${facts.job.coding_cli ?? 'not recorded'}\``);
   lines.push(`- Screenshots taken from: ${facts.loaded_via ?? 'not recorded'}`);
+  lines.push(`- Paid by: ${facts.credential_basis ?? 'not recorded'}`);
   for (const shot of facts.screenshots) {
     lines.push(`- Screenshot \`${shot.name}\` — ${shot.label} (${String(shot.bytes)} bytes)`);
   }
