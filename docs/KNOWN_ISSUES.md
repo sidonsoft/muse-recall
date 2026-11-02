@@ -1023,6 +1023,18 @@ judging restore behaviour rather than harness scheduling. Four deadline tests pi
 product behaviour: a copy that never settles, a copy SQLite rejects, `timeoutMs: 0` disabling
 the deadline, and a destination that exists being refused before any copy runs.
 
+**Follow-up, and the fix was still not enough.** The delta review pointed out that the first
+deadline bounded the **await**, not the copy: `node:sqlite` exposes `backup()` only as a
+promise with no abort path, so when the timer fired the copy kept running in this process with
+its file handle attached — exactly the situation the parking rule exists to survive. The test
+proved rejection and a parked name; it never proved the copy had stopped. So the online copy now
+runs in a **child process** (`apps/server/src/backup-copy.ts`, `node -e`, no build step): when
+the deadline passes the child is sent `SIGKILL`, and the test asserts the process list is empty
+afterwards rather than trusting that a rejected promise means a finished copy. A child that
+fails on its own reports its own first line of stderr instead of becoming a timeout. `timeoutMs:
+0` still means "no deadline" — checked, because a zero-length timer would otherwise kill every
+backup at once.
+
 **Closed by**: two consecutive full-suite runs with `Test Files 115 passed (115)` /
 `Tests 1466 passed | 3 skipped (1469)`, no timeouts and no stall messages, after the file had
 been failing 3/3.
@@ -1140,11 +1152,11 @@ manifest and never surfaced by the gate.
    not help: the bytes contain work no commit names.
 
 **Fix.** `describeBundleIdentity()` in `scripts/lib/build-provenance.ts` reports
-`testedCommit`, `builtAtCommit`, `builtAtHead`, `builtFromCleanTree`,
+`testedCommit`, `builtAtCommit`, `builtAtHead`, `bundlesBuiltFromCleanTree`,
 `supportsCommitIdentity` and a prose `note`; the identity gate records all of them and adds the
 note as a check line whenever `supportsCommitIdentity` is false. The status document's
 mechanical rule now requires the newest `test-results/batchd-playback-auth/` run to have
-`supports_commit_identity: true` before its pair can stand for a beta cut.
+`supportsCommitIdentity: true` before its pair can stand for a beta cut.
 
 **Proof the drift gate itself still bites.** With `build-provenance.ts` edited but the bundles
 not yet rebuilt, the same gate refused before any browser or server work:
@@ -1322,3 +1334,98 @@ not prove provider-returned bytes flow through it. That claim still rests on the
 `test-results/batchc-resume-staged/2026-11-01-0824` (retained live isolate, cutout asset) and
 `test-results/media-live/2026-11-02T13-53-08` (live generate + edit). The report records the
 distinction in `asset_provenance` so a reader cannot mistake one for the other.
+
+## KI-63 — the live chain gate could pay for calls and then report its own failure as success (closed)
+
+The KI-55 accounting was bolted onto the end of `assertPaidCallBudget()`, inside the happy path,
+while teardown ran in a `finally` that also called `writeReport()`. The consequences were
+measured, not theorised:
+
+- an early refusal (`FORGE_MEDIA_PROVIDER` unset, or no Playwright) set `process.exitCode = 2`
+  and returned from inside the `try`; the `finally` wrote a report and the chain continued into
+  `.then(() => { process.exitCode = 0 })`, so a run that made **no** call and completed **no**
+  journey exited **0**;
+- a mid-run failure was reported before the reason was captured, so `report.json` could say
+  `status: "PASS"` with `checks: []` and no `failure_reason`, and `FAILED.md` — written later —
+  might never be written at all.
+
+The live evidence happened to be internally consistent (21 checks, the exact ledger, three
+coding jobs), so the bug did not falsify that run. It falsified the gate's ability to say *no*.
+
+Fix: the gate now separates **journey**, **outcome capture**, and **report writing**. Teardown no
+longer writes reports; `main()` classifies the outcome (`EarlyExit` → boot-only success, refusal
+→ `status: "BLOCKED"` with `blocked_at`, exception → `status: "FAILED"` with `failure_reason` and
+`FAILED.md`) and *then* writes the report. A refusal exits 2, a failure exits 1, a boot-only
+success exits 0 with `status: "PASS (boot-only, no paid call)"`. Because a paid call can precede
+a failure, the report re-reads the trace and the isolate's job records at write time, so
+`report.calls` describes what was dispatched rather than what the journey managed to count.
+
+Boot-only mode was repaired in the same pass: it used to assert "0 dispatches against a budget
+that expects 2" (producing two bogus ledger issues on a zero-dispatch run) and treated a missing
+trace log as proof of nothing. It now requires the log to exist, reads it, runs ledger integrity
+on it, and applies a zero-dispatch budget.
+
+Verified: unconfigured exits 2 with `status: "BLOCKED"`, `blocked_at`, and zero calls; boot-only
+exits 0 with `status: "PASS (boot-only, no paid call)"`, `ledger_issues: []`, and `logBytes: 26`.
+
+## KI-64 — a complete, answered, unbudgeted paid dispatch passed the Batch C budget check (closed)
+
+`verify:batchc-live-smoke` restricts **paths**, and Batch C's two paid operations share one path
+(`/v1/responses`). To tell vision from SAM it classified models by substring
+(`muse-spark`, `sam-`) and compared only those two counts. The probe: three answered
+`/v1/responses` dispatches on attempt 1 — `muse-spark-1.3`, `sam-3.1`, and
+`unbudgeted-paid-model` — against a `full` scope expecting two calls. Path allowed, no
+unanswered dispatch, no orphan outcome, no retry, and **zero issues reported**: an unclassified
+model simply was not counted by either category.
+
+Fix: classification is exact and total. The authorised ids are read from `/api/meta`
+(`vision_model`, `sam_model`) rather than hard-coded, every dispatch must belong to exactly one
+of them, and a dispatch naming anything else — including `model=(none)`, which is the adapter's
+marker for "nothing named this call" — is reported as an unbudgeted call. If the configured ids
+were never read, or are identical, the run may not claim exact call counts at all. `model` in the
+trace also loses its substring semantics: `(none)` is never treated as a model name.
+
+## KI-65 — malformed lines inside the trace's own marker were discarded as if absent (closed)
+
+The Batch C, Batch D, image, and review ledger checks all reported "N dispatches, M issues" from
+`readMediaTrace`, which kept only lines matching `attempt=(\d+) path=(\S+)` or
+`attempt=(\d+) outcome=` **and** carrying a recognised `path`/`outcome`/`status`/`bytes` field.
+Everything else under the `[media-trace]` marker was dropped. So a trace with one extra
+`[media-trace] garbage` line reported the same issues as a trace without it, and the review's
+probe — one dispatch plus two malformed lines — reported **zero** issues. Unparseable ledger
+lines are not evidence of nothing; in a paid-call audit they are evidence of a broken audit.
+
+Fix: `parseMediaTrace` retains a tagged line it cannot interpret as an entry with
+`malformed: <the line>`, `readMediaTrace` counts them (`malformedLines`), and
+`ledgerIntegrityIssues` reports them. A tagged line that has an `attempt` but neither `path` nor
+`outcome` also counts as malformed, while ordinary server log output without the marker is still
+ignored — the gate does not turn unrelated server output into ledger damage.
+
+## KI-66 — the coding-job account accepted an impossible structure as expected work (closed)
+
+`readCodingJobs` / `codingJobIssues` checked that each *expected kind* appeared somewhere, that
+`usage_calls` was a number, and that a succeeded job named a model. So a project directory
+holding `[generate, generate, modify]` satisfied an expectation of
+`[generate, modify, modify]` — an extra paid generation that the gate's own shape never asked for — and a
+record with `usage: { calls: -2 }` or `usage: { calls: 1.5 }` counted as a usable call total. A
+job file holding valid JSON `null` crashed the harness instead of being reported as an
+unreadable record.
+
+Fix: kinds are compared as a multiset (and the old "no job of kind X" message is kept, so a
+missing job still names itself), `usage.calls` must be a finite non-negative integer to count,
+and a record that is not an object — or whose call count is not — becomes an explicitly invalid
+record that contributes to `unknownJobs`, never to the known total.
+
+## KI-67 — transcription paid for a model the ledger still could not name (closed)
+
+KI-61's fix covered the image edit operation, and the status doc said the trace "can no longer
+report `(none)` for a paid edit". A delta review checked the claim against every media adapter
+caller and found a second multipart operation with the same shape: transcription sends its model
+inside the multipart `request` part, so `/v1/asr/transcribe` dispatches were still being written
+as `model=(none)` — the same unattributable-ledger defect, in a call Batch D live acceptance
+actually pays for. The clip observation path was already fine (it sends the model in a JSON body
+the adapter reads), and file-upload dispatches are correctly `(none)` because no model is
+involved.
+
+Fix: the transcription call site states `traceModel` from the same value it puts in the request,
+and the doc claim is scoped to what is actually true of the code.

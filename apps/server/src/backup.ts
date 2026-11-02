@@ -11,8 +11,9 @@ import {
   statSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { backup, DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import { currentSchemaVersion, latestVersion } from '@mml/memory-engine';
+import { BackupDeadlineError, copyOnlineBackupInChild } from './backup-copy.js';
 
 /**
  * Online SQLite backup.
@@ -105,7 +106,12 @@ export async function backupDatabase(
   }
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_BACKUP_TIMEOUT_MS;
-  const copy = options.copy ?? ((db: DatabaseSync, path: string) => backup(db, path));
+  // Default: a copy this server can actually interrupt. The `options.copy` seam
+  // stays for tests that want the same-process path.
+  const copy =
+    options.copy ??
+    ((_db: DatabaseSync, path: string) =>
+      copyOnlineBackupInChild({ source, destination: path, timeoutMs }));
   const target = resolveBackupDestination(source, destination);
   const database = new DatabaseSync(source, { readOnly: true });
   let created = false;
@@ -138,13 +144,6 @@ export async function backupDatabase(
   } finally {
     database.close();
     if (created && existsSync(target)) chmodSync(target, 0o600);
-  }
-}
-
-class BackupDeadlineError extends Error {
-  constructor(timeoutMs: number) {
-    super(`the online copy was still running after ${String(timeoutMs)}ms and was given up on`);
-    this.name = 'BackupDeadlineError';
   }
 }
 

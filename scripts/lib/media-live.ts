@@ -77,6 +77,13 @@ export interface CodingJobAccount {
   base_version: number | null;
   /** The model id the coding CLI reported for this job, when it reported one. */
   model_observed: string | null;
+  /**
+   * Set when the record exists but cannot be believed: it is not an object
+   * (`null`, an array, a bare string), or `usage.calls` is not a non-negative
+   * integer. A record like this counts as an **unknown** cost, never as zero and
+   * never as a negative contribution to the run's total.
+   */
+  record_invalid?: string;
 }
 
 /**
@@ -111,17 +118,41 @@ export function readCodingJobs(projectDir: string): CodingJobAccount[] {
       });
       continue;
     }
-    const job = record as Record<string, unknown>;
-    const usage = job.usage as Record<string, unknown> | undefined;
+    // Valid JSON is not the same as a job record: `null`, an array or a bare
+    // string parse fine and used to throw here, which turned an unreadable record
+    // into a harness crash rather than an unknown-cost finding.
+    if (!isRecord(record)) {
+      jobs.push({
+        job_id: name.replace(/\.json$/, ''),
+        kind: 'unreadable',
+        status: 'unreadable',
+        usage_calls: null,
+        version: null,
+        base_version: null,
+        model_observed: null,
+        record_invalid: `the job file holds ${describeShape(record)}, not a job object`,
+      });
+      continue;
+    }
+    const usage = isRecord(record.usage) ? record.usage : undefined;
     const calls = usage?.calls;
+    const callsUsable = typeof calls === 'number' && Number.isInteger(calls) && calls >= 0;
+    const missing = typeof record.id === 'string' ? record.id : name.replace(/\.json$/, '');
     jobs.push({
-      job_id: typeof job.id === 'string' ? job.id : name.replace(/\.json$/, ''),
-      kind: typeof job.kind === 'string' ? job.kind : 'unknown',
-      status: typeof job.status === 'string' ? job.status : 'unknown',
-      usage_calls: typeof calls === 'number' ? calls : null,
-      version: typeof job.version === 'number' ? job.version : null,
-      base_version: typeof job.base_version === 'number' ? job.base_version : null,
-      model_observed: typeof job.model_observed === 'string' ? job.model_observed : null,
+      job_id: missing,
+      kind: typeof record.kind === 'string' ? record.kind : 'unknown',
+      status: typeof record.status === 'string' ? record.status : 'unknown',
+      usage_calls: callsUsable ? calls : null,
+      version: typeof record.version === 'number' ? record.version : null,
+      base_version: typeof record.base_version === 'number' ? record.base_version : null,
+      model_observed: typeof record.model_observed === 'string' ? record.model_observed : null,
+      ...(calls === undefined || calls === null
+        ? {}
+        : callsUsable
+          ? {}
+          : {
+              record_invalid: `usage.calls holds ${JSON.stringify(calls)}, which is not a non-negative integer`,
+            }),
     });
   }
   return jobs.sort((a, b) => a.job_id.localeCompare(b.job_id));
@@ -134,6 +165,16 @@ export function readCodingJobs(projectDir: string): CodingJobAccount[] {
  * per-job call cap this run configured, and no job may report an unknown call
  * count: `usage.calls` missing means the run cannot say what it paid.
  */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function describeShape(value: unknown): string {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'an array';
+  return typeof value;
+}
+
 export function codingJobIssues(
   jobs: readonly CodingJobAccount[],
   options: {
@@ -149,6 +190,16 @@ export function codingJobIssues(
       `expected ${String(options.expectedKinds.length)} coding job(s), found ${String(jobs.length)}`,
     );
   }
+  // Multiset, not presence. `some()` accepted [generate, generate, modify] for an
+  // expected [generate, modify, modify]: the run would have paid for an extra
+  // generation and still matched the shape this gate asked for.
+  const expectedKinds = [...options.expectedKinds].sort();
+  const foundKinds = jobs.map((job) => job.kind).sort();
+  if (JSON.stringify(expectedKinds) !== JSON.stringify(foundKinds)) {
+    issues.push(
+      `the coding jobs this run expected (${expectedKinds.join(', ')}) are not the kinds recorded (${foundKinds.join(', ')})`,
+    );
+  }
   for (const kind of options.expectedKinds) {
     if (!jobs.some((job) => job.kind === kind)) {
       issues.push(`no coding job of kind ${kind} was recorded`);
@@ -158,8 +209,11 @@ export function codingJobIssues(
     if (job.status !== 'succeeded') {
       issues.push(`job ${job.job_id.slice(0, 8)} (${job.kind}) ended ${job.status}`);
     }
+    if (job.record_invalid !== undefined) {
+      issues.push(`job ${job.job_id.slice(0, 8)} (${job.kind}): ${job.record_invalid}`);
+    }
     if (job.usage_calls === null) {
-      issues.push(`job ${job.job_id.slice(0, 8)} (${job.kind}) reports no usage.calls`);
+      issues.push(`job ${job.job_id.slice(0, 8)} (${job.kind}) reports no usable usage.calls`);
     } else if (job.usage_calls > options.maxCallsPerJob) {
       issues.push(
         `job ${job.job_id.slice(0, 8)} (${job.kind}) used ${String(job.usage_calls)} calls, above the ${String(options.maxCallsPerJob)}-call cap this run set`,

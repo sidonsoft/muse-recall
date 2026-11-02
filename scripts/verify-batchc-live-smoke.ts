@@ -78,6 +78,7 @@ import type { Browser, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
 import {
   BATCHC_ALLOWED_PATHS,
+  type BatchCModelIds,
   batchcExpectedCalls,
   batchcLedgerIssues,
 } from './lib/batchc-scope.js';
@@ -322,7 +323,18 @@ function assertPaidCallBudget(): void {
   const evidence = ledgerEvidence(SERVER_LOG);
   const ledger = accountDispatches(readMediaTrace(SERVER_LOG));
   const expected = batchcExpectedCalls(runScope);
-  const issues = batchcLedgerIssues(ledger, expected);
+  // The ids come from what the running server reported configuring, so a
+  // dispatch on a model outside those two cannot slip through an unrecognised
+  // middle ground.
+  const authorisedModels: BatchCModelIds = {
+    vision:
+      typeof observations.requestedVisionModel === 'string'
+        ? observations.requestedVisionModel
+        : null,
+    sam: typeof observations.requestedSamModel === 'string' ? observations.requestedSamModel : null,
+  };
+  const issues = batchcLedgerIssues(ledger, expected, authorisedModels);
+  observations.batchcAuthorisedModels = authorisedModels;
   observations.batchcLedgerEvidence = evidence;
   observations.batchcDispatchPaths = ledger.paths;
   observations.batchcExpectedCalls = expected;
@@ -331,7 +343,7 @@ function assertPaidCallBudget(): void {
     fail(`the paid-call budget does not hold: ${issues.join(' | ')}`.slice(0, 600));
   }
   check(
-    `whole-run paid-call budget holds: ${String(expected.vision)} vision + ${String(expected.sam)} SAM on ${BATCHC_ALLOWED_PATHS.join(', ')}, nothing else (${evidence.logBytes} bytes of trace read)`,
+    `whole-run paid-call budget holds: ${String(expected.vision)} vision (${String(authorisedModels.vision)}) + ${String(expected.sam)} SAM (${String(authorisedModels.sam)}) on ${BATCHC_ALLOWED_PATHS.join(', ')}, nothing else (${String(evidence.logBytes)} bytes of trace read)`,
   );
 }
 

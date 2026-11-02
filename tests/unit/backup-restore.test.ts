@@ -24,6 +24,7 @@ import {
   resolveBackupDestination,
   restoreDatabase,
 } from '../../apps/server/src/backup.js';
+import { activeBackupCopies } from '../../apps/server/src/backup-copy.js';
 import { vacuumIntoCopy } from '../helpers/backup-image.js';
 
 /**
@@ -685,6 +686,47 @@ describe('restoreDatabase (roadmap §8)', () => {
 });
 
 describe('backupDatabase deadlines (KI-56 escalation)', () => {
+  it('takes the copy process down when the deadline passes, rather than leaving it on the file', async () => {
+    // The point of running the copy in a child: a promise timeout can stop the
+    // *await*, but an abandoned copy keeps its file handle open and can still
+    // extend the parked partial. A killed process cannot. So this asserts process
+    // lifetime, not just rejection.
+    const dir = workspace();
+    const source = join(dir, 'busy.db');
+    {
+      const seeded = new DatabaseSync(source);
+      seeded.exec('PRAGMA journal_mode = WAL; CREATE TABLE rows_x (x INTEGER, pad TEXT);');
+      const insert = seeded.prepare('INSERT INTO rows_x VALUES (?, ?)');
+      for (let i = 0; i < 4_000; i += 1) insert.run(i, 'x'.repeat(200));
+      seeded.close();
+    }
+    const destination = join(dir, 'busy-copy.db');
+    await expect(backupDatabase(source, destination, { timeoutMs: 1 })).rejects.toThrow(
+      /did not produce a usable copy after \d+ms \(the online copy was still running after 1ms and was given up on\)/,
+    );
+    const cutoff = Date.now() + 3_000;
+    while (activeBackupCopies().length > 0 && Date.now() < cutoff) {
+      await new Promise((sleep) => setTimeout(sleep, 25));
+    }
+    expect(activeBackupCopies()).toEqual([]);
+    expect(existsSync(destination)).toBe(false);
+    // The parked partial is gone rather than left behind, and it could only be
+    // unlinked because the process holding it was killed. Under the promise-only
+    // deadline the copy stayed attached to that file — which is exactly why the
+    // parking rule exists.
+    expect(readdirSync(dir).filter((name) => name.includes('.unfinished-'))).toEqual([]);
+  });
+
+  it('names what the copy process said when it fails on its own, instead of reporting a timeout', async () => {
+    const dir = workspace();
+    const source = join(dir, 'not-a-db.db');
+    writeFileSync(source, 'this is not a database file');
+    const destination = join(dir, 'copy.db');
+    await expect(backupDatabase(source, destination)).rejects.toThrow(/online backup of/);
+    expect(existsSync(destination)).toBe(false);
+    expect(activeBackupCopies()).toEqual([]);
+  });
+
   it('gives up on a copy that never settles and keeps no partial backup', async () => {
     const dir = workspace();
     const source = join(dir, 'live.db');

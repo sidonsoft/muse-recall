@@ -168,6 +168,9 @@ const realAudioRun = trace([
   'attempt=1 path=/v1/asr/transcribe model=(none)',
   'outcome=response attempt=1 status=200 bytes=338',
 ]);
+/** What the running server reports configuring — the ids a dispatch must match exactly. */
+const MUSE_MODELS = { vision: 'muse-spark-1.3', sam: 'sam-3.1' };
+
 const realReviewRun = trace([
   'attempt=1 path=/v1/responses model=muse-spark-1.3',
   'outcome=response attempt=1 status=200 bytes=1668',
@@ -195,8 +198,12 @@ describe('real paid ledgers', () => {
     expect(batchdLedgerIssues(realAudioRun, audio, expectedBatchdCalls(audio))).toEqual([]);
     expect(reviewLedgerIssues(realReviewRun, 1)).toEqual([]);
     expect(imageLedgerIssues(realImageRun, { generate: 1, edit: 1 })).toEqual([]);
-    expect(batchcLedgerIssues(realVisionOnlyRun, batchcExpectedCalls('vision-only'))).toEqual([]);
-    expect(batchcLedgerIssues(realResumeRun, batchcExpectedCalls('resume'))).toEqual([]);
+    expect(
+      batchcLedgerIssues(realVisionOnlyRun, batchcExpectedCalls('vision-only'), MUSE_MODELS),
+    ).toEqual([]);
+    expect(batchcLedgerIssues(realResumeRun, batchcExpectedCalls('resume'), MUSE_MODELS)).toEqual(
+      [],
+    );
   });
 
   it('reads a model name from the start line and never from the outcome line', () => {
@@ -234,8 +241,8 @@ describe('the Batch C paid gate is bounded the same way as the others', () => {
       'attempt=1 path=/v1/responses model=sam-3.1',
       'outcome=response attempt=1 status=200 bytes=786',
     ]);
-    const issues = batchcLedgerIssues(ledger, batchcExpectedCalls('vision-only'));
-    expect(issues.join(' ')).toContain('expected 0 SAM dispatch(es) on model sam-, saw 1');
+    const issues = batchcLedgerIssues(ledger, batchcExpectedCalls('vision-only'), MUSE_MODELS);
+    expect(issues.join(' ')).toContain('expected 0 SAM dispatch(es) on model sam-3.1, saw 1');
   });
 
   it('refuses a Batch C run that touched an image path', () => {
@@ -247,15 +254,68 @@ describe('the Batch C paid gate is bounded the same way as the others', () => {
       'attempt=1 path=/v1/responses model=sam-3.1',
       'outcome=response attempt=1 status=200 bytes=9591',
     ]);
-    const issues = batchcLedgerIssues(ledger, batchcExpectedCalls('full'));
+    const issues = batchcLedgerIssues(ledger, batchcExpectedCalls('full'), MUSE_MODELS);
     expect(issues.join(' ')).toContain('never allowed to touch: /v1/images/generations');
     // The message says why an extra media path is always an extra media call.
     expect(issues.join(' ')).toContain('coding never appears in this ledger');
   });
 
+  it('refuses a complete, answered third dispatch on a model nothing authorised', () => {
+    // The probe the delta review ran: the path allowlist is satisfied, every start
+    // line is answered, no retry — and the run still paid for a fourth thing that
+    // no category covers. Substring classification counted vision and SAM, said
+    // nothing about the rest, and returned zero issues.
+    const ledger = trace([
+      'attempt=1 path=/v1/responses model=muse-spark-1.3',
+      'outcome=response attempt=1 status=200 bytes=1520',
+      'attempt=1 path=/v1/responses model=sam-3.1',
+      'outcome=response attempt=1 status=200 bytes=9591',
+      'attempt=1 path=/v1/responses model=unbudgeted-paid-model',
+      'outcome=response attempt=1 status=200 bytes=4096',
+    ]);
+    const issues = batchcLedgerIssues(ledger, batchcExpectedCalls('full'), MUSE_MODELS);
+    expect(
+      issues.some((issue) => issue.includes('named a model this run authorises neither')),
+    ).toBe(true);
+    expect(issues.join(' ')).toContain('unbudgeted-paid-model on /v1/responses');
+    expect(issues.join(' ')).toContain(
+      'authorises 2 dispatch(es) in total, and the ledger shows 3',
+    );
+  });
+
+  it('refuses a dispatch that names no model at all, rather than counting it as free', () => {
+    const ledger = trace([
+      'attempt=1 path=/v1/responses model=(none)',
+      'outcome=response attempt=1 status=200 bytes=1520',
+    ]);
+    const issues = batchcLedgerIssues(ledger, batchcExpectedCalls('vision-only'), MUSE_MODELS);
+    expect(issues.join(' ')).toContain('(no model named) on /v1/responses');
+  });
+
+  it('refuses the exact-call claim when the configured model ids were never read', () => {
+    const issues = batchcLedgerIssues(realVisionOnlyRun, batchcExpectedCalls('vision-only'), {
+      vision: null,
+      sam: null,
+    });
+    expect(issues.join(' ')).toContain('never read from /api/meta');
+    expect(issues.join(' ')).toContain('no exact-call claim is possible');
+  });
+
+  it('refuses a configuration whose vision and SAM ids are the same', () => {
+    const issues = batchcLedgerIssues(realVisionOnlyRun, batchcExpectedCalls('vision-only'), {
+      vision: 'muse-spark-1.3',
+      sam: 'muse-spark-1.3',
+    });
+    expect(issues.join(' ')).toContain('identical (muse-spark-1.3)');
+  });
+
   it('refuses a resume run that paid for vision it was supposed to reuse', () => {
-    const issues = batchcLedgerIssues(realVisionOnlyRun, batchcExpectedCalls('resume'));
-    expect(issues.join(' ')).toContain('expected 0 vision dispatch(es) on model muse-spark');
+    const issues = batchcLedgerIssues(
+      realVisionOnlyRun,
+      batchcExpectedCalls('resume'),
+      MUSE_MODELS,
+    );
+    expect(issues.join(' ')).toContain('expected 0 vision dispatch(es) on model muse-spark-1.3');
   });
 });
 

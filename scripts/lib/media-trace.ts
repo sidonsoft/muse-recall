@@ -16,6 +16,16 @@ export interface MediaTraceEntry {
   model?: string;
   outcome?: string;
   status?: number;
+  /**
+   * A line carried the `[media-trace]` tag but could not be parsed: no usable
+   * attempt number, or neither a path nor an outcome (a truncated write). Such a
+   * line used to be dropped silently, which made a damaged ledger look clean — an
+   * image ledger with a truncated line appended still reported "no issues".
+   * A gate may not read a corrupted ledger as evidence of anything, so these
+   * lines are kept and reported. Ordinary log output without the tag is still
+   * ignored: that is not a trace line, damaged or otherwise.
+   */
+  malformed?: string;
 }
 
 /** Parse trace lines from a log body; non-trace lines are ignored. */
@@ -24,7 +34,10 @@ export function parseMediaTrace(text: string): MediaTraceEntry[] {
   for (const line of text.split('\n')) {
     if (!line.includes('[media-trace]')) continue;
     const attempt = /attempt=(\d+)/.exec(line)?.[1];
-    if (attempt === undefined) continue;
+    if (attempt === undefined || Number(attempt) < 1) {
+      entries.push({ attempt: 0, malformed: line.trim().slice(0, 200) });
+      continue;
+    }
     const entry: MediaTraceEntry = { attempt: Number(attempt) };
     const path = /path=(\S+)/.exec(line)?.[1];
     if (path !== undefined) entry.path = path;
@@ -34,6 +47,10 @@ export function parseMediaTrace(text: string): MediaTraceEntry[] {
     if (outcome !== undefined) entry.outcome = outcome;
     const status = /status=(\d+)/.exec(line)?.[1];
     if (status !== undefined) entry.status = Number(status);
+    if (entry.path === undefined && entry.outcome === undefined) {
+      entries.push({ attempt: Number(attempt), malformed: line.trim().slice(0, 200) });
+      continue;
+    }
     entries.push(entry);
   }
   return entries;
@@ -151,6 +168,8 @@ export interface DispatchAccount {
   unpairedOutcomes: MediaTraceEntry[];
   /** Start lines whose outcome never arrived: the transport died mid-call. */
   unanswered: TracedDispatch[];
+  /** Tagged lines that could not be parsed: the ledger itself is damaged. */
+  malformedLines: string[];
 }
 
 /**
@@ -166,7 +185,12 @@ export interface DispatchAccount {
 export function accountDispatches(entries: readonly MediaTraceEntry[]): DispatchAccount {
   const dispatches: TracedDispatch[] = [];
   const unpairedOutcomes: MediaTraceEntry[] = [];
+  const malformedLines: string[] = [];
   for (const entry of entries) {
+    if (entry.malformed !== undefined) {
+      malformedLines.push(entry.malformed);
+      continue;
+    }
     if (entry.path !== undefined) {
       dispatches.push({
         attempt: entry.attempt,
@@ -192,6 +216,7 @@ export function accountDispatches(entries: readonly MediaTraceEntry[]): Dispatch
     maxAttempt: dispatches.reduce((max, dispatch) => Math.max(max, dispatch.attempt), 0),
     unpairedOutcomes,
     unanswered: dispatches.filter((dispatch) => dispatch.outcome === undefined),
+    malformedLines,
   };
 }
 
@@ -232,6 +257,14 @@ export function ledgerIntegrityIssues(ledger: DispatchAccount, capability: strin
       `${capability}: ${String(ledger.unpairedOutcomes.length)} outcome line(s) answer no dispatch this run started (${ledger.unpairedOutcomes
         .map((o) => `outcome=${o.outcome ?? '?'} attempt=${String(o.attempt)}`)
         .join(', ')}) — the ledger is not attributable`,
+    );
+  }
+  if (ledger.malformedLines.length > 0) {
+    issues.push(
+      `${capability}: ${String(ledger.malformedLines.length)} tagged [media-trace] line(s) could not be parsed (${ledger.malformedLines
+        .slice(0, 3)
+        .map((line) => JSON.stringify(line.slice(0, 60)))
+        .join(', ')}) — the ledger is damaged, so no call count read from it can be trusted`,
     );
   }
   const retried = ledger.dispatches.filter((d) => d.attempt > 1);

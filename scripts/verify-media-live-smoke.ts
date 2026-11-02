@@ -49,6 +49,8 @@ import { describeBundleIdentity, verifyBuildProvenance } from './lib/build-prove
 import {
   codingJobIssues,
   MEDIA_LIVE_ALLOWED_PATHS,
+  MEDIA_LIVE_BUDGET,
+  type MediaLiveBudget,
   mediaLiveLedgerIssues,
   readCodingJobs,
   totalCodingCalls,
@@ -56,6 +58,7 @@ import {
 import {
   accountDispatches,
   ledgerEvidence,
+  ledgerIntegrityIssues,
   parseMediaTrace,
   type TracedDispatch,
 } from './lib/media-trace.js';
@@ -63,6 +66,15 @@ import { startupFailureExcerpt } from './lib/server-startup.js';
 
 /** Raised by boot-only mode so the finally block still writes the report. */
 class EarlyExit extends Error {}
+
+/**
+ * Raised when the run refuses to start (no credential, missing CLI, no browser,
+ * provenance drift). It used to be a bare `process.exitCode = 2; return;` inside
+ * `main()`, and the trailing `.then(() => { process.exitCode = 0; })` overwrote
+ * it: an unconfigured run — one that touched nothing — exited **0**. A refusal
+ * must stay a refusal, and it must leave a report saying so.
+ */
+class Refusal extends Error {}
 
 const ROOT = process.cwd();
 const PROJECT = `media-smoke-${Date.now().toString(36).slice(-6)}`;
@@ -90,7 +102,10 @@ const calls = {
   codingCallsKnown: 0,
   codingCallsUnknownJobs: 0,
 };
-const blockedAt: string | null = null;
+let blockedAt: string | null = null;
+/** The isolate this run created, if it got that far: paid evidence to preserve. */
+let isolateDir: string | null = null;
+let bootOnlyRun = false;
 let configuredCodingModel: string | null = null;
 let failureReason: string | null = null;
 
@@ -105,7 +120,12 @@ function mediaLedger(): { dispatches: TracedDispatch[]; issues: string[] } {
     };
   }
   const ledger = accountDispatches(parseMediaTrace(readFileSync(SERVER_LOG, 'utf8')));
-  return { dispatches: ledger.dispatches, issues: mediaLiveLedgerIssues(ledger) };
+  // A boot-only run pays for nothing, so its budget is zero. Applying the paid
+  // budget's expectations to it wrote "expected 1 dispatch(es) on
+  // /v1/images/generations, saw 0" into a report for a run that passed and spent
+  // nothing — a report that argued with its own status.
+  const budget: MediaLiveBudget = bootOnlyRun ? { generate: 0, edit: 0 } : MEDIA_LIVE_BUDGET;
+  return { dispatches: ledger.dispatches, issues: mediaLiveLedgerIssues(ledger, budget) };
 }
 
 /** Parsed trace entries so far, used to slice the ledger per paid step. */
@@ -265,21 +285,15 @@ async function waitInputContains(
   fail(`field ${label} never contained ${needle}; saw: ${seen.slice(0, 200)}`);
 }
 
-async function main(): Promise<void> {
+async function journey(): Promise<void> {
   const key = process.env.FORGE_MUSE_API_KEY?.trim() ?? '';
   const bin = process.env.FORGE_MUSE_BIN?.trim() ?? '';
   const bootOnly = process.env.MEDIA_LIVE_BOOT_ONLY === '1';
   if (key.length === 0 || bin.length === 0) {
-    console.log(
-      'live chain smoke: unconfigured (need FORGE_MUSE_API_KEY and FORGE_MUSE_BIN; no call made)',
-    );
-    process.exitCode = 2;
-    return;
+    throw new Refusal('unconfigured (need FORGE_MUSE_API_KEY and FORGE_MUSE_BIN; no call made)');
   }
   if (!existsSync(bin)) {
-    console.log(`live chain smoke: unconfigured (FORGE_MUSE_BIN is not a file: ${bin})`);
-    process.exitCode = 2;
-    return;
+    throw new Refusal(`FORGE_MUSE_BIN is not a file: ${bin}`);
   }
   observations.credential = {
     api_key_present: true,
@@ -298,6 +312,7 @@ async function main(): Promise<void> {
   const serverPort = await freePort();
   const webPort = await freePort();
   const dataRoot = mkdtempSync(join(tmpdir(), 'media-live-smoke-'));
+  isolateDir = dataRoot;
   const apiBase = `http://127.0.0.1:${serverPort}`;
   const webBase = `http://127.0.0.1:${webPort}`;
 
@@ -435,11 +450,24 @@ async function main(): Promise<void> {
     );
 
     if (bootOnly) {
+      bootOnlyRun = true;
       const boot = ledgerEvidence(SERVER_LOG);
       observations.ledger_evidence = boot;
-      const bootLedger = accountDispatches(
-        parseMediaTrace(boot.logPresent ? readFileSync(SERVER_LOG, 'utf8') : ''),
-      );
+      if (!boot.logPresent) {
+        fail(
+          'boot-only mode wrote no server trace log, so its zero-provider-call claim rests on nothing',
+        );
+      }
+      const bootLedger = accountDispatches(parseMediaTrace(readFileSync(SERVER_LOG, 'utf8')));
+      observations.dispatch_ledger = describeDispatches(bootLedger);
+      // A zero-dispatch count proves nothing if the ledger is not attributable: an
+      // orphan outcome line or a truncated tagged line yields zero dispatches while
+      // the provider may in fact have been called.
+      const bootIssues = ledgerIntegrityIssues(bootLedger, 'boot-only media chain');
+      observations.ledger_issues = bootIssues;
+      if (bootIssues.length > 0) {
+        fail(`the boot-only ledger is not attributable: ${bootIssues.join(' | ')}`);
+      }
       if (bootLedger.dispatches.length > 0) {
         fail(`boot-only mode dispatched ${String(bootLedger.dispatches.length)} time(s)`);
       }
@@ -606,25 +634,74 @@ async function main(): Promise<void> {
     console.log(`\nlive chain smoke: ok (${String(checks.length)} checks)`);
     console.log(`v2 version-HTML sha256: ${v2.versionSha}`);
   } finally {
+    // Teardown only. The report is written by `main()` *after* it has decided
+    // why the run ended: writing it here, while the exception was still in
+    // flight, recorded `ok: true`/`status: "PASS"` for failed runs.
     await stop(server);
     if (web) await stop(web);
     await browser.close().catch(() => undefined);
-    writeReport(dataRoot);
   }
 }
 
-/** Every exit path lands here, including boot-only and mid-run failures. */
-function writeReport(dataRoot: string): void {
+async function main(): Promise<void> {
+  let exitCode = 0;
+  try {
+    await journey();
+  } catch (error) {
+    if (error instanceof EarlyExit) {
+      exitCode = 0;
+    } else if (error instanceof Refusal) {
+      blockedAt = error.message;
+      console.log(`live chain smoke: BLOCKED — ${error.message}`);
+      exitCode = 2;
+    } else {
+      failureReason = error instanceof Error ? error.message : String(error);
+      exitCode = 1;
+    }
+  } finally {
+    writeReport();
+  }
+  process.exitCode = exitCode;
+}
+
+/** Every exit path lands here, including boot-only, refusals and mid-run failures. */
+function writeReport(): void {
+  // Both accounts are re-read at the end, on purpose: a run that died after the
+  // providers had answered must still report what was paid for.
   const ledger = mediaLedger();
-  observations.dispatch_ledger ??= describeDispatches(ledger);
-  observations.ledger_issues ??= ledger.issues;
+  observations.dispatch_ledger = describeDispatches(ledger);
+  observations.ledger_issues = ledger.issues;
+  calls.otherMediaPaths = ledger.dispatches.filter(
+    (dispatch) => !MEDIA_LIVE_ALLOWED_PATHS.includes(dispatch.path),
+  ).length;
+  calls.imageGeneration = ledger.dispatches.filter(
+    (dispatch) => dispatch.path === '/v1/images/generations',
+  ).length;
+  calls.imageEdit = ledger.dispatches.filter(
+    (dispatch) => dispatch.path === '/v1/images/edits',
+  ).length;
+  if (isolateDir !== null) {
+    const jobs = readCodingJobs(join(isolateDir, 'workspaces', 'forge', PROJECT));
+    const totals = totalCodingCalls(jobs);
+    calls.codingJobs = jobs.length;
+    calls.codingCallsKnown = totals.known;
+    calls.codingCallsUnknownJobs = totals.unknownJobs;
+    observations.coding_jobs ??= jobs;
+  }
   const ok = failureReason === null && blockedAt === null;
   const summary = {
     ok,
     gate: 'media-live-smoke',
     stamp: STAMP,
     commit: readHeadCommit(),
-    status: ok ? 'PASS' : (blockedAt ?? `FAILED before completion: ${failureReason ?? 'unknown'}`),
+    status:
+      blockedAt !== null
+        ? `BLOCKED: ${blockedAt}`
+        : ok
+          ? bootOnlyRun
+            ? 'PASS (boot-only, no paid call)'
+            : 'PASS'
+          : `FAILED before completion: ${failureReason ?? 'unknown'}`,
     project: PROJECT,
     checks,
     failed: failureReason === null ? [] : [failureReason],
@@ -651,7 +728,7 @@ function writeReport(dataRoot: string): void {
   }
   // A paid run has spent its calls even when the harness then fails: keep the
   // isolate so the evidence shows what the providers actually produced.
-  copyTree(dataRoot, join(EVIDENCE_DIR, 'isolate'));
+  if (isolateDir !== null) copyTree(isolateDir, join(EVIDENCE_DIR, 'isolate'));
   if (!ok && failureReason !== null) {
     process.stdout.write(`FAILED before completion: ${failureReason}\n`);
   }
@@ -700,16 +777,11 @@ async function artifactEnvelope(
   return { html: body.data.html, versionSha: body.data.sha256, version: body.data.version };
 }
 
-main()
-  .then(() => {
-    process.exitCode = 0;
-  })
-  .catch((error: unknown) => {
-    if (error instanceof EarlyExit) {
-      process.exitCode = 0;
-      return;
-    }
-    failureReason = error instanceof Error ? error.message : String(error);
-    console.error(`live smoke failed: ${failureReason}`);
-    process.exitCode = 1;
-  });
+main().catch((error: unknown) => {
+  // main() handles every outcome itself; reaching here means the finalizer could
+  // not, which is worse than a failed run and must not look like one.
+  const reason = error instanceof Error ? error.message : String(error);
+  console.error(`live chain smoke: the gate itself failed to finalize: ${reason}`);
+  console.error(`evidence: ${EVIDENCE_DIR}`);
+  process.exitCode = 1;
+});

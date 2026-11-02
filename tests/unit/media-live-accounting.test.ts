@@ -201,11 +201,64 @@ describe('media chain coding account', () => {
       ],
       { expectedKinds: kinds, maxCallsPerJob: 15 },
     );
-    expect(issues.some((issue) => issue.includes('reports no usage.calls'))).toBe(true);
+    expect(issues.some((issue) => issue.includes('reports no usable usage.calls'))).toBe(true);
     expect(totalCodingCalls([job({ usage_calls: null })])).toEqual({
       known: 0,
       unknownJobs: 1,
     });
+  });
+
+  it('refuses a second job of one kind where a different kind was expected', () => {
+    // Presence checks alone accepted two generations plus one modification for a run
+    // that was supposed to pay for one generation and two modifications: an extra
+    // generation is an extra paid job either way.
+    const issues = codingJobIssues(
+      [
+        job({}),
+        job({ job_id: 'b'.repeat(36), kind: 'generate' }),
+        job({ job_id: 'c'.repeat(36), kind: 'modify' }),
+      ],
+      { expectedKinds: kinds, maxCallsPerJob: 15 },
+    );
+    expect(issues.join(' ')).toContain(
+      'expected (generate, modify, modify) are not the kinds recorded (generate, generate, modify)',
+    );
+  });
+
+  it('treats an impossible usage.calls and a non-object job file as unknown, never as a number', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'media-live-jobs-bad-'));
+    const jobsDir = join(dir, 'jobs');
+    mkdirSync(jobsDir, { recursive: true });
+    writeFileSync(
+      join(jobsDir, 'negative.json'),
+      JSON.stringify({
+        id: 'negative',
+        kind: 'generate',
+        status: 'succeeded',
+        version: 1,
+        usage: { calls: -2 },
+        model_observed: 'muse-wonder-1.0',
+      }),
+    );
+    writeFileSync(
+      join(jobsDir, 'fractional.json'),
+      JSON.stringify({ id: 'fractional', usage: { calls: 1.5 } }),
+    );
+    writeFileSync(join(jobsDir, 'null.json'), 'null');
+    const jobs = readCodingJobs(dir);
+    const negative = jobs.find((entry) => entry.job_id === 'negative');
+    const nullRecord = jobs.find((entry) => entry.job_id === 'null');
+    expect(negative?.usage_calls).toBeNull();
+    expect(negative?.record_invalid).toContain(
+      'usage.calls holds -2, which is not a non-negative integer',
+    );
+    expect(nullRecord?.status).toBe('unreadable');
+    expect(nullRecord?.record_invalid).toContain('the job file holds null, not a job object');
+    const issues = codingJobIssues(jobs, { expectedKinds: kinds, maxCallsPerJob: 15 });
+    expect(issues.join(' ')).toContain('not a non-negative integer');
+    expect(issues.join(' ')).toContain('the job file holds null');
+    expect(totalCodingCalls(jobs)).toEqual({ known: 0, unknownJobs: 3 });
+    rmSync(dir, { recursive: true, force: true });
   });
 
   it('finds no jobs for a project directory that does not exist', () => {
@@ -246,9 +299,10 @@ describe('media chain coding account', () => {
         maxCallsPerJob: 15,
       }),
     ).toEqual([
+      'the coding jobs this run expected (generate, modify) are not the kinds recorded (generate, unreadable)',
       'no coding job of kind modify was recorded',
       'job broken (unreadable) ended unreadable',
-      'job broken (unreadable) reports no usage.calls',
+      'job broken (unreadable) reports no usable usage.calls',
     ]);
     rmSync(dir, { recursive: true, force: true });
   });

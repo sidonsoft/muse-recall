@@ -404,6 +404,10 @@ export class MediaVoice {
     );
     const passthrough: MediaRequestOptions = {
       rawBody: form,
+      // The model rides inside the multipart `request` part, so nothing in a JSON
+      // body names it. Without this the ledger writes `model=(none)` for a call
+      // this service decided to make — the KI-61 defect in another operation.
+      traceModel: this.transcribeModel,
       timeoutMs: this.timeoutMs,
       ...(options.signal !== undefined ? { signal: options.signal } : {}),
       ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),

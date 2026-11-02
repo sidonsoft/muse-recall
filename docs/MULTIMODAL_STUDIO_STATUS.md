@@ -172,11 +172,20 @@ identity gate named below, and `verify:batchd-playback-auth` refuses to run a ga
 bundles that do not match the checkout running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-02-1226/report.json`: commit `398e124aa938`,
-`treeClean: true`, `supports_commit_identity: true`, server build `e8927f732b08…`, web build
-`065ee809a766…`. Later commits in this stretch changed only harness scripts and tests, which the
-production build does not hash, so the pair's *content* identity still holds; a later gate run
-names that out loud through `identity_note` instead of leaving the reader to assume it (`KI-58`).
+`test-results/batchd-playback-auth/2026-11-02-1445/report.json`: commit `9ffa49d5efd4`,
+`treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
+`supportsCommitIdentity: true`, server build `44c67eb0345c…`, web build `065ee809a766…`.
+The pair two commits back (`2026-11-02-1400` at `d00d4d2`, server `3ab82ac61022…`) is kept, and
+the earlier `2026-11-02-1226` at `398e124` stays as the record of the first run that printed the
+`identity_note` wording (`KI-58`).
+
+A docs-only commit — including this remediation round — moves the build *identity* without
+moving bundle contents, because documentation and `scripts/verify-*.ts` are not hashed inputs.
+The rule stays mechanical: the identity a beta cut would carry is the `buildProvenance` block of
+the newest `test-results/batchd-playback-auth/` directory whose
+`observations.buildProvenance.supportsCommitIdentity` is `true`. The previous paragraph quoted a
+pair two commits behind HEAD and named a field the report does not emit; that is what this
+correction fixes.
 
 **Three more gate defects found while reviewing this fix pass** (`KI-57`, `KI-58`, `KI-59`): a
 paid gate could exit 1 without printing its reason (the catch printed only crashes, and every
@@ -280,7 +289,7 @@ clean tree, server build `975f6fc62745…`, web `065ee809a766…` unchanged
 (`test-results/batchd-playback-auth/2026-11-02-1105`). Recording every further docs commit
 this way would recurse, so the rule for later ones is mechanical: the identity a beta cut
 would carry is the `buildProvenance` block of the **newest** `test-results/batchd-playback-auth/`
-directory **whose `observations.buildProvenance.supports_commit_identity` is `true`**. That
+directory **whose `observations.buildProvenance.supportsCommitIdentity` is `true`**. That
 flag is what makes the pair mean what it says: the commit recorded in each build manifest
 equals the tested commit, and the build recorded a clean working tree. A run where the flag
 is false still measures the product honestly — it simply cannot anchor a release identity,
@@ -297,7 +306,7 @@ differ only in documentation and `scripts/verify-*.ts`, none of which the produc
 built there. The same run printed `treeClean: false`, because the working tree carried uncommitted
 edits while the gate ran: those bundles contained work no commit names. `describeBundleIdentity()`
 now separates the facts and the gate records `bundlesBuiltAtCommit`, `bundlesBuiltFromCleanTree` and
-`supports_commit_identity`, printing the explanation as a check line whenever it is not safe to read
+`supportsCommitIdentity`, printing the explanation as a check line whenever it is not safe to read
 the pair as release identity.
 
 **Identity moves across documentation commits, and the rule is easy to over-read.** The
@@ -558,6 +567,59 @@ these corrections (`b698070`) have not been reviewed by anyone but the author. T
 in its own checkout, so its server bundle hash for the same commit differs (`ad6f9dfb…` against
 the author's `c9d6c613…`) because the manifest carries build-time metadata; the web hash
 matched byte for byte.
+
+### The third review: `f79dfb7..d00d4d2`, verdict needs-work
+
+A fresh `codex/gpt-6.1-sol` session at medium effort reviewed the KI-56 backup work, the ledger
+enforcement, and the live-chain gate, and ran its own probes. Every gate it could run passed
+(`verify:runtime` 5, `verify:batchc-ui` 21, `verify:batche-review-ui` 20, `pnpm verify`
+117 files / 1 483 tests), and it confirmed the live chain evidence at
+`test-results/media-live/2026-11-02T13-53-08` is internally honest: 21 checks, two answered media
+dispatches on the only two allowed paths, three coding jobs whose internal calls total 14 against
+a cap of 15, zero transport retries. The findings were about what happens when those gates
+**fail**:
+
+1. **P1 — the live chain gate could pay for calls and then report its own failure as success**
+   (`KI-63`). An early refusal exited 0 with an empty check list; a mid-run failure could write
+   `status: "PASS"` with `checks: []`, no `failure_reason`, and possibly no `FAILED.md`, because
+   teardown wrote the report in a `finally` before the outcome was captured. Fixed by separating
+   journey, outcome capture, and report writing, and verified: unconfigured → `BLOCKED` and exit
+   2; boot-only → `PASS (boot-only, no paid call)` and exit 0 with `logBytes: 26` and
+   `ledger_issues: []`. Boot-only mode had a second defect: it asserted zero dispatches against a
+   budget of two, and treated a missing trace log as a clean empty ledger.
+2. **P2 — the KI-56 deadline bounded the promise, not the copy** (`KI-56` follow-up).
+   `node:sqlite` has no abort path, so after the timer fired the copy kept running in-process with
+   its handle on the parked partial — the exact situation the parking rule exists for. The copy
+   now runs in a child that is killed at the deadline, and the test asserts the child process list
+   is empty afterwards rather than inferring it from a rejected promise.
+3. **P2 — a complete, answered, unbudgeted paid dispatch passed the Batch C budget check**
+   (`KI-64`). `model=unbudgeted-paid-model` on the one allowed path was classified by neither
+   substring category, so three dispatches against a two-call budget reported nothing. Model ids
+   are now taken from `/api/meta` and matched exactly; an unclassified dispatch (including
+   `model=(none)`) is a violation, and a run that never read its configured ids may not claim
+   exact call counts.
+4. **P2 — malformed lines inside `[media-trace]` were discarded as if absent** (`KI-65`).
+   Garbage under the marker reported the same issues as no line at all. Such lines are now retained
+   as `malformed` entries and counted by ledger integrity, while unmarked server output is still
+   ignored.
+5. **P3 — the coding-job account accepted impossible structure** (`KI-66`). Two generations plus
+   one modification satisfied an expectation of one generation and two modifications;
+   `usage: { calls: -2 }` and `1.5` were usable counts; a job file holding JSON `null` crashed the
+   harness. Kinds are compared as a multiset, call counts must be finite non-negative integers, and
+   non-object records become invalid records that count as unknown cost.
+6. **P3 — transcription still paid for a model the ledger could not name** (`KI-67`). The KI-61
+   fix covered the image edit path only; `/v1/asr/transcribe` carries its model inside a multipart
+   part and was still traced as `model=(none)`. The claim in `docs/KNOWN_ISSUES.md` that KI-61 had
+   closed the problem was overstated and is now scoped to what the code does.
+
+The review also caught drift **in this file**: a release pair quoted from two commits back
+(`2026-11-02-1226` at `398e124`), a provenance field the report never emits
+(`supports_commit_identity`, actually `supportsCommitIdentity`), a rehearsal record attributed to
+`c9c18cf` when the newest rehearsal ran at `9a5b610`, and an assertion that production content had
+not changed. All corrected: the newest pair is
+`test-results/batchd-playback-auth/2026-11-02-1445` at `9ffa49d5efd4`, and the rehearsal row cites
+`test-results/fresh-install/2026-11-02-1300` while keeping the `1245`/`1248` pair as belonging to
+`c9c18cf`.
 
 ## Self-review of the fix passes, in a new session
 
