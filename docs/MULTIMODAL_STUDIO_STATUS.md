@@ -71,39 +71,55 @@ Documentation states these gaps rather than leaving them implied:
 
 ## Verified at the commit the gates ran against
 
-Offline, no provider key, no external network. Gates run at `5e4a0c6` (the last
-commit changing sources or gates in this stretch); the bundles for that commit
-were rebuilt first, and the identity gate records them:
+Offline, no provider key, no external network. Gates run at `d007e7e` (the last
+commit changing sources, gates, scripts or CI in this stretch); the bundles for
+that commit were rebuilt first, and the identity gate records them:
 
-- `npx vitest run`: **107 files, 1360 passed, 3 skipped, 0 failed** — the same
-  counts as before the typing work, so no coverage was lost on the way.
+- `npx vitest run`: **107 files, 1361 passed, 3 skipped, 0 failed**. The extra test
+  against the previous count is the Phase 17 math drift guard (KI-50); no coverage
+  was lost during the typing work.
 - `pnpm -r run typecheck`: no `error TS`. `npx biome check .`: 0 errors
   (4 warnings, 18 infos pre-existing).
-- **Running build identity** (`test-results/batchd-playback-auth/2026-11-02-0123`):
-  manifest commit `5e4a0c66894beb1df7250525f87d883c90752fda`, `treeClean: true`,
-  server `b05c93cfdf024c9b26a6149d1ceddc82232133e88933b45af1555e37ffba1841`,
+- **`pnpm run typecheck:tests`: exits 0** — `tests/**` and `scripts/**` are now
+  typechecked under the same strict base the products use, and CI runs it as
+  "Typecheck test and gate sources" between the product typecheck and the test
+  run. Measured path 311 → 0; KI-50 records what changed and what stays out of
+  scope by design (the protocol-locked Phase 16/17 scripts).
+- **Running build identity** (`test-results/batchd-playback-auth/2026-11-02-0325`):
+  manifest commit `d007e7e63666ac3ccd54d1b0858ff4939ba99c15`, `treeClean: true`,
+  server `5e0a55a9b37064a60c977674b27e2fe5d9c49a2614a9f8bb34067e198af98be3`,
   web `53bb67170dbdfac6ec0297839505bfd172fa7414fcef03a792dd7f61c5f98306`.
 - `pnpm verify:batchd-playback-auth`: **PASS 15 checks** in that same run, which
   is also the browser proof for the voice/video branch — real `<video>` decode of
   the generated H.264 clip, blob bytes hash-matched to the stored source, and one
   credential-free download per source in each trust model.
 - `pnpm verify:batchc-ui`: **PASS 22 checks**.
-- `pnpm verify:studio-workflow`: **56 checks passed**.
+- `pnpm verify:studio-workflow`: **56 checks passed** (project `studio-workflow-yp6xsl`).
 - `pnpm verify:batche-review-ui`: **PASS 20 checks** (`test-results/batche-review-ui`),
   including the one-paid-call check (same frame and selection sends the same
   Idempotency-Key and costs one stub dispatch) and the stale-selection refusal.
 - `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
-  **PASS 4 checks, no network** (`test-results/batchd-live/2026-11-02-0125`).
+  **PASS 4 checks, no network** (`test-results/batchd-live/2026-11-02-0326`).
 - `pnpm verify:batchc-live-smoke` without a key: writes a report saying
   `BLOCKED before any provider call` and exits 2 (zero calls, zero dispatches).
+- **Research gates re-ran read-only and reproduce their preserved numbers**:
+  `verify:research` (v1 5/16 and 15/16, p=6.351663e-4; v2 0/16 and 15/16,
+  p=5.656481e-8; 32/32 raw output hashes, 72/72 recovered hashes),
+  `verify:research16`, and `verify:research17` (lock metadata `6640e83f3c99…`,
+  as-run analysis hash and p-values matching the preserved values).
+  `eval:guard` and `evidence:phase14a` were **not** run: they regenerate tracked
+  evidence files. Their recorded numbers remain exactly as committed; the type
+  changes to those two scripts add the schema's own default values and the guard
+  code never reads the fields that were missing.
 
 **Identity moves across documentation commits, and the rule is easy to over-read.**
-Documentation is not a hashed build input, but the build *identity* (commit,
-source hash, build time) is baked into the server bundle, so the server hash moves
-at each commit while the web bundle's emitted bytes can stay byte-identical. The
-gates above were therefore run against bundles rebuilt at `5e4a0c6`; the bundles
-for this documentation commit are rebuilt after it and are proved by the identity
-gate of the next refresh.
+Documentation is not a hashed build input, but the build *identity* (commit, source
+hash, build time) is baked into the server bundle, so the server hash moves at every
+commit while the web bundle's emitted bytes can stay byte-identical — as they did
+here: web stayed `53bb6717…` from the Batch E work through this stretch while the
+server hash moved at each commit. The gates above ran against bundles rebuilt at
+`d007e7e`; the bundles for this documentation commit are rebuilt after it, and the
+identity gate of the next refresh records that pair.
 
 ## Prerequisites for reproducing the checks
 
@@ -219,12 +235,11 @@ evidence. Each was fixed rather than reworded:
 - **Reopening the same project keeps earlier review feedback on screen** as history;
   switching projects clears it. The stale-refusal and one-call-per-question rules
   still apply on every attempt.
-- **Test and script type debt is tracked as KI-50.** `tsconfig.tests.json` is still
-  unwired. Its diagnostics went from 311 to **131** at `5e4a0c6`: the config now
-  declares the DOM lib, `jsx` and the `react`/`react-dom`/`pngjs` type mappings that
-  pnpm keeps out of the root, and the Batch B–E tests plus the live-gate scripts carry
-  types that say what the code does. No check was relaxed and no assertion removed.
-  The remaining families, and the one design call deliberately left to the owner
-  (`MemoryEngine.create` takes the schema's parsed output type, so `.default()`ed
-  fields read as mandatory even though the runtime accepts their absence), are in KI-50.
-  are not typechecked by `pnpm -r run typecheck`; the suites are the check for them.
+- **The test-scope typecheck is now a gate, with a stated boundary.**
+  `pnpm run typecheck:tests` covers `tests/**` and `scripts/**` and CI runs it. The
+  protocol-locked Phase 16/17 scripts stay outside it: their own bytes are hashed by
+  the research evidence chain, so a type-only edit would break the chain. The one
+  whose math a test exercises (`verify-phase17-strict`) now has that math in
+  `tests/research/phase17-math.ts`, and a test compares the two copies text by text
+  so the locked script and the tested helper cannot disagree. KI-50 records the
+  measured path and the reasoning.
