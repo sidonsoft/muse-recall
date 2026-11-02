@@ -39,7 +39,12 @@ import {
 import { mediaMetaIssues, SERVER_READY_TIMEOUT_MS } from './lib/batchd-live.js';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
 import { accountDispatches, parseMediaTrace } from './lib/media-trace.js';
-import { REVIEW_PROBE, scoreReviewProbe } from './lib/review-live.js';
+import {
+  REVIEW_ALLOWED_PATHS,
+  REVIEW_PROBE,
+  reviewLedgerIssues,
+  scoreReviewProbe,
+} from './lib/review-live.js';
 
 const ROOT = process.cwd();
 const PROJECT_ID = 'review-live';
@@ -417,17 +422,23 @@ async function main(): Promise<void> {
     if (JSON.stringify(replayPayload) !== JSON.stringify(payload)) {
       fail('the replayed answer differs from the recorded answer');
     }
-    const wholeRun = accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8'))).dispatches;
-    observations.dispatches = wholeRun;
-    if (wholeRun.length !== 1) {
-      fail(`${String(wholeRun.length)} provider dispatch(es) in a run allowed exactly one`);
+    const wholeRun = accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')));
+    observations.dispatches = wholeRun.dispatches;
+    calls.otherPaidPaths = wholeRun.dispatches.filter(
+      (entry) => entry.path !== '/v1/responses',
+    ).length;
+    // Counting dispatch lines is not accounting. A start line whose outcome never
+    // arrived means the run cannot know how many calls it paid; an outcome line
+    // that answers nothing means an answer cannot be attributed. Both used to slip
+    // through a bare "exactly one dispatch" check, and any path outside the review
+    // path is a second capability bought under a review budget.
+    const ledgerIssues = reviewLedgerIssues(wholeRun, 1);
+    observations.ledger_issues = ledgerIssues;
+    if (ledgerIssues.length > 0) {
+      fail(`the paid-call ledger does not support the review budget: ${ledgerIssues.join('; ')}`);
     }
-    if (wholeRun.some((entry) => entry.attempt > 1)) fail('a transport retry happened');
-    // Anything on a path other than the review path is a forbidden dispatch, not
-    // a coding call: this run has no coding path to attribute it to.
-    calls.otherPaidPaths = wholeRun.filter((entry) => entry.path !== '/v1/responses').length;
     check(
-      'the replay cost nothing (idempotent-replayed: 1) and the whole run touched exactly one paid path, once',
+      `the replay cost nothing (idempotent-replayed: 1); the whole run shows exactly one answered dispatch on ${REVIEW_ALLOWED_PATHS.join(', ')} and nothing else`,
     );
 
     // Review is advisory: nothing about the project may have moved.

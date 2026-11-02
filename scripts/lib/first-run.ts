@@ -167,17 +167,19 @@ export async function withDocumentedFirstRun<T>(
     }
     closeSync(log);
   }
+  const measured = Date.now();
   // A first run that cannot be stopped is not a first run: the next install
   // would be measured against the leftover listener.
   const released = await waitUntil(
     async () => !(await portBusy(ports.web)) && !(await portBusy(ports.api)),
     15_000,
   );
-  const finished = Date.now();
   return {
     value,
-    startupMs: (readyAt ?? finished) - started,
-    walkthroughMs: readyAt === null ? 0 : finished - readyAt,
+    startupMs: (readyAt ?? measured) - started,
+    // Time inside the measurement, excluding the shutdown wait: teardown time is
+    // not part of the walkthrough a newcomer performs.
+    walkthroughMs: readyAt === null ? 0 : measured - readyAt,
     portsReleased: released,
   };
 }

@@ -60,14 +60,33 @@ export function isAllowedRuntimeRequest(raw: string): boolean {
   return ALLOWED_REMOTE_HOSTS.has(url.hostname.toLowerCase());
 }
 
+/*
+ * A browser reason can carry the whole URL it failed on
+ * (`net::ERR_FAILED https://host/some/path?token=…`). Redaction alone does not
+ * make that safe: the path can name the generated page, and a query can hold data
+ * the page built. Every URL in the reason is reduced to its origin first, so the
+ * only host named anywhere in this text is the one the allowlist permitted.
+ */
+function stripUrlsToOrigins(text: string): string {
+  return text.replace(/\bhttps?:\/\/\S+/gi, (found) => {
+    try {
+      const parsed = new URL(found);
+      return parsed.origin;
+    } catch {
+      return '[url removed]';
+    }
+  });
+}
+
 /**
  * How a permitted-but-failed load is reported. Origin only: the path and any
  * query the generated page built are deliberately dropped, the same rule the
- * blocked-request text follows. 300 is the shared schema bound for one error.
+ * blocked-request text follows — including when the *browser reason itself* embeds
+ * a URL. 300 is the shared schema bound for one error.
  */
 export function remoteLoadFailure(origin: string, errorText: string): string {
   const reason = boundedRedacted(
-    errorText.trim().length > 0 ? errorText : 'the connection failed',
+    stripUrlsToOrigins(errorText.trim().length > 0 ? errorText : 'the connection failed'),
     80,
   );
   return boundedRedacted(

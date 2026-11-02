@@ -165,3 +165,51 @@ export function accountDispatches(entries: readonly MediaTraceEntry[]): Dispatch
     unanswered: dispatches.filter((dispatch) => dispatch.outcome === undefined),
   };
 }
+
+/**
+ * Paths the ledger shows that this run was never allowed to touch.
+ *
+ * A gate that lists only the paths it *expected* to forbid lets a new paid path
+ * through: an image-only run that also dispatched `/v1/files` looked clean because
+ * `/v1/files` was not on the forbidden list. The honest rule is the inverse —
+ * every path in the ledger must be on the allowlist for this scope.
+ */
+export function pathsOutside(ledger: DispatchAccount, allowed: readonly string[]): string[] {
+  return [
+    ...new Set(ledger.dispatches.filter((d) => !allowed.includes(d.path)).map((d) => d.path)),
+  ];
+}
+
+/**
+ * Reasons this ledger cannot support an exact paid-call claim.
+ *
+ * "Exactly one dispatch" is only meaningful when every start line was answered and
+ * every outcome line belongs to a start line. A start with no outcome means the
+ * transport died mid-call and the number of paid calls is unknown; an outcome with
+ * no start means something answered a call this run cannot attribute. Both must
+ * fail the run rather than be reported as an observation.
+ */
+export function ledgerIntegrityIssues(ledger: DispatchAccount, capability: string): string[] {
+  const issues: string[] = [];
+  if (ledger.unanswered.length > 0) {
+    issues.push(
+      `${capability}: ${String(ledger.unanswered.length)} dispatch(es) started and were never answered (${ledger.unanswered
+        .map((d) => `${d.path} attempt=${String(d.attempt)}`)
+        .join(', ')}) — how many calls were paid is unknown`,
+    );
+  }
+  if (ledger.unpairedOutcomes.length > 0) {
+    issues.push(
+      `${capability}: ${String(ledger.unpairedOutcomes.length)} outcome line(s) answer no dispatch this run started (${ledger.unpairedOutcomes
+        .map((o) => `outcome=${o.outcome ?? '?'} attempt=${String(o.attempt)}`)
+        .join(', ')}) — the ledger is not attributable`,
+    );
+  }
+  const retried = ledger.dispatches.filter((d) => d.attempt > 1);
+  if (retried.length > 0) {
+    issues.push(
+      `${capability}: ${String(retried.length)} dispatch(es) at attempt beyond 1 — a transport retry happened`,
+    );
+  }
+  return issues;
+}

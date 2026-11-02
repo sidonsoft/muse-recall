@@ -162,6 +162,43 @@ describe('scoring one live screenshot review', () => {
     expect(score.limits.join(' ')).toContain('lexical');
   });
 
+  it('keeps a correct answer that mentions the instruction while naming the timer', () => {
+    // The counterexample the follow-up review produced. A bare negation word
+    // anywhere used to read as "the model denied the timer", which turned a good
+    // paid answer into a reported model failure. This sentence says the timer is
+    // visible; only the *instruction* is negated.
+    const score = scoreReviewProbe(
+      [
+        finding(
+          CONTRADICTED,
+          'possible_conflict',
+          'A countdown timer is visible despite the instruction not to show one.',
+        ),
+      ],
+      [],
+      IDS,
+    );
+    expect(score.lexicalGrounding).toBe(true);
+    expect(score.evidenceDeniesTheFrame).toBe(false);
+    expect(score.issues).toEqual([]);
+  });
+
+  it('still catches an absence claim about the countdown itself', () => {
+    const score = scoreReviewProbe(
+      [
+        finding(
+          CONTRADICTED,
+          'possible_conflict',
+          'The frame shows a countdown label, but no timer is present anywhere.',
+        ),
+      ],
+      [],
+      IDS,
+    );
+    expect(score.evidenceDeniesTheFrame).toBe(true);
+    expect(score.issues.join(' ')).toContain('opposite of what the fixture renders');
+  });
+
   it('does not let a denial word inside another word trip the check', () => {
     const score = scoreReviewProbe(
       [

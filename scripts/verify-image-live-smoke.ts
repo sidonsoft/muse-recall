@@ -47,7 +47,9 @@ import {
   assetVersionPaths,
   checkRegions,
   diffShare,
+  IMAGE_ALLOWED_PATHS,
   IMAGE_PROMPTS,
+  imageLedgerIssues,
   MIN_EDIT_DIFF_SHARE,
   measurePng,
 } from './lib/image-live.js';
@@ -57,7 +59,7 @@ const ROOT = process.cwd();
 const PROJECT_ID = 'image-live';
 const JOB_TIMEOUT_MS = 300_000;
 const POLL_MS = 1_000;
-const ALLOWED_IMAGE_PATHS = ['/v1/images/generations', '/v1/images/edits'];
+const ALLOWED_IMAGE_PATHS: string[] = [...IMAGE_ALLOWED_PATHS];
 /** Paths that must stay empty: this run pays for images, nothing else. */
 const FORBIDDEN_PATHS = ['/v1/responses', '/v1/asr/transcribe'];
 
@@ -575,25 +577,22 @@ async function main(): Promise<void> {
     // ---- run-wide invariants ---------------------------------------------
     const wholeRun = accountDispatches(parseMediaTrace(readFileSync(serverLog, 'utf8')));
     observations.dispatches = wholeRun.dispatches;
-    const forbiddenSeen = wholeRun.dispatches.filter((entry) =>
-      FORBIDDEN_PATHS.includes(entry.path),
-    );
-    if (forbiddenSeen.length > 0) {
-      fail(
-        `forbidden paths were dispatched: ${forbiddenSeen.map((entry) => entry.path).join(', ')}`,
-      );
-    }
-    // A coding or vision dispatch would be a forbidden path here, not a call to
-    // attribute to either capability: this run has no legitimate /v1/responses
-    // traffic at all. Counting it as a forbidden path is the honest ledger.
     calls.otherPaidPaths = wholeRun.dispatches.filter(
       (entry) => !ALLOWED_IMAGE_PATHS.includes(entry.path),
     ).length;
-    if (wholeRun.dispatches.some((entry) => entry.attempt > 1)) {
-      fail('at least one dispatch recorded more than one attempt — a transport retry happened');
+    // The count is not the gate. A forbidden list that only names the paths we
+    // thought to forbid lets a new paid path through — an extra /v1/files upload
+    // inside an image run used to pass while the report said `otherPaidPaths: 1`.
+    // The rule is the inverse: every path in the ledger must belong to this scope,
+    // the per-capability counts must be exact, and every start line must have been
+    // answered.
+    const ledgerIssues = imageLedgerIssues(wholeRun, { generate: 1, edit: 1 });
+    observations.ledger_issues = ledgerIssues;
+    if (ledgerIssues.length > 0) {
+      fail(`the paid-call ledger does not support this run's budget: ${ledgerIssues.join('; ')}`);
     }
     check(
-      `the whole run touched only ${ALLOWED_IMAGE_PATHS.join(', ')}: ${String(wholeRun.dispatches.length)} dispatch(es), every one at attempt 1`,
+      `the whole run touched only ${IMAGE_ALLOWED_PATHS.join(', ')}: ${String(wholeRun.dispatches.length)} dispatch(es), every one answered and at attempt 1`,
     );
 
     // Contents, not the file name: a check that searches a path string certifies

@@ -69,16 +69,19 @@ import { join } from 'node:path';
 import { MediaClipResponseSchema, MediaTranscriptSchema } from '../packages/shared/src/index.js';
 import {
   accountClipCalls,
+  batchdLedgerIssues,
   boundedExcerpt,
   CLIP_MODEL_PATH,
   CLIP_UPLOAD_PATH,
   clipFixturePlan,
   clipPromptIssues,
   clipTokenMatch,
+  expectedBatchdCalls,
   FFMPEG_BIN,
   FFPROBE_BIN,
   ffprobeArgs,
   liveScope,
+  liveScopeAllowedPaths,
   MEDIA_MODEL_FIELDS,
   mediaMetaIssues,
   missingLivePrerequisites,
@@ -167,6 +170,19 @@ function writeReport(status: string, error?: string): void {
     }));
     observations.unpaired_outcome_lines = ledger.unpairedOutcomes.length;
     observations.unanswered_dispatches = ledger.unanswered.length;
+    // Recorded on every exit path, so a failed report states which whole-run rules
+    // the ledger already broke, rather than leaving that for a reader to infer.
+    const reportScope = liveScope(process.env);
+    // A fixtures-only run authorises no paid call, so its expectation is an empty
+    // ledger — not the live scope's budget. Saying "expected 1 transcription
+    // dispatch, saw 0" next to a run that never contacted a provider would read as
+    // a missing call rather than as the point of the check.
+    const expectLive = !process.env.BATCHD_SMOKE_FIXTURE_ONLY;
+    observations.ledger_issues = batchdLedgerIssues(
+      ledger,
+      reportScope,
+      expectLive ? expectedBatchdCalls(reportScope) : { transcribe: 0, clipModel: 0, uploads: 0 },
+    );
   } catch {
     observations.dispatch_ledger = 'the server log could not be read for the ledger';
   }
@@ -712,7 +728,22 @@ async function main(): Promise<void> {
     if (/\[media-trace\]/.test(log) === false) {
       fail('no media trace lines were recorded, so dispatch counts cannot be accounted for');
     }
-    check('every live call accounted for one dispatch, with no retry and no credential in the log');
+    // Per-operation slices cannot see traffic outside themselves: an image call
+    // inside an audio run, or a clip model call in a run that skipped the clip
+    // step, left the run asserting a clean budget while `calls.otherPaidPaths`
+    // said otherwise. The whole ledger must satisfy the scope's budget.
+    const wholeRun = accountDispatches(parseMediaTrace(log));
+    const ledgerIssues = batchdLedgerIssues(wholeRun, scope, expectedBatchdCalls(scope));
+    observations.ledger_issues = ledgerIssues;
+    // The paths this scope was allowed to touch, recorded next to the ledger that
+    // was judged against them.
+    observations.ledger_allowed_paths = liveScopeAllowedPaths(scope);
+    if (ledgerIssues.length > 0) {
+      fail(`the paid-call ledger does not support the ${scope} budget: ${ledgerIssues.join('; ')}`);
+    }
+    check(
+      `every ${scope} call accounted for one answered dispatch, on scope-allowed paths only, with no retry and no credential in the log`,
+    );
     writeReport('live results; not fixtures; one call per capability; no retries');
     console.log(`\nBatch D live smoke: PASS (${String(checks.length)} checks)`);
     console.log(`calls: ${JSON.stringify(calls)}`);

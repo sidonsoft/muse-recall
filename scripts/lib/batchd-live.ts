@@ -16,6 +16,7 @@
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { redactSecrets } from '../../packages/shared/src/index.js';
+import { type DispatchAccount, ledgerIntegrityIssues, pathsOutside } from './media-trace.ts';
 
 /** The sentence the audio fixture speaks. Chosen for distinctive content words. */
 export const DEFAULT_SPEECH_PHRASE =
@@ -667,4 +668,70 @@ export function accountClipCalls(
     );
   }
   return { modelDispatches, uploadDispatches, issues };
+}
+
+const TRANSCRIBE_PATH = '/v1/asr/transcribe';
+
+/** Provider paths a Batch D scope may touch, and nothing else. */
+export function liveScopeAllowedPaths(scope: LiveScope): string[] {
+  const allowed: string[] = [];
+  if (scope.audio) allowed.push(TRANSCRIBE_PATH);
+  if (scope.video) allowed.push(CLIP_UPLOAD_PATH, CLIP_MODEL_PATH);
+  return allowed;
+}
+
+/**
+ * Whole-run ledger problems a Batch D run must refuse before it may report that
+ * every live call was accounted for.
+ *
+ * The per-operation slice checks are still needed, but they only see their own
+ * operation: a dispatch outside every slice (an image call inside an audio run, a
+ * clip model call in a video-only run) left the run claiming a clean budget while
+ * `calls.otherPaidPaths` said otherwise.
+ */
+export function batchdLedgerIssues(
+  ledger: DispatchAccount,
+  scope: LiveScope,
+  expected: { transcribe: number; clipModel: number; uploads: number },
+): string[] {
+  const issues = ledgerIntegrityIssues(ledger, 'batchd run');
+  const outside = pathsOutside(ledger, liveScopeAllowedPaths(scope));
+  if (outside.length > 0) {
+    issues.push(
+      `batchd run (audio=${String(scope.audio)} video=${String(scope.video)}) dispatched paths outside its scope: ${outside.join(', ')}`,
+    );
+  }
+  const count = (path: string): number => ledger.dispatches.filter((d) => d.path === path).length;
+  const transcribe = count(TRANSCRIBE_PATH);
+  const clipModel = count(CLIP_MODEL_PATH);
+  const uploads = count(CLIP_UPLOAD_PATH);
+  if (transcribe !== expected.transcribe) {
+    issues.push(
+      `expected ${String(expected.transcribe)} transcription dispatch(es), saw ${String(transcribe)}`,
+    );
+  }
+  if (clipModel !== expected.clipModel) {
+    issues.push(
+      `expected ${String(expected.clipModel)} clip model dispatch(es) on ${CLIP_MODEL_PATH}, saw ${String(clipModel)}`,
+    );
+  }
+  if (uploads !== expected.uploads) {
+    issues.push(
+      `expected ${String(expected.uploads)} clip upload(s) on ${CLIP_UPLOAD_PATH}, saw ${String(uploads)}`,
+    );
+  }
+  return issues;
+}
+
+/** How many dispatches each capability in scope may cost: never more than one. */
+export function expectedBatchdCalls(scope: LiveScope): {
+  transcribe: number;
+  clipModel: number;
+  uploads: number;
+} {
+  return {
+    transcribe: scope.audio ? 1 : 0,
+    clipModel: scope.video ? 1 : 0,
+    uploads: scope.video ? 1 : 0,
+  };
 }

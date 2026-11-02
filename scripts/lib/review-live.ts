@@ -24,6 +24,7 @@ import type {
   VisualReviewFinding,
   VisualReviewUnverified,
 } from '../../packages/shared/src/media.js';
+import { type DispatchAccount, ledgerIntegrityIssues, pathsOutside } from './media-trace.ts';
 
 export const REVIEW_PROBE = {
   /** The fixture app rendered by the run, and what is visible in it. */
@@ -81,17 +82,29 @@ export interface ProbeScore {
 }
 
 /**
- * Words that turn "mentions countdown" into "says countdown is absent".
+ * Evidence that names a countdown/timer in order to say it is **not in the frame**.
+ *
+ * A bare negation word anywhere is not enough, and the first version of this rule
+ * proved it: "A countdown timer is visible despite the instruction not to show one"
+ * is a correct reading of the fixture, yet it was scored as if the model had denied
+ * the timer — turning a good paid answer into a reported model failure. So the
+ * denial has to be an absence construction *about* the countdown/timer, within one
+ * clause of it. Ambiguous negation is left alone: the score stops asserting that the
+ * evidence denies the frame, and the wording still reaches a human reader.
  */
-// Word-boundary matched, so `note` or `anchor` cannot trip it. `zero` is
-// deliberately absent: a game frame legitimately says "when the count reaches
-// zero", and a scoring rule must not read that as a denial.
-const DENIAL_TERMS =
-  /\b(no|not|never|none|without|absent|missing|lacks?|lack of|cannot|can't|doesn'?t|does not|didn'?t|isn'?t|aren'?t|free of|clear of)\b/i;
+const FRAME_FACT = 'countdown|timer|counter';
+const ABSENCE_BEFORE_FACT = new RegExp(
+  String.raw`\b(no|not|never|none|without|absent|missing|lacks?|free of|clear of|devoid of)\b[^.!?;]{0,40}\b(?:${FRAME_FACT})\b`,
+  'i',
+);
+const ABSENCE_AFTER_FACT = new RegExp(
+  String.raw`\b(?:${FRAME_FACT})\b[^.!?;]{0,40}\b(absent|missing|nowhere|not\s+(?:present|visible|shown|displayed|there|to\s+be\s+seen))\b`,
+  'i',
+);
 
-/** True when an evidence string denies the presence of what it appears to cite. */
+/** True when the evidence says the frame does *not* contain the fact it cites. */
 export function evidenceDeniesFrame(evidence: string): boolean {
-  return DENIAL_TERMS.test(evidence);
+  return ABSENCE_BEFORE_FACT.test(evidence) || ABSENCE_AFTER_FACT.test(evidence);
 }
 
 /**
@@ -179,4 +192,28 @@ export function scoreReviewProbe(
       'silence counts as nothing assessed, not as agreement',
     ],
   };
+}
+
+/** A screenshot review may touch one path, on one model, at most once. */
+export const REVIEW_ALLOWED_PATHS = ['/v1/responses'] as const;
+
+/**
+ * Whole-run ledger problems a review run must refuse.
+ *
+ * Reporting the counts in the `finally` block is only half the job: an unanswered
+ * start line means the run cannot know how many calls it paid, an orphan outcome
+ * means an answer cannot be attributed, and any path outside `/v1/responses` is a
+ * second capability being bought under a review budget.
+ */
+export function reviewLedgerIssues(ledger: DispatchAccount, expectedReviews: number): string[] {
+  const issues = ledgerIntegrityIssues(ledger, 'review run');
+  const outside = pathsOutside(ledger, REVIEW_ALLOWED_PATHS);
+  if (outside.length > 0) {
+    issues.push(`review run dispatched paths it was never allowed to touch: ${outside.join(', ')}`);
+  }
+  const reviews = ledger.dispatches.filter((d) => d.path === '/v1/responses').length;
+  if (reviews !== expectedReviews) {
+    issues.push(`expected ${String(expectedReviews)} review dispatch(es), saw ${String(reviews)}`);
+  }
+  return issues;
 }

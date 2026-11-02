@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { type DispatchAccount, ledgerIntegrityIssues, pathsOutside } from './media-trace.ts';
 
 /**
  * What a live image call is allowed to claim.
@@ -177,4 +178,44 @@ export function assetVersionPaths(
   const dir = join(workspaceRoot, 'forge', projectId, 'media', assetId);
   const suffix = String(version);
   return { dir, bytes: join(dir, `${suffix}.bin`), manifest: join(dir, `${suffix}.json`) };
+}
+
+/**
+ * The only provider paths a Batch B image run may touch: one generate, one edit.
+ *
+ * Kept beside the measurement code so the budget and the pixel assertions live in
+ * one place and can be exercised without a provider.
+ */
+export const IMAGE_ALLOWED_PATHS = ['/v1/images/generations', '/v1/images/edits'] as const;
+
+/**
+ * Whole-run ledger problems an image run must refuse before calling itself paid
+ * and measured.
+ *
+ * Per-operation checks cannot see traffic outside their own slice, so an extra
+ * dispatch on a path nobody expected (a `/v1/files` upload, a stray vision call)
+ * used to pass while `calls.otherPaidPaths` sat non-zero in the report. The rule
+ * here is the inverse of a forbidden list: every path in the ledger must be an
+ * allowed one, the counts must be exact, and the ledger must be complete.
+ */
+export function imageLedgerIssues(
+  ledger: DispatchAccount,
+  expected: { generate: number; edit: number },
+): string[] {
+  const issues = ledgerIntegrityIssues(ledger, 'image run');
+  const outside = pathsOutside(ledger, IMAGE_ALLOWED_PATHS);
+  if (outside.length > 0) {
+    issues.push(`image run dispatched paths it was never allowed to touch: ${outside.join(', ')}`);
+  }
+  const generate = ledger.dispatches.filter((d) => d.path === '/v1/images/generations').length;
+  const edit = ledger.dispatches.filter((d) => d.path === '/v1/images/edits').length;
+  if (generate !== expected.generate) {
+    issues.push(
+      `expected ${String(expected.generate)} generate dispatch(es), saw ${String(generate)}`,
+    );
+  }
+  if (edit !== expected.edit) {
+    issues.push(`expected ${String(expected.edit)} edit dispatch(es), saw ${String(edit)}`);
+  }
+  return issues;
 }

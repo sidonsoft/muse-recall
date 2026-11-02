@@ -817,7 +817,7 @@ creates no `<root>/forge` directory, (b) a successful review creates none either
 and (c) listing generations for an id the workspace has never seen returns
 `{ items: [], current_version: null }` and creates none.
 
-## KI-55 — the live gates' own accounting was wrong, in ways that could report paid work that never happened (closed)
+## KI-55 — the live gates' own accounting was wrong, in ways that could report paid work that never happened (closed, then reopened by the review of the fix: items 9-12)
 
 An independent review of the live-acceptance chain (`d69b798..549dc93`) found
 these; each was reproduced before being fixed. None invalidated a recorded live
@@ -887,3 +887,34 @@ thing from the README's first run, and it is exactly the build in which the
 dev-only React warnings (KI-52) are absent. Startup time and walkthrough time are
 reported separately — folding them together had labelled an 800 ms-per-screen walk
 "startup".
+
+**Found by the follow-up review of the fix pass itself (`549dc93..f79dfb7`), fixed in
+the same issue's follow-up commit:**
+
+**9. A forbidden-path count that nothing asserted.** `calls.otherPaidPaths` was recorded
+in the report, but the whole-run check only tested against a hard-coded list of paths the
+author had thought to forbid. An image run that also dispatched `/v1/files` passed while
+printing "the whole run touched only image paths"; an audio run with a stray image call
+passed while printing "every live call accounted for one dispatch". Recording a number is
+not enforcing it. Every live scope now has an allowlist and the inverse rule is asserted:
+a path is wrong *because it is not on the list*, not because someone remembered to list it.
+
+**10. An incomplete ledger could support an exact paid-call claim.** A start line whose
+outcome never arrived means the transport died mid-call and the number of paid calls is
+unknown; an outcome line that answers no start means an answer cannot be attributed. Both
+satisfied a bare "exactly one dispatch" check. `ledgerIntegrityIssues()` refuses either,
+and the retry rule now lives in the same place, so one call site cannot forget it.
+
+**11. The grounding rule could turn a correct answer into a reported model failure.**
+Any denial word anywhere in the evidence counted as denying the visible fact, so
+*"A countdown timer is visible despite the instruction not to show one"* — a correct
+description of the probe frame — scored `evidenceDeniesTheFrame: true`. Only an absence
+construction about the countdown/timer, within one clause of it, counts now; ambiguous
+negation is left for the human reader, and the sentence is pinned by a test.
+
+**12. Origin-only reporting stopped at the request URL.** The browser's *reason* text was
+only redacted and truncated, so `net::ERR_FAILED https://host/npm/game/app.js?session=…`
+echoed a path that can name the generated page and a query that can hold its data. URLs
+inside the reason are reduced to origins before bounding. The earlier long-URL test passed
+because truncation removed the checked suffix, not because anything sanitized the URL — the
+new test uses a URL short enough to survive the bound.

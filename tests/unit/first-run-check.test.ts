@@ -161,6 +161,33 @@ describe('the documented first run', () => {
      setTimeout(()=>process.exit(0),30000);`,
     ];
 
+    it('times readiness apart from the walkthrough, not including teardown', async () => {
+      const api = await reserveLoopbackPort();
+      const web = await reserveLoopbackPort();
+      const run = await withDocumentedFirstRun(
+        {
+          command: fakeDev(api, web),
+          cwd: logDir,
+          logFile: nextLog(),
+          ports: { api, web },
+          startupTimeoutMs: 20_000,
+        },
+        async () => {
+          // A measurable amount of time inside the measurement, so the split can
+          // actually be seen rather than assumed.
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return true;
+        },
+      );
+      // The walkthrough is the measurement itself. Before this split it was computed
+      // after the shutdown wait, so it silently included killing the process group and
+      // waiting for the ports to free — the run below spends longer releasing ports than
+      // the work sleeps, and that number used to be printed as "walkthrough".
+      expect(run.walkthroughMs).toBeGreaterThanOrEqual(500);
+      expect(run.walkthroughMs).toBeLessThanOrEqual(1200);
+      expect(run.portsReleased).toBe(true);
+    });
+
     it('starts, hands over working urls, and leaves nothing listening', async () => {
       const api = await reserveLoopbackPort();
       const web = await reserveLoopbackPort();

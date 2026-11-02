@@ -25,7 +25,7 @@ Status words mean exactly one thing here:
 | B — Muse Image and integration | built and verified offline, **and** live measured | media API/journey suites, `verify:media-journey`, embedded-asset verification in `verify:studio-workflow`, plus `verify:image-live-smoke` (`2026-11-02-0445`) | **yes** — one generate and one edit call, measured in pixels (see below) |
 | C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package (PASS 14 at `2026-11-01-0824`; that fixture is now consumed, so the gate refuses to re-run it), plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
 | D — voice and video | built and verified offline for access and playback, **and** live for transcription and clip observation | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts`, plus `verify:batchd-live-smoke` (`2026-11-02-0458` audio, `2026-11-02-0400` video) | **yes** — one transcription and one clip observation, both scored against what the fixtures actually contain |
-| E — visual and decision-change review | built and verified offline, **and** live for one scored frame | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (22, including replay-subject and record-fault cases), `tests/integration/forge-batche-generations.test.ts` (6), `tests/unit/studio-batch-e.test.ts` (29) | **yes, one call** — `verify:review-live-smoke` (`2026-11-02-0451`); every other Batch E gate keeps using a deterministic stub by design |
+| E — visual and decision-change review | built and verified offline, **and** live for one scored frame | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (25, including replay-subject, record-fault and creates-no-state cases), `tests/integration/forge-batche-generations.test.ts` (8), `tests/unit/studio-batch-e.test.ts` (29) | **yes, one call** — `verify:review-live-smoke` (`2026-11-02-0451`); every other Batch E gate keeps using a deterministic stub by design |
 
 ## What the live evidence actually shows
 
@@ -372,7 +372,46 @@ the same single dispatch, as `observations.paths` shows — a naming wart in the
 second charge. Renaming those fields would rewrite retained live evidence, so they are left as
 recorded and stated here.
 
-**Scope limit**: that review covered `d69b798..549dc93`. The KI-53 runtime fix (`55204f5`) and
+**A follow-up review of the fixes themselves: `549dc93..f79dfb7`.** Same reviewer
+(`codex/gpt-6.1-sol`, medium effort), read-only in its own clean checkout with the
+evidence copied in. Verdict: **needs-work** — no P1; it confirmed KI-54, the
+duplicate-attempt counter, failure-path ledger retention, clip accounting and the
+credential-log check as genuinely closed (it restored the removed `ensureProject()`
+calls in a scratch copy and watched the three new regression tests fail), and it found
+four things the fix pass had itself got wrong. All four are fixed in the commit that
+records this paragraph:
+
+- **the forbidden-path count was computed and never enforced.** `calls.otherPaidPaths`
+  was reported, and the whole-run check only named the paths it had thought to forbid —
+  so an image run that also dispatched `/v1/files` passed while printing "touched only
+  image paths", and an audio run with an extra image call passed while claiming every
+  call was accounted for. Each live scope now has an allowlist, and the inverse rule is
+  asserted: every path in the ledger must be on it (`pathsOutside` in
+  `scripts/lib/media-trace.ts`, with `imageLedgerIssues`, `batchdLedgerIssues` and
+  `reviewLedgerIssues` beside the code that uses them; `tests/unit/live-ledger-policies.test.ts`
+  reproduces both reported cases with synthetic traces).
+- **an incomplete ledger could satisfy an exact-call claim.** One start line with no
+  outcome (the transport died mid-call, so the number of paid calls is unknown) and an
+  outcome answering nothing both passed a bare "exactly one dispatch" check. A ledger
+  with unanswered starts or orphan outcomes is now refused, and the retry rule moved
+  into the same check.
+- **the new grounding rule could fail a correct answer.** A denial word anywhere in the
+  evidence was read as "the model says the timer is absent", so
+  *"A countdown timer is visible despite the instruction not to show one"* — a correct
+  reading of the fixture — scored as a model failure. Denial is now an absence
+  construction about the countdown/timer within one clause of it; ambiguous negation is
+  left to the human reader, and that sentence is pinned by a test.
+- **origin-only diagnostics did not cover a URL inside the *reason*.** The request URL
+  was reduced to its origin, but the browser's reason text was only redacted and
+  truncated, so `net::ERR_FAILED https://host/path?query=…` echoed the path and query.
+  URLs in the reason are reduced to origins before bounding; the test uses a URL short
+  enough to survive truncation, so truncation gets no credit.
+
+Two smaller honesties from the same review: `walkthroughMs` had included the shutdown
+wait (it now measures the walkthrough only, and a test asserts the split), and this
+file's test counts for two Batch E suites had gone stale (25 and 8, not 22 and 6).
+
+**Scope limit of the first review**: it covered `d69b798..549dc93`. The KI-53 runtime fix (`55204f5`) and
 these corrections (`b698070`) have not been reviewed by anyone but the author. The review ran
 in its own checkout, so its server bundle hash for the same commit differs (`ad6f9dfb…` against
 the author's `c9d6c613…`) because the manifest carries build-time metadata; the web hash

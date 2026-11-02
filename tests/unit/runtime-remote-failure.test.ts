@@ -25,6 +25,27 @@ describe('naming a permitted load that failed', () => {
     expect(line).not.toContain('token=abc123');
   });
 
+  it('reduces a URL embedded in the browser reason to its origin', () => {
+    // A Chromium reason can carry the whole URL it failed on. Redaction alone does
+    // not make that safe: the path names the generated page and the query can hold
+    // data that page built. This URL is short enough to fit inside the 80-character
+    // reason bound, so truncation cannot be credited with the safety.
+    const text = remoteLoadFailure(
+      'https://cdn.jsdelivr.net',
+      'net::ERR_FAILED https://cdn.jsdelivr.net/npm/game/app.js?session=abc123',
+    );
+    expect(text).toContain('https://cdn.jsdelivr.net');
+    expect(text).toContain('net::ERR_FAILED');
+    expect(text).not.toContain('app.js');
+    expect(text).not.toContain('/npm/game/');
+    expect(text).not.toContain('session=abc123');
+  });
+
+  it('removes an unparseable URL rather than echoing it', () => {
+    const text = remoteLoadFailure('https://cdn.jsdelivr.net', 'failed at https://[bad');
+    expect(text).not.toContain('[bad');
+  });
+
   it('stays inside the schema bound for one error', () => {
     const line = remoteLoadFailure('https://cdn.jsdelivr.net', `x ${'y'.repeat(2_000)}`);
     expect(line.length).toBeLessThanOrEqual(300);
