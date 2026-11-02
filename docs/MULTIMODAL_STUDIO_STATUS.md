@@ -206,8 +206,15 @@ boot-only live legs (batchd PASS 4 with an empty ledger at
 exit 2); and the whole fresh-install rehearsal (PASS 17,
 `test-results/fresh-install/2026-11-02-1045`). The same gates ran at `b698070` and
 `f763ef9` before it (`test-results/batchd-playback-auth/2026-11-02-0804` records that
-identity pair). Gates not named at a commit did not run at it; the only thing a docs commit
-proves about them is that the source they measured has not moved.
+identity pair). The docs commit that records this re-ran the aggregate check (identical
+counts) and the identity gate: PASS 15 with the running server proving `36a861a1dd27` on a
+clean tree, server build `975f6fc62745…`, web `065ee809a766…` unchanged
+(`test-results/batchd-playback-auth/2026-11-02-1105`). Recording every further docs commit
+this way would recurse, so the rule for later ones is mechanical: the identity a beta cut
+would carry is the `buildProvenance` block of the **newest** `test-results/batchd-playback-auth/`
+directory, and it is only trustworthy if that run happened after the last commit. Gates not
+named at a commit did not run at it; the only thing a docs commit proves about them is that
+the source they measured has not moved.
 
 **Identity moves across documentation commits, and the rule is easy to over-read.** The
 build identity (commit, source hash, build time) is baked into the server bundle, so the
