@@ -12,10 +12,13 @@ describe('turn stream HTTP base URL', () => {
   it('uses VITE_API_BASE_URL for the session stream', async () => {
     vi.stubEnv('VITE_API_BASE_URL', 'http://127.0.0.1:8788');
     vi.resetModules();
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      void init;
-      return new Response('', { status: 200 });
-    });
+    // The call record, not the response, is what this suite inspects: the mock
+    // must accept the two arguments fetch is called with so its recorded call
+    // tuple is typed.
+    const fetchMock = vi.fn(
+      async (_input: string | URL | Request, _init?: RequestInit) =>
+        new Response('', { status: 200 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const { streamTurn } = await import('../../apps/web/src/lib/turn-stream.ts');

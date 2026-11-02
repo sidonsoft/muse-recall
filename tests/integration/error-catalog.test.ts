@@ -16,7 +16,6 @@ type ErrorProbe = {
   json(): { error?: { code?: string } };
 };
 
-
 /**
  * The machine-readable error catalogue (roadmap §3 remainder) must MIRROR the
  * server's real mappings — so every probe here compares a live response

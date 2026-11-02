@@ -14,6 +14,7 @@ import type { FastifyInstance, InjectOptions } from 'fastify';
 
 /** What fastify's light-my-request harness accepts as a request body. */
 type ReviewPayload = NonNullable<InjectOptions['payload']>;
+
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
