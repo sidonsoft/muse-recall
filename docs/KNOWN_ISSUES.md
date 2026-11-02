@@ -612,9 +612,9 @@ env-forwarding surface).
 ### KI-50 — `tsconfig.tests.json` is green and wired to a gate (closed 2 Nov)
 
 **Severity:** was Medium for future regression coverage: untyped test code hides
-real defects. **Status: closed.** `pnpm run typecheck:tests` passes and CI runs it
-as "Typecheck test and gate sources" in the `verify` job, between the product
-typecheck and the test run. Measured path: **311 → 278 → 131 → 41 → 0** errors
+real defects. **Status: closed.** `pnpm run typecheck:tests` passes, it is part of the aggregate
+`pnpm verify`, and CI runs it as "Typecheck test and gate sources" in the `verify`
+job, between the product typecheck and the test run. Measured path: **311 → 278 → 131 → 41 → 0** errors
 (from 5651c19 through 3ea5944). No check was loosened, no assertion removed, no
 `any`/`@ts-ignore`/`@ts-expect-error` introduced.
 
