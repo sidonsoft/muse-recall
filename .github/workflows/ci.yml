@@ -152,6 +152,14 @@ jobs:
           LOG_LEVEL: warn
           FORGE_RUNTIME_BROWSER: ${{ matrix.engine }}
 
+      # The asset -> embedded artifact -> restart -> rollback journey, on
+      # uploaded bytes instead of paid image calls. It existed only as a paid
+      # run for a while, which meant the flow could regress for weeks without
+      # anything noticing; this leg re-gates it on every commit, and its own
+      # ledger rule fails the run if any provider dispatch appears.
+      - name: Run the media journey on uploaded bytes
+        run: pnpm verify:media-journey-offline
+
       # Baselines live in the repository (tests/visual). The update run
       # uploads them for review/commit; drift runs upload the failing
       # actual screenshots and diff images for triage.

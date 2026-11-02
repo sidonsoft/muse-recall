@@ -1266,3 +1266,59 @@ edit, because that run happened before the fix. It is not rewritten — it is th
 found the defect. The edit's model for that run is known from the server configuration recorded
 in the same report (`media_config.image_model = muse-image-1.0`) and from the operation code
 path, and future runs state it in the line itself.
+
+## KI-62 — a gate stopped being runnable and nothing noticed (closed)
+
+`pnpm verify:batchc-resume-staged` ran once successfully (2026-11-01-0824, 14 checks) and then
+**could never run again**. Its fixture is a preserved live isolate whose coding job had already
+succeeded with a staged change. Completing the gate *approves* that change, which publishes a
+version, and a published version cannot be approved twice offline — so the fail-closed guard
+in `scripts/lib/isolate-resume.ts` now refuses every attempt:
+
+```
+resume-staged: BLOCKED — isolate verification failed: job already published version 2;
+this isolate is consumed and cannot be re-approved offline
+```
+
+That refusal is correct. The defect is what surrounded it: the gate was built around a
+**single-use paid fixture with no re-runnable twin**, and its 14 checks quietly left the standing
+suite the day after they first ran. Two days later, when product code had moved through Batch D,
+Batch E, the backup deadline and the media adapter, nothing re-ran them.
+
+Was the coverage duplicated elsewhere? Mostly, but not entirely, and the difference was worth
+measuring rather than asserting:
+
+- `verify:studio-workflow` (offline, 56 checks, runs at every commit) already covers generation →
+  review → approve → modify → reject → **rollback** → **restart** → recovery → re-approval of a
+  recovered staged change, and compares recorded version `sha256`s across those steps.
+- What **no** offline gate asserted was the embedded-bytes leg: `verify-studio-workflow` never
+  reads a `data:image/...` out of an approved artifact (it inserts a `muse-asset://` reference into
+  a change draft, but its fake-model app fixture never carries the placeholder, so nothing gets
+  embedded). Embedding + byte-identity across restart + the exact image returning after rollback
+  lived only in `verify:media-journey` and `verify:media-live-smoke`, **both of which pay for two
+  image calls**. So the flow could regress for weeks without any free gate noticing.
+
+Fix, and what each part proves:
+
+- `verify:media-journey` gained `MEDIA_JOURNEY_ASSET_SOURCE=upload` (`pnpm
+  verify:media-journey-offline`): the same journey — uploaded PNG → approve asset →
+  `muse-asset://` reference → approved artifact embeds the bytes → restart byte-identical →
+  modify → approve v2 → rollback restores v1 bytes **and the exact embedded image** — with the
+  coding rail still on the deterministic fake CLI, so **zero** provider calls.
+- The offline rail refuses to start with `FORGE_MUSE_API_KEY` set, refuses an unknown mode name
+  instead of defaulting to the paid rail, pins `FORGE_MEDIA_MAX_RETRIES=0`, captures the whole
+  server log, and then requires the ledger to be **empty**: `the offline journey dispatched
+  nothing (426 bytes of trace read, 0 dispatch lines)`. The `live` rail is held to the mirror
+  rule: exactly one answered `/v1/images/generations`, one answered `/v1/images/edits`, no other
+  path, no attempt beyond 1. 13 tests in `tests/unit/media-journey-policy.test.ts` pin both,
+  against real-shaped `[media-trace]` lines.
+- `verify:media-journey-offline` is now a CI leg (`Run the media journey on uploaded bytes`), so
+  the flow is gated on every commit and on both browser legs.
+- The consumed-isolate refusal in `verify:batchc-resume-staged` now names where its coverage
+  went instead of ending at "cannot re-run".
+
+What is **not** laundered: the offline rail proves the flow on bytes the harness uploaded. It does
+not prove provider-returned bytes flow through it. That claim still rests on the paid evidence —
+`test-results/batchc-resume-staged/2026-11-01-0824` (retained live isolate, cutout asset) and
+`test-results/media-live/2026-11-02T13-53-08` (live generate + edit). The report records the
+distinction in `asset_provenance` so a reader cannot mistake one for the other.

@@ -234,7 +234,22 @@ the narration was not, which is how an operator re-runs a run that already spent
   approves a *retained* staging state inside a copy of a live isolate, so its fixture is
   single-use by construction. The recorded PASS stands at `2026-11-01-0824` (14 checks);
   re-running it would need a fresh consumed-but-unapproved isolate, i.e. another paid coding
-  run.
+  run. That was a process defect, not just an exhausted fixture: 14 checks left the standing
+  suite the day after they first ran, and no free gate covered the embedded-bytes leg of the
+  journey they proved (KI-62).
+- `pnpm verify:media-journey-offline`: **PASS 6 checks with zero provider calls**
+  (`test-results/media-journey/2026-11-02-14400103`) — the remedy for KI-62. Uploaded PNG →
+  approved asset → `muse-asset://` reference → approved v1 **embeds the asset bytes** →
+  restart byte-identical → modify → v2 → rollback returns byte-identical v1 **and the exact
+  embedded image** (data URL sha `199fbe8655fc…`, v1 HTML sha `f72f65e92fc2…`, v2 `4ecbca956b21…`).
+  Its zero-call claim is read, not asserted: `the offline journey dispatched nothing (426 bytes
+  of trace read, 0 dispatch lines)`. The mode is refused if unknown, and the offline rail refuses
+  to start while a provider credential is configured. The paid rail of the same journey now
+  fails unless the ledger shows exactly one answered generate and one answered edit, with no
+  other path and no attempt beyond 1. `tests/unit/media-journey-policy.test.ts` (13) pins both
+  ledgers against real-shaped trace lines, and `verify:media-journey-offline` is a CI leg on both
+  browser legs — free, headless, no credential. What it does **not** prove: that provider-returned
+  bytes flow through the journey. That stays with the paid evidence named above.
 - `BATCHD_SMOKE_SCOPE=both BATCHD_SMOKE_FIXTURE_ONLY=1 pnpm verify:batchd-live-smoke`:
   PASS 4 checks with no network. `pnpm verify:image-live-smoke` with
   `IMAGE_SMOKE_BOOT_ONLY=1` exits 0 without dispatching; `pnpm verify:review-live-smoke`

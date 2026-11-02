@@ -64,6 +64,7 @@
     "media:drill": "pnpm --filter @mml/server run media:drill",
     "verify:media": "pnpm --filter @mml/server run verify:media",
     "verify:media-journey": "tsx scripts/verify-media-journey.ts",
+    "verify:media-journey-offline": "MEDIA_JOURNEY_ASSET_SOURCE=upload tsx scripts/verify-media-journey.ts",
     "verify:media-live-smoke": "tsx scripts/verify-media-live-smoke.ts",
     "verify:batchc-live-smoke": "tsx scripts/verify-batchc-live-smoke.ts",
     "verify:batchc-resume-staged": "tsx scripts/verify-batchc-resume-staged.ts",

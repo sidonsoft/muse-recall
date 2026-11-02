@@ -37,7 +37,7 @@ import { createServer } from 'node:net';
 import { join } from 'node:path';
 import type { Browser } from 'playwright-core';
 import { verifyBuildProvenance } from './lib/build-provenance.js';
-import { verifyStagedIsolate } from './lib/isolate-resume.js';
+import { type VerifiedIsolate, verifyStagedIsolate } from './lib/isolate-resume.js';
 
 /** Pinned to the 0755 live run that produced the preserved isolate. */
 const EXPECTED_BASELINE_SHA = '79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41';
@@ -172,14 +172,42 @@ async function main(): Promise<void> {
   }
 
   // 0. isolate verification: pure filesystem reads, zero dispatch surface.
-  const verified = verifyStagedIsolate(isolateDir, projectId, jobId, {
-    baselineSha256: EXPECTED_BASELINE_SHA,
-    stagedSha256: EXPECTED_STAGED_SHA,
-    cutoutSha256: EXPECTED_CUTOUT_SHA,
-    cutoutBytes: EXPECTED_CUTOUT_BYTES,
-    referenceSha256: EXPECTED_REFERENCE_SHA,
-    jobStatus: 'succeeded',
-  });
+  //
+  // A consumed fixture is a correct refusal, not a gate failure: approving the
+  // staged change publishes a version, and a published version cannot be
+  // approved twice offline. The refusal still has to say where the coverage
+  // went, or "cannot re-run" reads like a hole in the suite.
+  let verified: VerifiedIsolate;
+  try {
+    verified = verifyStagedIsolate(isolateDir, projectId, jobId, {
+      baselineSha256: EXPECTED_BASELINE_SHA,
+      stagedSha256: EXPECTED_STAGED_SHA,
+      cutoutSha256: EXPECTED_CUTOUT_SHA,
+      cutoutBytes: EXPECTED_CUTOUT_BYTES,
+      referenceSha256: EXPECTED_REFERENCE_SHA,
+      jobStatus: 'succeeded',
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.log(`resume-staged: BLOCKED — ${reason}`);
+    if (reason.includes('published version')) {
+      console.log(
+        '  this fixture is single-use: the approval it drives publishes a version, so the same ' +
+          'isolate cannot be approved again offline, and the guard refuses rather than half-running.',
+      );
+    }
+    console.log(
+      '  the flow it proved (approved asset embedded in a shipped artifact, byte-identical across a ' +
+        'restart, restored by rollback, zero provider dispatches) is re-gated free at every commit by ' +
+        '`pnpm verify:media-journey-offline`.',
+    );
+    console.log(
+      '  its paid proof on live bytes stands at test-results/batchc-resume-staged/2026-11-01-0824 ' +
+        'and test-results/media-live/2026-11-02T13-53-08; a fresh paid coding run is needed to re-run this one.',
+    );
+    process.exitCode = 2;
+    return;
+  }
   observations.isolate = {
     path: isolateDir,
     project: projectId,
