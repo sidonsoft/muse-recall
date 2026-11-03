@@ -117,3 +117,24 @@ Without that clause, a palette, chart or theme tool fails a rule it cannot
 satisfy while doing its job. The other three rules (inline status text instead of
 modal dialogs, body text at 4.5:1 or better, every destructive action undoable
 from the same screen) carry over unchanged.
+
+## Rounds run against the same brief
+
+Two paid runs exist for `palette-bench`, and they are comparable because the inputs are byte-identical
+— `docs/review-apps/palette-bench-brief.md` hashes `37dac94d…` and the seeded decisions hash
+`296832b2…`, the same values carried inside both packets' `brief.md` and
+`decisions-requested.json`, with the same cap (12 internal calls), the same three driven steps
+(`type 42` → `Generate` → `Export`) and the same CLI.
+
+| packet | what it is | cost, read back from the report |
+| --- | --- | --- |
+| `test-results/human-review/palette-bench-2026-11-02-2148` | the first paid run (build `94867e5`), kept with its mis-measurements | 1 job, 3 internal calls, 0 media |
+| `…-2026-11-03-082925` | the second paid run, against the current candidate (`0ff747b`) | 1 job, 5 internal calls, 0 media |
+
+Both were billed to the logged-in CLI with `REVIEW_APP_ALLOW_STORED_CLI_AUTH=1`; neither had a
+`FORGE_MUSE_API_KEY` in the environment, and neither made a provider media call.
+
+Everything between them is free: `…-2250` (the packet the first human round read), `…-0811` (kept as
+the measured evidence of KI-85's lost cost record), `…-081947` and `…-081952` (free re-measurements of
+the original bytes, and the evidence that KI-86's directory collision is fixed). Retained packets are
+never rewritten — a corrected measurement always gets a new directory (KI-86).

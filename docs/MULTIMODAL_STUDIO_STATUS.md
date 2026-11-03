@@ -1060,6 +1060,87 @@ coding job through `pnpm run review:app`, and no authorization to spend one has 
 `94867e5`. Re-measuring cannot produce them, and no offline gate can: the open question is whether a
 person would hand the app to a colleague.
 
+### The second round: the same brief and decisions, run against the current candidate (paid, authorized)
+
+Authorization was explicit and bounded: one coding job, capped at 12 internal calls, billed to the
+logged-in CLI, no key introduced, no media calls, prior packets preserved. The run spent exactly that.
+
+`test-results/human-review/palette-bench-2026-11-03-082925` — PASS 9 checks:
+
+- **what it cost**, read back from the harness's own accounting: 1 coding job
+  (`6fff2d0f…`, kind `generate`, status `succeeded`, **5 internal calls** against the cap of 12,
+  version 1, model `muse-wonder-1.0`), submitted with `Idempotency-Key 10132e2b-5f33-4c54-aec6-04ea79264bb2`,
+  and **0 provider media calls** — the trace log was read (213 bytes) rather than assumed absent, and
+  its `dispatch_paths` is empty;
+- **who paid**: `the logged-in coding CLI: no FORGE_MUSE_API_KEY was set, so the spend lands on
+  whatever account that CLI is authenticated to`; the CLI is named as `/Users/burnz/.local/bin/muse`;
+- **which bytes were under test**: `commit 0ff747b…`, `treeCleanAtMeasure: true`,
+  `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
+  server `e1515d84308d…`, web `b2471becf70f…` — both instants printed with the KI-84 field names;
+- **comparability, proven rather than asserted**: the brief and the seeded decisions hash identically
+  to the copies retained inside the first packet (`brief.md` `37dac94d…`, decisions `296832b2…`), the
+  same three interaction steps were driven (`type 42` → `Generate` → `Export`), the same cap and the
+  same CLI were used.
+
+**Measured side by side.** No verdict in this table — these are the same measurements the first packet
+carried, taken the same way:
+
+| measured fact | original (`94867e5`) | current candidate (`0ff747b`) |
+| --- | --- | --- |
+| artifact bytes | 19 409 | 13 882 |
+| artifact sha256 | `b306418d95db…` | `529e520aac9e…` |
+| page title | Palette Bench | Palette Bench |
+| interactive controls | 17 | 17 |
+| named controls / icon-only / text fields | 17 / 5 / 2 | 17 / 5 / 2 |
+| distinct colours (initial → used capture) | 492 → 1 047 | 1 844 → 1 959 |
+| visible text characters | 985 | 746 |
+| text elements measured for contrast | 64 | 38 |
+| elements below 4.5:1 | 0 (worst 6.70:1) | 0 (worst 7.23:1) |
+| native dialogs raised | 0 | 0 |
+| console errors / failed requests / non-local requests | 0 / 0 / none | 0 / 0 / none |
+| status text after Export | "Exported five CSS custom properties to the text area below." | "Exported 5 colours as CSS custom properties." |
+| internal calls / media calls | 3 / 0 | 5 / 0 |
+
+What the numbers say and do not say: the two apps are different bytes with the same control topology,
+both self-contained (no non-local requests), neither raised a native dialog, and neither measured any
+text below 4.5:1 — so the two decisions about dialogs and contrast are **not contradicted by
+measurement** in either run, which is not the same as a person agreeing they were followed. The colour
+counts differ by a factor of roughly four in the current candidate's initial capture; whether that is
+richer or noisier is exactly the judgement the blank rows are for. Bytes are not quality.
+
+**Offline gates re-run against the bundles that produced this artifact** (all at `0ff747b`):
+`verify:batchd-playback-auth` PASS 15 (`test-results/batchd-playback-auth/2026-11-03-0831`),
+`verify:batchc-ui` 22, `verify:batche-review-ui` 20, `verify:runtime` 14
+(`test-results/runtime/20261103-0831`), `verify:media-journey-offline` 6 with
+`ledger_issues: []` and an empty dispatch ledger over a 426-byte trace
+(`test-results/media-journey/2026-11-03-08320799`), and `verify:studio-workflow` 59 checks
+(`project studio-workflow-0fje1v`, guard passed). `pnpm run verify` at this commit: 130 files /
+1 631 passed / 3 skipped; `typecheck:tests` exit 0. No regression surfaced.
+
+**The standing identity pair moves** to `test-results/batchd-playback-auth/2026-11-03-0831`: commit
+`0ff747b…`, server `e1515d84308d…`, web `b2471becf70f…`, `supportsCommitIdentity: true`, both instants
+clean and named separately. It is the same web bundle the previous three rounds carried; the server
+bundle moved because the manifest embeds the commit.
+
+**Three conclusions, kept apart on purpose.**
+
+1. **Harness reliability** — the measurement layer is reproducible: re-measuring the original bytes at
+   the current commit produced byte-equal `app_facts`, and its cost record now survives hops
+   (KI-85). Supported, with the caveat that "1 631 tests pass" measures the harness and product
+   behaviour, not the quality of a generated app.
+2. **Artifact correctness** — generation is reproducible under identical inputs, the current candidate
+   produced a self-contained, zero-console-error, zero-egress app that loaded in Chromium at both
+   viewports and answered the driven interaction steps, and every claim above is backed by a named
+   evidence file.
+3. **Human quality** — **still unassessed.** The five judgement rows and four decision rows in
+   `test-results/human-review/palette-bench-2026-11-03-082925/review-packet.md` are blank, and the
+   machine flagged `issues: []`, meaning the capture can support a judgement — not that one has been
+   made.
+
+**Release position recorded by the reviewer for this round: conditional acceptance for the next
+evaluation round, not final beta approval.** The remaining decision belongs to a person reading the
+new packet against the old one.
+
 Two harness defects found on the way, recorded rather than smoothed over: KI-71 (a self-contained
 app was flagged as a network violator because egress was measured by hostname instead of protocol,
 and 464 lines of source were reported as 12,189 characters of "visible text") and KI-72 (the
