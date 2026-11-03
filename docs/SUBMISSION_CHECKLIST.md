@@ -1,100 +1,29 @@
 # Submission checklist
 
-Status: **submission cut recorded (2:50) and QA'd; the earlier 2:46 cut is a
-prose-recorded fallback that was NEVER committed to this repository (verified 31 Oct:
-the only videos in any tree, including frozen `main`, are the 2:50 demo and its
-website copy); repository aligned with the current evidence; not yet submitted.**
-This file records requirements, evidence, and the actions that still require the
-repository owner.
+Status on 4 November 2026: **v0.1.0 published; hackathon not yet submitted.** The repository is public and the static website is deployed. A hosted application is not required by the Discord guidance supplied by the owner. The local application runs from the public repository; the website is a landing page, not a hosted app.
 
-## Official requirements — what could and could not be verified
+## Current release and demo
 
-Sources: [event page](https://cerebralvalley.ai/e/meta-ai-developer-hackathon),
-[waiver page](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/waiver) (renders
-client-side; text not retrievable). `/rules`, `/official-rules`, `/terms` return 404.
+- [x] Full beta and README promoted to main; v0.1.0 tagged at `707921db83a374d155d3929ef9b99092bcd4e8f1`.
+- [x] [Release](https://github.com/sidonsoft/muse-recall/releases/tag/v0.1.0) includes source, checksums and an exact-commit ten-gate report/evidence archive; zero provider calls in those offline gates.
+- [x] Public setup instructions support offline browsing and explain the separate live CLI and media credentials.
+- [x] Current published demo: exactly **180.000 seconds**, 1920×1080, 30 fps; **10,876,299 bytes**; SHA-256 `6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`; 58 caption cues. [Video, transcript and QA](demo/video/V21_QA.md).
+- [x] Website and repository serve identical video bytes. The earlier 2:50.47 / `4020c0c6…` file belongs to historical commit `c32d03b`, not the current path.
+- [ ] Recut for the latest owner-supplied Discord guidance: open with what existed before the event, lead with the working end-to-end product, keep most footage on the running product with live Meta calls visible, briefly identify model roles, English, at most three minutes. The currently published beta cut combines live footage, replays and fixtures; it has not been declared compliant with this new guidance.
 
-| Requirement | Status |
-| --- | --- |
-| Event window | **Verified:** Oct 26 – Nov 4, 2026; submissions due **Nov 4, 9:00 PM ET** |
-| Submission platform | Not stated on the reachable page; likely the Cerebral Valley submission form (link existed but rendered no form content) |
-| Required Meta Muse usage | Implied by event scope; our integration uses Muse Code CLI throughout |
-| Judging criteria | Track/theme descriptions only; no numeric rubric published |
-| Repository access | **Not stated.** We have not assumed public access is required |
-| Video requirements | **Not stated.** The submission cut is 2:50 (1920×1080) with burned-in captions and an SRT sidecar; the earlier cut is 2:46. |
-| Licensing / disclosures | **Not stated** |
-| Official Rules | Page says they "will be published"; not retrievable at review time |
+## Guidance and remaining owner actions
 
-Because the Official Rules were unavailable, this checklist marks visibility and submission as
-**pending owner decision**, not as satisfied requirements. No submission has been made.
+The owner supplied Discord guidance on 4 November: a hosted app is optional; judges need a runnable public repo and a demo of three minutes or less. Marketing production tools are distinct from models called by the product at runtime. Product runtime model calls must use Meta models. This records the supplied guidance, not independent verification of the complete Official Rules.
 
-## Engineering checklist
+The owner confirmed: **no existing product code before the event; Muse Recall was built during the event.** Use that disclosure in the recut opening.
 
-- [x] Phases 1–5 implemented and committed (`349d86c`, `8579c26`, `a3ca8c7`, `0d9df42`, `cec4320`, `7ee9c96`)
-- [x] Lint, typecheck, unit/integration tests, production build green
-- [x] Live Muse tests green (`MML_LIVE_MUSE=1 pnpm test`)
-- [x] Browser verification including generated form completion and submission; tool approval verified separately
-- [x] Evaluation comparison with measured results and stated sample size
-- [x] Integrated showcase 8/8 checks with real Muse (`docs/benchmarks/showcase.json`)
-- [x] Security review: no active secrets (one historical test-fixture key rotated/revoked
-      2026-10-27; see `docs/PHASE11_RELEASE_READINESS.md`), no tracked `.env`/databases, seven
-      bounded tools (six at review time; count refreshed at head 31 Oct), no outbound HTTP from
-      the app, generated UI is declarative data only
-- [x] Documentation set (submission, evaluation, architecture, demo)
-- [x] Phase 15B research published and integrated with provenance and deviation disclosures
-- [x] Phase 16 / 16B research published with locked hashes, all outputs and `pnpm verify:research16`
-- [x] Phase 17 four-arm trial published with locked protocol, retained records, review disposition,
-      exact-p correction and `pnpm verify:research17`
-- [x] Earlier cut (Ocean Pairs, 2:46) produced and QA'd; README and submission copy state
-      that it predates the explicit-correction cut
-- [x] Submission cut recorded from a live Muse Spark session (2:50, 1920×1080) and QA'd; committed
-      with its QA, captions and transcript under `docs/demo/video/`; README and copy describe it
-      accurately, including the failure beat
-- [x] Focused correction storyboard and narration prepared, then recorded as the 2:50 cut:
-      [`docs/demo/CORRECTABLE_MEMORY_DEMO.md`](demo/CORRECTABLE_MEMORY_DEMO.md)
-- [x] Live FocusFlow generation, modification and refusal evidence preserved
-- [x] Cross-origin state-mutation guard with regression tests and browser reproduction
-- [x] No feature work beyond the approved scope
-- [x] Repository made public on 29 October 2026 (still confirm against the Official Rules) **(owner)**
-- [x] Demo video committed under `docs/demo/video/` and linked from the README
-- [x] User guide published under [`docs/guide/`](guide/README.md) and linked from the README
-- [x] One-click Codespaces environment for judges (offline provider, seeded demo) under
-      [`.devcontainer/`](../.devcontainer/README.md), with a README badge
-- [x] Project website published at [sidonsoft.github.io/muse-recall](https://sidonsoft.github.io/muse-recall/): a
-      static landing page with the 2:50 video, not a hosted copy of the app
-- [x] Judge entry points audited (README, website, submission copy): headline result with what
-      was measured near the top of each, cross-links, and a links table for the form;
-      see [`docs/release/JUDGE_ENTRY_POINT_AUDIT.md`](release/JUDGE_ENTRY_POINT_AUDIT.md)
-- [ ] Codespaces badge opened once by the owner to confirm the no-install path **(owner)**
-- [ ] Submission form completed on the platform **(owner)**
-- [ ] Official Rules accepted if required **(owner)**
+- [ ] Owner opens the Codespaces path once if choosing to offer it to judges. It supports seeded offline browsing; live generation still needs the documented CLI setup.
+- [ ] Owner reviews and accepts the Official Rules on the submission platform if required.
+- [ ] Owner submits the repository URL, final video URL and accurate [submission copy](submission/SUBMISSION_COPY.md) through the platform.
+- [ ] Record the actual submitted commit, video identity, submission time and receipt only after submission. Publishing v0.1.0 is not submission.
 
-## Manual actions before submission
+The earlier recorded deadline is 4 November 2026, 9:00 PM ET; confirm it on the platform. Keep existing frozen submission/research tags and checksummed evidence unchanged. A new submission tag must identify the actual submitted tree.
 
-1. Read the Official Rules on the submission platform; confirm visibility, video length, and
-   required disclosures.
-2. Done 29 October 2026: `sidonsoft/muse-recall` is public, so judges can open the repository,
-   the committed video and the evidence without being granted access.
-3. The submission cut `Muse_Recall_Demo_V21_1080p.mp4` (2:50.47, SHA-256
-   `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`, 36-cue SRT sidecar) is
-   committed under `docs/demo/video/` and linked from the README's opening section. If the form
-   needs a video URL, use its GitHub link (the repository is public), the
-   [project website](https://sidonsoft.github.io/muse-recall/) (which plays the same cut and is reachable now), or upload it to a
-   video host. If that cut is not approved, upload
-   the 2:46 video instead and keep the README's fallback wording. Describe whichever cut is
-   uploaded accurately: the 2:50 cut includes the correction and its failure beat; the 2:46 cut
-   does not show an explicit correction.
-4. Submit the repository URL, video URL, and the description in
-   `docs/submission/SUBMISSION_COPY.md`; its "Links for the form" table has every URL.
-5. Claim significance only for the Phase 17 contrasts, within their stated limits; Phase 16 / 16B
-   is earlier, narrower evidence. Use the corrected exact p-values, not the original as-run values,
-   and keep the correction percentages described as release of the superseded restriction — not as
-   full compliance with the new instruction. The memory-versus-inline evaluation uses n=4 per
-   configuration and supports no significance claim.
+## Product boundaries to disclose
 
-## Deployment limitations (must be disclosed)
-
-This is a **loopback-only development application**. It has no authentication, no per-user
-isolation, and no rate limiting. A server-side Origin guard rejects foreign and `null` origins on
-state-changing routes, but that is not authentication. It must not be exposed to a public network
-or presented as a multi-user hosted product. See `docs/security.md` and
-`docs/release/CROSS_ORIGIN_SECURITY_FIX.md`.
+Single-user beta with default loopback binding and optional shared bearer access; no accounts or hosted collaboration. Live inference sends selected inputs to the configured provider. The coding CLI runs under the server user and its own policy. Approval checks loading, not every interaction or output quality; Guard and screenshot review are advisory. See [limitations](guide/limitations.md), [security](../SECURITY.md) and [recording provenance](demo/video/V21_QA.md).

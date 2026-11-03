@@ -10,7 +10,7 @@ scope and corrections.
 
 - **Single-user, loopback by default.** The API binds `127.0.0.1` by default. A non-loopback bind
   requires an `ACCESS_TOKEN`; with one set, every `/api` route except the open `GET /api/health`
-  liveness probe demands the bearer header (see [security](../SECURITY.md)). There is no account
+  liveness probe demands the bearer header (see [security](../../SECURITY.md)). There is no account
   model, per-user namespace, rate limiting or CSRF token: the token is one shared secret for the
   whole instance, not identity. Do not expose this build to the public internet.
 - The Host and Origin guards are browser-confusion controls, not authentication. A non-browser

@@ -1,3 +1,5 @@
+> Historical record: video sizes, hashes and durations here refer to the earlier file at `c32d03b`. The public filename was reused on 4 November; see [current video QA](https://github.com/sidonsoft/muse-recall/blob/main/docs/demo/video/V21_QA.md) for current bytes and provenance.
+
 # Final verification — 29 October 2026
 
 ## Commits

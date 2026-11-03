@@ -215,7 +215,7 @@ or submit as-is with one dead index pointer. Decision belongs to the
 submission acts; the freeze keeps `main` untouched until then.
 
 **Same shape, same decision line (added 31 Oct, KI-47):** on `main`,
-`CONTRIBUTING.md:33` links `[SECURITY.md](SECURITY.md)` — the root security
+`CONTRIBUTING.md:33` links `[SECURITY.md](../../SECURITY.md)` — the root security
 policy exists only on `integration` (added after `main`'s cut), so the link
 404s there and GitHub's security-policy indicator reads unset on the default
 branch (raw probes: `main/SECURITY.md` 404 vs `integration/SECURITY.md` 200).
