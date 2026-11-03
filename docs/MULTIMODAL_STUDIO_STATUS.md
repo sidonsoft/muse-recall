@@ -1117,10 +1117,11 @@ richer or noisier is exactly the judgement the blank rows are for. Bytes are not
 (`project studio-workflow-0fje1v`, guard passed). `pnpm run verify` at this commit: 130 files /
 1 631 passed / 3 skipped; `typecheck:tests` exit 0. No regression surfaced.
 
-**The standing identity pair moves** to `test-results/batchd-playback-auth/2026-11-03-0831`: commit
-`0ff747b…`, server `e1515d84308d…`, web `b2471becf70f…`, `supportsCommitIdentity: true`, both instants
-clean and named separately. It is the same web bundle the previous three rounds carried; the server
-bundle moved because the manifest embeds the commit.
+**The standing identity pair moves** to `test-results/batchd-playback-auth/2026-11-03-0926`: commit
+`302643d044d4…`, server `a4834b7fd534…`, web `b2471becf70f…`, `treeCleanAtMeasure: true`,
+`bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`. The web
+bundle is byte-identical to the one the previous rounds carried — nothing hashed on the web side moved.
+The server bundle moves on every commit because its manifest embeds the commit.
 
 **Three conclusions, kept apart on purpose.**
 

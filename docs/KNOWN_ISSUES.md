@@ -2085,6 +2085,16 @@ the provenance as inconsistent — the packet printed `treeClean: false` beside
 `supportsCommitIdentity: true` — and recommended not using it for the current candidate. The
 recommendation was right for other reasons (below), but the contradiction it cited was not one.
 
+**And the withheld-claim path ran for real, rather than staying written down.** While the probe work was
+in flight a gate run was started with two files still uncommitted. It did not print
+`supportsCommitIdentity: true`: the check line itself became the explanation — *"both bundles were built
+at 3c3df98; the build recorded an uncommitted working tree (2 file(s) changed at build time), so these
+bundle bytes include work no commit names and cannot carry a commit identity claim"* — alongside
+`bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: false`, `supportsCommitIdentity: false`, with
+the run still passing as a measurement of what it did measure. The clean re-run at
+`test-results/batchd-playback-auth/2026-11-03-0926` is the pair that carries the claim. Renaming fields
+only helps if the disagreement they expose gets stated; this one is emitted by the gate, not by me.
+
 **Measured, from the packet's own `report.json`** (`observations.buildProvenance`,
 `test-results/human-review/palette-bench-2026-11-02-2250`):
 
