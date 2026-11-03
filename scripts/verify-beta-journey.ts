@@ -235,7 +235,7 @@ async function main(): Promise<number> {
   const webDist = join(ROOT, 'apps/web/dist/index.html');
   if (!existsSync(serverDist) || !existsSync(webDist)) {
     throw new Refusal(
-      'production bundles are missing; run `pnpm run build:production` before this gate',
+      'production bundles are missing; run `pnpm exec tsx scripts/build-production-bundles.ts` before this gate',
     );
   }
   // A stale or missing bundle is a prerequisite, not a measurement: the journey must run against the
@@ -245,7 +245,7 @@ async function main(): Promise<number> {
     provenance = verifyBuildProvenance({ root: ROOT });
   } catch (error) {
     throw new Refusal(
-      `${error instanceof Error ? error.message : String(error)}; then run \`pnpm exec tsx scripts/build-production-bundles.ts\` (or \`pnpm run verify\`, which builds them) and re-run this gate`,
+      `${error instanceof Error ? error.message : String(error)}; then run \`pnpm exec tsx scripts/build-production-bundles.ts\` (or \`pnpm run verify:release-gate\`, which builds and checks them) and re-run this gate`,
     );
   }
   const identity = describeBundleIdentity(provenance);

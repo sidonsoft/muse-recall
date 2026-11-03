@@ -136,8 +136,8 @@ jobs:
           MODEL_PROVIDER: echo
           LOG_LEVEL: warn
 
-      - name: Build production artifacts
-        run: pnpm run build
+      - name: Build production artifacts with provenance
+        run: pnpm exec tsx scripts/build-production-bundles.ts
         env:
           DATABASE_PATH: ./data/ci.db
           MODEL_PROVIDER: echo
