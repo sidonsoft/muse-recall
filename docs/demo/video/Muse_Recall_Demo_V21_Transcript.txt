@@ -1,29 +1,38 @@
-0:00 — Opening
-The app works. But it has brought back a decision you already changed. This is real Muse Spark output. Recall supplied the current decision; the model still used the old one. Guard flags it for review.
+0:00 — disclosure
+No product code existed before the event. We built Muse Recall this week.
 
-0:14 — Memory
-Muse Recall keeps the decisions behind your project. Save a requirement once. When it changes, correct the memory: the old record is superseded, the replacement stays active, and the reason stays in history. In this recorded session, the successful change needed an explicit instruction to follow current decisions. Memory supplies context. You still judge the result.
+0:05 — build
+I save one project decision. Here it is a visual direction, but it could be any rule: a library, an API contract, an accessibility requirement. Then I ask Muse Spark for a farm-animal memory game; generation is sped up. The page follows the decision, and I approve version one.
 
-0:39 — Images
-The expanded beta brings your references into that same workflow. Upload an image, generate one, or edit an asset. Extract an object from a reference picture, inspect the transparent cutout, approve it, and insert it into an application request. These are retained live results. The image survives inside the approved application, through a restart and a rollback.
+0:24 — new-session
+A fresh page, no request history. I ask for a Next Level button. Guard says not verified, so I reject the change.
 
-1:03 — Sources
+0:33 — correct
+The decision changed, so I correct the memory. The old record becomes superseded, the new decision becomes active, and the reason stays in history.
+
+0:43 — stale
+Same request again, and the old decision comes back. Guard flags it. It is advisory and never blocks, so I reject it.
+
+0:51 — explicit
+Now I ask for the button, and tell Muse Spark to follow the project's current decisions from memory. The source follows the corrected decision, and Guard reports no violation by its supported checks, which is not a certificate. I approve version two, button included.
+
+1:08 — models
+Here is where Meta is used. The Muse Code CLI generates and changes applications. Meta media APIs handle image generation and editing, segmentation, transcription, and visual review.
+
+1:22 — decision-history
+Each decision keeps its source and history. Inspect what a generation received, then export and import memory with its replacement links intact. The project keeps its reasons as the application changes.
+
+1:35 — images
+The beta brings references into that same workflow. Upload an image, generate one, or edit an asset. Meta's SAM isolates an object from a reference image. We review the transparent cutout, approve it, and insert it into an application request. These are retained real model results; the approval and insertion are replayed here.
+
+1:57 — sources
 Voice and video can be project sources too: record or upload, play back, transcribe speech, and inspect a clip. Suggested decisions wait for confirmation. These features help assemble the brief; they do not approve the work.
 
-1:19 — Review
+2:12 — review
 Capture the preview and review that frame against selected decision revisions. Screenshot review offers findings and uncertainty. It changes no application and approves nothing. Source-based Decision Guard is separate. Both are advisory, and neither certifies correctness.
 
-1:37 — Approval
-Forge stages the change. Read the diff, inspect dependencies, and try the preview. Approval publishes the bytes checked by the load-time browser gate. Copy or download that version, and keep earlier versions recoverable. The beta bundles its supported game engine.
-
-1:54 — Evidence
+2:29 — evidence
 Does remembered context help? In Phase seventeen, original-rule violations fell from thirty-seven of fifty-seven to zero of fifty-eight on Muse Spark, and forty-nine of sixty to one of sixty on Muse Spark Open. Four hundred eighty runs, six fixed tasks, source-code checks. That trial does not establish general correctness or validate the newer media features.
 
-2:19 — Decision-History
-Your project is more than a transcript. Each decision has a source and a history. You can inspect the revision a generation actually received, so a later correction is never confused with what the model knew at the time. Export that memory and import it into another install, with its history and replacement links intact. The application can change without losing the brief behind it. That is the continuity this beta is designed to provide.
-
-2:47 — Continuity
-A timeline and relationship map preserve what changed and why. Other tools can query the same project memory through MCP.
-
-2:56 — Close
+2:55 — close
 Muse Recall. The memory your project keeps.

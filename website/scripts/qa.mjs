@@ -252,10 +252,17 @@ try {
   // 5. pre-rendered static HTML: crawlers, bots, and JS-disabled readers see content
   const html = await (await fetch(URL_)).text();
   const missing = [
-    ['hero headline', 'orrectable project memory'],
+    ['hero product promise', 'local-first studio for building small browser applications'],
+    ['hero headline phrase', 'orrectable project memory'],
+    ['beta capability grid', 'Generation context you can read back'],
+    ['SAM workflow', 'Select the object. Keep the transparency'],
+    ['evidence classes', 'Deterministic fixture'],
     ['evidence table', 'Phase 17'],
     ['timeline records', 'Sunset → ocean'],
     ['JSON-LD', 'SoftwareSourceCode'],
+    ['demo video markup', './video/muse-recall-demo.mp4'],
+    ['JSON-LD VideoObject', '"@type": "VideoObject"'],
+    ['VideoObject duration', 'PT3M0S'],
     ['site self-verification', 'held to the same bar'],
     ['manifest link', 'rel="manifest"'],
     ['apple-touch-icon', 'apple-touch-icon'],
@@ -277,6 +284,108 @@ try {
     }
   }
   check('demo video, poster and captions reachable', !!vid && vid.controls && vidOk.length === 3 && vidOk.every(Boolean), JSON.stringify({ vid, vidOk }));
+
+  // 5b. demo media: served bytes match the posted download size, captions parse, transcript serves
+  const media = await (async () => {
+    const range = await fetch(URL_ + 'video/muse-recall-demo.mp4', { headers: { Range: 'bytes=0-0' } });
+    const total = Number((range.headers.get('content-range') || '').split('/')[1]);
+    const vtt = await (await fetch(URL_ + 'video/muse-recall-demo.en.vtt')).text();
+    const cues = vtt.split('\n\n').filter((b) => b.includes('-->'));
+    const ends = cues
+      .map((b) => b.split('\n').find((l) => l.includes('-->')).split('-->')[1].trim().split(' ')[0])
+      .map((t) => t.split(':').reduce((acc, p) => acc * 60 + Number(p.replace(',', '.')), 0));
+    const transcript = await fetch(URL_ + 'video/muse-recall-demo-transcript.txt');
+    const transcriptBody = await transcript.text();
+    const labels = await evalJS(`(() => {
+      const f = document.querySelector("#watch figure.video-figure");
+      return [...f.querySelectorAll("a")].map((a) => a.textContent.trim()).join(" | ");
+    })()`);
+    return {
+      total,
+      labels,
+      cues: cues.length,
+      lastCueEnd: ends[ends.length - 1],
+      overlaps: ends.filter((e, i) => i > 0 && e < ends[i - 1]).length,
+      transcriptStatus: transcript.status,
+      transcriptChars: transcriptBody.length,
+      transcriptBeats: /^0:00 — /m.test(transcriptBody) && /^2:55 — /m.test(transcriptBody),
+      posterBytes: Number((await fetch(URL_ + 'video/muse-recall-demo-poster.jpg', { method: 'HEAD' })).headers.get('content-length') || 0),
+    };
+  })();
+  const declaredMb = [...media.labels.matchAll(/([\d.]+)\s*MB/g)].map((m) => Number(m[1]));
+  const servedMb = Math.round((media.total / 1e6) * 10) / 10;
+  check(
+    'posted download size matches the served video bytes',
+    media.total > 0 && declaredMb.length >= 1 && declaredMb.every((mb) => Math.abs(mb - servedMb) < 0.06),
+    `served=${media.total} B (${servedMb} MB) · labels=[${declaredMb.join(', ')}]`
+  );
+  check(
+    'caption track parses: cues present, no overlaps, all inside the runtime',
+    media.cues >= 40 && media.overlaps === 0 && media.lastCueEnd <= 180.001 && media.posterBytes > 50_000,
+    `cues=${media.cues} overlaps=${media.overlaps} lastCueEnd=${media.lastCueEnd} poster=${media.posterBytes}B`
+  );
+  check(
+    'plain-text transcript served, with timecoded beats',
+    media.transcriptStatus === 200 && media.transcriptChars > 1500 && media.transcriptBeats,
+    `status=${media.transcriptStatus} chars=${media.transcriptChars} beats=${media.transcriptBeats}`
+  );
+
+  // 5c. the sidecar track is offered, but not shown on load — the same text is burned into the frame
+  const trackState = await evalJS(`(() => {
+    const v = document.querySelector('#watch video');
+    const t = v.textTracks[0];
+    return {
+      tracks: v.textTracks.length,
+      kind: t && t.kind,
+      label: t && t.label,
+      mode: t && t.mode,
+      defaultAttr: [...v.querySelectorAll('track')].some((tr) => tr.hasAttribute('default')),
+      named: !!v.getAttribute('aria-label'),
+    };
+  })()`);
+  check(
+    'caption sidecar is offered without double-rendering the burned-in text',
+    trackState.tracks === 1 && trackState.kind === 'captions' && [ 'hidden', 'disabled' ].includes(trackState.mode) && !trackState.defaultAttr && trackState.named,
+    JSON.stringify(trackState)
+  );
+
+  // 5d. every in-page navigation target exists; the two "seven" claims are counted on the page
+  const anchors = await evalJS(`(() => {
+    const bad = [...document.querySelectorAll('.nav-menu a[href^="#"], .nav-links a[href^="#"], a.btn[href^="#"]')]
+      .map((a) => a.getAttribute('href'))
+      .filter((h) => h.length > 1 && !document.querySelector(h));
+    return { bad: [...new Set(bad)], ruleFamilies: document.querySelectorAll('.rulefam').length, toolChips: document.querySelectorAll('.chips .chip').length };
+  })()`);
+  check('every in-page anchor resolves to a section', anchors.bad.length === 0, anchors.bad.join(', ') || 'all resolve');
+
+  // 5e. every local asset path named anywhere in the built output must resolve — this catches
+  //     fallback and srcset variants (WebP ⇄ JPG/PNG, poster sizes) that the browser never fetched.
+  const assets = await (async () => {
+    const files = [
+      'dist/index.html',
+      ...fs.readdirSync('dist/assets').filter((f) => f.endsWith('.js')).map((f) => `dist/assets/${f}`),
+    ];
+    const set = new Set();
+    for (const f of files)
+      for (const m of fs.readFileSync(f, 'utf8').matchAll(/\.\/((?:assets|video)\/[A-Za-z0-9._/-]+\.(?:png|jpe?g|webp|mp4|vtt|txt))/g))
+        set.add(m[1]);
+    const bad = [];
+    for (const p of [...set].sort()) {
+      const r = await fetch(URL_ + p, { method: 'HEAD' });
+      if (r.status !== 200) bad.push(`${p} → ${r.status}`);
+    }
+    return { count: set.size, bad };
+  })();
+  check(
+    'every local asset path in the built output resolves',
+    assets.bad.length === 0,
+    assets.bad.join(', ') || `${assets.count} unique ./assets + ./video paths`
+  );
+  check(
+    'the seven Guard families and seven shared tools are counted on the page',
+    anchors.ruleFamilies === 7 && anchors.toolChips === 7,
+    JSON.stringify(anchors)
+  );
   const manifest = await (await fetch(URL_ + 'site.webmanifest')).json();
   const iconOk = await Promise.all(
     manifest.icons.map(async (i) => (await fetch(new URL(i.src, URL_))).ok)
@@ -333,7 +442,7 @@ try {
   const lbClosed = await evalJS(`!document.querySelector(".lb-backdrop")`);
   check(
     'gallery lightbox opens, arrows move, Escape closes',
-    lbOpen.exists && lbOpen.img?.endsWith('.webp') && lbOpen.count === '1 / 4' && lbMoved === '2 / 4' && lbClosed,
+    lbOpen.exists && lbOpen.img?.endsWith('.webp') && lbOpen.count === '1 / 5' && lbMoved === '2 / 5' && lbClosed,
     JSON.stringify({ ...lbOpen, moved: lbMoved, closed: lbClosed })
   );
 

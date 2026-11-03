@@ -2591,3 +2591,114 @@ section[id] {
   margin-left: 6px;
   font-size: 12px;
 }
+
+/* ---------- v0.1.0 beta copy: tables, sub-headings, media pairs ---------- */
+table.evidence caption {
+  caption-side: top;
+  text-align: left;
+  padding: 13px 18px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Long tokens (asset references, model ids, hex pairs) must never widen the page */
+table.evidence td,
+.engine-stage p,
+.footnote,
+.feature p,
+.step p,
+.advisory-note {
+  overflow-wrap: anywhere;
+}
+
+table.evidence td code,
+.engine-stage p code,
+.step p code,
+.feature p code,
+.footnote code,
+.advisory-note code,
+.chip code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--text);
+}
+
+.chip code {
+  font-size: 12.5px;
+}
+
+.sub-h {
+  margin: 44px 0 6px;
+  font-size: 18px;
+}
+
+.media-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.media-pair .figure {
+  margin-top: 44px;
+}
+
+@media (min-width: 860px) {
+  .media-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .media-pair .figure {
+    margin-top: 44px;
+  }
+}
+
+/* Four-card rows inside a section: 2×2 rather than a ragged auto-fit row */
+@media (min-width: 1000px) {
+  .features-grid.grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.advisory-note {
+  margin-top: 28px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-left: 3px solid var(--amber);
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.06);
+  padding: 16px 18px;
+  font-size: 14.5px;
+  color: var(--text);
+}
+
+.advisory-note b {
+  color: var(--amber);
+}
+
+.hero-note strong {
+  color: var(--text);
+}
+
+.eyebrow a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── In-content links need a cue that is not colour (Lighthouse link-in-text-block) ──
+   Prose links are underlined; buttons, chips and nav controls keep their own look. */
+main p a:not(.btn):not(.chip),
+main li a:not(.btn):not(.chip),
+main td a:not(.btn):not(.chip),
+main figcaption a:not(.btn):not(.chip),
+.advisory-note a:not(.btn),
+.why-panel a:not(.btn),
+.sitecheck a:not(.btn) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}

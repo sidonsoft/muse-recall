@@ -40,8 +40,11 @@ jobs:
       # Test-only: a11y audit, widget state machine, mobile overflow, LCP/CLS
       # against `vite preview`. Deliberately not a deploy.
       - run: npm run qa
-      # Every upstream link on the site must resolve in this repo's tree.
+      # Every upstream link on the site must resolve in this repo's tree, and the
+      # v0.1.0 tag the copy cites must still point at this commit.
       - run: npm run links
+        env:
+          CITED_COMMIT: 707921db83a374d155d3929ef9b99092bcd4e8f1
 
   gecko:
     runs-on: ubuntu-latest

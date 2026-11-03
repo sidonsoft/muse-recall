@@ -4,7 +4,9 @@
 
 **Purpose:** a short submission demo for the strongest supported contribution: correctable
 project memory connected to a reviewable software-building workflow.
-**Length:** 2:50.47 (final cut), including a separate evidence card.
+**Length:** 2:50.47 for this cut, including a separate evidence card. The file now published at
+that path is the three-minute recut described at the top of this page and in
+[`V21_QA.md`](video/V21_QA.md).
 **Audience:** hackathon judges who have not used the product.
 **Status:** **recorded 29 October 2026.** The cut is a continuous live screen recording
 (1920×1080, 2:50) with a visible cursor, speed-ramped generation waits, and insert cards for
@@ -263,19 +265,25 @@ it did.
 ## 9. Historical recorded cut (29 October 2026)
 
 This section describes the file at commit `c32d03b`, not the current bytes. The same public
-filename was replaced on 4 November by the 180.000-second beta demo (10,876,299 bytes,
-SHA-256 `6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`).
-See [current verification](video/V21_QA.md). The old recording remains available in Git history.
+filename carried the 180.000-second George-narrated beta demo (10,876,299 bytes, SHA-256
+`6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`) at the `v0.1.0` tag, and now
+carries the Bella / Eleven v4 recut. See [current verification](video/V21_QA.md). Every sidecar
+below is linked at its own historical commit, because the files at those paths have since been
+replaced.
 
 **Historical file:** [video at `c32d03b`](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
 (the V21 cut).
 **Duration:** 170.47 s (2:50.47) · 1920×1080 · 30 fps · H.264/AAC. **Voice:** ElevenLabs George;
 377 words.
 **SHA-256:** `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308` · 12,721,832 bytes.
-**Captions:** sidecar `Muse_Recall_Demo_V21.srt`, 36 cues; burned in. **QA:** `V21_QA.md`,
-[`video/V21_QA.md`](video/V21_QA.md), with the
-[contact sheet](video/Muse_Recall_Demo_V21_Contact_Sheet.jpg),
-[poster](video/Muse_Recall_Demo_V21_Poster.jpg) and [limits card](video/V21_Limits_Page.png).
+**Captions:** sidecar `Muse_Recall_Demo_V21.srt`, 36 cues; burned in. **QA:** the `V21_QA.md` at
+that [commit](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/V21_QA.md),
+with the [contact
+sheet](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_Contact_Sheet.jpg),
+[poster](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_Poster.jpg)
+and the [limits
+card](https://github.com/sidonsoft/muse-recall/blob/main/docs/demo/video/V21_Limits_Page.png) —
+that last card belongs to the earlier cut and was not re-recorded for the current one.
 
 | Approx. time | Beat |
 |---|---|
