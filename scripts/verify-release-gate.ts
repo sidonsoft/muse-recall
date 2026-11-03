@@ -367,7 +367,7 @@ async function main(): Promise<number> {
 async function runBuild(): Promise<{ code: number }> {
   console.log('\n── build: tsx scripts/build-production-bundles.ts');
   const { code } = await new Promise<{ code: number }>((resolve) => {
-    const child = spawn(process.execPath, ['scripts/build-production-bundles.ts'], {
+    const child = spawn('pnpm', ['exec', 'tsx', 'scripts/build-production-bundles.ts'], {
       cwd: ROOT,
       env: offlineEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],
