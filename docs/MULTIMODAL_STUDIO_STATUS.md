@@ -184,19 +184,27 @@ manifest. The identity pair for the newest commit is recorded by the identity ga
 running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-03-0700/report.json`: commit
-`2774a2b9ee5f` (KI-76 to KI-82, the fourth review's findings), `treeClean: true` (the state of the
-checkout while the gate ran — the field that meant that is now named `treeCleanAtMeasure`, see KI-84),
+`test-results/batchd-playback-auth/2026-11-03-0822/report.json`: commit
+`b6b065698be0` (KI-85 and KI-86, the two review-harness defects), with
+`treeCleanAtMeasure: true` (the KI-84 name — the state of the checkout while the gate ran),
 `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
-`serverBuildHash: 1d18b46e93b5…` and **`webBuildHash: b2471becf70f…` — the web bundle moved
-again**, because the approval rail's dependency wording and scan-limit rendering changed.
-`pnpm run verify` at that commit: 127 files, 1 611 passed, 3 skipped; Biome 0 errors /
-3 warnings / 17 infos. The same round re-ran, against those bundles, `verify:batchc-ui` (22),
-`verify:batche-review-ui` (20), `verify:runtime` (**14** checks,
-`test-results/runtime/20261103-0658/report.json`), `verify:studio-workflow` (**59** checks,
-project `studio-workflow-0cvcro`, with `dependency-disclosure-staged.png` and
+`serverBuildHash: e792a59fc933…` and `webBuildHash: b2471becf70f…`. **The web bundle did not move
+across KI-84, KI-85 or KI-86**, and that is now a measurement rather than a reason: only
+`scripts/build-production-bundles.ts` and `scripts/lib/build-provenance.ts` among the `scripts/` tree
+are hashed inputs, and the server bundle moved from `1d18b46e93b5…` to `e792a59fc933…` because the
+provenance library itself changed and the manifest embeds the commit.
+`pnpm run verify` at that commit: 130 files, 1 631 passed, 3 skipped; Biome 0 errors /
+3 warnings / 14 infos; `pnpm run typecheck:tests` exit 0. Re-run against those bundles in the same
+round: `verify:batchc-ui` (22), `verify:batche-review-ui` (**20**), `verify:runtime` (**14** checks,
+`test-results/runtime/20261103-0823/report.json`), `verify:studio-workflow` (**59** checks, project
+`studio-workflow-0f9wcd`, with `dependency-disclosure-staged.png` and
 `dependency-disclosure-approved.png` in `test-results/studio-after/`) and the offline media journey
-(`test-results/media-journey/2026-11-03-07014215`: 6 checks, 0 dispatches).
+(**6** checks, 0 dispatches, `test-results/media-journey/2026-11-03-08235171`).
+
+The pair one round earlier — `test-results/batchd-playback-auth/2026-11-03-0700/report.json`, commit
+`2774a2b9ee5f`, server `1d18b46e93b5…`, web `b2471becf70f…` — is kept, and is superseded rather than
+wrong: it carried the fourth review's findings and was measured with the old field names, including a
+bare `treeClean` whose ambiguity KI-84 later removed.
 
 **Where that pair sits relative to HEAD, measured rather than reasoned.** It was measured
 at `2774a2b`; the commits on top of it (`0d0bf17` docs, `775e2ed` the KI-83 gate guard)
