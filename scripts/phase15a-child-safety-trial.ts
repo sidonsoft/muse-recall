@@ -24,13 +24,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Page } from 'playwright-core';
 import { evaluateDecisionGuardAdvisory } from '../apps/server/src/forge/decision-guard.js';
-import { buildForgePrompt, buildRetrievalQuery } from '../apps/server/src/forge/prompt.js';
+import { buildRetrievalQuery } from '../apps/server/src/forge/prompt.js';
 import { ForgeJobManager } from '../apps/server/src/forge/runner.js';
 import { checkGameRuntime } from '../apps/server/src/forge/runtime-check.js';
 import { ForgeError, ForgeWorkspace } from '../apps/server/src/forge/workspace.js';
 import { MemoryEngine, openDatabase } from '../packages/memory-engine/src/index.js';
 import type { DecisionGuardAdvisory, ForgeJob } from '../packages/shared/src/index.js';
 import { seedDemoMemories, seedForgeDemo } from './lib/demo-seed.js';
+import { buildPhase15APrompt } from './lib/phase15a-prompt-snapshot.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -250,9 +251,12 @@ async function runSlot(slot: Slot, attempt: number, preview: Buffer): Promise<At
         },
         { now: new Date() },
       );
+      // The historical protocol passed a raw joined block; the production
+      // builder no longer accepts that input, so reconstruction uses the
+      // frozen Phase 15A snapshot (scripts/lib/phase15a-prompt-snapshot.ts).
       const memoryBlock = retrieval.results.map((r) => `- ${r.injected_content}`).join('\n');
       const reconstructed = sha256(
-        buildForgePrompt({ kind: 'modify', prompt: REQUEST, request: REQUEST, memoryBlock }),
+        buildPhase15APrompt({ kind: 'modify', prompt: REQUEST, request: REQUEST, memoryBlock }),
       );
 
       const logsText = job.logs.join(' ');

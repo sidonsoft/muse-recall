@@ -10,14 +10,14 @@ product.
 
 | # | Threat | Impact | Status |
 | --- | --- | --- | --- |
-| T1 | Model emits a tool call that was never authorized | File/data damage | **Mitigated**: six bounded tools; writes require a separate user decision; append-only audit |
+| T1 | Model emits a tool call that was never authorized | File/data damage | **Mitigated**: seven bounded tools; on the session surface every write is a separate user decision; the MCP surface is read-only by default and `--allow-writes` is a startup authorization with NO per-write review (client-side review is then the operator's); append-only audit |
 | T2 | Prompt injection arrives via stored memory or external content | Agent obeys attacker text | **Mitigated in prompt construction**: bounded escaped data, ids/provenance, explicit no-authority wording; model robustness remains a residual risk |
 | T3 | Generated UI executes model-authored JavaScript | Full client compromise | **Split**: declarative UI never executes model code; HTML Studio JavaScript runs only in a sandboxed opaque-origin iframe |
 | T4 | API key leaks to the browser | Credential theft | **Prevented**: keys stay in the server/CLI environment and travel to the CLI over stdin |
 | T5 | Malformed or hostile HTTP input crashes the server | Denial of service | **Handled**: Zod validation + envelope + safe error mapping |
-| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated**: startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app) |
+| T6 | Local API is reachable from other machines | Unauthorized use | **Mitigated by default**: with `ACCESS_TOKEN` unset, startup refuses any non-loopback `HOST` and re-checks the bound socket; host/origin guards; no authentication (single-user local app). An operator MAY set `ACCESS_TOKEN` for a deliberate off-loopback bind — see “Remote-access groundwork” below |
 | T7 | Database file exfiltrated | Memory disclosure | Out of scope for local-first; the DB and workspaces are gitignored |
-| T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; no OS-level sandbox owned by this app |
+| T8 | Forge child process escapes its workspace | Host file/network access | **Partially mitigated**: scrubbed env, staging cwd, CLI sandbox/approval flags; operator-owned OS isolation available via the boot-probed `FORGE_WORKER_WRAPPER` seam (probe exercises the real staging accesses, beta); default local beta still runs as the server user |
 | T9 | Corrupt/partial job persistence hides completed work | Data loss / false empty project | **Mitigated**: atomic per-job and version promotion, schema validation, explicit recovery issues, no silent state reset, verified version hashes |
 | T10 | A restart silently re-runs an unfinished model job or promotes unreviewed bytes | Duplicate spend / unreviewed publish | **Mitigated**: queued/running jobs become `interrupted`; approval still requires exact-byte SHA-256 and runtime verification |
 
@@ -63,11 +63,40 @@ the full server environment. It now receives:
   `--preset empty` because it needs file-write tools.
 
 **What this does not establish.** `--workspace` roots the CLI's policy-gated tools; it is
-not a container, VM, or OS user boundary. The child runs as the same local user as the
-server and could read files that user can read if the CLI's own sandbox/approval layer were
-bypassed. The app does not claim to sandbox that process. A stronger boundary would run
-Forge in a dedicated OS user/container with only the workspace mounted; that is out of
-scope for the single-user local beta.
+not a container, VM, or OS user boundary. **The default local-beta posture, stated plainly:**
+the Forge child runs as the same user as the server, with the server's own permissions —
+staging is 0700 and the prompt file 0600, both server-owned. The app does not claim to
+sandbox that process.
+
+A stronger boundary is an operator deployment step, and the server provides the code-side
+seam for it: when `FORGE_WORKER_WRAPPER` names an absolute executable, every Forge CLI
+launch goes through that pass-through wrapper (`wrapper <cli> <args...>`). The wrapper is
+verified at startup by executing the real access pattern, two probes, both gating boot:
+
+1. pass-through: `<wrapper> node -e 0`;
+2. staging access (beta fix for KI-49's trap): with cwd = a 0700 scratch dir created with
+   the same semantics as production, read a 0600 prompt file inside it and write a file
+   into the directory — the exact accesses every generation performs.
+
+A wrapper that fails either probe refuses boot rather than silently reverting to direct
+execution — or, worse, dying with EACCES inside the first paid generation.
+
+**No uid-changing recipe is published here (KI-49).** A `setpriv`-style wrapper cannot
+read the server-owned 0600 prompt or write inside the server-owned 0700 staging tree; the
+beta review removed that example, and the staging probe now refuses such wrappers AT BOOT.
+Proven paths with no code change:
+
+- **container launcher with the staging tree bind-mounted and the container uid mapped to
+  the server euid** — same-uid bind-mount keeps the 0700/0600 tree writable while the
+  namespace isolates the rest (read-only root, dropped caps, no host network);
+- **same-uid scope wrappers** (`systemd-run --user-slice`, a `sandbox-exec` profile):
+  cgroup/limits/mount-view hardening without a uid change — partial isolation, stated as
+  such.
+
+True uid isolation needs server-side worker-group ACL support (staging 0750, prompt 0640,
+dedicated group — contract-visible), tracked as KI-49 / action register C-13 and queued as
+an owner call. Operator step-by-step: docs/ops/OPERATOR_RUNBOOKS.md (Forge worker
+isolation).
 
 ## Durable jobs and restart recovery
 
@@ -167,19 +196,95 @@ paths, not absolute host paths.
 **Envelope discipline.** Clients get exactly one response shape, so a failure is never
 silently treated as an empty success.
 
-**Loopback bind.** `HOST` must be `127.0.0.1`, `::1`, or `localhost`; any other value (including
-`0.0.0.0`) stops startup. After `listen`, every bound socket is checked again so a `localhost`
-that resolves off-loopback is also refused. This is the network boundary: the Host-header check
-below is not, because a client that reaches a non-loopback socket can send any `Host` it likes.
+**Loopback bind (default).** `HOST` must be `127.0.0.1`, `::1`, or `localhost`; any other value
+(including `0.0.0.0`) stops startup. After `listen`, every bound socket is checked again so a
+`localhost` that resolves off-loopback is also refused. This is the network boundary: the
+Host-header check below is not, because a client that reaches a non-loopback socket can send
+any `Host` it likes. The one exception is a deliberate `ACCESS_TOKEN` configuration (below),
+where the re-check logs a warning instead of refusing.
 
-**Host/origin guards.** Requests must name a loopback host. State-changing requests with a
-foreign or `null` Origin are rejected; CORS only allows configured local origins.
+**Host/origin guards.** In the default (tokenless) mode requests must name a loopback host.
+State-changing requests with a foreign or `null` Origin are rejected; CORS only allows
+configured local origins. With `ACCESS_TOKEN` set, the Host *name* check relaxes (the port must
+still match): DNS rebinding can deliver a request but cannot attach the bearer secret, which the
+timing-safe check enforces first — 401 precedes any origin verdict.
+
+## Remote-access groundwork (2026-10-30, decision D045)
+
+`ACCESS_TOKEN` (≥16 chars) switches the trust model: every `/api` route except
+`GET /api/health` requires `Authorization: Bearer <token>` (compared over SHA-256 digests,
+timing-safe); a non-loopback `HOST` becomes permissible and the startup re-check logs a
+warning naming the exposed addresses. Browser clients pick the secret up from
+`localStorage['mml.access_token']`; curl/MCP-style clients set the header directly.
+`GET /api/meta` reports `safety.authentication` as `loopback-only` or `shared-token` —
+the server states its own posture instead of letting operators infer it.
+
+Because the token lives in a header, a `<audio>`/`<video src>` or a download `href`
+pointed straight at `/media/sources/:id/bytes` cannot authenticate: the element issues a
+bare GET and gets `401`. Voice/video bytes are therefore fetched through the API client and
+handed to the element as a `blob:` object URL (revoked when the selection changes or the
+panel unmounts), so the token never enters a URL, a bookmark, or a Referer, and downloads
+reuse the already-authenticated bytes instead of issuing a second bare request. Wire-verified
+1 Nov 2026 with production bundles in real Chromium under a real `ACCESS_TOKEN`
+(`pnpm verify:batchd-playback-auth`, 15 checks, audio **and** video): both byte routes answer
+a bare URL with `401 unauthorized` and hand the exact uploaded bytes to a bearer fetch; each
+media element's `src` scheme is `blob:` and the bytes behind it hash to the uploaded source
+sha256; the `<video>` element decodes a 2.9 KB ffmpeg-encoded baseline H.264 fixture
+(64×64, 1 s) to a real frame; one download per source, named `<source_id>.wav` /
+`<source_id>.mp4`, from a credential-free `blob:` URL; the previous source's object URL is
+revoked on selection change; zero failed HTTP requests, zero provider dispatches, and the
+token absent from server logs. The same 15 checks pass with `ACCESS_TOKEN` unset, where the
+byte requests carry no authorization header at all.
+
+Wire-verified 31 Oct 2026 (built server, fresh port, real curl): no token → `401
+{code: unauthorized}`; correct bearer → `200`; wrong bearer → `401`; `GET /api/health`
+open (`200`) while `GET /api/live` requires the token — the exemption boundary the README
+documents, confirmed at socket level rather than only in inject tests.
+
+This is deliberately **authentication without identity**: one shared secret, no users, no
+per-project authorization, no rotation UI, no expiry. The token in `localStorage` is
+readable by any script on the served page, so pair token mode with the origin guard you
+already get — and remember the secret travels over plain HTTP unless you terminate TLS
+yourself. Multi-user deployment still needs the roadmap §5 controls (identity, scoped
+credentials, quotas); setting this token does not provide them.
+
+**Standing adversarial suite** (2026-10-30, roadmap §5 release criterion):
+[tests/integration/adversarial-boundary.test.ts](../tests/integration/adversarial-boundary.test.ts)
+attacks the composed surface, not the guards in isolation, and runs on every CI
+push. It pins the hook order (**host guard → authentication → origin guard**), so a
+valid token never overrides the host check (wrong port is refused even authenticated)
+and never acts as CSRF clearance (cross-origin mutations still 403); the health
+exemption never widens under path-shape tricks (case, trailing slash, `POST`);
+Authorization shape games (case, spacing, appended bytes, percent-lookalikes,
+wire-joined duplicates) all fail the digest comparison; and no response body ever
+echoes the secret. The D045 posture itself is pinned — arbitrary Host names pass in
+token mode only WITH the secret AND the exact configured port, so a regression that
+drops the port check would fail CI.
 
 ## Deployment
 
-Authentication, per-user namespaces, CSRF tokens, and rate limiting are **not**
-implemented. The loopback bind, host/origin guards, and absence of a public URL are the
-only controls keeping the API private. Do not expose this build to a network.
+Operator procedures (upgrade, rollback, incident, disaster recovery) live in
+[ops/OPERATOR_RUNBOOKS.md](ops/OPERATOR_RUNBOOKS.md). Alert SIGNALS
+(`GET /api/health alerts.*`) and a cron-ready prober (`pnpm ops:alert-prober`, D050/D051)
+exist; no process pages a human by itself — that wiring remains an operator step, and the
+runbook says so. Beyond the optional shared token: per-user namespaces, CSRF tokens,
+and rate limiting are **not** implemented. The loopback bind, host/origin guards, optional bearer token, and
+absence of a public URL are the only controls keeping the API private. Do not expose this
+build to a network without setting `ACCESS_TOKEN` — and treat that as groundwork, not a
+multi-user security boundary.
+
+## Dependency posture (audited 31 Oct 2026)
+
+`pnpm audit` across the whole workspace (production and dev manifests):
+**no known vulnerabilities at head.** The standalone landing-page project under
+`website/` (an npm project, deliberately outside the workspace) reports two
+advisories against its BUILD tooling: a high in `vite` (path traversal in the
+dev-server's optimized-deps `.map` handling, all vite ≤6.4.3) and a moderate in
+`esbuild` (dev-server request exposure, ≤0.24.2). Both are dev-server flaws:
+the deployed artifact is static output built by CI and hosted on GitHub Pages -
+no dev server ever runs for a visitor. Fixes are semver-major (`vite` 8.x) and
+the tree is inside the freeze until judging closes, so the bump is queued
+post-judging (exact advisories in KNOWN_ISSUES KI-46).
 
 ## Repository hygiene
 

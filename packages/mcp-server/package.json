@@ -1,0 +1,24 @@
+{
+  "name": "@mml/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP (stdio) surface for the shared tool contract: the same six bounded tools over the Model Context Protocol.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "bin": {
+    "mcp-recall": "./src/main.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mml/memory-engine": "workspace:*",
+    "@mml/shared": "workspace:*",
+    "@mml/tool-runtime": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.1.12"
+  }
+}

@@ -18,6 +18,10 @@ export interface MemoryRow {
   content_hash: string;
   tags: string;
   superseded_by: string | null;
+  /** Monotonic edit counter; the migration backfills it to 1. */
+  revision: number;
+  /** Actor of the latest change to this row. */
+  actor: string;
   /** JSON array of ids this record replaced, from a correlated subquery. */
   supersedes_json: string;
 }
@@ -33,7 +37,7 @@ export const MEMORY_SELECT_COLUMNS = `
   m.id, m.type, m.scope, m.project_id, m.content, m.source_session_id,
   m.source_reference, m.confidence, m.validation_status, m.status,
   m.created_at, m.updated_at, m.expires_at, m.content_hash, m.tags,
-  m.superseded_by,
+  m.superseded_by, m.revision, m.actor,
   COALESCE(
     (SELECT json_group_array(s.old_id) FROM memory_supersessions s WHERE s.new_id = m.id),
     '[]'
@@ -84,5 +88,12 @@ export function rowToMemory(row: MemoryRow): Memory {
     supersedes: parseStringArray(row.supersedes_json),
     superseded_by: row.superseded_by,
     tags: Array.isArray(tags) ? tags : [],
+    // A pre-contract row (missing the columns entirely) still maps cleanly:
+    // it started at revision 1 and only the HTTP user actor could have
+    // written it. Storing the defaults in the migration keeps this path rare
+    // rather than load-bearing, so a dropped column surfaces as a parse
+    // failure instead of silently resetting history.
+    revision: Number.isInteger(row.revision) && row.revision >= 1 ? row.revision : 1,
+    actor: row.actor ?? 'user',
   });
 }

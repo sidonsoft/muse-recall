@@ -9,6 +9,7 @@ import { buildApp } from '../../apps/server/src/app.js';
 import type { AppConfig } from '../../apps/server/src/config.js';
 import { SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 /**
  * Tool loop and authorization tests.
@@ -306,6 +307,7 @@ describe('security', () => {
     const s = await session(h.app);
     // A memory that looks like an instruction, stored earlier.
     h.engine.create({
+      ...CREATE_DEFAULTS,
       type: 'contextual_fact',
       scope: 'project',
       project_id: 'demo-game',

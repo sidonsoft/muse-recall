@@ -24,6 +24,14 @@ was judged.
 - Keep each PR to one change and describe what it does and how you checked it.
 - Don't edit the checksummed evidence under `docs/hackathon-evidence/` or
   `docs/demo/evidence/`.
+- For anything bigger than a small fix, open an issue first so we can agree on the
+  approach. The [roadmap](docs/roadmap/POST_HACKATHON_ROADMAP.md) shows where the project
+  is heading.
+
+## Reporting security problems
+
+Please don't open a public issue for a vulnerability. See [SECURITY.md](SECURITY.md) for how
+to report it privately.
 
 ## What happens next
 
@@ -33,4 +41,8 @@ was judged.
 - PRs into `integration` are squash-merged, so each PR becomes one commit.
   Give your PR a clear title; it becomes the commit message.
 - Tested batches are promoted from `integration` to `main` in one reviewed PR.
+  On 4 November 2026 the owner authorized promotion of the verified full beta and README
+  to `main` as v0.1.0. Earlier submission tags and research evidence stay frozen.
+  Historical freeze mechanics are recorded in
+  [SUBMISSION_PRESERVATION.md](docs/release/SUBMISSION_PRESERVATION.md).
 - Nothing is merged automatically.

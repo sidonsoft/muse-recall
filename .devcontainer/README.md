@@ -81,10 +81,18 @@ pnpm build     # production web + server build
   username, repository contents, environment or machine details. Like any web request,
   it reveals your IP address to that service, whose logging this project does not
   control. It runs only in Codespaces (not in a local dev container), waits at most
-  3 seconds and cannot make setup fail. To opt out, set `DO_NOT_TRACK=1` or
+  3 seconds and cannot make setup fail (verified against `setup.sh` 31 Oct:
+  `curl --max-time 3 ... || true`). Opt-out triggers on EITHER variable set to
+  ANY non-empty value — `=1` below is the conventional spelling, not a
+  requirement — and the owner's own test launches increment a separate counter,
+  so the public number counts real starts. To opt out, set `DO_NOT_TRACK=1` or
   `MUSE_RECALL_NO_COUNT=1` as a
   [Codespaces secret](https://github.com/settings/codespaces) before you create the
   codespace. Anyone can read the total at
-  `https://abacus.jasoncameron.dev/get/sidonsoft-muse-recall/codespaces-launches`.
+  `https://abacus.jasoncameron.dev/get/sidonsoft-muse-recall/codespaces-launches`
+  (observed 31 Oct: until the first real launch the key does not exist yet and the
+  service answers `{"error":"Key not found"}` rather than `0` - owner test launches
+  deliberately increment a separate counter, so a missing key means "no real
+  launches yet", not a broken link; the key is created by the first matching `hit`).
 - To start over, stop `pnpm dev`, delete `data/` and `workspaces/`, then run
   `pnpm demo:seed` and `pnpm dev` again.

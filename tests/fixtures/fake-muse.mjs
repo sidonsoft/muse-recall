@@ -12,6 +12,12 @@ const FIXTURES_DIR = dirname(fileURLToPath(import.meta.url));
 const workspace = value('--workspace');
 const promptPath = value('--prompt-file');
 const prompt = promptPath ? readFileSync(promptPath, 'utf8') : '';
+// Batch E tests assert what guidance the model was actually handed, so the
+// fixture can copy the exact prompt to a stable path instead of leaving it in
+// the runner's private staging directory.
+if (process.env.FAKE_MUSE_PROMPT_COPY && promptPath) {
+  writeFileSync(process.env.FAKE_MUSE_PROMPT_COPY, prompt, 'utf8');
+}
 const requested = process.env.FAKE_MUSE_MODE ?? 'auto';
 let mode =
   requested === 'auto'
@@ -20,11 +26,24 @@ let mode =
         : 'generate')
     : requested;
 const emit = (event) => process.stdout.write(`${JSON.stringify(event)}\n`);
-const usage = (calls, input = 100, output = 10) =>
+// The real CLI reports the model it actually resolved (run.model.configured)
+// before usage. Failure-only modes (network/auth/quota before any run) never
+// reach usage(), so they never announce — matching what the server then
+// records: no observation.
+const model = value('--model') ?? 'fake-muse-resolved-1';
+let announced = false;
+const announceModel = () => {
+  if (announced) return;
+  announced = true;
+  emit({ payload_type: 'run.model.configured', payload: { model_id: model } });
+};
+const usage = (calls, input = 100, output = 10) => {
+  announceModel();
   emit({
     payload_type: 'run.usage',
     payload: { calls, models: [{ input_tokens: input, output_tokens: output }] },
   });
+};
 const done = (text) =>
   emit({ payload_type: 'run.terminal', payload: { terminal: 'completed', text } });
 

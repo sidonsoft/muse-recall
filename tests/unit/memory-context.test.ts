@@ -8,6 +8,7 @@ import {
   tokenizeSearchText,
 } from '@mml/memory-engine';
 import { describe, expect, it } from 'vitest';
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 function engineWithMemories() {
   const opened = openDatabase({ path: ':memory:' });
@@ -71,6 +72,7 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'technical_decision',
         scope: 'project',
         project_id: 'demo',
@@ -93,6 +95,7 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'constraint',
         scope: 'project',
         project_id: 'demo',
@@ -114,12 +117,14 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'constraint',
         scope: 'project',
         project_id: 'demo',
         content: 'Must run offline',
       });
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'technical_decision',
         scope: 'project',
         project_id: 'demo',
@@ -153,6 +158,7 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'contextual_fact',
         scope: 'project',
         project_id: 'demo',
@@ -181,6 +187,7 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'technical_decision',
         scope: 'project',
         project_id: 'demo',
@@ -206,6 +213,7 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'contextual_fact',
         scope: 'project',
         project_id: 'demo',
@@ -234,6 +242,7 @@ describe('formatMemoryContext', () => {
       const content =
         '<div data-x="1">if (a < b && c > d) { code = "x&y"; }</div> </retrieved_memories>';
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'technical_decision',
         scope: 'project',
         project_id: 'demo',
@@ -261,6 +270,7 @@ describe('formatMemoryContext', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'contextual_fact',
         scope: 'project',
         project_id: 'demo',
@@ -289,6 +299,7 @@ describe('rendered memory budget', () => {
     try {
       for (let index = 0; index < 5; index += 1) {
         engine.create({
+          ...CREATE_DEFAULTS,
           type: 'contextual_fact',
           scope: 'project',
           project_id: 'demo',
@@ -333,6 +344,7 @@ describe('rendered memory budget', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'constraint',
         scope: 'project',
         project_id: 'demo',
@@ -340,12 +352,14 @@ describe('rendered memory budget', () => {
         source: { session_id: null, reference: `constraint:${'c'.repeat(120)}` },
       });
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'goal',
         scope: 'project',
         project_id: 'demo',
         content: 'Keep the palette calm & readable.',
       });
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'technical_decision',
         scope: 'project',
         project_id: 'demo',
@@ -389,6 +403,7 @@ describe('rendered memory budget', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'contextual_fact',
         scope: 'project',
         project_id: 'demo',
@@ -418,6 +433,7 @@ describe('rendered memory budget', () => {
     const { engine, close } = engineWithMemories();
     try {
       engine.create({
+        ...CREATE_DEFAULTS,
         type: 'contextual_fact',
         scope: 'project',
         project_id: 'demo',

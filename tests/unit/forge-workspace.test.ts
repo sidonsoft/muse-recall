@@ -1,7 +1,8 @@
-import { mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ensurePrivateDirectory, writePrivateFile } from '../../apps/server/src/forge/fs-utils.js';
 import {
   extractInlineScripts,
   ForgeError,
@@ -54,6 +55,202 @@ describe('containment', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues.join(' ')).toMatch(/escapes|symlink|regular file/);
     await rm(outside, { recursive: true, force: true });
+  });
+});
+
+describe('the engine the product vendors into a game', () => {
+  const ENGINE_URL = 'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js';
+  const MARKER = '<script data-forge-vendor="phaser@3.80.1"';
+
+  it('stages the reference but reads back the engine, hashed as shipped', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.vendored).toEqual([
+      {
+        name: 'phaser',
+        version: '3.80.1',
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/) as unknown as string,
+        bytes: expect.any(Number) as unknown as number,
+        replaced_url: ENGINE_URL,
+      },
+    ]);
+    expect(snapshot?.html).toContain(MARKER);
+    expect(snapshot?.html).not.toContain(ENGINE_URL);
+    expect(snapshot?.html.length).toBeGreaterThan(1_000_000);
+    expect(snapshot?.vendor_gaps).toEqual([]);
+  });
+
+  it('a model-written script still counts against the inline caps, the engine does not', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    const scripts = extractInlineScripts(snapshot?.html ?? '');
+    // One model script: the engine the product inlined is verified by hash and
+    // is not the code the caps exist to bound.
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0]).toContain('console.log(score)');
+    expect((await workspace.validateStaged('demo-game', JOB)).ok).toBe(true);
+  });
+
+  it('refuses a staged document that writes the vendor markers itself', async () => {
+    /*
+     * The delimiters are a format the product writes, not a claim an author may
+     * make. A staged file that carries them could hide whatever it likes behind
+     * text that looks like the product's own engine block: the source view would
+     * elide it, the diff would summarise it away, and an unverified payload would
+     * ship under the engine's name. The marker text is therefore invalid in source.
+     */
+    const staging = await workspace.createStaging('demo-game', JOB);
+    const smuggled = HTML.replace(
+      '</body>',
+      '<!-- forge-vendor:phaser@3.80.1 start | sha256 ' +
+        '0'.repeat(64) +
+        ' -->\n<script>window.stolen = document.cookie;</script>\n' +
+        '/* The MIT License (c) 2024 Richard Davey */\n' +
+        '<!-- forge-vendor:phaser@3.80.1 end -->\n</body>',
+    );
+    await writeFile(join(staging, 'index.html'), smuggled);
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toContain('forge-vendor: marker text');
+    // And the payload stays visible where a person reviews it, rather than being
+    // collapsed as if it were the engine.
+    const diff = await workspace.diffStaged('demo-game', JOB);
+    const html = diff.files.find((file) => file.path === 'index.html');
+    if (!html) throw new Error('the review diff showed no index.html');
+    // The smuggled block is shown as the model's own text, not elided as if it
+    // were the product's engine.
+    expect(html.diff).toContain('window.stolen');
+    expect(diff.summary).not.toContain('inlined by this product');
+  });
+
+  it('promotion records what the version carries, and the shipped file holds it', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    if (!snapshot) throw new Error('the staged file should exist');
+    await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+      html: snapshot.html,
+      expectedSha256: snapshot.sha256,
+    });
+    const state = await workspace.state('demo-game');
+    expect(state.versions[0]?.vendors).toEqual([
+      {
+        name: 'phaser',
+        version: '3.80.1',
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/) as unknown as string,
+        bytes: expect.any(Number) as unknown as number,
+        replaced_url: ENGINE_URL,
+      },
+    ]);
+    const shipped = await workspace.currentHtml('demo-game');
+    expect(shipped).toContain(MARKER);
+    expect(shipped).not.toContain(ENGINE_URL);
+    // What a person or a model reads is the source view, one line long.
+    const source = await workspace.currentSourceHtml('demo-game');
+    expect(source).toContain(ENGINE_URL);
+    expect(source).not.toContain(MARKER);
+    expect(source?.length ?? 0).toBeLessThan(600);
+  });
+
+  it('a modification seeded from the source view reproduces the engine byte for byte', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const first = await workspace.stagedSnapshot('demo-game', JOB);
+    if (!first) throw new Error('the staged file should exist');
+    await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+      html: first.html,
+      expectedSha256: first.sha256,
+    });
+
+    // The way the runner seeds a modification: the source view, then an edit.
+    const source = await workspace.currentSourceHtml('demo-game');
+    if (source === null) throw new Error('the approved source should exist');
+    const second = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(second, 'index.html'),
+      source.replace('const score = 0', 'const score = 7'),
+    );
+    const resnap = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(resnap?.vendored).toEqual(first.vendored);
+    // The engine block survives the round trip unchanged; only the model line did.
+    const engineFromFirst = first.html.slice(
+      first.html.indexOf('<!-- forge-vendor:phaser@3.80.1 start'),
+      first.html.indexOf('<!-- forge-vendor:phaser@3.80.1 end -->') + 40,
+    );
+    const engineFromSecond = resnap?.html.slice(
+      resnap.html.indexOf('<!-- forge-vendor:phaser@3.80.1 start'),
+      resnap.html.indexOf('<!-- forge-vendor:phaser@3.80.1 end -->') + 40,
+    );
+    expect(engineFromSecond).toBe(engineFromFirst);
+  });
+
+  it('diffs the change a reviewer is deciding on, not the engine', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const first = await workspace.stagedSnapshot('demo-game', JOB);
+    if (!first) throw new Error('the staged file should exist');
+    await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+      html: first.html,
+      expectedSha256: first.sha256,
+    });
+    const source = await workspace.currentSourceHtml('demo-game');
+    if (source === null) throw new Error('the approved source should exist');
+    const second = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(second, 'index.html'),
+      source.replace('const score = 0', 'const score = 7'),
+    );
+
+    const diff = await workspace.diffStaged('demo-game', JOB);
+    expect(diff.validation.ok).toBe(true);
+    expect(diff.summary).toContain('will carry its own phaser@3.80.1');
+    expect(diff.files[0]?.diff).toContain('const score = 7');
+    expect(diff.files[0]?.diff).not.toContain('forge-vendor:phaser');
+    expect(diff.files[0]?.diff.length ?? 0).toBeLessThan(20_000);
+    // The review shows a two-line change, not a 1.1 MB library.
+    expect(diff.files[0]?.before).toContain(ENGINE_URL);
+  });
+
+  it('refuses a forged vendor marker instead of exempting it', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(staging, 'index.html'),
+      `<!doctype html><html><body><canvas id="game"></canvas>
+<script>new Phaser.Game({});</script>
+<script data-forge-vendor="phaser@3.80.1">console.log("this is not the engine");</script>
+</body></html>`,
+    );
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toContain('not the pinned library');
+    // It is not treated as a vendored library for the caps either.
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(extractInlineScripts(snapshot?.html ?? '')).toHaveLength(2);
+  });
+
+  it('names a Phaser version it cannot vendor and leaves the reference alone', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML.replace('phaser@3.80.1', 'phaser@3.55.0'));
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(snapshot?.vendored).toEqual([]);
+    expect(snapshot?.vendor_gaps.map((gap) => gap.url)).toEqual([
+      'https://cdn.jsdelivr.net/npm/phaser@3.55.0/dist/phaser.min.js',
+    ]);
+    expect(snapshot?.vendor_gaps[0]?.reason).toContain('3.55.0');
+    expect(snapshot?.html).toContain('phaser@3.55.0');
+    const diff = await workspace.diffStaged('demo-game', JOB);
+    expect(diff.summary).toContain('cannot vendor');
+    // Still a game document, and still honest about needing the network.
+    expect(diff.validation.ok).toBe(true);
   });
 });
 
@@ -407,5 +604,99 @@ describe('state file integrity', () => {
       code: 'state_corrupt',
     });
     expect(await readFile(statePath(), 'utf8')).toBe(malformed);
+  });
+});
+
+describe('approved-version containment (adversarial witness, 31 Oct)', () => {
+  // The staging path got symlink witnesses early; the READ side — the
+  // approved version an API response and preview are built from — had no
+  // adversarial coverage. `readContainedBuffer` promises (lstat rejection +
+  // realpath re-check) these tests now pin.
+  const versionPath = (v: number) =>
+    join(root, 'forge', 'demo-game', 'versions', String(v), 'index.html');
+
+  async function promoteV1(): Promise<void> {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    await workspace.promote('demo-game', JOB, 'v1', { baseVersion: null, jobId: JOB });
+  }
+
+  it('refuses an approved version replaced by a symlink', async () => {
+    await promoteV1();
+    await unlink(versionPath(1));
+    await symlink('/etc/hostname', versionPath(1));
+    await expect(workspace.currentHtml('demo-game')).rejects.toMatchObject({
+      code: 'unsafe_file',
+    });
+  });
+
+  it('refuses an approved version replaced by a non-regular file', async () => {
+    await promoteV1();
+    await rm(versionPath(1));
+    await mkdir(versionPath(1));
+    await expect(workspace.currentHtml('demo-game')).rejects.toMatchObject({
+      code: 'unsafe_file',
+    });
+  });
+
+  it('refuses an approved version whose parent dir was swapped for an escaping symlink', async () => {
+    // The final component stays a regular file THROUGH a symlinked parent,
+    // so the lstat layer cannot see this — only the realpath re-check can.
+    await promoteV1();
+    const outside = await mkdtemp(join(tmpdir(), 'forge-esc-'));
+    await writeFile(
+      join(outside, 'index.html'),
+      HTML.replace('const score = 0;', 'const score = 999;'),
+    );
+    await rm(join(root, 'forge', 'demo-game', 'versions', '1'), {
+      recursive: true,
+      force: true,
+    });
+    await symlink(outside, join(root, 'forge', 'demo-game', 'versions', '1'));
+    await expect(workspace.currentHtml('demo-game')).rejects.toMatchObject({
+      code: 'unsafe_file',
+    });
+    await rm(outside, { recursive: true, force: true });
+  });
+});
+
+describe('owner-only workspace layout (adversarial witness, 31 Oct)', () => {
+  // fs-utils comments promise "a directory that only the owning user can
+  // enter" and owner-only files, but only the backup path asserted the bits.
+  // This pins the promise where the Forge workspace actually lays out.
+  // Deliberately NOT asserted here: version-file bits, which inherit from
+  // whatever wrote them into staging (the production runner uses
+  // writePrivateFile -> 0600; a test's writeFile would not) - claiming a bit
+  // nobody sets would be a false guard.
+
+  it('lays out workspace dirs at 0700 and state.json at 0600', async () => {
+    await workspace.ensureProject('demo-game');
+    const base = join(root, 'forge', 'demo-game');
+    for (const dir of [
+      join(root, 'forge'),
+      base,
+      join(base, 'versions'),
+      join(base, 'staging'),
+      join(base, 'jobs'),
+    ]) {
+      expect(((await stat(dir)).mode & 0o777).toString(8)).toBe('700');
+    }
+    expect(((await stat(join(base, 'state.json'))).mode & 0o777).toString(8)).toBe('600');
+  });
+
+  it('helpers pin the exact bits under an open umask', async () => {
+    // mkdir(mode) is umask-masked on the way in; the helpers' explicit chmod
+    // must pin the exact bits anyway.
+    const previous = process.umask(0o000);
+    try {
+      const dir = join(root, 'umask-probe');
+      await ensurePrivateDirectory(dir);
+      const file = join(dir, 'payload');
+      await writePrivateFile(file, 'x');
+      expect(((await stat(dir)).mode & 0o777).toString(8)).toBe('700');
+      expect(((await stat(file)).mode & 0o777).toString(8)).toBe('600');
+    } finally {
+      process.umask(previous);
+    }
   });
 });

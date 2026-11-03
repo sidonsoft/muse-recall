@@ -60,6 +60,7 @@ export function PromptPanel({
   diff,
   onCancel,
   engineLabel,
+  decisionLine = null,
   cliMissing = false,
 }: {
   mode: PromptMode;
@@ -81,6 +82,12 @@ export function PromptPanel({
   diff: ForgeDiff | null;
   onCancel: () => void;
   engineLabel: string;
+  /**
+   * Batch E: one line naming the decisions the next update proposal will pin.
+   * Selection is an input to the proposal, never an approval, and the wording
+   * says who resolves the text.
+   */
+  decisionLine?: string | null;
   /** The generation CLI is not installed here, so generating cannot start. */
   cliMissing?: boolean;
 }) {
@@ -186,6 +193,10 @@ export function PromptPanel({
               aria-label="Change request"
             />
           </div>
+
+          {decisionLine ? (
+            <p className="mt-1.5 text-[10px] leading-relaxed text-muted">{decisionLine}</p>
+          ) : null}
 
           <div className="flex items-center gap-2">
             <button
@@ -369,6 +380,7 @@ export function GenerationStrip({
           {job.usage
             ? ` · ${job.usage.calls} model calls · ${(job.usage.runtime_ms / 1000).toFixed(1)}s`
             : ''}
+          {job.model_observed ? ` · reported model ${job.model_observed}` : ''}
         </p>
       ) : null}
     </div>

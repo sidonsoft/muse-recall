@@ -247,7 +247,13 @@ export async function seedForgeDemo(options: DemoSeedOptions): Promise<DemoSeedR
   const database = openDatabase({ path: options.databasePath, wal: false });
   let memories: ReturnType<typeof seedDemoMemories>;
   try {
-    memories = seedDemoMemories(new MemoryEngine(database.db), projectId);
+    // The engine clock is pinned to the recorded demo timestamp, so memory
+    // rows AND audit/supersession stamps are identical no matter when the
+    // demo is seeded — the judges' story renders the same on any machine.
+    memories = seedDemoMemories(
+      new MemoryEngine(database.db, { now: () => new Date(DEMO_SEED_TIMESTAMP) }),
+      projectId,
+    );
   } finally {
     database.close();
   }

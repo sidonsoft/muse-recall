@@ -7,12 +7,14 @@ import {
   formatMemoryContext,
   MemoryConflictError,
   MemoryEngine,
+  MemoryError,
   MemoryNotFoundError,
   openDatabase,
   retrieveMemories,
 } from '@mml/memory-engine';
 import type { Memory, MemoryCreateInput } from '@mml/shared';
 import { afterAll, describe, expect, it } from 'vitest';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 const temporaryDirectories: string[] = [];
 
@@ -24,6 +26,7 @@ afterAll(async () => {
 
 function baseInput(overrides: Partial<MemoryCreateInput> = {}): MemoryCreateInput {
   return {
+    ...CREATE_DEFAULTS,
     type: 'technical_decision',
     scope: 'project',
     project_id: 'demo-game',
@@ -133,6 +136,7 @@ describe('corrections', () => {
     try {
       const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -173,6 +177,7 @@ describe('corrections', () => {
     try {
       const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -193,6 +198,7 @@ describe('corrections', () => {
     try {
       const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const input = {
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision' as const,
         project_id: 'demo-game',
@@ -222,6 +228,7 @@ describe('corrections', () => {
       const a = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const b = engine.create(baseInput({ content: 'Store data in SQLite' }));
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [a.memory.id, b.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -252,6 +259,7 @@ describe('corrections', () => {
 
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [original.memory.id],
           type: 'technical_decision',
           scope: 'project',
@@ -282,6 +290,7 @@ describe('corrections', () => {
 
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [a.memory.id, b.memory.id],
           type: 'technical_decision',
           scope: 'project',
@@ -302,6 +311,7 @@ describe('corrections', () => {
     try {
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [randomUUID()],
           type: 'technical_decision',
           project_id: 'demo-game',
@@ -329,14 +339,24 @@ describe('corrections', () => {
         END;
       `);
 
-      expect(() =>
+      // Catalogue v2 contract: a write that fails BELOW the domain layer
+      // surfaces as memory_storage_failed; the driver text stays chained for
+      // debugging but never rides the stable message.
+      let thrown: unknown;
+      try {
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [original.memory.id],
           type: 'technical_decision',
           project_id: 'demo-game',
           content: 'Use Postgres for storage',
-        }),
-      ).toThrow(/forced failure/);
+        });
+      } catch (error) {
+        thrown = error;
+      }
+      expect(MemoryError.isMemoryError(thrown)).toBe(true);
+      expect((thrown as MemoryError).code).toBe('memory_storage_failed');
+      expect((thrown as Error & { cause?: Error }).cause?.message).toContain('forced failure');
 
       // Nothing from the failed attempt survives.
       const rows = db.prepare('SELECT content, status FROM memories').all() as unknown as {
@@ -351,6 +371,132 @@ describe('corrections', () => {
     }
   });
 
+  it('wraps writes in BEGIN IMMEDIATE then COMMIT, and reads open nothing (lock-first doctrine)', () => {
+    // engine.ts line ~74: "Every mutation runs inside a BEGIN IMMEDIATE
+    // transaction: the write lock is taken up front." Pin the literal
+    // statement sequence (and that the guard sees COMMIT, not deferred
+    // BEGIN), plus the other half of the design: reads stay outside.
+    const opened = openDatabase({ path: ':memory:' });
+    const observed: string[] = [];
+    const guarded = new Proxy(opened.db, {
+      get(target, property) {
+        if (property === 'exec') {
+          return (sql: string) => {
+            if (/^(BEGIN|COMMIT|ROLLBACK)/.test(sql)) observed.push(sql);
+            return target.exec(sql);
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as DatabaseSync;
+    const engine = new MemoryEngine(guarded);
+    try {
+      const created = engine.create(baseInput());
+      engine.list({ project_id: 'demo-game' });
+      engine.getDetail(created.memory.id);
+      expect(observed).toEqual(['BEGIN IMMEDIATE', 'COMMIT']);
+    } finally {
+      opened.close();
+    }
+  });
+
+  it('a failed mutation closes its transaction with ROLLBACK, not COMMIT', () => {
+    const opened = openDatabase({ path: ':memory:' });
+    const observed: string[] = [];
+    const guarded = new Proxy(opened.db, {
+      get(target, property) {
+        if (property === 'exec') {
+          return (sql: string) => {
+            if (/^(BEGIN|COMMIT|ROLLBACK)/.test(sql)) observed.push(sql);
+            return target.exec(sql);
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as DatabaseSync;
+    const engine = new MemoryEngine(guarded);
+    try {
+      const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
+      opened.db.exec(`
+        CREATE TRIGGER force_supersede_failure
+        BEFORE UPDATE OF status ON memories
+        WHEN NEW.status = 'superseded'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced failure');
+        END;
+      `);
+      observed.length = 0; // watch the failing correct() only
+      expect(() =>
+        engine.correct({
+          ...CORRECTION_DEFAULTS,
+          supersedes: [original.memory.id],
+          type: 'technical_decision',
+          project_id: 'demo-game',
+          content: 'Use Postgres for storage',
+        }),
+      ).toThrow();
+      expect(observed).toEqual(['BEGIN IMMEDIATE', 'ROLLBACK']);
+    } finally {
+      opened.close();
+    }
+  });
+
+  it('never lets a failed ROLLBACK mask the original error', () => {
+    // The transaction() comment promises "a rollback failure must never mask
+    // the original error" — the sibling forced-failure test above pins the
+    // operation failure with a WORKING rollback. Nothing forced the
+    // ROLLBACK exec itself to throw. Now both fail at once: the driver's
+    // ABORT must still arrive, intact; the rollback's own error must not.
+    const opened = openDatabase({ path: ':memory:' });
+    const db = opened.db;
+    const guarded = new Proxy(db, {
+      get(target, property) {
+        if (property === 'exec') {
+          return (sql: string) => {
+            if (sql === 'ROLLBACK') throw new Error('forced rollback failure');
+            return target.exec(sql);
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        // Native methods need the real DatabaseSync as their this — bind them
+        // or node:sqlite throws Illegal invocation through the Proxy.
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as DatabaseSync;
+    const engine = new MemoryEngine(guarded);
+    try {
+      const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
+      db.exec(`
+        CREATE TRIGGER force_supersede_failure
+        BEFORE UPDATE OF status ON memories
+        WHEN NEW.status = 'superseded'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced failure');
+        END;
+      `);
+      let thrown: unknown;
+      try {
+        engine.correct({
+          ...CORRECTION_DEFAULTS,
+          supersedes: [original.memory.id],
+          type: 'technical_decision',
+          project_id: 'demo-game',
+          content: 'Use Postgres for storage',
+        });
+      } catch (error) {
+        thrown = error;
+      }
+      expect(MemoryError.isMemoryError(thrown)).toBe(true);
+      expect((thrown as MemoryError).code).toBe('memory_storage_failed');
+      expect((thrown as Error).message).not.toContain('forced rollback failure');
+      expect((thrown as Error & { cause?: Error }).cause?.message).toContain('forced failure');
+    } finally {
+      opened.close();
+    }
+  });
+
   it('reuses an existing active memory instead of duplicating the new fact', () => {
     const { engine, close } = seeded();
     try {
@@ -358,6 +504,7 @@ describe('corrections', () => {
       const original = engine.create(baseInput({ content: 'Use MySQL for storage' }));
 
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -368,6 +515,42 @@ describe('corrections', () => {
       expect(corrected.memory.id).toBe(existing.memory.id);
       expect(engine.stats().active).toBe(1);
       expect(engine.get(original.memory.id)?.superseded_by).toBe(existing.memory.id);
+    } finally {
+      close();
+    }
+  });
+
+  it('retrieval dedupes by fingerprint even if two active twins reach storage', () => {
+    // The engine's create/correct guarantees make twins unreachable via the
+    // API (pinned by the two tests above) — which means retrieval's own
+    // defensive line, "two records making the same claim must not consume
+    // two slots; the highest-scoring copy wins", is UNREACHABLE through the
+    // engine and had never been exercised. Pin it directly: create the twin
+    // by SQL (simulating a future insert path that forgets the guard) and
+    // prove retrieval spends ONE slot, reports the exclusion honestly, and
+    // the FTS trigger indexed the twin the moment it landed.
+    const { engine, db, close } = seeded();
+    try {
+      const original = engine.create(baseInput({ content: 'gamma7: always ship behind a flag' }));
+      const twinId = '11111111-1111-4111-8111-111111111111';
+      db.prepare(
+        `INSERT INTO memories
+             (id, type, scope, project_id, content, source_session_id, source_reference,
+              confidence, validation_status, status, created_at, updated_at, expires_at,
+              content_hash, tags, superseded_by, revision, actor)
+           SELECT ?, type, scope, project_id, content, NULL, NULL,
+              confidence, validation_status, 'active', created_at, updated_at, expires_at,
+              content_hash, tags, NULL, 1, 'system'
+           FROM memories WHERE id = ?`,
+      ).run(twinId, original.memory.id);
+
+      expect(engine.stats().active).toBe(2); // the twin lives below the API guarantee
+      const result = retrieveMemories(db, { project_id: 'demo-game', query: 'gamma7 flag' });
+      const ids = result.results.map((entry) => entry.memory.id);
+      expect(ids).toHaveLength(1);
+      expect([original.memory.id, twinId]).toContain(ids[0]);
+      expect(result.metadata.excluded_by.duplicate).toBe(1);
+      expect(result.metadata.selected_count).toBe(1);
     } finally {
       close();
     }
@@ -417,6 +600,41 @@ describe('deletion', () => {
     }
   });
 
+  it('deleted content is unreachable from EVERY serving path', () => {
+    // The header guarantee is plural — get, list/search, retrieval, graph.
+    // Individual paths were pinned singly; this walks them all around one
+    // soft-delete, before vs after, so a regression in any single surface
+    // trips the same test. Purge (erasure) stays separate: the row keeps
+    // existing; the GUARANTEE is about serving, not erasing.
+    const { engine, db, close } = seeded();
+    try {
+      const created = engine.create(baseInput({ content: 'Use SQLite for persistent caching' }));
+      const id = created.memory.id;
+      expect(engine.get(id)?.content).toContain('caching');
+      expect(
+        retrieveMemories(db, { project_id: 'demo-game', query: 'caching' }).results.some(
+          (entry) => entry.memory.id === id,
+        ),
+      ).toBe(true);
+
+      engine.softDelete(id);
+
+      expect(engine.get(id)).toBeNull(); // engine serves null for invisible rows
+      expect(engine.list({ text: 'caching', all_projects: true }).total).toBe(0);
+      expect(
+        retrieveMemories(db, { project_id: 'demo-game', query: 'caching' }).results.some(
+          (entry) => entry.memory.id === id,
+        ),
+      ).toBe(false);
+      expect(engine.graph({ projectId: 'demo-game' }).nodes.some((node) => node.id === id)).toBe(
+        false,
+      );
+      expect(engine.stats()).toMatchObject({ active: 0, deleted: 1 });
+    } finally {
+      close();
+    }
+  });
+
   it('never returns deleted rows even when explicitly requested', () => {
     const { engine, close } = seeded();
     try {
@@ -459,6 +677,63 @@ describe('deletion', () => {
     }
   });
 
+  it('audit trail attributes every transition to the actor that caused it', () => {
+    // The API accepts actor 'agent' and 'system' (routes/memories.ts parses
+    // them); the trail is the WHO of the audit contract. The schema CHECKs
+    // actor IN (user, agent, system), but no test had ever asserted WHICH
+    // one lands — misattribution (everything silently 'user', or a
+    // replacement credit-wrong after an agent correction) would pass today.
+    const { engine, db, close } = seeded();
+    try {
+      const agentCreated = engine.create(baseInput({ content: 'zeta audit actor' }), 'agent');
+      engine.softDelete(agentCreated.memory.id, { actor: 'system', reason: 'retired' });
+      const agentRows = db
+        .prepare('SELECT action, actor FROM memory_history WHERE memory_id = ? ORDER BY at, action')
+        .all(agentCreated.memory.id) as unknown as { action: string; actor: string }[];
+      expect(agentRows).toEqual([
+        { action: 'created', actor: 'agent' },
+        { action: 'deleted', actor: 'system' },
+      ]);
+
+      const a = engine.create(baseInput({ content: 'eta audit chain' }), 'user');
+      const b = engine.correct(
+        {
+          ...CORRECTION_DEFAULTS,
+          supersedes: [a.memory.id],
+          type: 'technical_decision',
+          project_id: 'demo-game',
+          content: 'theta audit chain',
+        },
+        'agent',
+      );
+      const aRows = db
+        .prepare('SELECT action, actor FROM memory_history WHERE memory_id = ? ORDER BY at, action')
+        .all(a.memory.id) as unknown as { action: string; actor: string }[];
+      expect(aRows).toEqual([
+        { action: 'created', actor: 'user' },
+        { action: 'superseded', actor: 'agent' },
+      ]);
+      const bRows = db
+        .prepare('SELECT action, actor FROM memory_history WHERE memory_id = ? ORDER BY at, action')
+        .all(b.memory.id) as unknown as { action: string; actor: string }[];
+      expect(bRows).toEqual([{ action: 'created', actor: 'agent' }]);
+
+      // The CHECK really checks: an unknown actor cannot be written even by
+      // direct SQL.
+      expect(() =>
+        db
+          .prepare(
+            `INSERT INTO memory_history
+               (id, memory_id, action, previous_status, next_status, reason, actor, at)
+             VALUES ('h-forge', ?, 'updated', 'active', 'active', NULL, 'robot', ?)`,
+          )
+          .run(a.memory.id, new Date().toISOString()),
+      ).toThrow();
+    } finally {
+      close();
+    }
+  });
+
   it('only purges deleted or expired records', () => {
     const { engine, close } = seeded();
     try {
@@ -468,6 +743,61 @@ describe('deletion', () => {
       engine.softDelete(active.memory.id);
       engine.purge(active.memory.id);
       expect(engine.get(active.memory.id, { includeDeleted: true })).toBeNull();
+    } finally {
+      close();
+    }
+  });
+
+  it('purge cascades cleanly: history, edges, and FTS vanish; graph cannot walk back', () => {
+    // purge's docstring promises "Cascades remove history and supersession
+    // edges; the FTS trigger removes the index row" — none of which the
+    // engine itself does in code: it runs ONE DELETE and trusts schema
+    // cascades + triggers. A migration touching FK clauses or FTS triggers
+    // would orphan evidence rows with zero test signal. Pin all four.
+    const { engine, db, close } = seeded();
+    try {
+      const older = engine.create(baseInput({ content: 'zephyralpha: use file cache' }));
+      const newer = engine.correct({
+        ...CORRECTION_DEFAULTS,
+        supersedes: [older.memory.id],
+        type: 'technical_decision',
+        project_id: 'demo-game',
+        content: 'zephyrbeta: use redis cache',
+      });
+
+      engine.softDelete(older.memory.id); // superseded -> deleted, purgable
+      engine.purge(older.memory.id);
+
+      const count = (sql: string, ...params: unknown[]) =>
+        (db.prepare(sql).get(...(params as never[])) as { c: number }).c;
+      expect(count('SELECT COUNT(*) c FROM memories WHERE id = ?', older.memory.id)).toBe(0);
+      // Cascade 1: every history row that referenced it (created, superseded,
+      // deleted) is gone — including the tombstone evidence.
+      expect(
+        count('SELECT COUNT(*) c FROM memory_history WHERE memory_id = ?', older.memory.id),
+      ).toBe(0);
+      // Cascade 2: the supersession edge (newer -> older) is gone; the chain
+      // does not dangle.
+      expect(
+        count(
+          'SELECT COUNT(*) c FROM memory_supersessions WHERE old_id = ? OR new_id = ?',
+          older.memory.id,
+          older.memory.id,
+        ),
+      ).toBe(0);
+      // Trigger 3: the FTS index row is gone; the SURVIVOR stays searchable.
+      expect(count("SELECT COUNT(*) c FROM memory_fts WHERE memory_fts MATCH 'zephyralpha'")).toBe(
+        0,
+      );
+      expect(count("SELECT COUNT(*) c FROM memory_fts WHERE memory_fts MATCH 'zephyrbeta'")).toBe(
+        1,
+      );
+      // The graph claim: purged records cannot be resurrected by walking it.
+      const graph = engine.graph({ projectId: 'demo-game' });
+      expect(graph.nodes.map((node) => node.id)).not.toContain(older.memory.id);
+      expect(graph.edges).toHaveLength(0);
+      // The survivor is intact and still an honest record of itself.
+      expect(engine.get(newer.memory.id)?.content).toContain('zephyrbeta');
     } finally {
       close();
     }
@@ -835,6 +1165,54 @@ describe('lifecycle and retention', () => {
     }
   });
 
+  it('expiry sweep is boundary-inclusive and never touches undated, future, or non-active records', () => {
+    // The sweep SQL is `status = 'active' AND expires_at <= now`: three
+    // conditions, each load-bearing, none individually pinned — an
+    // off-by-a-sign boundary flip, a dropped status guard (re-expiring
+    // tombstones), or dropping `IS NOT NULL` (deleting the concept of
+    // "never expires") would all pass the existing test. Clock is FIXED so
+    // the exact-instant boundary is deterministic.
+    const opened = openDatabase({ path: ':memory:' });
+    const fixed = new Date('2026-06-01T12:00:00.000Z');
+    const engine = new MemoryEngine(opened.db, { now: () => fixed });
+    try {
+      const boundary = engine.create(
+        baseInput({ content: 'expires exactly at now', expires_at: fixed.toISOString() }),
+      );
+      const future = engine.create(
+        baseInput({
+          content: 'expires a minute from now',
+          expires_at: new Date(fixed.getTime() + 60_000).toISOString(),
+        }),
+      );
+      const eternal = engine.create(baseInput({ content: 'never expires' }));
+      const gone = engine.create(
+        baseInput({
+          content: 'already deleted despite past date',
+          expires_at: new Date(fixed.getTime() - 60_000).toISOString(),
+        }),
+      );
+      engine.softDelete(gone.memory.id);
+
+      expect(engine.expireStale()).toBe(1); // only the boundary record
+      expect(engine.get(boundary.memory.id)?.status).toBe('expired');
+      expect(engine.get(future.memory.id)?.status).toBe('active');
+      expect(engine.get(eternal.memory.id)?.status).toBe('active');
+
+      // Tombstone untouched by the sweep: still deleted, never re-audited.
+      const tombRow = opened.db
+        .prepare('SELECT status FROM memories WHERE id = ?')
+        .get(gone.memory.id) as unknown as { status: string };
+      expect(tombRow.status).toBe('deleted');
+      const expiredAudits = opened.db
+        .prepare("SELECT COUNT(*) c FROM memory_history WHERE action = 'expired'")
+        .get() as unknown as { c: number };
+      expect(expiredAudits.c).toBe(1);
+    } finally {
+      opened.close();
+    }
+  });
+
   it('updates memory content and records the change', () => {
     const { engine, close } = seeded();
     try {
@@ -892,6 +1270,7 @@ describe('invalid input', () => {
   it('rejects a correction with no targets', () => {
     expect(() =>
       engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [],
         type: 'technical_decision',
         project_id: 'demo-game',

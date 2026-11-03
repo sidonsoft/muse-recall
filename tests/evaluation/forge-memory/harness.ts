@@ -19,7 +19,8 @@ import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { buildForgePrompt, buildRetrievalQuery } from '../../../apps/server/src/forge/prompt.js';
 import { MemoryEngine, openDatabase } from '../../../packages/memory-engine/src/index.js';
-import type { MemoryCreateInput } from '../../../packages/shared/src/index.js';
+import type { MemoryCreateInput, RetrievedMemory } from '../../../packages/shared/src/index.js';
+import { CREATE_DEFAULTS } from '../../helpers/memory-fixtures.ts';
 
 export type Condition = 'A' | 'B' | 'C';
 
@@ -53,7 +54,10 @@ const PALETTES: Record<
 const NEON_RE = /#00FF00|#FF00FF|#00FFFF|#39FF14|#FE00FE|\bneon\b/i;
 
 export function constraintInput(condition: Condition): MemoryCreateInput {
+  // Every field the input contract carries is stated, at the values the schema
+  // would default to, so a condition's only difference is its content.
   return {
+    ...CREATE_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: PROJECT_ID,
@@ -100,18 +104,25 @@ export function retrieveForModification(engine: MemoryEngine, request = MODIFICA
   });
 }
 
-export function memoryBlockFor(retrieval: ReturnType<typeof retrieveForModification>): string {
-  return retrieval.results.length > 0
-    ? retrieval.results.map((result) => `- ${result.injected_content}`).join('\n')
-    : '';
-}
-
-/** Production prompt builder (no mirror). */
+/**
+ * Production prompt builder (no mirror).
+ *
+ * Passes the structured retrieval records, exactly as the Forge runner does,
+ * so the evaluated prompt cannot drift from production rendering. The legacy
+ * raw-text block input was removed from the production builder on
+ * 2026-10-30 (NEXT_STEPS P1 #7); the frozen Phase 15A wording lives in
+ * scripts/lib/phase15a-prompt-snapshot.ts instead.
+ */
 export function buildForgePromptForEval(
-  memoryBlock: string,
+  retrieval: { results: RetrievedMemory[] },
   request = MODIFICATION_REQUEST,
 ): string {
-  return buildForgePrompt({ kind: 'modify', prompt: request, request, memoryBlock });
+  return buildForgePrompt({
+    kind: 'modify',
+    prompt: request,
+    request,
+    memories: retrieval.results,
+  });
 }
 
 export interface CaptureResult {
@@ -144,8 +155,7 @@ export function captureCondition(condition: Condition): CaptureResult {
 
 export function captureWithEngine(engine: MemoryEngine, condition: Condition): CaptureResult {
   const retrieval = retrieveForModification(engine);
-  const block = memoryBlockFor(retrieval);
-  const prompt = buildForgePromptForEval(block);
+  const prompt = buildForgePromptForEval(retrieval);
   return {
     condition,
     condition_label: CONDITIONS[condition],
@@ -285,11 +295,12 @@ export function buildReport(baseCommit: string): DeterministicReport {
 
 // CLI entry: `pnpm tsx tests/evaluation/forge-memory/harness.ts [--json]`
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const baseFlagIndex = process.argv.indexOf('--base');
+  // A bare `--base` with no value used to yield undefined; the report records
+  // 'unknown' for it, the same answer the no-flag path already gives.
   const baseCommit =
     process.env.PHASE11_BASE_COMMIT ??
-    (process.argv.includes('--base')
-      ? process.argv[process.argv.indexOf('--base') + 1]
-      : 'unknown');
+    (baseFlagIndex === -1 ? 'unknown' : (process.argv[baseFlagIndex + 1] ?? 'unknown'));
   const report = buildReport(baseCommit);
   if (process.argv.includes('--json')) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

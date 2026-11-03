@@ -131,6 +131,7 @@ function decisionMemory(engine: MemoryEngine, projectId: string, content: string
     source: { session_id: null, reference: 'phase12e-evaluation' },
     confidence: 0.95,
     validation_status: 'verified',
+    expires_at: null,
     tags: ['phase12e'],
   }).memory;
 }
@@ -493,6 +494,8 @@ async function main(): Promise<void> {
     created_at: '2026-10-27T00:00:00.000Z',
     updated_at: '2026-10-27T00:00:00.000Z',
     expires_at: null,
+    revision: 1,
+    actor: 'user',
     supersedes: [],
     superseded_by: null,
     tags: ['phase12e'],

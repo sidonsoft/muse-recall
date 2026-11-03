@@ -6,6 +6,7 @@ import type {
   ToolCall,
   TurnResult,
 } from '@mml/shared';
+import { authorizationHeader } from './access-token.ts';
 import { apiUrl } from './api.ts';
 
 /**
@@ -60,7 +61,11 @@ export async function streamTurn(
 ): Promise<void> {
   const response = await fetch(apiUrl(`/api/sessions/${sessionId}/messages`), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
+    headers: {
+      ...authorizationHeader(),
+      'content-type': 'application/json',
+      accept: 'text/event-stream',
+    },
     body: JSON.stringify(input),
     ...(signal ? { signal } : {}),
   });

@@ -2,9 +2,21 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration]
   pull_request:
   workflow_dispatch:
+
+# Token scope stated at the file level instead of inherited from repo
+# settings. The repository's default_workflow_permissions is already
+# `read` (API-confirmed 30 Oct), so this block pins the SAME effective
+# privilege per file - belt for the repo-setting braces - listing
+# exactly what the jobs consume: checkout reads contents, the two
+# artifact uploads need actions:read. Nothing here escalates; if any
+# job needed more, this PR's own three legs would fail, and they are
+# the witness.
+permissions:
+  contents: read
+  actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,14 +30,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # The version comes from `packageManager` in package.json.
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0 (v4 alias today; NOT the newest v4.4.0 - pinning matches today's resolution, zero drift)
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
@@ -41,8 +53,17 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      # Tests and gate scripts are typed against the same strict compiler
+      # options as the product, so a fixture cannot drift from the contract it
+      # claims to exercise. No provider, no network: this only reads sources.
+      - name: Typecheck test and gate sources
+        run: pnpm run typecheck:tests
+
       - name: Test
         run: pnpm test
+
+      - name: Backup drill (roadmap §8; the documented schedule runs this on every push)
+        run: pnpm backup:drill
 
       - name: Build
         run: pnpm run build
@@ -52,18 +73,35 @@ jobs:
           LOG_LEVEL: silent
 
   browser:
-    name: Managed browser workflow (fake provider)
+    name: ${{ matrix.job_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Explicit fields only: no conditionals, so nothing can be coerced
+        # (GitHub Actions treats empty strings as falsy in && / || chains).
+        # The Chromium leg keeps the historical required check name; the
+        # Firefox leg adds a second independent engine (roadmap §7 G-10).
+        include:
+          - engine: managed
+            extra_browser: ''
+            job_name: Managed browser workflow (fake provider)
+          - engine: firefox
+            extra_browser: firefox
+            job_name: Managed browser workflow (fake provider · managed Firefox)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # (No FORGE_VISUAL_UPDATE here: baselines are committed; this job now
+    #  compares. Set the job env to '1' temporarily to re-record after an
+    #  intentional UI change, then commit the new PNGs and remove it.)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0 (v4 alias today; NOT the newest v4.4.0 - pinning matches today's resolution, zero drift)
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
@@ -72,19 +110,34 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Pin the browser to the Playwright version in the lockfile. The cache
-      # key includes the lockfile so a Playwright upgrade cannot silently reuse
-      # an incompatible Chromium.
-      - name: Cache Playwright Chromium
-        uses: actions/cache@v4
+      # key includes the lockfile and the matrix engine so a Playwright
+      # upgrade cannot silently reuse an incompatible build.
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ matrix.engine }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright-core install --with-deps chromium
+      # Chromium is installed on every leg: the approval gate's runtime check
+      # loads the staged page in managed Chromium server-side, whatever engine
+      # the driving workflow uses. The Firefox leg adds its engine on top.
+      - name: Install Playwright Chromium${{ matrix.extra_browser && ' + Firefox' || '' }}
+        run: pnpm exec playwright-core install --with-deps chromium ${{ matrix.extra_browser }}
 
-      - name: Build production artifacts
-        run: pnpm run build
+      # The first run README tells a newcomer to do is `MODEL_PROVIDER=echo
+      # pnpm dev`, then open http://127.0.0.1:5173. That path is checked here
+      # rather than assumed, because development React keeps warnings that
+      # production bundles strip: a duplicated sibling key — the defect this
+      # gate found on its first run — passes every production-bundle gate and
+      # still lands in front of a new user.
+      - name: Run the documented first run
+        run: pnpm verify:first-run
+        env:
+          MODEL_PROVIDER: echo
+          LOG_LEVEL: warn
+
+      - name: Build production artifacts with provenance
+        run: pnpm exec tsx scripts/build-production-bundles.ts
         env:
           DATABASE_PATH: ./data/ci.db
           MODEL_PROVIDER: echo
@@ -97,3 +150,75 @@ jobs:
         env:
           MODEL_PROVIDER: echo
           LOG_LEVEL: warn
+          FORGE_RUNTIME_BROWSER: ${{ matrix.engine }}
+
+      # The asset -> embedded artifact -> restart -> rollback journey, on
+      # uploaded bytes instead of paid image calls. It existed only as a paid
+      # run for a while, which meant the flow could regress for weeks without
+      # anything noticing; this leg re-gates it on every commit, and its own
+      # ledger rule fails the run if any provider dispatch appears.
+      - name: Run the media journey on uploaded bytes
+        run: pnpm verify:media-journey-offline
+
+      # A review capture measures a state; staleness, numeric wrap-around and lost
+      # history are properties of sequences. The human review found three of them in
+      # an artifact the capture had called clean. This leg proves the probe battery
+      # can tell a stale published output from a fresh one, so it cannot print
+      # "no findings" over the defect it exists to catch.
+      - name: Generated-artifact probe battery
+        run: pnpm verify:artifact-probes
+
+      # The beta user journey itself: production bundles, real Studio UI, real browser, and no
+      # provider anywhere (the gate refuses to start if a provider credential is exported). It
+      # measures the two handover controls byte for byte, because a review of a generated app found
+      # a Copy control handing over output the app was no longer displaying.
+      - name: Beta user journey on production bundles
+        run: pnpm verify:beta-journey
+
+      # Baselines live in the repository (tests/visual). The update run
+      # uploads them for review/commit; drift runs upload the failing
+      # actual screenshots and diff images for triage.
+      - name: Upload recorded visual baselines
+        if: env.FORGE_VISUAL_UPDATE == '1'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: visual-baselines-${{ matrix.engine }}
+          path: tests/visual/*.png
+
+      - name: Upload visual drift evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: visual-diffs-${{ matrix.engine }}
+          path: test-results/studio-after/visual-*.png
+          if-no-files-found: ignore
+
+  research:
+    name: Research evidence re-verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The Phase 16/17 verify scripts assert their own bytes against hashes
+    # recorded in the locked research protocols - they are frozen artifacts
+    # (proven 31 Oct: a type-only edit to verify-phase17.ts made the chain
+    # fail with "protocol.sha256: hash mismatch"). This job runs the chain on
+    # every push/PR so any tampering with the evidence, analysis, or scripts
+    # fails CI instead of being discovered ad hoc. Node builtins + python3 only:
+    # no build step or workspace imports needed.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0 (v4 alias today; NOT the newest v4.4.0 - pinning matches today's resolution, zero drift)
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Re-verify the locked research chain
+        run: pnpm exec tsx scripts/verify-phase17.ts && pnpm exec tsx scripts/verify-phase17-sums.ts && pnpm exec tsx scripts/verify-phase17-strict.ts

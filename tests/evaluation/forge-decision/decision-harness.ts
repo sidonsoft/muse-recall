@@ -21,7 +21,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildRetrievalQuery } from '../../../apps/server/src/forge/prompt.js';
 import { MemoryEngine, openDatabase } from '../../../packages/memory-engine/src/index.js';
-import { buildForgePromptForEval, memoryBlockFor } from '../forge-memory/harness.js';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../../helpers/memory-fixtures.ts';
+import { buildForgePromptForEval } from '../forge-memory/harness.js';
 
 export const DECISION_PROJECT = 'forge-decision-eval';
 
@@ -89,6 +90,7 @@ export function setupDecision(key: 's1' | 's2' | 's3'): DecisionSetup {
   };
   const decisionId = engine.create({
     ...base,
+    ...CREATE_DEFAULTS,
     content: `${def.content} ${def.rationale}`,
     tags: def.tags,
   }).memory.id;
@@ -96,10 +98,13 @@ export function setupDecision(key: 's1' | 's2' | 's3'): DecisionSetup {
   if (def.correctedContent) {
     correctedId = engine.correct({
       ...base,
+      ...CORRECTION_DEFAULTS,
       content: `${def.correctedContent} ${def.correctedRationale ?? ''}`.trim(),
       tags: def.tags,
       supersedes: [decisionId],
-      reason: def.correctionReason ?? null,
+      // `reason` is optional, not nullable: a definition with no stated reason
+      // must omit the field rather than hand the schema a null it would reject.
+      reason: def.correctionReason ?? undefined,
     }).memory.id;
   }
   return { engine, directory, decisionId, correctedId, close };
@@ -120,7 +125,7 @@ export function retrieveDecision(engine: MemoryEngine, request: string) {
 }
 
 export function decisionPromptFor(engine: MemoryEngine, request: string): string {
-  return buildForgePromptForEval(memoryBlockFor(retrieveDecision(engine, request)), request);
+  return buildForgePromptForEval(retrieveDecision(engine, request), request);
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +305,7 @@ export function captureScenario(key: 's1' | 's2' | 's3'): ScenarioEvidence {
   const setup = setupDecision(key);
   try {
     const retrieval = retrieveDecision(setup.engine, request);
-    const prompt = buildForgePromptForEval(memoryBlockFor(retrieval), request);
+    const prompt = buildForgePromptForEval(retrieval, request);
     const active = retrieval.results.map((r) => r.memory);
     const decisionSource = active.find((m) => m.id === (setup.correctedId ?? setup.decisionId));
     const guard = key === 's2' ? accessibilityGuard : key === 's3' ? paletteGuard : decisionGuard;

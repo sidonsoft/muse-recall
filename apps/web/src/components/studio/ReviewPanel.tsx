@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { formatBytes, formatDateTime, shortSha } from '../../lib/format.ts';
 import { DecisionGuardPanel } from '../forge/DecisionGuardAdvisory.tsx';
 import { Icon } from '../Icon.tsx';
+import { DependencyDisclosure } from './DependencyDisclosure.tsx';
+import { dependencyView, disclosureForVersion } from './dependency-view.ts';
 
 /**
  * The review rail.
@@ -51,6 +53,19 @@ export function ReviewPanel({
   const proposed = diff ? nextVersion : null;
   const validation = diff?.validation ?? null;
   const change = changeScale(diff);
+  /*
+   * KI-74: which bytes the disclosure describes. A staged change is judged from
+   * the diff, whose `dependencies` were measured from the vendored staging bytes
+   * — the same read path the preview, the load check and promotion all use. The
+   * approved application is judged from the record kept when that version was
+   * approved; a version approved before the record existed says so, rather than
+   * having a dependency picture reconstructed from bytes nobody showed the
+   * approver.
+   */
+  const stagedDisclosure = diff === null ? null : dependencyView(diff.dependencies ?? null);
+  const approvedDisclosure = dependencyView(
+    disclosureForVersion(state?.versions ?? [], state?.current_version ?? null),
+  );
   const approvalBlocked = Boolean(
     busy ||
       !validation?.ok ||
@@ -134,6 +149,12 @@ export function ReviewPanel({
               advisory={diff.decision_guard}
               projectDecisionCount={projectDecisionCount}
             />
+            {/*
+             * Above provenance and above the Approve control: what these bytes
+             * fetch is a property of the thing being approved, and it has to be
+             * read before the decision, not after it.
+             */}
+            {stagedDisclosure ? <DependencyDisclosure view={stagedDisclosure} /> : null}
             <Provenance job={job} />
             <VersionHistory state={state} busy={busy} onRollback={onRollback} />
           </div>
@@ -211,6 +232,10 @@ export function ReviewPanel({
 
           <DecisionGuardPanel advisory={null} projectDecisionCount={projectDecisionCount} />
 
+          {/* The approved application's own dependency picture: what vN fetches at
+              run time. Stated from the record kept at its approval. */}
+          {currentVersion > 0 ? <DependencyDisclosure view={approvedDisclosure} /> : null}
+
           {job ? <Provenance job={job} /> : null}
           <VersionHistory state={state} busy={busy} onRollback={onRollback} />
         </div>
@@ -254,6 +279,7 @@ function Provenance({ job }: { job: ForgeJob | null }) {
             <Row label="runtime" value={`${(job.usage.runtime_ms / 1000).toFixed(1)}s`} />
           </>
         ) : null}
+        {job.model_observed ? <Row label="model (reported)" value={job.model_observed} /> : null}
         {job.prompt_sha256 ? (
           <Row label="prompt" value={shortSha(job.prompt_sha256, 10)} mono />
         ) : null}

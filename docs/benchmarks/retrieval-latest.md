@@ -1,20 +1,20 @@
 # Retrieval benchmark — latest run
 
-Generated 2026-10-26T22:00:35.961Z on Node v26.8.1 ·
+Generated 2026-10-30T21:16:41.815Z on Node v26.8.1 ·
 SQLite 3.53.4 (FTS5).
 
 Corpus: **130 memories** across 3 projects plus 10
-global memories, seeded in 36 ms.
+global memories, seeded in 33 ms.
 
 | Metric | Value |
 | --- | --- |
 | Retrievals measured | 300 (30 queries × 10) |
-| Latency mean | 0.2539 ms |
-| Latency p50 | 0.196 ms |
-| Latency p95 | 0.429 ms |
+| Latency mean | 0.3513 ms |
+| Latency p50 | 0.3 ms |
+| Latency p95 | 0.5 ms |
 | Mean candidates | 16.27 |
 | Mean selected | 8 |
-| Mean characters injected | 507.1 |
+| Mean characters injected | 1891.8 |
 | Retrieval accuracy (hit@8) | 100.0% (30/30) |
 | Correction accuracy | 100.0% (12/12) |
 | Stale-memory retrieval rate | 0.000% |

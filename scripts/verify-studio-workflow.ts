@@ -6,15 +6,22 @@
  *
  *   generation → staged review → approval → modification → rejection →
  *   second approval → rollback → staged change survives a server restart →
- *   approval after restart
+ *   approval after restart → generation interrupted by a hard crash becomes
+ *   an interrupted job the UI explains and the queue recovers → damaged
+ *   state.json is inspected and repaired
  *
- * Form entry and keyboard activation (Enter / Ctrl+Enter) are exercised.
+ * Form entry and keyboard activation (Enter / Ctrl+Enter) are exercised, and
+ * accessibility landmarks, live status regions and dialog focus behaviour
+ * are asserted (roadmap §7, gap G-10). Three Studio regions are compared
+ * against CI-recorded per-engine visual baselines (Linux runners only).
+ * Regions are chosen timestamp-free: navigation, Development panel, advisory.
  * Screenshots and logs go to `test-results/`, never to historical evidence.
  *
  * Requirements: `pnpm build` first, and a Playwright Chromium build
  * (`pnpm exec playwright-core install chromium`). Playwright-managed Chromium
- * is the default; set FORGE_RUNTIME_BROWSER=chrome only for an explicit
- * system-Chrome run. There is no automatic fallback.
+ * is the default; FORGE_RUNTIME_BROWSER=firefox selects managed Firefox (the
+ * second CI engine) and =chrome an explicit system-Chrome run. There is no
+ * automatic fallback.
  *
  * Verification levels are printed at the end. This is automated interaction
  * coverage, not human design review.
@@ -23,13 +30,16 @@
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import pixelmatch from 'pixelmatch';
 import type { Browser, Locator, Page } from 'playwright-core';
+import { PNG } from 'pngjs';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
+import { checkCountIssues, duplicateCheckNames } from './lib/gate-check-count.js';
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, 'test-results', 'studio-after');
@@ -45,6 +55,25 @@ interface Managed {
 
 const managed: Managed[] = [];
 const checks: string[] = [];
+
+/*
+ * This gate's headline is a count, and the count was the only thing standing between
+ * "the approval rail discloses what these bytes fetch" and that claim going unmeasured:
+ * while this file was being edited, one `check(...)` call was deleted, the total stayed
+ * the same, and nothing failed. So the count gets a floor and the claims the release
+ * documents repeat get named. The floor is a minimum rather than an equality because the
+ * engine-conditional checks legitimately vary between runs.
+ */
+const EXPECTED_MIN_CHECKS = 55;
+const REQUIRED_CHECK_NAMES = [
+  'the approval rail discloses what these bytes fetch, and what verification permitted',
+  'the approval rail states the limits of its own reading, next to the list it qualifies',
+  'the approved version keeps a dependency record that matches its own bytes',
+  'export disclosure explains sandbox and dependency limits',
+] as const;
+
+let killFailure = '';
+let hardKillTimer: NodeJS.Timeout | undefined;
 
 function check(label: string): void {
   checks.push(label);
@@ -109,6 +138,30 @@ async function stop(item: Managed): Promise<void> {
   });
 }
 
+/** SIGKILL the whole process group: an abrupt crash, no graceful shutdown. */
+async function hardKill(item: Managed): Promise<void> {
+  const pid = item.child.pid;
+  if (item.child.exitCode !== null || pid === undefined) return;
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-pid, 'SIGKILL');
+      } catch {
+        // Already gone.
+      }
+    }, 5_000);
+    item.child.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    try {
+      process.kill(-pid, 'SIGKILL');
+    } catch {
+      item.child.kill('SIGKILL');
+    }
+  });
+}
+
 async function freePort(): Promise<number> {
   const server = createServer();
   await new Promise<void>((resolve, reject) => {
@@ -168,6 +221,7 @@ async function openProject(
   page: Page,
   id = PROJECT,
   expected = 'no approved version',
+  because = 'the switcher opened without a mouse',
 ): Promise<void> {
   await page.locator('button[title^="Project:"]').focus();
   await page.keyboard.press('Enter');
@@ -176,7 +230,10 @@ async function openProject(
   await dialog.getByLabel('Project id').fill(id);
   await dialog.getByRole('button', { name: 'Open', exact: true }).press('Enter');
   await page.getByText(expected, { exact: true }).waitFor({ timeout: 20_000 });
-  check(`opened project ${id} with the keyboard`);
+  // The label names the step, not just the action: this helper runs at several
+  // points, and a check list that repeats one name inflates the headline count with
+  // an event nobody can point back to.
+  check(`opened project ${id} with the keyboard, ${because}`);
 }
 
 async function main(): Promise<void> {
@@ -241,6 +298,10 @@ async function main(): Promise<void> {
     FORGE_MAX_RUNTIME_MS: '60000',
     FAKE_MUSE_MODE: 'app',
     FAKE_MUSE_APP: join(ROOT, 'tests/fixtures/general-app-form.html'),
+    // The server's approval-gate runtime check has its own engine policy
+    // (managed Chromium only). The driving script's FORGE_RUNTIME_BROWSER —
+    // e.g. firefox on the CI second leg — must not leak into the server.
+    FORGE_RUNTIME_BROWSER: 'managed',
   };
   const webEnv: NodeJS.ProcessEnv = {
     ...process.env,
@@ -249,6 +310,8 @@ async function main(): Promise<void> {
 
   let browser: Browser | null = null;
   let server: Managed | null = null;
+  // Hoisted so the failure dump can replay what the page collected.
+  const errors: string[] = [];
   try {
     // Fail early and actionably if the selected browser is missing; do not
     // silently fall back to a different browser.
@@ -296,26 +359,102 @@ async function main(): Promise<void> {
       acceptDownloads: false,
     });
     const page = await context.newPage();
-    const errors: string[] = [];
+    // The damaged-state segment deliberately makes the project view return
+    // 500; its resource-loader console message is expected and allowed.
+    let allowResourceErrors = false;
+    // The reference-reset regression below deliberately triggers the offline
+    // unconfigured suggest path; its 503 console message carries no URL,
+    // so it is allowlisted by window rather than by URL.
+    let allowSuggest503 = false;
     page.on('console', (message) => {
       const text = message.text();
       const ignorable =
-        text.toLowerCase().includes('favicon') || /Failed to load resource.*404/i.test(text);
+        text.toLowerCase().includes('favicon') ||
+        /Failed to load resource.*404/i.test(text) ||
+        (allowSuggest503 && /Failed to load resource.*503/i.test(text)) ||
+        (allowResourceErrors && /Failed to load resource/i.test(text));
       if (message.type() === 'error' && !ignorable) errors.push(text);
     });
     page.on('pageerror', (error) => errors.push(error.message));
+    // Record the URL behind every failed resource load: the console text
+    // alone cannot tell a thumbnail 404 from an API conflict. Same
+    // allowlist as the console gate above (favicon, 404, damaged-state
+    // window) so the gate's meaning does not change.
+    page.on('response', (response) => {
+      if (response.url().toLowerCase().includes('favicon')) return;
+      if (response.status() === 404) return;
+      // Same deliberate offline-503 as the console gate above.
+      if (response.status() === 503 && /\/media\/suggest$/.test(response.url())) return;
+      if (allowResourceErrors) return;
+      if (response.status() >= 400) {
+        errors.push(`HTTP ${response.status()} ${response.request().method()} ${response.url()}`);
+      }
+    });
 
     await page.goto(webBase, { waitUntil: 'networkidle', timeout: 30_000 });
     await assertStudio(page);
-    await openProject(page);
+    await openProject(
+      page,
+      PROJECT,
+      'no approved version',
+      'the first open is done from the switcher alone',
+    );
     const review = page.getByRole('region', { name: 'Review' });
 
-    await page.getByText(/1 interrupted by a server restart/).waitFor({ timeout: 15_000 });
+    // The banner must arrive through a live region, not just as static text.
+    await page
+      .getByRole('status')
+      .getByText(/1 interrupted by a server restart/)
+      .waitFor({ timeout: 15_000 });
+    check('recovery notices are announced through a role=status live region');
     await page.screenshot({ path: join(OUT, 'after-recovery-banner.png'), fullPage: true });
     await page.getByRole('button', { name: 'Acknowledge notices' }).click();
     await page.getByText(/1 interrupted by a server restart/).waitFor({ state: 'hidden' });
     check('recovery banner was acknowledged without deleting the interrupted job');
     await page.screenshot({ path: join(OUT, 'after-recovery-ack.png'), fullPage: true });
+
+    // ---- Accessibility surface (roadmap §7, gap G-10) ---------------------
+    // Landmarks first: assistive tech navigates by role, so the shell must
+    // expose banner / navigation / main exactly once.
+    for (const [role, region] of [
+      ['banner', page.getByRole('banner')],
+      ['navigation', page.getByRole('navigation', { name: 'Primary' })],
+      ['main', page.getByRole('main')],
+    ] as const) {
+      const found = await region.count();
+      if (found !== 1) {
+        throw new Error(`expected exactly one ${role} landmark, found ${found}`);
+      }
+    }
+    check('app shell exposes exactly one banner, navigation and main landmark');
+
+    // Dialog semantics and focus handoff on the project switcher.
+    const switcher = page.locator('button[title^="Project:"]');
+    if ((await switcher.getAttribute('aria-haspopup')) !== 'dialog') {
+      throw new Error('project switcher does not advertise that it opens a dialog');
+    }
+    await switcher.focus();
+    await page.keyboard.press('Enter');
+    const switchDialog = page.getByRole('dialog', { name: 'Switch project' });
+    await switchDialog.waitFor({ timeout: 10_000 });
+    if ((await switcher.getAttribute('aria-expanded')) !== 'true') {
+      throw new Error('project switcher did not announce its expanded state');
+    }
+    await page.keyboard.press('Escape');
+    await switchDialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    if ((await switcher.getAttribute('aria-expanded')) !== 'false') {
+      throw new Error('project switcher kept a stale expanded state after Escape');
+    }
+    const focusReturned = await page.evaluate(() => {
+      const active = document.activeElement;
+      return (
+        active instanceof HTMLElement && (active.getAttribute('title') ?? '').startsWith('Project:')
+      );
+    });
+    if (!focusReturned) {
+      throw new Error('Escape closed the dialog but left focus orphaned');
+    }
+    check('project switcher dialog announces state and returns focus on Escape');
 
     // Provider/model identity: chat and Studio generation are separate.
     await page.getByText('Chat · echo (offline)').waitFor({ timeout: 10_000 });
@@ -345,16 +484,62 @@ async function main(): Promise<void> {
     await page.getByLabel('Decision type').selectOption('constraint');
     await page.getByRole('button', { name: 'Save decision' }).click();
     await page.getByText('Decision saved to this project.').waitFor({ timeout: 15_000 });
-    await page.getByText('Never use countdown timers.').waitFor({ timeout: 10_000 });
+    // Scoped to Project memory: the same decision text is also offered as a
+    // review selection in the Batch E Decision review panel, so a bare
+    // getByText would no longer be unique.
+    await page
+      .getByRole('region', { name: 'Project memory' })
+      .getByText('Never use countdown timers.')
+      .waitFor({ timeout: 10_000 });
     await page.getByText('No project decisions to check.').waitFor({ state: 'hidden' });
     check('explicitly added a scoped project decision');
+
+    // D052: the Memory surface renders the graph/timeline data as a stream —
+    // the decision just saved must appear as a created event without reload.
+    const primaryNav = page.getByRole('navigation', { name: 'Primary' });
+    await primaryNav.getByRole('button', { name: 'Memory', exact: true }).click();
+    const timeline = page.getByRole('region', { name: 'Memory timeline' });
+    await timeline.waitFor({ timeout: 15_000 });
+    await timeline.getByText('Never use countdown timers.').waitFor({ timeout: 15_000 });
+    check('the Memory timeline lists the decision as a created event');
+    // D052 follow-up: the same payload also drives an SVG relationship map —
+    // the region must expose an img-role label stating links and node count.
+    const map = page.getByRole('region', { name: 'Memory relationship map' });
+    await map.waitFor({ timeout: 15_000 });
+    await map.getByRole('img', { name: /memories/ }).waitFor({ timeout: 15_000 });
+    await map.getByText('Never use countdown timers.').waitFor({ timeout: 15_000 });
+    check('the Memory relationship map renders the chain (SVG plus text fallback)');
+    // D050 follow-up: the System view mirrors the same alert states the cron
+    // prober consumes — an operator seeing them in two places means one truth.
+    await primaryNav.getByRole('button', { name: 'System', exact: true }).click();
+    const alerts = page.getByRole('region', { name: 'Alert signals' });
+    await alerts.waitFor({ timeout: 15_000 });
+    await alerts.getByText('backup', { exact: true }).waitFor({ timeout: 10_000 });
+    await alerts.getByText(/fresh ·|stale ·|no backups|watching disabled/).waitFor({
+      timeout: 10_000,
+    });
+    await alerts.getByText('storage', { exact: true }).waitFor({ timeout: 10_000 });
+    await alerts.getByText('provider', { exact: true }).waitFor({ timeout: 10_000 });
+    check('the System view mirrors the alert signals the prober consumes');
+    await primaryNav.getByRole('button', { name: 'HTML Studio', exact: true }).click();
+    await page.getByLabel('Application description').waitFor({ timeout: 15_000 });
 
     // Drafts are project-scoped and must not leak on a project switch.
     const promptBox = page.getByLabel('Application description');
     await promptBox.fill('Draft prompt for this project.');
-    await openProject(page, 'studio-workflow-other');
+    await openProject(
+      page,
+      'studio-workflow-other',
+      'no approved version',
+      'a draft in one project does not follow the switch',
+    );
     await waitForValue(page.getByLabel('Application description'), '');
-    await openProject(page, PROJECT);
+    await openProject(
+      page,
+      PROJECT,
+      'no approved version',
+      "and returning restores that project's own draft",
+    );
     await waitForValue(
       page.getByLabel('Application description'),
       'Draft prompt for this project.',
@@ -377,12 +562,111 @@ async function main(): Promise<void> {
     await page.getByRole('tab', { name: 'Changes' }).click();
     const diffPanel = page.locator('#studio-panel-diff');
     await diffPanel.getByText('staged · not approved').waitFor({ timeout: 10_000 });
+
+    // Observed model identity (P1#6): what the CLI SAID it used, surfaced
+    // end to end — job record, meta, and the Studio UI.
+    // The prompt-status footer sits below the fold; assert DOM presence, not
+    // viewport visibility (the same text is on the job record we meta-check).
+    await page
+      .getByText('reported model fake-muse')
+      .first()
+      .waitFor({ state: 'attached', timeout: 10_000 });
+    const metaAfterGenerate = await json<{ forge: { observed_model: string | null } }>(
+      `${apiBase}/api/meta`,
+    );
+    if (metaAfterGenerate.forge.observed_model !== 'fake-muse') {
+      throw new Error(
+        `meta reports observed_model ${String(metaAfterGenerate.forge.observed_model)}, expected the CLI-reported id`,
+      );
+    }
+    check('the Studio shows and meta persists the model identity the CLI reported');
     if ((await diffPanel.locator('[data-diff-kind="add"]').count()) === 0) {
       throw new Error('Changes panel rendered no added lines');
     }
     await page.getByText('Syntax/structure passed').waitFor({ timeout: 10_000 });
     await page.getByText(/Applicable checks:.*countdown mechanics/).waitFor({ timeout: 10_000 });
     check('staged diff, structure result and applicable Guard checks are visible');
+
+    /*
+     * KI-74: the dependency disclosure in the approval rail. The fixture change
+     * references the pinned Phaser build, so the bytes promotion would write carry
+     * the engine and fetch nothing. If the rail showed a fetched row here it would
+     * be describing the source view — the file on disk — rather than the artifact
+     * being approved, which is the exact failure KI-74 is about.
+     */
+    /*
+     * This step generates a form-driven web app, not a game: it carries no
+     * library and asks for nothing outside itself. The rail has to say exactly
+     * that — no rows, and a policy line that states what verification *would*
+     * have permitted without implying that something was fetched.
+     */
+    const dependencyBlock = review.locator('[data-testid="dependency-disclosure"]');
+    await dependencyBlock.first().waitFor({ timeout: 10_000 });
+    for (const kind of ['bundled', 'fetched', 'blocked'] as const) {
+      if ((await dependencyBlock.locator(`[data-dependency-kind="${kind}"]`).count()) !== 0) {
+        throw new Error(
+          `the approval rail disclosed a ${kind} dependency for an application that references nothing remote`,
+        );
+      }
+    }
+    if (
+      (await dependencyBlock
+        .getByText(
+          'No remote reference was found in these bytes: nothing in them asks another host to load something.',
+        )
+        .count()) === 0
+    ) {
+      throw new Error('the approval rail did not say in words what these bytes fetch');
+    }
+    if (
+      (await dependencyBlock
+        .getByText(
+          /verification would have permitted https:\/\/cdn\.jsdelivr\.net; these bytes reference nothing remote/,
+        )
+        .count()) === 0
+    ) {
+      throw new Error(
+        'the approval rail did not state the network rule these bytes were verified under, or stated it as a fetch',
+      );
+    }
+    check('the approval rail discloses what these bytes fetch, and what verification permitted');
+
+    /*
+     * KI-78 shipped a second half: the record has to say what its own reading cannot
+     * see, so an empty list is never read as "this application cannot reach the
+     * network". That wording is product, so it is measured in production Studio and
+     * not only in a unit test — otherwise the assurance exists in the code and the
+     * limit that makes it honest exists only in a fixture.
+     */
+    const notes = dependencyBlock.locator('[data-testid="dependency-notes"]');
+    if ((await notes.count()) === 0) {
+      throw new Error(
+        'the approval rail disclosed dependencies without stating what that reading cannot see',
+      );
+    }
+    // `innerText` on purpose: the claim under test is that the limits note is *legible to the person
+    // approving*, so hidden text cannot count. The lint rule wants `textContent`; that would pass on a
+    // note no approver can see.
+    // biome-ignore lint/performance/useDomNodeTextContent: the assertion is about visible text
+    const noteText = (await notes.innerText()).replace(/\s+/g, ' ');
+    if (!noteText.includes('what this record cannot see')) {
+      throw new Error(
+        `the approval rail's dependency notes did not name the limits of the reading: ${noteText.slice(0, 160)}`,
+      );
+    }
+    if (!noteText.includes('assembled at run time')) {
+      throw new Error(
+        `the dependency notes omitted the limit that matters most for an empty list: ${noteText.slice(0, 160)}`,
+      );
+    }
+    check('the approval rail states the limits of its own reading, next to the list it qualifies');
+
+    // Screenshot last: the image is evidence for the assertions above, including
+    // the notes line, so capturing before them would show a block that had not
+    // been checked.
+    await dependencyBlock
+      .first()
+      .screenshot({ path: join(OUT, 'dependency-disclosure-staged.png') });
 
     await page.getByRole('tab', { name: 'Preview' }).click();
     const frame = page.frameLocator('iframe[title="HTML application preview"]');
@@ -400,7 +684,68 @@ async function main(): Promise<void> {
     }
     await page.getByText('v1 approved').waitFor({ timeout: 10_000 });
     check('first-version approval messaging is accurate');
+
     await page.screenshot({ path: join(OUT, 'after-approved-v1.png'), fullPage: true });
+
+    /*
+     * After approval the rail must speak from the record kept when the version was
+     * promoted, and that record must describe the promoted bytes. Re-deriving the
+     * dependency picture from the stored file would let a later edit of the file,
+     * or a different read path, change what a reviewer is told they approved.
+     */
+    const approvedBlock = page.locator('[data-testid="dependency-disclosure"]').first();
+    await approvedBlock.waitFor({ timeout: 10_000 });
+    if ((await approvedBlock.locator('[data-dependency-kind]').count()) !== 0) {
+      throw new Error('the approved application disclosed a dependency it does not have');
+    }
+    if (
+      (await approvedBlock
+        .getByText(
+          'No remote reference was found in these bytes: nothing in them asks another host to load something.',
+        )
+        .count()) === 0
+    ) {
+      throw new Error('the approved application did not state what it fetches');
+    }
+    const withDisclosure = await json<{
+      state: {
+        versions: Array<{
+          version: number;
+          sha256?: string;
+          dependencies?: {
+            html_sha256: string | null;
+            network_policy: string;
+            self_contained: boolean;
+            dependencies: Array<{ status: string; library: string | null; version: string | null }>;
+          };
+        }>;
+      };
+    }>(`${apiBase}/api/forge/projects/${PROJECT}`);
+    const v1 = withDisclosure.state.versions.find((entry) => entry.version === 1);
+    if (!v1?.dependencies) {
+      throw new Error('the approved version kept no dependency record');
+    }
+    if (v1.dependencies.html_sha256 !== v1.sha256) {
+      throw new Error(
+        'the dependency record does not describe the promoted bytes: ' +
+          `${String(v1.dependencies.html_sha256)} vs ${String(v1.sha256)}`,
+      );
+    }
+    if (v1.dependencies.dependencies.length !== 0 || v1.dependencies.self_contained !== true) {
+      throw new Error(
+        `the approved version disclosed dependencies it does not have: ${JSON.stringify(
+          v1.dependencies.dependencies,
+        )}`,
+      );
+    }
+    if (v1.dependencies.network_policy !== 'cdn-allowlist') {
+      throw new Error(
+        `the approved version recorded ${String(v1.dependencies.network_policy)} as its network rule`,
+      );
+    }
+
+    await approvedBlock.screenshot({ path: join(OUT, 'dependency-disclosure-approved.png') });
+    check('the approved version keeps a dependency record that matches its own bytes');
 
     // The change request starts empty and cannot be submitted while blank.
     const changeInput = page.getByLabel('Change request');
@@ -415,6 +760,142 @@ async function main(): Promise<void> {
       throw new Error('Generate change is enabled for an empty request');
     }
     check('change request starts empty with a neutral placeholder and disabled action');
+
+    // ---- Media controls (Batch B, deterministic: uploaded bytes) ---------
+    // Uploaded bytes need no provider, so the curate-and-insert loop runs
+    // offline: candidate -> approve -> insert the placeholder into the
+    // change draft -> edit-target toggle -> Generate enablement. The segment
+    // leaves the change draft empty, as the check above requires.
+    const media = page.getByRole('region', { name: 'Media assets' });
+    await media.scrollIntoViewIfNeeded();
+    await media.getByText('No images yet.').waitFor({ timeout: 10_000 });
+    const uploadPng = join(OUT, 'media-upload-1x1.png');
+    writeFileSync(
+      uploadPng,
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    );
+    const imagePrompt = media.getByLabel('Image prompt');
+    await imagePrompt.fill('a small dot');
+    const generateImage = media.getByRole('button', { name: 'Generate', exact: true });
+    if (!(await generateImage.isEnabled())) {
+      throw new Error('Generate image stays disabled with a prompt');
+    }
+    await imagePrompt.fill('');
+    if (await generateImage.isEnabled()) {
+      throw new Error('Generate image is enabled for an empty prompt');
+    }
+    check('media Generate arms on prompt text without submitting a provider job');
+    await media.locator('input[type="file"]').setInputFiles(uploadPng);
+    await media.getByTitle('Approve this version').waitFor({ timeout: 15_000 });
+    check('uploaded bytes appear as an approvable candidate');
+    await media.getByTitle('Approve this version').click();
+    await media.getByText('Approved: v1').waitFor({ timeout: 15_000 });
+    check('uploaded candidate approves to an embeddable v1');
+    await media.getByTitle('Edit this version into a new candidate').click();
+    await media.getByLabel('Image edit prompt').waitFor({ timeout: 10_000 });
+    await media.getByText(/editing .* v1/).waitFor({ timeout: 10_000 });
+    await media.getByRole('button', { name: 'cancel' }).click();
+    await media.getByLabel('Image prompt').waitFor({ timeout: 10_000 });
+    check('edit targeting toggles the prompt and cancels cleanly');
+    await media.getByTitle('Insert this reference into the instruction').click();
+    {
+      const deadline = Date.now() + 10_000;
+      let seen = '';
+      while (Date.now() < deadline) {
+        seen = await page.getByLabel('Change request').inputValue();
+        if (seen.includes('muse-asset://')) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      if (!seen.includes('muse-asset://')) {
+        throw new Error('Insert did not place a muse-asset placeholder in the change draft');
+      }
+    }
+    await page.screenshot({ path: join(OUT, 'after-media-insert.png'), fullPage: true });
+    check('Insert places the approved reference into the change draft');
+    await page.getByLabel('Change request').fill('');
+    if ((await page.getByLabel('Change request').inputValue()) !== '') {
+      throw new Error('change draft could not be cleared after Insert');
+    }
+    if (!(await page.getByRole('button', { name: 'Generate change' }).isDisabled())) {
+      throw new Error('Generate change is enabled after clearing the draft');
+    }
+    check('change draft returns to empty with a disabled action after Insert');
+
+    // ---- Reference state resets across source versions (Batch C P2) ---------
+    // Suggest/segment inputs are keyed by project/asset/version: switching
+    // the reference target drops stale drafts and errors instead of
+    // misattributing v1 inference to a newer version. Offline uploads
+    // always create new assets (which unmount anyway), so the second
+    // version is seeded directly into the asset store and the page
+    // reloads — both reference buttons below belong to the same asset,
+    // proving the keyed remount rather than a cross-asset unmount.
+    const listedAssets = (await (
+      await fetch(`${apiBase}/api/forge/projects/${PROJECT}/media`)
+    ).json()) as { data: { items: Array<{ asset_id: string }> } };
+    const seededAssetId = listedAssets.data.items[0]?.asset_id;
+    if (!seededAssetId) throw new Error('media asset missing for reference-reset regression');
+    const { ForgeWorkspace: SeededWorkspace } = await import(
+      '../apps/server/src/forge/workspace.js'
+    );
+    const { MediaAssetStore: SeededStore } = await import('../apps/server/src/media/assets.js');
+    await new SeededStore(new SeededWorkspace(join(dataRoot, 'workspaces'))).addVersion(
+      PROJECT,
+      seededAssetId,
+      {
+        kind: 'image',
+        mime: 'image/png',
+        bytes: readFileSync(uploadPng),
+        parent: { asset_id: seededAssetId, version: 1, project_id: PROJECT },
+        source: { kind: 'upload', text: 'seeded v2' },
+      },
+    );
+    await page.reload();
+    await assertStudio(page);
+    await openProject(
+      page,
+      PROJECT,
+      'v1 approved',
+      'a reload and a keyboard reopen return the approved state',
+    );
+    const referenceButtons = media.getByTitle(
+      'Suggest decisions or extract a cutout from this version',
+    );
+    await referenceButtons.nth(1).waitFor({ timeout: 15_000 });
+    // Poll for disappearance: React flushes the remount asynchronously
+    // after the click, so an immediate count would race it.
+    const waitForGone = async (label: string): Promise<void> => {
+      const deadline = Date.now() + 10_000;
+      for (;;) {
+        if ((await media.getByLabel(label).count()) === 0) return;
+        if (Date.now() > deadline) {
+          throw new Error(`${label} survived switching the reference target`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    };
+    await referenceButtons.nth(0).click();
+    await media.getByTitle('Suggest project decisions from this image').click();
+    await media.getByLabel('Suggestion guidance').fill('guidance-alpha');
+    allowSuggest503 = true;
+    await media.getByRole('button', { name: 'Suggest', exact: true }).click();
+    await media.getByText(/not configured/).waitFor({ timeout: 10_000 });
+    allowSuggest503 = false;
+    // Switch versions while the v1 error is showing: drafts and errors
+    // must not follow the reference to v2.
+    await referenceButtons.nth(1).click();
+    await waitForGone('Suggestion guidance');
+    if ((await media.getByText(/not configured/).count()) !== 0) {
+      throw new Error('stale provider error survived switching the reference target');
+    }
+    // Same-asset switch back with segment state showing.
+    await media.getByTitle('Extract an object cutout with SAM').click();
+    await media.getByLabel('Segmentation concept').fill('concept-beta');
+    await referenceButtons.nth(0).click();
+    await waitForGone('Segmentation concept');
+    check('reference state resets when the source version changes');
 
     // Version summary uses the recorded request, not a generic model phrase.
     await review
@@ -459,8 +940,18 @@ async function main(): Promise<void> {
 
     // Change drafts are also project-scoped.
     await changeInput.fill('Draft change for this project.');
-    await openProject(page, 'studio-workflow-other');
-    await openProject(page, PROJECT, 'v1 approved');
+    await openProject(
+      page,
+      'studio-workflow-other',
+      'no approved version',
+      'a change draft does not leak into the other project',
+    );
+    await openProject(
+      page,
+      PROJECT,
+      'v1 approved',
+      'and is waiting when this project is opened again',
+    );
     await waitForValue(page.getByLabel('Change request'), 'Draft change for this project.');
     check('project change drafts are preserved without leaking between projects');
 
@@ -599,12 +1090,241 @@ async function main(): Promise<void> {
     }
     check('v1 and v2 remain intact and v3 records its v1 ancestry');
 
+    // ---- Interrupted generation: hard crash mid-job (roadmap §7, G-10) ----
+    // The seeded fixture proves startup bookkeeping; this proves the live
+    // path: a generation in flight when the server dies is marked
+    // interrupted (never silently resumed), the UI says so, and the queue
+    // recovers for the next generation.
+    allowResourceErrors = true; // the page predictably loses the API mid-poll
+    await stop(server);
+    server = start('api-sleep', process.execPath, [join(ROOT, 'apps/server/dist/index.js')], {
+      cwd: ROOT,
+      env: { ...serverEnv, FAKE_MUSE_MODE: 'sleep' },
+    });
+    await waitForHttp(`${apiBase}/api/health`);
+    await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
+    await openProject(
+      page,
+      PROJECT,
+      'v3 approved',
+      'with the API parked, the page still shows the current version',
+    );
+
+    await page.getByRole('tab', { name: 'Change this app' }).click();
+    await page.getByLabel('Change request').fill('Interrupt this generation mid-flight.');
+    await page.getByRole('button', { name: 'Generate change' }).click();
+    await page
+      .getByRole('region', { name: 'Development' })
+      .getByText('Studio generation is writing…')
+      .waitFor({ timeout: 30_000 });
+    hardKillTimer = setTimeout(() => {
+      killFailure =
+        'the generation ran past the hard-kill deadline; the fixture is not interruptible';
+    }, 30_000);
+    await hardKill(server);
+    clearTimeout(hardKillTimer);
+    if (killFailure) throw new Error(killFailure);
+    check('SIGKILLed the API (and the in-flight generation) mid-job without graceful shutdown');
+
+    server = start('api', process.execPath, [join(ROOT, 'apps/server/dist/index.js')], {
+      cwd: ROOT,
+      env: serverEnv,
+    });
+    await waitForHttp(`${apiBase}/api/health`);
+    await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
+    await openProject(
+      page,
+      PROJECT,
+      'v3 approved',
+      'after a real restart the keyboard switcher shows the rolled-forward state',
+    );
+
+    await page
+      .getByRole('status')
+      .getByText(/1 interrupted by a server restart and not resumed/)
+      .waitFor({ timeout: 15_000 });
+    await page.screenshot({ path: join(OUT, 'after-interrupted-generation.png'), fullPage: true });
+    check('a crashed generation resurfaces as an interrupted-job notice, not a lost job');
+
+    const interrupted = await json<{
+      jobs: Array<{ status: string; kind: string; prompt: string }>;
+    }>(`${apiBase}/api/forge/projects/${PROJECT}`);
+    const crashedJob = interrupted.jobs.find(
+      (job) => job.status === 'interrupted' && job.prompt.includes('mid-flight'),
+    );
+    if (!crashedJob) {
+      throw new Error('the in-flight generation was not recorded as interrupted on disk');
+    }
+    await page.getByRole('button', { name: 'Acknowledge notices' }).click();
+    await page.getByText(/1 interrupted by a server restart/).waitFor({ state: 'hidden' });
+    check('the queue acknowledges interruption without deleting the job record');
+
+    // The queue is healthy: the next generation stages normally.
+    await page.getByRole('tab', { name: 'Change this app' }).click();
+    await page.getByRole('button', { name: 'Generate change' }).click();
+    await page.getByText(/Change staged\./).waitFor({ timeout: LONG });
+    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    await page
+      .getByText('Change rejected. The approved application is untouched.')
+      .waitFor({ timeout: 20_000 });
+    check('generation works normally after an interrupted job');
+    allowResourceErrors = false;
+
+    // ---- Visual snapshots: fixed regions compared to recorded baselines --
+    // Baselines are recorded on the CI Linux runners (per engine) and
+    // compared on later runs. Local platforms skip: font rendering differs,
+    // and committing OS-specific baselines nobody regenerates is a trap.
+    await page.getByText('Change rejected.').waitFor({ state: 'hidden', timeout: 20_000 });
+    const visualDir = join(ROOT, 'tests', 'visual');
+    const engineKey = launched.selection.policy;
+    const platformKey = process.platform;
+    if (platformKey === 'linux') {
+      const slots: Array<[string, Locator]> = [
+        ['navigation', page.getByRole('navigation')],
+        ['development', page.getByRole('region', { name: 'Development' })],
+        // The Review panel itself would contain per-run version timestamps;
+        // the advisory block is the deterministic review-side region.
+        ['advisory', page.getByRole('region', { name: 'Decision Guard advisory' })],
+      ];
+      const updateBaselines = process.env.FORGE_VISUAL_UPDATE === '1';
+      const mismatches: string[] = [];
+      for (const [slot, locator] of slots) {
+        const baselinePath = join(visualDir, `${platformKey}-${engineKey}-${slot}.png`);
+        const shot = await locator.screenshot({ animations: 'disabled', timeout: 15_000 });
+        if (updateBaselines || !existsSync(baselinePath)) {
+          await mkdir(visualDir, { recursive: true });
+          await writeFile(baselinePath, shot);
+          continue;
+        }
+        const baseline = PNG.sync.read(readFileSync(baselinePath));
+        const actual = PNG.sync.read(shot);
+        if (baseline.width !== actual.width || baseline.height !== actual.height) {
+          mismatches.push(
+            `${slot}: size ${actual.width}x${actual.height} vs baseline ${baseline.width}x${baseline.height}`,
+          );
+          await writeFile(join(OUT, `visual-actual-${slot}.png`), shot);
+          continue;
+        }
+        const diff = new PNG({ width: baseline.width, height: baseline.height });
+        const changed = pixelmatch(
+          baseline.data,
+          actual.data,
+          diff.data,
+          baseline.width,
+          baseline.height,
+          {
+            threshold: 0.1,
+          },
+        );
+        const budget = Math.max(64, Math.round(baseline.width * baseline.height * 0.0025));
+        if (changed > budget) {
+          mismatches.push(`${slot}: ${changed} pixels differ (budget ${budget})`);
+          await writeFile(join(OUT, `visual-diff-${slot}.png`), PNG.sync.write(diff));
+          await writeFile(join(OUT, `visual-actual-${slot}.png`), shot);
+        }
+      }
+      if (updateBaselines) {
+        check('visual baselines written for this engine (update run)');
+      } else if (mismatches.length > 0) {
+        throw new Error(`visual snapshot drift: ${mismatches.join('; ')}`);
+      } else {
+        check(`visual snapshots match recorded baselines (3 regions, ${engineKey})`);
+      }
+    } else {
+      console.log(
+        `  (visual snapshot stage skipped on ${platformKey}: baselines are CI-Linux-recorded)`,
+      );
+    }
+
+    // ---- Damaged state.json: inspect, then repair from the UI ----------
+    const forgeDir = join(dataRoot, 'workspaces', 'forge', PROJECT);
+    const damagedBytes = '{ broken by the regression script';
+    await writeFile(join(forgeDir, 'state.json'), damagedBytes, 'utf8');
+
+    allowResourceErrors = true;
+    await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
+    await page.getByText(/state file is damaged/).waitFor({ timeout: 15_000 });
+    check('a damaged state file shows an inspect/repair banner instead of a dead end');
+
+    const damaged = await json<{
+      repairable: boolean;
+      state_file: { presence: string };
+      versions: Array<{ version: number; usable: boolean }>;
+      jobs: Array<{ job_id: string }>;
+    }>(`${apiBase}/api/forge/projects/${PROJECT}/recovery/state`);
+    if (!damaged.repairable || damaged.state_file.presence !== 'invalid_json') {
+      throw new Error(`unexpected inspection: ${JSON.stringify(damaged.state_file)}`);
+    }
+    if (
+      damaged.versions.map((entry) => `${entry.version}:${entry.usable ? 'u' : 'x'}`).join(',') !==
+      '1:u,2:u,3:u'
+    ) {
+      throw new Error(`inspection mis-read versions: ${JSON.stringify(damaged.versions)}`);
+    }
+    if (!damaged.jobs.some((entry) => entry.job_id === interruptedJobId)) {
+      throw new Error('inspection lost the seeded interrupted job record');
+    }
+    check('recovery/state keeps versions and job records inspectable while the view is blocked');
+
+    await page.getByRole('button', { name: /Repair state from surviving versions/ }).click();
+    await page.getByText(/State repaired:/).waitFor({ timeout: 20_000 });
+    const repaired = await json<{
+      state: {
+        current_version: number | null;
+        versions: Array<{ version: number; sha256?: string }>;
+      };
+    }>(`${apiBase}/api/forge/projects/${PROJECT}`);
+    if (repaired.state.current_version !== 3) {
+      throw new Error(
+        `expected repaired current v3, got ${String(repaired.state.current_version)}`,
+      );
+    }
+    if (repaired.state.versions.map((entry) => entry.version).join(',') !== '1,2,3') {
+      throw new Error(
+        `repaired history lost versions: ${repaired.state.versions.map((entry) => entry.version).join(',')}`,
+      );
+    }
+    if (!repaired.state.versions.every((entry) => typeof entry.sha256 === 'string')) {
+      throw new Error('repaired versions are missing recomputed sha256 hashes');
+    }
+    const archived = (await readdir(forgeDir)).filter((name) => name.startsWith('state.corrupt-'));
+    if (archived.length !== 1) {
+      throw new Error(`expected exactly one archived damaged state, found ${archived.join(', ')}`);
+    }
+    const [archivedState] = archived;
+    if (!archivedState) throw new Error('expected exactly one archived damaged state, found none');
+    if ((await readFile(join(forgeDir, archivedState), 'utf8')) !== damagedBytes) {
+      throw new Error('the archived state file does not preserve the damaged bytes');
+    }
+    allowResourceErrors = false;
+    await assertStudio(page);
+    await page.screenshot({ path: join(OUT, 'after-state-repair.png'), fullPage: true });
+    check('repair archived the damaged bytes and rebuilt a working v1–v3 history from the UI');
+
     await page.screenshot({ path: join(OUT, 'studio-workflow-final.png'), fullPage: true });
 
     if (errors.length > 0) {
       throw new Error(`console/page errors: ${errors.slice(0, 3).join(' | ')}`);
     }
     check('no console or page errors');
+
+    /*
+     * The headline this gate prints is a count, so a check that silently stops being
+     * reached changes what the headline claims without failing anything. One such
+     * deletion happened while this file was being edited and was caught only by
+     * diffing the check names afterwards. The floor is pinned rather than the exact
+     * number, because the engine-conditional checks legitimately vary; a named
+     * shortfall is the honest report either way.
+     */
+    const countIssues = checkCountIssues({
+      measured: checks,
+      min: EXPECTED_MIN_CHECKS,
+      required: REQUIRED_CHECK_NAMES,
+      duplicates: duplicateCheckNames(checks),
+    });
+    if (countIssues.length > 0) {
+      throw new Error(countIssues.join('; '));
+    }
 
     console.log(
       `\nAutomated Studio workflow: ${checks.length} checks passed (project ${PROJECT}).`,
@@ -613,7 +1333,7 @@ async function main(): Promise<void> {
     console.log('  • syntax/structure: automated node --check + HTML checks; not execution');
     console.log('  • successful loading: server runtime check loads the staged page once');
     console.log(
-      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart',
+      '  • tested interactions: generation, review, approve, modify, reject, rollback, restart, interrupted generation, damaged-state repair, accessibility landmarks and dialog focus, visual snapshot comparison (3 regions per engine against CI-recorded baselines)',
     );
     console.log('  • human review: visual design, gameplay and decision quality remain manual');
     console.log(`Logs and screenshot: ${OUT}/`);
@@ -628,6 +1348,9 @@ async function main(): Promise<void> {
       }
     }
     console.error(error);
+    if (errors.length > 0) {
+      console.error(`page errors so far: ${errors.slice(0, 6).join(' | ')}`);
+    }
     for (const item of managed) {
       console.error(`\n--- ${item.name} (${item.log}) ---\n${item.tail.slice(-4_000)}`);
     }

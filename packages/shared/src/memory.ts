@@ -49,9 +49,23 @@ export type ValidationStatus = z.infer<typeof ValidationStatusSchema>;
  * that removes the row from every retrieval index; `expired` is applied by
  * retention policy. Hard deletion (`purge`) removes the bytes entirely.
  */
-export const MEMORY_STATUSES = ['active', 'superseded', 'deleted', 'expired'] as const;
+// `proposed` is a candidate that has not been accepted yet: it never enters
+// retrieval or the default inspector list. Accepting promotes it to `active`
+// (history action `accepted`); rejecting soft-deletes it (history action
+// `rejected`). Roadmap §6 chose a lifecycle state over a separate proposal
+// table so candidates share id space, history, and supersession edges while
+// staying out of established facts (see DECISIONS.md D038).
+export const MEMORY_STATUSES = ['proposed', 'active', 'superseded', 'deleted', 'expired'] as const;
 export const MemoryStatusSchema = z.enum(MEMORY_STATUSES);
 export type MemoryStatus = z.infer<typeof MemoryStatusSchema>;
+
+/**
+ * Who performed a lifecycle operation. Recorded per transition on history
+ * entries and, at the record level, as the actor of the latest change.
+ */
+export const MEMORY_ACTORS = ['user', 'agent', 'system'] as const;
+export const MemoryActorSchema = z.enum(MEMORY_ACTORS);
+export type MemoryActor = z.infer<typeof MemoryActorSchema>;
 
 /**
  * Where a memory came from. Provenance is mandatory in spirit: a memory
@@ -91,6 +105,15 @@ export const MemorySchema = z.object({
   /** The record that replaced this one, when superseded. */
   superseded_by: z.uuid().nullable(),
   tags: z.array(TagSchema),
+  /**
+   * Monotonic edit counter (roadmap §6 record contract). Every in-place
+   * change — field update, supersession flip, expiry, proposal transition —
+   * increments it. Callers can guard concurrent edits by sending
+   * `expected_revision`; a mismatch is a conflict, never a silent overwrite.
+   */
+  revision: z.number().int().min(1),
+  /** Actor of the most recent change to this record (see history for all). */
+  actor: MemoryActorSchema,
 });
 export type Memory = z.infer<typeof MemorySchema>;
 
@@ -125,6 +148,12 @@ export const MemoryUpdateInputSchema = z.object({
   validation_status: ValidationStatusSchema.optional(),
   tags: z.array(TagSchema).max(16).optional(),
   expires_at: z.iso.datetime().nullable().optional(),
+  /**
+   * Optional optimistic-concurrency guard. When present, the engine only
+   * applies the update if the record is still at this revision; otherwise it
+   * fails with `memory_conflict` and the record's current revision.
+   */
+  expected_revision: z.number().int().min(1).optional(),
 });
 export type MemoryUpdateInput = z.infer<typeof MemoryUpdateInputSchema>;
 
@@ -212,16 +241,74 @@ export const MemoryQuerySchema = z.object({
 });
 export type MemoryQuery = z.infer<typeof MemoryQuerySchema>;
 
+/**
+ * Review queue (roadmap §7 / gap G-9 first slice).
+ *
+ * The queue is DERIVED, never a stored state machine: a memory is in the
+ * queue when it needs a human decision — an unverified or disputed claim, or
+ * a claim whose expiry has passed or is about to. Expiry is computed against
+ * the moment of the request, so nothing goes stale between reads.
+ */
+export const REVIEW_HORIZON_DAYS_DEFAULT = 7;
+export const REVIEW_HORIZON_DAYS_MAX = 365;
+
+export const REVIEW_REASONS = ['unverified', 'disputed', 'expired', 'expiring'] as const;
+export const ReviewReasonSchema = z.enum(REVIEW_REASONS);
+export type ReviewReason = z.infer<typeof ReviewReasonSchema>;
+
+export const ReviewItemSchema = z.object({
+  memory: MemorySchema,
+  reasons: z.array(ReviewReasonSchema).min(1),
+  days_until_expiry: z.number().int().nullable(),
+});
+export type ReviewItem = z.infer<typeof ReviewItemSchema>;
+
+export const ReviewQueueQuerySchema = z.object({
+  /** A named project always scopes the queue; without one it spans projects. */
+  project_id: z.string().min(1).max(128).nullable().default(null),
+  /** Kept for parity with the inspector query surface; scoping is decided by project_id. */
+  all_projects: z.boolean().default(false),
+  horizon_days: z
+    .number()
+    .int()
+    .min(0)
+    .max(REVIEW_HORIZON_DAYS_MAX)
+    .default(REVIEW_HORIZON_DAYS_DEFAULT),
+  limit: z.number().int().min(1).max(200).default(50),
+  offset: z.number().int().min(0).default(0),
+});
+export type ReviewQueueQuery = z.infer<typeof ReviewQueueQuerySchema>;
+
+export const ReviewQueueSchema = z.object({
+  items: z.array(ReviewItemSchema),
+  total: z.number().int().min(0),
+  horizon_days: z.number().int().min(0),
+});
+export type ReviewQueue = z.infer<typeof ReviewQueueSchema>;
+
 /** One audit entry per lifecycle transition. Append-only. */
 export const MemoryHistoryEntrySchema = z.object({
   id: z.uuid(),
   memory_id: z.uuid(),
-  action: z.enum(['created', 'updated', 'superseded', 'deleted', 'expired', 'purged']),
+  // `accepted` promotes a proposal to active; `rejected` tombstones it.
+  action: z.enum([
+    'created',
+    'updated',
+    'superseded',
+    'deleted',
+    'expired',
+    // 'purged' is accepted by schema and SQL CHECK but never written: engine.purge()
+    // hard-deletes the row and its history, so no history event can carry it. Kept for
+    // contract stability; removal is a D042-style migration queued separately.
+    'purged',
+    'accepted',
+    'rejected',
+  ]),
   previous_status: MemoryStatusSchema.nullable(),
   next_status: MemoryStatusSchema,
   /** Human-readable reason, e.g. "user corrected the target platform". */
   reason: z.string().max(1_000).nullable(),
-  actor: z.enum(['user', 'agent', 'system']),
+  actor: MemoryActorSchema,
   at: z.iso.datetime(),
 });
 export type MemoryHistoryEntry = z.infer<typeof MemoryHistoryEntrySchema>;
@@ -266,6 +353,8 @@ export type MemoryCorrectionResult = z.infer<typeof MemoryCorrectionResultSchema
 /** Aggregate counts for the inspector header and the benchmark. */
 export const MemoryStatsSchema = z.object({
   total: z.number().int().min(0),
+  /** Candidates awaiting a decision; never counted as current facts. */
+  proposed: z.number().int().min(0),
   active: z.number().int().min(0),
   superseded: z.number().int().min(0),
   expired: z.number().int().min(0),
@@ -284,3 +373,46 @@ export const ProjectSchema = z.object({
   updated_at: z.iso.datetime(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
+
+/**
+ * Relationship graph + timeline payload (gap G-9 remainder groundwork, D052).
+ * Nodes are never full records — excerpts keep the payload small and bounded;
+ * the edges (and their timestamps) are the authoritative timeline data,
+ * straight from `memory_supersessions`. Deleted memories stay unreachable:
+ * a graph must not resurrect what a purge removed.
+ */
+export const MemoryGraphNodeSchema = z.object({
+  id: z.string(),
+  type: MemoryTypeSchema,
+  scope: z.enum(['global', 'project']),
+  project_id: z.string().nullable(),
+  excerpt: z.string(),
+  status: z.enum(['active', 'superseded', 'expired']),
+  revision: z.number().int().min(1),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(),
+});
+export type MemoryGraphNode = z.infer<typeof MemoryGraphNodeSchema>;
+
+export const MemoryGraphEdgeSchema = z.object({
+  new_id: z.string(),
+  old_id: z.string(),
+  at: z.iso.datetime(),
+});
+export type MemoryGraphEdge = z.infer<typeof MemoryGraphEdgeSchema>;
+
+export const MemoryGraphEventSchema = z.object({
+  at: z.iso.datetime(),
+  kind: z.enum(['created', 'corrected']),
+  memory_id: z.string(),
+});
+export type MemoryGraphEvent = z.infer<typeof MemoryGraphEventSchema>;
+
+export const MemoryGraphSchema = z.object({
+  nodes: z.array(MemoryGraphNodeSchema),
+  edges: z.array(MemoryGraphEdgeSchema),
+  events: z.array(MemoryGraphEventSchema),
+  truncated: z.boolean(),
+  observed_at: z.iso.datetime(),
+});
+export type MemoryGraph = z.infer<typeof MemoryGraphSchema>;

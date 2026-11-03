@@ -36,7 +36,9 @@ export type IconName =
   | 'external'
   | 'arrowRight'
   | 'clock'
-  | 'branch';
+  | 'branch'
+  | 'mic'
+  | 'film';
 
 const PATHS: Record<IconName, string> = {
   chat: 'M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 13 4a8 8 0 0 1 8 8Z',
@@ -73,6 +75,8 @@ const PATHS: Record<IconName, string> = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v5l3 2',
   branch:
     'M6 3v12m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM18 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v3a4 4 0 0 1-4 4H6',
+  mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 11a7 7 0 0 0 14 0M12 18v3M8 21h8',
+  film: 'M3 4h18v16H3V4Zm0 4h18M3 16h18M7 4v16m10-16v16',
 };
 
 export function Icon({ name, className = 'size-4' }: { name: IconName; className?: string }) {

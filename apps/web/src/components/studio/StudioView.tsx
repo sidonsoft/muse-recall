@@ -3,8 +3,11 @@ import {
   FORGE_SCREENSHOT_MAX_BYTES,
   type ForgeArtifact,
   type ForgeDiff,
+  type ForgeGenerationList,
   type ForgeJob,
   type ForgeProjectView,
+  type ForgeStateInspection,
+  type MediaVisualReviewResponse,
   type Memory,
   type Project,
   type ServiceMeta,
@@ -13,12 +16,24 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../../lib/api.ts';
 import { humanizeId } from '../../lib/format.ts';
 import { Icon } from '../Icon.tsx';
+import { DecisionReviewPanel } from './DecisionReviewPanel.tsx';
+import {
+  pinnedSelection,
+  proposalFailureText,
+  reviewFailureText,
+  reviewIdempotencyKey,
+  selectableDecisions,
+  suppliedRevisionsLine,
+} from './decision-review.ts';
+import { GenerationsPanel } from './GenerationsPanel.tsx';
+import { MediaPanel } from './MediaPanel.tsx';
 import { ProjectSwitcher } from './ProjectSwitcher.tsx';
 import { jobLabel, type PromptMode, PromptPanel } from './PromptPanel.tsx';
 import { ArtifactFooter, ReviewPanel } from './ReviewPanel.tsx';
 import { DiffPanel, PanelEmpty, SourcePanel } from './SourceAndDiff.tsx';
 import { StudioActivity } from './StudioActivity.tsx';
 import { StudioMemory } from './StudioMemory.tsx';
+import { VoiceVideoPanel } from './VoiceVideoPanel.tsx';
 
 const DEMO_PROJECT_ID = 'forge-demo';
 const PROJECT_KEY = 'muse-recall.project';
@@ -110,6 +125,22 @@ export function StudioView({
   const [memoryError, setMemoryError] = useState<string | null>(null);
   const [memoriesLoading, setMemoriesLoading] = useState(true);
 
+  // Batch E: prior generations, the decisions selected for the next proposal,
+  // and the advisory screenshot review. The review is kept separate from the
+  // job on purpose: findings describe a frame, they never become state that
+  // approve or reject reads.
+  const [generations, setGenerations] = useState<ForgeGenerationList | null>(null);
+  const [generationsLoading, setGenerationsLoading] = useState(true);
+  const [generationsError, setGenerationsError] = useState<string | null>(null);
+  const [selectedDecisions, setSelectedDecisions] = useState<string[]>([]);
+  const [review, setReview] = useState<MediaVisualReviewResponse | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
+  // Project the currently rendered handlers belong to, so a review that lands
+  // after a project switch cannot be shown under the new project.
+  const activeProjectRef = useRef(projectId);
+
   const [drafts, setDrafts] = useState<Record<string, StudioDraft>>({});
   const [promptMode, setPromptMode] = useState<PromptMode>('change');
   const [job, setJob] = useState<ForgeJob | null>(null);
@@ -131,6 +162,7 @@ export function StudioView({
   const [decision, setDecision] = useState('');
   const [action, setAction] = useState<Action>(null);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [damaged, setDamaged] = useState<ForgeStateInspection | null>(null);
   const [loadingProject, setLoadingProject] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
   const [error, setError] = useState<string | null>(null);
@@ -206,9 +238,22 @@ export function StudioView({
     }
   }, []);
 
+  const loadGenerations = useCallback(async (id: string) => {
+    setGenerationsLoading(true);
+    setGenerationsError(null);
+    try {
+      setGenerations(await api.forgeGenerations(id));
+    } catch (cause) {
+      setGenerationsError(messageOf(cause));
+    } finally {
+      setGenerationsLoading(false);
+    }
+  }, []);
+
   const loadProject = useCallback(
     async (id: string, restoreStaged: boolean) => {
       setLoadingProject(true);
+      setDamaged(null);
       try {
         const next = await api.forgeState(id);
         setProject(next);
@@ -243,6 +288,14 @@ export function StudioView({
         }
       } catch (cause) {
         setError(messageOf(cause));
+        // The project view failed; try the damage-aware path so the banner
+        // can offer inspect/repair instead of a dead end.
+        try {
+          const view = await api.forgeStateInspection(id);
+          setDamaged(view.repairable ? view : null);
+        } catch {
+          setDamaged(null);
+        }
       } finally {
         setLoadingProject(false);
       }
@@ -263,6 +316,11 @@ export function StudioView({
     setArtifact(null);
     setArtifactError(null);
     setScreenshot(null);
+    setGenerations(null);
+    setSelectedDecisions([]);
+    setReview(null);
+    setReviewError(null);
+    setReviewNotice(null);
     setPreviewMode('approved');
     setTab('preview');
     setPreviewError(null);
@@ -271,13 +329,15 @@ export function StudioView({
     setError(null);
     setCaptureMemory(false);
     setDecision('');
+    activeProjectRef.current = projectId;
     void loadProject(projectId, true);
     void loadMemories(projectId);
+    void loadGenerations(projectId);
     void api
       .projects()
       .then(setProjects)
       .catch(() => undefined);
-  }, [projectId, loadProject, loadMemories]);
+  }, [projectId, loadProject, loadMemories, loadGenerations]);
 
   useEffect(() => {
     if (!notice || notice.tone === 'err') return;
@@ -309,6 +369,9 @@ export function StudioView({
           return;
         }
         setScreenshot(data.dataUrl);
+        setReview(null);
+        setReviewError(null);
+        setReviewNotice(null);
         setNotice({ tone: 'ok', text: 'Preview captured. Describe the change you want.' });
         setError(null);
       } else {
@@ -351,6 +414,49 @@ export function StudioView({
     }
   }
 
+  async function reinspectDamage(): Promise<void> {
+    setRecoveryBusy(true);
+    try {
+      const view = await api.forgeStateInspection(projectId);
+      setDamaged(view.repairable ? view : null);
+      if (!view.repairable) message('ok', 'The state file validates again; no repair needed.');
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  async function repairDamagedState(): Promise<void> {
+    setRecoveryBusy(true);
+    try {
+      const result = await api.forgeStateRepair(projectId);
+      setDamaged(null);
+      const rebuilt = result.adopted_versions.map((version) => `v${version}`).join(', ');
+      message(
+        'ok',
+        `State repaired: ${rebuilt || 'empty project'} rebuilt${
+          result.archived_to ? `; damaged file archived as ${result.archived_to}` : ''
+        }${
+          result.skipped_versions.length > 0
+            ? `; unreadable ${result.skipped_versions.map((version) => `v${version}`).join(', ')} left on disk`
+            : ''
+        }.`,
+      );
+      await loadProject(projectId, false);
+    } catch (cause) {
+      setError(messageOf(cause));
+      try {
+        const view = await api.forgeStateInspection(projectId);
+        setDamaged(view.repairable ? view : null);
+      } catch {
+        // Inspection can lag the repair; the user can re-inspect manually.
+      }
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
   const previewKey = `${previewMode}-${activeJobId ?? project?.state.current_version ?? 'none'}-${device}-${reload}`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the rendered document changes
@@ -385,6 +491,7 @@ export function StudioView({
       if (id === projectId) {
         void loadProject(id, true);
         void loadMemories(id);
+        void loadGenerations(id);
       }
     } catch (cause) {
       setError(messageOf(cause));
@@ -441,7 +548,10 @@ export function StudioView({
     setPreviewMode('approved');
     setTab('preview');
     try {
-      const created = await api.forgeModify(projectId, change, screenshot);
+      // The proposal carries the decisions the user selected, pinned to the
+      // revisions this screen is showing. The server resolves the text.
+      const selection = pinnedSelection(selectedDecisions, selectableDecisions(memories));
+      const created = await api.forgeModify(projectId, change, screenshot, selection);
       setJob(created);
       const finished = await waitForFinish(created.id);
       if (finished.status === 'succeeded') {
@@ -458,7 +568,9 @@ export function StudioView({
       }
     } catch (cause) {
       setError(
-        cause instanceof ApiError && cause.status === 413 ? screenshotTooLarge() : messageOf(cause),
+        cause instanceof ApiError && cause.status === 413
+          ? screenshotTooLarge()
+          : proposalFailureText(cause),
       );
     } finally {
       setAction(null);
@@ -477,6 +589,72 @@ export function StudioView({
       message('warn', 'Cancellation requested. Nothing will be published.');
     } catch (cause) {
       setError(messageOf(cause));
+    }
+  }
+
+  function toggleDecision(memoryId: string, checked: boolean) {
+    setSelectedDecisions((current) =>
+      checked
+        ? Array.from(new Set([...current, memoryId]))
+        : current.filter((id) => id !== memoryId),
+    );
+    // Feedback describes a frame and a selection. Either one moving makes the
+    // previous answer meaningless, so it is dropped rather than kept on screen.
+    setReview(null);
+    setReviewError(null);
+    setReviewNotice(null);
+  }
+
+  async function reviewScreenshot() {
+    if (screenshot === null || reviewBusy) return;
+    const selection = pinnedSelection(selectedDecisions, selectableDecisions(memories));
+    if (selection.length === 0) {
+      setReviewError(
+        'The selected decisions are no longer listed for this project. Re-select them.',
+      );
+      return;
+    }
+    // Only an approved generation may be named, and only the one actually in
+    // view: the generation the listing records for the version on screen. A
+    // staged, running, or failed run is a job, not a generation, and the server
+    // checks this again before accepting it.
+    const shownVersion = artifact?.version ?? project?.state.current_version ?? null;
+    const listed =
+      shownVersion === null
+        ? undefined
+        : generations?.items.find((item) => item.version === shownVersion);
+    const generationJobId =
+      listed !== undefined && listed.job_id !== null && listed.job_status === 'succeeded'
+        ? listed.job_id
+        : null;
+    setReviewBusy(true);
+    setReview(null);
+    setReviewError(null);
+    setReviewNotice(null);
+    try {
+      const result = await api.forgeVisualReview(projectId, {
+        screenshotDataUrl: screenshot,
+        decisions: selection,
+        jobId: generationJobId,
+        // The same frame and selection is one paid call, not two.
+        idempotencyKey: reviewIdempotencyKey({
+          screenshotDataUrl: screenshot,
+          decisions: selection,
+          jobId: generationJobId,
+        }),
+      });
+      if (activeProjectRef.current !== projectId) return;
+      setReview(result);
+      setReviewNotice(
+        result.findings.length === 0 && result.unverified.length === 0
+          ? 'The review returned no findings. Nothing was changed and nothing was established.'
+          : 'Advisory feedback recorded for this frame. Nothing was changed and nothing was approved.',
+      );
+    } catch (cause) {
+      if (activeProjectRef.current !== projectId) return;
+      setReviewError(reviewFailureText(cause));
+    } finally {
+      if (activeProjectRef.current === projectId) setReviewBusy(false);
     }
   }
 
@@ -502,6 +680,7 @@ export function StudioView({
       setReload((value) => value + 1);
       void loadArtifact(projectId);
       void loadMemories(projectId);
+      void loadGenerations(projectId);
       message(
         'ok',
         result.state.versions.length <= 1
@@ -747,6 +926,46 @@ export function StudioView({
         </div>
       ) : null}
 
+      {damaged ? (
+        <div className="border-b border-warn/25 bg-warn/5 px-4 py-2" role="status">
+          <div className="flex items-start gap-2">
+            <Icon name="alert" className="mt-0.5 size-3.5 shrink-0 text-warn" />
+            <div className="min-w-0 flex-1 text-[11px] leading-relaxed text-warn">
+              <p>
+                The Forge state file is damaged ({damaged.state_file.presence}).{' '}
+                {damaged.versions_readable
+                  ? `${damaged.versions.filter((entry) => entry.usable).length} approved version file${
+                      damaged.versions.length === 1 ? '' : 's'
+                    } and ${damaged.jobs.length} job record${damaged.jobs.length === 1 ? '' : 's'} survive on disk.`
+                  : 'The versions directory itself cannot be read; restore it before repair.'}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={recoveryBusy || !damaged.versions_readable}
+                  onClick={() => void repairDamagedState()}
+                  className="rounded border border-warn/30 px-2 py-0.5 text-[10px] hover:bg-warn/10 disabled:opacity-50"
+                >
+                  Repair state from surviving versions
+                </button>
+                <button
+                  type="button"
+                  disabled={recoveryBusy}
+                  onClick={() => void reinspectDamage()}
+                  className="rounded border border-warn/30 px-2 py-0.5 text-[10px] hover:bg-warn/10 disabled:opacity-50"
+                >
+                  Re-inspect
+                </button>
+                <span className="text-[9.5px] text-warn/80">
+                  Repair archives the damaged file untouched, then rebuilds the state from approved
+                  version files.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {project?.recovery && (!project.recovery.storage.ok || project.recovery.issues.length > 0) ? (
         <div className="border-b border-warn/25 bg-warn/5 px-4 py-2" role="status">
           <div className="flex items-start gap-2">
@@ -883,11 +1102,53 @@ export function StudioView({
             job={job}
             diff={diff}
             onCancel={() => void cancel()}
+            decisionLine={
+              selectedDecisions.length > 0
+                ? `This proposal pins ${String(selectedDecisions.length)} selected decision${selectedDecisions.length === 1 ? '' : 's'} to the revision${selectedDecisions.length === 1 ? '' : 's'} shown in Decision review. The server resolves the wording.`
+                : null
+            }
             engineLabel={engineLabel}
             cliMissing={forge?.cli_available === false}
           />
+          <MediaPanel
+            // Remount on project switch: without this the previous project's
+            // thumbnails render once under the new id, firing cross-project
+            // bytes requests (and leaking the old prompt draft). The prefix is
+            // not decoration — these panels are siblings, and React rejects a
+            // children array where three elements share one key.
+            key={`media:${projectId}`}
+            projectId={projectId}
+            onInsert={(placeholder) =>
+              updateDraft(
+                'change',
+                `${change}${change.trim().length > 0 ? '\n' : ''}${placeholder}`,
+              )
+            }
+            onChanged={() => void loadProject(projectId, false)}
+          />
+          <VoiceVideoPanel key={`voice:${projectId}`} projectId={projectId} />
+          <GenerationsPanel
+            generations={generations}
+            loading={generationsLoading}
+            error={generationsError}
+            onRefresh={() => void loadGenerations(projectId)}
+          />
+          <DecisionReviewPanel
+            decisions={selectableDecisions(memories)}
+            loading={memoriesLoading}
+            error={memoryError}
+            selected={selectedDecisions}
+            onToggle={toggleDecision}
+            review={review}
+            reviewBusy={reviewBusy}
+            reviewError={reviewError}
+            reviewNotice={reviewNotice}
+            onReview={() => void reviewScreenshot()}
+            canReview={screenshot !== null}
+            suppliedLine={suppliedRevisionsLine(job)}
+          />
           <StudioMemory
-            key={projectId}
+            key={`memory:${projectId}`}
             projectId={projectId}
             memories={memories}
             loading={memoriesLoading}

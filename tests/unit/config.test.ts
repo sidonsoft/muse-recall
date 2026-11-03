@@ -195,3 +195,22 @@ describe('loadDotEnv', () => {
     expect(() => findEnvFile(nested, { MML_ENV_FILE: 'missing.env' })).toThrow(/MML_ENV_FILE/);
   });
 });
+
+describe('ACCESS_TOKEN and the bind rule (G-6 groundwork)', () => {
+  it('refuses a non-loopback bind when no ACCESS_TOKEN is configured', () => {
+    expect(() => loadConfig({ HOST: '0.0.0.0' }, '/repo')).toThrow(/unless ACCESS_TOKEN is set/);
+  });
+
+  it('allows a non-loopback bind exactly when the shared token is configured', () => {
+    const config = loadConfig(
+      { HOST: '0.0.0.0', ACCESS_TOKEN: 'a-sufficiently-long-test-secret' },
+      '/repo',
+    );
+    expect(config.host).toBe('0.0.0.0');
+    expect(config.accessToken).toBe('a-sufficiently-long-test-secret');
+  });
+
+  it('rejects a too-short shared token instead of a silently weak secret', () => {
+    expect(() => loadConfig({ ACCESS_TOKEN: 'short' }, '/repo')).toThrow(/ACCESS_TOKEN/);
+  });
+});

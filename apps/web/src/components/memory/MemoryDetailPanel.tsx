@@ -17,6 +17,9 @@ const VALIDATION_TONE: Record<ValidationStatus, Tone> = {
 };
 
 const STATUS_TONE: Record<Memory['status'], Tone> = {
+  // Candidates render with the same weight as superseded history: real rows,
+  // never current facts.
+  proposed: 'accent',
   active: 'ok',
   superseded: 'accent',
   expired: 'warn',
@@ -45,6 +48,8 @@ export function MemoryDetailPanel({
   onCorrect,
   onEdit,
   onDelete,
+  onAccept,
+  onReject,
   onSelect,
 }: {
   detail: MemoryDetail;
@@ -52,6 +57,8 @@ export function MemoryDetailPanel({
   onCorrect: (submission: CorrectionSubmission) => void;
   onEdit: (submission: EditSubmission) => void;
   onDelete: (reason: string) => void;
+  onAccept: () => void;
+  onReject: () => void;
   onSelect: (id: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>('view');
@@ -86,6 +93,30 @@ export function MemoryDetailPanel({
           ) : null}
         </div>
       </header>
+
+      {memory.status === 'proposed' && mode === 'view' ? (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2">
+          <p className="mr-auto text-[10.5px] text-muted">
+            Agent proposal — nothing is used for recall until you accept it.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onAccept}
+            className="rounded bg-accent px-2 py-1 text-[10.5px] font-medium text-accent-ink disabled:opacity-50"
+          >
+            Accept proposal
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onReject}
+            className="rounded border border-line px-2 py-1 text-[10.5px] text-muted underline decoration-dotted disabled:opacity-50"
+          >
+            Reject proposal
+          </button>
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {mode === 'view' ? <ViewBody detail={detail} onSelect={onSelect} /> : null}

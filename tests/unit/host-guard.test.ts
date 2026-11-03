@@ -92,3 +92,22 @@ describe('isLoopbackSocketAddress', () => {
     }
   });
 });
+
+describe('token mode relaxes the Host name but not the port (G-6 groundwork)', () => {
+  const base = { port: 8787, corsOrigins: [] as string[] };
+
+  it('without tokenAuth a non-loopback Host is still refused', () => {
+    expect(isAllowedHostHeader('evil.example:8787', base)).toBe(false);
+  });
+
+  it('with tokenAuth any host name passes on the configured port', () => {
+    expect(isAllowedHostHeader('evil.example:8787', { ...base, tokenAuth: true })).toBe(true);
+    expect(isAllowedHostHeader('lan-box.local:9999', { ...base, tokenAuth: true })).toBe(false);
+  });
+
+  it('tokenAuth with an assigned port (0) accepts any host and port', () => {
+    expect(isAllowedHostHeader('anywhere:1', { port: 0, corsOrigins: [], tokenAuth: true })).toBe(
+      true,
+    );
+  });
+});

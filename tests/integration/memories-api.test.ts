@@ -658,3 +658,360 @@ describe('meta', () => {
     expect(data.memory.weights.relevance).toBe(0.4);
   });
 });
+
+describe('proposals (roadmap §6 record contract)', () => {
+  async function createProposal(app: FastifyInstance, content: string): Promise<string> {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/memories/proposals',
+      payload: { type: 'constraint', scope: 'project', project_id: 'demo-game', content },
+    });
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.data.created).toBe(true);
+    expect(body.data.memory.status).toBe('proposed');
+    expect(body.data.memory.actor).toBe('agent'); // default proposer
+    expect(body.data.memory.revision).toBe(1);
+    return body.data.memory.id as string;
+  }
+
+  it('proposes without creating a current fact, then accepts it', async () => {
+    const app = await createTestApp();
+    const id = await createProposal(app, 'Proposals stay out of retrieval.');
+
+    // Not in the default list, visible only when asked for explicitly.
+    const listed = await app.inject({ method: 'GET', url: '/api/memories' });
+    expect(listed.json().data.items.map((m: { id: string }) => m.id)).not.toContain(id);
+    const pending = await app.inject({
+      method: 'GET',
+      url: '/api/memories?status=proposed&all_projects=true',
+    });
+    expect(pending.json().data.items.map((m: { id: string }) => m.id)).toContain(id);
+
+    const accepted = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${id}/accept`,
+      payload: { reason: 'user review' },
+    });
+    expect(accepted.statusCode).toBe(200);
+    expect(accepted.json().data).toMatchObject({
+      status: 'active',
+      revision: 2,
+      actor: 'user',
+    });
+
+    const history = await app.inject({ method: 'GET', url: `/api/memories/${id}/history` });
+    expect(history.json().data.entries.map((e: { action: string }) => e.action)).toEqual([
+      'created',
+      'accepted',
+    ]);
+  });
+
+  it('rejecting a proposal tombstones it and answers like a delete', async () => {
+    const app = await createTestApp();
+    const id = await createProposal(app, 'A proposal nobody wants.');
+
+    const rejected = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${id}/reject`,
+      payload: { reason: 'wrong for this project' },
+    });
+    expect(rejected.statusCode).toBe(200);
+    expect(rejected.json().data).toEqual({ id, deleted: true });
+
+    const gone = await app.inject({ method: 'GET', url: `/api/memories/${id}` });
+    expect(gone.statusCode).toBe(404);
+
+    // Deciding a tombstone twice cannot succeed.
+    const again = await app.inject({ method: 'POST', url: `/api/memories/${id}/reject` });
+    expect(again.statusCode).toBe(404);
+  });
+
+  it('refuses to decide a memory that is not a candidate', async () => {
+    const app = await createTestApp();
+    const memory = await createMemory(app);
+    const response = await app.inject({ method: 'POST', url: `/api/memories/${memory.id}/accept` });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('memory_conflict');
+  });
+
+  it('deduplicates a proposal against an established fact', async () => {
+    const app = await createTestApp();
+    const memory = await createMemory(app, { content: 'Use SQLite for persistent storage.' });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/memories/proposals',
+      payload: {
+        type: 'technical_decision',
+        scope: 'project',
+        project_id: 'demo-game',
+        content: 'Use SQLite for persistent storage.',
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.data.created).toBe(false);
+    expect(body.data.memory.id).toBe(memory.id);
+    expect(body.data.memory.status).toBe('active');
+  });
+});
+
+describe('PATCH /api/memories/:id optimistic concurrency', () => {
+  it('409s a stale edit with the current revision so the caller can re-apply', async () => {
+    const app = await createTestApp();
+    const memory = await createMemory(app);
+
+    const first = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${memory.id}`,
+      payload: { confidence: 0.9, expected_revision: 1 },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().data.revision).toBe(2);
+
+    const stale = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${memory.id}`,
+      payload: { confidence: 0.2, expected_revision: 1 },
+    });
+    expect(stale.statusCode).toBe(409);
+    const body = stale.json();
+    expect(body.error.code).toBe('memory_conflict');
+    expect(body.error.details).toMatchObject({ expected_revision: 1, current_revision: 2 });
+
+    // The losing write changed nothing. (GET by id returns the audit detail
+    // envelope, so the record itself is under `memory`.)
+    const current = await app.inject({ method: 'GET', url: `/api/memories/${memory.id}` });
+    expect(current.json().data.memory).toMatchObject({ confidence: 0.9, revision: 2 });
+  });
+});
+
+describe('export / import (roadmap §6, gap G-4)', () => {
+  it('exports the raw envelope with a download filename', async () => {
+    const app = await createTestApp();
+    await createMemory(app);
+    const response = await app.inject({ method: 'GET', url: '/api/memories/export' });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-disposition']).toContain('attachment');
+    const envelope = response.json();
+    expect(envelope).toMatchObject({
+      format: 'muse-recall-memory-export',
+      format_version: 1,
+    });
+    expect(envelope.records.length).toBeGreaterThan(0);
+    expect(envelope.history.length).toBeGreaterThan(0);
+  });
+
+  it('imports into a second server and replays idempotently', async () => {
+    const source = await createTestApp();
+    await createMemory(source, { content: 'A rule worth porting.' });
+    const envelope = (await source.inject({ method: 'GET', url: '/api/memories/export' })).json();
+
+    const target = await createTestApp();
+    const imported = await target.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: envelope,
+    });
+    expect(imported.statusCode).toBe(200);
+    expect(imported.json().data).toMatchObject({
+      records_imported: envelope.records.length,
+      records_replayed: 0,
+      dry_run: false,
+    });
+
+    const replay = await target.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: envelope,
+    });
+    expect(replay.json().data).toMatchObject({
+      records_imported: 0,
+      records_replayed: envelope.records.length,
+    });
+
+    // The ported rule is visible and retrievable on the target side.
+    const listed = await target.inject({ method: 'GET', url: '/api/memories?all_projects=true' });
+    expect(listed.json().data.items.map((m: { content: string }) => m.content)).toContain(
+      'A rule worth porting.',
+    );
+  });
+
+  it('dry_run answers the plan without importing', async () => {
+    const source = await createTestApp();
+    await createMemory(source, { content: 'Dry-run only, please.' });
+    const envelope = (await source.inject({ method: 'GET', url: '/api/memories/export' })).json();
+
+    const target = await createTestApp();
+    const planned = await target.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: { ...envelope, dry_run: true },
+    });
+    expect(planned.statusCode).toBe(200);
+    expect(planned.json().data).toMatchObject({ dry_run: true });
+    const listed = await target.inject({ method: 'GET', url: '/api/memories' });
+    expect(listed.json().data.items).toEqual([]);
+  });
+
+  it('rejects structurally invalid envelopes and newer formats with 400', async () => {
+    const app = await createTestApp();
+    const junk = await app.inject({ method: 'POST', url: '/api/memories/import', payload: {} });
+    expect(junk.statusCode).toBe(400);
+
+    const real = (await app.inject({ method: 'GET', url: '/api/memories/export' })).json();
+    const newer = await app.inject({
+      method: 'POST',
+      url: '/api/memories/import',
+      payload: { ...real, format_version: 99 },
+    });
+    expect(newer.statusCode).toBe(400);
+    expect(newer.json().error.code).toBe('memory_invalid');
+  });
+});
+
+describe('GET /api/memories/review (gap G-9)', () => {
+  const future = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+
+  it('surfaces unverified, disputed, expired and expiring memories with computed reasons', async () => {
+    const app = await createTestApp();
+    await createMemory(app, { content: 'plain unverified claim for review tests' });
+    await createMemory(app, { content: 'verified and fresh claim', validation_status: 'verified' });
+    await createMemory(app, {
+      content: 'expires in five days claim',
+      validation_status: 'verified',
+      expires_at: future(5),
+    });
+    await createMemory(app, {
+      content: 'expired three days ago claim',
+      validation_status: 'verified',
+      expires_at: future(-3),
+    });
+    const disputed = await createMemory(app, {
+      content: 'hotly disputed claim',
+      validation_status: 'verified',
+    });
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${disputed.id}`,
+      payload: { validation_status: 'disputed' },
+    });
+    expect(patch.statusCode).toBe(200);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/memories/review?project_id=demo-game',
+    });
+    expect(response.statusCode).toBe(200);
+    const data = response.json().data as {
+      horizon_days: number;
+      total: number;
+      items: Array<{ memory: { content: string }; reasons: string[] }>;
+    };
+    expect(data.horizon_days).toBe(7);
+    const reasons = new Map(data.items.map((item) => [item.memory.content, item.reasons]));
+    expect([...reasons.keys()].sort()).toEqual(
+      [
+        'expired three days ago claim',
+        'expires in five days claim',
+        'hotly disputed claim',
+        'plain unverified claim for review tests',
+      ].sort(),
+    );
+    expect(reasons.get('plain unverified claim for review tests')).toEqual(['unverified']);
+    expect(reasons.get('hotly disputed claim')).toEqual(['disputed']);
+    expect(reasons.get('expires in five days claim')).toEqual(['expiring']);
+    expect(reasons.get('expired three days ago claim')).toEqual(['expired']);
+    expect(data.total).toBe(4);
+  });
+
+  it('horizon_days shrinks the expiring window; verified-and-current memories never appear', async () => {
+    const app = await createTestApp();
+    await createMemory(app, {
+      content: 'expires in five days claim',
+      validation_status: 'verified',
+      expires_at: future(5),
+    });
+    const far = await app.inject({
+      method: 'GET',
+      url: '/api/memories/review?project_id=demo-game&horizon_days=3',
+    });
+    expect(far.json().data.items).toHaveLength(0);
+    expect(far.json().data.horizon_days).toBe(3);
+  });
+
+  it('triage through PATCH leaves the queue and is audit-visible', async () => {
+    const app = await createTestApp();
+    const item = await createMemory(app, { content: 'claim awaiting verification' });
+    const before = await app.inject({ url: '/api/memories/review?project_id=demo-game' });
+    expect(before.json().data.total).toBe(1);
+
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: `/api/memories/${item.id}`,
+      payload: { validation_status: 'verified' },
+    });
+    expect(patch.statusCode).toBe(200);
+
+    const after = await app.inject({ url: '/api/memories/review?project_id=demo-game' });
+    expect(after.json().data.total).toBe(0);
+    const history = await app.inject({ method: 'GET', url: `/api/memories/${item.id}/history` });
+    const entries = history.json().data.entries as Array<{ action: string }>;
+    expect(entries.some((entry) => entry.action === 'updated')).toBe(true);
+  });
+});
+
+describe('GET /api/memories/graph (D052)', () => {
+  it('exposes supersession edges and timeline events after a correction', async () => {
+    const app = await createTestApp();
+    const original = await createMemory(app, { content: 'Use SQLite for storage' });
+    const corrected = await app.inject({
+      method: 'POST',
+      url: `/api/memories/${original.id}/correct`,
+      payload: {
+        type: 'technical_decision',
+        project_id: 'demo-game',
+        content: 'Use Postgres for storage',
+        confidence: 0.95,
+        validation_status: 'verified',
+      },
+    });
+    expect(corrected.statusCode).toBe(200);
+    const replacementId = corrected.json().data.memory.id as string;
+
+    const response = await app.inject({ method: 'GET', url: '/api/memories/graph' });
+    expect(response.statusCode).toBe(200);
+    const graph = response.json().data as {
+      nodes: { id: string; status: string; excerpt: string }[];
+      edges: { new_id: string; old_id: string; at: string }[];
+      events: { kind: string }[];
+      truncated: boolean;
+    };
+    expect(graph.nodes.map((node) => node.id).sort()).toEqual([original.id, replacementId].sort());
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0]).toMatchObject({ new_id: replacementId, old_id: original.id });
+    expect(graph.nodes.find((node) => node.id === original.id)?.status).toBe('superseded');
+    expect(graph.events.map((event) => event.kind).sort()).toEqual([
+      'corrected',
+      'created',
+      'created',
+    ]);
+    expect(graph.truncated).toBe(false);
+  });
+
+  it('honours project scoping and reports truncation honestly', async () => {
+    const app = await createTestApp();
+    await createMemory(app, { content: 'first demo-game fact' });
+    await createMemory(app, { content: 'second demo-game fact' });
+
+    const scoped = await app.inject({
+      method: 'GET',
+      url: '/api/memories/graph?project_id=demo-game',
+    });
+    expect(scoped.json().data.nodes).toHaveLength(2);
+
+    const paged = await app.inject({ method: 'GET', url: '/api/memories/graph?limit=1' });
+    expect(paged.json().data.nodes).toHaveLength(1);
+    expect(paged.json().data.truncated).toBe(true);
+  });
+});

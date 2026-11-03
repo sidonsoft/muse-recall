@@ -12,8 +12,10 @@ import {
   MemoryCreateResultSchema,
   type MemoryDetail,
   MemoryDetailSchema,
+  MemoryGraphSchema,
   type MemoryHistoryEntry,
   MemoryHistoryEntrySchema,
+  MemoryImportResultSchema,
   type MemoryListResponse,
   MemoryListResponseSchema,
   MemoryQuerySchema,
@@ -26,11 +28,13 @@ import {
   ProjectSchema,
   RetrievalPreviewSchema,
   RetrievalRequestSchema,
+  ReviewQueueSchema,
   type ServiceMeta,
 } from '@mml/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppConfig } from '../config.js';
+import { type IdempotencyStore, idempotent } from '../idempotency.js';
 
 /**
  * Memory API.
@@ -43,10 +47,22 @@ import type { AppConfig } from '../config.js';
 
 const IdParamsSchema = z.object({ id: z.uuid() });
 
+/**
+ * Proposal decisions carry an optional human-readable reason. The proposal
+ * body itself reuses MemoryCreateInputSchema plus an explicit actor split
+ * out in the route handler.
+ */
+const ProposalDecisionSchema = z.object({ reason: z.string().max(1_000).optional() });
+
 /** Query-string booleans arrive as `"true"`/`"false"`. */
 const Booleanish = z
   .union([z.boolean(), z.enum(['true', 'false'])])
   .transform((value) => value === true || value === 'true');
+
+const GraphQuerySchema = z.object({
+  project_id: z.string().min(1).max(128).optional(),
+  limit: z.coerce.number().int().min(1).max(2000).optional(),
+});
 
 const ListQuerySchema = z.object({
   q: z.string().max(500).optional(),
@@ -55,6 +71,14 @@ const ListQuerySchema = z.object({
   all_projects: Booleanish.optional(),
   status: z.string().max(200).optional(),
   type: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+const ReviewQueryStrings = z.object({
+  project_id: z.string().min(1).max(128).optional(),
+  all_projects: Booleanish.optional(),
+  horizon_days: z.coerce.number().int().min(0).max(365).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -88,18 +112,39 @@ function csv(value: string | undefined): string[] | undefined {
 export interface MemoryRouteDependencies {
   engine: MemoryEngine;
   config: AppConfig;
+  idempotency: IdempotencyStore;
 }
 
 export function registerMemoryRoutes(
   app: FastifyInstance,
   dependencies: MemoryRouteDependencies,
 ): void {
-  const { engine, config } = dependencies;
+  const { engine, config, idempotency } = dependencies;
 
   // --- Stats: aggregate counts for the inspector header. -------------------
   app.get('/api/memories/stats', async () => {
     const stats: MemoryStats = MemoryStatsSchema.parse(engine.stats());
     return apiSuccess(stats);
+  });
+
+  // --- Export / import (roadmap §6 "Make changes safe") --------------------
+  // The export is the raw envelope (not an apiSuccess wrapper) so the body
+  // round-trips into POST /api/memories/import unchanged. Tombstones and
+  // audit history are included by design: dropping them would erase the
+  // audit guarantees the trail exists to provide.
+  app.get('/api/memories/export', async (_request, reply) => {
+    const envelope = engine.exportMemories();
+    reply.header(
+      'content-disposition',
+      `attachment; filename="memory-export-${envelope.exported_at.slice(0, 10)}.json"`,
+    );
+    return envelope;
+  });
+
+  app.post('/api/memories/import', async (request) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const result = engine.importExport(body, { dryRun: body.dry_run === true });
+    return apiSuccess(MemoryImportResultSchema.parse(result));
   });
 
   // --- Projects: scope anchors and the inspector's filter source. ----------
@@ -109,6 +154,21 @@ export function registerMemoryRoutes(
   });
 
   // --- List / search -------------------------------------------------------
+  // Relationship graph + timeline (gap G-9 remainder, D052). Static path so
+  // it must not collide with /api/memories/:id — Fastify prefers statics,
+  // but the intent is recorded here.
+  app.get('/api/memories/graph', async (request) => {
+    const query = GraphQuerySchema.parse(request.query ?? {});
+    return apiSuccess(
+      MemoryGraphSchema.parse(
+        engine.graph({
+          ...(query.project_id ? { projectId: query.project_id } : {}),
+          ...(query.limit ? { limit: query.limit } : {}),
+        }),
+      ),
+    );
+  });
+
   app.get('/api/memories', async (request) => {
     const query = ListQuerySchema.parse(request.query ?? {});
     const statuses = csv(query.status);
@@ -132,6 +192,24 @@ export function registerMemoryRoutes(
     return apiSuccess(list);
   });
 
+  // --- Review queue (roadmap §7 / gap G-9) ---------------------------------
+  // Derived, never stored: unverified, disputed, or expiry inside the horizon
+  // (expired items have a negative days_until_expiry). Static route, so it
+  // wins over /api/memories/:id regardless of registration order.
+  app.get('/api/memories/review', async (request) => {
+    const query = ReviewQueryStrings.parse(request.query ?? {});
+    const list = ReviewQueueSchema.parse(
+      engine.reviewQueue({
+        ...(query.project_id ? { project_id: query.project_id } : {}),
+        ...(query.all_projects === undefined ? {} : { all_projects: query.all_projects }),
+        ...(query.horizon_days === undefined ? {} : { horizon_days: query.horizon_days }),
+        limit: query.limit,
+        offset: query.offset,
+      }),
+    );
+    return apiSuccess(list);
+  });
+
   // --- Detail --------------------------------------------------------------
   app.get('/api/memories/:id', async (request) => {
     const { id } = IdParamsSchema.parse(request.params);
@@ -140,11 +218,44 @@ export function registerMemoryRoutes(
   });
 
   // --- Create --------------------------------------------------------------
+  // Idempotency-Key support (D049): a client that retried after a timeout
+  // replays the recorded response instead of creating a second memory.
   app.post('/api/memories', async (request, reply) => {
-    const input: MemoryCreateInput = MemoryCreateInputSchema.parse(request.body ?? {});
-    const result: MemoryCreateResult = MemoryCreateResultSchema.parse(engine.create(input));
-    // 201 only when a row was actually written; a deduplicated replay is 200.
+    return idempotent(request, reply, idempotency, async () => {
+      const input: MemoryCreateInput = MemoryCreateInputSchema.parse(request.body ?? {});
+      const result: MemoryCreateResult = MemoryCreateResultSchema.parse(engine.create(input));
+      // 201 only when a row was actually written; a deduplicated replay is 200.
+      return { status: result.created ? 201 : 200, body: apiSuccess(result) };
+    });
+  });
+
+  // --- Proposals (roadmap §6: candidates kept apart from established facts) --
+  // Proposals never enter retrieval; they are listed explicitly with
+  // `?status=proposed` and decided through the routes below. A browser is a
+  // `user` when deciding, while the proposal body names the originating
+  // actor explicitly (default: an agent candidate).
+  app.post('/api/memories/proposals', async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const { actor = 'agent', ...memoryFields } = body;
+    const parsedActor = z.enum(['agent', 'system']).parse(actor);
+    const input: MemoryCreateInput = MemoryCreateInputSchema.parse(memoryFields);
+    const result: MemoryCreateResult = MemoryCreateResultSchema.parse(
+      engine.propose(input, parsedActor),
+    );
     return reply.status(result.created ? 201 : 200).send(apiSuccess(result));
+  });
+
+  app.post('/api/memories/:id/accept', async (request) => {
+    const { id } = IdParamsSchema.parse(request.params);
+    const body = ProposalDecisionSchema.parse(request.body ?? {});
+    return apiSuccess(engine.acceptProposal(id, { reason: body.reason }));
+  });
+
+  app.post('/api/memories/:id/reject', async (request) => {
+    const { id } = IdParamsSchema.parse(request.params);
+    const body = ProposalDecisionSchema.parse(request.body ?? {});
+    engine.rejectProposal(id, { reason: body.reason });
+    return apiSuccess(DeleteResultSchema.parse({ id, deleted: true }));
   });
 
   // --- Update --------------------------------------------------------------

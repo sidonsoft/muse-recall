@@ -51,6 +51,129 @@ export const ForgeValidationSchema = z.object({
 export type ForgeValidation = z.infer<typeof ForgeValidationSchema>;
 
 /**
+ * KI-74 — dependency disclosure for the approval interface.
+ *
+ * The product vendors one engine copy (D059) and refuses, deliberately, to
+ * replace any other remote reference. So a document can still fetch something at
+ * run time, and the person approving it has to be able to tell the three cases
+ * apart from the bytes that would actually be promoted:
+ *
+ *   - `bundled`   — the product's pinned copy is inside these bytes;
+ *   - `fetched`   — the application will ask a remote host for this when it runs,
+ *                   and verification permits that host;
+ *   - `blocked`   — the document asks for a remote host that verification refuses,
+ *                   so the dependency never arrives during the check.
+ *
+ * `network_policy` says which rule the document was checked under: `vendored`
+ * grants no remote origin at all, `cdn-allowlist` grants exactly the approved CDN.
+ * A passed check means different things under each, so it is recorded rather than
+ * inferred later. Older records simply lack these fields: absent means "not
+ * recorded", never "nothing was fetched".
+ */
+export const FORGE_NETWORK_POLICIES = ['vendored', 'cdn-allowlist'] as const;
+export const ForgeNetworkPolicySchema = z.enum(FORGE_NETWORK_POLICIES);
+export type ForgeNetworkPolicy = z.infer<typeof ForgeNetworkPolicySchema>;
+
+export const FORGE_DEPENDENCY_STATUSES = ['bundled', 'fetched', 'blocked'] as const;
+export const ForgeDependencyStatusSchema = z.enum(FORGE_DEPENDENCY_STATUSES);
+export type ForgeDependencyStatus = z.infer<typeof ForgeDependencyStatusSchema>;
+
+/**
+ * Why a dependency has the status it has. Machine-readable so the interface can
+ * use one approved sentence per case instead of paraphrasing a server string.
+ */
+export const FORGE_DEPENDENCY_REASONS = [
+  /** The product's pinned copy sits in these bytes. */
+  'bundled_pinned_copy',
+  /** The document names a version this product does not vendor. */
+  'version_outside_pin',
+  /** The tag carries attributes or a body an inlined copy would not preserve. */
+  'tag_form_not_replaced',
+  /** These bytes already carry a vendored copy and still ask the network for it. */
+  'vendored_copy_and_remote_copy',
+  /** A remote asset (image, stylesheet, font) the application loads. */
+  'remote_asset',
+  /** A literal URL the application's own script requests at run time. */
+  'requested_by_application_code',
+] as const;
+export const ForgeDependencyReasonSchema = z.enum(FORGE_DEPENDENCY_REASONS);
+export type ForgeDependencyReason = z.infer<typeof ForgeDependencyReasonSchema>;
+
+/**
+ * How a row was found. This is not a detail: a URL sitting in a comment or a
+ * string literal is not a request, and a request assembled at run time from a
+ * variable is not visible to any reading of the bytes. A reviewer shown both as
+ * "dependencies" is being shown a scan as if it were an observation.
+ */
+export const FORGE_DEPENDENCY_BASES = ['document_reference', 'code_text'] as const;
+export const ForgeDependencyBasisSchema = z.enum(FORGE_DEPENDENCY_BASES);
+export type ForgeDependencyBasis = z.infer<typeof ForgeDependencyBasisSchema>;
+
+export const ForgeDependencySchema = z.object({
+  status: ForgeDependencyStatusSchema,
+  reason: ForgeDependencyReasonSchema,
+  /** Library name read from the reference; null when the URL does not name one. */
+  library: z.string().min(1).max(80).nullable(),
+  /** Version read from the reference, or the pin's version for a bundled copy. */
+  version: z.string().min(1).max(60).nullable(),
+  /**
+   * The exact reference in the document. For a bundled row this is the URL the
+   * product's copy replaces, so the record says what was substituted.
+   */
+  url: z.string().min(1).max(500),
+  /** Host the document would contact; null when nothing leaves the document. */
+  origin: z.string().min(1).max(300).nullable(),
+  /** sha256 of the bytes the product carries, for a bundled dependency. */
+  sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  bytes: z.number().int().min(1).nullable(),
+  /** Why this row has this status, in bounded human-readable text. */
+  note: z.string().min(1).max(400),
+  /** How this row was found — a reference the browser loads, or text in code. */
+  basis: ForgeDependencyBasisSchema.optional(),
+  /**
+   * Did the verification browser actually attempt this origin? Null means the
+   * record was written before or without a browser run, so nothing was observed
+   * either way — it does not mean "no request".
+   */
+  observed: z.boolean().nullable().optional(),
+});
+export type ForgeDependency = z.infer<typeof ForgeDependencySchema>;
+
+export const ForgeDependencyDisclosureSchema = z.object({
+  /** The network rule the bytes were verified and are served under. */
+  network_policy: ForgeNetworkPolicySchema,
+  /** True when the document asks for nothing outside itself. */
+  self_contained: z.boolean(),
+  /** Remote origins the verification policy permits; empty for a no-network policy. */
+  granted_origins: z.array(z.string().min(1).max(300)).max(10),
+  dependencies: z.array(ForgeDependencySchema).max(40),
+  /**
+   * `muse-asset://` placeholders still in these bytes. Approval resolves them
+   * into embedded image data — which changes the bytes but adds no network
+   * request — so the panel can say so instead of leaving the reviewer to wonder
+   * whether the disclosure predates embedding.
+   */
+  pending_media_references: z.number().int().min(0),
+  /**
+   * What this reading cannot see, stated so the list is never mistaken for a
+   * record of what the application did. The panel renders these; it does not
+   * decide whether to mention them. Absent means the record predates the field,
+   * which the interface says out loud rather than leaving silent.
+   */
+  scan_limits: z.array(z.string().min(1).max(300)).max(6).optional(),
+  /** sha256 of the exact bytes this disclosure was measured from. */
+  html_sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  recorded_at: z.iso.datetime(),
+});
+export type ForgeDependencyDisclosure = z.infer<typeof ForgeDependencyDisclosureSchema>;
+
+/**
  * Approval-time verification record for an approved artifact.
  *
  * Historical versions may lack this field entirely; that means "not recorded",
@@ -75,6 +198,18 @@ export const ForgeRuntimeVerificationSchema = z.object({
   /** Explicit selection policy and bounded launch diagnostics. */
   browser_selection: ForgeRuntimeBrowserSelectionSchema.optional(),
   errors: z.array(z.string().max(300)).max(20),
+  /**
+   * KI-74: the network rule this document was verified under, and the remote
+   * requests the check refused. A passed check under a no-network policy and a
+   * passed check under the CDN allowlist are different facts; a passed check that
+   * silently refused a dependency is the worst of them. Absent on records written
+   * before the field existed, which means "not recorded".
+   */
+  network_policy: ForgeNetworkPolicySchema.optional(),
+  /** Remote engine references the product could not vendor, named by URL. */
+  vendor_gaps: z.array(z.string().max(300)).max(20).optional(),
+  /** Requests the verification network policy refused. */
+  blocked: z.array(z.string().max(300)).max(20).optional(),
 });
 export type ForgeRuntimeVerification = z.infer<typeof ForgeRuntimeVerificationSchema>;
 
@@ -84,6 +219,64 @@ export const ForgeApprovalVerificationSchema = z.object({
   recorded_at: z.iso.datetime(),
 });
 export type ForgeApprovalVerification = z.infer<typeof ForgeApprovalVerificationSchema>;
+
+/**
+ * Batch B — media embedded into an approved artifact.
+ *
+ * Approval resolves every `muse-asset://<id>/v<version>` placeholder against
+ * the project's APPROVED image versions and promotes the resolved HTML. This
+ * manifest records exactly which image bytes became part of the immutable
+ * version, so artifact verification and rollback can re-check them later
+ * without depending on mutable curation status.
+ */
+export const ForgeMediaEmbeddedSchema = z.object({
+  assetId: z.uuid(),
+  version: z.number().int().min(1),
+  mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+  bytes: z.number().int().min(1),
+  sha256Hex: z.string().regex(/^[a-f0-9]{64}$/),
+  dataUrlLength: z.number().int().min(1),
+});
+export type ForgeMediaEmbedded = z.infer<typeof ForgeMediaEmbeddedSchema>;
+
+export const ForgeMediaManifestSchema = z.object({
+  version: z.literal(1),
+  embedded: z.array(ForgeMediaEmbeddedSchema).max(16),
+  total_bytes: z.number().int().min(0),
+  generated_at: z.iso.datetime(),
+});
+export type ForgeMediaManifest = z.infer<typeof ForgeMediaManifestSchema>;
+
+/** Pending (unresolved) media reference, shown before approval embeds it. */
+export const ForgeMediaReferenceSchema = z.object({
+  asset_id: z.uuid(),
+  version: z.number().int().min(1),
+  status: z.enum(['candidate', 'approved', 'rejected', 'missing']),
+});
+export type ForgeMediaReference = z.infer<typeof ForgeMediaReferenceSchema>;
+
+export const ForgeArtifactMediaSchema = z.object({
+  embedded: z.array(ForgeMediaEmbeddedSchema),
+  pending: z.array(ForgeMediaReferenceSchema),
+});
+export type ForgeArtifactMedia = z.infer<typeof ForgeArtifactMediaSchema>;
+
+/**
+ * Combined artifact verification: the HTML hash, every embedded image hash,
+ * and the absence of unresolved placeholders are checked together. `ok` is
+ * false when any one of them fails; `issues` names each failure.
+ */
+export const ForgeArtifactVerificationSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  job_id: z.uuid().nullable(),
+  version: z.number().int().min(1).nullable(),
+  staged: z.boolean(),
+  ok: z.boolean(),
+  html_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  embedded: z.array(ForgeMediaEmbeddedSchema),
+  issues: z.array(z.string().max(300)).max(50),
+});
+export type ForgeArtifactVerification = z.infer<typeof ForgeArtifactVerificationSchema>;
 
 /**
  * Phase 12C — Decision Guard advisory contract.
@@ -203,6 +396,133 @@ export const DecisionGuardAdvisorySchema = z.object({
 });
 export type DecisionGuardAdvisory = z.infer<typeof DecisionGuardAdvisorySchema>;
 
+/**
+ * Batch E — one decision exactly as a generation received it.
+ *
+ * A generation's memory wiring is only auditable if the record says *which
+ * revision* of each decision went in, not just which ids were consulted at the
+ * time. Two fingerprints make that precise:
+ *
+ * - `content_sha256` — the decision's stored text at that revision, so an
+ *   in-place edit or a later correction is detectable without re-reading
+ *   history;
+ * - `injected_sha256` — the exact bytes placed in the prompt. Retrieval and the
+ *   user-selection length cap can both shorten the text, so this differs from
+ *   `content_sha256` whenever injection truncated it (`injected_truncated`).
+ *   Absent for references that were never injected, such as `added_since`
+ *   entries, which name a decision the generation did not receive at all.
+ *
+ * `excerpt` / `injected_excerpt` let a reviewer see the old wording next to the
+ * current one. Both run through credential redaction.
+ *
+ * This is a record of what was supplied. It is never evidence that the model
+ * followed, or was caused by, a decision.
+ */
+export const ForgeDecisionReferenceSchema = z.object({
+  memory_id: z.uuid(),
+  /** The memory record's own monotonic revision at supply time. */
+  revision: z.number().int().min(1),
+  content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  /** Whitespace-collapsed prefix of that content, for side-by-side reading. */
+  excerpt: z.string().min(1).max(200),
+  type: z.string().min(1).max(40),
+  /** True when the user explicitly selected this decision for the change. */
+  user_selected: z.boolean().default(false),
+  /**
+   * sha256 of the exact text placed in the prompt. Equals content_sha256 when
+   * nothing truncated it. Absent when this reference describes a decision the
+   * generation never received.
+   */
+  injected_sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  /** Excerpt of the injected text, present whenever injected_sha256 is. */
+  injected_excerpt: z.string().min(1).max(200).optional(),
+  /** True when injection shortened the stored decision text. */
+  injected_truncated: z.boolean().optional(),
+});
+export type ForgeDecisionReference = z.infer<typeof ForgeDecisionReferenceSchema>;
+
+/**
+ * How a past generation relates to the decisions that are current now.
+ *
+ * Only two labels may ever describe a generation that was given a stale
+ * decision — `received_previous_decision` (the record proves it) or
+ * `potentially_affected` (it could not have received a decision that did not
+ * exist yet, or no reference was stored). Nothing in this enum claims causal
+ * influence, and the UI renders the accompanying limits text with it.
+ */
+export const GENERATION_DECISION_LABELS = [
+  'received_previous_decision',
+  'potentially_affected',
+  'matched_current_decision',
+] as const;
+export const GenerationDecisionLabelSchema = z.enum(GENERATION_DECISION_LABELS);
+export type GenerationDecisionLabel = z.infer<typeof GenerationDecisionLabelSchema>;
+
+export const DECISION_CHANGE_KINDS = ['revised_in_place', 'superseded', 'withdrawn'] as const;
+export const DecisionChangeKindSchema = z.enum(DECISION_CHANGE_KINDS);
+export type DecisionChangeKind = z.infer<typeof DecisionChangeKindSchema>;
+
+/** One decision whose stored text moved after this generation ran. */
+export const ForgeDecisionDriftSchema = z.object({
+  memory_id: z.uuid(),
+  supplied_revision: z.number().int().min(1),
+  supplied_excerpt: z.string().min(1).max(200),
+  /** Null when the record is gone (deleted and purged). */
+  current_revision: z.number().int().min(1).nullable(),
+  /**
+   * The stored record's status now: `deleted`, `expired`, or `active` with an
+   * `expires_at` in the past. A record that survives deletion with its wording
+   * intact is retired, not revised, so it must never be described as though it
+   * were current guidance the generation missed.
+   */
+  current_status: z.string().min(1).max(40).nullable(),
+  /** Null for a retired or withdrawn record: its text is not current guidance. */
+  current_excerpt: z.string().max(200).nullable(),
+  superseded_by: z.uuid().nullable(),
+  change: DecisionChangeKindSchema,
+});
+export type ForgeDecisionDrift = z.infer<typeof ForgeDecisionDriftSchema>;
+
+export const ForgeGenerationComparisonSchema = z.object({
+  label: GenerationDecisionLabelSchema,
+  /** Plain-language reason for the label, bounded and non-causal. */
+  reason: z.string().min(1).max(400),
+  /** Restated every time: these labels are not measured influence. */
+  limits: z.array(z.string().min(1).max(240)).min(1).max(4),
+  drift: z.array(ForgeDecisionDriftSchema).max(40),
+  /** Decisions active now that this generation was never given. */
+  added_since: z.array(ForgeDecisionReferenceSchema).max(40),
+  unchanged: z.array(ForgeDecisionReferenceSchema).max(40),
+});
+export type ForgeGenerationComparison = z.infer<typeof ForgeGenerationComparisonSchema>;
+
+/** One approved generation, with the memory reference it was created with. */
+export const ForgeGenerationSchema = z.object({
+  version: z.number().int().min(1),
+  created_at: z.iso.datetime(),
+  summary: z.string(),
+  base_version: z.number().int().min(1).nullable(),
+  job_id: z.uuid().nullable(),
+  job_status: ForgeJobStatusSchema.nullable(),
+  job_kind: ForgeJobKindSchema.nullable(),
+  /** Null for generations recorded before references existed. */
+  memory_reference: z.array(ForgeDecisionReferenceSchema).max(40).nullable(),
+  comparison: ForgeGenerationComparisonSchema,
+});
+export type ForgeGeneration = z.infer<typeof ForgeGenerationSchema>;
+
+export const ForgeGenerationListSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  current_version: z.number().int().min(1).nullable(),
+  /** Newest first, bounded: a project with 500 versions lists its most recent. */
+  items: z.array(ForgeGenerationSchema).max(64),
+  truncated: z.boolean(),
+});
+export type ForgeGenerationList = z.infer<typeof ForgeGenerationListSchema>;
+
 export const ForgeJobSchema = z.object({
   id: z.uuid(),
   project_id: ForgeProjectIdSchema,
@@ -217,7 +537,26 @@ export const ForgeJobSchema = z.object({
   finished_at: z.iso.datetime().nullable(),
   logs: z.array(z.string()),
   usage: ForgeUsageSchema.nullable(),
+  /**
+   * The model id the CLI itself reported (`run.model.configured`) — the
+   * provider's verified behaviour: report what the CLI says it used, never
+   * promote the id we asked for into an observation. Null when the protocol
+   * never emitted one for this job.
+   */
+  model_observed: z.string().min(1).max(128).nullable().default(null),
   memory_ids: z.array(z.uuid()),
+  /**
+   * Batch E: the decisions this job was actually given, with the revision and
+   * content hash each had at start time. Absent on records written before the
+   * field existed — a missing reference is reported as such, never guessed.
+   */
+  memory_reference: z.array(ForgeDecisionReferenceSchema).max(40).optional(),
+  /**
+   * The subset the user selected for this change, in the exact revisions
+   * supplied. Inspectable so an update proposal can be audited against the
+   * guidance it claimed to use.
+   */
+  decision_revisions_supplied: z.array(ForgeDecisionReferenceSchema).max(40).optional(),
   base_version: z.number().int().min(1).nullable(),
   /** sha256 of the exact prompt sent to the model, when known. */
   prompt_sha256: z
@@ -233,9 +572,26 @@ export const ForgeJobSchema = z.object({
   decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
   /** Approval-time checks for this job, when it was approved by this build. */
   approval_verification: ForgeApprovalVerificationSchema.nullable().optional(),
+  /**
+   * KI-74: what these bytes will fetch, bundled, or be refused. Recorded from the
+   * staged bytes at generation and re-measured from the resolved bytes at
+   * approval. Absent on jobs written before the field existed.
+   */
+  dependencies: ForgeDependencyDisclosureSchema.nullable().optional(),
   version: z.number().int().min(1).nullable(),
 });
 export type ForgeJob = z.infer<typeof ForgeJobSchema>;
+
+/** A third-party library the product itself inlined into an artifact version. */
+export const ForgeVendorManifestSchema = z.object({
+  name: z.string().min(1),
+  version: z.string().min(1),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  bytes: z.number().int().min(1),
+  /** The remote reference this replaced, kept so the record says what changed. */
+  replaced_url: z.string().url(),
+});
+export type ForgeVendorManifest = z.infer<typeof ForgeVendorManifestSchema>;
 
 export const ForgeVersionSchema = z.object({
   version: z.number().int().min(1),
@@ -251,6 +607,16 @@ export const ForgeVersionSchema = z.object({
     .optional(),
   /** Approval-time checks recorded with this immutable version. */
   approval_verification: ForgeApprovalVerificationSchema.optional(),
+  /** Images embedded into this version's bytes, when it referenced any. */
+  media: ForgeMediaManifestSchema.optional(),
+  /** Engines/libraries the product vendored into these bytes (KI-53). */
+  vendors: z.array(ForgeVendorManifestSchema).optional(),
+  /**
+   * KI-74: the full dependency picture of the promoted bytes, including what
+   * those bytes still fetch remotely. Versions approved before this field existed
+   * lack it; that is reported as "not recorded", never guessed.
+   */
+  dependencies: ForgeDependencyDisclosureSchema.optional(),
 });
 export type ForgeVersion = z.infer<typeof ForgeVersionSchema>;
 
@@ -276,6 +642,12 @@ export const ForgeDiffSchema = z.object({
   files: z.array(ForgeFileDiffSchema),
   validation: ForgeValidationSchema,
   decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
+  /**
+   * KI-74: measured from the staged bytes as the product would ship them — the
+   * same read path promotion uses — so the review rail describes the bytes that
+   * would be promoted rather than the source view the diff shows.
+   */
+  dependencies: ForgeDependencyDisclosureSchema.optional(),
 });
 export type ForgeDiff = z.infer<typeof ForgeDiffSchema>;
 
@@ -312,6 +684,22 @@ export const ForgeModifySchema = z.object({
    */
   screenshot_data_url: z.string().min(100).max(FORGE_SCREENSHOT_DATA_URL_MAX_LENGTH).optional(),
   capture_memory: z.boolean().default(false),
+  /**
+   * Batch E: decisions the user selected for this update. The server resolves
+   * each id to the record that is current *at start time* — the client never
+   * supplies decision text — and records the exact revision it supplied, so a
+   * stale selection is a conflict rather than a silent regeneration with old
+   * guidance. `expected_revision` makes a stale UI selection detectable.
+   */
+  decisions: z
+    .array(
+      z.object({
+        memory_id: z.uuid(),
+        expected_revision: z.number().int().min(1).optional(),
+      }),
+    )
+    .max(16)
+    .optional(),
 });
 
 /**
@@ -437,6 +825,74 @@ export const ForgeRecoveryAckSchema = z.object({
   issue_ids: z.array(z.string().min(1).max(400)).min(1).max(50),
 });
 
+/**
+ * Explicit repair/restore path for `state_corrupt` (NEXT_STEPS.md P0 #3).
+ *
+ * A corrupt `state.json` currently blocks a project until the file is fixed by
+ * hand. These contracts let a client inspect the damaged bytes and the
+ * surviving records without throwing, then rebuild `state.json` from approved
+ * version files still on disk. Repair never overwrites the damaged file: it
+ * renames it aside first.
+ */
+export const FORGE_STATE_FILE_PRESENCE = [
+  'ok',
+  'missing',
+  'unreadable',
+  'invalid_json',
+  'invalid_value',
+] as const;
+export const ForgeStateFilePresenceSchema = z.enum(FORGE_STATE_FILE_PRESENCE);
+export type ForgeStateFilePresence = z.infer<typeof ForgeStateFilePresenceSchema>;
+
+export const ForgeVersionScanEntrySchema = z.object({
+  version: z.number().int().min(1),
+  /** True when `versions/<n>/index.html` reads cleanly and is within the workspace byte cap. */
+  usable: z.boolean(),
+  bytes: z.number().int().min(0).nullable(),
+  sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  modified_at: z.iso.datetime().nullable(),
+});
+export type ForgeVersionScanEntry = z.infer<typeof ForgeVersionScanEntrySchema>;
+
+/** Compact job listing for inspection; full records stay on the job routes. */
+export const ForgeJobSummarySchema = z.object({
+  job_id: z.uuid(),
+  /** Null when the record exists but does not parse as a job. */
+  status: ForgeJobStatusSchema.nullable(),
+  modified_at: z.iso.datetime().nullable(),
+});
+export type ForgeJobSummary = z.infer<typeof ForgeJobSummarySchema>;
+
+export const ForgeStateInspectionSchema = z.object({
+  project_id: ForgeProjectIdSchema,
+  state_file: z.object({
+    presence: ForgeStateFilePresenceSchema,
+    /** Raw bytes, capped at 64 KiB so a damaged file stays inspectable. */
+    content: z.string().max(65_536).nullable(),
+    truncated: z.boolean(),
+  }),
+  /** False when the versions directory itself could not be listed. */
+  versions_readable: z.boolean(),
+  versions: z.array(ForgeVersionScanEntrySchema).max(200),
+  jobs: z.array(ForgeJobSummarySchema).max(200),
+  repairable: z.boolean(),
+});
+export type ForgeStateInspection = z.infer<typeof ForgeStateInspectionSchema>;
+
+export const ForgeRepairResultSchema = z.object({
+  /** Where the damaged `state.json` was moved, relative to the project directory. */
+  archived_to: z.string().max(300).nullable(),
+  /** Version numbers rebuilt into the new state, ascending. */
+  adopted_versions: z.array(z.number().int().min(1)).max(200),
+  /** Numeric version directories whose bytes could not be read. */
+  skipped_versions: z.array(z.number().int().min(1)).max(200),
+  state: ForgeStateSchema,
+});
+export type ForgeRepairResult = z.infer<typeof ForgeRepairResultSchema>;
+
 export const ForgeJobListSchema = z.object({ items: z.array(ForgeJobSchema) });
 export const ForgeApprovalResultSchema = z.object({
   job: ForgeJobSchema,
@@ -470,5 +926,10 @@ export const ForgeArtifactSchema = z.object({
   lines: z.number().int().nonnegative(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   html: z.string(),
+  /**
+   * Media state for the artifact being viewed: images embedded in an approved
+   * version, or references still pending in a staged document.
+   */
+  media: ForgeArtifactMediaSchema.optional(),
 });
 export type ForgeArtifact = z.infer<typeof ForgeArtifactSchema>;

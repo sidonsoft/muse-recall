@@ -1,24 +1,50 @@
 import { createHash } from 'node:crypto';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
+  API_ERROR_CODES,
+  apiFailure,
   FORGE_MODIFY_BODY_LIMIT_BYTES,
   FORGE_SCREENSHOT_MAX_BYTES,
   ForgeApproveSchema,
   ForgeArtifactSchema,
+  ForgeArtifactVerificationSchema,
   ForgeCreateProjectSchema,
   ForgeDiffSchema,
   ForgeGenerateSchema,
+  ForgeGenerationListSchema,
   ForgeJobSchema,
   ForgeModifySchema,
   ForgeProjectViewSchema,
   ForgeRecoveryAckSchema,
   ForgeRecoveryReportSchema,
+  ForgeRepairResultSchema,
+  ForgeStateInspectionSchema,
   ForgeStateSchema,
+  MediaVisualReviewRequestSchema,
+  MediaVisualReviewResponseSchema,
+  VISUAL_REVIEW_LIMITS,
 } from '@mml/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import {
+  buildGenerationList,
+  decisionExcerpt,
+  isActiveProjectDecision,
+} from '../forge/decision-reference.js';
+import { previewRemoteGrant } from '../forge/network-policy.js';
 import type { ForgeJobManager } from '../forge/runner.js';
+import { vendorGapUrls } from '../forge/vendored-scripts.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
+import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
+import {
+  embedApprovedImages,
+  MediaArtifactError,
+  pendingMediaReferences,
+  verifyArtifact,
+} from '../media/artifact.js';
+import type { MediaAssetStore } from '../media/assets.js';
+import { type MediaService, MediaServiceError } from '../media/service.js';
+import { sendMediaError } from './media.js';
 
 const ProjectParams = z.object({ id: z.string().min(2).max(64) });
 const JobParams = z.object({ jobId: z.uuid() });
@@ -48,9 +74,19 @@ function documentTitle(html: string, fallback: string): string {
  */
 export function registerForgeRoutes(
   app: FastifyInstance,
-  deps: { manager: ForgeJobManager; workspace: ForgeWorkspace; engine: MemoryEngine },
+  deps: {
+    manager: ForgeJobManager;
+    workspace: ForgeWorkspace;
+    engine: MemoryEngine;
+    idempotency: IdempotencyStore;
+    /** Null/absent disables staged preview media resolution. */
+    mediaAssets?: MediaAssetStore;
+    /** Null/absent disables Batch E screenshot review (advisory only). */
+    media?: MediaService;
+  },
 ): void {
   const { manager, workspace } = deps;
+  const mediaAssets = deps.mediaAssets ?? null;
 
   const projectView = async (projectId: string) =>
     ForgeProjectViewSchema.parse({
@@ -94,16 +130,67 @@ export function registerForgeRoutes(
     });
   });
 
-  app.post('/api/forge/projects/:id/generate', async (request, reply) => {
+  // Explicit repair/restore path for `state_corrupt` (NEXT_STEPS.md P0 #3).
+  // Inspection never throws on a damaged state file; repair preserves the
+  // damaged bytes by renaming them aside before rebuilding the state.
+  app.get('/api/forge/projects/:id/recovery/state', async (request, reply) => {
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
-      const body = ForgeGenerateSchema.parse(request.body ?? {});
-      await workspace.ensureProject(id);
-      deps.engine.ensureProject(id);
-      const job = await manager.start({ projectId: id, kind: 'generate', prompt: body.prompt });
-      reply.status(202);
-      return envelope(ForgeJobSchema.parse(job));
+      return envelope(ForgeStateInspectionSchema.parse(await workspace.inspect(id)));
     });
+  });
+
+  app.post('/api/forge/projects/:id/recovery/repair', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      return envelope(ForgeRepairResultSchema.parse(await workspace.repairState(id)));
+    });
+  });
+
+  // Idempotency-Key (D049): a client that retried after a timeout must not
+  // pay model quota twice. Replay returns the recorded 202 job; a concurrent
+  // duplicate in this process gets 409 while the first is still starting.
+  // (guard() returns run()'s payload on success and the Reply on failure —
+  // anything that is not a plain payload is not recorded, so failures retry.)
+  app.post('/api/forge/projects/:id/generate', async (request, reply) => {
+    const decision = beginIdempotency(deps.idempotency, request);
+    if (decision.state === 'bad_key') {
+      return reply.status(400).send(apiFailure('bad_request', decision.message));
+    }
+    if (decision.state === 'replay') {
+      reply.header('idempotent-replayed', '1');
+      return reply.status(decision.record.status).send(decision.record.body as never);
+    }
+    if (decision.state === 'in_progress') {
+      return reply
+        .status(409)
+        .send(
+          apiFailure(
+            'idempotency_in_progress',
+            'A request with this Idempotency-Key is still being processed.',
+          ),
+        );
+    }
+    const runGuard = () =>
+      guard(reply, async () => {
+        const { id } = ProjectParams.parse(request.params);
+        const body = ForgeGenerateSchema.parse(request.body ?? {});
+        await workspace.ensureProject(id);
+        deps.engine.ensureProject(id);
+        const job = await manager.start({ projectId: id, kind: 'generate', prompt: body.prompt });
+        reply.status(202);
+        return envelope(ForgeJobSchema.parse(job));
+      });
+    if (decision.state === 'no_key') return runGuard();
+    try {
+      const result = await runGuard();
+      if (result !== undefined && result !== reply) {
+        deps.idempotency.record(decision.route, decision.key, 202, result);
+      }
+      return result;
+    } finally {
+      deps.idempotency.release(decision.route, decision.key);
+    }
   });
 
   app.post(
@@ -123,10 +210,313 @@ export function registerForgeRoutes(
           prompt: body.request,
           request: body.request,
           ...(screenshot ? { screenshot } : {}),
+          // Batch E: the exact decisions the user selected. The manager
+          // resolves each id to the record current at start time and records
+          // the revision it supplied, so the proposal is auditable.
+          ...(body.decisions !== undefined ? { selectedMemories: body.decisions } : {}),
         });
         reply.status(202);
         return envelope(ForgeJobSchema.parse(job));
       });
+    },
+  );
+
+  /**
+   * Batch E — prior generations with the decision reference each was created
+   * with, compared against what is current now. Read-only: it never restages,
+   * rewrites, or re-approves anything.
+   */
+  app.get('/api/forge/projects/:id/generations', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      // No `ensureProject` here: that call creates directories and writes an
+      // empty `state.json`, and a route that documents itself as read-only must
+      // not create the project it came to read. `state()` is side-effect free,
+      // and an unknown project simply lists nothing.
+      const state = await workspace.state(id);
+      const listed = deps.engine.list({
+        project_id: id,
+        status: ['active'],
+        include_global: true,
+        limit: 200,
+      });
+      return envelope(
+        ForgeGenerationListSchema.parse(
+          buildGenerationList({
+            projectId: id,
+            state,
+            jobs: manager.list(id),
+            activeDecisions: listed.items.filter((memory) => isActiveProjectDecision(memory, id)),
+            // includeDeleted so a soft-deleted record reads as retired with its
+            // status intact, instead of being mistaken for an in-place revision
+            // (or for a record that never existed at all).
+            currentOf: (memoryId: string) => deps.engine.get(memoryId, { includeDeleted: true }),
+          }),
+        ),
+      );
+    });
+  });
+
+  /**
+   * Batch E — advisory review of a screenshot against the accepted decisions the
+   * user selects.
+   *
+   * Two boundaries make this advisory rather than a verdict. The decision text is
+   * resolved from the memory store, so the request can only name ids and a stale
+   * selection is refused instead of quietly reviewed against old guidance; and
+   * this route touches no Forge state at all — no staging write, no promotion, no
+   * memory write — which the response states as `artifact_changed: false`.
+   *
+   * The model's answer is validated server-side: a finding must name evidence in
+   * the frame and state what a still image cannot establish, entries for
+   * decisions nobody selected are counted and dropped, and a decision the answer
+   * skipped is reported as unverified rather than assumed consistent.
+   */
+  /**
+   * The review subject, resolved from the store on every attempt: the request, the
+   * configured service, the decisions that were validated, and the generation the
+   * frame was filed against (when one was named).
+   */
+  interface ReviewSubject {
+    body: z.infer<typeof MediaVisualReviewRequestSchema>;
+    /** Decoded frame: part of the subject, so a replay can be checked against it. */
+    png: Buffer;
+    media: MediaService;
+    selected: Array<{ id: string; revision: number; excerpt: string; text: string }>;
+    generation:
+      | {
+          id: string;
+          kind: 'generate' | 'modify';
+          status: 'succeeded';
+          version: number;
+          created_at: string;
+        }
+      | undefined;
+  }
+
+  // Idempotency-Key (D049) applies here too: one review is a paid vision call,
+  // and the frame plus the pinned selection is a stable identity for it. A client
+  // that retried — or a user who clicked twice on the same captured frame — gets the
+  // recorded answer back with `idempotent-replayed: 1` instead of a second dispatch.
+  // Two things keep that honest: failures are never recorded, so a refusal stays
+  // retryable; and a replay is checked against the subject it claims to answer (same
+  // frame, same decisions at the same revisions, same generation), so one key can
+  // never serve feedback about a different question.
+  app.post(
+    '/api/forge/projects/:id/visual-review',
+    { bodyLimit: FORGE_MODIFY_BODY_LIMIT_BYTES },
+    async (request, reply) => {
+      const attempt = beginIdempotency(deps.idempotency, request);
+      if (attempt.state === 'bad_key') {
+        return reply.status(400).send(apiFailure('bad_request', attempt.message));
+      }
+      try {
+        // Resolve the subject from the store before consulting the record. A key
+        // match must not serve cached feedback for a decision that has since been
+        // edited or retired: that would hide a stale selection behind an answer
+        // that no longer describes the screen. Re-reading is cheap, and it keeps
+        // every refusal visible on every attempt.
+        const preflight = (await guard(reply, async () => {
+          const { id } = ProjectParams.parse(request.params);
+          const body = MediaVisualReviewRequestSchema.parse(request.body ?? {});
+          // No `ensureProject` here either. This route is advisory and promises
+          // to write nothing, so it must not create a workspace directory and an
+          // empty state file for a project it has never staged — not even when
+          // the request is later refused. An id with no decisions surfaces as
+          // `decision_not_found` from the store lookup below, which is the
+          // honest answer: nothing is known about that project.
+          const media = deps.media;
+          if (media === undefined || media === null) {
+            throw new MediaServiceError(
+              'media_unconfigured',
+              'Visual review is not configured on this server.',
+            );
+          }
+
+          const now = new Date().toISOString();
+          const selected: Array<{ id: string; revision: number; excerpt: string; text: string }> =
+            [];
+          const seen = new Set<string>();
+          for (const entry of body.decisions) {
+            if (seen.has(entry.memory_id)) continue;
+            seen.add(entry.memory_id);
+            const memoryId = entry.memory_id;
+            const memory = deps.engine.get(memoryId, { includeDeleted: true });
+            if (memory === null) {
+              throw new ForgeError(
+                'decision_not_found',
+                `Decision ${memoryId} no longer exists, so a screenshot cannot be reviewed against it.`,
+              );
+            }
+            if (memory.project_id !== null && memory.project_id !== id) {
+              throw new ForgeError(
+                'decision_cross_project',
+                `Decision ${memoryId} belongs to project ${memory.project_id}, not ${id}.`,
+              );
+            }
+            if (memory.superseded_by !== null) {
+              throw new ForgeError(
+                'decision_superseded',
+                `Decision ${memoryId} was corrected: ${memory.superseded_by} is current. Review against the current decision.`,
+              );
+            }
+            if (!isActiveProjectDecision(memory, id, now)) {
+              throw new ForgeError(
+                'decision_not_active',
+                `Decision ${memoryId} is ${memory.status}${memory.expires_at !== null ? ' past its expiry' : ''}, not an accepted decision, so there is nothing accepted to review against.`,
+              );
+            }
+            // A decision edited in place keeps its id, so id-only selection would
+            // silently review the new wording and report it as the one the user
+            // picked. The revision the screen displayed has to still be current.
+            if (entry.expected_revision !== memory.revision) {
+              throw new ForgeError(
+                'decision_revision_conflict',
+                `Decision ${memoryId} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decisions before reviewing the screenshot.`,
+              );
+            }
+            selected.push({
+              id: memory.id,
+              revision: memory.revision,
+              excerpt: decisionExcerpt(memory.content),
+              text: memory.content,
+            });
+          }
+
+          // A review may name the generation the frame belongs to. It is resolved
+          // from this project's own job history, so feedback cannot be attached to
+          // another project's generation or to a job id that does not exist.
+          let generation:
+            | {
+                id: string;
+                kind: 'generate' | 'modify';
+                status: 'succeeded';
+                version: number;
+                created_at: string;
+              }
+            | undefined;
+          if (body.job_id !== undefined) {
+            const job = manager.get(body.job_id);
+            if (job === undefined || job.project_id !== id) {
+              throw new ForgeError(
+                'invalid_job_id',
+                `Job ${body.job_id} is not a Forge job of project ${id}, so this review cannot be attached to it.`,
+              );
+            }
+            // Only a run that produced an approved version is a generation. A
+            // queued, running, failed, or finished-but-unapproved run is a job:
+            // there is no artifact the user actually has, so feedback cannot be
+            // filed against it as though it were a shipped generation.
+            if (job.version === null || job.status !== 'succeeded') {
+              throw new ForgeError(
+                'invalid_job_id',
+                `Job ${body.job_id} is a ${job.status} ${job.kind} with ${job.version === null ? 'no approved version' : `version ${String(job.version)}`} in project ${id}, so it is not an approved generation this review can describe. Omit job_id to review the screenshot on its own.`,
+              );
+            }
+            generation = {
+              id: job.id,
+              kind: job.kind,
+              status: 'succeeded',
+              version: job.version,
+              created_at: job.created_at,
+            };
+          }
+
+          // The frame belongs to the subject, not to the dispatch: a replay has to
+          // answer a review of *this* picture, so the bytes are decoded and
+          // fingerprinted before the record is consulted rather than after.
+          return { body, media, selected, generation, png: decodePng(body.screenshot_data_url) };
+        })) as ReviewSubject | undefined;
+        if (preflight === undefined) return undefined; // the guard answered already
+
+        if (attempt.state === 'replay') {
+          // The key is client-supplied, so it is not evidence of identity. A replay
+          // is only honest when the stored answer describes the same frame, the same
+          // decisions at the same revisions, and the same generation; otherwise one
+          // key could serve feedback that belongs to a different question, which is
+          // exactly the stale-subject failure the revision pin exists to prevent.
+          if (!recordedReviewMatches(attempt.record.body, preflight)) {
+            return reply
+              .status(409)
+              .send(
+                apiFailure(
+                  'idempotency_key_reused',
+                  'That Idempotency-Key already answered a different question: a different frame, a different decision selection, or a different generation. Use a new key for this review.',
+                ),
+              );
+          }
+          reply.header('idempotent-replayed', '1');
+          return reply.status(attempt.record.status).send(attempt.record.body as never);
+        }
+        if (attempt.state === 'in_progress') {
+          return reply
+            .status(409)
+            .send(
+              apiFailure(
+                'idempotency_in_progress',
+                'A request with this Idempotency-Key is still being processed.',
+              ),
+            );
+        }
+
+        const runResult = await guard(reply, async () => {
+          const png = preflight.png;
+          const outcome = await preflight.media.reviewScreenshot({
+            bytes: png,
+            mime: 'image/png',
+            decisions: preflight.selected.map((entry) => ({ id: entry.id, text: entry.text })),
+          });
+          const byId = new Map(preflight.selected.map((entry) => [entry.id, entry]));
+
+          return envelope(
+            MediaVisualReviewResponseSchema.parse({
+              advisory: true,
+              artifact_changed: false,
+              screenshot_sha256: createHash('sha256').update(png).digest('hex'),
+              ...(preflight.generation === undefined ? {} : { generation: preflight.generation }),
+              findings: outcome.findings.map((finding) => ({
+                ...finding,
+                decision_excerpt: (byId.get(finding.decision_id) as { excerpt: string }).excerpt,
+                decision_revision: (byId.get(finding.decision_id) as { revision: number }).revision,
+              })),
+              unverified: outcome.unverified.map((entry) => ({
+                decision_id: entry.decision_id,
+                decision_excerpt: (byId.get(entry.decision_id) as { excerpt: string }).excerpt,
+                decision_revision: (byId.get(entry.decision_id) as { revision: number }).revision,
+                reason: entry.reason,
+                uncertainty:
+                  'No usable assessment exists for this decision, so its relationship to the frame stays unknown.',
+              })),
+              ignored_entries: outcome.ignored,
+              limits: [...VISUAL_REVIEW_LIMITS],
+              provider: {
+                provider: 'meta',
+                ...(outcome.model.length > 0 ? { model: outcome.model } : {}),
+                ...(outcome.observedModel !== null ? { observed: outcome.observedModel } : {}),
+              },
+              provider_attempts: outcome.attempts,
+            }),
+          );
+        });
+
+        // Only a completed review is recorded, so a refusal never becomes a cached
+        // answer and the same key stays retryable. `reply.sent` is the authority on
+        // whether the guard answered for us: Fastify's Reply is thenable, so a
+        // returned Reply resolves to undefined here and the type alone cannot tell a
+        // sent error apart from a value.
+        if (attempt.state === 'run' && runResult !== undefined && !reply.sent) {
+          try {
+            deps.idempotency.record(attempt.route, attempt.key, 200, runResult);
+          } catch (error) {
+            // The caller already paid for this answer. Losing the replay record is a
+            // logging event, not a reason to fail a completed review.
+            request.log.error({ err: error }, 'visual review result could not be recorded');
+          }
+        }
+        return runResult;
+      } finally {
+        if (attempt.state === 'run') deps.idempotency.release(attempt.route, attempt.key);
+      }
     },
   );
 
@@ -227,6 +617,21 @@ export function registerForgeRoutes(
         }
       }
 
+      const approvedVersion =
+        version !== null ? state.versions.find((entry) => entry.version === version) : undefined;
+      const media =
+        jobId !== null
+          ? {
+              embedded: [],
+              pending: mediaAssets
+                ? await pendingMediaReferences(mediaAssets, id, html).catch(() => [])
+                : [],
+            }
+          : {
+              embedded: approvedVersion?.media?.embedded ?? [],
+              pending: [],
+            };
+
       return envelope(
         ForgeArtifactSchema.parse({
           project_id: id,
@@ -239,6 +644,93 @@ export function registerForgeRoutes(
           lines: html.length === 0 ? 0 : html.split('\n').length,
           sha256,
           html,
+          media,
+        }),
+      );
+    });
+  });
+
+  /**
+   * Combined artifact verification (Batch B): HTML hash + every embedded
+   * image hash + no unresolved placeholders, checked together. Staged
+   * artifacts are resolved first; a reference that cannot be embedded makes
+   * `ok=false` with the resolver's explicit issue instead of a partial pass.
+   */
+  app.get('/api/forge/projects/:id/artifact/verification', async (request, reply) => {
+    return guard(reply, async () => {
+      const { id } = ProjectParams.parse(request.params);
+      const query = ArtifactQuery.parse(request.query ?? {});
+      const state = await workspace.state(id);
+
+      let html: string;
+      let sha256: string;
+      let jobId: string | null = null;
+      let version: number | null = state.current_version;
+      let manifest: import('@mml/shared').ForgeMediaManifest | null = null;
+
+      if (query.job) {
+        const job = manager.get(query.job);
+        if (!job || job.project_id !== id) return notFound(reply, 'Unknown review job.');
+        const snapshot = await workspace.stagedSnapshot(id, query.job);
+        if (!snapshot) return notFound(reply, 'This review has no staged HTML.');
+        jobId = query.job;
+        version = null;
+        try {
+          const resolved = mediaAssets
+            ? await embedApprovedImages(mediaAssets, id, snapshot.html)
+            : { html: snapshot.html, manifest: null, embedded: [] };
+          html = resolved.html;
+          manifest = resolved.manifest;
+        } catch (error) {
+          if (!(error instanceof MediaArtifactError)) throw error;
+          html = snapshot.html;
+          return envelope(
+            ForgeArtifactVerificationSchema.parse({
+              project_id: id,
+              job_id: jobId,
+              version,
+              staged: true,
+              ok: false,
+              html_sha256: snapshot.sha256,
+              embedded: [],
+              issues: [error.message, ...error.issues],
+            }),
+          );
+        }
+        sha256 = createHash('sha256').update(html, 'utf8').digest('hex');
+      } else {
+        html = (await workspace.currentHtml(id)) ?? '';
+        if (html.length === 0) return notFound(reply, 'No approved HTML yet.');
+        sha256 = createHash('sha256').update(html, 'utf8').digest('hex');
+        const recorded = state.versions.find((entry) => entry.version === state.current_version);
+        manifest = recorded?.media ?? null;
+        if (recorded?.sha256 && recorded.sha256 !== sha256) {
+          return envelope(
+            ForgeArtifactVerificationSchema.parse({
+              project_id: id,
+              job_id: null,
+              version,
+              staged: false,
+              ok: false,
+              html_sha256: sha256,
+              embedded: [],
+              issues: [`v${String(state.current_version)} no longer matches its recorded hash.`],
+            }),
+          );
+        }
+      }
+
+      const verified = verifyArtifact(html, manifest);
+      return envelope(
+        ForgeArtifactVerificationSchema.parse({
+          project_id: id,
+          job_id: jobId,
+          version,
+          staged: jobId !== null,
+          ok: verified.ok,
+          html_sha256: sha256,
+          embedded: verified.embedded,
+          issues: verified.issues,
         }),
       );
     });
@@ -253,32 +745,70 @@ export function registerForgeRoutes(
     return guard(reply, async () => {
       const { id } = ProjectParams.parse(request.params);
       const query = PreviewQuery.parse(request.query ?? {});
-      const html = query.job
+      let html = query.job
         ? await workspace.stagedHtml(id, query.job)
         : await workspace.currentHtml(id);
       if (html === null) return notFound(reply, 'No application to preview yet.');
+      if (query.job && mediaAssets) {
+        // Staged preview resolves APPROVED images only. An unusable reference
+        // is reported in a header and left visible as a placeholder; preview
+        // must never fail closed on a curation problem.
+        try {
+          html = (await embedApprovedImages(mediaAssets, id, html)).html;
+        } catch {
+          reply.header('x-forge-media-unresolved', '1');
+        }
+      }
+      // An engine reference the product could not vendor is reported the same way
+      // an unresolved image is: a header, so the UI can say the artifact still
+      // needs the network. The reference itself is left in the bytes.
+      const vendorGaps = vendorGapUrls(html);
+      if (vendorGaps.length > 0) {
+        reply.header('x-forge-vendor-gaps', String(vendorGaps.length));
+      }
       reply
         .header('content-type', 'text/html; charset=utf-8')
-        .header(
-          'content-security-policy',
-          [
-            'sandbox allow-scripts',
-            "default-src 'none'",
-            "script-src 'unsafe-inline' https://cdn.jsdelivr.net",
-            "style-src 'unsafe-inline'",
-            'img-src data: blob:',
-            'connect-src https://cdn.jsdelivr.net',
-            "frame-ancestors 'self'",
-            "base-uri 'none'",
-            "form-action 'none'",
-            "object-src 'none'",
-          ].join('; '),
-        )
+        .header('content-security-policy', previewContentSecurityPolicy(html))
         .header('cache-control', 'no-store')
         .header('x-content-type-options', 'nosniff');
       return reply.send(withCaptureBridge(html));
     });
   });
+}
+
+/**
+ * The preview document's policy.
+ *
+ * A generated game used to need the approved CDN, so the policy named it. A game
+ * that carries its own engine (KI-53) needs no remote origin at all, and granting
+ * it one anyway would leave the artifact one compromised CDN away from running
+ * someone else's code inside the product's own origin pair. The policy is chosen
+ * from what the served bytes actually reference, and a document that still
+ * references the CDN keeps the older, wider grant rather than failing on it.
+ */
+export function previewContentSecurityPolicy(html: string): string {
+  /*
+   * Grants are derived from what the served bytes reference and what the policy
+   * in force permits — the same reading the verification check and the approval
+   * disclosure use. A quoted-only scan used to decide this, so an unquoted script
+   * tag or an allowlisted image could be reported as a dependency that is fetched
+   * while the preview itself refused it.
+   */
+  const remote = previewRemoteGrant(html);
+  const grant = remote.length === 0 ? null : remote.join(' ');
+  return [
+    'sandbox allow-scripts',
+    "default-src 'none'",
+    `script-src 'unsafe-inline'${grant ? ` ${grant}` : ''}`,
+    "style-src 'unsafe-inline'",
+    `img-src data: blob:${grant ? ` ${grant}` : ''}`,
+    ...(grant === null ? [] : [`font-src ${grant}`]),
+    `connect-src ${grant ?? "'none'"}`,
+    "frame-ancestors 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "object-src 'none'",
+  ].join('; ');
 }
 
 /**
@@ -438,10 +968,61 @@ function decodePng(dataUrl: string): Buffer {
   return buffer;
 }
 
+/**
+ * Does a stored replay answer describe *this* review?
+ *
+ * A key alone cannot say: the client chooses it, and the same key can arrive with a
+ * different frame, a different selection, or a different generation. Comparing the
+ * recorded answer's frame fingerprint, the decision ids at the revisions it
+ * assessed, and the generation it was filed against keeps a replay from standing in
+ * for feedback about something else.
+ */
+function recordedReviewMatches(
+  recordBody: unknown,
+  subject: {
+    png: Buffer;
+    selected: Array<{ id: string; revision: number }>;
+    generation: { id: string } | undefined;
+  },
+): boolean {
+  const data = (
+    recordBody as {
+      data?: {
+        screenshot_sha256?: unknown;
+        generation?: { id?: unknown } | null;
+        findings?: Array<{ decision_id?: unknown; decision_revision?: unknown }>;
+        unverified?: Array<{ decision_id?: unknown; decision_revision?: unknown }>;
+      };
+    }
+  )?.data;
+  if (data === undefined) return false;
+  const frame = createHash('sha256').update(subject.png).digest('hex');
+  if (data.screenshot_sha256 !== frame) return false;
+  if ((data.generation?.id ?? null) !== (subject.generation?.id ?? null)) return false;
+  const asked = new Set(subject.selected.map((entry) => `${entry.id}@${String(entry.revision)}`));
+  const answered = new Set<string>();
+  for (const entry of [...(data.findings ?? []), ...(data.unverified ?? [])]) {
+    if (typeof entry.decision_id === 'string' && typeof entry.decision_revision === 'number') {
+      answered.add(`${entry.decision_id}@${String(entry.decision_revision)}`);
+    }
+  }
+  if (answered.size !== asked.size) return false;
+  for (const entry of asked) {
+    if (!answered.has(entry)) return false;
+  }
+  return true;
+}
+
 async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<unknown> {
   try {
     return await run();
   } catch (error) {
+    // A screenshot review performs a media call from a Forge route: a media or
+    // provider failure must mean the same status and telemetry here as it does
+    // on the media surface, rather than collapsing into a Forge conflict.
+    if (sendMediaError(reply, error)) {
+      return undefined;
+    }
     if (error instanceof ForgeError) {
       const status =
         error.code === 'invalid_job_id'
@@ -459,17 +1040,30 @@ async function guard(reply: FastifyReply, run: () => Promise<unknown>): Promise<
                       error.code === 'decision_required' ||
                       error.code === 'invalid_screenshot'
                     ? 400
-                    : 409;
+                    : error.code === 'decision_not_found' ||
+                        error.code === 'decision_cross_project' ||
+                        error.code === 'decision_superseded' ||
+                        error.code === 'decision_not_active' ||
+                        error.code === 'invalid_media_reference'
+                      ? 422
+                      : error.code === 'decision_revision_conflict'
+                        ? 409
+                        : 409;
       return reply.status(status).send({
         ok: false,
         error: { code: error.code, message: error.message, issues: error.details },
       });
     }
     if (error instanceof z.ZodError) {
-      return reply.status(400).send({
-        ok: false,
-        error: { code: 'invalid_request', message: error.issues[0]?.message ?? 'Invalid request.' },
-      });
+      // Catalogue v2: same code AND same issue-detail shape as the central
+      // handler — Forge schema failures are validation_failed everywhere.
+      return reply.status(400).send(
+        apiFailure(
+          API_ERROR_CODES.validationFailed,
+          'The request did not match the expected schema.',
+          error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+        ),
+      );
     }
     throw error;
   }

@@ -33,6 +33,7 @@ const MessageParams = z.object({ id: z.uuid(), messageId: z.uuid() });
 const ListQuerySchema = z.object({
   status: z.enum(['active', 'archived']).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 const DeleteResultSchema = z.object({ id: z.uuid(), deleted: z.literal(true) });
@@ -55,8 +56,21 @@ export function registerSessionRoutes(
 
   app.get('/api/sessions', async (request) => {
     const query = ListQuerySchema.parse(request.query ?? {});
-    const items = runtime.listSessions({ status: query.status, limit: query.limit });
-    return apiSuccess(SessionListSchema.parse({ items, total: items.length }));
+    const items = runtime.listSessions({
+      status: query.status,
+      limit: query.limit,
+      offset: query.offset,
+    });
+    // total is the filter-wide count (page-independent), matching the
+    // memories list contract: {items, total, limit, offset}.
+    return apiSuccess(
+      SessionListSchema.parse({
+        items,
+        total: runtime.countSessions({ status: query.status }),
+        limit: query.limit,
+        offset: query.offset,
+      }),
+    );
   });
 
   app.get('/api/sessions/:id', async (request) => {

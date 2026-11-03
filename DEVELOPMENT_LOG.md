@@ -188,3 +188,45 @@ and an audit log that includes invalid and denied calls. Verified with 263 tests
   `docs/VIDEO_STORYBOARD.md`.
 - Feature freeze. Outstanding items are administrative: repository visibility, video recording,
   and completing the submission form (owner actions, documented).
+
+## Post-freeze record (appended 31 Oct 2026, so the log doesn't end mid-story)
+
+The Phase 6 entry above is kept verbatim - at its writing the video was indeed
+outstanding. What happened after, with pointers instead of re-narration:
+
+- **Phases 7-17** ran as scoped batches, each with its own report under
+  `docs/` (release reports, phase docs); product decisions accumulated as 55
+  dated entries in `docs/DECISIONS.md`; the full as-is capability picture
+  lives in `docs/roadmap/CAPABILITY_INVENTORY.md`.
+- **The 2:50 demo** was recorded, QA'd, and published (site + this repo);
+  the `VIDEO_STORYBOARD.md` named above was removed in the 29 Oct
+  housekeeping (its plan superseded), which is exactly the kind of path
+  drift a historical entry is allowed to contain.
+- **Pre-judging audit cadence, 30-31 Oct:** ~90 scoped PRs into
+  `integration` - 17 adversarial guard witnesses, every judge-facing
+  surface re-witnessed at head, freeze sentinel (main `c32d03b`, three
+  tags, four rulesets) green throughout. Register + retrospective at the
+  top of `docs/NEXT_STEPS.md`; entry mechanics in
+  `docs/release/SUBMISSION_PRESERVATION.md`.
+- **Suite at the time of writing:** 77 files, 925 passed, 3 skipped
+  (925 total incl. the opt-in live trio, green at head. Corrected 31 Oct:
+  this line first said "923 total" - off by two, a stale figure carried in
+  from the 920-pass era; the authoritative total is the CI line
+  `922 passed | 3 skipped (925)`, re-read from this round's post-merge leg.)
+- **Continuation (through PR #203, 31 Oct):** the cadence kept going past
+  the ~90-PR note above - into the 100s with the same three loops. Notable
+  witnesses since: capability-matrix environment refresh with the live trio
+  re-green under Muse Code 1.4.14 (#177, opt-in 3/3); fresh-clone judge-entry
+  rehearsal from origin (#183); a two-round hunt that converged the
+  six-versus-seven tool counts across guide, SECURITY.md,
+  ARCHITECTURE_OVERVIEW and the checklist (#185/#190/#191, closed clean at
+  zero findings #192); wire probes filed KI-45 (malformed JSON answers
+  internal_error where the catalogue says bad_request) and KI-46 (website
+  build tooling carries two dev-server advisories; the shipped static page
+  and app runtime are outside both exploit contexts); dependency audit
+  clean across the workspace; schema claims verified from both sides
+  (declared 1..8 = executed 1..8); and one trigger-ordered post-judging
+  action register (#196) so the queue survives judging week. My own failure
+  modes - a duplicated bullet, a phantom claim, an invented mechanism, a
+  stale second write - each got a dated own-it PR (#170, #172, #195, #201),
+  because a register that only records other people's mistakes is public relations.

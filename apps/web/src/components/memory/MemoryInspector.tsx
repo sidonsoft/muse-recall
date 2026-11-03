@@ -5,6 +5,8 @@ import {
   type MemoryStats,
   type MemoryType,
   type Project,
+  type ReviewItem,
+  type ReviewQueue,
   type ServiceMeta,
   type ValidationStatus,
 } from '@mml/shared';
@@ -19,10 +21,12 @@ import {
   MemoryDetailPanel,
 } from './MemoryDetailPanel.tsx';
 import { RetrievalExplainer } from './RetrievalExplainer.tsx';
+import { ReviewQueuePanel } from './ReviewQueuePanel.tsx';
 
 const STATUS_OPTIONS = [
   { value: 'visible', label: 'All visible' },
   { value: 'active', label: 'Active only' },
+  { value: 'proposed', label: 'Proposals' },
   { value: 'superseded', label: 'Superseded' },
   { value: 'expired', label: 'Expired' },
 ] as const;
@@ -30,6 +34,7 @@ const STATUS_OPTIONS = [
 type StatusFilter = (typeof STATUS_OPTIONS)[number]['value'];
 
 const STATUS_TONE: Record<Memory['status'], Tone> = {
+  proposed: 'accent',
   active: 'ok',
   superseded: 'accent',
   expired: 'warn',
@@ -81,6 +86,9 @@ export function MemoryInspector({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<MemoryDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  const [review, setReview] = useState<ReviewQueue | null>(null);
+  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
 
   const [panel, setPanel] = useState<'detail' | 'retrieval'>('detail');
   const [busy, setBusy] = useState(false);
@@ -136,6 +144,17 @@ export function MemoryInspector({
     }
   }, []);
 
+  // Review queue follows the current project scope, like the list.
+  const loadReview = useCallback(async () => {
+    try {
+      setReview(
+        await api.reviewQueue(project === 'all' ? { all_projects: true } : { project_id: project }),
+      );
+    } catch {
+      setReview(null); // the list already surfaces the error
+    }
+  }, [project]);
+
   useEffect(() => {
     void loadList();
   }, [loadList]);
@@ -143,6 +162,10 @@ export function MemoryInspector({
   useEffect(() => {
     void loadSideData();
   }, [loadSideData]);
+
+  useEffect(() => {
+    void loadReview();
+  }, [loadReview]);
 
   // Deep link from HTML Studio: select the decision that was just inspected.
   useEffect(() => {
@@ -180,8 +203,34 @@ export function MemoryInspector({
   }, [selectedId]);
 
   const refresh = useCallback(async () => {
-    await Promise.all([loadList(), loadSideData()]);
-  }, [loadList, loadSideData]);
+    await Promise.all([loadList(), loadSideData(), loadReview()]);
+  }, [loadList, loadSideData, loadReview]);
+
+  async function handleReview(item: ReviewItem, action: 'verified' | 'disputed' | 'extend') {
+    setReviewBusy(item.memory.id);
+    try {
+      if (action === 'extend') {
+        await api.updateMemory(item.memory.id, {
+          expires_at: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+          expected_revision: item.memory.revision,
+        });
+        flash('ok', 'Expiry extended by 30 days.');
+      } else {
+        await api.updateMemory(item.memory.id, {
+          validation_status: action,
+          expected_revision: item.memory.revision,
+        });
+        flash('ok', action === 'verified' ? 'Marked verified.' : 'Marked disputed.');
+      }
+      await refresh();
+      if (selectedId === item.memory.id) setDetail(await api.memory(item.memory.id));
+    } catch (cause) {
+      flash('err', describeError(cause));
+      await refresh();
+    } finally {
+      setReviewBusy(null);
+    }
+  }
 
   const activeProject = project === 'all' ? (projects[0]?.id ?? '') : project;
 
@@ -206,6 +255,29 @@ export function MemoryInspector({
           ? `Correction stored. ${result.superseded.length} earlier record(s) superseded.`
           : 'That correction already existed; the current record was kept.',
       );
+    } catch (cause) {
+      flash('err', describeError(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleProposal(id: string, action: 'accept' | 'reject') {
+    setBusy(true);
+    try {
+      if (action === 'accept') {
+        await api.acceptMemory(id, 'Accepted in memory review');
+        await refresh();
+        setDetail(await api.memory(id));
+        setSelectedId(id);
+        flash('ok', 'Proposal accepted — it is now an active project decision.');
+      } else {
+        await api.rejectMemory(id, 'Rejected in memory review');
+        setSelectedId(null);
+        setDetail(null);
+        await refresh();
+        flash('ok', 'Proposal rejected — it never enters active memory.');
+      }
     } catch (cause) {
       flash('err', describeError(cause));
     } finally {
@@ -253,13 +325,15 @@ export function MemoryInspector({
     [projects],
   );
 
-  // Active decisions are what Recall can supply; superseded history follows.
+  // Active decisions are what Recall can supply; candidates needing a user
+  // decision follow immediately, then superseded history.
   const orderedItems = useMemo(() => {
     const rank: Record<Memory['status'], number> = {
       active: 0,
-      superseded: 1,
-      expired: 2,
-      deleted: 3,
+      proposed: 1,
+      superseded: 2,
+      expired: 3,
+      deleted: 4,
     };
     return [...items].sort(
       (a, b) => rank[a.status] - rank[b.status] || b.updated_at.localeCompare(a.updated_at),
@@ -278,6 +352,17 @@ export function MemoryInspector({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
       {/* ---------------- List column ---------------- */}
       <div className="min-w-0 space-y-3">
+        <ReviewQueuePanel
+          queue={review}
+          busyId={reviewBusy}
+          onVerify={(item) => void handleReview(item, 'verified')}
+          onDispute={(item) => void handleReview(item, 'disputed')}
+          onExtend={(item) => void handleReview(item, 'extend')}
+          onOpen={(item) => {
+            setPanel('detail');
+            setSelectedId(item.memory.id);
+          }}
+        />
         <div className="panel p-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">
@@ -523,6 +608,8 @@ export function MemoryInspector({
               onCorrect={(submission) => void handleCorrect(submission)}
               onEdit={(submission) => void handleEdit(submission)}
               onDelete={(reason) => void handleDelete(reason)}
+              onAccept={() => void handleProposal(detail.memory.id, 'accept')}
+              onReject={() => void handleProposal(detail.memory.id, 'reject')}
               onSelect={setSelectedId}
             />
           ) : (

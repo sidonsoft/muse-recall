@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in Muse Recall doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. For security problems, use
+        [private vulnerability reporting](https://github.com/sidonsoft/muse-recall/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. pnpm demo:seed
+        2. MODEL_PROVIDER=echo pnpm dev
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or tag
+      description: Output of `git rev-parse --short HEAD`, or the tag you used.
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where you ran it
+      options:
+        - Local machine
+        - GitHub Codespaces
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Model provider
+      description: For example `echo` (offline) or `muse`.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove API keys and any private memory content first.
+      render: text

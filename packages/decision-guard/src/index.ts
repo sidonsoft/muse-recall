@@ -27,13 +27,20 @@
  * setTimeout/setInterval of a minute or more is potential time pressure even
  * when no countdown is visible, so it abstains instead of passing.
  *
+ * v1.5.0 (rule-family breadth, roadmap G-7): two non-palette families. Rule F
+ * (autoplay-media) BLOCKs declared media autoplay (tag attribute, `.autoplay`
+ * property, setAttribute) and abstains on bare `.play()` calls, which cannot
+ * be attributed to user action statically. Rule G (external-assets) BLOCKs
+ * absolute (protocol or protocol-relative) references from tags, CSS urls,
+ * and fetch/import; relative and data: references comply.
+ *
  * A decision is NEVER marked compliant merely because no rule applies:
  * unsupported decisions produce UNVERIFIED, never PASS.
  */
 
 import type { Memory } from '@mml/shared';
 
-export const GUARD_VERSION = '1.4.0';
+export const GUARD_VERSION = '1.5.0';
 
 /** Structural subset of a memory record — no runtime coupling. */
 export type GuardDecision = Pick<Memory, 'id' | 'content' | 'status' | 'supersedes'>;
@@ -46,6 +53,8 @@ export type GuardRuleId =
   | 'mistake-penalty'
   | 'superseded-palette'
   | 'colour-only-cue'
+  | 'autoplay-media'
+  | 'external-assets'
   | 'none-applicable';
 
 /** Fixed evaluation + reporting order. Never change without a version bump. */
@@ -55,6 +64,8 @@ export const RULE_ORDER: readonly GuardRuleId[] = [
   'mistake-penalty',
   'superseded-palette',
   'colour-only-cue',
+  'autoplay-media',
+  'external-assets',
 ];
 
 export interface GuardMatchSpan {
@@ -127,6 +138,10 @@ const DECISION_MATCHERS: Record<Exclude<GuardRuleId, 'none-applicable'>, RegExp>
     /(?:avoid|no|never|without|prohibit\w*|do not)[^.]{0,60}(?:penalt\w+|punish\w+|deduct\w+)|(?:penalt\w+|punish\w+)[^.]{0,40}mistake/i,
   'superseded-palette': /palette/i,
   'colour-only-cue': /without colour|colour[- ]only|colour discrimination|colou?r[- ]blind/i,
+  'autoplay-media':
+    /(?:not|no|never|without|avoid\w*|prohibit\w*|ban)[^.]{0,60}auto[-\s]?play|auto[-\s]?play[^.]{0,40}(?:is\s+)?(?:forbidden|prohibited|banned|disallowed|not allowed)/i,
+  'external-assets':
+    /(?:no|without|never|avoid\w*|do not|prohibit\w*|fully|entirely|keep)[^.]{0,60}(?:external|third[-\s]?party|remote|cdn)[^.]{0,60}(?:asset|script|style|font|resource|dependenc\w+|request|link|library)|(?:self[-\s]?contained|works?\s+offline|runs?\s+offline)/i,
 };
 
 // ---------------------------------------------------------------------------
@@ -872,6 +887,29 @@ function unverified(reason: string): { verdict: 'UNVERIFIED'; reason: string; fi
 }
 
 // ---------------------------------------------------------------------------
+// Rule F — autoplaying media.
+// A decision prohibiting autoplay is decidable only where playback is
+// declared: the autoplay attribute/property or setAttribute('autoplay') is
+// unambiguous. A bare .play() call may be user-initiated, so it abstains.
+// Known false negatives: wrapper libraries (player.start()), WebAudio graphs.
+
+const AUTOPLAY_DECL =
+  /<(?:audio|video|bgsound|embed)\b[^>]*?\bautoplay(?![\w-])|\.autoplay\s*=\s*(?:!0\b|true\b)|\.setAttribute\s*\(\s*['"]autoplay['"]/i;
+const MEDIA_PLAY_CALL = /\.play\s*\(/i;
+
+// ---------------------------------------------------------------------------
+// Rule G — external assets.
+// BLOCK on absolute (protocol-qualified or protocol-relative) references from
+// HTML tags, CSS urls, and fetch/import calls. Relative paths, data: URLs,
+// and blob: URLs comply. Known false negatives: URLs assembled from parts.
+
+const EXTERNAL_REF_PATTERNS: readonly RegExp[] = [
+  /<(?:script|link|img|image|source|iframe|audio|video|embed|use)\b[^>]*?\b(?:src|href|xlink:href)\s*=\s*["']?(?:https?:\/\/|\/\/)/i,
+  /url\(\s*["']?(?:https?:\/\/|\/\/)/i,
+  /(?:fetch|import)\s*\(\s*["'`](?:https?:\/\/|\/\/)/i,
+];
+
+// ---------------------------------------------------------------------------
 // Rule evaluators. Each returns a verdict + reason + findings (BLOCK cases).
 
 interface RuleContext {
@@ -1197,6 +1235,76 @@ function evaluateColourCue({ source, original, decision }: RuleContext): Decisio
   };
 }
 
+function evaluateAutoplayMedia({ source, original, decision }: RuleContext): DecisionEvaluation {
+  const base = { decision_id: decision.id, rule: 'autoplay-media' as const };
+  const decl = source.match(AUTOPLAY_DECL);
+  if (decl && decl.index !== undefined) {
+    const finding = makeFinding(
+      decision,
+      'autoplay-media',
+      evidenceAt(original, decl.index, decl[0].length),
+      `decision prohibits autoplaying media; source declares "${excerpt(decl[0], 80)}"`,
+      [{ start: decl.index, end: decl.index + decl[0].length }],
+      true,
+      'high',
+    );
+    return {
+      ...base,
+      verdict: 'BLOCK',
+      reason: 'declared media autoplay detected',
+      findings: [finding],
+    };
+  }
+  if (source.match(MEDIA_PLAY_CALL)) {
+    return {
+      ...base,
+      ...unverified(
+        'media playback call present, but static analysis cannot tell whether playback is user-initiated',
+      ),
+    };
+  }
+  return {
+    ...base,
+    verdict: 'PASS',
+    reason: 'no declared autoplay and no media playback call found',
+    findings: [],
+  };
+}
+
+function evaluateExternalAssets({ source, original, decision }: RuleContext): DecisionEvaluation {
+  const base = { decision_id: decision.id, rule: 'external-assets' as const };
+  let hit: RegExpMatchArray | null = null;
+  for (const pattern of EXTERNAL_REF_PATTERNS) {
+    const match = source.match(pattern);
+    if (match && match.index !== undefined && (!hit || match.index < (hit.index ?? 0))) {
+      hit = match;
+    }
+  }
+  if (!hit || hit.index === undefined) {
+    return {
+      ...base,
+      verdict: 'PASS',
+      reason: 'no absolute external references found (relative and data: URLs comply)',
+      findings: [],
+    };
+  }
+  const finding = makeFinding(
+    decision,
+    'external-assets',
+    evidenceAt(original, hit.index, hit[0].length),
+    `decision requires a self-contained app; source references "${excerpt(hit[0], 80)}"`,
+    [{ start: hit.index, end: hit.index + hit[0].length }],
+    true,
+    'medium',
+  );
+  return {
+    ...base,
+    verdict: 'BLOCK',
+    reason: 'absolute external asset reference detected',
+    findings: [finding],
+  };
+}
+
 function makeFinding(
   decision: GuardDecision,
   rule: GuardRuleId,
@@ -1227,6 +1335,8 @@ const RULE_EVALUATORS: Record<
   'mistake-penalty': evaluatePenalty,
   'superseded-palette': evaluatePalette,
   'colour-only-cue': evaluateColourCue,
+  'autoplay-media': evaluateAutoplayMedia,
+  'external-assets': evaluateExternalAssets,
 };
 
 // ---------------------------------------------------------------------------

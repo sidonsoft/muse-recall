@@ -113,7 +113,7 @@ edited to make the historical results appear reproducible.
 
 | ID | Deviation |
 |---|---|
-| A | Actual order hash is `sha256("22749222:<i>:<true|false>")`, not the protocol's `sha256(seed || index)`; order reproduces from the code |
+| A | Actual order hash is `sha256("22749222:<i>:<true\|false>")`, not the protocol's `sha256(seed \|\| index)`; order reproduces from the code |
 | B | Same-key, same-model fallback configured despite "no failover"; activation unknown |
 | C | Model id configured, not observed per run |
 | D | Memory arm held the full demo decision set (child-safety rule plus two palette decisions); contrast is memory present vs absent |

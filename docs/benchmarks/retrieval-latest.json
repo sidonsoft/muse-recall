@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-26T22:00:35.961Z",
+  "generated_at": "2026-10-30T21:16:41.815Z",
   "environment": {
     "node": "v26.8.1",
     "platform": "darwin",
@@ -10,17 +10,17 @@
     "memories": 130,
     "projects": 3,
     "global_memories": 10,
-    "seed_ms": 36
+    "seed_ms": 33
   },
   "retrieval": {
     "queries": 30,
     "repeats_per_query": 10,
     "total_retrievals": 300,
-    "elapsed_ms": 77,
+    "elapsed_ms": 106,
     "latency_ms": {
-      "mean": 0.2539,
-      "p50": 0.196,
-      "p95": 0.429
+      "mean": 0.3513,
+      "p50": 0.3,
+      "p95": 0.5
     },
     "candidates": {
       "mean": 16.27
@@ -29,7 +29,7 @@
       "mean": 8
     },
     "characters": {
-      "mean": 507.1
+      "mean": 1891.8
     },
     "accuracy": {
       "queries": 30,
@@ -51,6 +51,7 @@
   },
   "final_stats": {
     "total": 142,
+    "proposed": 0,
     "active": 120,
     "superseded": 12,
     "expired": 0,

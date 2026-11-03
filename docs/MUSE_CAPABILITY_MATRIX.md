@@ -2,6 +2,14 @@
 
 Environment: Muse Code **1.4.13**, model `muse-wonder-1.0`, Node 26.8.1, macOS.
 
+> **Environment refresh (31 Oct 2026):** the local Muse Code CLI has since
+> moved to **1.4.14** (`muse --version` read at head). The opt-in live trio
+> (real inference round-trip, structured-output schema, incremental streaming
+> deltas) was re-run GREEN against 1.4.14 on 31 Oct - so the headless-execution,
+> structured-output and streaming-backed rows hold under the newer CLI. Rows
+> requiring heavier setup (image generation, video/audio, Glimmer) were NOT
+> re-tested; the table below stays as written on 27 Oct.
+
 | Capability | Status | Evidence |
 | --- | --- | --- |
 | Headless prompt execution | **Verified** | `muse exec --json "…"` returns JSONL + `run.terminal.completed` |

@@ -1,4 +1,4 @@
-import type { HealthResponse, ServiceMeta } from '@mml/shared';
+import type { ForgeHealthSummary, HealthResponse, ServiceMeta } from '@mml/shared';
 import { formatLatency, formatTokens, formatUptime, shortenPath } from '../lib/format.ts';
 import { Icon } from './Icon.tsx';
 import { ProviderBench } from './ProviderBench.tsx';
@@ -134,6 +134,85 @@ export function Overview({
         </Panel>
       </div>
 
+      {health.forge ? <RecoverySummary forge={health.forge} /> : null}
+
+      <Panel>
+        <section aria-label="Alert signals">
+          <SectionTitle
+            icon="bolt"
+            title="Alert signals"
+            hint="The states pnpm ops:alert-prober consumes (D050/D051). The UI mirrors them; nothing here pages a human by itself."
+          />
+          {health.alerts ? (
+            <dl className="mt-3 divide-y divide-line/70">
+              <DataRow
+                label="backup"
+                value={
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <StatusPill
+                      tone={
+                        health.alerts.backup.state === 'ok'
+                          ? 'ok'
+                          : health.alerts.backup.state === 'disabled'
+                            ? 'idle'
+                            : 'warn'
+                      }
+                    >
+                      {health.alerts.backup.state === 'ok'
+                        ? `fresh · ${health.alerts.backup.age_hours?.toFixed(1) ?? '?'}h old (limit ${health.alerts.backup.max_age_hours}h)`
+                        : health.alerts.backup.state === 'stale'
+                          ? `stale · ${health.alerts.backup.age_hours?.toFixed(1) ?? '?'}h > ${health.alerts.backup.max_age_hours}h`
+                          : health.alerts.backup.state === 'missing'
+                            ? 'no backups found next to the database'
+                            : 'watching disabled'}
+                    </StatusPill>
+                    <span className="text-[11px] text-muted">
+                      {health.alerts.backup.backup_count} backup file(s)
+                    </span>
+                  </span>
+                }
+              />
+              <DataRow
+                label="storage"
+                value={
+                  <StatusPill tone={health.alerts.storage.ok ? 'ok' : 'warn'}>
+                    {health.alerts.storage.ok
+                      ? 'clear'
+                      : `${health.alerts.storage.unacknowledged_issues} unacknowledged issue(s)`}
+                  </StatusPill>
+                }
+              />
+              <DataRow
+                label="provider"
+                value={
+                  <StatusPill
+                    tone={
+                      health.alerts.provider.state === 'ok'
+                        ? 'ok'
+                        : health.alerts.provider.state === 'error'
+                          ? 'err'
+                          : 'idle'
+                    }
+                  >
+                    {health.alerts.provider.state === 'ok'
+                      ? 'reachable'
+                      : health.alerts.provider.state === 'error'
+                        ? 'failing'
+                        : 'unverified'}
+                  </StatusPill>
+                }
+              />
+            </dl>
+          ) : (
+            <p className="mt-3 text-[11px] text-muted">
+              This server build predates alert signals; upgrade to see backup freshness and
+              storage/provider states here (the prober reports the same as a stale-deployment
+              finding).
+            </p>
+          )}
+        </section>
+      </Panel>
+
       <Panel>
         <SectionTitle
           icon="bolt"
@@ -147,6 +226,62 @@ export function Overview({
 
       <RealityCheck meta={meta} />
     </div>
+  );
+}
+
+/**
+ * Read-only store-wide Forge recovery summary (NEXT_STEPS P1 #8), so an
+ * operator sees outstanding job-interruption and storage notices without
+ * opening a project. Acknowledgement and repair stay in the Studio view.
+ */
+function RecoverySummary({ forge }: { forge: ForgeHealthSummary }) {
+  const clean =
+    forge.storage_ok && forge.unacknowledged_issues === 0 && forge.interrupted_jobs_current === 0;
+  return (
+    <Panel>
+      <SectionTitle
+        icon="system"
+        title="Forge recovery"
+        hint="Store-wide · read-only here; open HTML Studio to acknowledge or repair"
+      />
+      <dl className="mt-3 divide-y divide-line/70">
+        <DataRow
+          label="storage"
+          value={
+            <span className={forge.storage_ok ? 'text-ok' : 'text-err'}>
+              {forge.storage_ok ? 'healthy' : 'a write check failed'}
+            </span>
+          }
+        />
+        <DataRow
+          label="open notices"
+          value={
+            <span className={forge.unacknowledged_issues === 0 ? 'text-ok' : 'text-warn'}>
+              {forge.unacknowledged_issues}
+            </span>
+          }
+        />
+        <DataRow label="interrupted now" value={String(forge.interrupted_jobs_current)} />
+        <DataRow
+          label="startup"
+          value={`recovered ${forge.loaded_jobs_startup} job record${forge.loaded_jobs_startup === 1 ? '' : 's'} · ${forge.interrupted_jobs_startup} interrupted`}
+        />
+        <DataRow label="acknowledged" value={String(forge.acknowledged_issues)} />
+      </dl>
+      {forge.issues.length > 0 ? (
+        <ul className="mt-2 list-inside list-disc space-y-0.5 font-mono text-[10px] text-warn/90">
+          {forge.issues.map((issue) => (
+            <li key={issue.id}>
+              {issue.project_id} · {issue.file}: {issue.message}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-[10px] text-muted">
+          {clean ? 'No open recovery notices; every Forge write check passed.' : 'Details above.'}
+        </p>
+      )}
+    </Panel>
   );
 }
 

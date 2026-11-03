@@ -69,11 +69,11 @@ Captured from the exact process environment used to launch the server
 
 | Variable | Schema bound | Line |
 |---|---:|---|
-| `MUSE_TIMEOUT_MS` | `min(1_000).max(900_000)` | [`config.ts:40`](../../apps/server/src/config.ts#L40) |
-| `FORGE_MAX_RUNTIME_MS` | `min(10_000).max(1_800_000)` | [`config.ts:103`](../../apps/server/src/config.ts#L103) |
-| `FORGE_MAX_CALLS` | `min(1).max(100)` | [`config.ts:104`](../../apps/server/src/config.ts#L104) |
-| `FORGE_MAX_INPUT_TOKENS` | `min(10_000).max(10_000_000)` | [`config.ts:105`](../../apps/server/src/config.ts#L105) |
-| `FORGE_REASONING_EFFORT` | `enum(['low','medium','high'])` | [`config.ts:111`](../../apps/server/src/config.ts#L111) |
+| `MUSE_TIMEOUT_MS` | `min(1_000).max(900_000)` | [`config.ts:54`](../../apps/server/src/config.ts#L54) |
+| `FORGE_MAX_RUNTIME_MS` | `min(10_000).max(1_800_000)` | [`config.ts:121`](../../apps/server/src/config.ts#L121) |
+| `FORGE_MAX_CALLS` | `min(1).max(100)` | [`config.ts:122`](../../apps/server/src/config.ts#L122) |
+| `FORGE_MAX_INPUT_TOKENS` | `min(10_000).max(10_000_000)` | [`config.ts:123`](../../apps/server/src/config.ts#L123) |
+| `FORGE_REASONING_EFFORT` | `enum(['low','medium','high'])` | [`config.ts:129`](../../apps/server/src/config.ts#L129) |
 
 The configured values equal those maxima. The server would refuse to start with larger values.
 
@@ -129,21 +129,31 @@ muse model-profile show muse-spark-1.3-contributor --effort high
   default_reasoning_effort: high
 ```
 
+(Line anchors in this document were re-verified against current sources on
+31 Oct 2026 — the code had shifted since they were written (ACCESS_TOKEN-era
+config additions moved config.ts by +14..+18; the fallback paths moved far
+more). Each numbered label and `#L` anchor now points at the line whose
+content matches the claim beside it, re-read individually: config.ts:54/
+121/122/123/129 zod limits, provider :25 MUSE_MODELS, :203 quota-regex
+retry test, runner :1528 token-summing, :1381 quotaFailure retry, app :120
+Forge limits wiring. Line anchors drift; this claim holds only as of this
+head — the prose claim each anchor supports was re-read, not bulk-bumped.)
+
 The chat catalog exposed by the provider is
 `['muse-wonder-1.0', 'muse-spark-1.3', 'muse-spark-1.2']`
-([`muse-cli-provider.ts:23`](../../packages/muse-provider/src/muse-cli-provider.ts#L23)).
+([`muse-cli-provider.ts:25`](../../packages/muse-provider/src/muse-cli-provider.ts#L25)).
 `muse-spark-1.3-contributor` is deliberately **not** advertised as a chat model; it is the
 API-key/Forge model used by the contributor path. The Forge job is attributable to that configured
 model because the launch config is validated (`FORGE_MUSE_MODEL`) and the CLI accepts the id, but
 the Forge job record does **not** persist the CLI's `run.model.configured` event or the per-model
-names in `run.usage`: [`runner.ts:568`](../../apps/server/src/forge/runner.ts#L568) sums tokens
+names in `run.usage`: [`runner.ts:1528`](../../apps/server/src/forge/runner.ts#L1528) sums tokens
 only. There is no per-job observed-model field in the artifact. Do not claim more than the
 validated configuration supports.
 
 ### 3.4 Forge limits active
 
 The Forge manager received the four maximum values from the validated config
-([`app.ts:107`](../../apps/server/src/app.ts#L107)); generation jobs are subject to:
+([`app.ts:120`](../../apps/server/src/app.ts#L120)); generation jobs are subject to:
 
 - 100 model calls,
 - 1,800,000 ms wall clock,
@@ -160,7 +170,7 @@ silently truncated by a default of 25 calls / 600,000 ms.
 
 ### 4.1 What the code actually does
 
-**Chat/agent path** ([`muse-cli-provider.ts:163`](../../packages/muse-provider/src/muse-cli-provider.ts#L163)):
+**Chat/agent path** ([`muse-cli-provider.ts:203`](../../packages/muse-provider/src/muse-cli-provider.ts#L203)):
 
 - Streams the primary attempt.
 - If an `error` event arrives **before any non-whitespace text** and the code/message matches
@@ -168,7 +178,7 @@ silently truncated by a default of 25 calls / 600,000 ms.
   `MUSE_FALLBACK_MODEL`.
 - Other errors (auth, timeout, crash) do **not** trigger fallback.
 
-**Forge path** ([`runner.ts:485`](../../apps/server/src/forge/runner.ts#L485)):
+**Forge path** ([`runner.ts:1381`](../../apps/server/src/forge/runner.ts#L1381)):
 
 - If the primary exits non-zero or reports a failed terminal **and** `quotaFailure(job)` matches, it
   resets the staging directory and retries **once** with the fallback key/model.

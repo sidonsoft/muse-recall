@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ForgeRecoveryIssueSchema } from './forge.js';
 
 export const ServiceStatusSchema = z.enum(['ok', 'degraded', 'error']);
 export type ServiceStatus = z.infer<typeof ServiceStatusSchema>;
@@ -50,6 +51,44 @@ export const DatabaseCheckSchema = ComponentCheckSchema.extend({
 });
 export type DatabaseCheck = z.infer<typeof DatabaseCheckSchema>;
 
+/**
+ * Store-wide Forge recovery summary for operators who have not opened a
+ * project (NEXT_STEPS P1 #8). Read-only display data: acknowledgement and
+ * repair stay in the Studio project view, which remains the full source.
+ */
+export const ForgeHealthSummarySchema = z.object({
+  storage_ok: z.boolean(),
+  unacknowledged_issues: z.number().int().min(0),
+  acknowledged_issues: z.number().int().min(0),
+  interrupted_jobs_current: z.number().int().min(0),
+  interrupted_jobs_startup: z.number().int().min(0),
+  loaded_jobs_startup: z.number().int().min(0),
+  /** Display subset; bounded so health stays a small, fast payload. */
+  issues: z.array(ForgeRecoveryIssueSchema).max(5),
+});
+export type ForgeHealthSummary = z.infer<typeof ForgeHealthSummarySchema>;
+
+/**
+ * Alert signals (roadmap §8 groundwork): states an EXTERNAL prober can watch.
+ * This server never sends notifications itself — the block exists so a cron
+ * or uptime monitor can alert on named states without parsing prose.
+ */
+export const BackupFreshnessSchema = z.object({
+  state: z.enum(['ok', 'stale', 'missing', 'disabled']),
+  latest_backup_at: z.string().nullable(),
+  age_hours: z.number().min(0).nullable(),
+  max_age_hours: z.number().min(0),
+  backup_count: z.number().int().min(0),
+});
+export type BackupFreshness = z.infer<typeof BackupFreshnessSchema>;
+
+export const AlertSignalsSchema = z.object({
+  backup: BackupFreshnessSchema,
+  storage: z.object({ ok: z.boolean(), unacknowledged_issues: z.number().int().min(0) }),
+  provider: z.object({ state: z.enum(['ok', 'error', 'skipped']) }),
+});
+export type AlertSignals = z.infer<typeof AlertSignalsSchema>;
+
 export const HealthResponseSchema = z.object({
   status: ServiceStatusSchema,
   service: z.literal('muse-memory-lab'),
@@ -59,6 +98,8 @@ export const HealthResponseSchema = z.object({
   timestamp: z.iso.datetime(),
   database: DatabaseCheckSchema,
   provider: ProviderCheckSchema,
+  forge: ForgeHealthSummarySchema.optional(),
+  alerts: AlertSignalsSchema.optional(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 

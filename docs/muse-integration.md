@@ -173,6 +173,12 @@ muse exec --json --no-session-log --no-foreign-personal-context \
   --reasoning-effort <tier> [--provider meta --api-key-stdin] [--model <id>]
 ```
 
+Forge jobs also consume `run.model.configured`: each job record persists the id the CLI
+reported (`model_observed`, last frame wins across fallback attempts), and `/api/meta`
+publishes the most recent one. Like the chat adapter, Forge reports what the CLI says it
+used — never the configured `--model` value promoted into an observation — and records
+`null` for runs that never emitted the frame (auth/network/quota-before-run failures).
+
 The child starts in `<staging>` and receives the shared environment allow-list
 (home/login, `PATH`/`Path` and platform lookup, locale/terminal, temp/XDG, proxy, and
 standard certificate configuration). It never inherits `DATABASE_PATH`,

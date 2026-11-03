@@ -173,3 +173,38 @@ export const DEC_ALL_RULES: GuardDecision = {
   status: 'active',
   supersedes: [],
 };
+
+// --- v1.5.0 rule families (roadmap G-7) -----------------------------------
+
+/** Rule F decision: prohibit autoplaying media. */
+export const DEC_AUTOMEDIA: GuardDecision = {
+  id: '15-dec-autmedia',
+  content: 'Never autoplay audio or music; playback starts only on user action.',
+  status: 'active',
+  supersedes: [],
+};
+
+/** Expired record that REQUIRED autoplay: must not enforce against rule F. */
+export const DEC_AUTOMEDIA_EXPIRED: GuardDecision = {
+  id: '15-dec-autmedia-expired',
+  content: 'The soundtrack must autoplay on load.',
+  status: 'expired',
+  supersedes: [],
+};
+
+/** Rule G decision: self-contained app, no remote assets. */
+export const DEC_EXT: GuardDecision = {
+  id: '15-dec-ext',
+  content:
+    'The app must stay self-contained: no external CDNs, scripts, fonts, or other remote assets.',
+  status: 'active',
+  supersedes: [],
+};
+
+/** Expired record that allowed CDN loading: must not enforce against rule G. */
+export const DEC_EXT_EXPIRED: GuardDecision = {
+  id: '15-dec-ext-expired',
+  content: 'Earlier builds pulled Phaser from a public CDN.',
+  status: 'expired',
+  supersedes: [],
+};

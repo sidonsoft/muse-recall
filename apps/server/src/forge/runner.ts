@@ -11,6 +11,8 @@ import {
   type ForgeJobKind,
   ForgeJobSchema,
   type ForgeJobStatus,
+  type ForgeMediaManifest,
+  type ForgeNetworkPolicy,
   type ForgeRecoveryIssue,
   type ForgeRecoveryReport,
   type ForgeRecoveryStorage,
@@ -22,13 +24,25 @@ import {
   type RetrievedMemory,
   redactSecrets,
 } from '@mml/shared';
+import { embedApprovedImages, MediaArtifactError } from '../media/artifact.js';
+import type { MediaAssetStore } from '../media/assets.js';
 import { forgeChildEnv } from './child-env.js';
 import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
-import { ensurePrivateDirectory, writePrivateFile } from './fs-utils.js';
+import { decisionReference, pinnedRetrieved } from './decision-reference.js';
+import { type DisclosureObservations, dependencyDisclosure } from './dependencies.js';
+import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
+import { unvendorScripts } from './vendored-scripts.js';
+import {
+  applyWorkerWrapper,
+  type ForgeWorkerWrapper,
+  probeWorkerStagingAccess,
+  probeWorkerWrapper,
+  resolveWorkerWrapper,
+} from './worker-wrapper.js';
 import { ForgeError, type ForgeWorkspace } from './workspace.js';
 
 /**
@@ -63,12 +77,29 @@ export interface ForgeManagerOptions {
     errors: string[];
     browser?: string | null;
     browser_selection?: ForgeRuntimeBrowserSelection;
+    /** KI-74: the network rule the check ran under, and what it refused. */
+    network_policy?: ForgeNetworkPolicy;
+    vendor_gaps?: string[];
+    blocked_origins?: string[];
   }>;
   /** Durable job persistence; injectable for failure tests. */
   jobStore?: ForgeJobPersistence;
   /** Grace period before a shutdown escalates from SIGTERM to SIGKILL. */
   shutdownGraceMs?: number;
+  /**
+   * Pass-through launch wrapper for the CLI child (roadmap G-2). A string
+   * overrides FORGE_WORKER_WRAPPER; null explicitly disables the env value
+   * (tests). A configured wrapper that fails validation or the pass-through
+   * probe makes construction throw: isolation must not be silently ignored.
+   */
+  workerWrapper?: string | null;
   now?: () => Date;
+  /**
+   * Asset store used to embed approved images before runtime verification.
+   * Null/absent preserves pre-Batch-B behavior (placeholders are not
+   * resolved); the app always injects it.
+   */
+  mediaAssets?: MediaAssetStore | null;
 }
 
 export interface StartJobInput {
@@ -78,7 +109,27 @@ export interface StartJobInput {
   request?: string | null;
   /** Screenshot bytes for a modify job, written into the staging directory. */
   screenshot?: Buffer;
+  /**
+   * Batch E: decisions the user selected for this job. Resolved against the
+   * store at start time, never taken from client-supplied text.
+   */
+  selectedMemories?: SelectedDecision[];
 }
+
+export interface SelectedDecision {
+  memory_id: string;
+  expected_revision?: number;
+}
+
+/**
+ * Character ceiling for a user-pinned decision injected into a prompt.
+ *
+ * Retrieved entries are already bounded by the engine's own budget; a pinned
+ * decision bypasses retrieval, so it needs its own ceiling. Pins also never
+ * increase the number of memories in context — they displace the lowest-ranked
+ * retrieval results, and the displacement is logged rather than silent.
+ */
+const PINNED_DECISION_MAX_CHARACTERS = 2_000;
 
 interface ExecuteState {
   child: ChildProcess | null;
@@ -86,6 +137,8 @@ interface ExecuteState {
   terminal: string | null;
   terminalText: string | null;
   usage: ForgeUsage;
+  /** Model id the CLI reported via `run.model.configured` (last one wins). */
+  observedModel: string | null;
 }
 
 const MAX_LOGS = 200;
@@ -99,8 +152,28 @@ export { FORGE_PINNED_TYPES };
 
 export class ForgeJobManager {
   readonly workspace: ForgeWorkspace;
+  private readonly mediaAssets: MediaAssetStore | null;
   private readonly engine: MemoryEngine;
   private readonly museBin: string;
+  /**
+   * The most recent model id any persisted or in-memory Forge job observed
+   * (from the CLI's own `run.model.configured` frames). Null until the
+   * protocol reports one — deliberately not the configured request value,
+   * matching the provider's "report what the CLI says" stance.
+   */
+  lastObservedModel(): string | null {
+    let best: { model: string; at: string } | null = null;
+    for (const job of this.jobs.values()) {
+      const model = job.model_observed;
+      if (!model) continue;
+      const at = job.finished_at ?? job.created_at;
+      if (!best || at > best.at) best = { model, at };
+    }
+    return best?.model ?? null;
+  }
+
+  /** Operator-configured launch wrapper; null means direct execution. */
+  readonly workerWrapper: ForgeWorkerWrapper | null;
   private readonly maxRuntimeMs: number;
   private readonly maxCalls: number;
   private readonly maxInputTokens: number;
@@ -116,6 +189,10 @@ export class ForgeJobManager {
     errors: string[];
     browser?: string | null;
     browser_selection?: ForgeRuntimeBrowserSelection;
+    /** KI-74: the network rule the check ran under, and what it refused. */
+    network_policy?: ForgeNetworkPolicy;
+    vendor_gaps?: string[];
+    blocked_origins?: string[];
   }>;
   private readonly now: () => Date;
   private readonly store: ForgeJobPersistence;
@@ -152,8 +229,29 @@ export class ForgeJobManager {
 
   constructor(options: ForgeManagerOptions) {
     this.workspace = options.workspace;
+    this.mediaAssets = options.mediaAssets ?? null;
     this.engine = options.engine;
     this.museBin = options.museBin ?? process.env.FORGE_MUSE_BIN ?? 'muse';
+    const wrapperResolution =
+      options.workerWrapper === null
+        ? { wrapper: null, error: null }
+        : options.workerWrapper !== undefined
+          ? resolveWorkerWrapper({ FORGE_WORKER_WRAPPER: options.workerWrapper })
+          : resolveWorkerWrapper();
+    if (wrapperResolution.error) throw new Error(wrapperResolution.error);
+    if (wrapperResolution.wrapper) {
+      // Both probes gate boot, run INSIDE the real workspace tree, and spawn
+      // under the same scrubbed child env a real generation gets - probe
+      // environment ≡ launch environment (beta review, P2).
+      const probeFailure =
+        probeWorkerWrapper(wrapperResolution.wrapper, { env: options.env }) ??
+        probeWorkerStagingAccess(wrapperResolution.wrapper, {
+          env: options.env,
+          scratchRoot: join(this.workspace.getRoot(), '.wrapper-probe'),
+        });
+      if (probeFailure) throw new Error(probeFailure);
+    }
+    this.workerWrapper = wrapperResolution.wrapper;
     this.maxRuntimeMs = options.maxRuntimeMs ?? 10 * 60_000;
     this.maxCalls = options.maxCalls ?? 25;
     this.maxInputTokens = options.maxInputTokens ?? 1_500_000;
@@ -591,7 +689,9 @@ export class ForgeJobManager {
         mode: 0o600,
         flag: 'wx',
       });
+      await syncFile(temp);
       await rename(temp, target);
+      await syncDirectory(root);
     } catch {
       await rm(temp, { force: true }).catch(() => undefined);
       throw new ForgeError(
@@ -808,7 +908,10 @@ export class ForgeJobManager {
             'Generate and approve an application before requesting a modification.',
           );
         }
-        const current = await this.workspace.currentHtml(input.projectId);
+        // Seed the modification with the source view, never the shipped bytes:
+        // a model handed a 1.1 MB engine block to reproduce will alter it, and
+        // the vendored copy is only trustworthy while its bytes are unchanged.
+        const current = await this.workspace.currentSourceHtml(input.projectId);
         if (current === null) {
           throw new ForgeError('no_current_version', 'The approved application could not be read.');
         }
@@ -830,8 +933,35 @@ export class ForgeJobManager {
         },
         { now: this.now() },
       );
-      const memoryIds = retrieval.results.map((result) => result.memory.id);
       memories = retrieval.results;
+
+      // Batch E: user-selected guidance is resolved from the store right here,
+      // so an update proposal provably runs on current decisions. Selections
+      // displace the lowest-ranked retrieval results instead of growing the
+      // memory block, and the displacement is visible in the job log.
+      const selected = this.resolveSelectedDecisions(input.projectId, input.selectedMemories ?? []);
+      const notes: string[] = [];
+      if (selected.length > 0) {
+        const chosen = new Set(selected.map((entry) => entry.memory.id));
+        const kept = memories.filter((result) => !chosen.has(result.memory.id));
+        const room = Math.max(0, memories.length - chosen.size);
+        const displaced = kept.length - room;
+        if (displaced > 0) {
+          notes.push(
+            `memory budget: displaced ${String(displaced)} lower-ranked retrieved decision${displaced === 1 ? '' : 's'} to make room for the ${String(selected.length)} decision${selected.length === 1 ? '' : 's'} you selected`,
+          );
+        }
+        memories = [...selected.map((entry) => entry.retrieved), ...kept.slice(0, room)];
+      }
+      // A shortened injection is stated out loud in the job record, next to the
+      // truncation flag inside the reference, rather than being implicit.
+      for (const entry of selected) {
+        if (entry.retrieved.truncated) {
+          notes.push(
+            `decision ${entry.memory.id} exceeds the ${String(PINNED_DECISION_MAX_CHARACTERS)}-character injection cap: this job received a truncated prefix, recorded as truncated in its decision reference`,
+          );
+        }
+      }
 
       job = ForgeJobSchema.parse({
         id,
@@ -845,9 +975,34 @@ export class ForgeJobManager {
         created_at: this.now().toISOString(),
         started_at: null,
         finished_at: null,
-        logs: [],
+        logs: notes,
         usage: null,
-        memory_ids: memoryIds,
+        model_observed: null,
+        memory_ids: memories.map((result) => result.memory.id),
+        // Batch E: what this job was actually given, revision by revision.
+        // The reference carries both fingerprints: the decision's stored text at
+        // that revision, and the exact bytes placed in the prompt. Retrieval and
+        // the selection length cap can shorten the injected text, so hashing only
+        // the record would describe wording the model never saw.
+        memory_reference: memories.map((result) =>
+          decisionReference(result.memory, {
+            userSelected: selected.some((entry) => entry.memory.id === result.memory.id),
+            injected: { content: result.injected_content, truncated: result.truncated },
+          }),
+        ),
+        ...(selected.length > 0
+          ? {
+              decision_revisions_supplied: selected.map((entry) =>
+                decisionReference(entry.memory, {
+                  userSelected: true,
+                  injected: {
+                    content: entry.retrieved.injected_content,
+                    truncated: entry.retrieved.truncated,
+                  },
+                }),
+              ),
+            }
+          : {}),
         base_version: baseVersion,
         validation: null,
         version: null,
@@ -877,6 +1032,7 @@ export class ForgeJobManager {
     this.state.set(id, {
       child: null,
       timedOut: false,
+      observedModel: null,
       terminal: null,
       terminalText: null,
       usage: { calls: 0, input_tokens: 0, output_tokens: 0, runtime_ms: 0 },
@@ -919,9 +1075,22 @@ export class ForgeJobManager {
   async diff(jobId: string) {
     const job = this.requireJob(jobId);
     const diff = await this.workspace.diffStaged(job.project_id, job.id);
+    /*
+     * KI-74: the dependency disclosure travels with the review for the same
+     * reason the diff does — it is measured from `stagedVendored()`, the one read
+     * path shared by the diff, the preview, validation, the browser check and
+     * promotion. A reviewer comparing "the diff shows one script tag" with "these
+     * bytes carry a 1.18 MB engine and fetch nothing" needs both statements from
+     * the same source, or the panel is describing two documents.
+     */
+    const dependencies = await this.workspace.stagedDependencies(job.project_id, job.id);
     // Advisory only: carried alongside the diff so the review UI can show it
     // without ever feeding it into `diff.validation`.
-    return { ...diff, decision_guard: job.decision_guard };
+    return {
+      ...diff,
+      decision_guard: job.decision_guard,
+      ...(dependencies ? { dependencies } : {}),
+    };
   }
 
   async approve(
@@ -950,10 +1119,39 @@ export class ForgeJobManager {
       // throw on load. Nothing is promoted until it renders cleanly. The
       // snapshot hash is the exact byte sequence the browser checked, and
       // promotion refuses anything else.
-      const staged = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      const snapshot = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      const staged = await this.resolveStagedMedia(current.project_id, snapshot);
+      // Structural validation runs on the exact resolved bytes (approved
+      // images already embedded) BEFORE the browser check: the generation-time
+      // record describes the raw staging file, which may have changed since,
+      // and a browser rendering a fragment is not proof of a valid document.
+      // Like staged_changed, this leaves the job alone — fixing the staging
+      // file unblocks a later approval.
+      const structural =
+        staged !== null
+          ? await this.workspace.validateHtml(staged.html)
+          : { ok: false, issues: ['The staged application is missing.'] };
+      if (!structural.ok) {
+        throw new ForgeError(
+          'invalid_staged',
+          'The staged application failed validation.',
+          structural.issues,
+        );
+      }
       const runtime = staged
         ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged application is missing.'] };
+      /*
+       * What the check refused, if it reported that at all. Passing it to the
+       * disclosure is what lets the panel tell "this origin was recorded being
+       * refused" from "the policy would refuse this origin" — the first is an
+       * observation, the second is a reading of the rules.
+       */
+      const observations: DisclosureObservations | undefined = Array.isArray(
+        runtime.blocked_origins,
+      )
+        ? { blockedOrigins: runtime.blocked_origins }
+        : undefined;
       const browserSelection = this.boundedBrowserSelection(runtime.browser_selection);
       const browser = runtime.browser ? this.boundedText(runtime.browser, 160) : null;
       if (!runtime.ok) {
@@ -966,6 +1164,9 @@ export class ForgeJobManager {
           status: 'failed',
           error: 'Runtime verification failed.',
           validation: { ok: false, issues: runtimeDetails },
+          dependencies: staged
+            ? dependencyDisclosure(staged.html, { recordedAt: checkedAt, observations })
+            : null,
           approval_verification: staged
             ? {
                 syntax_structure: current.validation,
@@ -976,6 +1177,19 @@ export class ForgeJobManager {
                   browser,
                   ...(browserSelection ? { browser_selection: browserSelection } : {}),
                   errors: runtimeDetails,
+                  // KI-74: recorded on the failure too. A check that refused a
+                  // dependency and a check that let it through and failed for
+                  // another reason are different diagnoses, and the reviewer is
+                  // the one who has to tell them apart.
+                  ...(runtime.network_policy ? { network_policy: runtime.network_policy } : {}),
+                  ...(runtime.vendor_gaps ? { vendor_gaps: runtime.vendor_gaps.slice(0, 20) } : {}),
+                  ...(runtime.blocked_origins
+                    ? {
+                        blocked: runtime.blocked_origins
+                          .slice(0, 20)
+                          .map((line) => this.sanitize(line).slice(0, 300)),
+                      }
+                    : {}),
                 },
                 recorded_at: checkedAt,
               }
@@ -1001,12 +1215,28 @@ export class ForgeJobManager {
           runtimeDetails,
         );
       }
+      // Runtime verification and the approval snapshot happened before this
+      // point. If staging changed meanwhile (for example a tampering check),
+      // refuse to promote bytes that were never the ones verified.
+      const confirmed = await this.workspace.stagedSnapshot(current.project_id, current.id);
+      if (snapshot === null || confirmed?.sha256 !== snapshot.sha256) {
+        throw new ForgeError(
+          'staged_changed',
+          'The staged source changed after runtime verification. Request the change again.',
+        );
+      }
 
       // Decision Guard (Phase 12C) runs only after the blocking runtime check
       // passed. It is advisory metadata: do not add a separate durable write
       // that can block approval. The approved lifecycle record below carries
       // the snapshot atomically with the promotion result.
-      const decisionGuard = staged ? this.advisory(current, staged.html, true) : null;
+      // The advisory evaluates what the model wrote. The vendored engine is
+      // third-party bytes the product inserted, and letting it occupy the
+      // evaluation budget would mean the guard was reading Phaser rather than the
+      // code a decision applies to.
+      const decisionGuard = staged
+        ? this.advisory(current, unvendorScripts(staged.html), true)
+        : null;
       if (decisionGuard) {
         current.decision_guard = decisionGuard;
       }
@@ -1023,8 +1253,22 @@ export class ForgeJobManager {
 
       const summary = versionSummary(current);
       const checkedAt = this.now().toISOString();
+      /*
+       * KI-74: the dependency disclosure is measured from `staged.html` — the
+       * resolved bytes: staging file after the vendoring pass, with approved
+       * images already embedded. That is the sequence the browser just checked,
+       * the sequence `expectedSha256` binds promotion to, and the sequence written
+       * into the immutable version. Measuring it anywhere else (the source view,
+       * or the model's own claims) would put a different document in front of the
+       * person approving than the one being promoted.
+       */
+      const dependencies = staged
+        ? dependencyDisclosure(staged.html, { recordedAt: checkedAt, observations })
+        : null;
       const approvalVerification: ForgeApprovalVerification = {
-        syntax_structure: current.validation,
+        // The resolved-bytes validation, not the generation-time record: the
+        // bytes promoted here (images embedded) are what this check saw.
+        syntax_structure: structural,
         runtime: staged
           ? {
               ok: runtime.ok,
@@ -1035,6 +1279,18 @@ export class ForgeJobManager {
               errors: runtime.errors
                 .slice(0, 20)
                 .map((error) => this.sanitize(error).slice(0, 300)),
+              // KI-74: "verification passed" means different things under the two
+              // network rules, and it means something else again if the check
+              // refused a dependency on the way through. All three are recorded.
+              ...(runtime.network_policy ? { network_policy: runtime.network_policy } : {}),
+              ...(runtime.vendor_gaps ? { vendor_gaps: runtime.vendor_gaps.slice(0, 20) } : {}),
+              ...(runtime.blocked_origins
+                ? {
+                    blocked: runtime.blocked_origins
+                      .slice(0, 20)
+                      .map((line) => this.sanitize(line).slice(0, 300)),
+                  }
+                : {}),
             }
           : null,
         recorded_at: checkedAt,
@@ -1043,7 +1299,10 @@ export class ForgeJobManager {
         baseVersion: current.base_version,
         jobId: current.id,
         ...(staged ? { expectedSha256: staged.sha256 } : {}),
+        ...(staged ? { html: staged.html } : {}),
+        ...(staged?.media ? { media: staged.media } : {}),
         verification: approvalVerification,
+        ...(dependencies ? { dependencies } : {}),
       });
       if (promoted.note) this.log(current, promoted.note);
 
@@ -1052,6 +1311,7 @@ export class ForgeJobManager {
         status: 'succeeded',
         version: promoted.version,
         approval_verification: approvalVerification,
+        dependencies,
         // `finished_at` records when generation completed, not when a human
         // later approved the already-finished artifact. Approval time lives in
         // `approval_verification.recorded_at`.
@@ -1086,6 +1346,34 @@ export class ForgeJobManager {
 
       return { job: approved, state: await this.workspace.state(current.project_id) };
     });
+  }
+
+  /**
+   * Resolve placeholders through approved asset versions before the blocking
+   * runtime check. The resolved bytes are what get promoted, so an approved
+   * version is self-contained and its images survive later curation changes.
+   * A missing/unapproved reference blocks approval (422) without touching the
+   * staged document or the job record.
+   */
+  private async resolveStagedMedia(
+    projectId: string,
+    staged: { html: string; sha256: string } | null,
+  ): Promise<{ html: string; sha256: string; media?: ForgeMediaManifest } | null> {
+    if (staged === null || this.mediaAssets === null) return staged;
+    try {
+      const resolved = await embedApprovedImages(this.mediaAssets, projectId, staged.html);
+      if (resolved.html === staged.html) return staged;
+      return {
+        html: resolved.html,
+        sha256: createHash('sha256').update(resolved.html).digest('hex'),
+        ...(resolved.manifest ? { media: resolved.manifest } : {}),
+      };
+    } catch (error) {
+      if (error instanceof MediaArtifactError) {
+        throw new ForgeError('invalid_media_reference', error.message, error.issues);
+      }
+      throw error;
+    }
   }
 
   async rollback(projectId: string): Promise<ForgeState> {
@@ -1214,10 +1502,13 @@ export class ForgeJobManager {
     this.update(job, { status: 'running', started_at: this.now().toISOString() });
     const startedAt = Date.now();
 
-    const child = spawn(this.museBin, args, {
+    const { command, argv } = applyWorkerWrapper(this.workerWrapper, this.museBin, args);
+    const child = spawn(command, argv, {
       // Running from the staging directory makes relative paths in the child
-      // default to the job's workspace. It is a convenience, not a sandbox:
-      // the process still has the server user's OS permissions.
+      // default to the job's workspace. It is a convenience, not a sandbox.
+      // With FORGE_WORKER_WRAPPER set, the operator's wrapper (for example
+      // setpriv to a dedicated uid) is the OS-level isolation seam; without
+      // it the process still has the server user's OS permissions.
       cwd: staging,
       env: forgeChildEnv(this.env),
       stdio: [apiKey ? 'pipe' : 'ignore', 'pipe', 'pipe'],
@@ -1298,7 +1589,11 @@ export class ForgeJobManager {
     attempt: 'primary' | 'fallback',
   ): Promise<void> {
     if (this.terminalJobs.has(job.id)) return;
-    const base = { usage: execState.usage, finished_at: this.now().toISOString() };
+    const base = {
+      usage: execState.usage,
+      model_observed: execState.observedModel,
+      finished_at: this.now().toISOString(),
+    };
     const cancelled = this.cancelled.has(job.id);
 
     if (cancelled) {
@@ -1379,7 +1674,9 @@ export class ForgeJobManager {
     // validation and recorded beside — never inside — `validation`. The
     // blocking browser check runs on approve, which re-snapshots after it.
     const staged = await this.workspace.stagedHtml(job.project_id, job.id);
-    const decisionGuard = staged === null ? null : this.advisory(job, staged, false);
+    // Same rule as above: the source view, so the advisory sees the model's code.
+    const decisionGuard =
+      staged === null ? null : this.advisory(job, unvendorScripts(staged), false);
 
     await this.finish(job, {
       ...base,
@@ -1451,6 +1748,17 @@ export class ForgeJobManager {
     const type = typeof event.payload_type === 'string' ? event.payload_type : '';
     const payload = isRecord(event.payload) ? event.payload : {};
 
+    if (type === 'run.model.configured') {
+      // The provider's verified behaviour (muse-integration.md): the CLI
+      // reports the model it actually resolved. Last frame wins, which also
+      // captures a fallback attempt's identity.
+      const modelId = payload.model_id;
+      if (typeof modelId === 'string' && modelId.length > 0 && modelId.length <= 128) {
+        execState.observedModel = modelId;
+      }
+      return;
+    }
+
     if (type === 'run.usage') {
       const models = Array.isArray(payload.models) ? payload.models : [];
       let input = 0;
@@ -1501,7 +1809,7 @@ export class ForgeJobManager {
 
   private async resetStaging(job: ForgeJob, staging: string): Promise<void> {
     if (job.kind === 'modify') {
-      const current = await this.workspace.currentHtml(job.project_id);
+      const current = await this.workspace.currentSourceHtml(job.project_id);
       if (current !== null) await writePrivateFile(join(staging, 'index.html'), current);
     } else {
       const file = join(staging, 'index.html');
@@ -1539,6 +1847,70 @@ export class ForgeJobManager {
   }
 
   /**
+   * Batch E — resolve the decisions a user selected for this job against the
+   * store, at start time. The client sends ids (and optionally the revision it
+   * saw); the text always comes from the record, so a proposal cannot smuggle
+   * stale or invented guidance.
+   *
+   * Every rejection is a named failure, never a silent drop: a selected
+   * decision that was corrected, superseded, deleted, or belongs to another
+   * project would otherwise quietly change what the job was given.
+   */
+  private resolveSelectedDecisions(
+    projectId: string,
+    selected: SelectedDecision[],
+  ): Array<{ memory: Memory; retrieved: RetrievedMemory }> {
+    const resolved: Array<{ memory: Memory; retrieved: RetrievedMemory }> = [];
+    const seen = new Set<string>();
+    for (const entry of selected) {
+      if (seen.has(entry.memory_id)) continue;
+      seen.add(entry.memory_id);
+      // A soft-deleted record is still readable on request, so a stale screen
+      // that still lists it is refused by name ("retired") instead of being
+      // reported as a record that never existed.
+      const memory = this.engine.get(entry.memory_id, { includeDeleted: true });
+      if (memory === null) {
+        throw new ForgeError(
+          'decision_not_found',
+          `Decision ${entry.memory_id} no longer exists, so it cannot be supplied to this update.`,
+        );
+      }
+      if (memory.project_id !== null && memory.project_id !== projectId) {
+        throw new ForgeError(
+          'decision_cross_project',
+          `Decision ${entry.memory_id} belongs to project ${memory.project_id}, not ${projectId}.`,
+        );
+      }
+      if (memory.superseded_by !== null) {
+        throw new ForgeError(
+          'decision_superseded',
+          `Decision ${entry.memory_id} was corrected: ${memory.superseded_by} is current. Select the current decision instead.`,
+        );
+      }
+      if (memory.status !== 'active') {
+        throw new ForgeError(
+          'decision_not_active',
+          `Decision ${entry.memory_id} is ${memory.status}, not an active decision, so it cannot be supplied to an update. Retire it from this screen and select a current decision.`,
+        );
+      }
+      if (entry.expected_revision !== undefined && entry.expected_revision !== memory.revision) {
+        throw new ForgeError(
+          'decision_revision_conflict',
+          `Decision ${entry.memory_id} is at revision ${String(memory.revision)}, not revision ${String(entry.expected_revision)} this screen selected. Re-read the decision before proposing the update.`,
+        );
+      }
+      const retrieved = pinnedRetrieved(memory);
+      if (retrieved.injected_content.length > PINNED_DECISION_MAX_CHARACTERS) {
+        retrieved.injected_content = `${retrieved.injected_content.slice(0, PINNED_DECISION_MAX_CHARACTERS - 1)}…`;
+        retrieved.truncated = true;
+        retrieved.evidence = 'selected by the user for this change · truncated for injection';
+      }
+      resolved.push({ memory, retrieved });
+    }
+    return resolved;
+  }
+
+  /**
    * Advisory Decision Guard snapshot for the exact staged source.
    *
    * Resolves only the job's *recorded* memory ids, scoped to the job's project.
@@ -1566,6 +1938,7 @@ export class ForgeJobManager {
       validation?: ForgeValidation;
       decision_guard?: DecisionGuardAdvisory;
       usage?: ForgeUsage;
+      model_observed?: string | null;
       finished_at?: string;
     },
   ): Promise<void> {
@@ -1597,6 +1970,7 @@ export class ForgeJobManager {
       validation?: ForgeValidation;
       decision_guard?: DecisionGuardAdvisory;
       usage?: ForgeUsage;
+      model_observed?: string | null;
       finished_at?: string;
     },
   ): Promise<void> {
@@ -1614,6 +1988,7 @@ export class ForgeJobManager {
           validation: patch.validation ?? job.validation,
           decision_guard: patch.decision_guard ?? job.decision_guard,
           usage: carried ? addUsage(patch.usage ?? job.usage, carried) : (patch.usage ?? job.usage),
+          model_observed: patch.model_observed ?? job.model_observed,
           finished_at: patch.finished_at ?? this.now().toISOString(),
         },
         true,

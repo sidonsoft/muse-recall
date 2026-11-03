@@ -8,9 +8,11 @@ scope and corrections.
 
 ## Deployment and security
 
-- **Single-user and loopback-only.** The API binds `127.0.0.1` by default. There is no
-  authentication, account model, per-user namespace, rate limiting or CSRF token. Do not expose this
-  build to a network or the public internet.
+- **Single-user, loopback by default.** The API binds `127.0.0.1` by default. A non-loopback bind
+  requires an `ACCESS_TOKEN`; with one set, every `/api` route except the open `GET /api/health`
+  liveness probe demands the bearer header (see [security](../SECURITY.md)). There is no account
+  model, per-user namespace, rate limiting or CSRF token: the token is one shared secret for the
+  whole instance, not identity. Do not expose this build to the public internet.
 - The Host and Origin guards are browser-confusion controls, not authentication. A non-browser
   client can send no `Origin` or forge one; a compromised local process or extension is outside the
   threat model.
@@ -19,8 +21,10 @@ scope and corrections.
   does not own a container, VM or separate OS user. `--workspace` is not an OS isolation boundary.
 - The API key stays server-side and is delivered to the CLI over stdin. There is no browser provider
   path. This does not make a compromised local machine safe.
+- Request bodies are capped at 1 MiB at the HTTP layer (`bodyLimit` in the Fastify constructor);
+  oversized payloads are refused before any route handler runs.
 - There is no hosted deployment. The application is not reachable at a public URL. The
-  recorded 2:50 submission cut is committed under [`docs/demo/video/`](../demo/video/). See the
+  three-minute beta demo is committed under [`docs/demo/video/`](../demo/video/). See the
   [demo note](../demo/CORRECTABLE_MEMORY_DEMO.md).
 
 ## Load-time verification limits
@@ -56,8 +60,8 @@ Approval telemetry is forward-only: versions approved before it existed show “
 decision. A reviewer can approve a staged change after reading a `BLOCK · violation_detected`
 finding. The human is the enforcement layer.
 
-- The supported checks cover five source-pattern families: countdown mechanics, flashing effects,
-  mistake penalties, superseded palettes and colour-only cues. They inspect source text, not rendered
+- The supported checks cover seven source-pattern families: countdown mechanics, flashing effects,
+  mistake penalties, superseded palettes, colour-only cues, autoplaying media and external assets. They inspect source text, not rendered
   behavior.
 - `no_violation_detected` means the supported checks did not find a violation among the decisions
   they could map to a rule. It is **not** a compliance certificate and says nothing about
@@ -69,7 +73,7 @@ finding. The human is the enforcement layer.
 - The Guard is not a runtime sandbox, a security scanner, a content moderator or a substitute for
   testing. It does not inspect the rendered page or network behavior.
 
-See [HTML Studio](html-studio.md) for the review workflow and the five rules.
+See [HTML Studio](html-studio.md) for the review workflow and the seven rules.
 
 ## Memory behavior
 
@@ -104,10 +108,21 @@ See [HTML Studio](html-studio.md) for the review workflow and the five rules.
 ## HTML Studio and Forge
 
 - **One `index.html` only.** No multi-file project, package installation, build step, server-side
-  execution or arbitrary host. Network assets are limited to `cdn.jsdelivr.net`; games may use
-  Phaser 3 from that CDN.
-- **Export is not a self-contained bundle.** The download is the artifact as-is. A CDN reference
-  still needs network access, and opening the file from disk runs it **without** the Studio sandbox.
+  execution or arbitrary host, and no remote asset: a game asks for Phaser 3 with one CDN tag and
+  the product inlines the copy of the engine it carries, so the artifact boots with no network at
+  all. That costs about 1.18 MB per game artifact. Artifacts approved before D059 keep their CDN
+  reference and still need that host reachable; KI-53 records the measurement behind the decision.
+- **One vendored engine version.** Only Phaser 3.80.1 is carried. A document that asks for a
+  different version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`,
+  a script body), keeps its network dependency and is reported as a named gap; it is never silently
+  given a different engine. Refreshing the pin means re-fetching and re-verifying the hash
+  (`pnpm run vendor:phaser`) and re-running the runtime gate; `pnpm run vendor:phaser -- --check`
+  verifies the committed copy offline, and `-- --against-remote` asks the pinned URL whether it
+  still serves those bytes (neither writes anything).
+- **Export is the artifact as-is**, sandbox stripped: a game built after D059 is genuinely
+  self-contained and opens offline from disk; an older one still asks the CDN. Opening either from
+  disk runs it **without** the Studio sandbox — that is the point of the export, and the reason the
+  approval-time runtime check exists.
 - **Preview storage is temporary.** The sandboxed preview installs an in-document storage shim
   because real Web Storage access throws in an opaque origin. Data written there resets when the
   preview reloads and is never written into the artifact. The exported file keeps data normally,
@@ -116,6 +131,16 @@ See [HTML Studio](html-studio.md) for the review workflow and the five rules.
   `WORKSPACE_ROOT`. There is no database lease or multi-process lock; two servers must not share a
   workspace. Intermediate writes are coalesced, and there is no `fsync`, so a sudden power loss is
   not a durability guarantee.
+- **`Idempotency-Key` replay is per-database, and in-flight locking is per-process.** A replay
+  record lives in SQLite (schema v8), scoped to `METHOD /concrete/path` + key, expires after 24
+  hours, and is deliberately **excluded from the export envelope** so a replay window cannot survive
+  a data restore. That is sound for the single-server deployment this beta is designed around, and
+  unsound in two other shapes: servers behind a load balancer with **separate** databases replay
+  nothing at all, so a client that retried after a timeout can pay twice — most expensively for a
+  paid vision review or a coding job; and servers **sharing** one database share replay records but
+  not the in-process in-flight set, so two concurrent copies of the same key can both run and one
+  answer wins. Horizontal scaling needs a shared lease (the same problem the job store has, see
+  above); it is documented as out of scope for beta rather than assumed safe.
 - **Interrupted jobs are not resumed.** A `queued`/`running` job found at startup becomes
   `interrupted`; staged files and logs are kept for inspection. A graceful shutdown cancels active
   jobs and waits for terminal persistence, but an ungraceful death can leave an interrupted record.
@@ -187,6 +212,34 @@ These fixes are on `main` and are reflected in this guide:
 The residual behavior is F6: a correction does not apply itself to an approved artifact. Some
 generated mistakes also remain possible by design — for example a hidden long timer that the Guard
 reports as `UNVERIFIED`, leaving the decision to a human.
+
+## Beta release scope
+
+The beta documents (`docs/beta/READINESS.md`, `docs/beta/RELEASE-GATE.md`, `docs/beta/RELEASE-NOTES.md`,
+`docs/beta/DEMO-CHECKLIST.md`) carry measurements. What those measurements do **not** cover:
+
+- **One generated application has been reviewed by a person.** The second review round re-measured that
+  same brief on a newer build. That is two observations of one brief, not a sample, and no defect rate for
+  generated applications may be inferred from it.
+- **KI-88, KI-89, KI-90 and KI-91 are findings about one file.** The probe battery describes what happened
+  in that artifact's sequences. It does not estimate how often other applications behave that way, and the
+  battery's own report does not claim a rate.
+- **The journey gates run a scripted coding CLI.** `verify:beta-journey` and `verify:studio-workflow` prove
+  the product's plumbing around a generation — approval, versions, rollback, handover, preview, phone
+  layout — and say nothing about what a model would generate. Their reports name the fixture CLI so the
+  distinction survives the copy-paste.
+- **The probe battery drives sequences, using names a person gave it.** It reports four outcomes —
+  `finding`, `clean`, `not_tested`, `incomplete` — and a control it cannot find is reported as *not run*
+  rather than as a pass. The interaction names are the reviewer's words, not a language the battery
+  understands, so a renamed control in a generated artifact produces `not_tested`, which is honest and not
+  a clean result.
+- **Packet mode does not fail the product gate.** Findings inside a generated application are measurements
+  of that application, and they enter reviewer evidence and `docs/KNOWN_ISSUES.md`. Turning them into
+  product failures would hide the distinction between what shipped and what was generated.
+- **Product reproducibility is not model determinism.** The same brief through the same product on the same
+  commit is reproducible; the same brief through a model on a different day is not promised to be.
+- **A judgement sheet is not a gate.** The review packet's five quality rows and its decision-compliance
+  rows are blank on purpose. No harness result, including a green release gate, fills them in.
 
 ## Related references
 

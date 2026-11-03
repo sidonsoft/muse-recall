@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildForgePromptForEval, memoryBlockFor } from '../forge-memory/harness.js';
+import { buildForgePromptForEval } from '../forge-memory/harness.js';
 import {
   accessibilityGuard,
   buildDecisionReport,
@@ -116,7 +116,7 @@ describe('scenario 3 — corrected design decision', () => {
       const ids = retrieval.results.map((r) => r.memory.id);
       expect(ids).toContain(s.correctedId);
       expect(ids).not.toContain(s.decisionId);
-      const prompt = buildForgePromptForEval(memoryBlockFor(retrieval), REQUESTS.s3);
+      const prompt = buildForgePromptForEval(retrieval, REQUESTS.s3);
       expect(prompt).toContain(SCENARIOS.s3.correctedContent ?? '');
       expect(prompt).not.toContain(SCENARIOS.s3.content);
     } finally {

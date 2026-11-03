@@ -25,32 +25,95 @@ export interface RuntimeCheckResult {
   errors: string[];
   /** Requests aborted by the verification allowlist (credentials stripped). */
   blocked: string[];
+  /**
+   * The same refusals reduced to origins (KI-74). `blocked` keeps full URLs for
+   * this process only — they can carry a query the generated page built — and
+   * nothing persisted records them. The approval record and the review panel read
+   * this reduced list, so "the check let every dependency through" and "the check
+   * refused one" stay distinguishable after the fact without echoing a URL.
+   */
+  blocked_origins: string[];
+  /**
+   * Loads the allowlist *permitted* but the network refused, named by origin.
+   * An approved-CDN failure is the difference between "the game is broken" and
+   * "this machine cannot reach the engine the game needs", and a reviewer can
+   * only act on the second one if the report says so.
+   */
+  remote_failures: string[];
+  /**
+   * Whether the checked document was held to a no-network policy (it carries
+   * its own engine) or to the CDN allowlist (it still asks the network for
+   * one). A passed check means different things under each.
+   */
+  network_policy?: ForgeRuntimeNetworkPolicy;
+  /** Remote engine references the check could not vendor, named. */
+  vendor_gaps?: string[];
   /** Browser identity/version, when the checker can report it. */
   browser?: string | null;
   /** Explicit launch policy and bounded diagnostics. */
   browser_selection?: ForgeRuntimeBrowserSelection;
 }
 
-/** The only remote origin a staged application may load during verification. */
-const ALLOWED_REMOTE_HOSTS = new Set(['cdn.jsdelivr.net']);
+/*
+ * Two network policies, chosen from the document under check rather than
+ * declared by the caller. A document that carries the engine itself (KI-53)
+ * needs no network at all, so the check grants it none: any outbound request
+ * from a vendored artifact is a finding. A document that still points at the
+ * approved CDN is checked under the old allowlist, because refusing its engine
+ * would report a broken game where the truth is an unvendored dependency — and
+ * that difference is recorded in `network_policy` rather than guessed later.
+ */
+export type ForgeRuntimeNetworkPolicy = ForgeNetworkPolicy;
 
-/** Network destinations that never leave the machine / are not remote. */
-function isLocalScheme(protocol: string): boolean {
-  return protocol === 'about:' || protocol === 'data:' || protocol === 'blob:';
+import {
+  documentNetworkPolicy,
+  type ForgeNetworkPolicy,
+  isAllowedRuntimeRequest,
+} from './network-policy.js';
+import { vendorGapUrls } from './vendored-scripts.js';
+
+/*
+ * The policy primitives live in `network-policy.ts` so the browser check, the
+ * preview CSP and the approval rail's dependency disclosure (KI-74) all read one
+ * definition. These re-exports keep the checker's established surface — gates and
+ * tests import the policy from here.
+ */
+export { documentNetworkPolicy as runtimeNetworkPolicy, isAllowedRuntimeRequest };
+
+/*
+ * A browser reason can carry the whole URL it failed on
+ * (`net::ERR_FAILED https://host/some/path?token=…`). Redaction alone does not
+ * make that safe: the path can name the generated page, and a query can hold data
+ * the page built. Every URL in the reason is reduced to its origin first, so the
+ * only host named anywhere in this text is the one the allowlist permitted.
+ */
+function stripUrlsToOrigins(text: string): string {
+  return text.replace(/\bhttps?:\/\/\S+/gi, (found) => {
+    try {
+      const parsed = new URL(found);
+      return parsed.origin;
+    } catch {
+      return '[url removed]';
+    }
+  });
 }
 
-/** True when a request URL is permitted during headless verification. */
-export function isAllowedRuntimeRequest(raw: string): boolean {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    // Anything unparseable is treated as non-network and left to the browser.
-    return true;
-  }
-  if (isLocalScheme(url.protocol)) return true;
-  if (url.protocol !== 'https:') return false;
-  return ALLOWED_REMOTE_HOSTS.has(url.hostname.toLowerCase());
+/**
+ * How a permitted-but-failed load is reported. Origin only: the path and any
+ * query the generated page built are deliberately dropped, the same rule the
+ * blocked-request text follows — including when the *browser reason itself* embeds
+ * a URL. 300 is the shared schema bound for one error.
+ */
+export function remoteLoadFailure(origin: string, errorText: string): string {
+  const reason = boundedRedacted(
+    stripUrlsToOrigins(errorText.trim().length > 0 ? errorText : 'the connection failed'),
+    80,
+  );
+  return boundedRedacted(
+    `A load the allowlist permitted failed (${origin}): ${reason}. ` +
+      'An application that gets its engine from the approved CDN cannot be approved while that host is unreachable.',
+    MAX_DIAGNOSTIC_TEXT,
+  );
 }
 
 type BrowserPolicy = 'managed' | 'chrome';
@@ -150,11 +213,17 @@ export async function checkGameRuntime(
       rendered: false,
       errors: [launched.error],
       blocked: [],
+      blocked_origins: [],
+      remote_failures: [],
+      network_policy: documentNetworkPolicy(html),
+      vendor_gaps: vendorGapUrls(html),
       browser: null,
       browser_selection: launched.selection,
     };
   }
   const browser = launched.browser;
+  const networkPolicy = documentNetworkPolicy(html);
+  const vendorGaps = vendorGapUrls(html);
   let browserIdentity: string | null = null;
   try {
     browserIdentity = boundedRedacted(`Chromium ${await browser.version()}`, MAX_SELECTION_TEXT);
@@ -169,7 +238,20 @@ export async function checkGameRuntime(
     const page = await browser.newPage();
     const errors: string[] = [];
     const blocked: string[] = [];
+    const remoteFailures: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    // A load the allowlist permitted but the network refused. Requests the
+    // allowlist rejects never reach here: they are recorded in `blocked`.
+    page.on('requestfailed', (request) => {
+      const url = request.url();
+      if (!isAllowedRuntimeRequest(url, networkPolicy)) return;
+      try {
+        const line = remoteLoadFailure(new URL(url).origin, request.failure()?.errorText ?? '');
+        if (!remoteFailures.includes(line)) remoteFailures.push(line);
+      } catch {
+        // Unparseable URL: the browser's own page/console error still reports it.
+      }
+    });
     page.on('console', (message) => {
       if (message.type() !== 'error') return;
       const text = message.text();
@@ -180,7 +262,7 @@ export async function checkGameRuntime(
 
     await page.route('**/*', async (route) => {
       const url = route.request().url();
-      if (isAllowedRuntimeRequest(url)) {
+      if (isAllowedRuntimeRequest(url, networkPolicy)) {
         await route.continue();
         return;
       }
@@ -227,7 +309,7 @@ export async function checkGameRuntime(
         return 'Blocked network request.';
       }
     });
-    const failure = [...blockedErrors, ...errors];
+    const failure = [...blockedErrors, ...remoteFailures, ...errors];
     const reason =
       canvas || rendered
         ? []
@@ -241,6 +323,18 @@ export async function checkGameRuntime(
       rendered,
       errors: [...reason, ...failure],
       blocked,
+      /**
+       * The same refusals, reduced to origins (KI-74). `blocked` keeps the full
+       * URLs for this process only — they can carry a query the page built — and
+       * nothing that persists records them. The approval record and the review
+       * panel read this reduced list, so "verification let every dependency
+       * through" and "verification refused one" stay distinguishable after the
+       * fact without echoing a generated page's URL.
+       */
+      blocked_origins: blockedErrors,
+      remote_failures: remoteFailures,
+      network_policy: networkPolicy,
+      vendor_gaps: vendorGaps,
       browser: browserIdentity,
       browser_selection: selection,
     };

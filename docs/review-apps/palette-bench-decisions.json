@@ -1,0 +1,29 @@
+{
+  "_note": "Project decisions seeded before the coding job runs. They are deliberately NOT restated in the brief: whether the app follows them is a question for the human reviewer, not an instruction the brief hands over. `verify:review-app` seeds these through POST /api/memories and records their ids and revisions in the packet, so the review cites the exact text that was in force.",
+  "decisions": [
+    {
+      "type": "preference",
+      "content": "Never use modal dialogs — alert(), confirm(), prompt() or overlay modals — for feedback; report results in inline status text.",
+      "confidence": 0.95,
+      "tags": ["review-packet", "feedback"]
+    },
+    {
+      "type": "constraint",
+      "content": "Body text keeps a contrast ratio of at least 4.5:1 against its own background.",
+      "confidence": 0.95,
+      "tags": ["review-packet", "accessibility"]
+    },
+    {
+      "type": "preference",
+      "content": "At most one accent colour is used per screen; everything else is neutral.",
+      "confidence": 0.9,
+      "tags": ["review-packet", "visual"]
+    },
+    {
+      "type": "constraint",
+      "content": "Every destructive action can be undone from the same screen.",
+      "confidence": 0.9,
+      "tags": ["review-packet", "interaction"]
+    }
+  ]
+}

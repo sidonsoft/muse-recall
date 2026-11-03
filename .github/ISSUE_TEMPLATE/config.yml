@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/sidonsoft/muse-recall/security/advisories/new
+    about: Please report security problems privately, not in a public issue.
+  - name: User guide
+    url: https://github.com/sidonsoft/muse-recall/blob/main/docs/guide/README.md
+    about: Setup, project memory, HTML Studio and known limitations.

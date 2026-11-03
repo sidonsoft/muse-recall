@@ -158,18 +158,33 @@ export class SessionStore {
     return session;
   }
 
-  listSessions(options: { status?: SessionStatus; limit?: number } = {}): Session[] {
+  listSessions(
+    options: { status?: SessionStatus; limit?: number; offset?: number } = {},
+  ): Session[] {
     const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
     const rows = options.status
       ? (this.db
           .prepare(
-            `${SESSION_SELECT} WHERE s.status = ? ORDER BY s.updated_at DESC, s.id ASC LIMIT ?`,
+            `${SESSION_SELECT} WHERE s.status = ? ORDER BY s.updated_at DESC, s.id ASC LIMIT ? OFFSET ?`,
           )
-          .all(options.status, limit) as unknown as SessionRow[])
+          .all(options.status, limit, offset) as unknown as SessionRow[])
       : (this.db
-          .prepare(`${SESSION_SELECT} ORDER BY s.updated_at DESC, s.id ASC LIMIT ?`)
-          .all(limit) as unknown as SessionRow[]);
+          .prepare(`${SESSION_SELECT} ORDER BY s.updated_at DESC, s.id ASC LIMIT ? OFFSET ?`)
+          .all(limit, offset) as unknown as SessionRow[]);
     return rows.map(mapSession);
+  }
+
+  /** Count of sessions matching the filter — the list total, page-independent. */
+  countSessions(options: { status?: SessionStatus } = {}): number {
+    const row = options.status
+      ? (this.db
+          .prepare('SELECT COUNT(*) AS count FROM sessions s WHERE s.status = ?')
+          .get(options.status) as { count: number } | undefined)
+      : (this.db.prepare('SELECT COUNT(*) AS count FROM sessions s').get() as
+          | { count: number }
+          | undefined);
+    return row?.count ?? 0;
   }
 
   updateSession(

@@ -15,7 +15,11 @@ const OTHER_PROJECT = 'other-game';
 const NOW = new Date('2026-10-27T04:30:00.000Z');
 
 function memory(overrides: Partial<Memory> & Pick<Memory, 'id' | 'content'>): Memory {
-  return {
+  // The base is a complete record; the spread only varies what a case cares
+  // about, so the result keeps every contract field.
+  const base: Memory = {
+    id: '00000000-0000-4000-8000-000000000000',
+    content: 'placeholder',
     type: 'constraint',
     scope: 'project',
     project_id: PROJECT,
@@ -26,11 +30,13 @@ function memory(overrides: Partial<Memory> & Pick<Memory, 'id' | 'content'>): Me
     created_at: '2026-10-20T00:00:00.000Z',
     updated_at: '2026-10-20T00:00:00.000Z',
     expires_at: null,
+    revision: 1,
+    actor: 'user',
     supersedes: [],
     superseded_by: null,
     tags: ['test'],
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 /** In-memory resolver keyed by id; unknown ids resolve to null, like a delete. */

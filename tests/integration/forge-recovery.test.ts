@@ -401,6 +401,10 @@ describe('Forge restart recovery', () => {
       },
       flush: async () => undefined,
       loadAll: async () => ({ jobs: [], issues: [] }),
+      healthCheck: async () => ({
+        root: { ok: true, error: null },
+        project: { ok: true, error: null },
+      }),
     };
     const manager = managerFor(workspace, engine, failing);
 
@@ -456,6 +460,25 @@ describe('Forge restart recovery', () => {
       expect(view.jobs.find((entry) => entry.id === running.id)?.status).toBe('interrupted');
       expect(view.recovery.startup.loaded_jobs).toBe(1);
       expect(view.recovery.startup.interrupted_jobs).toBe(1);
+
+      // The System screen's store-wide summary (P1 #8) surfaces the same
+      // startup recovery state without opening the project.
+      const healthResponse = await app.inject({ method: 'GET', url: '/api/health' });
+      expect(healthResponse.statusCode).toBe(200);
+      const forge = healthResponse.json().data.forge as {
+        storage_ok: boolean;
+        unacknowledged_issues: number;
+        interrupted_jobs_current: number;
+        interrupted_jobs_startup: number;
+        loaded_jobs_startup: number;
+        issues: Array<{ kind: string; project_id: string; code: string }>;
+      };
+      expect(forge.storage_ok).toBe(true);
+      expect(forge.loaded_jobs_startup).toBe(1);
+      expect(forge.interrupted_jobs_startup).toBe(1);
+      expect(forge.interrupted_jobs_current).toBe(1);
+      expect(forge.unacknowledged_issues).toBe(1);
+      expect(forge.issues[0]).toMatchObject({ kind: 'startup', project_id: 'demo' });
     } finally {
       await app.close();
     }
@@ -793,7 +816,10 @@ describe('Forge restart recovery', () => {
       jobStore: store,
       shutdownGraceMs: 100,
     });
-    let releaseRetry: (() => void) | null = null;
+    // The gate is opened from inside a promise executor, so the compiler
+    // cannot see the write: keep the binding callable and let the deadline
+    // assertions above prove that the gate was actually reached.
+    let releaseRetry: () => void = () => {};
     try {
       const created = await manager.start({
         projectId: 'demo',
@@ -839,8 +865,8 @@ describe('Forge restart recovery', () => {
       await withDeadline(reached, 'the storage retry to reach its write gate');
       const approved = await manager.approve(created.id, { captureMemory: false });
       expect(approved.job.version).toBe(1);
-      releaseRetry?.();
-      releaseRetry = null;
+      releaseRetry();
+      releaseRetry = () => {};
       await withDeadline(retry, 'the storage retry to finish');
 
       // The retry's stale version-less snapshot was attempted, then the
@@ -857,7 +883,7 @@ describe('Forge restart recovery', () => {
       expect(persisted.status).toBe('succeeded');
       expect(persisted.version).toBe(1);
     } finally {
-      releaseRetry?.();
+      releaseRetry();
       await manager.shutdown();
     }
   });

@@ -11,6 +11,7 @@ import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
 import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/fake-muse.mjs', import.meta.url));
 const BASELINE = fileURLToPath(new URL('../../demo/forge-baseline/index.html', import.meta.url));
@@ -155,6 +156,7 @@ async function harness(
 
 function constraint(h: Harness, projectId: string, content: string) {
   return h.engine.create({
+    ...CREATE_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: projectId,

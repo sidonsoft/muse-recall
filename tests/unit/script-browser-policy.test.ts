@@ -53,4 +53,30 @@ describe('active-script browser policy', () => {
     expect((error as Error).message).toContain('playwright-core install chromium');
     expect((error as Error).message).not.toContain('system Chrome could not be launched');
   });
+
+  it('selects managed Firefox only when explicitly chosen, with one attempt', async () => {
+    process.env.FORGE_RUNTIME_BROWSER = 'firefox';
+    let policy: string | null = null;
+    const error = await launchVerificationBrowser({
+      launch: async (selected) => {
+        policy = selected;
+        throw new Error('managed firefox missing');
+      },
+    }).catch((cause: unknown) => cause);
+    expect(policy).toBe('firefox');
+    expect((error as Error).message).toContain('managed Firefox could not be launched');
+    expect((error as Error).message).toContain('playwright-core install firefox');
+  });
+
+  it('never silently falls back from a missing Firefox to Chromium', async () => {
+    process.env.FORGE_RUNTIME_BROWSER = 'firefox';
+    let launches = 0;
+    await launchVerificationBrowser({
+      launch: async () => {
+        launches += 1;
+        throw new Error("Executable doesn't exist at /missing/firefox");
+      },
+    }).catch(() => undefined);
+    expect(launches).toBe(1);
+  });
 });

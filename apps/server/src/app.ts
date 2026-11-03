@@ -1,12 +1,21 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import cors from '@fastify/cors';
 import { AgentError, AgentRuntime } from '@mml/agent-core';
 import { type MemoryEngine, MemoryError, probeDatabase } from '@mml/memory-engine';
 import { ProviderError } from '@mml/muse-provider';
 import {
+  API_ERROR_CATALOG,
   API_ERROR_CODES,
   apiFailure,
   apiSuccess,
+  DEFAULT_MEDIA_IMAGE_MODEL,
+  DEFAULT_SAM_MODEL,
+  DEFAULT_TRANSCRIBE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  DEFAULT_VISION_MODEL,
+  ERROR_CATALOG_VERSION,
+  ErrorCatalogSchema,
   HealthResponseSchema,
   LivenessResponseSchema,
   type ModelProvider,
@@ -22,14 +31,26 @@ import {
 } from '@mml/tool-runtime';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { scanBackupFreshness } from './alert-signals.js';
+import { buildIdentity } from './build-identity.js';
 import type { AppConfig } from './config.js';
 import { SERVICE_NAME } from './config.js';
 import { ForgeJobManager } from './forge/runner.js';
 import { ForgeWorkspace } from './forge/workspace.js';
 import { isAllowedHostHeader } from './host-guard.js';
+import { IdempotencyStore } from './idempotency.js';
+import { MediaAdapter } from './media/adapter.js';
+import { MediaAssetStore } from './media/assets.js';
+import { MediaJobStore } from './media/jobs.js';
+import { MediaOperations } from './media/operations.js';
+import { MediaSegmentation, MediaUnderstand, MediaVisualReview } from './media/segment.js';
+import { MediaService } from './media/service.js';
+import { MediaSourceStore } from './media/sources.js';
+import { MediaVoice } from './media/voice.js';
 import { evaluateRequestOrigin } from './origin-guard.js';
 import { ProviderHealthTracker } from './provider-health.js';
 import { registerForgeRoutes } from './routes/forge.js';
+import { registerMediaRoutes } from './routes/media.js';
 import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
 import { registerSessionRoutes } from './routes/sessions.js';
 import { registerToolRoutes } from './routes/tools.js';
@@ -49,9 +70,28 @@ export interface AppDependencies {
   /** Injectable for tests; created by default. */
   toolRegistry?: ToolRegistry;
   toolStore?: ToolCallStore;
+  /**
+   * Idempotency-Key replay store. Created over `db` when omitted; injectable so a
+   * caller can share one store across apps, or a test can make the write fail and
+   * see what happens to an answer the provider already produced.
+   */
+  idempotency?: IdempotencyStore;
   /** Forge workspace/job manager; created under WORKSPACE_ROOT when omitted. */
   forgeWorkspace?: ForgeWorkspace;
   forgeManager?: ForgeJobManager;
+  /** Batch B media stores/service; created under the Forge workspace when omitted. */
+  mediaAssets?: MediaAssetStore;
+  mediaJobs?: MediaJobStore;
+  mediaSources?: MediaSourceStore;
+  mediaOperations?: MediaOperations | null;
+  mediaVoice?: MediaVoice | null;
+  mediaService?: MediaService;
+  /**
+   * Injectable fetch used by the media adapter when the app constructs it.
+   * Tests use this to inspect the exact outgoing image requests; production
+   * leaves it unset so the adapter uses global fetch.
+   */
+  mediaFetch?: typeof fetch;
   /** Injectable so tests can share or reset the tracker. */
   providerHealth?: ProviderHealthTracker;
   /** Monotonic-ish process start time, used for uptime. */
@@ -99,6 +139,80 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       tools: { registry: toolRegistry, store: toolStore },
     });
   const forgeWorkspace = dependencies.forgeWorkspace ?? new ForgeWorkspace(config.workspaceRoot);
+  const mediaAssets = dependencies.mediaAssets ?? new MediaAssetStore(forgeWorkspace);
+  const mediaJobs = dependencies.mediaJobs ?? new MediaJobStore(forgeWorkspace);
+  const mediaSources = dependencies.mediaSources ?? new MediaSourceStore(forgeWorkspace);
+  const mediaModel = config.media?.model ?? DEFAULT_MEDIA_IMAGE_MODEL;
+  const mediaFetch = dependencies.mediaFetch;
+  const mediaAdapter =
+    dependencies.mediaOperations !== undefined
+      ? null
+      : new MediaAdapter({
+          apiKey: config.forge?.apiKey ?? null,
+          // Image generation/editing uses its own model. The Studio coding
+          // model is for /v1/chat/completions and must never be sent here.
+          model: mediaModel,
+          ...(config.media?.maxRetries !== undefined
+            ? { maxRetries: config.media.maxRetries }
+            : {}),
+          ...(config.media?.traceAttempts === true ? { traceAttempts: true } : {}),
+          ...(mediaFetch ? { fetchImpl: mediaFetch } : {}),
+        });
+  const mediaOperations =
+    dependencies.mediaOperations !== undefined
+      ? dependencies.mediaOperations
+      : mediaAdapter?.configured === true
+        ? new MediaOperations(mediaAdapter, {
+            model: mediaModel,
+            ...(mediaFetch ? { fetchImpl: mediaFetch } : {}),
+          })
+        : null;
+  // SAM and vision use their own documented models: the adapter's targeted
+  // model is image-scoped, and the coding model is valid on neither endpoint.
+  const mediaSegmentation =
+    mediaAdapter?.configured === true
+      ? new MediaSegmentation(mediaAdapter, {
+          model: config.media?.samModel ?? DEFAULT_SAM_MODEL,
+        })
+      : null;
+  const mediaUnderstand =
+    mediaAdapter?.configured === true
+      ? new MediaUnderstand(mediaAdapter, {
+          model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        })
+      : null;
+  const mediaVisualReview =
+    mediaAdapter?.configured === true
+      ? new MediaVisualReview(mediaAdapter, {
+          // Same vision model as reference suggestions: a screenshot review is
+          // an image-conditioned instruction call, not a coding or SAM request.
+          model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        })
+      : null;
+  const mediaVoice =
+    dependencies.mediaVoice !== undefined
+      ? dependencies.mediaVoice
+      : mediaAdapter?.configured === true
+        ? new MediaVoice(mediaAdapter, {
+            ...(config.media?.transcribeModel
+              ? { transcribeModel: config.media.transcribeModel }
+              : {}),
+            ...(config.media?.videoModel ? { videoModel: config.media.videoModel } : {}),
+          })
+        : null;
+  const mediaService =
+    dependencies.mediaService ??
+    new MediaService(
+      mediaAssets,
+      mediaJobs,
+      mediaOperations,
+      {
+        ...(mediaSegmentation === null ? {} : { segmentation: mediaSegmentation }),
+        ...(mediaUnderstand === null ? {} : { understand: mediaUnderstand }),
+        ...(mediaVisualReview === null ? {} : { visualReview: mediaVisualReview }),
+      },
+      { sources: mediaSources, voice: mediaVoice, engine },
+    );
   const forgeManager =
     dependencies.forgeManager ??
     new ForgeJobManager({
@@ -109,6 +223,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       ...(config.forge?.model ? { model: config.forge.model } : {}),
       ...(config.forge?.fallbackApiKey ? { fallbackApiKey: config.forge.fallbackApiKey } : {}),
       ...(config.forge?.fallbackModel ? { fallbackModel: config.forge.fallbackModel } : {}),
+      mediaAssets,
       ...(config.forge
         ? {
             maxRuntimeMs: config.forge.maxRuntimeMs,
@@ -140,8 +255,19 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   // owned children with bounded escalation, await terminal persistence, then
   // flush any remaining writes.
   app.addHook('onClose', async () => {
+    mediaService.shutdown();
     await forgeManager.shutdown();
   });
+
+  // Surface the operator-configured OS isolation seam (roadmap G-2). The
+  // wrapper's pass-through was already probed when the manager was built; a
+  // broken wrapper never reaches this line.
+  if (forgeManager.workerWrapper) {
+    app.log.warn(
+      { wrapper: forgeManager.workerWrapper.path },
+      'Forge CLI launches through the configured worker wrapper',
+    );
+  }
 
   // Reload durable Forge jobs before any request can list a project. The
   // report is logged and exposed through the project API; a malformed record
@@ -160,18 +286,50 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     );
   }
 
+  // Media job records are recovered alongside Forge jobs. Queued/running
+  // records from a previous process become `interrupted`; malformed records
+  // are surfaced through the media jobs endpoint rather than treated as empty.
+  const mediaRecovery = await mediaJobs.loadAll();
+  await mediaJobs.recover();
+  if (mediaRecovery.issues.length > 0) {
+    app.log.warn({ issues: mediaRecovery.issues.length }, 'Media recovery reported issues');
+  }
+
   // Reject requests whose Host header does not name a loopback host on an
   // expected local port. Binding to 127.0.0.1 does not stop DNS rebinding.
   app.addHook('onRequest', async (request, reply) => {
     const allowed = isAllowedHostHeader(request.headers.host, {
       port: config.port,
       corsOrigins: config.corsOrigins,
+      tokenAuth: Boolean(config.accessToken),
     });
     if (allowed) return;
     return reply
       .status(400)
       .send(apiFailure(API_ERROR_CODES.invalidHost, 'Unexpected Host header.'));
   });
+
+  // Shared bearer token (gap G-6 groundwork). Absent ACCESS_TOKEN keeps the
+  // beta's zero-friction loopback model untouched. When set, it is the only
+  // credential: authentication WITHOUT identity — every holder is the same
+  // operator. Liveness (`GET /api/health`) stays open for probes.
+  if (config.accessToken) {
+    const expected = `Bearer ${config.accessToken}`;
+    const tokenBytes = createHash('sha256').update(expected).digest();
+    app.addHook('onRequest', async (request, reply) => {
+      const url = request.url.split('?')[0];
+      if (request.method === 'GET' && url === '/api/health') return;
+      const presented = request.headers.authorization;
+      const ok =
+        typeof presented === 'string' &&
+        timingSafeEqual(createHash('sha256').update(presented).digest(), tokenBytes);
+      if (ok) return;
+      reply.header('www-authenticate', 'Bearer');
+      return reply
+        .status(401)
+        .send(apiFailure(API_ERROR_CODES.unauthorized, 'Missing or invalid bearer token.'));
+    });
+  }
 
   // Reject state-changing requests that a foreign page can send without a
   // preflight. CORS hides the response but does not stop the mutation; the
@@ -223,9 +381,15 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     try {
       done(null, JSON.parse(raw));
     } catch {
-      // Malformed JSON is a client error, not a server fault.
+      // Malformed JSON is a client error, not a server fault: tag it with the
+      // published code (KI-45) so the handler answers bad_request, exactly as
+      // the catalogue documents. mmlCode is our own field — Fastify's internal
+      // errors use a different `code`, which must never reach the wire.
       const failure = new Error('Request body is not valid JSON.');
-      done(Object.assign(failure, { statusCode: 400 }), undefined);
+      done(
+        Object.assign(failure, { statusCode: 400, mmlCode: API_ERROR_CODES.badRequest }),
+        undefined,
+      );
     }
   });
 
@@ -248,7 +412,13 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
     if (MemoryError.isMemoryError(error)) {
       const status =
-        error.code === 'memory_not_found' ? 404 : error.code === 'memory_conflict' ? 409 : 400;
+        error.code === 'memory_not_found'
+          ? 404
+          : error.code === 'memory_conflict'
+            ? 409
+            : error.code === 'memory_storage_failed'
+              ? 500
+              : 400;
       return reply
         .status(status)
         .send(apiFailure(error.code, error.message, error.details as never));
@@ -270,7 +440,12 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         );
     }
 
-    const fastifyError = error as { statusCode?: number; validation?: unknown; message?: string };
+    const fastifyError = error as {
+      statusCode?: number;
+      validation?: unknown;
+      message?: string;
+      mmlCode?: string;
+    };
 
     if (fastifyError.validation) {
       return reply
@@ -285,11 +460,21 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
 
     const statusCode =
       fastifyError.statusCode && fastifyError.statusCode >= 400 ? fastifyError.statusCode : 500;
+    // Transport-level codes (KI-45 + KI-48): a tagged parse failure carries its
+    // own published code; Fastify's body-limit refusal answers the published
+    // 413 class. Anything else keeps the old shape.
+    const code =
+      fastifyError.mmlCode ??
+      (statusCode === 413
+        ? API_ERROR_CODES.payloadTooLarge
+        : statusCode === 404
+          ? API_ERROR_CODES.notFound
+          : API_ERROR_CODES.internal);
     return reply
       .status(statusCode)
       .send(
         apiFailure(
-          statusCode === 404 ? API_ERROR_CODES.notFound : API_ERROR_CODES.internal,
+          code,
           statusCode >= 500
             ? 'An internal error occurred.'
             : (fastifyError.message ?? 'Request failed.'),
@@ -304,11 +489,26 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   );
 
   // --- Memory CRUD, correction, deletion, retrieval preview ---------------
-  registerMemoryRoutes(app, { engine, config });
+  // The option exists so a caller can supply a store over its own database (or a
+  // failing one, in tests); it must actually be honoured rather than silently
+  // replaced by a fresh store.
+  const idempotency = dependencies.idempotency ?? new IdempotencyStore(db);
+  registerMemoryRoutes(app, { engine, config, idempotency });
   registerSessionRoutes(app, { runtime });
   registerUiRoutes(app, { runtime, engine, provider, config });
   registerToolRoutes(app, { runtime, engine, registry: toolRegistry, store: toolStore });
-  registerForgeRoutes(app, { manager: forgeManager, workspace: forgeWorkspace, engine });
+  registerForgeRoutes(app, {
+    manager: forgeManager,
+    workspace: forgeWorkspace,
+    engine,
+    idempotency,
+    mediaAssets,
+    // Batch E screenshot review is a Forge advisory, but the inference itself
+    // belongs to the media layer: the route resolves decisions from memory and
+    // the media service performs the vision call.
+    media: mediaService,
+  });
+  registerMediaRoutes(app, { service: mediaService });
 
   // --- Liveness: cheap, no dependencies touched. ---------------------------
   app.get('/api/live', async () => {
@@ -323,6 +523,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   app.get('/api/health', async () => {
     const databaseProbe = probeDatabase(db, dbPath, { readOnly: true });
     const providerState = providerHealth.current();
+    let forgeReport: ReturnType<typeof forgeManager.recovery> | undefined;
     const capabilities = provider.capabilities();
 
     const providerStatus: ServiceStatus | 'skipped' = !providerState.checked_at
@@ -366,6 +567,34 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           max_context_tokens: capabilities.max_context_tokens,
         },
       },
+      // Store-wide Forge recovery summary for the System screen (P1 #8).
+      // Read-only; the Studio project view stays the place to acknowledge or
+      // act on issues. Bounded to five issues so health stays small.
+      forge: (() => {
+        forgeReport = forgeManager.recovery();
+        const report = forgeReport;
+        return {
+          storage_ok: report.storage.ok,
+          unacknowledged_issues: report.issues.length,
+          acknowledged_issues: report.acknowledged_issues,
+          interrupted_jobs_current: report.current_interrupted_jobs,
+          interrupted_jobs_startup: report.startup.interrupted_jobs,
+          loaded_jobs_startup: report.startup.loaded_jobs,
+          issues: report.issues.slice(0, 5),
+        };
+      })(),
+      // Alert signals for EXTERNAL probers (roadmap §8 groundwork; D050):
+      // named states, never notifications from this process. Informational —
+      // a stale or missing backup does not flip `status`, which stays the
+      // liveness verdict for the running server itself.
+      alerts: {
+        backup: scanBackupFreshness(dbPath, config.alertBackupMaxAgeHours ?? 24),
+        storage: {
+          ok: forgeReport ? forgeReport.storage.ok : false,
+          unacknowledged_issues: forgeReport ? forgeReport.issues.length : 0,
+        },
+        provider: { state: providerStatus },
+      },
     });
 
     return apiSuccess(payload);
@@ -408,6 +637,14 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     }
   });
 
+  // --- Machine-readable error catalogue (roadmap §3 remainder) ------------
+  // Mirrors the mappings this server actually performs today, including known
+  // asymmetries; the boundary tests compare live responses against it, so a
+  // silent mapping drift fails CI instead of surprising integrators.
+  app.get('/api/errors', async () => {
+    return apiSuccess(ErrorCatalogSchema.parse(API_ERROR_CATALOG));
+  });
+
   // --- Service metadata: provider capabilities + honest build status. -----
   app.get('/api/meta', async () => {
     const capabilities = provider.capabilities();
@@ -426,8 +663,18 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         provider: 'muse-cli',
         configured_model: config.forge?.model ?? null,
         cli_available: forgeManager.cliAvailable(),
-        // Forge does not currently persist an independently observed model id.
-        observed_model: null,
+        // What the CLI itself reported using (run.model.configured), across
+        // recent jobs; null until the protocol has emitted one. Never the
+        // configured request value promoted into an "observation".
+        observed_model: forgeManager.lastObservedModel(),
+      },
+      media: {
+        image_model: mediaModel,
+        sam_model: config.media?.samModel ?? DEFAULT_SAM_MODEL,
+        vision_model: config.media?.visionModel ?? DEFAULT_VISION_MODEL,
+        transcribe_model: config.media?.transcribeModel ?? DEFAULT_TRANSCRIBE_MODEL,
+        video_model: config.media?.videoModel ?? DEFAULT_VIDEO_MODEL,
+        max_retries: config.media?.maxRetries ?? 1,
       },
       modules: {
         memory_engine: 'complete',
@@ -438,9 +685,12 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         evaluation: 'partial',
       },
       memory: memoryMeta(config),
+      errors: { catalog_version: ERROR_CATALOG_VERSION, endpoint: '/api/errors' },
+      build: buildIdentity(),
       safety: {
         tool_approval_policy: config.toolApprovalPolicy,
         generated_code_execution: false,
+        authentication: config.accessToken ? 'shared-token' : 'loopback-only',
       },
     });
     return apiSuccess(meta);

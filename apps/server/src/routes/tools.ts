@@ -1,6 +1,7 @@
 import { type AgentRuntime, CollectingHandler } from '@mml/agent-core';
 import type { MemoryEngine } from '@mml/memory-engine';
 import {
+  apiFailure,
   ToolCallListSchema,
   ToolDecisionInputSchema,
   ToolDecisionResultSchema,
@@ -51,19 +52,14 @@ export function registerToolRoutes(
 
     const call = store.get(callId);
     if (!call || call.session_id !== id) {
-      return reply.status(404).send({
-        ok: false,
-        error: { code: 'tool_call_not_found', message: 'No such tool call in this session.' },
-      });
+      return reply
+        .status(404)
+        .send(apiFailure('tool_call_not_found', 'No such tool call in this session.'));
     }
     if (call.status !== 'pending') {
-      return reply.status(409).send({
-        ok: false,
-        error: {
-          code: 'tool_call_not_pending',
-          message: `This tool call is already ${call.status}.`,
-        },
-      });
+      return reply
+        .status(409)
+        .send(apiFailure('tool_call_not_pending', `This tool call is already ${call.status}.`));
     }
 
     if (body.decision === 'deny') {
