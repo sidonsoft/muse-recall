@@ -1199,7 +1199,8 @@ the probe could not find the affordance a user would name.
 
 **Measured.** Re-run against the bytes the reviewer had just judged
 (`test-results/human-review/palette-bench-2026-11-03-082925`, evidence at
-`test-results/artifact-probes/2026-11-03-091706`), the battery reported all three: a published output
+`test-results/artifact-probes/2026-11-03-092425`; the battery's own CI run passes at
+`2026-11-03-092409`), the battery reported all three: a published output
 carrying five colours the application is not displaying and omitting five it is; seeds `1` and
 `4294967297` producing one palette; and undo that does not carry across a reload while a destructive
 action taken after the reload still offers a way back. Free, local, reproducible on retained bytes. Two

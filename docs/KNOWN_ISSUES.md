@@ -2231,10 +2231,19 @@ is true and it was not enough, because the failure mode is silence rather than a
   helper whose entire job is to stop a sloppy reading has to refuse the sloppiest one available.
 
 **Measured.** Against `test-results/human-review/palette-bench-2026-11-03-082925` — the bytes a human
-had just reviewed, at `2026-11-03-091706` — the battery reported all three: a published output
-carrying five colours the application is not displaying and omitting five it is; seeds `1` and
-`4294967297` producing one palette; and undo that does not carry across a reload while a destructive
-action after the reload still offers a way back. Free, local, and reproducible on the retained bytes.
+had just reviewed, at `2026-11-03-092425` — the battery reported all three: a published output carrying
+five colours the application is not displaying and omitting five it is; seeds `1` and `4294967297`
+producing one palette; and undo that does not carry across a reload while a destructive action taken
+after the reload still offers a way back (`undo_session_scoped: true`, the machine field behind that
+clause). Free, local, and reproducible on the retained bytes. The battery's own fixture leg passes at
+`2026-11-03-092409`.
+
+**One defect of the probe's own, caught by its fixture.** The reload probe clicked a fresh destructive
+action *before* reading the reloaded screen, so "after the reload" described a state the probe had just
+destroyed, and the stale fixture reported persistence it had wiped seconds earlier. What failed was the
+fixture assertion that exists to prove the battery can see this shape — "the battery reports undo lost
+across a reload" — which is the arrangement working: a gate that checks the checker caught the checker.
+Fixed at `3c3df98`. `2026-11-03-091706` is retained as the run made with the defect, not rewritten.
 
 ## KI-88 — the generated Palette Bench hands over colours it is not displaying (open; a finding about a generated artifact)
 
