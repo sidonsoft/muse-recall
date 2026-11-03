@@ -213,6 +213,34 @@ The residual behavior is F6: a correction does not apply itself to an approved a
 generated mistakes also remain possible by design — for example a hidden long timer that the Guard
 reports as `UNVERIFIED`, leaving the decision to a human.
 
+## Beta release scope
+
+The beta documents (`docs/beta/READINESS.md`, `docs/beta/RELEASE-GATE.md`, `docs/beta/RELEASE-NOTES.md`,
+`docs/beta/DEMO-CHECKLIST.md`) carry measurements. What those measurements do **not** cover:
+
+- **One generated application has been reviewed by a person.** The second review round re-measured that
+  same brief on a newer build. That is two observations of one brief, not a sample, and no defect rate for
+  generated applications may be inferred from it.
+- **KI-88, KI-89, KI-90 and KI-91 are findings about one file.** The probe battery describes what happened
+  in that artifact's sequences. It does not estimate how often other applications behave that way, and the
+  battery's own report does not claim a rate.
+- **The journey gates run a scripted coding CLI.** `verify:beta-journey` and `verify:studio-workflow` prove
+  the product's plumbing around a generation — approval, versions, rollback, handover, preview, phone
+  layout — and say nothing about what a model would generate. Their reports name the fixture CLI so the
+  distinction survives the copy-paste.
+- **The probe battery drives sequences, using names a person gave it.** It reports four outcomes —
+  `finding`, `clean`, `not_tested`, `incomplete` — and a control it cannot find is reported as *not run*
+  rather than as a pass. The interaction names are the reviewer's words, not a language the battery
+  understands, so a renamed control in a generated artifact produces `not_tested`, which is honest and not
+  a clean result.
+- **Packet mode does not fail the product gate.** Findings inside a generated application are measurements
+  of that application, and they enter reviewer evidence and `docs/KNOWN_ISSUES.md`. Turning them into
+  product failures would hide the distinction between what shipped and what was generated.
+- **Product reproducibility is not model determinism.** The same brief through the same product on the same
+  commit is reproducible; the same brief through a model on a different day is not promised to be.
+- **A judgement sheet is not a gate.** The review packet's five quality rows and its decision-compliance
+  rows are blank on purpose. No harness result, including a green release gate, fills them in.
+
 ## Related references
 
 - [Known issues](../KNOWN_ISSUES.md) — the granular list, including single-writer SQLite and capture

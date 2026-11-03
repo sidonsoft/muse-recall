@@ -26,6 +26,10 @@ const RELEASE_DOCS = [
   'docs/guide/architecture.md',
   'docs/guide/getting-started.md',
   'docs/review-apps/README.md',
+  'docs/beta/READINESS.md',
+  'docs/beta/RELEASE-GATE.md',
+  'docs/beta/RELEASE-NOTES.md',
+  'docs/beta/DEMO-CHECKLIST.md',
 ];
 
 const packageScripts = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))

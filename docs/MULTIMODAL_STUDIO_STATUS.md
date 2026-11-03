@@ -1216,3 +1216,76 @@ blind spot in the harness. That is still the value: **the product's own artifact
 harness what the review harness could not see**, and the harness is now wider because of it. The three
 conclusions hold, with the harness conclusion now carrying a named blind spot that has been closed
 rather than a clean bill of health.
+
+## The battery's own gaps, and the beta gates that walk what probes cannot
+
+**Six of the seven promised sequences were never driven, and the battery could not admit it** (`KI-92`).
+The first battery reported a bare findings count, so a sequence it never ran and a sequence it ran cleanly
+produced the same output — and it had in fact driven six of the seven, not seven, and sampled ten seeds
+for the wrap-around probe rather than all of a 1024-value space. The report was not wrong; it was *shaped*
+so that an omission looked like a result, which is the same failure as `issues: []` one level up. Four
+outcomes now exist — `finding`, `clean`, `not_tested`, `incomplete` — every row carries a reason,
+`not_tested` and `incomplete` mean zero findings, and the summary names its subject and says that findings
+in a generated application are a measurement of that application, not a product failure. Fixture mode
+became honest too: eight knobs, each installing exactly one known defect, each checked by the sequence that
+should catch it **and by no other**, plus a clean baseline that must report nothing. Writing those
+expectations exposed two defects in the battery itself. The clean baseline disagreed with itself because
+the knob model conflated *re-export* with *what was already handed over* (`export_mode` had to become
+`publish_mode: refresh | stale-copy | frozen`, with `stale-copy-export` as the KI-88 shape specifically:
+re-pressing Export keeps the app in step, while Copy reads an export region no state change rewrites). And
+the reload probe sampled undo visibility **before** the destructive action that made it relevant, which
+reported a document that offers undo as one that does not — caught by the `no-undo-control` fixture, whose
+evidence is kept at `test-results/artifact-probes/2026-11-03-091706` rather than quietly deleted
+(`KI-92`). Re-measured with the corrected battery on the reviewed bytes
+(`test-results/artifact-probes/2026-11-03-094809`): 3 findings, 4 clean, 0 not-tested, 0 incomplete. The
+same three findings, now with the counts to show nothing was skipped.
+
+**Then a gate was added for the journey the probes cannot walk** (`verify:beta-journey`, CI-gated).
+It boots the **production** server bundle and `vite preview` over the built web assets, and drives the real
+Studio UI in the order a beta user would: open a project, describe an application, read the change, approve,
+look at it, take it away, come back, change it, go back, and do the same on a phone. Two checks exist
+because of KI-88's class of defect rather than in search of it: **Copy source hands over exactly the bytes
+the artifact endpoint serves** and **Download HTML hands over the bytes of the current version**, each
+verified by hashing what the browser was given and comparing it with the endpoint's own recorded hash. Both
+pass. That is a statement about this product's handover controls; it says nothing about the handover
+controls of an application the model wrote, where KI-88 lives.
+
+Two fixes were needed before it could measure anything, both worth recording because they are the kind of
+thing that makes a gate silently measure nothing. A `page.evaluate` block that declared a named helper
+died in the browser with `ReferenceError: __name is not defined` — the bundler injects that helper for named
+functions, and it does not exist page-side; the fix is to keep page-side blocks free of named helpers, and
+`tests/unit/beta-journey-gate.test.ts` now rejects that shape in the gate's own source so the fix cannot be
+undone by a later tidy-up. And the phone measurement keyed on control *words* the product reuses for two
+different actions (`Generate HTML` before a version exists, `Stage new version` after one does), so the
+probe measures by panel role and class and records the words it found instead.
+
+**A release gate that aggregates, and refuses to pay** (`verify:release-gate`). Ten named offline gates run
+in sequence after building both production bundles, each reporting its own outcome, seconds and evidence
+directory. It refuses to start when a provider credential is exported and strips those variables from every
+child, so its `provider_calls: 0` line has a guard behind it rather than an intention; it fails when a gate
+name disappears or duplicates (`KI-83` applied to its own list); and a blocked prerequisite — missing
+browser, stale bundle, occupied port — exits `2` with `BLOCKED` and claims no measurement, which is the
+difference between "we could not run it" and "it passed". It also caught its own bug: the build step invoked
+the TypeScript build through `node` rather than the loader the documents name (`pnpm exec tsx`), which fails
+on the first import, and a release gate that cannot build has no business reporting a pass.
+
+**Standing release identity.** `test-results/batchd-playback-auth/2026-11-03-1047` — commit
+`7f30184b40d26c22c26541249ee4a90cc142894b`, `treeCleanAtMeasure: true`, `bundlesBuiltAtHead: true`,
+`bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`, server build
+`7ff2b7fe…`, web build `b2471bec…`. The gate run that produced it is
+`test-results/release-gate/2026-11-03-104626`: 10 gates, status pass. This is the strongest identity the
+repository can claim, and it belongs to that commit: a later commit that only edits documents changes no
+hashed production input but still moves the commit string embedded in the server bundle, so a beta cut at a
+later commit rebuilds and re-measures before quoting an identity. The beta documents
+(`docs/beta/READINESS.md`, `docs/beta/RELEASE-GATE.md`, `docs/beta/RELEASE-NOTES.md`,
+`docs/beta/DEMO-CHECKLIST.md`) say that in their own words, and their commands and field names are checked
+by `tests/unit/release-command-inventory.test.ts` and `tests/unit/identity-field-names-in-docs.test.ts`.
+
+**Beta readiness says "human sign-off required", and means it.** The verdict in `docs/beta/READINESS.md` is
+neither "ready" nor "blocked": every gate passes, the release identity is supported, and no product defect
+is open at any priority — the four open findings (KI-88, KI-89, KI-90, KI-91) are all inside a generated
+application, which is a fact about the generated file and not something the product may fix by rewriting
+someone else's bytes. What is missing is a person's judgement, and the harness will not supply it: the
+round-two packet's quality rows and decision-compliance rows are blank on purpose. Provider accounting for
+all of the above: **zero paid calls**; the day's total stays 17, being 16 live media calls plus the one
+coding job the second review brief paid for.

@@ -2268,6 +2268,17 @@ it: the model wrote the application, and rewriting a retained review artifact wo
 evidence. What this product owes is discovery, and that is what KI-87 bought. A next brief can state
 the rule ("a published output must reflect the state it was published from") and be probed against it.
 
+**Sharpened by running the two publish sequences separately (KI-92).** The defect is narrower than
+"the export goes stale", and the narrower version is more actionable. Driving *Export → change →
+Export* reports **clean**: re-pressing Export writes what is on screen. Driving *Export → change →
+Generate → Copy without re-exporting* reports a **finding**: five colours the application is not
+displaying, five it is. So the broken part is the Copy control reading an export region that nothing
+rewrites on its own, not the export path. Measured against the reviewed bytes at `test-results/artifact-probes/2026-11-03-094809`; the same shape
+is installed deliberately by a battery knob (`stale-copy-export`) that `copy-after-state-change` flags
+and no other probe flags, with the rest staying clean (`test-results/artifact-probes/2026-11-03-104802`).
+A battery that had driven only the Export path would have called this application clean on the handover
+that matters.
+
 ## KI-89 — the generated Palette Bench seed field accepts values that produce the same app (open; same scope as KI-88)
 
 `parseInt(value, 10)` feeding a 32-bit multiply means seed `1` and seed `4294967297` render the same
@@ -2290,3 +2301,44 @@ At 390 px the five swatches stack, so comparing a palette means scrolling rather
 decision forbids it and the packet never claimed otherwise; the reviewer's judgement stands. Recorded
 so the next brief can ask for the property instead of hoping the model infers a layout rule it was not
 given — the same lesson as the accent rule in D060, one screen earlier in the same review round.
+
+**What the machine can and cannot say here.** The probe battery measures the measurable half, and it is
+clean: at 390 px the document does not overflow, every control the probe could name has a usable box
+inside the viewport, and the essential interaction changes what is displayed
+(`narrow-viewport-interaction` → `clean`, `test-results/artifact-probes/2026-11-03-094809`). That is
+not a rebuttal of the reviewer. Overflow-free and pleasant are different properties, and this battery
+does not claim the second one — which is the same asymmetry KI-71 warned about, pointing the other way: a
+clean measurable half is not a judgement, and it must not be quoted as one.
+
+## KI-92 — the probe battery could not say "I did not run", and seven promised sequences were six (closed)
+
+Two defects in the harness KI-87 introduced, both found while building the beta gates rather than by an
+attacker.
+
+**The vocabulary was missing two words.** A probe reported a finding or nothing. So a sequence that
+could not be driven — a control name that did not exist in the artifact, a clipboard the origin refused
+— either crashed the run (`FAILED`, exit 1, which reads as "the product is broken") or, worse, left the
+other sequences to print "no findings" over the gap. A reader cannot tell *defect found*, *sequence ran
+and was clean*, *sequence not applicable*, and *sequence could not be finished* apart, and those four
+sentences are different claims. Now every sequence reports exactly one of `finding`, `clean`,
+`not_tested`, `incomplete`, printed as `FINDING` / `CLEAN` / `NOT TESTED` / `INCOMPLETE`, with the
+reason beside the last two, and the completeness guard fails the fixture leg if any sequence fails to
+report at all. The vocabulary is pinned by `tests/unit/beta-journey-gate.test.ts` against the helper's
+own type, so the words cannot drift out from under the documents that quote them.
+
+**Six of the seven sequences the beta promises were not driven.** The battery ran export-then-regenerate,
+copy-after-change, seed comparison, undo, reload and narrow viewport. It never drove *invalid input →
+retry*, and it drove one publish path where a generated application has two — which is exactly how
+KI-88's real shape stayed hidden. It now drives seven, and the fixture mode carries a single-defect knob
+per sequence so the claim "the right probe caught it and nothing else did" is measured rather than
+asserted: a clean baseline reports 0 findings and 7 clean, and each defective knob is flagged by the
+probes that should flag it and by no others (`test-results/artifact-probes/2026-11-03-104802`, 10
+checks).
+
+**Two bugs in the new battery, caught by its own fixtures, are recorded rather than hidden.** The clean
+baseline was not clean: the fixture model conflated "Export writes the current state" with "a state
+change refreshes what was already handed over", so a document with no installed defect reported two
+findings. And the reload probe asked "is there a way back?" *before* anything had been destroyed, which
+made an application with perfectly good undo look like it had lost one. Both fixes are in the same
+commit as this entry; the earlier fixture run that could not tell clean from defective is not quoted as
+proof of anything.

@@ -151,8 +151,8 @@ A review packet measures a state. Staleness, numeric wrap-around and lost histor
 `pnpm run verify:artifact-probes` runs the sequences. Two modes, deliberately different:
 
 ```bash
-# CI. Two fixtures — one that keeps handing over output it no longer displays, one that refreshes it —
-# and the battery must flag the first and leave the second alone. This gates the battery itself.
+# CI. Fixtures that install exactly one known defect each, plus a clean baseline, and the battery must
+# flag each defect through the sequence that should catch it and no others. This gates the battery.
 pnpm run verify:artifact-probes
 
 # Against a retained packet. Reports findings; does not fail, because a defect in a generated app is a
@@ -174,6 +174,48 @@ Bytes are served over `http://127.0.0.1` rather than `file://` because a file do
 origin and the clipboard API refuses to run there — and the clipboard is exactly where KI-88's stale
 palette was hiding.
 
-What the battery cannot do: it proves those three sequences behave in a named way. It does not rank the
-app, and a clean battery run says nothing about quality. A finding here enters the reviewer's evidence
-as KI-88, KI-89 and KI-90 did — as something a person weighs against the decisions, not as a failed gate.
+## The seven sequences, and what each outcome means
+
+The seven the first review asked for are all driven, and each is one interaction a person actually
+performed — not an invented stress case:
+
+| sequence | decision it bears on |
+| --- | --- |
+| `export-then-regenerate-then-export` | does a second publish hand over current output |
+| `copy-after-state-change` | does what was already handed over track the new state (KI-88) |
+| `distinct-accepted-inputs` | do two inputs the form accepts mean two different applications (KI-89) |
+| `destructive-then-undo` | can you undo where you are (KI-90) |
+| `destructive-then-reload-recovery` | can you undo after coming back (KI-90) |
+| `narrow-viewport-interaction` | can you operate and compare on a phone (KI-91) |
+| `invalid-input-then-retry` | can you recover from your own mistake |
+
+Each one reports one of four states, because "I did not run" and "I ran and found nothing" are different
+sentences and a battery that collapses them reports safety it did not measure:
+
+- `finding` — the sequence ran and the decision it bears on is not satisfied, with the difference stated.
+- `clean` — the sequence ran and the behaviour held.
+- `not_tested` — the battery could not drive this sequence on this document, naming the affordance it was
+  missing. Typical cause: the interaction names handed to the probe do not exist in this artifact.
+- `incomplete` — it started and could not finish, with the observation it did reach.
+
+Fixture mode is the battery's own gate. Eight knobs install exactly one known defect each
+(`stale-copy-export`, `frozen-export`, `wrap32-seed`, `undo-does-nothing`, `no-undo-control`,
+`reload-loses-undo`, `fixed-width-layout`, `nan-renders`) plus a clean baseline, and the assertions are
+single-defect in both directions: the sequence that should catch each knob must report it, and the others
+must stay quiet. A knob is checked by its own sequence *and not by the others* — a battery that flags
+everything is not measuring anything.
+
+That is not decorative. Two of the seven sequences were never driven in the first version of the battery,
+and the fixture mode's own clean baseline disagreed with itself, because the knob model conflated
+*re-export* with *what was already handed over* (`export_mode` had to become `publish_mode: refresh /
+stale-copy / frozen`). And the reload probe sampled undo visibility **before** the destructive action that
+made it relevant, so it reported a lost-on-reload undo as surviving. The fixtures caught both — see
+`test-results/artifact-probes/2026-11-03-091706`, kept as evidence of the probe's own defect while the
+corrected run went elsewhere. Recorded as KI-92.
+
+What the battery still cannot do: it proves these sequences behave in a named way on the bytes it loads.
+It does not rank the app, it says nothing about quality, and a clean run is not approval. A finding here
+enters the reviewer's evidence as KI-88, KI-89, KI-90 and KI-91 did — as something a person weighs
+against the decisions, not as a failed gate. The sequence IDs and the four outcomes are pinned in
+`tests/unit/artifact-probe-findings.test.ts`, so a sequence that quietly disappears stops being a
+possibility.
