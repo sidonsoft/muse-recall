@@ -2039,3 +2039,38 @@ claim is read from, prefix matching is a defect in the accounting rather than in
 formatter: every token is now validated against the format the adapter writes
 (`attempt`, `path`, `model`; `outcome=response attempt=N status=NNN bytes=N [events=N]`;
 `outcome=error attempt=N error=<bounded text>`), and anything else is ledger damage.
+
+## KI-83 — a gate's check was deleted while the gate was being edited, its headline count did not move, and the run still said PASS (closed)
+
+**Symptom.** While adding one assertion to `verify:studio-workflow`, a nearby
+`check('the approval rail discloses what these bytes fetch, and what verification
+permitted')` call was deleted. The next run reported `58 checks passed`, the same total
+as before, because the new assertion had just added one. Nothing failed. The release
+documents quote that check name, so the documents were repeating a claim the gate no
+longer measured — and the only thing standing between the claim and its disappearance
+was a number that had proved it could not notice.
+
+**How it was caught.** Not by the gate: by diffing the check-name lists of two runs to
+work out why the total had not moved. That is the same lesson KI-57 taught about a gate
+whose output hides what failed — a count that nobody pins is a count that can shrink.
+
+**Fix.** `scripts/lib/gate-check-count.ts` gives any gate whose headline is a count two
+pins, and `verify:studio-workflow` now applies both before it prints its total:
+
+- a **floor** (55) the run must clear — a minimum rather than an equality, because the
+  engine-conditional checks legitimately vary between runs;
+- the **names** of the claims the release documents repeat. If the run never reported
+  one, the gate fails saying so, rather than reporting a smaller number as a pass.
+
+Fixing the duplicate report also exposed a smaller honesty problem in the same count:
+`openProject()` pushed the same label at six call sites, so one interaction repeated
+under one name and inflated the total. Each site now names the step it is proving
+(`opened project … with the keyboard, and returning restores that project's own draft`),
+so the count counts things a reader can point at.
+
+**Measured.** With the guard in place, deleting that check again and re-running the gate
+fails with: `the run never reported the check named "the approved version keeps a
+dependency record that matches its own bytes", so its claim is no longer measured`. The
+clean run measures **59** checks (`project studio-workflow-0cvcro`), and the unit test
+`tests/unit/gate-check-count.test.ts` pins the exact defect shape: same total, one named
+claim missing, no failure without the guard.

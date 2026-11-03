@@ -39,6 +39,7 @@ import pixelmatch from 'pixelmatch';
 import type { Browser, Locator, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
+import { checkCountIssues, duplicateCheckNames } from './lib/gate-check-count.js';
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, 'test-results', 'studio-after');
@@ -54,6 +55,23 @@ interface Managed {
 
 const managed: Managed[] = [];
 const checks: string[] = [];
+
+/*
+ * This gate's headline is a count, and the count was the only thing standing between
+ * "the approval rail discloses what these bytes fetch" and that claim going unmeasured:
+ * while this file was being edited, one `check(...)` call was deleted, the total stayed
+ * the same, and nothing failed. So the count gets a floor and the claims the release
+ * documents repeat get named. The floor is a minimum rather than an equality because the
+ * engine-conditional checks legitimately vary between runs.
+ */
+const EXPECTED_MIN_CHECKS = 55;
+const REQUIRED_CHECK_NAMES = [
+  'the approval rail discloses what these bytes fetch, and what verification permitted',
+  'the approval rail states the limits of its own reading, next to the list it qualifies',
+  'the approved version keeps a dependency record that matches its own bytes',
+  'export disclosure explains sandbox and dependency limits',
+] as const;
+
 let killFailure = '';
 let hardKillTimer: NodeJS.Timeout | undefined;
 
@@ -203,6 +221,7 @@ async function openProject(
   page: Page,
   id = PROJECT,
   expected = 'no approved version',
+  because = 'the switcher opened without a mouse',
 ): Promise<void> {
   await page.locator('button[title^="Project:"]').focus();
   await page.keyboard.press('Enter');
@@ -211,7 +230,10 @@ async function openProject(
   await dialog.getByLabel('Project id').fill(id);
   await dialog.getByRole('button', { name: 'Open', exact: true }).press('Enter');
   await page.getByText(expected, { exact: true }).waitFor({ timeout: 20_000 });
-  check(`opened project ${id} with the keyboard`);
+  // The label names the step, not just the action: this helper runs at several
+  // points, and a check list that repeats one name inflates the headline count with
+  // an event nobody can point back to.
+  check(`opened project ${id} with the keyboard, ${because}`);
 }
 
 async function main(): Promise<void> {
@@ -371,7 +393,12 @@ async function main(): Promise<void> {
 
     await page.goto(webBase, { waitUntil: 'networkidle', timeout: 30_000 });
     await assertStudio(page);
-    await openProject(page);
+    await openProject(
+      page,
+      PROJECT,
+      'no approved version',
+      'the first open is done from the switcher alone',
+    );
     const review = page.getByRole('region', { name: 'Review' });
 
     // The banner must arrive through a live region, not just as static text.
@@ -500,9 +527,19 @@ async function main(): Promise<void> {
     // Drafts are project-scoped and must not leak on a project switch.
     const promptBox = page.getByLabel('Application description');
     await promptBox.fill('Draft prompt for this project.');
-    await openProject(page, 'studio-workflow-other');
+    await openProject(
+      page,
+      'studio-workflow-other',
+      'no approved version',
+      'a draft in one project does not follow the switch',
+    );
     await waitForValue(page.getByLabel('Application description'), '');
-    await openProject(page, PROJECT);
+    await openProject(
+      page,
+      PROJECT,
+      'no approved version',
+      "and returning restores that project's own draft",
+    );
     await waitForValue(
       page.getByLabel('Application description'),
       'Draft prompt for this project.',
@@ -592,11 +629,40 @@ async function main(): Promise<void> {
         'the approval rail did not state the network rule these bytes were verified under, or stated it as a fetch',
       );
     }
+    check('the approval rail discloses what these bytes fetch, and what verification permitted');
 
+    /*
+     * KI-78 shipped a second half: the record has to say what its own reading cannot
+     * see, so an empty list is never read as "this application cannot reach the
+     * network". That wording is product, so it is measured in production Studio and
+     * not only in a unit test — otherwise the assurance exists in the code and the
+     * limit that makes it honest exists only in a fixture.
+     */
+    const notes = dependencyBlock.locator('[data-testid="dependency-notes"]');
+    if ((await notes.count()) === 0) {
+      throw new Error(
+        'the approval rail disclosed dependencies without stating what that reading cannot see',
+      );
+    }
+    const noteText = (await notes.innerText()).replace(/\s+/g, ' ');
+    if (!noteText.includes('what this record cannot see')) {
+      throw new Error(
+        `the approval rail's dependency notes did not name the limits of the reading: ${noteText.slice(0, 160)}`,
+      );
+    }
+    if (!noteText.includes('assembled at run time')) {
+      throw new Error(
+        `the dependency notes omitted the limit that matters most for an empty list: ${noteText.slice(0, 160)}`,
+      );
+    }
+    check('the approval rail states the limits of its own reading, next to the list it qualifies');
+
+    // Screenshot last: the image is evidence for the assertions above, including
+    // the notes line, so capturing before them would show a block that had not
+    // been checked.
     await dependencyBlock
       .first()
       .screenshot({ path: join(OUT, 'dependency-disclosure-staged.png') });
-    check('the approval rail discloses what these bytes fetch, and what verification permitted');
 
     await page.getByRole('tab', { name: 'Preview' }).click();
     const frame = page.frameLocator('iframe[title="HTML application preview"]');
@@ -784,7 +850,12 @@ async function main(): Promise<void> {
     );
     await page.reload();
     await assertStudio(page);
-    await openProject(page, PROJECT, 'v1 approved');
+    await openProject(
+      page,
+      PROJECT,
+      'v1 approved',
+      'a reload and a keyboard reopen return the approved state',
+    );
     const referenceButtons = media.getByTitle(
       'Suggest decisions or extract a cutout from this version',
     );
@@ -865,8 +936,18 @@ async function main(): Promise<void> {
 
     // Change drafts are also project-scoped.
     await changeInput.fill('Draft change for this project.');
-    await openProject(page, 'studio-workflow-other');
-    await openProject(page, PROJECT, 'v1 approved');
+    await openProject(
+      page,
+      'studio-workflow-other',
+      'no approved version',
+      'a change draft does not leak into the other project',
+    );
+    await openProject(
+      page,
+      PROJECT,
+      'v1 approved',
+      'and is waiting when this project is opened again',
+    );
     await waitForValue(page.getByLabel('Change request'), 'Draft change for this project.');
     check('project change drafts are preserved without leaking between projects');
 
@@ -1018,7 +1099,12 @@ async function main(): Promise<void> {
     });
     await waitForHttp(`${apiBase}/api/health`);
     await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
-    await openProject(page, PROJECT, 'v3 approved');
+    await openProject(
+      page,
+      PROJECT,
+      'v3 approved',
+      'with the API parked, the page still shows the current version',
+    );
 
     await page.getByRole('tab', { name: 'Change this app' }).click();
     await page.getByLabel('Change request').fill('Interrupt this generation mid-flight.');
@@ -1042,7 +1128,12 @@ async function main(): Promise<void> {
     });
     await waitForHttp(`${apiBase}/api/health`);
     await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
-    await openProject(page, PROJECT, 'v3 approved');
+    await openProject(
+      page,
+      PROJECT,
+      'v3 approved',
+      'after a real restart the keyboard switcher shows the rolled-forward state',
+    );
 
     await page
       .getByRole('status')
@@ -1212,6 +1303,24 @@ async function main(): Promise<void> {
       throw new Error(`console/page errors: ${errors.slice(0, 3).join(' | ')}`);
     }
     check('no console or page errors');
+
+    /*
+     * The headline this gate prints is a count, so a check that silently stops being
+     * reached changes what the headline claims without failing anything. One such
+     * deletion happened while this file was being edited and was caught only by
+     * diffing the check names afterwards. The floor is pinned rather than the exact
+     * number, because the engine-conditional checks legitimately vary; a named
+     * shortfall is the honest report either way.
+     */
+    const countIssues = checkCountIssues({
+      measured: checks,
+      min: EXPECTED_MIN_CHECKS,
+      required: REQUIRED_CHECK_NAMES,
+      duplicates: duplicateCheckNames(checks),
+    });
+    if (countIssues.length > 0) {
+      throw new Error(countIssues.join('; '));
+    }
 
     console.log(
       `\nAutomated Studio workflow: ${checks.length} checks passed (project ${PROJECT}).`,

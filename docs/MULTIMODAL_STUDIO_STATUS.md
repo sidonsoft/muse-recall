@@ -163,8 +163,11 @@ game engine is no longer an exception either: a generated game carries the copy 
 product vendors, and `pnpm verify:runtime` boots one with **no remote origin granted at all**. The
 most recent full set of offline gate numbers is at `2774a2b` (KI-76 to KI-82) and is named in
 *The newest identity pair that may stand for a beta cut* above: `verify` 127 files / 1 611 passed /
-3 skipped, `verify:runtime` **14**, `verify:studio-workflow` **58**, `verify:batchc-ui` 22,
+3 skipped, `verify:runtime` **14**, `verify:studio-workflow` **59**, `verify:batchc-ui` 22,
 `verify:batche-review-ui` 20, `verify:batchd-playback-auth` 15, `verify:media-journey-offline` 6.
+(The Studio total of 59 is measured by the gate as edited in the commit that records KI-83, against
+the bundles built at `2774a2b`: gate scripts are not hashed inputs, so the bundle pair does not move
+with a gate change, but the count belongs to the gate that produced it.)
 The per-gate descriptions below are written against the older set they first ran with, and each
 carries its own commit stamp where it matters. The
 one remaining case that needs the network is a document that still references the CDN — an artifact
@@ -189,8 +192,8 @@ again**, because the approval rail's dependency wording and scan-limit rendering
 `pnpm run verify` at that commit: 127 files, 1 611 passed, 3 skipped; Biome 0 errors /
 3 warnings / 17 infos. The same round re-ran, against those bundles, `verify:batchc-ui` (22),
 `verify:batche-review-ui` (20), `verify:runtime` (**14** checks,
-`test-results/runtime/20261103-0658/report.json`), `verify:studio-workflow` (**58** checks,
-project `studio-workflow-0cc053`, with `dependency-disclosure-staged.png` and
+`test-results/runtime/20261103-0658/report.json`), `verify:studio-workflow` (**59** checks,
+project `studio-workflow-0cvcro`, with `dependency-disclosure-staged.png` and
 `dependency-disclosure-approved.png` in `test-results/studio-after/`) and the offline media journey
 (`test-results/media-journey/2026-11-03-07014215`: 6 checks, 0 dispatches). Nothing that spends a
 provider call was re-run: this round made **no** paid call, and Studio's checks used the
@@ -338,7 +341,9 @@ the narration was not, which is how an operator re-runs a run that already spent
 - `pnpm verify:batchc-ui`: PASS 22 checks. `pnpm verify:batche-review-ui`: PASS 20 checks,
   including the one-paid-call check and the stale-selection refusal.
   `pnpm verify:studio-workflow`: 56 checks at that commit; the same gate measures **58** at
-  `32300ff` and later, after the approval-rail dependency block was added to what it asserts.
+  `32300ff` and later, after the approval-rail dependency block was added to what it asserts, and
+  **59** from `2774a2b` once the record's own limits were added to what it asserts (KI-83 also pins
+  that count so a deleted check cannot hide behind a steady total).
 - `pnpm verify:batchc-resume-staged` **cannot be re-run at this commit, and refuses rather
   than pretending**: `job already published version 2; this isolate is consumed and cannot
   be re-approved offline` (`test-results/batchc-resume-staged/2026-11-02-0758`). The gate
@@ -790,6 +795,13 @@ Fixed in `2774a2b`. No provider call was made: every gate used the fixture CLI, 
 re-run. `verify:runtime` grew from 11 to **14** checks, the three new ones measuring the tag forms
 that cannot be swapped, the uppercase closing tag, and a forged marker — each against a real browser
 rather than a parser assertion.
+
+Remediating it found one more defect, in the harness rather than the product (KI-83): editing the
+Studio gate for KI-78 deleted a `check(...)` call, the headline count did not move because a new
+assertion had just been added, and the run still said PASS. The claim that vanished is one the release
+documents quote by name. `scripts/lib/gate-check-count.ts` now pins both a floor and the named claims
+for any gate whose headline is a count, and the guard was verified by deleting a check again and
+watching the gate refuse.
 
 ## Self-review of the fix passes, in a new session
 
