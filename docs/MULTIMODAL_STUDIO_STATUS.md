@@ -195,7 +195,18 @@ again**, because the approval rail's dependency wording and scan-limit rendering
 `test-results/runtime/20261103-0658/report.json`), `verify:studio-workflow` (**59** checks,
 project `studio-workflow-0cvcro`, with `dependency-disclosure-staged.png` and
 `dependency-disclosure-approved.png` in `test-results/studio-after/`) and the offline media journey
-(`test-results/media-journey/2026-11-03-07014215`: 6 checks, 0 dispatches). Nothing that spends a
+(`test-results/media-journey/2026-11-03-07014215`: 6 checks, 0 dispatches).
+
+**Where that pair sits relative to HEAD, measured rather than reasoned.** It was measured
+at `2774a2b`; the commits on top of it (`0d0bf17` docs, `775e2ed` the KI-83 gate guard)
+touch documents and gate scripts. The hashed input sets say which scripts count: only
+`scripts/build-production-bundles.ts` and `scripts/lib/build-provenance.ts` are hashed
+(plus `package.json`, `tsconfig`s, `apps/*/src` and `packages/*/src`), so
+`verify-studio-workflow.ts` and `scripts/lib/gate-check-count.ts` are not. Rebuilding at
+`775e2ed` confirms both halves: the web bundle is byte-identical (`b2471becf70f…`) while
+the server bundle moves (`1d18b46e93b5…` → `4c11fad019a8…`) because its build manifest
+embeds the commit. So a beta cut is re-measured at the commit actually cut, and this pair
+cannot be inherited. Nothing that spends a
 provider call was re-run: this round made **no** paid call, and Studio's checks used the
 deterministic fixture CLI.
 
