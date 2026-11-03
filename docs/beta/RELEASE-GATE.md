@@ -9,9 +9,15 @@ pnpm run verify:release-gate
 It builds the two production bundles, then runs ten offline gates in sequence and reports each gate's own
 outcome. It makes no provider call and refuses to run if a provider credential is in the environment.
 
-Evidence for this run: `test-results/release-gate/2026-11-03-111530` — `report.json` (machine) and
-`RELEASE-GATE.md` (written by the gate itself, so the numbers in the evidence directory and the numbers
+Evidence for the run quoted below: `test-results/release-gate/2026-11-03-111530` — `report.json` (machine)
+and `RELEASE-GATE.md` (written by the gate itself, so the numbers in the evidence directory and the numbers
 here come from the same measurement).
+
+These documents are not the newest pass and cannot be: the act of committing them moves the commit. The
+newest pass is always the last directory under `test-results/release-gate/`, and every one of them records
+the commit it built and measured, so a reader comparing a cut against these numbers should read that
+directory rather than this table. What this table fixes is the *shape* of a passing run — ten gates, three
+exit codes, one identity block — not a snapshot of the moment.
 
 ## Results, as measured at `6abc769`
 

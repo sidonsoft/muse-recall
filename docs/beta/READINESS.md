@@ -4,7 +4,9 @@ Written for the beta on the `integration` branch, at the commit whose production
 (`6abc769`). Every number here was measured, and each one names the directory it came from. Where
 something is **not** measured, that sentence says so. If the beta is cut at a later commit, re-run
 `pnpm run verify:release-gate` there and quote that run: the server bundle embeds the commit, so the
-identity below does not travel forward on its own.
+identity below does not travel forward on its own. For that reason the newest pass is found by looking at
+the last directory under `test-results/release-gate/` rather than by trusting this sentence: each run
+records the commit it built, so the evidence stays attributable even as the documents move.
 
 ## Verdict
 
