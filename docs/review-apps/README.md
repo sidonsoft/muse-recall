@@ -102,3 +102,18 @@ Each run is one coding job. Nothing in this flow makes a media call.
   behaviour was reproducible.
 - Decisions are checked by a human against pinned wording. Nothing here verifies
   that the app "followed" a decision.
+
+## Wording rules that changed after the first review round (D060)
+
+The decisions seeded into `palette-bench-decisions.json` are the exact text that
+was **paid for**; that file is kept as-is so the retained packet stays honest.
+For the next brief, one rule changes wording, not intent:
+
+> At most one accent colour is used per screen **in the interface chrome**.
+> The colours an artifact is being asked to generate or display are content, not
+> chrome, and are judged as content.
+
+Without that clause, a palette, chart or theme tool fails a rule it cannot
+satisfy while doing its job. The other three rules (inline status text instead of
+modal dialogs, body text at 4.5:1 or better, every destructive action undoable
+from the same screen) carry over unchanged.

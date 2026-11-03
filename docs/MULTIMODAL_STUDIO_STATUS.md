@@ -158,39 +158,44 @@ Documentation states these gaps rather than leaving them implied:
 
 Offline: no provider key and no paid model call. That phrase needs its precise meaning stated,
 because it was previously written as "no external network" and that is wrong. The gates make no
-provider request and refuse to start when a provider credential is present; but the browser gates
-that approve or preview a Phaser artifact reach the one host the product allowlists — this machine
-answers `cdn.jsdelivr.net` with HTTP 200 in 1 181 917 bytes. `pnpm verify:runtime` now says so
-instead of hiding it, and exits 2 when that host is unreachable rather than reporting a product
-failure. The numbers below are the
-gates run at `c9c18cf`, the commit that enforced the paid-call budgets the accounting
-previously only reported (KI-55 items 9-12); it also ran the gates at `b698070`, which
-fixed the read-only-route write (KI-54). This
-documentation commit moves the build *identity* again without moving bundle contents
-(docs are not hashed inputs); the identity pair for the newest commit is recorded by the
-identity gate named below, and `verify:batchd-playback-auth` refuses to run a gate against
-bundles that do not match the checkout running it.
+provider request and refuse to start when a provider credential is present. Since KI-53 closed, the
+game engine is no longer an exception either: a generated game carries the copy of Phaser this
+product vendors, and `pnpm verify:runtime` boots one with **no remote origin granted at all**. The
+one remaining case that needs the network is a document that still references the CDN — an artifact
+approved before that change, or a Phaser version outside the pin — and `verify:runtime` exits 2 with
+the reason when that host is unreachable rather than reporting a product failure. The numbers below are the
+gates re-run at `3189df9`, the commit that made the game engine a carried copy instead of a network
+call (KI-53 / D059); it also ran them at `c9c18cf`, the commit that enforced the paid-call budgets
+the accounting previously only reported (KI-55 items 9-12), and at `b698070`, which fixed the
+read-only-route write (KI-54). A documentation commit moves the build *identity* without moving
+bundle contents (docs are not hashed inputs) — but this one is different: both bundles moved,
+because the server gained the vendored engine module and the shared schema gained the version
+manifest. The identity pair for the newest commit is recorded by the identity gate named below, and
+`verify:batchd-playback-auth` refuses to run a gate against bundles that do not match the checkout
+running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-02-2155/report.json`: commit `80c0780de044`,
+`test-results/batchd-playback-auth/2026-11-03-0027/report.json`: commit `3189df9b2850`,
 `treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
-`supportsCommitIdentity: true`, server build `a2db64a54269…`, web build `065ee809a766…`
-unchanged — the server bundle moved because `apps/server/src/backup-copy.ts` is a hashed
-production input and the online backup copy now runs in a killable child process; the web bundle
-contains neither. The previous pair (`2026-11-02-2110` at `41770e0`, server `59deb4ab3232…`) is
-kept: it was the first run of that gate whose report stated a verdict at all — `ok: true`,
-`status: "PASS"`, `completed_checks: 15` (`KI-69`), and the run before the KI-69 change carried no
-verdict field at all. The same round at `80c0780` re-ran `pnpm run verify` (121 files, 1531 passed,
-3 skipped; Biome 0 errors / 3 warnings / 15 infos), the offline media
-journey (`test-results/media-journey/2026-11-02-21553846`: 6 checks, **0** dispatches,
-`ledger_issues: []`) and `verify:runtime` (5 checks). It did **not** re-run `verify:batchc-ui` or
-`verify:batche-review-ui`: neither those scripts nor any hashed input they exercise changed, and
-their last measured runs belong to the `41770e0` round, where `verify:batchc-ui` was run twice on
-purpose — once blocked by an exported provider key (exit 2, `ok: false`, `completed_checks: 0`) and
-once passing (22 checks, `status: "PASS"`). The prior pairs (`2026-11-02-1529` at `340ff79`, server
-`67f1ad14942b…`; `2026-11-02-1445` at `9ffa49d`, server `44c67eb0345c…`) are kept, and
-the earlier `2026-11-02-1226` at `398e124` stays as the record of the first run that printed the
-`identity_note` wording (`KI-58`).
+`supportsCommitIdentity: true`, server build `fecff3f9b6cd…`, web build `34ee5eda1b6f…`, and the
+report's own `identity_note`: `both bundles were built at 3189df9; the build ran over a clean tree
+at that commit`. **This is the first pair whose web bundle moved in this release line**, and the
+reason is not the vendored engine (which is server-side): `packages/shared/src/forge.ts` gained the
+vendor manifest fields on `ForgeVersionSchema`, and shared types are bundled into the web client.
+The previous pair (`2026-11-02-2155` at `80c0780`, server `a2db64a54269…`, web `065ee809a766…`) is
+kept, as is `2026-11-02-2110` at `41770e0` (`59deb4ab3232…`), the first run of that gate whose
+report stated a verdict at all — `ok: true`, `status: "PASS"`, `completed_checks: 15` (`KI-69`).
+The same round at `3189df9` re-ran `pnpm run verify` (122 files, 1560 passed, 3 skipped; Biome 0
+errors / 3 warnings / 15 infos), `verify:batchc-ui` (22 checks), `verify:batche-review-ui`
+(20 checks), `verify:runtime` (8 checks, `test-results/runtime/20261103-0027/report.json`),
+`verify:studio-workflow` (56 checks) and the offline media journey
+(`test-results/media-journey/2026-11-03-00280397`: 6 checks, **0** dispatches,
+`ledger_issues: []`). Nothing that spends a provider call was re-run at this commit; the paid live
+chain evidence at `test-results/media-live/2026-11-02T13-53-08` **predates** KI-53, so the artifact
+it approved still carries a CDN reference rather than the vendored engine. The prior pairs
+(`2026-11-02-1529` at `340ff79`, server `67f1ad14942b…`; `2026-11-02-1445` at `9ffa49d`, server
+`44c67eb0345c…`) are kept, and the earlier `2026-11-02-1226` at `398e124` stays as the record of the
+first run that printed the `identity_note` wording (`KI-58`).
 
 A docs-only commit — including this remediation round — moves the build *identity* without
 moving bundle contents, because documentation and `scripts/verify-*.ts` are not hashed inputs.
@@ -257,11 +262,14 @@ the narration was not, which is how an operator re-runs a run that already spent
   in-script H.264 clip, blob bytes hash-matched to the stored source, one credential-free
   download per source in each trust model, and the running server proving it is the
   verified clean-tree build.
-- `pnpm verify:runtime`: **PASS 5 checks**, including the case where the allowlist permits an
-  engine load and the network refuses it — the approval refusal must name
+- `pnpm verify:runtime`: **PASS 8 checks** (KI-53). A game carrying the vendored engine boots with
+  **no remote origin granted** and reaches for nothing; a self-contained game that phones home is
+  blocked; a Phaser version this product does not vendor keeps its reference and is reported as a
+  named gap. Then the older policy: a permitted engine load that the network refuses must name
   `https://cdn.jsdelivr.net` and must not leak the script path; a blocked host must never be
   reported as a permitted failure; and a scene that throws after its engine loads must not be
-  blamed on the CDN (KI-53).
+  blamed on the CDN. Each case records the policy it was verified under
+  (`network_policy: vendored | cdn-allowlist`) in `test-results/runtime/<stamp>/report.json`.
 - `pnpm verify:batchc-ui`: PASS 22 checks. `pnpm verify:batche-review-ui`: PASS 20 checks,
   including the one-paid-call check and the stale-selection refusal.
   `pnpm verify:studio-workflow`: 56 checks.
@@ -365,11 +373,11 @@ expected signature of the `StudioView` key fix and not of the documentation.
   prerequisite check cannot certify a tool the run never calls. `BATCHD_SMOKE_FIXTURE_ONLY=1` runs that plumbing check with no network
   call at all; without `FORGE_MUSE_API_KEY` the live mode reports `BLOCKED before any
   provider call` and exits 2.
-- **`cdn.jsdelivr.net` reachable** for the gates that approve or preview a Phaser artifact
-  (`verify:runtime`, `verify:studio-workflow`, `verify:batchc-ui`): the generated artifact's engine
-  is a network dependency, and `verify:runtime` exits 2 with the reason when the host is
-  unreachable, rather than reporting a verifier defect. The game engine is a real dependency of a
-  "local" beta — KI-53.
+- **`cdn.jsdelivr.net` reachable** only for the `verify:runtime` case that exercises a document
+  which still asks the CDN for its engine — an artifact approved before KI-53 closed, or a Phaser
+  version outside the pin. Games produced by the current code carry the engine, and `verify:runtime`
+  boots one with no remote origin granted. That gate exits 2 with the reason when the CDN is
+  unreachable rather than reporting a verifier defect, and its self-contained cases run either way.
 - **No provider key** for any gate listed above; the Batch C/D/E gates exit 2 if one
   is present, so a green run is also proof that no paid call happened.
 - **Rehearsal refusal**: `verify:fresh-install` and `verify:first-run` refuse outright if
@@ -729,16 +737,23 @@ limits. Two findings:
   per panel, and `pnpm verify:first-run` (documented dev start → open `:5173` → walk the
   documented screens → fail on any console error) runs on both CI browser legs, because
   dev-mode React is a surface those gates structurally cannot see.
-- **KI-53, measured and partly fixed.** The fresh app requests Phaser from `cdn.jsdelivr.net`,
-  the one host the product allowlists in its prompt, its preview CSP and its runtime network check.
-  Local therefore is not offline. Measured since: with the permitted engine load failed, the
-  artifact creates no canvas, approval is refused (`422 runtime_failed`, no version), and the Studio
-  preview shows a blank frame with no signal. The refusal previously blamed the artifact
-  (`Phaser is not defined`, "did not render visible content") and never named the host, so a user
-  with no connectivity was told their game was broken; `checkGameRuntime` now reports
-  `A load the allowlist permitted failed (<origin>)`, and `verify:runtime` grew the no-egress case
-  that proves it. The dependency itself stays: vendoring Phaser or accepting the dependency is a
-  product decision, not a bug fix.
+- **KI-53 closed — the product now carries its own game engine** (decision D059: a self-contained
+  artifact is more reproducible, and less dependent on a third party's availability, than 1.18 MB
+  saved is worth). Phaser 3.80.1 is pinned by URL, byte length and sha256 in a generated module that
+  includes the MIT licence; `pnpm run vendor:phaser` re-fetches it and refuses to write if the hash
+  or length moved, and `--check` proves the committed copy still matches what the CDN serves. A
+  stored document keeps the one `<script src=…>` tag the model wrote and the engine is inlined at the
+  moment bytes are handed to something that runs them — preview, diff, validation, runtime
+  verification, promotion — so a modification is seeded from the short source view and never from
+  1.18 MB of base64. Runtime verification and the preview CSP pick their network policy per document:
+  self-contained means no remote origin at all, and an unvendored Phaser version is reported as a
+  named gap rather than silently swapped. What is deliberately **not** rewritten: artifacts approved
+  before the change keep their CDN reference, and the frozen research fixtures keep their prompts
+  (the Phase 16/17 protocol bytes depend on prompt and artifact hashes, so those prompts were copied
+  to separate `.phase15a` fixtures rather than regenerated). Cost measured here, on a machine where
+  the CDN answers and is cached: a full runtime verification takes 1.6–2.0 s either way, so the
+  inlined engine is within ~0.2 s of the fetch it replaces, and each game artifact grows ~1.18 MB —
+  the staged-HTML ceiling went from 1.5 MB to 4 MB to keep room for the game code itself.
 
 ## What running against live providers changed
 

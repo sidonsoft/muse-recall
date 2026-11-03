@@ -129,6 +129,16 @@ See [HTML Studio](html-studio.md) for the review workflow and the seven rules.
   `WORKSPACE_ROOT`. There is no database lease or multi-process lock; two servers must not share a
   workspace. Intermediate writes are coalesced, and there is no `fsync`, so a sudden power loss is
   not a durability guarantee.
+- **`Idempotency-Key` replay is per-database, and in-flight locking is per-process.** A replay
+  record lives in SQLite (schema v8), scoped to `METHOD /concrete/path` + key, expires after 24
+  hours, and is deliberately **excluded from the export envelope** so a replay window cannot survive
+  a data restore. That is sound for the single-server deployment this beta is designed around, and
+  unsound in two other shapes: servers behind a load balancer with **separate** databases replay
+  nothing at all, so a client that retried after a timeout can pay twice — most expensively for a
+  paid vision review or a coding job; and servers **sharing** one database share replay records but
+  not the in-process in-flight set, so two concurrent copies of the same key can both run and one
+  answer wins. Horizontal scaling needs a shared lease (the same problem the job store has, see
+  above); it is documented as out of scope for beta rather than assumed safe.
 - **Interrupted jobs are not resumed.** A `queued`/`running` job found at startup becomes
   `interrupted`; staged files and logs are kept for inspection. A graceful shutdown cancels active
   jobs and waits for terminal persistence, but an ungraceful death can leave an interrupted record.

@@ -1001,3 +1001,33 @@ database; a full runtime verification takes 1.6–2.0 s either way on this machi
 where the CDN is reachable and cached, so inlining is within ~0.2 s of fetching.
 Artifacts approved before this change are not rewritten, and the CDN stays
 allowlisted for documents that still reference it.
+
+---
+
+### D060 — What the first human-review round keeps, clarifies, and leaves unproven
+
+**Context:** the first Muse-built app handed to a human reviewer (Palette Bench,
+`test-results/human-review/palette-bench-2026-11-02-2250`) came with four seeded
+project decisions, an open question about the vision-draft path, the KI-53
+dependency question and the single-server idempotency limit.
+**Decision:** keep all four seeded decisions — no modal dialogs (report results in
+inline status text), body text at 4.5:1 or better, one accent colour per screen,
+and every destructive action undoable from the same screen — with one
+clarification: **the accent rule governs interface chrome, not the colours a
+generated artifact is asked to produce**. A palette tool is the clearest case: an
+app that follows the rule literally cannot show the palette it was built to show.
+The vision-draft path stays **experimental**: it works and is accounted for
+(1 paid vision call, replay free), but nothing yet shows it beats asking the
+coding model directly, so it stays out of the documented main path until there is
+evidence of incremental value. Multi-server idempotency is **documented, not
+built**: the key store is in-process, which is sound for the single-server beta
+the app is designed around and unsound for a horizontally scaled deployment;
+the limit ships in the limitations guide and in the review payload. KI-53 goes the
+other way and is closed by D059.
+**Conformance:** the seeded decision text in the retained Palette Bench packet is
+the exact text that was paid for and is not rewritten; the clarification is the
+wording to use in the **next** brief, and `docs/review-apps/README.md` says so.
+The vision-draft boundary is pinned by the Batch E route tests (advisory, no
+write, revision-pinned, one paid call, replay revalidates its subject). The
+idempotency limit is pinned by the limitation text in `docs/guide/limitations.md`
+and `docs/guide/reviews`-style payloads, not by code.
