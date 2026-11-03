@@ -201,15 +201,19 @@ async function probe(page: Page, url: string, how: Interactions): Promise<ProbeO
     const before = await displayedColours(page);
     const stored = await usesStorage(page);
     await page.reload({ waitUntil: 'load' });
+    // The reload state is read *before* anything else is clicked. An earlier draft drove the fresh
+    // destruction first and then read the screen, so "after the reload" described a state the probe
+    // itself had just destroyed: the fixture reported persistence it had wiped seconds earlier.
+    const afterReload = await displayedColours(page);
     const undoAfter = await hasControl(page, 'undo');
-    // Then ask the same question of a *fresh* destruction: if a way back appears now, the affordance
-    // is session-scoped, which is a different finding from "Undo does nothing" and reads differently
-    // against a decision that says every destructive action is undoable.
+    // Only then ask the same question of a fresh destruction: if a way back appears now, the
+    // affordance is session-scoped, which is a different finding from "Undo does nothing" and reads
+    // differently against a decision that says every destructive action is undoable.
     await page.getByRole('button', { name: how.destructive }).first().click();
     const undoAfterFreshDestruction = await hasControl(page, 'undo');
     persistence = reloadPersistence({
       before,
-      after: await displayedColours(page),
+      after: afterReload,
       undo_before: undoBefore,
       undo_after: undoAfter,
       undo_after_new_destruction: undoAfterFreshDestruction,
