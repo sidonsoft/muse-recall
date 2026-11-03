@@ -1,6 +1,6 @@
 # Release notes — Muse Forge beta
 
-Branch `integration`, commit `7f30184`. Verdict and evidence: `docs/beta/READINESS.md`. Gate results:
+Branch `integration`, commit `6abc769` — re-measured at that commit, see the table below. Verdict and evidence: `docs/beta/READINESS.md`. Gate results:
 `docs/beta/RELEASE-GATE.md`. Limitations in full: `docs/guide/limitations.md`.
 
 ## What this is
@@ -60,16 +60,16 @@ The beta ships with the measurements attached. Each row names a directory you ca
 
 | claim | evidence |
 | --- | --- |
-| production bundles boot with no provider credential; the Studio journey completes | `test-results/beta-journey/2026-11-03-104816` |
+| production bundles boot with no provider credential; the Studio journey completes | `test-results/beta-journey/2026-11-03-111721` |
 | Copy source and Download HTML hand over the served bytes | same directory, `observations.served_artifact_sha256`, `downloaded_bytes` |
 | rollback changes the bytes the browser is served, and says the restore is not undoable | same directory, `rollback_confirmation_wording` |
-| ten offline gates pass at the release commit | `test-results/release-gate/2026-11-03-104626` |
-| secured media byte playback and download, including a real `<video>` decode path | `test-results/batchd-playback-auth/2026-11-03-1047` |
+| ten offline gates pass at the release commit | `test-results/release-gate/2026-11-03-111530` |
+| secured media byte playback and download, including a real `<video>` decode path | `test-results/batchd-playback-auth/2026-11-03-1116` |
 | SAM suggest → cutout → insert → approve → coding job → restart → rollback, on real provider bytes | `test-results/batchc-live/2026-11-01-0755` |
-| the same journey without a provider, on uploaded bytes | `test-results/media-journey/2026-11-03-10471568` |
+| the same journey without a provider, on uploaded bytes | `test-results/media-journey/2026-11-03-11161987` |
 | a screenshot review stays advisory and revision-pinned in the real UI | `test-results/batche-review-ui` |
-| a self-contained artifact is verified and served with no remote origin at all | `test-results/runtime/20261103-1046` |
-| a stale published output is distinguishable from a fresh one | `test-results/artifact-probes/2026-11-03-104802` |
+| a self-contained artifact is verified and served with no remote origin at all | `test-results/runtime/20261103-1115` |
+| a stale published output is distinguishable from a fresh one | `test-results/artifact-probes/2026-11-03-111707` |
 
 ## Known limitations, the short version
 

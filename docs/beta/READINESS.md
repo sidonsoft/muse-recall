@@ -1,7 +1,10 @@
 # Beta readiness report
 
-Written at commit `7f30184`, on the `integration` branch. Every number below was measured, and each one
-names the directory it came from. Where something is **not** measured, that sentence says so.
+Written for the beta on the `integration` branch, at the commit whose production bytes are quoted below
+(`6abc769`). Every number here was measured, and each one names the directory it came from. Where
+something is **not** measured, that sentence says so. If the beta is cut at a later commit, re-run
+`pnpm run verify:release-gate` there and quote that run: the server bundle embeds the commit, so the
+identity below does not travel forward on its own.
 
 ## Verdict
 
@@ -16,19 +19,19 @@ are filled in; the quality rows are empty on purpose. See `docs/review-apps/READ
 
 ## Release identity
 
-From `test-results/release-gate/2026-11-03-104626/report.json`, which is the run that produced the
-bundles every gate in `RELEASE-GATE.md` then tested:
+From `test-results/release-gate/2026-11-03-111530/report.json`, which is the run that built the bundles
+every gate in `RELEASE-GATE.md` then tested:
 
 ```json
 {
-  "commit": "7f30184b40d26c22c26541249ee4a90cc142894b",
+  "commit": "6abc769140e0b500c29ba4df7e36ec64527501f0",
   "treeCleanAtMeasure": true,
-  "serverBuildHash": "7ff2b7fefdf5832c1a8ee125e4c7965d5656ad1a1e23bb3cceeef64289610221",
+  "serverBuildHash": "ca837aacf39935a3a46fcc09229579cec3c62f8d9dd04158f9d5ee1ae5b34fb1",
   "webBuildHash": "b2471becf70fe42d8958c2dbd1edb355dc476580a50779ddee1a072353174f82",
   "bundlesBuiltAtHead": true,
   "bundlesBuiltFromCleanTree": true,
   "supportsCommitIdentity": true,
-  "identity_note": "both bundles were built at 7f30184; the build ran over a clean tree at that commit"
+  "identity_note": "both bundles were built at 6abc769; the build ran over a clean tree at that commit"
 }
 ```
 
@@ -41,7 +44,8 @@ dirty, and that withheld form is itself kept as evidence (`test-results/batchd-p
 ## What the final release gate measured
 
 `pnpm run verify:release-gate` — see `docs/beta/RELEASE-GATE.md`. Run:
-`test-results/release-gate/2026-11-03-104626`. Status: **pass**, 10 of 10 gates.
+`test-results/release-gate/2026-11-03-111530`. Status: **pass**, 10 of 10 gates, and the bundles it tested
+were the ones that run built at that same commit.
 
 | gate | outcome | what it measured, in its own words |
 | --- | --- | --- |
@@ -52,7 +56,7 @@ dirty, and that withheld form is itself kept as evidence (`test-results/batchd-p
 | `verify:batche-review-ui` | pass (20 checks) | a screenshot review stays advisory and revision-pinned |
 | `verify:batchd-playback-auth` | pass (15 checks) | secured byte playback and download, and the identity block above |
 | `verify:media-journey-offline` | pass (6 checks) | asset → artifact → restart → rollback on uploaded bytes, with no provider |
-| `verify:studio-workflow` | pass (59 checks) | the Studio UI drives generate → review → approve → restart end to end |
+| `verify:studio-workflow` | pass | the Studio UI drives generate → review → approve → restart end to end |
 | `verify:artifact-probes` | pass (10 checks) | the probe battery tells a stale published output from a fresh one |
 | `verify:beta-journey` | pass (18 checks) | the beta user journey on production bundles, both handover controls byte-checked |
 
@@ -62,7 +66,7 @@ explained in comments, not oversights).
 
 ## The beta user journey, walked
 
-`verify:beta-journey` (`test-results/beta-journey/2026-11-03-104816`) boots the **production** server
+`verify:beta-journey` (`test-results/beta-journey/2026-11-03-111721`) boots the **production** server
 bundle and `vite preview` over the built web assets, and drives the real Studio UI in the order a user
 would: open a project → describe an application → read the change → approve → look at it → take it away
 → come back → change it → go back to the earlier version → do it on a phone.
@@ -152,7 +156,7 @@ Proven, with evidence named above: production-bundle boot with no credential; th
 approval, version listing, rollback and their byte-level effects; both handover controls; secured media
 byte playback/download; visual review staying advisory and revision-pinned; the SAM suggest → cutout →
 insert → approve → coding → restart → rollback chain (live and offline); the probe battery's ability to
-distinguish a stale published output from a fresh one; build identity at `7f30184`.
+distinguish a stale published output from a fresh one; build identity at `6abc769`.
 
 Not proven by any gate here:
 

@@ -9,11 +9,11 @@ pnpm run verify:release-gate
 It builds the two production bundles, then runs ten offline gates in sequence and reports each gate's own
 outcome. It makes no provider call and refuses to run if a provider credential is in the environment.
 
-Evidence for this run: `test-results/release-gate/2026-11-03-104626` — `report.json` (machine) and
+Evidence for this run: `test-results/release-gate/2026-11-03-111530` — `report.json` (machine) and
 `RELEASE-GATE.md` (written by the gate itself, so the numbers in the evidence directory and the numbers
 here come from the same measurement).
 
-## Results, as measured at `7f30184`
+## Results, as measured at `6abc769`
 
 | gate | outcome | seconds | what it is relied on to prove | evidence |
 | --- | --- | --- | --- | --- |
@@ -22,11 +22,11 @@ here come from the same measurement).
 | `verify:formsandbox` | pass | 3 | a form inside an artifact cannot escape the preview sandbox | — |
 | `verify:batchc-ui` | pass | 6 | a suggested object becomes an inserted image the user approves | `test-results/batchc-ui` |
 | `verify:batche-review-ui` | pass · 20 checks | 6 | a screenshot review stays advisory and revision-pinned | `test-results/batche-review-ui` |
-| `verify:batchd-playback-auth` | pass · 15 checks | 12 | secured byte playback and download; the identity block below | `test-results/batchd-playback-auth/2026-11-03-1047` |
-| `verify:media-journey-offline` | pass · 6 checks | 9 | asset → artifact → restart → rollback on uploaded bytes, no provider | `test-results/media-journey/2026-11-03-10471568` |
-| `verify:studio-workflow` | pass · 59 checks | 38 | the Studio UI drives generate → review → approve → restart | `test-results/studio-after` |
-| `verify:artifact-probes` | pass · 10 checks | 14 | the probe battery tells a stale published output from a fresh one | `test-results/artifact-probes/2026-11-03-104802` |
-| `verify:beta-journey` | pass · 18 checks | 9 | the beta user journey on production bundles, both handover controls | `test-results/beta-journey/2026-11-03-104816` |
+| `verify:batchd-playback-auth` | pass · 15 checks | 11 | secured byte playback and download; the identity block below | `test-results/batchd-playback-auth/2026-11-03-1116` |
+| `verify:media-journey-offline` | pass · 6 checks | 9 | asset → artifact → restart → rollback on uploaded bytes, no provider | `test-results/media-journey/2026-11-03-11161987` |
+| `verify:studio-workflow` | pass · 59 checks measured, none reported in the machine summary | 38 | the Studio UI drives generate → review → approve → restart | `test-results/studio-after` |
+| `verify:artifact-probes` | pass · 10 checks | 14 | the probe battery tells a stale published output from a fresh one | `test-results/artifact-probes/2026-11-03-111707` |
+| `verify:beta-journey` | pass · 18 checks | 9 | the beta user journey on production bundles, both handover controls | `test-results/beta-journey/2026-11-03-111721` |
 
 Status: **pass**, 10 of 10. Total wall time a little under two minutes of gate work.
 
@@ -34,14 +34,14 @@ Status: **pass**, 10 of 10. Total wall time a little under two minutes of gate w
 
 ```json
 {
-  "commit": "7f30184b40d26c22c26541249ee4a90cc142894b",
+  "commit": "6abc769140e0b500c29ba4df7e36ec64527501f0",
   "treeCleanAtMeasure": true,
-  "serverBuildHash": "7ff2b7fefdf5832c1a8ee125e4c7965d5656ad1a1e23bb3cceeef64289610221",
+  "serverBuildHash": "ca837aacf39935a3a46fcc09229579cec3c62f8d9dd04158f9d5ee1ae5b34fb1",
   "webBuildHash": "b2471becf70fe42d8958c2dbd1edb355dc476580a50779ddee1a072353174f82",
   "bundlesBuiltAtHead": true,
   "bundlesBuiltFromCleanTree": true,
   "supportsCommitIdentity": true,
-  "identity_note": "both bundles were built at 7f30184; the build ran over a clean tree at that commit"
+  "identity_note": "both bundles were built at 6abc769; the build ran over a clean tree at that commit"
 }
 ```
 
