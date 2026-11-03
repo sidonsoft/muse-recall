@@ -23,7 +23,7 @@ Status words mean exactly one thing here:
 | --- | --- | --- | --- |
 | A — access, storage, recovery | built and verified offline | asset store, versioning, CSP-inline embedding, backup/restore drill (`pnpm media:drill`), provenance gate | see Batch B note on image calls |
 | B — Muse Image and integration | built and verified offline, **and** live measured | media API/journey suites, `verify:media-journey`, embedded-asset verification in `verify:studio-workflow`, plus `verify:image-live-smoke` (`2026-11-02-0445`) | **yes** — one generate and one edit call, measured in pixels (see below) |
-| C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (56 checks), offline resume package (PASS 14 at `2026-11-01-0824`; that fixture is now consumed, so the gate refuses to re-run it), plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
+| C — visual references and SAM | built and verified offline, **and** live | `verify:batchc-ui` (22 checks), `verify-studio-workflow` (58 checks), offline resume package (PASS 14 at `2026-11-01-0824`; that fixture is now consumed, so the gate refuses to re-run it), plus real calls in `test-results/batchc-live/` | **yes** — vision, SAM, and coding calls below |
 | D — voice and video | built and verified offline for access and playback, **and** live for transcription and clip observation | `verify:batchd-playback-auth` (15 checks, audio **and** video, secured and tokenless), `tests/unit/source-playback.test.ts` (33), `tests/integration/access-token-media-bytes.test.ts`, plus `verify:batchd-live-smoke` (`2026-11-02-0458` audio, `2026-11-02-0400` video) | **yes** — one transcription and one clip observation, both scored against what the fixtures actually contain |
 | E — visual and decision-change review | built and verified offline, **and** live for one scored frame | `verify:batche-review-ui` (20 checks), `tests/integration/forge-batche-visual-review.test.ts` (25, including replay-subject, record-fault and creates-no-state cases), `tests/integration/forge-batche-generations.test.ts` (8), `tests/unit/studio-batch-e.test.ts` (29) | **yes, one call** — `verify:review-live-smoke` (`2026-11-02-0451`); every other Batch E gate keeps using a deterministic stub by design |
 
@@ -175,6 +175,24 @@ manifest. The identity pair for the newest commit is recorded by the identity ga
 running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
+`test-results/batchd-playback-auth/2026-11-03-0531/report.json`: commit
+`32300ff0937d` (KI-74, the approval-rail dependency disclosure), `treeClean: true`,
+`bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
+`serverBuildHash: d5f219fbf414…` and **`webBuildHash: aca1962dccfa…` — the web bundle moved
+again**, because `packages/shared/src/forge.ts` gained the disclosure schemas that the review rail
+consumes. `pnpm run verify` at that commit: 126 files, 1 587 passed, 3 skipped; Biome 0 errors /
+3 warnings / 16 infos. The same round re-ran, against those bundles, `verify:batchc-ui` (22),
+`verify:batche-review-ui` (20), `verify:runtime` (**11** checks,
+`test-results/runtime/20261103-0532/report.json`), `verify:studio-workflow` (**58** checks, with
+`dependency-disclosure-staged.png` and `dependency-disclosure-approved.png` in
+`test-results/studio-after/`) and the offline media journey
+(`test-results/media-journey/2026-11-03-05331409`: 6 checks, 0 dispatches). Nothing that spends a
+provider call was re-run: the disclosure round made **no** paid call, and Studio's checks used the
+deterministic fixture CLI. The commit that records this round sits docs-only on top of `32300ff`, so
+the pair above is one commit behind HEAD; by the rule stated below, a cut is re-measured at the commit
+actually cut rather than inherited from it.
+
+**The pair that round superseded** is
 `test-results/batchd-playback-auth/2026-11-03-0048/report.json`: commit `c000a85ca324` (the KI-75
 fix), `serverBuildHash: b1507048d914…` — **moved by that commit**, because `package.json` is a
 hashed input and KI-75 added the `vendor:phaser` script to it — while
@@ -289,7 +307,10 @@ the narration was not, which is how an operator re-runs a run that already spent
   in-script H.264 clip, blob bytes hash-matched to the stored source, one credential-free
   download per source in each trust model, and the running server proving it is the
   verified clean-tree build.
-- `pnpm verify:runtime`: **PASS 8 checks** (KI-53). A game carrying the vendored engine boots with
+- `pnpm verify:runtime`: **PASS 11 checks** (KI-53, plus the three KI-74 cross-checks: the panel's
+  `blocked` origins must equal the origins the real browser refused, in both directions; a permitted
+  load that the network refused is disclosed as fetched, never as blocked; and the panel names the
+  carried engine and nothing else for a self-contained game). A game carrying the vendored engine boots with
   **no remote origin granted** and reaches for nothing; a self-contained game that phones home is
   blocked; a Phaser version this product does not vendor keeps its reference and is reported as a
   named gap. Then the older policy: a permitted engine load that the network refuses must name
@@ -771,17 +792,29 @@ limits. Two findings:
   serves 1 181 917 bytes at sha256 `62081f6a…`), and `tests/unit/release-command-inventory.test.ts`
   now forbids release documents from naming scripts or gate files that do not exist — verified
   against the defect itself, since removing the script makes two of its four tests fail.
-- **KI-74, open on purpose.** Vendoring is deliberately narrow, so a document can still keep a
-  remote engine reference: a Phaser version outside the pin, a tag with `defer`/`integrity`/`async`/
-  `crossorigin` or a script body, or an artifact approved before the change. Three surfaces know that
-  (`vendor_gaps` on the staged snapshot, `network_policy` + `vendor_gaps` on the runtime-check result,
-  and the `x-forge-vendor-gaps` preview header) and **the Studio shows none of them** — the review
-  panel, where a person approves, says nothing about an engine the artifact will fetch at runtime. The
-  data is there; the surfacing is UI work with its own copy and test, so it is recorded rather than
-  bolted on during a round that had already moved the web bundle. Concretely visible: the author
-  checkout's first run still contacts `cdn.jsdelivr.net` because `workspaces/forge/forge-demo/`
-  holds the 2026-10-31 Spark baseline (`79c9d67a…`) with its CDN tag, while a fresh clone contacts
-  nothing at all.
+- **KI-74 closed by the approval rail, not by tightening the policy.** Vendoring is still
+  deliberately narrow, so a document can still keep a remote engine reference: a Phaser version
+  outside the pin, a tag with `defer`/`integrity`/`async`/`crossorigin` or a script body, or an
+  artifact approved before the change. What changed is that a person who can act on that now sees it
+  in the rail where they approve: a **Dependencies** block classifies every dependency as
+  `bundled` (the product's pinned copy, with its sha256, sits in these bytes), `fetched` (the
+  application will ask a remote host when it runs, and verification permits that host) or `blocked`
+  (the document reached for a host the policy refuses, so the check that passed never saw that
+  dependency). It is measured from the staged bytes after the vendoring pass — the same bytes the
+  preview, validation, the browser check and promotion read, and whose sha256 the record carries —
+  never from the source view the diff renders and never from model claims. A version approved before
+  the field existed says **no dependency record was kept**; nothing reconstructs one, and no historical
+  artifact was rewritten to make the panel look complete. Measured at `32300ff`: `verify:runtime`
+  11 checks (`test-results/runtime/20261103-0532`) including the cross-check against what the real
+  browser refused, and `verify:studio-workflow` 58 checks with
+  `test-results/studio-after/dependency-disclosure-{staged,approved}.png`. The policy itself is
+  unchanged (a document that references nothing still runs under the CDN grant, and the block says so
+  in those words rather than implying a fetch), the block renders no verdict, and the engine pin is
+  refreshed only by a deliberate human act (D061): `-- --check` is offline verification of the
+  committed copy, `-- --against-remote` compares bytes and writes nothing either way. Concretely
+  visible, and still true: the author checkout's first run contacts `cdn.jsdelivr.net` because
+  `workspaces/forge/forge-demo/` holds the 2026-10-31 Spark baseline (`79c9d67a…`) with its CDN tag —
+  which the rail now shows as a fetched dependency — while a fresh clone contacts nothing at all.
 - **KI-53 closed — the product now carries its own game engine** (decision D059: a self-contained
   artifact is more reproducible, and less dependent on a third party's availability, than 1.18 MB
   saved is worth). Phaser 3.80.1 is pinned by URL, byte length and sha256 in a generated module that

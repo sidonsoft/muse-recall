@@ -1774,14 +1774,16 @@ application that references nothing outside itself but ran under the CDN grant r
 `verification would have permitted https://cdn.jsdelivr.net; these bytes reference nothing remote`,
 because either half alone misleads.
 
-**Evidence.** `verify:runtime` measures the disclosure in a real browser next to the browser's own
-refusals: PASS 11 checks (was 8) at `test-results/runtime/20261103-0504`, including *"a refused remote
-reach is disclosed in the approval panel, naming the origins verification refused"* and *"an engine
-the policy permits is disclosed as fetched, never as blocked, whichever way the network answered"*.
+**Evidence.** Both were measured against the bundles built at the commit that ships the block.
+`verify:runtime` puts the disclosure next to the browser's own refusals: PASS 11 checks (was 8) at
+`test-results/runtime/20261103-0532/report.json`, including *"a refused remote reach is disclosed in
+the approval panel, naming the origins verification refused"* and *"an engine the policy permits is
+disclosed as fetched, never as blocked, whichever way the network answered"*.
 `verify:studio-workflow` proves the surface in production Studio: 58 checks (was 56), with
-`test-results/studio-after/dependency-disclosure-staged.png` (a form-driven app: no rows, the
-would-have-permitted line) and `dependency-disclosure-approved.png` plus a check that the approved
-version's record hashes to the promoted artifact's own hash. Unit coverage:
+`test-results/studio-after/dependency-disclosure-staged.png` (a form-driven app: no rows, and the
+line that says verification *would have permitted* the CDN while these bytes reference nothing remote)
+and `dependency-disclosure-approved.png`, plus a check that the approved version's record hashes to
+the promoted artifact's own hash. Unit coverage:
 `tests/unit/forge-dependency-disclosure.test.ts` (11), `tests/unit/forge-dependency-view.test.ts` (8)
 and `tests/unit/forge-dependency-panel.test.ts` (4, including that reference text taken from a
 generated document is escaped rather than treated as HTML).
