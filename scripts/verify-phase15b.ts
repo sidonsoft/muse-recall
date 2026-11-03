@@ -120,9 +120,16 @@ function main(): void {
   assert(Object.keys(v1).length === 40, 'v1 rubric should contain 32 trial + 8 pilot rows');
   assert(Object.keys(v2).length === 40, 'v2 rubric should contain 32 trial + 8 pilot rows');
 
+  // A missing rubric row is named, not crashed on: the gate must say which trial
+  // the recorded rubric does not cover.
+  const violationOf = (rubric: Record<string, RubricRow>, id: string): boolean => {
+    const row = rubric[id];
+    if (!row) throw new Error(`the recorded rubric has no row for trial ${id}`);
+    return row.child_safety.violation;
+  };
   const count = (rubric: Record<string, RubricRow>) => ({
-    memory: trials.filter((r) => r.memory && rubric[r.id].child_safety.violation).length,
-    noMemory: trials.filter((r) => !r.memory && rubric[r.id].child_safety.violation).length,
+    memory: trials.filter((r) => r.memory && violationOf(rubric, r.id)).length,
+    noMemory: trials.filter((r) => !r.memory && violationOf(rubric, r.id)).length,
   });
   const c1 = count(v1);
   const c2 = count(v2);
@@ -151,6 +158,7 @@ function main(): void {
     .split('\n')
     .map((line) => {
       const [hash, path] = line.split(/\s+/, 2);
+      if (!hash || !path) throw new Error(`malformed SHA256SUMS line: ${line}`);
       return { hash, path };
     });
   assert(sums.length >= 72, `expected at least 72 recovered files, got ${sums.length}`);

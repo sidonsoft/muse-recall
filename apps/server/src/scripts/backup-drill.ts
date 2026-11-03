@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
@@ -10,7 +10,12 @@ import { backupDatabase, restoreDatabase } from '../backup.js';
  *
  * Creates a throwaway seeded database, takes an online backup, destroys the
  * original, restores into an isolated target, and verifies record parity —
- * then round-trips the export envelope into a second fresh database. Nothing
+ * then round-trips the export envelope into a second fresh database. It also
+ * re-runs the destructive-restore regressions the beta review reproduced
+ * (corrupt backup + force must preserve the target; source==target must be
+ * refused; an EMPTY source must be schema-gated out; a directory WAL
+ * sidecar must be refused before any move) and asserts no temp/parked
+ * residue survives the run. Nothing
  * here touches the configured DATABASE_PATH; the drill is self-contained and
  * safe to run any time, on the documented schedule or ad hoc.
  *
@@ -93,6 +98,82 @@ async function main(): Promise<void> {
       throw new Error('refused restore modified the existing target');
     }
 
+    // Regression (beta review, 31 Oct): a CORRUPT backup with force must
+    // abort without destroying an existing target. The backup is validated
+    // and copied to a temp file beside the target that is verified before
+    // any swap, so the existing bytes survive every failure path.
+    const guardBytes = readFileSync(guarded);
+    const damaged = Buffer.from(readFileSync(backup.destination));
+    damaged.fill(0xab, 100);
+    const corrupt = join(dir, 'corrupt.db');
+    writeFileSync(corrupt, damaged);
+    let aborted = false;
+    try {
+      restoreDatabase(corrupt, guarded, { force: true });
+    } catch {
+      aborted = true;
+    }
+    if (!aborted) throw new Error('force restore of a corrupt backup did not abort');
+    if (!readFileSync(guarded).equals(guardBytes)) {
+      throw new Error('aborted force restore modified the existing target');
+    }
+
+    // Regression (beta review, 31 Oct): force + source==target must be
+    // refused; the old ordering deleted the backup itself.
+    let aliasRefused = false;
+    try {
+      restoreDatabase(backup.destination, backup.destination, { force: true });
+    } catch (error) {
+      aliasRefused = error instanceof Error && /same file/i.test(error.message);
+    }
+    if (!aliasRefused) {
+      throw new Error('restore did not refuse source and target being the same file');
+    }
+
+    // Regression (beta review, P1): an EMPTY (or unrelated) database must be
+    // refused by the schema gate, force included. integrity_check alone calls
+    // a zero-byte file 'ok'; pre-gate it "succeeded" over a real target.
+    const empty = join(dir, 'empty.db');
+    writeFileSync(empty, '');
+    let emptyRefused = false;
+    try {
+      restoreDatabase(empty, guarded, { force: true });
+    } catch (error) {
+      emptyRefused = error instanceof Error && /not a Muse Recall database/.test(error.message);
+    }
+    if (!emptyRefused) throw new Error('restore did not refuse an EMPTY source database');
+    if (!readFileSync(guarded).equals(guardBytes)) {
+      throw new Error('refused empty-source restore modified the existing target');
+    }
+
+    // Regression (beta review, P2): a DIRECTORY at <target>-wal used to be
+    // discovered by EISDIR after the replacement. It must now be refused
+    // before anything moves, target and source untouched, no residue.
+    const weird = join(dir, 'weird-sidecar.db');
+    writeFileSync(weird, 'original target bytes\n', 'utf8');
+    const weirdBytes = readFileSync(weird);
+    mkdirSync(`${weird}-wal`);
+    writeFileSync(join(`${weird}-wal`, 'do-not-touch'), 'stale\n', 'utf8');
+    let sidecarRefused = false;
+    try {
+      restoreDatabase(backup.destination, weird, { force: true });
+    } catch (error) {
+      sidecarRefused = error instanceof Error && /not a regular file/.test(error.message);
+    }
+    if (!sidecarRefused) throw new Error('restore did not refuse a directory WAL sidecar');
+    if (!readFileSync(weird).equals(weirdBytes)) {
+      throw new Error('refused sidecar restore modified the target');
+    }
+    if (
+      readdirSync(dir).some(
+        (entry) => entry.startsWith('.restore-') || entry.includes('restore-previous'),
+      )
+    ) {
+      throw new Error('refused restores left temp or parked residue in the drill directory');
+    }
+    rmSync(`${weird}-wal`, { recursive: true, force: true });
+    rmSync(weird, { force: true });
+
     const started = Date.now();
     const restored = restoreDatabase(backup.destination, join(dir, 'restored.db'));
     const restoredMemories = restored.counts['memories'] ?? 0;
@@ -138,6 +219,11 @@ async function main(): Promise<void> {
     );
     console.log(`  export envelope:  ${envelopeRecords} records imported to a fresh database`);
     console.log(`  clobber guard:    refusing an existing target without --force: verified`);
+    console.log(
+      '  failure guards:   corrupt backup + force aborts and preserves the target; ' +
+        'source==target is refused; EMPTY/unrelated databases are schema-gated out; ' +
+        'a directory WAL sidecar is refused before any move: verified',
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

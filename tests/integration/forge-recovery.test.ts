@@ -401,6 +401,10 @@ describe('Forge restart recovery', () => {
       },
       flush: async () => undefined,
       loadAll: async () => ({ jobs: [], issues: [] }),
+      healthCheck: async () => ({
+        root: { ok: true, error: null },
+        project: { ok: true, error: null },
+      }),
     };
     const manager = managerFor(workspace, engine, failing);
 
@@ -812,7 +816,10 @@ describe('Forge restart recovery', () => {
       jobStore: store,
       shutdownGraceMs: 100,
     });
-    let releaseRetry: (() => void) | null = null;
+    // The gate is opened from inside a promise executor, so the compiler
+    // cannot see the write: keep the binding callable and let the deadline
+    // assertions above prove that the gate was actually reached.
+    let releaseRetry: () => void = () => {};
     try {
       const created = await manager.start({
         projectId: 'demo',
@@ -858,8 +865,8 @@ describe('Forge restart recovery', () => {
       await withDeadline(reached, 'the storage retry to reach its write gate');
       const approved = await manager.approve(created.id, { captureMemory: false });
       expect(approved.job.version).toBe(1);
-      releaseRetry?.();
-      releaseRetry = null;
+      releaseRetry();
+      releaseRetry = () => {};
       await withDeadline(retry, 'the storage retry to finish');
 
       // The retry's stale version-less snapshot was attempted, then the
@@ -876,7 +883,7 @@ describe('Forge restart recovery', () => {
       expect(persisted.status).toBe('succeeded');
       expect(persisted.version).toBe(1);
     } finally {
-      releaseRetry?.();
+      releaseRetry();
       await manager.shutdown();
     }
   });

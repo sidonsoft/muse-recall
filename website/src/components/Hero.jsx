@@ -63,7 +63,7 @@ export default function Hero() {
           Muse was asked for a change that could break it. A detector fixed before the first run
           checked the generated source. Six fixed tasks; source code, not runtime behaviour.{' '}
           <a href="#evidence">Full table</a> ·{' '}
-          <a href={`${REPO}#reproduce-the-evidence`} target="_blank" rel="noreferrer">
+          <a href={`${REPO}#what-is-verified`} target="_blank" rel="noreferrer">
             re-derive it yourself
           </a>
         </p>

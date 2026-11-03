@@ -18,14 +18,16 @@ DEVELOPMENT_LOG.md and the decision records.
    damaged bytes and rebuilds from surviving approved versions (PR #32). Studio banner
    wired; the managed browser workflow corrupts and repairs through the UI as a standing
    gate (PR #33). Repair refuses on a valid state (`state_valid`, 409).
-4. **Isolate the Forge worker from the server user.** — **Partial (2026-10-30).**
+4. **Isolate the Forge worker from the server user.** — **Partial (2026-10-30; probe hardened 2026-10-31).**
    Code seam landed: `FORGE_WORKER_WRAPPER` routes every Forge CLI launch through an
-   operator wrapper (boot refused on probe failure, D042). Working provisioning paths
-   + verification: [ops runbook](ops/OPERATOR_RUNBOOKS.md) "Forge worker isolation".
-   KI-49 (31 Oct): the naive `setpriv --reuid` example cannot write the 0700 staging
-   tree / read the 0600 prompt - TRUE uid isolation also needs the small ACL change
-   (register C-13), not just deployment. Remaining: operator provisioning via one of
-   the runbook paths, then ACL support post-judging.
+   operator wrapper (boot refused on probe failure, D042). Beta (KI-49): the boot probe now
+   exercises the REAL staging accesses (0700 dir write + 0600 prompt read inside the actual
+   workspace tree, `probeWorkerStagingAccess`) - uid-changing wrappers refuse boot instead of
+   dying mid-generation; the unusable setpriv recipe is removed from security.md and the
+   default same-uid posture is stated plainly. Working provisioning paths + verification:
+   [ops runbook](ops/OPERATOR_RUNBOOKS.md) "Forge worker isolation". Remaining: operator
+   provisioning via one of the runbook paths; true uid isolation still needs the small ACL
+   change (register C-13 - still an owner call, NOT weakened for the beta).
 
 ## P1 — next hardening
 
@@ -91,9 +93,9 @@ in the archived journal. Each row: probe -> observed -> owner of the follow-up.
 
 | Probed | Observed at head | Owner |
 | --- | --- | --- |
-| malformed JSON body | 400 `internal_error` vs catalogue `bad_request` | KI-45 (fix queued) |
-| oversized body (~1.1 MB > 1 MiB limit) | 413 `internal_error`, no 413 catalogue entry | KI-48 (fix queued) |
-| `/api/errors` envelope | catalog_version 2, 5 groups, 46 entries / 45 codes | inventory §4 |
+| malformed JSON body | 400 `bad_request` — fixed by the v3 lockstep (beta, 31 Oct) | KI-45 (closed) |
+| oversized body (~1.1 MB > 1 MiB limit) | 413 `payload_too_large` — fixed by the v3 lockstep (beta, 31 Oct) | KI-48 (closed) |
+| `/api/errors` envelope | catalog_version 3, 5 groups, 53 entries / 52 codes (beta bump) | inventory §4 |
 | `/api/health` | ok:true envelope, version 0.1.0 | security.md |
 | HOST=0.0.0.0 without token | boot REFUSED, error restates invariant | SECURITY posture |
 | HOST=0.0.0.0 + token | listens (auth required) | SECURITY posture |
@@ -101,8 +103,14 @@ in the archived journal. Each row: probe -> observed -> owner of the follow-up.
 | `/api/meta` posture self-report | loopback-only / shared-token per mode | SECURITY groundwork |
 | idempotent replay (socket level) | 201 replay byte-identical + `idempotent-replayed: 1` header | D049 |
 | error envelopes (404/validation_failed) | not_found names METHOD+path; details[] path-level | inventory §4 |
+| clean-clone DR drill (app stopped, 31 Oct beta) | symlink-alias source==target refused; live `--force` restore works app-stopped; structurally corrupt backup + `--force` refused, target bytes byte-identical (caveat: garbage in free space passes `integrity_check` - detection is structural, by design) | runbook DR |
+| `backup:drill` on a clean clone | PASS incl. both failure-guard legs | runbook DR |
+| MCP stdio from a clean clone (offline) | initialize + tools/list (7 tools), stderr read-only banner, write descriptions carry the startup-policy note | D058 witness |
+| live Muse CLI 1.4.14 turn (clean clone) | assistant turn returned verbatim "BETA LIVE PROVIDER OK" (17,247/54 tok); missing binary -> `provider_failure` naming the spawn error, boot unaffected | quickstart |
+| Playwright managed Chromium on a clean clone | `verify:studio-workflow` 48/48 checks; `verify:browser` smoke pass (dev web + API); generative-UI check skips honestly when provider != muse-cli | CI parity |
 
-Characterization pins for the two queued fixes exist: `tests/integration/error-envelope-pins.test.ts`.
+Characterization pins `tests/integration/error-envelope-pins.test.ts` were flipped by the v3
+lockstep itself (beta, 31 Oct, owner-directed) — code + catalogue + pins in one bump, as pinned.
 
 ## Post-judging action register
 
@@ -123,6 +131,11 @@ toward the home doc.
    failures -> `bad_request`, Fastify 413 -> `payload_too_large` entry - ONE
    catalogue bump 2→3, and flip the two pins in error-envelope-pins.test.ts in the same
    bump. The wire-probe ledger above is the baseline table.
+   **DONE (beta, 31 Oct, owner-directed):** executed on `integration` only — the frozen
+   judge tree (`main` @ c32d03b + submission tag) is untouched, promotion stays
+   post-judging. A SIXTH unmirrored code (`invalid_submission`, 400) was found live while
+   writing the mirror probes and shipped in the same bump: catalogue v3 = 53 entries /
+   52 codes, ten new live probes wired into the drift gate.
 5. PR #28: fetch `refs/pull/28/head` (f1a16f791e49...), recreate branch, merge or close
    with reason (SUBMISSION_PRESERVATION.md recovery block).
 6. Finish SHA-pinning: the 8 `website.yml` steps once unfrozen; periodic re-check of
@@ -177,6 +190,11 @@ toward the home doc.
     group named by a new env, enabling setpriv-style uid isolation; contract-visible (new env +
     permission model), so this is an owner call first, then a small PR - the runbook already
     documents two wrapper paths that work without it.
+    **Beta (31 Oct, KI-49 trap defused without weakening permissions):** the boot probe now
+    runs staging write + prompt read THROUGH the wrapper (`probeWorkerStagingAccess`, inside
+    the real workspace tree) and REFUSES uid-changing wrappers at boot; the unusable setpriv
+    recipe is gone from security.md and the default same-uid posture is stated plainly.
+    ACL support itself remains an owner call (D057 override covered the probe, not C-13).
 
 **D. Roadmap horizons (POST_HACKATHON_ROADMAP.md owns these; index-only):**
 14. G-6 identity/scoping/rotation; 15. G-2 provisioning follow-up;

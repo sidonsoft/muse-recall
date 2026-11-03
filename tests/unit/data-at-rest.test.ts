@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { afterAll, describe, expect, it } from 'vitest';
-import { backupDatabase } from '../../apps/server/src/backup.js';
+import { onlineCopy } from '../helpers/online-backup.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -85,18 +85,31 @@ describe('data at rest', () => {
         scope: 'project',
         project_id: 'backup-test',
         content: 'Keep the backup consistent with the live database.',
+        source: { session_id: null, reference: null },
+        confidence: 0.7,
+        validation_status: 'unverified',
+        expires_at: null,
+        tags: [],
       });
       engine.create({
         type: 'constraint',
         scope: 'global',
         project_id: null,
         content: 'Backups must not expose world-readable files.',
+        source: { session_id: null, reference: null },
+        confidence: 0.7,
+        validation_status: 'unverified',
+        expires_at: null,
+        tags: [],
       });
 
-      // The source stays open so at least one row lives only in the WAL when
-      // the online backup starts.
-      const backup = await backupDatabase(source.path);
+      // The source stays open so at least one row lives only in the WAL when the
+      // online backup starts. The copy itself runs in a plain child process, because
+      // that is where the product calls it from: inside a full-suite Vitest worker the
+      // online copy does not settle (KI-56), which is what turned this test red.
+      const backup = onlineCopy(source.path, `${source.path}.backup-${Date.now().toString(36)}`);
       expect(backup.destination).toContain(`${source.path}.backup-`);
+      expect(backup.pages).toBeGreaterThan(0);
 
       const copy = openDatabase({ path: backup.destination, wal: false });
       try {

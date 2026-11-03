@@ -96,6 +96,51 @@ describe('Forge worker wrapper (G-2 isolation seam)', () => {
     await expect(setup(wrapper)).rejects.toThrow(/failed the pass-through probe with exit code 3/);
   });
 
+  it('refuses boot when the wrapper passes argv but cannot touch the staging contract (KI-49)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'forge-wrapper-bad-'));
+    roots.push(dir);
+    // Passes `node -e 0` (the pre-beta probe) yet revokes the 0600 prompt the
+    // staging probe reads - the cross-uid EACCES shape (KI-49) without
+    // needing setuid. Pre-beta this booted and died mid-job.
+    const wrapper = await writeWrapper(dir, 'revoke.sh', 'chmod 000 "$4" 2>/dev/null\nexec "$@"');
+    await expect(setup(wrapper)).rejects.toThrow(
+      /failed the staging-access probe[\s\S]*container launcher/,
+    );
+  });
+
+  it('refuses boot for a wrapper that needs configuration the child env strips (beta review P2)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'forge-wrapper-bad-'));
+    roots.push(dir);
+    // The DOCKER_HOST-shaped sentinel from the review: the SERVER process
+    // carries it in its real environment, a generation child would NOT see
+    // it - so the boot probes must not either. Pre-fix this wrapper booted
+    // and exited 73 at the first generation; post-fix construction throws.
+    const wrapper = await writeWrapper(
+      dir,
+      'needs-sentinel.sh',
+      'if [ -z "${MML_PROBE_SENTINEL:-}" ]; then exit 73; fi\nexec "$@"',
+    );
+    const root = await mkdtemp(join(tmpdir(), 'forge-wrapper-'));
+    roots.push(root);
+    const database = openDatabase({ path: ':memory:', wal: false });
+    databases.push(database);
+    process.env.MML_PROBE_SENTINEL = 'tcp://simulated-server-daemon';
+    try {
+      expect(
+        () =>
+          new ForgeJobManager({
+            workspace: new ForgeWorkspace(root),
+            engine: new MemoryEngine(database.db),
+            museBin: FIXTURE,
+            env: { FAKE_MUSE_MODE: 'auto' },
+            workerWrapper: wrapper,
+          }),
+      ).toThrow(/failed the pass-through probe with exit code 73/);
+    } finally {
+      delete process.env.MML_PROBE_SENTINEL;
+    }
+  });
+
   it('refuses boot for a relative wrapper path', async () => {
     await expect(setup('relative/wrapper')).rejects.toThrow(/must be an absolute path/);
   });

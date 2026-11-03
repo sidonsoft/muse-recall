@@ -136,7 +136,9 @@ describe('repairState (rebuild from surviving approved versions)', () => {
     expect(state.current_version).toBe(2);
     expect(state.can_rollback).toBe(true);
     expect(state.versions.map((entry) => entry.version)).toEqual([1, 2]);
-    expect(state.versions[1].base_version).toBe(1);
+    const secondVersion = state.versions[1];
+    if (!secondVersion) throw new Error('the repaired state lists a second version');
+    expect(secondVersion.base_version).toBe(1);
     expect(await workspace.currentHtml('demo-game')).toBe(HTML_V2);
   });
 

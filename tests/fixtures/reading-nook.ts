@@ -1,5 +1,7 @@
 import type { MemoryCreateInput } from '@mml/shared';
 
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
+
 /**
  * The six decisions saved in the 2026-10-29 live run
  * (`docs/hackathon-evidence/live-dsh-run-2026-10-29`, finding F1).
@@ -20,18 +22,21 @@ export const READING_NOOK_TECHNICAL_DECISION =
 
 export const READING_NOOK_MEMORIES: MemoryCreateInput[] = [
   {
+    ...CREATE_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: READING_NOOK_PROJECT_ID,
     content: 'No countdown timers or time pressure anywhere in the app.',
   },
   {
+    ...CREATE_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: READING_NOOK_PROJECT_ID,
     content: 'No flashing or blinking animations.',
   },
   {
+    ...CREATE_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: READING_NOOK_PROJECT_ID,
@@ -39,6 +44,7 @@ export const READING_NOOK_MEMORIES: MemoryCreateInput[] = [
       'Never use colour-only cues: every status (goal met, in progress, finished) must also have a text label or icon, so it works without colour.',
   },
   {
+    ...CREATE_DEFAULTS,
     type: 'constraint',
     scope: 'project',
     project_id: READING_NOOK_PROJECT_ID,
@@ -46,12 +52,14 @@ export const READING_NOOK_MEMORIES: MemoryCreateInput[] = [
       'Audience is children aged 7–10: tap targets at least 44px, plain words, an encouraging tone, and no scores or rankings that compare children.',
   },
   {
+    ...CREATE_DEFAULTS,
     type: 'preference',
     scope: 'project',
     project_id: READING_NOOK_PROJECT_ID,
     content: READING_NOOK_PREFERENCE,
   },
   {
+    ...CREATE_DEFAULTS,
     type: 'technical_decision',
     scope: 'project',
     project_id: READING_NOOK_PROJECT_ID,

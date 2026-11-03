@@ -397,7 +397,18 @@ async function main(): Promise<void> {
 
       // -- Memory-influence presentation (authentic Phase 12A) ----------
       const pilot = JSON.parse(await readFile(PILOT, 'utf8')) as {
-        conditions: Array<Record<string, unknown>>;
+        // The fields this rehearsal reads out of the recorded Phase 12A pilot.
+        conditions: Array<{
+          condition: string;
+          project: string;
+          job_id: string;
+          memory_ids: string[];
+          prompt_sha256: string;
+          prompt_reconstructed_sha256: string;
+          prompt_matches_job: boolean;
+          rendered_palette_visible: { accent_pct: number; dark_pct: number };
+          source_palette_v2?: Record<string, number>;
+        }>;
         request: string;
         request_sha256: string;
         baseline_sha256: string;
@@ -409,11 +420,8 @@ async function main(): Promise<void> {
       const conditionDigest = (name: 'A' | 'B' | 'C') => {
         const condition = byCondition.get(name);
         if (!condition) throw new Error(`pilot is missing condition ${name}`);
-        const visible = condition.rendered_palette_visible as {
-          accent_pct: number;
-          dark_pct: number;
-        };
-        const source = (condition.source_palette_v2 ?? {}) as Record<string, number>;
+        const visible = condition.rendered_palette_visible;
+        const source = condition.source_palette_v2 ?? {};
         return {
           condition: name,
           project: condition.project,

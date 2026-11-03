@@ -1,5 +1,5 @@
 import { formatMemoryContext, MemoryEngine, openDatabase } from '@mml/memory-engine';
-import type { ModelProvider } from '@mml/muse-provider';
+import type { ModelProvider } from '@mml/shared';
 import {
   DEFAULT_EVALUATION_CONFIGURATIONS,
   type EvaluationComparison,

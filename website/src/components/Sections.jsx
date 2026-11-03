@@ -87,8 +87,8 @@ export function How() {
           <p className="kicker">How it works</p>
           <h2>Store → supply → review → correct</h2>
           <p>
-            One workflow with five implemented capabilities. Persistent memory is not new —
-            correctable memory wired into a reviewable change loop is.
+            Correctable memory connects references, media and application review. Generate or edit images,
+            extract cutouts, bring voice/video sources and review screenshots against decisions.
           </p>
         </div>
         <div className="steps four">
@@ -131,7 +131,7 @@ export function Features() {
     {
       icon: 'shield',
       h: 'Advisory Decision Guard',
-      p: 'A deterministic, dependency-free source check over five rule families. It cites the decision and a bounded evidence excerpt — and never blocks approval.',
+      p: 'A deterministic, dependency-free source check over seven rule families. It cites the decision and a bounded evidence excerpt — and never blocks approval.',
     },
     {
       icon: 'lock',
@@ -368,7 +368,7 @@ export function Stack() {
             'Muse Code CLI (Muse Spark)',
             'Muse Spark Open on Baseten (research)',
             'Playwright-managed Chromium gate',
-            'Biome · Vitest · 728 tests',
+            'Biome · Vitest · offline workflow gates',
             'Offline echo provider (no account needed)',
           ].map((t) => (
             <span key={t}>{t}</span>
@@ -447,7 +447,7 @@ export function Quickstart() {
             pnpm dev{'\n\n'}
             <span className="cmt"># verify, don't trust:</span>{'\n'}
             pnpm verify{'               '}
-            <span className="cmt"># lint + typecheck + 728 tests</span>{'\n'}
+            <span className="cmt"># lint + typechecks + unit/integration tests</span>{'\n'}
             pnpm verify:research17{'    '}
             <span className="cmt"># re-derive every Phase 17 count and p-value (python3)</span>
           </pre>
@@ -457,11 +457,11 @@ export function Quickstart() {
           pre-registration lock and the 1205-file evidence inventory, and recomputes the
           counts and p-values from the 480 retained run records in under a minute. Full
           instructions:{' '}
-          <a href={`${REPO}#reproduce-the-evidence`} target="_blank" rel="noreferrer">
+          <a href={`${REPO}#what-is-verified`} target="_blank" rel="noreferrer">
             reproduce the evidence
           </a>{' '}
           ·{' '}
-          <a href={`${REPO}#quickstart`} target="_blank" rel="noreferrer">
+          <a href={`${REPO}#quick-start`} target="_blank" rel="noreferrer">
             full quickstart
           </a>{' '}
           ·{' '}
@@ -481,7 +481,7 @@ export function Honesty() {
     ['The browser gate is load-time', 'Approval loads the staged page once in managed Chromium. It does not play the game, inspect pixels or prove correctness.'],
     ['Trials are bounded', 'Six fixed strata, two rules, two models, source code measured. No general application-correctness or transfer claim.'],
     ['Corrections need an explicit request', 'The honest failure beat from the demo: the model kept the old palette until asked for the project’s current art direction.'],
-    ['Single-user, loopback-only', 'No auth, no multi-tenant hosting. An origin guard blocks cross-site mutations; it is not an authentication story.'],
+    ['Single-user, loopback by default', 'An optional shared bearer token gates API access, except health. There are no accounts or multi-tenant hosting.'],
     ['Exports run unsandboxed', 'The Studio preview is sandboxed. A downloaded file opened from disk is an ordinary local file — and the UI says so.'],
     ['Memory doesn’t automatically save tokens', 'Measured: the CLI carries a ~16,630-token baseline; a ~4k-character memory block adds ~877. But it removes setup turns — whole-task input roughly halved in Demo C.'],
     ['Deletion is irreversible through the API', 'That is the guarantee, not a bug. Corrections keep history; deletions remove the FTS row and hide the record everywhere.'],
@@ -547,7 +547,7 @@ export function Guard() {
           ))}
         </div>
         <p className="footnote reveal">
-          Five supported rule families over source text — it does not claim comprehensive
+          Seven supported rule families over source text — it does not claim comprehensive
           compliance, and{' '}
           <a
             href={`${REPO}/tree/main/packages/decision-guard`}
@@ -569,13 +569,13 @@ export function Watch() {
     <section className="block" id="watch">
       <div className="container">
         <div className="section-head center">
-          <p className="kicker">Watch the demo · 2:50</p>
-          <h2>Remember, correct, review — in one live session</h2>
+          <p className="kicker">Watch the demo · 3:00</p>
+          <h2>Remember the brief. Review the change.</h2>
           <p>
-            One continuous Muse Spark session, recorded 29 October 2026: save a sunset constraint
-            and approve v1; correct the decision to ocean; watch the Guard flag the reintroduced
-            sunset palette; approve v2 built from the <em>current</em> art direction. The honest
-            failure beat is left in.
+            Three minutes across the expanded beta: correctable decisions, image generation and
+            editing, cutouts, voice/video references, screenshot review and version approval.
+            Retained live footage and real media are combined with clearly labelled test fixtures.
+            The stale-palette failure and the need for an explicit correction request remain visible.
           </p>
         </div>
         <figure className="figure video-figure reveal">
@@ -586,15 +586,15 @@ export function Watch() {
             poster="./video/muse-recall-demo-poster.jpg"
             width="1920"
             height="1080"
-            aria-label="Muse Recall demo video, 2 minutes 50 seconds, with burned-in captions"
+            aria-label="Muse Recall demo video, 3 minutes, with burned-in captions"
           >
             <source src="./video/muse-recall-demo.mp4" type="video/mp4" />
             <track kind="captions" srcLang="en" label="English" src="./video/muse-recall-demo.en.vtt" />
-            <a href="./video/muse-recall-demo.mp4">Download the demo video (mp4, 12.7 MB)</a>
+            <a href="./video/muse-recall-demo.mp4">Download the demo video (mp4, 10.9 MB)</a>
           </video>
           <figcaption>
             1080p · captions burned in ·{' '}
-            <a href="./video/muse-recall-demo.mp4" download>download mp4 (12.7 MB)</a> ·{' '}
+            <a href="./video/muse-recall-demo.mp4" download>download mp4 (10.9 MB)</a> ·{' '}
             <a href="./video/muse-recall-demo-transcript.txt">transcript</a>
           </figcaption>
         </figure>
@@ -608,11 +608,11 @@ export function ForJudges() {
   const cards = [
     {
       icon: 'video',
-      h: 'Demo video — 2:50, recorded',
+      h: 'Beta demo — 3:00',
       p: (
         <>
-          One continuous live Muse Spark session, recorded and QA&apos;d on 29 October 2026,
-          with the honest failure beat left in.{' '}
+          Expanded beta workflows with retained live correction footage, real provider media and
+          labelled fixtures. The honest failure beat remains visible.{' '}
           <a href="#watch">Watch it on this page</a> or{' '}
           <a href="./video/muse-recall-demo.mp4" download>download the mp4</a> ·{' '}
           <a href="./video/muse-recall-demo-transcript.txt">transcript</a>.
@@ -639,7 +639,7 @@ export function ForJudges() {
       h: 'Engineering — verify, don’t trust',
       p: (
         <>
-          <code>pnpm verify</code> runs lint, typecheck and 728 passing tests. A staged change
+          <code>pnpm verify</code> runs lint, product/test typechecks and unit/integration tests. A staged change
           loads in managed Chromium before it can be approved, and approval publishes exactly
           the checked bytes. Rollback follows recorded ancestry; cross-origin requests cannot
           change state.
@@ -651,10 +651,10 @@ export function ForJudges() {
       h: 'How Muse is used',
       p: (
         <>
-          Muse Spark (via the Muse Code CLI) generates the original app and performs every
-          modification. The memory layer, retrieval, prompt construction, the browser gate and
-          the Decision Guard are deterministic infrastructure around it. Muse Spark Open
-          (Baseten) replicated the research — the application itself never calls it.
+          The Muse Code CLI generates and modifies applications; the configured coding model
+          can differ from chat. Separate media APIs handle images, segmentation, transcription
+          and vision review. Memory retrieval, source-pattern Guard and approval checks are
+          deterministic infrastructure. Spark Open was used only for research.
         </>
       ),
     },
@@ -663,7 +663,7 @@ export function ForJudges() {
       h: 'Limits, stated up front',
       p: (
         <>
-          Single-user and loopback-only. The Decision Guard is advisory and never blocks
+          Single-user, with loopback as the default. The Decision Guard is advisory and never blocks
           approval. Phase 17 covers six fixed strata, two rules and two models, and measures
           source code rather than runtime safety.{' '}
           <a href={`${DOCS}/KNOWN_ISSUES.md`} target="_blank" rel="noreferrer">Known issues</a>.
@@ -968,7 +968,7 @@ export function Footer() {
           <a href={REPO} target="_blank" rel="noreferrer">
             muse-recall on GitHub
           </a>
-          <a href={`${REPO}#reproduce-the-evidence`} target="_blank" rel="noreferrer">
+          <a href={`${REPO}#what-is-verified`} target="_blank" rel="noreferrer">
             Reproduce the evidence
           </a>
           <a href={`${REPO}/blob/main/docs/submission/SUBMISSION_COPY.md`} target="_blank" rel="noreferrer">

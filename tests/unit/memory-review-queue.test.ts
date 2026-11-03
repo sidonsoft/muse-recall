@@ -1,5 +1,6 @@
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { afterEach, describe, expect, it } from 'vitest';
+import { CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 /**
  * The review queue is derived, not stored (gap G-9). These pin the exact
@@ -17,13 +18,14 @@ function seeded(): MemoryEngine {
   const day = 86_400_000;
   const now = new Date('2026-10-30T12:00:00Z');
   const engine = new MemoryEngine(database.db, { now: () => now });
-  const stamp = (offset: string) => new Date(now.getTime() + offset).toISOString();
+  const stamp = (offsetMs: number) => new Date(now.getTime() + offsetMs).toISOString();
   const add = (
     content: string,
     options: { validation?: 'unverified' | 'verified' | 'disputed'; expires?: number } = {},
   ) =>
     engine.create(
       {
+        ...CREATE_DEFAULTS,
         type: 'contextual_fact',
         scope: 'project',
         project_id: 'alpha',

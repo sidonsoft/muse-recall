@@ -3,6 +3,7 @@ import type { ToolContext } from '@mml/tool-runtime';
 import { createDefaultToolRegistry } from '@mml/tool-runtime';
 import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 const open: { close: () => void }[] = [];
 
@@ -149,12 +150,14 @@ describe('memory.graph tool (D052 surface parity)', () => {
     const { registry, context, memory } = setup();
     memory.ensureProject('demo-game');
     const a = memory.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo-game',
       content: 'Use SQLite for storage',
     }).memory;
     const b = memory.correct({
+      ...CORRECTION_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo-game',
@@ -162,6 +165,7 @@ describe('memory.graph tool (D052 surface parity)', () => {
       supersedes: [a.id],
     }).memory;
     memory.create({
+      ...CREATE_DEFAULTS,
       type: 'goal',
       scope: 'project',
       project_id: 'other-project',
@@ -217,12 +221,14 @@ describe('memory tools', () => {
   it('searches only the current project', async () => {
     const { registry, context, memory } = setup();
     memory.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'demo-game',
       content: 'The game uses Phaser for rendering',
     });
     memory.create({
+      ...CREATE_DEFAULTS,
       type: 'technical_decision',
       scope: 'project',
       project_id: 'other-project',

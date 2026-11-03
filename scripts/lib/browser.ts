@@ -31,6 +31,21 @@ function boundedFailure(error: unknown): string {
   });
 }
 
+/**
+ * The browser this gate needs is not available on this machine.
+ *
+ * Until now a missing Chromium produced the same exit code, the same stack, and
+ * the same evidence shape as a product defect. It is a prerequisite failure: the
+ * gate measured nothing, and re-running it on the same machine measures nothing
+ * again. Naming the type is what lets the gate say "blocked" and exit 2.
+ */
+export class BrowserUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BrowserUnavailableError';
+  }
+}
+
 export async function launchVerificationBrowser(
   options: {
     /** Test seam; production callers use the real Playwright launcher. */
@@ -84,7 +99,7 @@ export async function launchVerificationBrowser(
         : policy === 'firefox'
           ? 'Run "pnpm exec playwright-core install firefox" (add --with-deps on a bare CI image).'
           : 'Install Google Chrome, or set FORGE_RUNTIME_BROWSER=managed after installing Playwright Chromium.';
-    throw new Error(`${attempted} could not be launched: ${failure}. ${action}`);
+    throw new BrowserUnavailableError(`${attempted} could not be launched: ${failure}. ${action}`);
   }
 }
 

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
+
 import {
   evaluateHealth,
   findingsToExit,
   formatFindings,
 } from '../../apps/server/src/alert-prober.js';
 
+// Typed against the published contract, so a probe fixture cannot drift from
+// what /api/health actually answers.
 const HEALTHY = {
   status: 'ok',
   service: 'muse-memory-lab',
@@ -18,7 +21,8 @@ const HEALTHY = {
   alerts: {
     backup: {
       state: 'ok',
-      latest_backup_at: null,
+      // Stays widen-able: the age test replaces this with a real timestamp.
+      latest_backup_at: null as string | null,
       age_hours: 0,
       max_age_hours: 24,
       backup_count: 1,

@@ -90,9 +90,42 @@ pnpm db:restore /backups/muse-recall/muse-memory-lab.db.backup-<stamp> --into /t
 pnpm db:restore /backups/.../backup-<stamp> --into "$LIVE_DB" --force   # live replacement
 ```
 
-`db:restore` runs `PRAGMA integrity_check` before reporting anything; a corrupt
-backup aborts loudly. The live replacement needs the explicit `--force` precisely
-so an operator never clobbers a live DB by typo.
+`db:restore` validates the backup (`PRAGMA integrity_check` **plus a Muse schema
+gate**) and copies it to a temp file beside the target, then re-verifies THAT copy,
+before the target is ever replaced (beta fix, 31 Oct — the previous ordering
+destroyed the target on a corrupt force-restore):
+
+- corrupt backup, failed copy, or failed replacement → loud abort, and the
+  existing target keeps its original bytes; the backup file is never modified.
+- **empty or foreign images are schema-gated out** (`integrity_check` calls a
+  zero-byte file "ok"; pre-gate a forced restore of an empty/unrelated SQLite
+  database "succeeded" and wiped a real one). A restorable image must carry
+  contiguous `schema_migrations` metadata (version 1..N, N ≤ this build's
+  latest) and the v1 core tables with their columns. Genuinely older Muse
+  backups stay restorable; hand-made stubs, foreign databases, empty files
+  and newer-than-this-build images are refused before anything moves.
+- source and target referring to the same file (same path, symlink alias, or
+  hard link) are **always refused**, `--force` included — the old ordering
+  deleted the backup in that case.
+- **the swap parks before it commits**: the previous target AND its WAL/SHM
+  sidecars are renamed to a `.restore-previous-*` set, the validated copy is
+  renamed in, and only then is the parked set discarded. Any failure at or
+  after the swap renames the parked set back — post-swap failures (including
+  a non-regular `<target>-wal` like a directory, which is refused BEFORE any
+  move) restore the original bytes and sidecars instead of reporting a
+  failure that destroyed the target; if even the undo fails, the error names
+  the parked copy for manual recovery. The database+sidecar set is not one
+  atomic object — consistency rests on the stop requirement plus park/undo.
+- `--force` live replacement requires the **application to be stopped**: a
+  running server keeps the WAL open and would rewrite the file after the swap.
+  Stop the server, swap, restart.
+
+**What each backup preserves:** `db:backup` snapshots the SQLite database only —
+memories, sessions, tool-call audit. The Forge workspace under `WORKSPACE_ROOT`
+(job records, staged bytes, approved version files) is NOT inside the database:
+preserve it as a separate file backup of that directory (it is plain files).
+Restoring one without the other is a valid choice — the runbook's recovery
+banner and `recovery/state` endpoints surface the mismatch honestly.
 
 Freshness without grepping logs: `curl -fsS localhost:8787/api/health | jq .alerts.backup`
 reports the newest next-to-DB snapshot's age and an `ok`/`stale`/`missing` state
@@ -100,8 +133,11 @@ reports the newest next-to-DB snapshot's age and an `ok`/`stale`/`missing` state
 directories are that cron's own bookkeeping).
 
 **Drill:** `pnpm backup:drill` performs seed → backup → destroy → restore →
-record-parity verification plus the clobber-guard refusal, in a throwaway temp
-directory — safe to run any time, and it runs on every CI push. It prints its own
+record-parity verification, plus the clobber-guard refusal and the four
+destructive-restore regressions the beta review reproduced (corrupt backup +
+force preserves the target bytes; force + source==target refused), in a
+throwaway temp directory — safe to run any time, and it runs on every CI push.
+It prints its own
 restore+verify timing with a warning: a single local file restoring in
 milliseconds is **not** evidence for the hosted ≤4h recovery-time target (§8);
 that target is untested and effectively unassigned until a deployment exists.
@@ -110,24 +146,37 @@ that target is untested and effectively unassigned until a deployment exists.
 
 The code-side seam (D042): set `FORGE_WORKER_WRAPPER` to an **absolute executable path**; every
 Forge CLI launch becomes `<wrapper> <museBin> <args...>` with `cwd=<job staging dir>`, and the
-server refuses boot unless `<wrapper> node -e 0` exits 0 (pass-through proven at startup, not
-assumed). The child env is an allowlist (`@mml/shared` child policy + three test seams); no
-credentials are inherited - the provider API key goes to the child over stdin.
+server gates boot on TWO real probes of the wrapper — pass-through (`<wrapper> node -e 0`) AND,
+since the beta fix (KI-49), a **staging-access probe**: it creates a 0700 scratch dir + 0600
+prompt file inside `<WORKSPACE_ROOT>/forge/.wrapper-probe/`, then runs the wrapper with
+cwd = that dir to read the prompt and write inside it — the exact accesses every generation
+performs. A wrapper failing either probe refuses boot with the wrapper path in the error
+(pass-through and staging access proven at startup, not assumed). The child env is an
+allowlist (`@mml/shared` child policy + three test seams); no credentials are inherited -
+the provider API key goes to the child over stdin. **Both probes spawn under exactly that
+scrubbed env** (`forgeChildEnv`, the same construction as the real launch - beta review
+fix), so a probe passing means the launch passes: a wrapper must be self-contained - it
+carries its own configuration (embedded arguments or a config file it reads) and must NOT
+depend on server-only variables like `DOCKER_HOST`; the server does not forward extra
+environment to wrappers. A wrapper that needs stripped configuration is now refused at
+boot instead of dying mid-generation (pinned by a sentinel regression test).
 
-What the child must be able to do, verified from the launch path (runner.ts:1223/1268,
-workspace.ts:510): **read+execute** the muse CLI and node, **read** `prompt.txt` (mode 0600,
-server-owned), **write** inside the job staging dir (mode **0700**, server-owned). That last
-line is why a naive `setpriv --reuid <other-user>` wrapper fails: boot succeeds (the probe
-touches none of it) but the first generation dies EACCES inside the CLI and the job surfaces as
-interrupted - recorded as KI-49; server-side worker-group ACL support is queued post-judging.
+What the child must be able to do, verified from the launch path (runner.ts prompt-file/staging
+calls, fs-utils `ensurePrivateDirectory`/`writePrivateFile`): **read+execute** the muse CLI and
+node, **read** `prompt.txt` (mode 0600, server-owned), **write** inside the job staging dir
+(mode **0700**, server-owned). A naive `setpriv --reuid <other-user>` wrapper cannot do the
+last two — historically that booted and died EACCES mid-job (KI-49); the staging probe now
+**refuses such a wrapper at boot** instead. The published security.md no longer carries that
+recipe; server-side worker-group ACL support stays queued (KI-49 / register C-13, owner call).
 
 Provisioning paths that work today (no code change):
 
 1. **Container-launcher wrapper (strongest).** The wrapper `exec`s your container runtime with
    the staging path bind-mounted and the container uid **mapped to the server euid** (same-uid
    bind-mount keeps the 0700/0600 tree writable while the namespace isolates everything else:
-   read-only root, dropped capabilities, no host network). The startup probe exercises the whole
-   launcher (it must run `node -e 0` to completion), so a misconfigured runtime refuses boot.
+   read-only root, dropped capabilities, no host network). The startup probes exercise the whole
+   launcher end to end — `node -e 0` AND staging read/write inside the real workspace tree —
+   so a misconfigured runtime refuses boot, not the first generation.
 2. **`systemd-run` scope wrapper (partial, no uid change).**
    `#!/bin/sh` + `exec systemd-run --wait --pipe --user-slice ... --property=... "$@"` per your
    policy (cgroup/limits/temp isolation). Same uid, so the staging tree stays writable - this
@@ -135,11 +184,13 @@ Provisioning paths that work today (no code change):
    user-isolation goal. State that honestly in your deployment notes.
 
 Verification after wiring either path:
-- restart the server and confirm it booted (a failed wrapper probe aborts boot with the wrapper
-  path in the error - that is the fail-fast contract working, see `resolveWorkerWrapper`);
+- restart the server and confirm it booted (a failed pass-through OR staging-access probe
+  aborts boot with the wrapper path in the error - that is the fail-fast contract working,
+  see `resolveWorkerWrapper` + `probeWorkerStagingAccess`);
 - run one generation end to end; job completes, promoted version lands, staging removed;
 - confirm the worker's actual identity from outside: `ps -o user=,uid= -p $(pgrep -f <museBin>)`
-  during a generation - expect the mapped/container identity, not a surprise;
+  during a generation - expect the mapped/container identity, not a surprise (same-uid scope
+  wrappers show the server uid - that is the honest partial posture, see 2);
 - misconfiguration is loud by design: interrupted job + the recovery banner (P0 #3), never a
   silently unwrapped child.
 

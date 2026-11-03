@@ -68,7 +68,9 @@ memory-core remainder in §3 is now closed (traversal, error catalogue, idempote
 tool contract, and an MCP (stdio) surface over the SAME registry exist. List traversal is
 uniform (`limit`/`offset` + filter-wide `total` on memories, review queue, and sessions —
 the sessions `total` was fixed from page-length to a real COUNT, 2026-10-30), and errors are
-machine-readable via a versioned catalogue (`GET /api/errors`, `catalog_version: 2`, mirrored
+machine-readable via a versioned catalogue (`GET /api/errors`, `catalog_version: 3` — the
+beta lockstep bump of 31 Oct added the KI-43 inline codes plus the sixth found live,
+the 413 class, and the `bad_request` parse fix, one bump; 53 entries / 52 codes, mirrored
 in `/api/meta.errors`; tests compare live responses against published entries, so mapping
 drift fails CI — D048, and the two v1 asymmetries were fixed with v2 the same week — D054). `Idempotency-Key` replay (24h window, SQLite-backed, first-wins)
 covers `POST /api/memories` and Forge generation — D049; §3's named remainders are closed.
@@ -403,7 +405,7 @@ Sizes: S = hours, M = days, L = multi-day.
 | # | Gap | Evidence (this doc) | Roadmap ref | Size | Status |
 |---|---|---|---|---|---|
 | G-1 | `state_corrupt` user-facing export/repair flow | §6 | [NEXT_STEPS P0 #3](../NEXT_STEPS.md); §8 recovery | M | **Closed** (PRs #32/#33, 2026-10-30) |
-| G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | **Partial** (wrapper seam + fail-fast probe + setpriv recipe, D042; operator provisioning remains, 2026-10-30; KI-49 31 Oct: uid-changing wrapper blocked by staging-0700/prompt-0600 - runbook paths today, ACL fix queued post-judging) |
+| G-2 | Forge worker isolation (dedicated OS user/container) | §6, [forge/child-env.ts](../../apps/server/src/forge/child-env.ts) | [NEXT_STEPS P0 #4](../NEXT_STEPS.md); §5 controls | L | **Partial** (wrapper seam + fail-fast probe, D042; operator provisioning remains, 2026-10-30. Beta 31 Oct, KI-49 trap defused: the boot probe now exercises staging write + 0600 prompt read THROUGH the wrapper (`probeWorkerStagingAccess`) so uid-changing wrappers refuse boot; unusable setpriv recipe removed from security.md, same-uid default posture stated plainly; true uid isolation awaits ACL owner call, C-13) |
 | G-3 | Record contract gaps: `revision`, `actor`, `proposed` state (record-level only; actors already exist on history entries) | §2 | §6 "Establish the record contract" | M | **Closed** (migration v7 + D038, 2026-10-30) |
 | G-4 | No memory export/import with schema version + round-trip | §2 | §6 "Make changes safe"; G3 | M | **Closed** (envelope + D039, 2026-10-30) |
 | G-5 | No MCP server; no versioned shared contract or conformance tests | §3 | §4 P0 row; G2 | L | **Closed** (MCP stdio surface + TOOL_CONTRACT_VERSION + conformance tests, D043, 2026-10-30) |

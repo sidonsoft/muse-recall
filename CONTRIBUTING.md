@@ -41,9 +41,8 @@ to report it privately.
 - PRs into `integration` are squash-merged, so each PR becomes one commit.
   Give your PR a clear title; it becomes the commit message.
 - Tested batches are promoted from `integration` to `main` in one reviewed PR.
-  **Judging-window exception (30 Oct–post-judging):** while the submission is
-  under review, promotions to `main` are paused — `main` is the frozen judge
-  entry at `c32d03b`; everything lands on `integration` only. The freeze
-  mechanics and sentinel live in
+  On 4 November 2026 the owner authorized promotion of the verified full beta and README
+  to `main` as v0.1.0. Earlier submission tags and research evidence stay frozen.
+  Historical freeze mechanics are recorded in
   [SUBMISSION_PRESERVATION.md](docs/release/SUBMISSION_PRESERVATION.md).
 - Nothing is merged automatically.

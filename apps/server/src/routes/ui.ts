@@ -1,6 +1,6 @@
 import { AgentError, type AgentRuntime, CollectingHandler } from '@mml/agent-core';
 import type { MemoryEngine } from '@mml/memory-engine';
-import type { ModelProvider } from '@mml/shared';
+import { apiFailure, type ModelProvider } from '@mml/shared';
 import {
   buildPlanningPrompt,
   GenerateUiInputSchema,
@@ -108,13 +108,11 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
     }
 
     if (!surface) {
-      return reply.status(502).send({
-        ok: false,
-        error: {
-          code: 'ui_generation_failed',
-          message: `Muse did not return a valid interface: ${lastError}`,
-        },
-      });
+      return reply
+        .status(502)
+        .send(
+          apiFailure('ui_generation_failed', `Muse did not return a valid interface: ${lastError}`),
+        );
     }
 
     // A short assistant note anchors the surface in the transcript.
@@ -162,19 +160,14 @@ export function registerUiRoutes(app: FastifyInstance, dependencies: UiRouteDepe
 
     const record = store.get(surfaceId);
     if (!record || record.session_id !== id) {
-      return reply.status(404).send({
-        ok: false,
-        error: { code: 'surface_not_found', message: 'No such interface in this session.' },
-      });
+      return reply
+        .status(404)
+        .send(apiFailure('surface_not_found', 'No such interface in this session.'));
     }
     if (record.status === 'submitted') {
-      return reply.status(409).send({
-        ok: false,
-        error: {
-          code: 'surface_already_submitted',
-          message: 'This interface was already submitted.',
-        },
-      });
+      return reply
+        .status(409)
+        .send(apiFailure('surface_already_submitted', 'This interface was already submitted.'));
     }
 
     let normalised: ReturnType<typeof validateSubmission>;

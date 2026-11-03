@@ -6,6 +6,8 @@ import {
   ForgeArtifactSchema,
   type ForgeDiff,
   ForgeDiffSchema,
+  type ForgeGenerationList,
+  ForgeGenerationListSchema,
   type ForgeJob,
   ForgeJobSchema,
   type ForgeProjectView,
@@ -20,6 +22,36 @@ import {
   ForgeStateSchema,
   type HealthResponse,
   HealthResponseSchema,
+  MEDIA_AUDIO_MAX_BYTES,
+  MEDIA_VIDEO_MAX_BYTES,
+  type MediaAssetList,
+  MediaAssetListSchema,
+  type MediaClipResponse,
+  MediaClipResponseSchema,
+  type MediaJob,
+  MediaJobListSchema,
+  MediaJobSchema,
+  type MediaProposalItem,
+  type MediaProposalResult,
+  MediaProposalResultSchema,
+  type MediaSegmentResponse,
+  MediaSegmentResponseSchema,
+  type MediaSourceList,
+  MediaSourceListSchema,
+  type MediaSourceMime,
+  MediaSourceRecordSchema,
+  type MediaSourceRecordView,
+  type MediaSuggestResponse,
+  MediaSuggestResponseSchema,
+  type MediaTranscribeMode,
+  MediaTranscribeRequestSchema,
+  type MediaTranscript,
+  MediaTranscriptSchema,
+  MediaVersionListSchema,
+  MediaVersionRecordSchema,
+  type MediaVersionRecordView,
+  type MediaVisualReviewResponse,
+  MediaVisualReviewResponseSchema,
   type Memory,
   type MemoryCorrectionRequestInput,
   type MemoryCorrectionResult,
@@ -178,6 +210,25 @@ const DeleteResultSchema = z.object({ id: z.uuid(), deleted: z.literal(true) });
 const HistoryResultSchema = z.object({ entries: z.array(z.unknown()) });
 const ProjectListSchema = z.object({ items: z.array(z.unknown()) });
 
+/**
+ * A decision the user selected, pinned to the revision the screen displayed.
+ * The server resolves the text; the client only ever names id and revision.
+ */
+export interface DecisionSelection {
+  memory_id: string;
+  expected_revision?: number;
+}
+
+/**
+ * A selection pinned to the revision the screen is displaying. Required by
+ * visual review: an unpinned id would let an in-place edit quietly change the
+ * subject of the feedback.
+ */
+export interface PinnedDecisionSelection {
+  memory_id: string;
+  expected_revision: number;
+}
+
 export interface MemoryListParams {
   project_id?: string;
   all_projects?: boolean;
@@ -197,6 +248,87 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
   }
   const encoded = search.toString();
   return encoded.length > 0 ? `?${encoded}` : '';
+}
+
+/**
+ * Raw (non-JSON) fetch for media bytes. The JSON `request` helper cannot be
+ * used here: byte responses have no envelope, and browser-initiated
+ * `<audio src>`/`<a href>` requests cannot attach the bearer header, so the
+ * bytes have to come through this client to work under ACCESS_TOKEN.
+ */
+export interface SourceBytes {
+  blob: Blob;
+  mime: string;
+  byteLength: number;
+}
+
+async function requestBytes(path: string, init: RequestInit): Promise<SourceBytes> {
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      headers: {
+        ...authorizationHeader(),
+        ...((init.headers as Record<string, string>) ?? {}),
+      },
+    });
+  } catch (cause) {
+    throw new ApiError(
+      'network_unreachable',
+      'Cannot reach the Muse Recall server. Is it running on port 8787?',
+      0,
+      { cause },
+    );
+  }
+
+  if (!response.ok) {
+    // Error responses keep the normal envelope, so the failure code and
+    // message survive into the panel instead of a bare HTTP status.
+    const text = await response.text().catch(() => '');
+    let code = 'request_failed';
+    let message = `The server returned HTTP ${response.status}.`;
+    try {
+      const envelope = JSON.parse(text) as ApiEnvelope<unknown>;
+      if (envelope !== null && typeof envelope === 'object' && envelope.ok === false) {
+        code = envelope.error.code;
+        message = envelope.error.message;
+      }
+    } catch {
+      // Non-JSON error body: keep the generic message.
+    }
+    throw new ApiError(code, message, response.status);
+  }
+
+  const mime = (response.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
+  const maxBytes = mime.startsWith('audio/')
+    ? MEDIA_AUDIO_MAX_BYTES
+    : mime.startsWith('video/')
+      ? MEDIA_VIDEO_MAX_BYTES
+      : null;
+  if (maxBytes === null) {
+    throw new ApiError(
+      'unsafe_content_type',
+      `Refused a non-media response type "${mime === '' ? 'unknown' : mime}".`,
+      response.status,
+    );
+  }
+  const declared = Number(response.headers.get('content-length') ?? 'nan');
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new ApiError(
+      'source_too_large',
+      `The server announced ${declared} bytes, above the ${String(maxBytes)} byte limit.`,
+      response.status,
+    );
+  }
+  const blob = await response.blob();
+  if (blob.size > maxBytes) {
+    throw new ApiError(
+      'source_too_large',
+      `The response was ${String(blob.size)} bytes, above the ${String(maxBytes)} byte limit.`,
+      response.status,
+    );
+  }
+  return { blob, mime, byteLength: blob.size };
 }
 
 export const api = {
@@ -280,6 +412,27 @@ export const api = {
       '/api/memories',
       { method: 'POST', body: JSON.stringify(input) },
       (data) => MemoryCreateResultSchema.parse(data),
+    ),
+
+  proposeMemory: (input: MemoryCreateRequest) =>
+    request<MemoryCreateResult>(
+      '/api/memories/proposals',
+      { method: 'POST', body: JSON.stringify(input) },
+      (data) => MemoryCreateResultSchema.parse(data),
+    ),
+
+  acceptMemory: (id: string, reason?: string) =>
+    request<Memory>(
+      `/api/memories/${id}/accept`,
+      { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) },
+      (data) => MemoryCreateResultSchema.shape.memory.parse(data),
+    ),
+
+  rejectMemory: (id: string, reason?: string) =>
+    request<{ id: string; deleted: true }>(
+      `/api/memories/${id}/reject`,
+      { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) },
+      (data) => DeleteResultSchema.parse(data),
     ),
 
   updateMemory: (id: string, input: MemoryUpdateInput) =>
@@ -417,7 +570,12 @@ export const api = {
       (data) => ForgeJobSchema.parse(data),
     ),
 
-  forgeModify: (projectId: string, changeRequest: string, screenshotDataUrl?: string | null) =>
+  forgeModify: (
+    projectId: string,
+    changeRequest: string,
+    screenshotDataUrl?: string | null,
+    decisions?: DecisionSelection[],
+  ) =>
     request<ForgeJob>(
       `/api/forge/projects/${projectId}/modify`,
       {
@@ -425,9 +583,55 @@ export const api = {
         body: JSON.stringify({
           request: changeRequest,
           ...(screenshotDataUrl ? { screenshot_data_url: screenshotDataUrl } : {}),
+          ...(decisions && decisions.length > 0 ? { decisions } : {}),
         }),
       },
       (data) => ForgeJobSchema.parse(data),
+    ),
+
+  /**
+   * Batch E — prior generations with the decision reference each was created
+   * with, read from the server's own records. Read-only: listing them restages
+   * and re-approves nothing.
+   */
+  forgeGenerations: (projectId: string) =>
+    request<ForgeGenerationList>(
+      `/api/forge/projects/${projectId}/generations`,
+      { method: 'GET' },
+      (data) => ForgeGenerationListSchema.parse(data),
+    ),
+
+  /**
+   * Batch E — advisory screenshot review. The selection pins each decision to
+   * the revision this screen is displaying, so an in-place edit between listing
+   * and review is a conflict rather than a silent change of subject.
+   */
+  forgeVisualReview: (
+    projectId: string,
+    input: {
+      screenshotDataUrl: string;
+      decisions: PinnedDecisionSelection[];
+      jobId?: string | null;
+      /**
+       * One review is a paid vision call, so the caller names it: the same
+       * captured frame against the same pinned selection replays the recorded
+       * answer instead of spending a second call.
+       */
+      idempotencyKey?: string;
+    },
+  ) =>
+    request<MediaVisualReviewResponse>(
+      `/api/forge/projects/${projectId}/visual-review`,
+      {
+        method: 'POST',
+        headers: input.idempotencyKey ? { 'idempotency-key': input.idempotencyKey } : undefined,
+        body: JSON.stringify({
+          screenshot_data_url: input.screenshotDataUrl,
+          decisions: input.decisions,
+          ...(input.jobId ? { job_id: input.jobId } : {}),
+        }),
+      },
+      (data) => MediaVisualReviewResponseSchema.parse(data),
     ),
 
   forgeJob: (jobId: string) =>
@@ -477,6 +681,229 @@ export const api = {
 
   forgePreviewUrl: (projectId: string, jobId?: string) =>
     apiUrl(`/api/forge/projects/${projectId}/preview${jobId ? `?job=${jobId}` : ''}`),
+
+  // --- Media (Batch B) ----------------------------------------------------
+
+  mediaAssets: (projectId: string) =>
+    request<MediaAssetList>(`/api/forge/projects/${projectId}/media`, { method: 'GET' }, (data) =>
+      MediaAssetListSchema.parse(data),
+    ),
+
+  mediaVersions: (projectId: string, assetId: string) =>
+    request<MediaVersionRecordView[]>(
+      `/api/forge/projects/${projectId}/media/${assetId}`,
+      { method: 'GET' },
+      (data) => MediaVersionListSchema.parse(data).items,
+    ),
+
+  mediaUpload: (
+    projectId: string,
+    input: { mime: string; dataBase64: string; sourceText?: string },
+  ) =>
+    request<MediaVersionRecordView>(
+      `/api/forge/projects/${projectId}/media/upload`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          mime: input.mime,
+          data_base64: input.dataBase64,
+          ...(input.sourceText !== undefined ? { source_text: input.sourceText } : {}),
+        }),
+      },
+      (data) => MediaVersionRecordSchema.parse(data),
+    ),
+
+  mediaGenerate: (projectId: string, prompt: string, size?: string) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/generate`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ prompt, ...(size !== undefined ? { size } : {}) }),
+      },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaEdit: (
+    projectId: string,
+    input: { prompt: string; assetId: string; version?: number; size?: string },
+  ) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/edit`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: input.prompt,
+          parent: {
+            asset_id: input.assetId,
+            ...(input.version !== undefined ? { version: input.version } : {}),
+          },
+          ...(input.size !== undefined ? { size: input.size } : {}),
+        }),
+      },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaJobs: (projectId: string) =>
+    request<{ items: MediaJob[]; issues?: unknown[] }>(
+      `/api/forge/projects/${projectId}/media/jobs`,
+      { method: 'GET' },
+      (data) => MediaJobListSchema.parse(data),
+    ),
+
+  mediaJob: (projectId: string, jobId: string) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/jobs/${jobId}`,
+      { method: 'GET' },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaCancelJob: (projectId: string, jobId: string) =>
+    request<MediaJob>(
+      `/api/forge/projects/${projectId}/media/jobs/${jobId}/cancel`,
+      { method: 'POST' },
+      (data) => MediaJobSchema.parse(data),
+    ),
+
+  mediaCurate: (
+    projectId: string,
+    assetId: string,
+    version: number,
+    action: 'approve' | 'reject',
+  ) =>
+    request<MediaVersionRecordView>(
+      `/api/forge/projects/${projectId}/media/${assetId}/versions/${version}/${action}`,
+      { method: 'POST' },
+      (data) => MediaVersionRecordSchema.parse(data),
+    ),
+
+  mediaBytesUrl: (projectId: string, assetId: string, version: number) =>
+    apiUrl(`/api/forge/projects/${projectId}/media/${assetId}/versions/${version}/bytes`),
+
+  // --- Voice and video sources (Batch D) ----------------------------------
+
+  mediaSources: (projectId: string) =>
+    request<MediaSourceList>(
+      `/api/forge/projects/${projectId}/media/sources`,
+      { method: 'GET' },
+      (data) => MediaSourceListSchema.parse(data),
+    ),
+
+  mediaSourceUpload: (
+    projectId: string,
+    input: {
+      mime: MediaSourceMime;
+      dataBase64: string;
+      origin?: 'upload' | 'recording';
+      originalName?: string;
+    },
+  ) =>
+    request<MediaSourceRecordView>(
+      `/api/forge/projects/${projectId}/media/sources`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          mime: input.mime,
+          data_base64: input.dataBase64,
+          ...(input.origin !== undefined ? { origin: input.origin } : {}),
+          ...(input.originalName !== undefined ? { original_name: input.originalName } : {}),
+        }),
+      },
+      (data) => MediaSourceRecordSchema.parse(data),
+    ),
+
+  mediaSourceTranscribe: (
+    projectId: string,
+    sourceId: string,
+    input: { mode?: MediaTranscribeMode; languageBias?: string[]; keywords?: string[] } = {},
+  ) =>
+    request<MediaTranscript>(
+      `/api/forge/projects/${projectId}/media/sources/${sourceId}/transcribe`,
+      {
+        method: 'POST',
+        body: JSON.stringify(
+          MediaTranscribeRequestSchema.parse({
+            ...(input.mode !== undefined ? { mode: input.mode } : {}),
+            ...(input.languageBias !== undefined ? { language_bias: input.languageBias } : {}),
+            ...(input.keywords !== undefined ? { keywords: input.keywords } : {}),
+          }),
+        ),
+      },
+      (data) => MediaTranscriptSchema.parse(data),
+    ),
+
+  mediaSourceClip: (projectId: string, sourceId: string, prompt?: string) =>
+    request<MediaClipResponse>(
+      `/api/forge/projects/${projectId}/media/sources/${sourceId}/clip`,
+      { method: 'POST', body: JSON.stringify(prompt !== undefined ? { prompt } : {}) },
+      (data) => MediaClipResponseSchema.parse(data),
+    ),
+
+  mediaSourcePropose: (projectId: string, sourceId: string, proposals: MediaProposalItem[]) =>
+    request<MediaProposalResult>(
+      `/api/forge/projects/${projectId}/media/sources/${sourceId}/proposals`,
+      { method: 'POST', body: JSON.stringify({ proposals }) },
+      (data) => MediaProposalResultSchema.parse(data),
+    ),
+
+  /**
+   * Fetch a source's bytes through this client (bearer header included when a
+   * token is stored) so playback and download work in both trust models. The
+   * returned blob is turned into a `blob:` object URL by the caller; no token
+   * ever appears in a URL.
+   */
+  mediaSourceBytes: (projectId: string, sourceId: string) =>
+    requestBytes(`/api/forge/projects/${projectId}/media/sources/${sourceId}/bytes`, {
+      method: 'GET',
+    }),
+
+  // --- Visual references and SAM cutouts (Batch C) ------------------------
+
+  mediaSuggest: (
+    projectId: string,
+    input: { assetId: string; version?: number; guidance?: string; count?: number },
+  ) =>
+    request<MediaSuggestResponse>(
+      `/api/forge/projects/${projectId}/media/suggest`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          asset_id: input.assetId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+          ...(input.guidance !== undefined ? { guidance: input.guidance } : {}),
+          ...(input.count !== undefined ? { count: input.count } : {}),
+        }),
+      },
+      (data) => MediaSuggestResponseSchema.parse(data),
+    ),
+
+  mediaSegment: (
+    projectId: string,
+    input: { assetId: string; version?: number; concept: string },
+  ) =>
+    request<MediaSegmentResponse>(
+      `/api/forge/projects/${projectId}/media/segment`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          asset_id: input.assetId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+          concept: input.concept,
+        }),
+      },
+      (data) => MediaSegmentResponseSchema.parse(data),
+    ),
+
+  mediaCutout: (projectId: string, segmentId: string, matchIndex: number) =>
+    request<MediaVersionRecordView>(
+      `/api/forge/projects/${projectId}/media/segments/${segmentId}/cutout`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          match_index: matchIndex,
+        }),
+      },
+      (data) => MediaVersionRecordSchema.parse(data),
+    ),
 
   // --- Tools --------------------------------------------------------------
 

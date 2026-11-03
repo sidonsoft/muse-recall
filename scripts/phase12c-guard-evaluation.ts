@@ -127,6 +127,7 @@ function decisionMemory(engine: MemoryEngine, projectId: string, content: string
     source: { session_id: null, reference: 'phase12c-evaluation' },
     confidence: 0.95,
     validation_status: 'verified',
+    expires_at: null,
     tags: ['phase12c'],
   }).memory;
 }

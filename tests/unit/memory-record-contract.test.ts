@@ -5,6 +5,7 @@ import {
   MemoryNotFoundError,
 } from '../../packages/memory-engine/src/errors.js';
 import { MIGRATIONS } from '../../packages/memory-engine/src/migrations.js';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 /**
  * Roadmap §6 record contract: every memory carries an explicit `revision`
@@ -213,6 +214,7 @@ describe('engine — record contract and proposals', () => {
     const engine = new MemoryEngine(db);
 
     const created = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: PROJECT_ID,
@@ -257,6 +259,7 @@ describe('engine — record contract and proposals', () => {
     const engine = new MemoryEngine(db);
 
     const proposal = engine.propose({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: PROJECT_ID,
@@ -281,6 +284,7 @@ describe('engine — record contract and proposals', () => {
 
     // Idempotency both ways: same content twice does not stack up...
     const replay = engine.propose({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: PROJECT_ID,
@@ -308,6 +312,7 @@ describe('engine — record contract and proposals', () => {
     const engine = new MemoryEngine(db);
 
     const proposal = engine.propose({
+      ...CREATE_DEFAULTS,
       type: 'preference',
       scope: 'project',
       project_id: PROJECT_ID,
@@ -345,6 +350,7 @@ describe('engine — record contract and proposals', () => {
     // a conflict, not a silent transition.
     expect(() => engine.acceptProposal(proposal.memory.id)).toThrow(MemoryNotFoundError);
     const established = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: PROJECT_ID,
@@ -362,6 +368,7 @@ describe('engine — record contract and proposals', () => {
     const engine = new MemoryEngine(db);
 
     const old = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'constraint',
       scope: 'project',
       project_id: PROJECT_ID,
@@ -370,6 +377,7 @@ describe('engine — record contract and proposals', () => {
     });
     const correction = engine.correct(
       {
+        ...CORRECTION_DEFAULTS,
         type: 'constraint',
         scope: 'project',
         project_id: PROJECT_ID,
@@ -389,6 +397,7 @@ describe('engine — record contract and proposals', () => {
 
     // Expiry is a system change, recorded as such on the row and in history.
     const expiring = engine.create({
+      ...CREATE_DEFAULTS,
       type: 'contextual_fact',
       scope: 'project',
       project_id: PROJECT_ID,

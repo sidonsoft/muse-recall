@@ -12,7 +12,8 @@ import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { buildForgePrompt } from '../../apps/server/src/forge/prompt.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
-import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
+import { ForgeWorkspace, MAX_HTML_BYTES } from '../../apps/server/src/forge/workspace.js';
+import { MediaAssetStore } from '../../apps/server/src/media/assets.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
 import {
   READING_NOOK_MEMORIES,
@@ -96,6 +97,8 @@ async function harness(
   runtimeCheck: (html: string) => Promise<{
     ok: boolean;
     errors: string[];
+    /** Loads the allowlist permitted but the network refused. */
+    remote_failures?: string[];
     browser?: string | null;
     browser_selection?: ForgeRuntimeBrowserSelection;
   }> = async () => ({
@@ -123,6 +126,7 @@ async function harness(
     maxRuntimeMs: limits.maxRuntimeMs ?? 10_000,
     maxCalls: limits.maxCalls ?? 10,
     maxInputTokens: 10_000_000,
+    mediaAssets: new MediaAssetStore(workspace),
     reasoningEffort: 'low',
     runtimeCheck,
     ...(fallback || extra.fallbackKey
@@ -185,17 +189,24 @@ async function startModify(app: FastifyInstance, id = 'demo-game') {
   return response.json().data.id as string;
 }
 
-async function job(app: FastifyInstance, jobId: string) {
+/** The slice of a job payload these tests read, fields named as the API sends them. */
+type JobView = {
+  id: string;
+  status: string;
+  version: number | null;
+  base_version: number | null;
+  validation: { ok: boolean; issues: string[] } | null;
+  usage: { calls: number } | null;
+  model_observed: string | null;
+  memory_ids: string[];
+  error: string | null;
+  logs: string[];
+};
+
+async function job(app: FastifyInstance, jobId: string): Promise<JobView> {
   const response = await app.inject({ method: 'GET', url: `/api/forge/jobs/${jobId}` });
   expect(response.statusCode).toBe(200);
-  return response.json().data as {
-    status: string;
-    version: number | null;
-    validation: { ok: boolean; issues: string[] } | null;
-    usage: { calls: number } | null;
-    model_observed: string | null;
-    memory_ids: string[];
-  };
+  return response.json().data as JobView;
 }
 
 async function waitForFinish(app: FastifyInstance, jobId: string) {
@@ -225,6 +236,73 @@ function previewStorageShim(html: string): string {
 }
 
 describe('forge workflow', () => {
+  it('embeds approved media into the approved artifact and verifies it', async () => {
+    const h = await harness();
+    await createProject(h.app, 'media-forge');
+    const assets = new MediaAssetStore(new ForgeWorkspace(h.root));
+    const record = await assets.createAsset('media-forge', {
+      kind: 'image',
+      mime: 'image/png',
+      bytes: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    });
+    await assets.approve('media-forge', record.asset_id, record.version);
+
+    const jobId = await startGenerate(h.app, 'media-forge');
+    expect((await waitForFinish(h.app, jobId)).status).toBe('succeeded');
+    await writeFile(
+      join(h.root, 'forge', 'media-forge', 'staging', jobId, 'index.html'),
+      `<html><body><h1>Media</h1><img alt="dot" src="muse-asset://${record.asset_id}/v${String(record.version)}"></body></html>`,
+    );
+
+    const approved = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${jobId}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approved.statusCode).toBe(200);
+
+    const stateResponse = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/media-forge',
+    });
+    const state = stateResponse.json().data.state as {
+      versions: Array<{
+        version: number;
+        media: { embedded: Array<{ assetId: string; sha256Hex: string }> } | null;
+      }>;
+    };
+    expect(state.versions[0]?.media?.embedded).toHaveLength(1);
+    expect(state.versions[0]?.media?.embedded[0]?.assetId).toBe(record.asset_id);
+
+    const artifact = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/media-forge/artifact',
+    });
+    expect(artifact.statusCode).toBe(200);
+    expect(artifact.body).not.toContain('muse-asset://');
+
+    const verification = await h.app.inject({
+      method: 'GET',
+      url: '/api/forge/projects/media-forge/artifact/verification',
+    });
+    expect(verification.statusCode).toBe(200);
+    const report = verification.json().data as {
+      ok: boolean;
+      embedded: Array<{ assetId: string }>;
+      issues: string[];
+    };
+    expect(report.ok).toBe(true);
+    expect(report.issues).toEqual([]);
+    expect(report.embedded[0]?.assetId).toBe(record.asset_id);
+
+    const previewResponse = await preview(h.app, 'media-forge');
+    expect(previewResponse.statusCode).toBe(200);
+    expect(previewResponse.body).toContain('data:image/png;base64,');
+  });
+
   it('generates, previews, approves, modifies, and rolls back', async () => {
     const h = await harness();
     expect((await createProject(h.app)).statusCode).toBe(200);
@@ -625,7 +703,7 @@ describe('forge workflow', () => {
     const generated = await startGenerate(h.app);
     const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('failed');
-    expect((finished as { error: string }).error).toMatch(/fake failure|exited/);
+    expect(finished.error ?? '').toMatch(/fake failure|exited/);
   });
 
   it('rejects malformed generated HTML', async () => {
@@ -646,6 +724,9 @@ describe('forge workflow', () => {
       project_id: 'demo-game',
       content: 'The game is a colourful farmyard memory game for children with twelve cards.',
       confidence: 0.9,
+      source: { session_id: null, reference: null },
+      expires_at: null,
+      tags: [],
       validation_status: 'verified',
     });
     const generated = await startGenerate(h.app);
@@ -684,6 +765,60 @@ describe('forge workflow', () => {
 
     const after = await job(h.app, generated);
     expect(after.status).toBe('failed');
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('names the approved CDN when the game engine could not be fetched', async () => {
+    // Copied from what the real verifier returns when the permitted engine load
+    // fails (see pnpm verify:runtime): the browser's own errors are only
+    // "Phaser is not defined" plus a reason code with no host in it. A reviewer
+    // has to be told which host could not be reached, because that is the
+    // difference between a broken game and a machine with no network.
+    const engineFailure =
+      'A load the allowlist permitted failed (https://cdn.jsdelivr.net): net::ERR_UNSAFE_PORT. ' +
+      'An application that gets its engine from the approved CDN cannot be approved while that host is unreachable.';
+    const h = await harness('auto', {}, async () => ({
+      ok: false,
+      errors: [
+        'The application did not render visible content.',
+        'No canvas element was created.',
+        engineFailure,
+        'Failed to load resource: net::ERR_UNSAFE_PORT',
+        'Phaser is not defined',
+      ],
+      remote_failures: [engineFailure],
+    }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    await waitForFinish(h.app, generated);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(422);
+    const issues = approve.json().error.issues as string[];
+    expect(issues.join(' ')).toContain('https://cdn.jsdelivr.net');
+    expect(issues.join(' ')).toContain('approved CDN');
+    // Origin only: the path is the artifact's business, and a query string built
+    // from page data must not be echoed into a job record.
+    expect(issues.join(' ')).not.toContain('phaser.min.js');
+    for (const issue of issues) expect(issue.length).toBeLessThanOrEqual(300);
+
+    const recorded = await h.app.inject({ method: 'GET', url: `/api/forge/jobs/${generated}` });
+    const failed = recorded.json().data as {
+      status: string;
+      version: number | null;
+      approval_verification: { runtime: { errors: string[] } } | null;
+    };
+    expect(failed.status).toBe('failed');
+    expect(failed.version).toBeNull();
+    expect(failed.approval_verification?.runtime.errors.join(' ')).toContain(
+      'https://cdn.jsdelivr.net',
+    );
+
     const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
     expect(state.json().data.state.current_version).toBeNull();
   });
@@ -807,11 +942,9 @@ describe('forge workflow', () => {
     const h = await harness('quota-usage', {}, async () => ({ ok: true, errors: [] }), true);
     await createProject(h.app);
     const generated = await startGenerate(h.app);
-    const finished = (await waitForFinish(h.app, generated)) as unknown as {
-      usage: { calls: number };
-    };
+    const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('succeeded');
-    expect(finished.usage.calls).toBe(5);
+    expect(finished.usage?.calls).toBe(5);
   });
 
   it('does not let the fallback bypass validation or approval', async () => {
@@ -836,7 +969,7 @@ describe('forge workflow', () => {
     const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('succeeded');
     const detail = await job(h.app, generated);
-    expect((detail as { logs: string[] }).logs.join(' ')).toMatch(/retrying with fake-spark/);
+    expect(detail.logs.join(' ')).toMatch(/retrying with fake-spark/);
   });
 
   it('fails without a fallback key when the subscription is out of quota', async () => {
@@ -845,7 +978,7 @@ describe('forge workflow', () => {
     const generated = await startGenerate(h.app);
     const finished = await waitForFinish(h.app, generated);
     expect(finished.status).toBe('failed');
-    expect((finished as { error: string }).error).toMatch(/quota|429/i);
+    expect(finished.error ?? '').toMatch(/quota|429/i);
   });
 
   it('refuses a stale approval after another change lands', async () => {
@@ -1125,6 +1258,84 @@ describe('forge workflow', () => {
     expect(jobAfter.version).toBeNull();
   });
 
+  it('refuses approval when the staged source turned invalid after generation', async () => {
+    const h = await harness('auto', {}, async () => ({ ok: true, errors: [] }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+    // A post-generation rewrite replaces the validated file with a fragment
+    // that fails the structural gate (too small, no body). The stubbed
+    // runtime check would pass it, so only the resolved-bytes gate can stop it.
+    await writeFile(
+      join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html'),
+      '<h1>Unvalidated replacement</h1>',
+    );
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('invalid_staged');
+    expect(approve.json().error.issues.join(' ')).toMatch(/small|<body>/i);
+
+    // Nothing was promoted, and the job is left alone so a fixed staging
+    // file can still be approved later.
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+    const after = await job(h.app, generated);
+    expect(after.status).toBe('succeeded');
+    expect(after.version).toBeNull();
+  });
+
+  it('refuses approval when the resolved bytes exceed the inline script limit', async () => {
+    const h = await harness('auto', {}, async () => ({ ok: true, errors: [] }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+    const staged = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
+    const current = await readFile(staged, 'utf8');
+    await writeFile(staged, `${current}\n${'<script>const extra = 1;</script>\n'.repeat(40)}`);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('invalid_staged');
+    expect(approve.json().error.issues.join(' ')).toMatch(/Too many inline scripts/);
+
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
+  it('refuses approval when the resolved bytes exceed the HTML size limit', async () => {
+    const h = await harness('auto', {}, async () => ({ ok: true, errors: [] }));
+    await createProject(h.app);
+    const generated = await startGenerate(h.app);
+    expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
+    const staged = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
+    const current = await readFile(staged, 'utf8');
+    // Sized against the cap the code exports, not a number remembered here: the
+    // cap had to grow to fit a self-contained game (KI-53), so a fixture written
+    // beside the old value would silently stop testing anything.
+    await writeFile(staged, `${current}\n<!-- ${'x'.repeat(MAX_HTML_BYTES + 1_000)} -->\n`);
+
+    const approve = await h.app.inject({
+      method: 'POST',
+      url: `/api/forge/jobs/${generated}/approve`,
+      payload: { capture_memory: false },
+    });
+    expect(approve.statusCode).toBe(409);
+    expect(approve.json().error.code).toBe('invalid_staged');
+    expect(approve.json().error.issues.join(' ')).toMatch(/exceeds/);
+
+    const state = await h.app.inject({ method: 'GET', url: '/api/forge/projects/demo-game' });
+    expect(state.json().data.state.current_version).toBeNull();
+  });
+
   it('serialises concurrent approvals so only one base wins', async () => {
     const h = await harness();
     await createProject(h.app);
@@ -1286,20 +1497,24 @@ describe('forge workflow', () => {
     const stagedPreview = await preview(h.app, 'demo-game', generated);
     expect(stagedPreview.statusCode).toBe(200);
     const shimAt = stagedPreview.body.indexOf('data-forge-preview-storage');
-    const appScriptAt = stagedPreview.body.indexOf(
-      '<script src="https://cdn.jsdelivr.net/npm/phaser',
-    );
+    // The engine the artifact now carries, then the game's own script after it.
+    const engineAt = stagedPreview.body.indexOf('<script data-forge-vendor="phaser@3.80.1"');
+    const appScriptAt = stagedPreview.body.indexOf('new Phaser.Game');
     expect(shimAt).toBeGreaterThanOrEqual(0);
-    expect(appScriptAt).toBeGreaterThan(shimAt);
+    expect(engineAt).toBeGreaterThan(shimAt);
+    expect(appScriptAt).toBeGreaterThan(engineAt);
+    // Nothing in the served preview asks the network for the engine: the bytes
+    // being previewed carry it. KI-53.
+    expect(stagedPreview.body).not.toContain('cdn.jsdelivr.net');
 
     const csp = String(stagedPreview.headers['content-security-policy']);
     for (const directive of [
       'sandbox allow-scripts',
       "default-src 'none'",
-      "script-src 'unsafe-inline' https://cdn.jsdelivr.net",
+      "script-src 'unsafe-inline'",
       "style-src 'unsafe-inline'",
       'img-src data: blob:',
-      'connect-src https://cdn.jsdelivr.net',
+      "connect-src 'none'",
       "frame-ancestors 'self'",
       "base-uri 'none'",
       "form-action 'none'",
@@ -1307,6 +1522,9 @@ describe('forge workflow', () => {
     ]) {
       expect(csp).toContain(directive);
     }
+    // A document that carries its own engine is granted no remote origin. The
+    // wider grant survives only for artifacts that still reference the CDN.
+    expect(csp).not.toContain('cdn.jsdelivr.net');
     expect(csp).not.toContain('allow-same-origin');
 
     const stagedArtifact = await h.app.inject({
@@ -1497,6 +1715,9 @@ describe('forge workflow', () => {
       content: `Art direction: use a warm sunset palette. ${hostile}`,
       source: { session_id: null, reference: 'forge:hostile-test' },
       validation_status: 'verified',
+      confidence: 0.7,
+      expires_at: null,
+      tags: [],
     });
 
     const generated = await startGenerate(h.app);

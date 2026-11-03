@@ -15,7 +15,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { closeRelative } from '../../scripts/verify-phase17-strict';
+import { closeRelative } from './phase17-math.ts';
 
 const ROOT = join(import.meta.dirname, '../..');
 const TSX = join(ROOT, 'node_modules/tsx/dist/cli.mjs');
@@ -70,9 +70,14 @@ function sumsTree(): string {
     [`${P17}/out/open/prompts/open-01.txt`]: 'open prompt',
   };
   for (const [rel, content] of Object.entries(files)) put(root, rel, content);
-  const manifest = Object.keys(files)
+  const byPath = new Map(Object.entries(files));
+  const manifest = [...byPath.keys()]
     .sort()
-    .map((rel) => `${sha(files[rel])}  ${rel.slice(P17.length + 1)}`)
+    .map((rel) => {
+      const content = byPath.get(rel);
+      if (content === undefined) throw new Error(`${rel} has no recorded content`);
+      return `${sha(content)}  ${rel.slice(P17.length + 1)}`;
+    })
     .join('\n');
   put(root, `${P17}/SHA256SUMS`, `${manifest}\n`);
   return root;
@@ -211,6 +216,21 @@ describe('Phase 17 strict lock and statistics (verify-phase17-strict.ts)', () =>
 });
 
 describe('relative-only statistical comparison', () => {
+  it('the shared module and the locked script agree on the comparison itself', () => {
+    // The locked script keeps its own copy of this helper (it cannot import:
+    // its bytes are protocol-hashed). If either copy changes the maths, this
+    // fails rather than letting the test suite and the gate disagree.
+    const extract = (path: string): string => {
+      const text = readFileSync(path, 'utf8');
+      const start = text.indexOf('export function closeRelative');
+      if (start === -1) throw new Error(`${path} no longer defines closeRelative`);
+      return text.slice(start, text.indexOf('\n}', start) + 2);
+    };
+    const locked = extract(join(ROOT, 'scripts', 'verify-phase17-strict.ts'));
+    const shared = extract(join(ROOT, 'tests', 'research', 'phase17-math.ts'));
+    expect(shared).toBe(locked);
+  });
+
   it('never accepts zero for a tiny probability', () => {
     expect(closeRelative(0, 2.0233041917047282e-16)).toBe(false);
     expect(closeRelative(1e-30, 2.0233041917047282e-16)).toBe(false);

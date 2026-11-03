@@ -121,8 +121,8 @@ and include invalid and denied requests. Forge jobs/versions live on the filesys
 
 ## Safety posture
 
-- Local-first: binds `127.0.0.1`, no authentication, **not** production-ready for multi-user
-  hosting.
+- Local-first: binds `127.0.0.1` by default. An optional shared bearer token gates API access
+  except health; there are no user accounts or per-user permissions. Not a multi-user hosted service.
 - Conversational tools are seven bounded project/memory tools (count re-read at head, 31 Oct); the Forge child may write
   inside its staging workspace under the CLI's own sandbox.
 - Stored memory is rendered as bounded, escaped data with record identity and provenance.

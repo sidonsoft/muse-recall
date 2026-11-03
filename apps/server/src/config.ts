@@ -14,7 +14,15 @@ import {
   PROVIDER_KINDS,
   type ProviderConfig,
 } from '@mml/muse-provider';
-import { DEFAULT_RETRIEVAL_BUDGET, type RetrievalBudget } from '@mml/shared';
+import {
+  DEFAULT_MEDIA_IMAGE_MODEL,
+  DEFAULT_RETRIEVAL_BUDGET,
+  DEFAULT_SAM_MODEL,
+  DEFAULT_TRANSCRIBE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  DEFAULT_VISION_MODEL,
+  type RetrievalBudget,
+} from '@mml/shared';
 import { z } from 'zod';
 import { codespacesWebOrigins } from './codespaces.js';
 import { isLoopbackBindHost } from './host-guard.js';
@@ -124,6 +132,17 @@ const EnvSchema = z
     FORGE_MUSE_BIN: z.string().min(1).optional(),
     FORGE_MUSE_API_KEY: z.string().min(10).optional(),
     FORGE_MUSE_MODEL: z.string().min(2).optional(),
+    /**
+     * Image generation/editing model. Independent of FORGE_MUSE_MODEL: the
+     * images endpoints do not accept the Studio coding model ids.
+     */
+    FORGE_MEDIA_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_SAM_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_VISION_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_TRANSCRIBE_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_VIDEO_MODEL: z.string().min(2).max(200).optional(),
+    FORGE_MEDIA_MAX_RETRIES: z.coerce.number().int().min(0).max(5).optional(),
+    FORGE_MEDIA_TRACE: z.enum(['0', '1']).optional(),
     FORGE_FALLBACK_API_KEY: z.string().min(10).optional(),
     FORGE_FALLBACK_MODEL: z.string().min(2).default('muse-spark-1.3-contributor'),
     FORGE_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
@@ -152,6 +171,29 @@ export interface AppConfig {
   wal: boolean;
   workspaceRoot: string;
   toolApprovalPolicy: 'always' | 'never';
+  /**
+   * Media provider settings, independent of the Studio coding provider.
+   *
+   * Optional so hand-built test configs keep compiling; runtime defaults the
+   * image model to DEFAULT_MEDIA_IMAGE_MODEL. The API key is still the shared
+   * Meta Model API key (`forge.apiKey`) because both endpoints authenticate
+   * against the same account.
+   */
+  media?: {
+    model: string;
+    /** Segmentation model; never the coding or image model. */
+    samModel: string;
+    /** Vision-language model for reference-image understanding. */
+    visionModel: string;
+    /** Speech-to-text model; never the coding or image model. */
+    transcribeModel?: string;
+    /** Video-understanding model (Responses API). */
+    videoModel?: string;
+    /** Transport retries after the first media attempt (0 disables retries). */
+    maxRetries?: number;
+    /** When true, emit bounded per-attempt transport diagnostics to stderr. */
+    traceAttempts?: boolean;
+  };
   forge?: {
     maxRuntimeMs: number;
     maxCalls: number;
@@ -227,6 +269,19 @@ export function loadConfig(
     wal: value.SQLITE_WAL,
     workspaceRoot: resolve(projectRoot, value.WORKSPACE_ROOT),
     toolApprovalPolicy: value.TOOL_APPROVAL_POLICY,
+    media: {
+      model: value.FORGE_MEDIA_MODEL ?? DEFAULT_MEDIA_IMAGE_MODEL,
+      samModel: value.FORGE_SAM_MODEL ?? DEFAULT_SAM_MODEL,
+      visionModel: value.FORGE_VISION_MODEL ?? DEFAULT_VISION_MODEL,
+      transcribeModel: value.FORGE_TRANSCRIBE_MODEL ?? DEFAULT_TRANSCRIBE_MODEL,
+      videoModel: value.FORGE_VIDEO_MODEL ?? DEFAULT_VIDEO_MODEL,
+      ...(value.FORGE_MEDIA_MAX_RETRIES !== undefined
+        ? { maxRetries: value.FORGE_MEDIA_MAX_RETRIES }
+        : {}),
+      ...(value.FORGE_MEDIA_TRACE !== undefined
+        ? { traceAttempts: value.FORGE_MEDIA_TRACE === '1' }
+        : {}),
+    },
     forge: {
       maxRuntimeMs: value.FORGE_MAX_RUNTIME_MS,
       maxCalls: value.FORGE_MAX_CALLS,

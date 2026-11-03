@@ -595,6 +595,11 @@ structuredContent, writes refuse without the flag, invalid args error
 loudly. A second test pins the REST surface's version stamp. Cost: the SDK
 stays a thin transport layer (low-level request handlers, no zod coupling
 into the SDK), which keeps zod-version drift out of the protocol surface.
+**[Amended for the local beta (D058): the phrase "the operator's
+confirmation" overstated the flag. `--allow-writes` authorizes every write
+for the process lifetime at startup; MCP performs no per-write review.
+Descriptions, the contract resource, tests and README now say exactly
+that — see D058.]**
 
 ---
 
@@ -897,3 +902,236 @@ against artifacts and each other, and a post-judging queue whose entries
 carry evaluations rather than mysteries. The repo enters judging week
 with its evidence fresh, its freeze double-observed, and its known gaps
 named instead of discovered.
+
+---
+
+### D057 — Beta-prep override: beta 0.1 work executes early on `integration` only
+
+**Context:** The beta review (31 Oct) reproduced a destructive restore
+failure and confirmed three queued contract/policy gaps (KI-43/45/48, the
+MCP write-policy mismatch, KI-49's broken wrapper recipe). The owner
+directed that the beta 0.1 preparation happen NOW, while D056's pre-
+judging rules said contract bumps and behavior changes wait until the
+judging window closes (4–8 Nov).
+**Decision:** Owner override, scoped hard: beta fixes land on
+`integration` ONLY. The judge-facing surface stays exactly as D056 left
+it — `main` @ c32d03b, the `submission-*` tag and its Release, evidence
+docs, and the website are untouched; promotion to `main` remains
+post-judging per the CONTRIBUTING exception. No beta branch/tag/publish
+until the owner asks. Under this override ship: (1) the restore safety
+rewrite (destructive on both reproduced paths — a local-beta data-loss
+bug, the one shape D056 itself allowed: a defect demands a fix);
+(2) catalogue v3 lockstep (KI-43 + KI-45 + KI-48 + the sixth live-found
+`invalid_submission`); (3) MCP write-policy honesty (startup
+authorization stated as such; no per-write-review claims);
+(4) the staging-aware Forge worker-wrapper boot probe (KI-49's probe now
+exercises real staging writes/prompt reads; unusable setpriv recipe
+removed; ACL support stays queued as C-13).
+**Consequence:** The queued post-judging items B4 and parts of P0 #4
+execute early, with dates and the override recorded at each home doc.
+Judges, the frozen tree, and the promotion rule are unaffected; the
+beta-cut decision remains an explicit later owner act.
+
+---
+
+### D058 — MCP write policy stated as startup authorization; no per-write-review claims
+
+**Context:** The beta review caught a three-way mismatch: the shared tool
+descriptions said write tools "Require user approval", the README said a
+model "cannot self-confirm a write" (implying a per-write review flow that
+MCP does not have), while `--allow-writes` actually executes every write
+immediately (headless MCP has no interactive channel — D043's own
+constraint). Clients reading the advertised descriptions would believe a
+safety property the endpoint does not provide.
+**Decision:** Keep the behavior (startup authorization; read-only default
+stays the strongest posture), and make every surface state the ONE truth:
+write-class tools carry no approval sentence in the shared description
+(the write class is machine-visible via `side_effect`); each write tool's
+MCP description additionally advertises THIS surface's policy (executes
+immediately under the startup switch / refuses by default); the
+contract resource gains `write_execution` and `per_write_review: false`;
+MCP_INSTRUCTIONS and the refusal text say startup-authorization,
+no-per-write-review; README says `--allow-writes` authorizes every write
+for the process lifetime and per-write review, if wanted, belongs to the
+client. D043 gets an amendment line rather than a rewritten body.
+**Conformance:** mcp-contract pins both description shapes per policy, the
+contract fields (default and enabled), and the refusal text; write
+execution still refuses without the flag and persists with it. The
+session runtime's per-write approval flow is untouched — that surface
+keeps the property honestly, and `requiresConfirmation`'s doc now names
+which surface enforces what.
+
+---
+
+### D059 — HTML Studio carries its own copy of the game engine
+
+**Context:** KI-53 measured that a generated game fetched its engine from
+`https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js`, and that when
+that one request failed the artifact was refused while the Studio preview showed
+a blank frame with no explanation. The app is otherwise self-hosted with no
+outbound dependency, so availability, reproducibility and the meaning of
+"local" all came down to one third party answering a request. An offline or
+air-gapped machine could not approve any game at all, and an artifact approved
+today could stop working tomorrow without its bytes changing.
+**Decision:** Vendor the engine. One pinned copy — Phaser 3.80.1, the version the
+prompt already named — 1 181 917 bytes, sha256 `62081f6a1b51d040473f919ffedef9009953c20833518e146da5a8d1c9405ea8`,
+committed as a generated module with the MIT licence text inside it and a script
+(`pnpm run vendor:phaser`) that re-fetches and refuses to write if the hash or length moved;
+`-- --check` verifies the committed copy against the pin with no network, and
+`-- --against-remote` asks the pinned URL whether it still serves those bytes and writes
+nothing either way. The document is stored in its **source** form, with the one
+`<script src="…jsdelivr…phaser@3.80.1…">` tag, and the engine is inlined at the
+moment the bytes are handed to anything that runs them: preview, diff,
+validation, runtime verification, and promotion. The model is told about the
+substitution, is given the short source view when asked to modify an artifact,
+and is not allowed to inline its own copy of the engine.
+**Conformance:** `verify:runtime` runs both policies in a real browser: a game
+that carries the vendored engine boots with **no remote origin granted at all**
+(8 checks; `test-results/runtime/`), a game that still needs the CDN keeps the
+old allowlist, and a Phaser version this product does not vendor keeps its
+reference and is reported as a named gap rather than silently re-pointed at the
+pinned copy. `tests/unit/forge-vendored-scripts.test.ts` pins that a forged
+vendor marker buys no exemption (verification goes to the bytes), that a
+`defer`/`integrity`/`async` tag is never rewritten, that the source view round
+trips byte-for-byte, and that the vendored block cannot be used to smuggle code
+past the inline-script budget. Promotion records which library and version each
+version carries. Research fixtures are **not** regenerated: the Phase 16/17
+protocol bytes depend on prompt and artifact hashes, so those prompts keep their
+own frozen text and the production prompt is separated from it.
+**Cost, measured here:** each game artifact grows by ~1.18 MB on disk and in the
+database; a full runtime verification takes 1.6–2.0 s either way on this machine,
+where the CDN is reachable and cached, so inlining is within ~0.2 s of fetching.
+Artifacts approved before this change are not rewritten, and the CDN stays
+allowlisted for documents that still reference it.
+
+---
+
+### D060 — What the first human-review round keeps, clarifies, and leaves unproven
+
+**Context:** the first Muse-built app handed to a human reviewer (Palette Bench,
+`test-results/human-review/palette-bench-2026-11-02-2250`) came with four seeded
+project decisions, an open question about the vision-draft path, the KI-53
+dependency question and the single-server idempotency limit.
+**Decision:** keep all four seeded decisions — no modal dialogs (report results in
+inline status text), body text at 4.5:1 or better, one accent colour per screen,
+and every destructive action undoable from the same screen — with one
+clarification: **the accent rule governs interface chrome, not the colours a
+generated artifact is asked to produce**. A palette tool is the clearest case: an
+app that follows the rule literally cannot show the palette it was built to show.
+The vision-draft path stays **experimental**: it works and is accounted for
+(1 paid vision call, replay free), but nothing yet shows it beats asking the
+coding model directly, so it stays out of the documented main path until there is
+evidence of incremental value. Multi-server idempotency is **documented, not
+built**: the key store is in-process, which is sound for the single-server beta
+the app is designed around and unsound for a horizontally scaled deployment;
+the limit ships in the limitations guide and in the review payload. KI-53 goes the
+other way and is closed by D059.
+**Conformance:** the seeded decision text in the retained Palette Bench packet is
+the exact text that was paid for and is not rewritten; the clarification is the
+wording to use in the **next** brief, and `docs/review-apps/README.md` says so.
+The vision-draft boundary is pinned by the Batch E route tests (advisory, no
+write, revision-pinned, one paid call, replay revalidates its subject). The
+idempotency limit is pinned by the limitation text in `docs/guide/limitations.md`
+and `docs/guide/reviews`-style payloads, not by code.
+
+---
+
+### D061 — Dependency disclosure at approval, and the engine pin stays a human decision
+
+**Context:** KI-53 made the product carry its own copy of one pinned Phaser build
+(D059) and refuse, deliberately, to rewrite any other remote reference. That left
+a person approving an artifact unable to tell three situations apart: a library the
+product bundles, a library the application will fetch from a remote host when it
+runs, and a remote host verification refuses so the dependency never arrived during
+the check that passed. The facts were recorded server-side (`vendor_gaps`,
+`network_policy`, `x-forge-vendor-gaps`) and no surface a person read showed them.
+**Decision:** the approval interface states the dependency situation, measured from
+**the exact bytes promotion would write** — the staged file after the vendoring
+pass, media-resolved at approval — and not from the source view the diff shows or
+from the model's own claims. Every dependency is classified `bundled`, `fetched` or
+`blocked`, each with a machine-readable reason, and the interface renders one
+approved sentence per case; for a remote engine that sentence names the host, says
+what approving assumes, and says what the alternative is. A version approved before
+the record existed is reported as **no record**, never reconstructed from its file,
+and no historical artifact is rewritten to complete the panel. The product still
+substitutes nothing: a Phaser version outside the pin keeps its reference and is
+named with the version it asked for and the pin carried. The block renders no
+verdict — whether a remote dependency is acceptable is the reviewer's decision.
+**Pin policy:** changing the engine pin requires an explicit human act. There is no
+automatic refresh anywhere — not at runtime, not in CI, not on a mismatch.
+`pnpm run vendor:phaser -- --check` verifies the committed copy against the pin with
+no network, and `-- --against-remote` asks the pinned URL whether it still serves
+those bytes and **writes nothing either way**; a mismatch is information for a
+decision, not a trigger to overwrite a hashed production input. Re-pinning means
+re-running the vendoring, validation and browser gates, because the copy is a hashed
+input to the server bundle.
+**Conformance:** `tests/unit/forge-dependency-disclosure.test.ts` pins the three
+classifications, the "measured from promoted bytes" property (the disclosure's
+`html_sha256` equals the hash promotion is fenced by) and the "not recorded"
+behaviour without mutation; `tests/unit/forge-dependency-view.test.ts` pins the
+sentences; `tests/unit/forge-dependency-panel.test.ts` pins that the three kinds
+render apart and that reference text from a generated document is escaped;
+`verify:runtime` cross-checks the disclosed `blocked` origins against the origins the
+real browser refused, in both directions, and that a permitted load is never
+disclosed as blocked; `verify:studio-workflow` shows the block in production Studio
+and checks that the approved version's record hashes to its own artifact. The pin
+modes are pinned by `tests/unit/release-command-inventory.test.ts`.
+
+---
+
+### D062 — An artifact may not claim the product's own framing, and a static scan states what it cannot see
+
+**Context.** The fourth independent review attacked the invariants of D059 (carry the
+engine) and D061 (disclose what the bytes fetch) rather than the tests written for
+them, and found seven reproducible defects (KI-76 to KI-82). Two were not bugs in the
+usual sense but decisions the implementation had made implicitly: the source view
+collapses text between vendor delimiters, and a scan that finds nothing prints an
+empty list. Both turned a *representation* into an *assurance*.
+
+**Decision.**
+1. **Vendor delimiters are a format this product writes, never a claim an artifact
+   makes.** `unvendorScripts` collapses only the exact span `vendorScripts` itself
+   produces, and `vendorMarkerTextIssues` refuses `forge-vendor:` text in staged
+   source. Consequence, accepted deliberately: a model can no longer write anything
+   resembling the product's framing, and a document that tries is refused rather than
+   partially shown. The alternative — trusting author-written markers because an
+   integrity check would catch abuse later — was rejected: the check never ran against
+   the source view, and a reviewer cannot weigh what the diff hides. Measured before
+   the fix: 162 shipped bytes, 30-byte review view, payload executed.
+2. **A replacement is only allowed when it provably preserves the document.** An
+   engine tag is swapped only if it has exactly one `src` attribute, no other
+   attributes and no body. Otherwise the reference stays exactly as written and is
+   named. Consequence: more documents keep a remote engine than a permissive swap
+   would leave, and more gaps are reported — accepted, because silently deleting an
+   `onload` handler changes behaviour nobody approved, and because D061 already decided
+   the product swaps nothing silently. Both refused forms were run in a real browser
+   and still load and render.
+3. **One reading of a document.** The verification browser, the preview CSP and the
+   approval-panel disclosure answer "what do these bytes reference" from one parsing
+   module, including unquoted attributes and case-insensitive closing tags. The grant
+   follows the served bytes rather than a constant, so a self-contained document is
+   granted no remote origin in the iframe too. Accepted trade-off: the grant is per
+   origin rather than per directive, matching the browser; splitting it per directive
+   would add a fourth reading, and the defect was always too many readings.
+4. **A measurement states its own limits.** Dependency rows carry `basis`
+   (`document_reference` versus `code_text`) and `observed` (was a refusal actually
+   recorded against these bytes), and every disclosure carries `scan_limits`. The panel
+   renders those limits always, including for records written before the field existed.
+   Consequence: sentences get longer and less certain — "no remote reference was found"
+   replaces "fetches nothing outside themselves". Accepted: a comment naming a `fetch`
+   call had been presented as a request the policy refused, and a URL built at run time
+   produced an empty list that read as a guarantee.
+5. **Ledger parsing is a contract, not a convenience.** Every `[media-trace]` token is
+   validated whole against the format the adapter writes; prefix matching is refused,
+   because these bytes are what paid-call claims are read from. Damage is checked
+   before any mode-specific claim, so "zero dispatches" can only be stated about a log
+   the gate can read.
+
+**Conformance:** `tests/unit/forge-vendored-scripts.test.ts`,
+`tests/unit/forge-workspace.test.ts`, `tests/unit/forge-preview-policy-agreement.test.ts`,
+`tests/unit/forge-sandbox-policy.test.ts`, `tests/unit/forge-dependency-disclosure.test.ts`,
+`tests/unit/forge-dependency-view.test.ts`, `tests/unit/forge-dependency-panel.test.ts`,
+`tests/unit/media-trace-damage.test.ts`, `tests/unit/media-journey-policy.test.ts`;
+`verify:runtime` PASS 14 checks at `test-results/runtime/20261103-0658/report.json`,
+including three new measured cases (tag forms that cannot be swapped, uppercase closing
+tag, forged marker).

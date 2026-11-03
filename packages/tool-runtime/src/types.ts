@@ -24,7 +24,9 @@ export interface ToolDefinition<Input = unknown, Output = unknown> {
   id: string;
   description: string;
   sideEffect: ToolSideEffect;
-  /** True when a human must approve before execution. */
+  /** Write-class gate. The session runtime enforces it as a per-write human
+   *  decision; surfaces without a per-write review channel (MCP) enforce the
+   *  write policy once at startup instead — see D043, amended for the beta. */
   requiresConfirmation: boolean;
   input: ZodType<Input>;
   output: ZodType<Output>;

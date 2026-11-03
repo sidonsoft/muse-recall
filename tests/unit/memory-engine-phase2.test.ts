@@ -14,6 +14,7 @@ import {
 } from '@mml/memory-engine';
 import type { Memory, MemoryCreateInput } from '@mml/shared';
 import { afterAll, describe, expect, it } from 'vitest';
+import { CORRECTION_DEFAULTS, CREATE_DEFAULTS } from '../helpers/memory-fixtures.ts';
 
 const temporaryDirectories: string[] = [];
 
@@ -25,6 +26,7 @@ afterAll(async () => {
 
 function baseInput(overrides: Partial<MemoryCreateInput> = {}): MemoryCreateInput {
   return {
+    ...CREATE_DEFAULTS,
     type: 'technical_decision',
     scope: 'project',
     project_id: 'demo-game',
@@ -134,6 +136,7 @@ describe('corrections', () => {
     try {
       const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -174,6 +177,7 @@ describe('corrections', () => {
     try {
       const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -194,6 +198,7 @@ describe('corrections', () => {
     try {
       const original = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const input = {
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision' as const,
         project_id: 'demo-game',
@@ -223,6 +228,7 @@ describe('corrections', () => {
       const a = engine.create(baseInput({ content: 'Use SQLite for storage' }));
       const b = engine.create(baseInput({ content: 'Store data in SQLite' }));
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [a.memory.id, b.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -253,6 +259,7 @@ describe('corrections', () => {
 
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [original.memory.id],
           type: 'technical_decision',
           scope: 'project',
@@ -283,6 +290,7 @@ describe('corrections', () => {
 
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [a.memory.id, b.memory.id],
           type: 'technical_decision',
           scope: 'project',
@@ -303,6 +311,7 @@ describe('corrections', () => {
     try {
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [randomUUID()],
           type: 'technical_decision',
           project_id: 'demo-game',
@@ -336,6 +345,7 @@ describe('corrections', () => {
       let thrown: unknown;
       try {
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [original.memory.id],
           type: 'technical_decision',
           project_id: 'demo-game',
@@ -420,6 +430,7 @@ describe('corrections', () => {
       observed.length = 0; // watch the failing correct() only
       expect(() =>
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [original.memory.id],
           type: 'technical_decision',
           project_id: 'demo-game',
@@ -468,6 +479,7 @@ describe('corrections', () => {
       let thrown: unknown;
       try {
         engine.correct({
+          ...CORRECTION_DEFAULTS,
           supersedes: [original.memory.id],
           type: 'technical_decision',
           project_id: 'demo-game',
@@ -492,6 +504,7 @@ describe('corrections', () => {
       const original = engine.create(baseInput({ content: 'Use MySQL for storage' }));
 
       const corrected = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [original.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -685,6 +698,7 @@ describe('deletion', () => {
       const a = engine.create(baseInput({ content: 'eta audit chain' }), 'user');
       const b = engine.correct(
         {
+          ...CORRECTION_DEFAULTS,
           supersedes: [a.memory.id],
           type: 'technical_decision',
           project_id: 'demo-game',
@@ -744,6 +758,7 @@ describe('deletion', () => {
     try {
       const older = engine.create(baseInput({ content: 'zephyralpha: use file cache' }));
       const newer = engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [older.memory.id],
         type: 'technical_decision',
         project_id: 'demo-game',
@@ -1255,6 +1270,7 @@ describe('invalid input', () => {
   it('rejects a correction with no targets', () => {
     expect(() =>
       engine.correct({
+        ...CORRECTION_DEFAULTS,
         supersedes: [],
         type: 'technical_decision',
         project_id: 'demo-game',

@@ -1,3 +1,5 @@
+> **Current demo:** the [three-minute beta video](video/Muse_Recall_Demo_V21_1080p.mp4) covers the expanded beta. See [recording scope and verification](video/V21_QA.md). The protocol below documents the earlier correction recording.
+
 # Focused demo — correctable project memory
 
 **Purpose:** a short submission demo for the strongest supported contribution: correctable
