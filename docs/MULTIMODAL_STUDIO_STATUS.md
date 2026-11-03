@@ -213,6 +213,12 @@ dirty tree; and a dead server was reported by the last characters of its stack i
 own `Fatal startup error` line. All three are reporting defects — the measurements were right,
 the narration was not, which is how an operator re-runs a run that already spent quota.
 
+- **rehearsal re-run at `c456600`** (`test-results/fresh-install/2026-11-03-0032`): **PASS 17
+  checks** — install with no downloads, full suite in the clone, bundles built at the clone's own
+  commit (`treeClean: true`, `bundlesBuiltAtHead: true`, `supportsCommitIdentity: true`, server
+  `3c7c7f2e5ac4`, web `34ee5eda1b6f` — byte-identical to the author checkout's web bundle), both
+  restore drills green, live smoke refused with exit 2. The first-run line is `outbound none`, and
+  §KI-74 in `docs/KNOWN_ISSUES.md` states what that line does and does not prove.
 - **rehearsal re-run at `a131c5e`** (`test-results/fresh-install/2026-11-02-1531`): **PASS 17
   checks** on the child-process backup path — install, full suite, typechecks, bundles
   (server `bfb8b17afee8`, web `065ee809a766`), first run contacting `outbound none`, **both backup
@@ -252,12 +258,19 @@ the narration was not, which is how an operator re-runs a run that already spent
   refuses instead of spending a call. The environment manifest records tool presence, not
   values; on this machine `say` is not on the PATH that probe reads, which blocks the live
   audio fixture path and nothing in the rehearsal.
-- `pnpm verify:first-run`: **PASS 4 checks** (`test-results/first-run/2026-11-02-0751`,
-  ~1.0 s to ready): `MODEL_PROVIDER=echo pnpm dev`, `http://127.0.0.1:5173` in managed
-  Chromium, mounted app on the `echo` provider with `environment: development`, HTML Studio
-  / Memory / Conversations / System each **asserted to render** (not merely clicked) with a
-  clean console including `pageerror`, outbound hosts limited to the allowlisted Phaser CDN,
-  and no listener left on `8787`/`5173` afterwards.
+- `pnpm verify:first-run`: **PASS 4 checks** (`test-results/first-run/2026-11-03-0035`,
+  1 029 ms to ready, 4 336 ms walking the screens): `MODEL_PROVIDER=echo pnpm dev`,
+  `http://127.0.0.1:5173` in managed Chromium, mounted app on the `echo` provider with
+  `environment: development`, HTML Studio / Memory / Conversations / System each **asserted to
+  render** (not merely clicked) with a clean console including `pageerror`, and no listener left on
+  `8787`/`5173` afterwards. The outbound-host check now states what it measured instead of naming a
+  CDN: in the author checkout it reads `every host the fresh app contacted is one the product
+  allowlists (allowlisted: cdn.jsdelivr.net)` — that workspace holds a pre-KI-53 artifact for the
+  Studio to preview — and in a fresh clone, which has no artifacts to preview, it reads
+  `the fresh app contacted no host outside localhost at all`
+  (`outbound none`, `test-results/fresh-install/2026-11-03-0032`). A clone's zero egress is **not**
+  evidence that vendoring worked: there was nothing there to fetch. The evidence for that is
+  `verify:runtime` booting a game that carries its engine with no remote origin granted.
 - `pnpm verify:batchd-playback-auth`: PASS 15 checks — real `<video>` decode of the
   in-script H.264 clip, blob bytes hash-matched to the stored source, one credential-free
   download per source in each trust model, and the running server proving it is the
@@ -737,6 +750,17 @@ limits. Two findings:
   per panel, and `pnpm verify:first-run` (documented dev start → open `:5173` → walk the
   documented screens → fail on any console error) runs on both CI browser legs, because
   dev-mode React is a surface those gates structurally cannot see.
+- **KI-74, open on purpose.** Vendoring is deliberately narrow, so a document can still keep a
+  remote engine reference: a Phaser version outside the pin, a tag with `defer`/`integrity`/`async`/
+  `crossorigin` or a script body, or an artifact approved before the change. Three surfaces know that
+  (`vendor_gaps` on the staged snapshot, `network_policy` + `vendor_gaps` on the runtime-check result,
+  and the `x-forge-vendor-gaps` preview header) and **the Studio shows none of them** — the review
+  panel, where a person approves, says nothing about an engine the artifact will fetch at runtime. The
+  data is there; the surfacing is UI work with its own copy and test, so it is recorded rather than
+  bolted on during a round that had already moved the web bundle. Concretely visible: the author
+  checkout's first run still contacts `cdn.jsdelivr.net` because `workspaces/forge/forge-demo/`
+  holds the 2026-10-31 Spark baseline (`79c9d67a…`) with its CDN tag, while a fresh clone contacts
+  nothing at all.
 - **KI-53 closed — the product now carries its own game engine** (decision D059: a self-contained
   artifact is more reproducible, and less dependent on a third party's availability, than 1.18 MB
   saved is worth). Phaser 3.80.1 is pinned by URL, byte length and sha256 in a generated module that

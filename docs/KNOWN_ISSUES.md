@@ -1665,7 +1665,7 @@ hexes after Export, which is visible in the retained used-state capture.
 
 One more conflation caught before it reached a reviewer: that count of controls
 initially lumped text fields in with icon-only buttons and reported **7**, which
-mean nothing — a text input can never have text content of its own, so folding the
+meant nothing — a text input can never have text content of its own, so folding the
 two together turns a legibility signal into noise. Controls and fields are counted
 apart now, and the packet labels each kind. The judgement stays the reviewer's — the
 harness's job is that these are measurements rather than impressions.
@@ -1678,3 +1678,56 @@ false flag), `-2026-11-02-2151` (KI-71 correction), `-2026-11-02-2204/-2205`
 control/field conflation was split), and
 `test-results/human-review/palette-bench-2026-11-02-2250` as the packet a reviewer
 should read.
+
+
+## KI-74 — the product knows an artifact still needs the network, and tells no one who can act on it (open)
+
+**Observed while closing KI-53.** Vendoring is deliberately narrow: only the exact
+`<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>` tag is
+replaced. A document that asks for a different Phaser version, or writes that tag with `defer`,
+`async`, `integrity`, `crossorigin` or a script body, keeps its own remote reference; so does every
+artifact approved before the change. That is the correct behaviour — silently substituting a
+different engine would ship code nobody reviewed — but it means a game can still depend on a third
+party, and the person looking at it needs to know.
+
+**What is measured and reported.** Three surfaces know:
+
+- `vendorGapUrls()` returns the URLs that will not be rewritten, and `ForgeStagedSnapshot` carries
+  them as `vendor_gaps` (`apps/server/src/forge/workspace.ts`);
+- `checkGameRuntime` reports the gaps on its result and states the policy the document was verified
+  under (`network_policy: vendored | cdn-allowlist`), which is what makes a pass honest for a
+  document that needed the network;
+- the preview response sets `x-forge-vendor-gaps` with the number of unmoved remote references
+  (`apps/server/src/routes/forge.ts`).
+
+**What no one sees.** `grep -rn vendor_gaps apps/web/src` returns nothing. The Studio does not read
+the field or the header, so the review panel — the surface where a person decides to approve — says
+nothing about an engine the artifact will fetch at runtime. Before KI-53 closed, the same panel at
+least got an *explained failure* when the CDN did not answer; now a pre-change artifact can load
+fine, approve fine, and still stop working when that host is unreachable, with no line anywhere
+saying "this one still asks the CDN".
+
+**Why it is not fixed here.** Making it visible means putting a field through the shared schema into
+the client and giving the review panel a banner with wording a person can act on ("this artifact
+loads its engine from `cdn.jsdelivr.net`; approve it knowing that host must answer, or ask for a
+change to the pinned tag"). That is a UI decision with its own copy and its own test, not a
+by-product of the vendoring change, and this round's browser gates were being re-gated against a
+moved web bundle. The API and runtime reports are already there, so this is surfacing work rather
+than design work.
+
+**Also recorded, because it looks like a leak and is not.** The author-checkout first run still
+contacts `cdn.jsdelivr.net` (`test-results/first-run/2026-11-03-0035`, `allowlisted:
+cdn.jsdelivr.net`) while a fresh clone contacts nothing
+(`docs/Fresh-Install-Rehearsal.md`, `c456600`: `outbound none`). The difference is one file:
+`workspaces/forge/forge-demo/versions/1/index.html`, sha256 `79c9d67a…`, the Spark baseline approved
+on 2026-10-31, which predates the vendoring and keeps its CDN tag. HTML Studio previews the existing
+project, so the browser asks for the engine — which is precisely the case KI-74 is about: the
+runtime report for that document says `network_policy: cdn-allowlist`, and no surface tells the
+person looking at it.
+
+The reverse reading is equally worth refusing: a fresh clone's first run reports `outbound none`,
+but a clone has **no artifacts to preview**, so that line proves only that a clone contacts nothing
+— earlier rehearsals show the same. The claim that new artifacts need no network is carried by
+`verify:runtime` booting a vendored game with no remote origin granted, not by the first-run walk.
+The gate wording was corrected at the same time: a fixed label saying "the only host the fresh app
+contacted is the allowlisted Phaser CDN" described a dependency new artifacts no longer have.

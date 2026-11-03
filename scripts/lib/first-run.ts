@@ -22,10 +22,12 @@ import { type ServiceMeta, ServiceMetaSchema } from '../../packages/shared/src/i
 /**
  * The one host a generated app may contact. The product allowlists it in the
  * generation prompt, in the preview CSP, and in the approval runtime network
- * check (`apps/server/src/forge/runtime-check.ts`), and the guide documents it:
- * Phaser comes from the CDN. So the first run may touch it and nothing else.
- * Recording it here keeps that dependency visible instead of laundering a
- * "works offline" claim — a generated game does not run without it.
+ * the runtime check (`apps/server/src/forge/runtime-check.ts`) and the guide.
+ * Since KI-53/D059 a *new* game carries the engine the product vendors, so a
+ * first run is measured as contacting nothing; this entry stays for a document
+ * that still references the CDN — an artifact approved before that change, or a
+ * Phaser version outside the pin (KI-74). Recording the host rather than
+ * assuming it keeps "works offline" an observation instead of a claim.
  */
 export const ALLOWED_OUTBOUND_HOSTS: readonly string[] = ['cdn.jsdelivr.net'];
 

@@ -132,10 +132,15 @@ async function main(): Promise<void> {
     'the app mounts on the echo provider and every documented screen loads without console errors',
     `${String(observation.provider)}, ${observation.tabsVisited.join(' / ')}`,
   );
+  // The label states what was measured. Since KI-53 carried the game engine, a
+  // fresh app contacts nothing at all; hard-coding "the allowlisted Phaser CDN"
+  // would have described a dependency that is no longer there.
   const outbound = [...new Set(observation.nonLocalRequests)];
   pass(
-    'the only host the fresh app contacted is the allowlisted Phaser CDN',
-    outbound.length > 0 ? outbound.join(', ') : 'no outbound requests at all',
+    outbound.length === 0
+      ? 'the fresh app contacted no host outside localhost at all'
+      : 'every host the fresh app contacted is one the product allowlists',
+    outbound.length > 0 ? `allowlisted: ${outbound.join(', ')}` : 'no outbound requests at all',
   );
   if (observation.buildIdentity !== null) {
     fail(

@@ -15,8 +15,12 @@ staging directory and stops. Only an explicit human approval promotes it.
   the product replaces that tag with the copy of the engine it carries — the artifact you approve,
   export and open tomorrow needs nothing from that host. A document that asks for a **different**
   Phaser version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`, a
-  script body), keeps its network dependency and the Studio says so as a named gap rather than
-  quietly substituting a different engine. See D059 in `docs/DECISIONS.md`.
+  script body), keeps its network dependency and is **never silently given a different engine**: the
+  gap is reported as a URL by `vendor_gaps` on the staged snapshot and on the runtime-check
+  result, and through the `x-forge-vendor-gaps` header on the preview response. The Studio does not
+  show you that gap yet (KI-74); what it will not do is approve a document whose engine it could
+  not load, and the runtime report states which network policy the document was verified under.
+  See D059 in `docs/DECISIONS.md`.
 - **Sandbox interaction:** generated code must use explicit click/keydown handlers and
   `<button type="button">`. Native form submission and top-level navigation are blocked in the
   sandboxed preview. Enter must be handled explicitly.

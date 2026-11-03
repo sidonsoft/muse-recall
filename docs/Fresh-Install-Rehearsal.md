@@ -155,3 +155,49 @@ signal), and the rehearsal then passed **17 checks** at this commit.
 
 That is the argument for running the first run: not that the fresh clone is more correct, but
 that it is a different environment, and this one was holding a defect.
+
+## Re-run at `c456600`: the first run now asks for nothing
+
+`test-results/fresh-install/2026-11-03-0032` — **PASS, 17 checks**, clone of `c4566008fba1`:
+
+- install from the local store, no downloads, lockfile and tree untouched afterwards;
+- `pnpm run verify` inside the clone: exit 0 in ~27 s;
+- bundles built in the clone at the clone's own commit, clean tree: `treeClean: true`,
+  `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
+  server `3c7c7f2e5ac4…`, web `34ee5eda1b6f…` — the **web bundle is byte-identical to the
+  author checkout's** at the same release line, the server bundle differs from the author
+  checkout's `fecff3f9b6cd…` only because the build manifest carries the commit it was built at;
+- both restore drills green (database and media), the media backup drill in ~0.55 s;
+- a live smoke refuses before any credential work: exit `2`,
+  `live smoke: unconfigured (need FORGE_MUSE_API_KEY; no call made)`.
+
+The first-run step now reads:
+
+```
+✓ the first run serves a mounted app on the echo provider, contacting nothing outside the
+  allowlist (provider echo, environment development, outbound none)
+```
+
+**Do not read that line as proof that vendoring removed the dependency, and do not read the older
+label as a claim that it was there.** A clone has no Forge artifacts, so the Studio has nothing to
+preview and the walk makes no external request: earlier rehearsals report `outbound none` too, and
+they prove only that a clone contacts nothing. What KI-53 / D059 actually changed is what happens
+when there *is* an artifact to load, and that is measured by `verify:runtime` booting a game that
+carries its engine with **no remote origin granted at all** (8 checks,
+`test-results/runtime/20261103-0027/report.json`), not by this line.
+
+What did change here is the label. It used to be fixed: "the only host the fresh app contacted is
+the allowlisted Phaser CDN", with `no outbound requests at all` printed beside it when nothing was
+contacted — a sentence describing a dependency the product no longer has for new artifacts. The
+check now states the measurement: `the fresh app contacted no host outside localhost at all`, or,
+when something was contacted, `every host the fresh app contacted is one the product allowlists`.
+
+**The host still appears in a long-lived checkout, and for the honest reason.** The same gate run
+in the author's own checkout (`test-results/first-run/2026-11-03-0035`, PASS 4) reports
+`allowlisted: cdn.jsdelivr.net`. The reason is not new code: that workspace holds
+`workspaces/forge/forge-demo/versions/1/index.html`, sha256 `79c9d67a…`, the Phase-12-era Spark
+baseline artifact approved on 2026-10-31 — an artifact that predates the vendoring and keeps its
+CDN reference, exactly as D059 decided shipped bytes are not rewritten. HTML Studio previews the
+existing project, so the browser asks for the engine. A user with pre-existing games is therefore
+in the documented case, not a leaked-dependency case: the preview CSP grants that one host for
+that document, and the runtime report for it says `network_policy: cdn-allowlist`.
