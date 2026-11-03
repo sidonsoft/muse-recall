@@ -760,6 +760,13 @@ limits. Two findings:
   per panel, and `pnpm verify:first-run` (documented dev start → open `:5173` → walk the
   documented screens → fail on any console error) runs on both CI browser legs, because
   dev-mode React is a surface those gates structurally cannot see.
+- **KI-75, found by accident and closed.** The vendoring round documented `pnpm run vendor:phaser`
+  in six places and never added the script, and described `--check` as proof that the CDN still
+  serves the pinned bytes when that mode fetches nothing. `package.json` gained the script, the
+  script gained the mode the documents implied (`-- --against-remote`, measured: the pinned URL still
+  serves 1 181 917 bytes at sha256 `62081f6a…`), and `tests/unit/release-command-inventory.test.ts`
+  now forbids release documents from naming scripts or gate files that do not exist — verified
+  against the defect itself, since removing the script makes two of its four tests fail.
 - **KI-74, open on purpose.** Vendoring is deliberately narrow, so a document can still keep a
   remote engine reference: a Phaser version outside the pin, a tag with `defer`/`integrity`/`async`/
   `crossorigin` or a script body, or an artifact approved before the change. Three surfaces know that
@@ -775,7 +782,9 @@ limits. Two findings:
   artifact is more reproducible, and less dependent on a third party's availability, than 1.18 MB
   saved is worth). Phaser 3.80.1 is pinned by URL, byte length and sha256 in a generated module that
   includes the MIT licence; `pnpm run vendor:phaser` re-fetches it and refuses to write if the hash
-  or length moved, and `--check` proves the committed copy still matches what the CDN serves. A
+  or length moved; `-- --check` verifies the committed copy offline and `-- --against-remote` asks
+  the pinned URL whether it still serves those bytes (measured 2026-11-03: it does, and the
+  committed copy matches). A
   stored document keeps the one `<script src=…>` tag the model wrote and the engine is inlined at the
   moment bytes are handed to something that runs them — preview, diff, validation, runtime
   verification, promotion — so a modification is seeded from the short source view and never from

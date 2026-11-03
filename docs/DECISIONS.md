@@ -976,8 +976,10 @@ today could stop working tomorrow without its bytes changing.
 **Decision:** Vendor the engine. One pinned copy — Phaser 3.80.1, the version the
 prompt already named — 1 181 917 bytes, sha256 `62081f6a1b51d040473f919ffedef9009953c20833518e146da5a8d1c9405ea8`,
 committed as a generated module with the MIT licence text inside it and a script
-(`pnpm run vendor:phaser`) that re-fetches and refuses to write if the hash or
-length moved. The document is stored in its **source** form, with the one
+(`pnpm run vendor:phaser`) that re-fetches and refuses to write if the hash or length moved;
+`-- --check` verifies the committed copy against the pin with no network, and
+`-- --against-remote` asks the pinned URL whether it still serves those bytes and writes
+nothing either way. The document is stored in its **source** form, with the one
 `<script src="…jsdelivr…phaser@3.80.1…">` tag, and the engine is inlined at the
 moment the bytes are handed to anything that runs them: preview, diff,
 validation, runtime verification, and promotion. The model is told about the

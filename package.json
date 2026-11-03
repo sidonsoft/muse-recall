@@ -51,6 +51,7 @@
     "verify:first-run": "tsx scripts/verify-first-run.ts",
     "verify:forge": "tsx scripts/verify-forge.ts",
     "verify:runtime": "tsx scripts/verify-runtime.ts",
+    "vendor:phaser": "tsx scripts/vendor-phaser.ts",
     "verify:security": "tsx scripts/verify-origin-guard.ts",
     "verify:research": "tsx scripts/verify-phase15b.ts",
     "verify:research16": "tsx scripts/verify-phase16.ts",

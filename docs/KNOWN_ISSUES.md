@@ -784,7 +784,11 @@ third-party availability than a 1.18 MB saving is valuable.
   sha256 `62081f6a1b51d040473f919ffedef9009953c20833518e146da5a8d1c9405ea8`, committed as a
   generated module (`apps/server/src/forge/vendor/phaser-3.80.1.ts`) with the MIT licence text and
   the pin URL inside it. `pnpm run vendor:phaser` re-fetches it and refuses to write if the hash or
-  byte length moved; `--check` proves the committed copy still matches what the CDN serves.
+  byte length moved; `-- --check` verifies the committed copy against the pin with **no network**,
+  and `-- --against-remote` asks the pinned URL whether it still serves those bytes and writes
+  nothing either way — measured 2026-11-03: `PASS: the pinned URL still serves the pinned bytes
+  (1 181 917 bytes, sha256 62081f6a…), and the committed copy matches it`. A moved upstream is a
+  decision to re-pin deliberately, not an overwrite of a hashed production input.
 - **The document stays what the model wrote.** Storage keeps the single
   `<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>` tag. The
   engine is inlined at the moment bytes reach something that runs them — preview, diff, validation,
@@ -1731,3 +1735,52 @@ but a clone has **no artifacts to preview**, so that line proves only that a clo
 `verify:runtime` booting a vendored game with no remote origin granted, not by the first-run walk.
 The gate wording was corrected at the same time: a fixed label saying "the only host the fresh app
 contacted is the allowlisted Phaser CDN" described a dependency new artifacts no longer have.
+
+
+## KI-75 — the vendoring change told people to run a command that did not exist, and described a check that checked less than it claimed (closed)
+
+**How it was found.** By accident, an hour after the change: running
+`pnpm run vendor:phaser -- --check` to confirm the pinned copy returned
+`ERR_PNPM_NO_SCRIPT  Missing script: vendor:phaser`. Nothing in the test suite, the aggregate
+check, or any gate could have said so, because nothing read `package.json` against the documents
+that name commands.
+
+**What was wrong.** The refresh command was written into six places — D059, this issue's closure
+entry, the HTML Studio guide, the limitations guide, the status document and the commit messages —
+while `package.json` never gained a `vendor:phaser` script. Every instruction a person would follow
+to refresh or verify the pin failed at the first character. The script itself
+(`scripts/vendor-phaser.ts`) was committed and worked when invoked through `pnpm exec tsx`, which is
+how it had been exercised, and that is exactly the gap: the author ran it one way, the documents
+promised another.
+
+**A second, quieter overclaim in the same sentences.** The documents said `--check` "proves the
+committed copy still matches what the CDN serves". It does not: `--check` reads the committed module
+and compares it against the recorded pin, with no fetch — the script's own output says `No network
+was used`. The claim was half true (it proves the repository matches the pin) and half false (it
+says nothing about the upstream), and a reader acting on it would believe a third-party check had
+happened that had not.
+
+**Fix.**
+
+- `package.json` gained `"vendor:phaser": "tsx scripts/vendor-phaser.ts"`.
+- The script gained the mode the documents implied: `-- --against-remote` fetches the pinned URL,
+  compares its hash and byte length to the pin and to the committed copy, and writes nothing either
+  way. Measured on 2026-11-03: `PASS: the pinned URL still serves the pinned bytes (1 181 917 bytes,
+  sha256 62081f6a…), and the committed copy matches it`. A moved upstream is reported as a decision
+  to make deliberately, not resolved by overwriting a hashed production input.
+- Every document now states the two modes precisely: `-- --check` verifies the committed copy
+  against the pin with no network; `-- --against-remote` asks the pinned URL whether it still serves
+  those bytes.
+- `tests/unit/release-command-inventory.test.ts` closes the class: the release documents
+  (`MULTIMODAL_STUDIO_STATUS.md`, `KNOWN_ISSUES.md`, `DECISIONS.md`, `Fresh-Install-Rehearsal.md`,
+  `guide/*.md`, `review-apps/README.md`) may only name `pnpm` scripts that exist in `package.json`
+  and `tsx scripts/…` paths that exist on disk. Archived documents and research notes are excluded
+  on purpose: they record what was true when written. The gate was checked against the defect it is
+  meant to catch — with `vendor:phaser` removed from `package.json`, two of its four tests fail;
+  with it restored, all four pass. It also runs the documented `-- --check` command as a child
+  process, so a documented command that only works when typed by hand is caught.
+
+**The shape of it.** Verification is not only "the code passes". A document that names a command is
+an interface, and this one had no implementation behind it. `package.json` is a hashed input, so the
+build identity moves with the fix; the pair after it is recorded in the status document, and no
+provider call was made for any of this.

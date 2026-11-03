@@ -116,7 +116,9 @@ See [HTML Studio](html-studio.md) for the review workflow and the seven rules.
   different version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`,
   a script body), keeps its network dependency and is reported as a named gap; it is never silently
   given a different engine. Refreshing the pin means re-fetching and re-verifying the hash
-  (`pnpm run vendor:phaser`) and re-running the runtime gate.
+  (`pnpm run vendor:phaser`) and re-running the runtime gate; `pnpm run vendor:phaser -- --check`
+  verifies the committed copy offline, and `-- --against-remote` asks the pinned URL whether it
+  still serves those bytes (neither writes anything).
 - **Export is the artifact as-is**, sandbox stripped: a game built after D059 is genuinely
   self-contained and opens offline from disk; an older one still asks the CDN. Opening either from
   disk runs it **without** the Studio sandbox — that is the point of the export, and the reason the
