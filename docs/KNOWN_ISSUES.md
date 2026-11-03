@@ -1684,7 +1684,7 @@ control/field conflation was split), and
 should read.
 
 
-## KI-74 — the product knows an artifact still needs the network, and tells no one who can act on it (open)
+## KI-74 — the product knows an artifact still needs the network, and tells no one who can act on it (closed)
 
 **Observed while closing KI-53.** Vendoring is deliberately narrow: only the exact
 `<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>` tag is
@@ -1735,6 +1735,64 @@ but a clone has **no artifacts to preview**, so that line proves only that a clo
 `verify:runtime` booting a vendored game with no remote origin granted, not by the first-run walk.
 The gate wording was corrected at the same time: a fixed label saying "the only host the fresh app
 contacted is the allowlisted Phaser CDN" described a dependency new artifacts no longer have.
+
+**Closed by showing the reviewer what the promoted bytes will use.** `apps/server/src/forge/
+dependencies.ts` measures a `ForgeDependencyDisclosure` from the bytes and classifies every
+dependency into exactly one of three states — `bundled` (the product's pinned copy is inside these
+bytes), `fetched` (the application asks a remote host for it, and the policy permits that host) and
+`blocked` (the document reaches for a host the policy refuses, so the dependency never arrived during
+the check that passed) — each with a machine-readable `reason` (`version_outside_pin`,
+`tag_form_not_replaced`, `vendored_copy_and_remote_copy`, `requested_by_application_code`,
+`remote_asset`, `bundled_pinned_copy`) so the interface can use one approved sentence per case
+instead of paraphrasing a server string. The disclosure travels with the bytes it describes: it is
+attached to the diff (`diffStaged` → `ForgeDiff.dependencies`) from `ForgeWorkspace.
+stagedDependencies()`, which is the same `stagedVendored()` read the preview, validation, the browser
+check and promotion all use, and it is recorded with the promoted version and on the approved job.
+Its `html_sha256` is the hash of the exact bytes measured, and promotion is fenced by that same hash,
+so the panel cannot be handed the source view by accident. The review rail renders it in
+`apps/web/src/components/studio/DependencyDisclosure.tsx`; the sentences are pinned in
+`dependency-view.ts`, and the wording for a fetched engine is the sentence this issue proposed: *"this
+artifact loads its engine from … ; approve it knowing that host must answer when the artifact runs, or
+ask for a change to the pinned reference."* Nothing in the block renders a verdict.
+
+**Three cases the classification had to get right, each pinned by a test.** A document that carries
+the pinned engine but still contains the remote tag is reported as carrying *and* referencing, not as
+covered. A document that carries the engine and reaches for a host through a literal URL in its own
+code is verified with no remote origin at all, so that reach is `blocked` — and `verify:runtime` now
+compares the disclosed blocked origins against the origins the browser actually refused, in both
+directions, which is the only check that stops the panel understating what verification refused. A
+load the policy *permits* but the network refuses is `fetched`, never `blocked`: the two failures have
+different remedies, and conflating them sends the reviewer to the wrong one. A version outside the pin
+keeps its reference and is named with the version the document asked for and the pin the product
+carries.
+
+**Two honesty boundaries the panel keeps.** A version approved before this field existed reports
+`No dependency record was kept for these bytes`; nothing reconstructs a dependency picture from bytes
+nobody showed the approver, and no historical artifact is rewritten to make the panel look complete.
+And the policy line distinguishes what verification *allowed* from what the document *did*: an
+application that references nothing outside itself but ran under the CDN grant reads
+`verification would have permitted https://cdn.jsdelivr.net; these bytes reference nothing remote`,
+because either half alone misleads.
+
+**Evidence.** `verify:runtime` measures the disclosure in a real browser next to the browser's own
+refusals: PASS 11 checks (was 8) at `test-results/runtime/20261103-0504`, including *"a refused remote
+reach is disclosed in the approval panel, naming the origins verification refused"* and *"an engine
+the policy permits is disclosed as fetched, never as blocked, whichever way the network answered"*.
+`verify:studio-workflow` proves the surface in production Studio: 58 checks (was 56), with
+`test-results/studio-after/dependency-disclosure-staged.png` (a form-driven app: no rows, the
+would-have-permitted line) and `dependency-disclosure-approved.png` plus a check that the approved
+version's record hashes to the promoted artifact's own hash. Unit coverage:
+`tests/unit/forge-dependency-disclosure.test.ts` (11), `tests/unit/forge-dependency-view.test.ts` (8)
+and `tests/unit/forge-dependency-panel.test.ts` (4, including that reference text taken from a
+generated document is escaped rather than treated as HTML).
+
+**Limits that stay open on purpose.** The policy itself is not tightened: a document that references
+nothing still runs under the CDN grant, because narrowing which documents get a remote origin changes
+which artifacts can be approved on a machine with no network, and that is a separate decision with its
+own re-gating (D059's shipped semantics stay as they are; the panel states them instead). A disclosure
+is a static reading of the bytes plus what the check refused — it is not a claim that the application
+never contacts a host, and the block says it was counted from the bytes, not from what the model said
+it used. Pin refresh remains a human act: see D061.
 
 
 ## KI-75 — the vendoring change told people to run a command that did not exist, and described a check that checked less than it claimed (closed)

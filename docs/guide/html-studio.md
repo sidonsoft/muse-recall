@@ -17,10 +17,10 @@ staging directory and stops. Only an explicit human approval promotes it.
   Phaser version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`, a
   script body), keeps its network dependency and is **never silently given a different engine**: the
   gap is reported as a URL by `vendor_gaps` on the staged snapshot and on the runtime-check
-  result, and through the `x-forge-vendor-gaps` header on the preview response. The Studio does not
-  show you that gap yet (KI-74); what it will not do is approve a document whose engine it could
-  not load, and the runtime report states which network policy the document was verified under.
-  See D059 in `docs/DECISIONS.md`.
+  result, and through the `x-forge-vendor-gaps` header on the preview response — and the review rail
+  shows it to you before you decide, in the **Dependencies** block described under *Approve*. What it
+  will not do is approve a document whose engine it could not load, and the runtime report states
+  which network policy the document was verified under. See D059 and D061 in `docs/DECISIONS.md`.
 - **Sandbox interaction:** generated code must use explicit click/keydown handlers and
   `<button type="button">`. Native form submission and top-level navigation are blocked in the
   sandboxed preview. Enter must be handled explicitly.
@@ -152,6 +152,32 @@ model's terminal summary is never promoted into memory.
 If runtime verification fails, the job becomes `failed` with bounded diagnostics and no version is
 created. The same is true when the browser cannot launch; the error is actionable rather than
 silently falling back.
+
+### What the rail tells you before you approve: Dependencies
+
+The rail's **Dependencies** block lists what the application in front of you will use, and puts every
+dependency in one of three states:
+
+- **Carried inside these bytes** — the product's own pinned copy of a library sits in these bytes,
+  with the pin's SHA-256 and size, in place of the remote reference it replaced.
+- **Fetched at run time** — the application will ask a remote host for this when it runs, and
+  verification permits that host. The block says so in those words: approve it knowing that host must
+  answer, or ask for a change to the pinned reference.
+- **Blocked during verification** — the document reaches for a host the policy refuses, so that
+  dependency never arrived while the check was running. A passed load check did not see it.
+
+The block is measured from the bytes that would be promoted, not from the diff you are reading (the
+stored document keeps its one-line engine tag; the engine is inlined at the promotion boundary) and
+not from what the model said it used. Its recorded hash is the artifact's hash, so a later reading
+cannot quietly change what you were told you approved. A version approved before this record existed
+says **no dependency record was kept for these bytes**; nothing reconstructs one afterwards, and no
+approved artifact is rewritten to complete the panel. The block never renders a verdict: whether a
+remote dependency is acceptable is your decision, not the product's.
+
+The engine pin is not refreshed automatically anywhere. `pnpm run vendor:phaser -- --check` verifies
+the committed copy against the pin without network access; `pnpm run vendor:phaser -- --against-remote`
+asks the pinned URL whether it still serves those bytes and writes nothing either way. Updating the
+pin is a deliberate decision that re-runs the vendoring and the browser gates (D061).
 
 A game that carries the engine the product vendors is verified with **no remote origin granted at
 all**: a machine with no network can approve one, and a self-contained game that reaches for a

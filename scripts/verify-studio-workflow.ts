@@ -550,6 +550,54 @@ async function main(): Promise<void> {
     await page.getByText(/Applicable checks:.*countdown mechanics/).waitFor({ timeout: 10_000 });
     check('staged diff, structure result and applicable Guard checks are visible');
 
+    /*
+     * KI-74: the dependency disclosure in the approval rail. The fixture change
+     * references the pinned Phaser build, so the bytes promotion would write carry
+     * the engine and fetch nothing. If the rail showed a fetched row here it would
+     * be describing the source view — the file on disk — rather than the artifact
+     * being approved, which is the exact failure KI-74 is about.
+     */
+    /*
+     * This step generates a form-driven web app, not a game: it carries no
+     * library and asks for nothing outside itself. The rail has to say exactly
+     * that — no rows, and a policy line that states what verification *would*
+     * have permitted without implying that something was fetched.
+     */
+    const dependencyBlock = review.locator('[data-testid="dependency-disclosure"]');
+    await dependencyBlock.first().waitFor({ timeout: 10_000 });
+    for (const kind of ['bundled', 'fetched', 'blocked'] as const) {
+      if ((await dependencyBlock.locator(`[data-dependency-kind="${kind}"]`).count()) !== 0) {
+        throw new Error(
+          `the approval rail disclosed a ${kind} dependency for an application that references nothing remote`,
+        );
+      }
+    }
+    if (
+      (await dependencyBlock
+        .getByText(
+          'These bytes fetch nothing outside themselves: every dependency is carried inside them.',
+        )
+        .count()) === 0
+    ) {
+      throw new Error('the approval rail did not say in words what these bytes fetch');
+    }
+    if (
+      (await dependencyBlock
+        .getByText(
+          /verification would have permitted https:\/\/cdn\.jsdelivr\.net; these bytes reference nothing remote/,
+        )
+        .count()) === 0
+    ) {
+      throw new Error(
+        'the approval rail did not state the network rule these bytes were verified under, or stated it as a fetch',
+      );
+    }
+
+    await dependencyBlock
+      .first()
+      .screenshot({ path: join(OUT, 'dependency-disclosure-staged.png') });
+    check('the approval rail discloses what these bytes fetch, and what verification permitted');
+
     await page.getByRole('tab', { name: 'Preview' }).click();
     const frame = page.frameLocator('iframe[title="HTML application preview"]');
     await frame.getByRole('heading', { name: 'Task list' }).waitFor({ timeout: 30_000 });
@@ -568,6 +616,66 @@ async function main(): Promise<void> {
     check('first-version approval messaging is accurate');
 
     await page.screenshot({ path: join(OUT, 'after-approved-v1.png'), fullPage: true });
+
+    /*
+     * After approval the rail must speak from the record kept when the version was
+     * promoted, and that record must describe the promoted bytes. Re-deriving the
+     * dependency picture from the stored file would let a later edit of the file,
+     * or a different read path, change what a reviewer is told they approved.
+     */
+    const approvedBlock = page.locator('[data-testid="dependency-disclosure"]').first();
+    await approvedBlock.waitFor({ timeout: 10_000 });
+    if ((await approvedBlock.locator('[data-dependency-kind]').count()) !== 0) {
+      throw new Error('the approved application disclosed a dependency it does not have');
+    }
+    if (
+      (await approvedBlock
+        .getByText(
+          'These bytes fetch nothing outside themselves: every dependency is carried inside them.',
+        )
+        .count()) === 0
+    ) {
+      throw new Error('the approved application did not state what it fetches');
+    }
+    const withDisclosure = await json<{
+      state: {
+        versions: Array<{
+          version: number;
+          sha256?: string;
+          dependencies?: {
+            html_sha256: string | null;
+            network_policy: string;
+            self_contained: boolean;
+            dependencies: Array<{ status: string; library: string | null; version: string | null }>;
+          };
+        }>;
+      };
+    }>(`${apiBase}/api/forge/projects/${PROJECT}`);
+    const v1 = withDisclosure.state.versions.find((entry) => entry.version === 1);
+    if (!v1?.dependencies) {
+      throw new Error('the approved version kept no dependency record');
+    }
+    if (v1.dependencies.html_sha256 !== v1.sha256) {
+      throw new Error(
+        'the dependency record does not describe the promoted bytes: ' +
+          `${String(v1.dependencies.html_sha256)} vs ${String(v1.sha256)}`,
+      );
+    }
+    if (v1.dependencies.dependencies.length !== 0 || v1.dependencies.self_contained !== true) {
+      throw new Error(
+        `the approved version disclosed dependencies it does not have: ${JSON.stringify(
+          v1.dependencies.dependencies,
+        )}`,
+      );
+    }
+    if (v1.dependencies.network_policy !== 'cdn-allowlist') {
+      throw new Error(
+        `the approved version recorded ${String(v1.dependencies.network_policy)} as its network rule`,
+      );
+    }
+
+    await approvedBlock.screenshot({ path: join(OUT, 'dependency-disclosure-approved.png') });
+    check('the approved version keeps a dependency record that matches its own bytes');
 
     // The change request starts empty and cannot be submitted while blank.
     const changeInput = page.getByLabel('Change request');

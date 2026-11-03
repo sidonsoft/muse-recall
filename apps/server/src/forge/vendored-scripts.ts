@@ -340,8 +340,56 @@ function verifiedSpanHoldsPin(span: string, library: VendoredLibrary): boolean {
 }
 
 /**
- * Remote engine references the document still depends on, named by URL. A
- * pinned-version reference that somehow survived, a jsDelivr Phaser of another
+ * Every remote reference a `<script src=…>` tag carries, with the reason a
+ * reviewer needs to read it: the other attributes on the tag and whether it has a
+ * body. This is what the dependency disclosure (KI-74) reads, so the panel can
+ * say *why* something was left remote — a version this product does not vendor, a
+ * tag form an inlined copy would not preserve — rather than showing a bare URL.
+ */
+export type ExternalScriptReference = {
+  url: string;
+  /** The tag's other attributes, normalised; empty when the tag is a plain src. */
+  other_attributes: string;
+  has_body: boolean;
+};
+
+export function externalScriptReferences(html: string): ExternalScriptReference[] {
+  const found: ExternalScriptReference[] = [];
+  OPEN_SCRIPT.lastIndex = 0;
+  for (;;) {
+    const match = OPEN_SCRIPT.exec(html);
+    if (match === null) break;
+    const attrs = match[1] ?? '';
+    const close = html.indexOf('</script', match.index + match[0].length);
+    const closingAngle = close === -1 ? -1 : html.indexOf('>', close);
+    const endIndex = closingAngle === -1 ? html.length : closingAngle + 1;
+    const src = attributeValue(attrs, 'src');
+    if (src && /^https?:\/\//i.test(src)) {
+      const body = close === -1 ? '' : html.slice(match.index + match[0].length, close);
+      found.push({
+        url: src,
+        other_attributes: attrs.replace(SRC_ATTRIBUTE, '').replace(/\s+/g, ' ').trim(),
+        has_body: body.trim() !== '',
+      });
+    }
+    OPEN_SCRIPT.lastIndex = endIndex;
+  }
+  return found;
+}
+
+/** The pinned libraries this build can vendor, for disclosure and messages. */
+export function pinnedLibraries(): {
+  name: string;
+  version: string;
+  url: string;
+  sha256: string;
+}[] {
+  return LIBRARIES.map(({ name, version, url, sha256 }) => ({ name, version, url, sha256 }));
+}
+
+/**
+ * Remote engine references the document still depends on, named by URL.
+ * A pinned-version reference that somehow survived, a jsDelivr Phaser of another
  * version, and any other Phaser-shaped remote URL all appear here; the check and
  * the reviewer see the same list.
  */

@@ -1033,3 +1033,46 @@ The vision-draft boundary is pinned by the Batch E route tests (advisory, no
 write, revision-pinned, one paid call, replay revalidates its subject). The
 idempotency limit is pinned by the limitation text in `docs/guide/limitations.md`
 and `docs/guide/reviews`-style payloads, not by code.
+
+---
+
+### D061 — Dependency disclosure at approval, and the engine pin stays a human decision
+
+**Context:** KI-53 made the product carry its own copy of one pinned Phaser build
+(D059) and refuse, deliberately, to rewrite any other remote reference. That left
+a person approving an artifact unable to tell three situations apart: a library the
+product bundles, a library the application will fetch from a remote host when it
+runs, and a remote host verification refuses so the dependency never arrived during
+the check that passed. The facts were recorded server-side (`vendor_gaps`,
+`network_policy`, `x-forge-vendor-gaps`) and no surface a person read showed them.
+**Decision:** the approval interface states the dependency situation, measured from
+**the exact bytes promotion would write** — the staged file after the vendoring
+pass, media-resolved at approval — and not from the source view the diff shows or
+from the model's own claims. Every dependency is classified `bundled`, `fetched` or
+`blocked`, each with a machine-readable reason, and the interface renders one
+approved sentence per case; for a remote engine that sentence names the host, says
+what approving assumes, and says what the alternative is. A version approved before
+the record existed is reported as **no record**, never reconstructed from its file,
+and no historical artifact is rewritten to complete the panel. The product still
+substitutes nothing: a Phaser version outside the pin keeps its reference and is
+named with the version it asked for and the pin carried. The block renders no
+verdict — whether a remote dependency is acceptable is the reviewer's decision.
+**Pin policy:** changing the engine pin requires an explicit human act. There is no
+automatic refresh anywhere — not at runtime, not in CI, not on a mismatch.
+`pnpm run vendor:phaser -- --check` verifies the committed copy against the pin with
+no network, and `-- --against-remote` asks the pinned URL whether it still serves
+those bytes and **writes nothing either way**; a mismatch is information for a
+decision, not a trigger to overwrite a hashed production input. Re-pinning means
+re-running the vendoring, validation and browser gates, because the copy is a hashed
+input to the server bundle.
+**Conformance:** `tests/unit/forge-dependency-disclosure.test.ts` pins the three
+classifications, the "measured from promoted bytes" property (the disclosure's
+`html_sha256` equals the hash promotion is fenced by) and the "not recorded"
+behaviour without mutation; `tests/unit/forge-dependency-view.test.ts` pins the
+sentences; `tests/unit/forge-dependency-panel.test.ts` pins that the three kinds
+render apart and that reference text from a generated document is escaped;
+`verify:runtime` cross-checks the disclosed `blocked` origins against the origins the
+real browser refused, in both directions, and that a permitted load is never
+disclosed as blocked; `verify:studio-workflow` shows the block in production Studio
+and checks that the approved version's record hashes to its own artifact. The pin
+modes are pinned by `tests/unit/release-command-inventory.test.ts`.

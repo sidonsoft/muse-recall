@@ -6,6 +6,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   FORGE_PROJECT_ID_PATTERN,
   type ForgeApprovalVerification,
+  type ForgeDependencyDisclosure,
   type ForgeDiff,
   ForgeJobSchema,
   type ForgeJobStatus,
@@ -22,6 +23,7 @@ import {
   ForgeVersionSchema,
 } from '@mml/shared';
 import { verifyEmbeddedManifest } from '../media/embed.js';
+import { dependencyDisclosure } from './dependencies.js';
 import { ensurePrivateDirectory, isMissingFile, syncDirectory, syncFile } from './fs-utils.js';
 import {
   type AppliedVendor,
@@ -638,6 +640,34 @@ export class ForgeWorkspace {
     };
   }
 
+  /**
+   * What the staged change would depend on, measured from the bytes promotion
+   * would write (KI-74). Not from the source view: if the panel described the
+   * file on disk it would report a remote engine reference for a document that
+   * ships with the engine inside it, and a reviewer would be deciding on bytes
+   * nobody intends to promote.
+   */
+  async stagedDependencies(
+    projectId: string,
+    jobId: string,
+  ): Promise<ForgeDependencyDisclosure | null> {
+    const staged = await this.stagedVendored(projectId, jobId);
+    return staged === null ? null : dependencyDisclosure(staged.bytes.toString('utf8'));
+  }
+
+  /**
+   * The disclosure recorded when a version was approved, if it was recorded at
+   * all. Null means "not recorded" — a version approved before this field existed
+   * — and the caller must say that rather than infer dependencies from the file.
+   */
+  async approvedDependencyDisclosure(
+    projectId: string,
+    version: number,
+  ): Promise<ForgeDependencyDisclosure | null> {
+    const state = await this.state(projectId);
+    return state.versions.find((entry) => entry.version === version)?.dependencies ?? null;
+  }
+
   async reject(projectId: string, jobId: string): Promise<void> {
     this.assertJobId(jobId);
     const dir = this.within(join(this.projectDir(projectId), 'staging'), jobId);
@@ -848,6 +878,14 @@ export class ForgeWorkspace {
       html?: string;
       /** Images embedded in `html`, recorded on the immutable version. */
       media?: ForgeMediaManifest;
+      /**
+       * KI-74: the dependency disclosure measured from the bytes being promoted.
+       * Recorded with the version so an approved application can say, later, what
+       * it fetched — including what it still fetched remotely. A version written
+       * before this field existed has no disclosure; the interface says so rather
+       * than reconstructing one from bytes it did not see.
+       */
+      dependencies?: ForgeDependencyDisclosure;
     },
   ): Promise<{
     version: number;
@@ -970,6 +1008,7 @@ export class ForgeWorkspace {
       ...(options.verification ? { approval_verification: options.verification } : {}),
       ...(options.media ? { media: options.media } : {}),
       ...(vendors.length > 0 ? { vendors } : {}),
+      ...(options.dependencies ? { dependencies: options.dependencies } : {}),
     });
     await this.writeState(projectId, {
       current: next,

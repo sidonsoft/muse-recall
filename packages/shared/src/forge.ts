@@ -51,6 +51,104 @@ export const ForgeValidationSchema = z.object({
 export type ForgeValidation = z.infer<typeof ForgeValidationSchema>;
 
 /**
+ * KI-74 — dependency disclosure for the approval interface.
+ *
+ * The product vendors one engine copy (D059) and refuses, deliberately, to
+ * replace any other remote reference. So a document can still fetch something at
+ * run time, and the person approving it has to be able to tell the three cases
+ * apart from the bytes that would actually be promoted:
+ *
+ *   - `bundled`   — the product's pinned copy is inside these bytes;
+ *   - `fetched`   — the application will ask a remote host for this when it runs,
+ *                   and verification permits that host;
+ *   - `blocked`   — the document asks for a remote host that verification refuses,
+ *                   so the dependency never arrives during the check.
+ *
+ * `network_policy` says which rule the document was checked under: `vendored`
+ * grants no remote origin at all, `cdn-allowlist` grants exactly the approved CDN.
+ * A passed check means different things under each, so it is recorded rather than
+ * inferred later. Older records simply lack these fields: absent means "not
+ * recorded", never "nothing was fetched".
+ */
+export const FORGE_NETWORK_POLICIES = ['vendored', 'cdn-allowlist'] as const;
+export const ForgeNetworkPolicySchema = z.enum(FORGE_NETWORK_POLICIES);
+export type ForgeNetworkPolicy = z.infer<typeof ForgeNetworkPolicySchema>;
+
+export const FORGE_DEPENDENCY_STATUSES = ['bundled', 'fetched', 'blocked'] as const;
+export const ForgeDependencyStatusSchema = z.enum(FORGE_DEPENDENCY_STATUSES);
+export type ForgeDependencyStatus = z.infer<typeof ForgeDependencyStatusSchema>;
+
+/**
+ * Why a dependency has the status it has. Machine-readable so the interface can
+ * use one approved sentence per case instead of paraphrasing a server string.
+ */
+export const FORGE_DEPENDENCY_REASONS = [
+  /** The product's pinned copy sits in these bytes. */
+  'bundled_pinned_copy',
+  /** The document names a version this product does not vendor. */
+  'version_outside_pin',
+  /** The tag carries attributes or a body an inlined copy would not preserve. */
+  'tag_form_not_replaced',
+  /** These bytes already carry a vendored copy and still ask the network for it. */
+  'vendored_copy_and_remote_copy',
+  /** A remote asset (image, stylesheet, font) the application loads. */
+  'remote_asset',
+  /** A literal URL the application's own script requests at run time. */
+  'requested_by_application_code',
+] as const;
+export const ForgeDependencyReasonSchema = z.enum(FORGE_DEPENDENCY_REASONS);
+export type ForgeDependencyReason = z.infer<typeof ForgeDependencyReasonSchema>;
+
+export const ForgeDependencySchema = z.object({
+  status: ForgeDependencyStatusSchema,
+  reason: ForgeDependencyReasonSchema,
+  /** Library name read from the reference; null when the URL does not name one. */
+  library: z.string().min(1).max(80).nullable(),
+  /** Version read from the reference, or the pin's version for a bundled copy. */
+  version: z.string().min(1).max(60).nullable(),
+  /**
+   * The exact reference in the document. For a bundled row this is the URL the
+   * product's copy replaces, so the record says what was substituted.
+   */
+  url: z.string().min(1).max(500),
+  /** Host the document would contact; null when nothing leaves the document. */
+  origin: z.string().min(1).max(300).nullable(),
+  /** sha256 of the bytes the product carries, for a bundled dependency. */
+  sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  bytes: z.number().int().min(1).nullable(),
+  /** Why this row has this status, in bounded human-readable text. */
+  note: z.string().min(1).max(400),
+});
+export type ForgeDependency = z.infer<typeof ForgeDependencySchema>;
+
+export const ForgeDependencyDisclosureSchema = z.object({
+  /** The network rule the bytes were verified and are served under. */
+  network_policy: ForgeNetworkPolicySchema,
+  /** True when the document asks for nothing outside itself. */
+  self_contained: z.boolean(),
+  /** Remote origins the verification policy permits; empty for a no-network policy. */
+  granted_origins: z.array(z.string().min(1).max(300)).max(10),
+  dependencies: z.array(ForgeDependencySchema).max(40),
+  /**
+   * `muse-asset://` placeholders still in these bytes. Approval resolves them
+   * into embedded image data — which changes the bytes but adds no network
+   * request — so the panel can say so instead of leaving the reviewer to wonder
+   * whether the disclosure predates embedding.
+   */
+  pending_media_references: z.number().int().min(0),
+  /** sha256 of the exact bytes this disclosure was measured from. */
+  html_sha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  recorded_at: z.iso.datetime(),
+});
+export type ForgeDependencyDisclosure = z.infer<typeof ForgeDependencyDisclosureSchema>;
+
+/**
  * Approval-time verification record for an approved artifact.
  *
  * Historical versions may lack this field entirely; that means "not recorded",
@@ -75,6 +173,18 @@ export const ForgeRuntimeVerificationSchema = z.object({
   /** Explicit selection policy and bounded launch diagnostics. */
   browser_selection: ForgeRuntimeBrowserSelectionSchema.optional(),
   errors: z.array(z.string().max(300)).max(20),
+  /**
+   * KI-74: the network rule this document was verified under, and the remote
+   * requests the check refused. A passed check under a no-network policy and a
+   * passed check under the CDN allowlist are different facts; a passed check that
+   * silently refused a dependency is the worst of them. Absent on records written
+   * before the field existed, which means "not recorded".
+   */
+  network_policy: ForgeNetworkPolicySchema.optional(),
+  /** Remote engine references the product could not vendor, named by URL. */
+  vendor_gaps: z.array(z.string().max(300)).max(20).optional(),
+  /** Requests the verification network policy refused. */
+  blocked: z.array(z.string().max(300)).max(20).optional(),
 });
 export type ForgeRuntimeVerification = z.infer<typeof ForgeRuntimeVerificationSchema>;
 
@@ -437,6 +547,12 @@ export const ForgeJobSchema = z.object({
   decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
   /** Approval-time checks for this job, when it was approved by this build. */
   approval_verification: ForgeApprovalVerificationSchema.nullable().optional(),
+  /**
+   * KI-74: what these bytes will fetch, bundled, or be refused. Recorded from the
+   * staged bytes at generation and re-measured from the resolved bytes at
+   * approval. Absent on jobs written before the field existed.
+   */
+  dependencies: ForgeDependencyDisclosureSchema.nullable().optional(),
   version: z.number().int().min(1).nullable(),
 });
 export type ForgeJob = z.infer<typeof ForgeJobSchema>;
@@ -470,6 +586,12 @@ export const ForgeVersionSchema = z.object({
   media: ForgeMediaManifestSchema.optional(),
   /** Engines/libraries the product vendored into these bytes (KI-53). */
   vendors: z.array(ForgeVendorManifestSchema).optional(),
+  /**
+   * KI-74: the full dependency picture of the promoted bytes, including what
+   * those bytes still fetch remotely. Versions approved before this field existed
+   * lack it; that is reported as "not recorded", never guessed.
+   */
+  dependencies: ForgeDependencyDisclosureSchema.optional(),
 });
 export type ForgeVersion = z.infer<typeof ForgeVersionSchema>;
 
@@ -495,6 +617,12 @@ export const ForgeDiffSchema = z.object({
   files: z.array(ForgeFileDiffSchema),
   validation: ForgeValidationSchema,
   decision_guard: DecisionGuardAdvisorySchema.nullable().default(null),
+  /**
+   * KI-74: measured from the staged bytes as the product would ship them — the
+   * same read path promotion uses — so the review rail describes the bytes that
+   * would be promoted rather than the source view the diff shows.
+   */
+  dependencies: ForgeDependencyDisclosureSchema.optional(),
 });
 export type ForgeDiff = z.infer<typeof ForgeDiffSchema>;
 

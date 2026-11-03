@@ -12,6 +12,7 @@ import {
   ForgeJobSchema,
   type ForgeJobStatus,
   type ForgeMediaManifest,
+  type ForgeNetworkPolicy,
   type ForgeRecoveryIssue,
   type ForgeRecoveryReport,
   type ForgeRecoveryStorage,
@@ -29,6 +30,7 @@ import { forgeChildEnv } from './child-env.js';
 import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
 import { decisionReference, pinnedRetrieved } from './decision-reference.js';
+import { dependencyDisclosure } from './dependencies.js';
 import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
@@ -75,6 +77,10 @@ export interface ForgeManagerOptions {
     errors: string[];
     browser?: string | null;
     browser_selection?: ForgeRuntimeBrowserSelection;
+    /** KI-74: the network rule the check ran under, and what it refused. */
+    network_policy?: ForgeNetworkPolicy;
+    vendor_gaps?: string[];
+    blocked_origins?: string[];
   }>;
   /** Durable job persistence; injectable for failure tests. */
   jobStore?: ForgeJobPersistence;
@@ -183,6 +189,10 @@ export class ForgeJobManager {
     errors: string[];
     browser?: string | null;
     browser_selection?: ForgeRuntimeBrowserSelection;
+    /** KI-74: the network rule the check ran under, and what it refused. */
+    network_policy?: ForgeNetworkPolicy;
+    vendor_gaps?: string[];
+    blocked_origins?: string[];
   }>;
   private readonly now: () => Date;
   private readonly store: ForgeJobPersistence;
@@ -1065,9 +1075,22 @@ export class ForgeJobManager {
   async diff(jobId: string) {
     const job = this.requireJob(jobId);
     const diff = await this.workspace.diffStaged(job.project_id, job.id);
+    /*
+     * KI-74: the dependency disclosure travels with the review for the same
+     * reason the diff does — it is measured from `stagedVendored()`, the one read
+     * path shared by the diff, the preview, validation, the browser check and
+     * promotion. A reviewer comparing "the diff shows one script tag" with "these
+     * bytes carry a 1.18 MB engine and fetch nothing" needs both statements from
+     * the same source, or the panel is describing two documents.
+     */
+    const dependencies = await this.workspace.stagedDependencies(job.project_id, job.id);
     // Advisory only: carried alongside the diff so the review UI can show it
     // without ever feeding it into `diff.validation`.
-    return { ...diff, decision_guard: job.decision_guard };
+    return {
+      ...diff,
+      decision_guard: job.decision_guard,
+      ...(dependencies ? { dependencies } : {}),
+    };
   }
 
   async approve(
@@ -1130,6 +1153,9 @@ export class ForgeJobManager {
           status: 'failed',
           error: 'Runtime verification failed.',
           validation: { ok: false, issues: runtimeDetails },
+          dependencies: staged
+            ? dependencyDisclosure(staged.html, { recordedAt: checkedAt })
+            : null,
           approval_verification: staged
             ? {
                 syntax_structure: current.validation,
@@ -1140,6 +1166,19 @@ export class ForgeJobManager {
                   browser,
                   ...(browserSelection ? { browser_selection: browserSelection } : {}),
                   errors: runtimeDetails,
+                  // KI-74: recorded on the failure too. A check that refused a
+                  // dependency and a check that let it through and failed for
+                  // another reason are different diagnoses, and the reviewer is
+                  // the one who has to tell them apart.
+                  ...(runtime.network_policy ? { network_policy: runtime.network_policy } : {}),
+                  ...(runtime.vendor_gaps ? { vendor_gaps: runtime.vendor_gaps.slice(0, 20) } : {}),
+                  ...(runtime.blocked_origins
+                    ? {
+                        blocked: runtime.blocked_origins
+                          .slice(0, 20)
+                          .map((line) => this.sanitize(line).slice(0, 300)),
+                      }
+                    : {}),
                 },
                 recorded_at: checkedAt,
               }
@@ -1203,6 +1242,18 @@ export class ForgeJobManager {
 
       const summary = versionSummary(current);
       const checkedAt = this.now().toISOString();
+      /*
+       * KI-74: the dependency disclosure is measured from `staged.html` — the
+       * resolved bytes: staging file after the vendoring pass, with approved
+       * images already embedded. That is the sequence the browser just checked,
+       * the sequence `expectedSha256` binds promotion to, and the sequence written
+       * into the immutable version. Measuring it anywhere else (the source view,
+       * or the model's own claims) would put a different document in front of the
+       * person approving than the one being promoted.
+       */
+      const dependencies = staged
+        ? dependencyDisclosure(staged.html, { recordedAt: checkedAt })
+        : null;
       const approvalVerification: ForgeApprovalVerification = {
         // The resolved-bytes validation, not the generation-time record: the
         // bytes promoted here (images embedded) are what this check saw.
@@ -1217,6 +1268,18 @@ export class ForgeJobManager {
               errors: runtime.errors
                 .slice(0, 20)
                 .map((error) => this.sanitize(error).slice(0, 300)),
+              // KI-74: "verification passed" means different things under the two
+              // network rules, and it means something else again if the check
+              // refused a dependency on the way through. All three are recorded.
+              ...(runtime.network_policy ? { network_policy: runtime.network_policy } : {}),
+              ...(runtime.vendor_gaps ? { vendor_gaps: runtime.vendor_gaps.slice(0, 20) } : {}),
+              ...(runtime.blocked_origins
+                ? {
+                    blocked: runtime.blocked_origins
+                      .slice(0, 20)
+                      .map((line) => this.sanitize(line).slice(0, 300)),
+                  }
+                : {}),
             }
           : null,
         recorded_at: checkedAt,
@@ -1228,6 +1291,7 @@ export class ForgeJobManager {
         ...(staged ? { html: staged.html } : {}),
         ...(staged?.media ? { media: staged.media } : {}),
         verification: approvalVerification,
+        ...(dependencies ? { dependencies } : {}),
       });
       if (promoted.note) this.log(current, promoted.note);
 
@@ -1236,6 +1300,7 @@ export class ForgeJobManager {
         status: 'succeeded',
         version: promoted.version,
         approval_verification: approvalVerification,
+        dependencies,
         // `finished_at` records when generation completed, not when a human
         // later approved the already-finished artifact. Approval time lives in
         // `approval_verification.recorded_at`.

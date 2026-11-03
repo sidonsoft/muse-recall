@@ -26,6 +26,14 @@ export interface RuntimeCheckResult {
   /** Requests aborted by the verification allowlist (credentials stripped). */
   blocked: string[];
   /**
+   * The same refusals reduced to origins (KI-74). `blocked` keeps full URLs for
+   * this process only — they can carry a query the generated page built — and
+   * nothing persisted records them. The approval record and the review panel read
+   * this reduced list, so "the check let every dependency through" and "the check
+   * refused one" stay distinguishable after the fact without echoing a URL.
+   */
+  blocked_origins: string[];
+  /**
    * Loads the allowlist *permitted* but the network refused, named by origin.
    * An approved-CDN failure is the difference between "the game is broken" and
    * "this machine cannot reach the engine the game needs", and a reviewer can
@@ -55,43 +63,22 @@ export interface RuntimeCheckResult {
  * would report a broken game where the truth is an unvendored dependency — and
  * that difference is recorded in `network_policy` rather than guessed later.
  */
-export type ForgeRuntimeNetworkPolicy = 'vendored' | 'cdn-allowlist';
+export type ForgeRuntimeNetworkPolicy = ForgeNetworkPolicy;
 
-import { externalReferences, VENDOR_MARKER_ATTRIBUTE, vendorGapUrls } from './vendored-scripts.js';
+import {
+  documentNetworkPolicy,
+  type ForgeNetworkPolicy,
+  isAllowedRuntimeRequest,
+} from './network-policy.js';
+import { vendorGapUrls } from './vendored-scripts.js';
 
-/** The only remote origin a staged application may load during verification. */
-const ALLOWED_REMOTE_HOSTS = new Set(['cdn.jsdelivr.net']);
-
-/** Which policy applies to these document bytes. */
-export function runtimeNetworkPolicy(html: string): ForgeRuntimeNetworkPolicy {
-  return html.includes(`${VENDOR_MARKER_ATTRIBUTE}="`) && externalReferences(html).length === 0
-    ? 'vendored'
-    : 'cdn-allowlist';
-}
-
-/** Network destinations that never leave the machine / are not remote. */
-function isLocalScheme(protocol: string): boolean {
-  return protocol === 'about:' || protocol === 'data:' || protocol === 'blob:';
-}
-
-/** True when a request URL is permitted during headless verification. */
-export function isAllowedRuntimeRequest(
-  raw: string,
-  policy: ForgeRuntimeNetworkPolicy = 'cdn-allowlist',
-): boolean {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    // Anything unparseable is treated as non-network and left to the browser.
-    return true;
-  }
-  if (isLocalScheme(url.protocol)) return true;
-  if (url.protocol !== 'https:') return false;
-  // A vendored document was verified with no remote origin at all.
-  if (policy === 'vendored') return false;
-  return ALLOWED_REMOTE_HOSTS.has(url.hostname.toLowerCase());
-}
+/*
+ * The policy primitives live in `network-policy.ts` so the browser check, the
+ * preview CSP and the approval rail's dependency disclosure (KI-74) all read one
+ * definition. These re-exports keep the checker's established surface — gates and
+ * tests import the policy from here.
+ */
+export { documentNetworkPolicy as runtimeNetworkPolicy, isAllowedRuntimeRequest };
 
 /*
  * A browser reason can carry the whole URL it failed on
@@ -226,15 +213,16 @@ export async function checkGameRuntime(
       rendered: false,
       errors: [launched.error],
       blocked: [],
+      blocked_origins: [],
       remote_failures: [],
-      network_policy: runtimeNetworkPolicy(html),
+      network_policy: documentNetworkPolicy(html),
       vendor_gaps: vendorGapUrls(html),
       browser: null,
       browser_selection: launched.selection,
     };
   }
   const browser = launched.browser;
-  const networkPolicy = runtimeNetworkPolicy(html);
+  const networkPolicy = documentNetworkPolicy(html);
   const vendorGaps = vendorGapUrls(html);
   let browserIdentity: string | null = null;
   try {
@@ -335,6 +323,15 @@ export async function checkGameRuntime(
       rendered,
       errors: [...reason, ...failure],
       blocked,
+      /**
+       * The same refusals, reduced to origins (KI-74). `blocked` keeps the full
+       * URLs for this process only — they can carry a query the page built — and
+       * nothing that persists records them. The approval record and the review
+       * panel read this reduced list, so "verification let every dependency
+       * through" and "verification refused one" stay distinguishable after the
+       * fact without echoing a generated page's URL.
+       */
+      blocked_origins: blockedErrors,
       remote_failures: remoteFailures,
       network_policy: networkPolicy,
       vendor_gaps: vendorGaps,
