@@ -441,6 +441,17 @@ export const ForgeJobSchema = z.object({
 });
 export type ForgeJob = z.infer<typeof ForgeJobSchema>;
 
+/** A third-party library the product itself inlined into an artifact version. */
+export const ForgeVendorManifestSchema = z.object({
+  name: z.string().min(1),
+  version: z.string().min(1),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  bytes: z.number().int().min(1),
+  /** The remote reference this replaced, kept so the record says what changed. */
+  replaced_url: z.string().url(),
+});
+export type ForgeVendorManifest = z.infer<typeof ForgeVendorManifestSchema>;
+
 export const ForgeVersionSchema = z.object({
   version: z.number().int().min(1),
   created_at: z.iso.datetime(),
@@ -457,6 +468,8 @@ export const ForgeVersionSchema = z.object({
   approval_verification: ForgeApprovalVerificationSchema.optional(),
   /** Images embedded into this version's bytes, when it referenced any. */
   media: ForgeMediaManifestSchema.optional(),
+  /** Engines/libraries the product vendored into these bytes (KI-53). */
+  vendors: z.array(ForgeVendorManifestSchema).optional(),
 });
 export type ForgeVersion = z.infer<typeof ForgeVersionSchema>;
 

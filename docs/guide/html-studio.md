@@ -10,8 +10,13 @@ staging directory and stops. Only an explicit human approval promotes it.
 
 - **One file:** a complete `index.html` with inline CSS and JavaScript. There is no build step,
   package installation, multi-file project, or server-side execution.
-- **Network:** no external assets except the approved CDN, `https://cdn.jsdelivr.net`. Phaser 3 is
-  available there for games; non-game applications do not need it.
+- **Network:** no external assets. A game asks for Phaser 3 with one
+  `<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>` tag, and
+  the product replaces that tag with the copy of the engine it carries — the artifact you approve,
+  export and open tomorrow needs nothing from that host. A document that asks for a **different**
+  Phaser version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`, a
+  script body), keeps its network dependency and the Studio says so as a named gap rather than
+  quietly substituting a different engine. See D059 in `docs/DECISIONS.md`.
 - **Sandbox interaction:** generated code must use explicit click/keydown handlers and
   `<button type="button">`. Native form submission and top-level navigation are blocked in the
   sandboxed preview. Enter must be handled explicitly.
@@ -144,11 +149,14 @@ If runtime verification fails, the job becomes `failed` with bounded diagnostics
 created. The same is true when the browser cannot launch; the error is actionable rather than
 silently falling back.
 
-A game that loads Phaser from the approved CDN needs that host reachable **at approval time** too.
-When the permitted load fails, the diagnostics say so — `A load the allowlist permitted failed
-(https://cdn.jsdelivr.net): <reason>` — instead of leaving `Phaser is not defined` as the only clue.
-On a machine with no network, self-contained applications still approve normally while games are
-refused; KI-53 in `docs/KNOWN_ISSUES.md` records the measurement.
+A game that carries the engine the product vendors is verified with **no remote origin granted at
+all**: a machine with no network can approve one, and a self-contained game that reaches for a
+remote host is reported as a blocked request. A document that still asks the approved CDN for its
+engine — an older artifact, or a Phaser version this product does not carry — needs that host
+reachable **at approval time**, and when the permitted load fails the diagnostics say so,
+`A load the allowlist permitted failed (https://cdn.jsdelivr.net): <reason>`, instead of leaving
+`Phaser is not defined` as the only clue. `verify:runtime` measures both policies in a real browser;
+KI-53 in `docs/KNOWN_ISSUES.md` records the measurement and D059 the decision.
 
 ### What the approval check does not prove
 
@@ -194,10 +202,16 @@ execution identity.
 
 ```
 Content-Security-Policy: sandbox allow-scripts; default-src 'none';
-  script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline';
-  img-src data: blob:; connect-src https://cdn.jsdelivr.net;
+  script-src 'unsafe-inline'; style-src 'unsafe-inline';
+  img-src data: blob:; connect-src 'none';
   frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'
 ```
+
+That is the policy for a document that needs nothing from outside: no remote origin appears in
+`script-src`, and `connect-src` is `'none'`. The policy is computed from the bytes being served, so a
+document that still references the approved CDN is served with `https://cdn.jsdelivr.net` in
+`script-src` and `connect-src` instead — and a document that references some **other** host gets
+neither. `x-forge-vendor-gaps` lists any remote engine reference that will not be rewritten.
 
 The server never evaluates the HTML in the application origin. The iframe has an opaque origin and
 cannot read app storage, cookies or privileged APIs. The preview injects a storage shim because a

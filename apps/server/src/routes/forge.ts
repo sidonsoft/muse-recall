@@ -32,6 +32,7 @@ import {
   isActiveProjectDecision,
 } from '../forge/decision-reference.js';
 import type { ForgeJobManager } from '../forge/runner.js';
+import { externalReferences, vendorGapUrls } from '../forge/vendored-scripts.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
 import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
 import {
@@ -757,28 +758,48 @@ export function registerForgeRoutes(
           reply.header('x-forge-media-unresolved', '1');
         }
       }
+      // An engine reference the product could not vendor is reported the same way
+      // an unresolved image is: a header, so the UI can say the artifact still
+      // needs the network. The reference itself is left in the bytes.
+      const vendorGaps = vendorGapUrls(html);
+      if (vendorGaps.length > 0) {
+        reply.header('x-forge-vendor-gaps', String(vendorGaps.length));
+      }
       reply
         .header('content-type', 'text/html; charset=utf-8')
-        .header(
-          'content-security-policy',
-          [
-            'sandbox allow-scripts',
-            "default-src 'none'",
-            "script-src 'unsafe-inline' https://cdn.jsdelivr.net",
-            "style-src 'unsafe-inline'",
-            'img-src data: blob:',
-            'connect-src https://cdn.jsdelivr.net',
-            "frame-ancestors 'self'",
-            "base-uri 'none'",
-            "form-action 'none'",
-            "object-src 'none'",
-          ].join('; '),
-        )
+        .header('content-security-policy', previewContentSecurityPolicy(html))
         .header('cache-control', 'no-store')
         .header('x-content-type-options', 'nosniff');
       return reply.send(withCaptureBridge(html));
     });
   });
+}
+
+/**
+ * The preview document's policy.
+ *
+ * A generated game used to need the approved CDN, so the policy named it. A game
+ * that carries its own engine (KI-53) needs no remote origin at all, and granting
+ * it one anyway would leave the artifact one compromised CDN away from running
+ * someone else's code inside the product's own origin pair. The policy is chosen
+ * from what the served bytes actually reference, and a document that still
+ * references the CDN keeps the older, wider grant rather than failing on it.
+ */
+export function previewContentSecurityPolicy(html: string): string {
+  const remote = externalReferences(html);
+  const remoteGrant = remote.length === 0 ? null : 'https://cdn.jsdelivr.net';
+  return [
+    'sandbox allow-scripts',
+    "default-src 'none'",
+    `script-src 'unsafe-inline'${remoteGrant ? ` ${remoteGrant}` : ''}`,
+    "style-src 'unsafe-inline'",
+    'img-src data: blob:',
+    `connect-src ${remoteGrant ?? "'none'"}`,
+    "frame-ancestors 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "object-src 'none'",
+  ].join('; ');
 }
 
 /**

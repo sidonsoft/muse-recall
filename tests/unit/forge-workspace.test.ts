@@ -58,6 +58,170 @@ describe('containment', () => {
   });
 });
 
+describe('the engine the product vendors into a game', () => {
+  const ENGINE_URL = 'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js';
+  const MARKER = '<script data-forge-vendor="phaser@3.80.1"';
+
+  it('stages the reference but reads back the engine, hashed as shipped', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.vendored).toEqual([
+      {
+        name: 'phaser',
+        version: '3.80.1',
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/) as unknown as string,
+        bytes: expect.any(Number) as unknown as number,
+        replaced_url: ENGINE_URL,
+      },
+    ]);
+    expect(snapshot?.html).toContain(MARKER);
+    expect(snapshot?.html).not.toContain(ENGINE_URL);
+    expect(snapshot?.html.length).toBeGreaterThan(1_000_000);
+    expect(snapshot?.vendor_gaps).toEqual([]);
+  });
+
+  it('a model-written script still counts against the inline caps, the engine does not', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    const scripts = extractInlineScripts(snapshot?.html ?? '');
+    // One model script: the engine the product inlined is verified by hash and
+    // is not the code the caps exist to bound.
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0]).toContain('console.log(score)');
+    expect((await workspace.validateStaged('demo-game', JOB)).ok).toBe(true);
+  });
+
+  it('promotion records what the version carries, and the shipped file holds it', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    if (!snapshot) throw new Error('the staged file should exist');
+    await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+      html: snapshot.html,
+      expectedSha256: snapshot.sha256,
+    });
+    const state = await workspace.state('demo-game');
+    expect(state.versions[0]?.vendors).toEqual([
+      {
+        name: 'phaser',
+        version: '3.80.1',
+        sha256: expect.stringMatching(/^[a-f0-9]{64}$/) as unknown as string,
+        bytes: expect.any(Number) as unknown as number,
+        replaced_url: ENGINE_URL,
+      },
+    ]);
+    const shipped = await workspace.currentHtml('demo-game');
+    expect(shipped).toContain(MARKER);
+    expect(shipped).not.toContain(ENGINE_URL);
+    // What a person or a model reads is the source view, one line long.
+    const source = await workspace.currentSourceHtml('demo-game');
+    expect(source).toContain(ENGINE_URL);
+    expect(source).not.toContain(MARKER);
+    expect(source?.length ?? 0).toBeLessThan(600);
+  });
+
+  it('a modification seeded from the source view reproduces the engine byte for byte', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const first = await workspace.stagedSnapshot('demo-game', JOB);
+    if (!first) throw new Error('the staged file should exist');
+    await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+      html: first.html,
+      expectedSha256: first.sha256,
+    });
+
+    // The way the runner seeds a modification: the source view, then an edit.
+    const source = await workspace.currentSourceHtml('demo-game');
+    if (source === null) throw new Error('the approved source should exist');
+    const second = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(second, 'index.html'),
+      source.replace('const score = 0', 'const score = 7'),
+    );
+    const resnap = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(resnap?.vendored).toEqual(first.vendored);
+    // The engine block survives the round trip unchanged; only the model line did.
+    const engineFromFirst = first.html.slice(
+      first.html.indexOf('<!-- forge-vendor:phaser@3.80.1 start'),
+      first.html.indexOf('<!-- forge-vendor:phaser@3.80.1 end -->') + 40,
+    );
+    const engineFromSecond = resnap?.html.slice(
+      resnap.html.indexOf('<!-- forge-vendor:phaser@3.80.1 start'),
+      resnap.html.indexOf('<!-- forge-vendor:phaser@3.80.1 end -->') + 40,
+    );
+    expect(engineFromSecond).toBe(engineFromFirst);
+  });
+
+  it('diffs the change a reviewer is deciding on, not the engine', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML);
+    const first = await workspace.stagedSnapshot('demo-game', JOB);
+    if (!first) throw new Error('the staged file should exist');
+    await workspace.promote('demo-game', JOB, 'initial game', {
+      baseVersion: null,
+      jobId: JOB,
+      html: first.html,
+      expectedSha256: first.sha256,
+    });
+    const source = await workspace.currentSourceHtml('demo-game');
+    if (source === null) throw new Error('the approved source should exist');
+    const second = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(second, 'index.html'),
+      source.replace('const score = 0', 'const score = 7'),
+    );
+
+    const diff = await workspace.diffStaged('demo-game', JOB);
+    expect(diff.validation.ok).toBe(true);
+    expect(diff.summary).toContain('will carry its own phaser@3.80.1');
+    expect(diff.files[0]?.diff).toContain('const score = 7');
+    expect(diff.files[0]?.diff).not.toContain('forge-vendor:phaser');
+    expect(diff.files[0]?.diff.length ?? 0).toBeLessThan(20_000);
+    // The review shows a two-line change, not a 1.1 MB library.
+    expect(diff.files[0]?.before).toContain(ENGINE_URL);
+  });
+
+  it('refuses a forged vendor marker instead of exempting it', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(
+      join(staging, 'index.html'),
+      `<!doctype html><html><body><canvas id="game"></canvas>
+<script>new Phaser.Game({});</script>
+<script data-forge-vendor="phaser@3.80.1">console.log("this is not the engine");</script>
+</body></html>`,
+    );
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toContain('not the pinned library');
+    // It is not treated as a vendored library for the caps either.
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(extractInlineScripts(snapshot?.html ?? '')).toHaveLength(2);
+  });
+
+  it('names a Phaser version it cannot vendor and leaves the reference alone', async () => {
+    const staging = await workspace.createStaging('demo-game', JOB);
+    await writeFile(join(staging, 'index.html'), HTML.replace('phaser@3.80.1', 'phaser@3.55.0'));
+    const snapshot = await workspace.stagedSnapshot('demo-game', JOB);
+    expect(snapshot?.vendored).toEqual([]);
+    expect(snapshot?.vendor_gaps.map((gap) => gap.url)).toEqual([
+      'https://cdn.jsdelivr.net/npm/phaser@3.55.0/dist/phaser.min.js',
+    ]);
+    expect(snapshot?.vendor_gaps[0]?.reason).toContain('3.55.0');
+    expect(snapshot?.html).toContain('phaser@3.55.0');
+    const diff = await workspace.diffStaged('demo-game', JOB);
+    expect(diff.summary).toContain('cannot vendor');
+    // Still a game document, and still honest about needing the network.
+    expect(diff.validation.ok).toBe(true);
+  });
+});
+
 describe('versioning', () => {
   it('validates, promotes, and rolls back atomically', async () => {
     const staging = await workspace.createStaging('demo-game', JOB);

@@ -15,6 +15,7 @@
       "!**/node_modules",
       "!**/coverage",
       "!**/routeTree.gen.ts",
+      "!apps/server/src/forge/vendor",
       "!docs/hackathon-evidence/phase12c/evaluation.json",
       "!docs/hackathon-evidence/phase14a",
       "!docs/hackathon-evidence/phase15a",

@@ -108,15 +108,19 @@ See [HTML Studio](html-studio.md) for the review workflow and the seven rules.
 ## HTML Studio and Forge
 
 - **One `index.html` only.** No multi-file project, package installation, build step, server-side
-  execution or arbitrary host. Network assets are limited to `cdn.jsdelivr.net`; games may use
-  Phaser 3 from that CDN.
-  That CDN must be **reachable** for a game to work: the Studio preview and the approval runtime
-  check both load the script. With the host unreachable the preview shows an empty frame and no
-  in-frame explanation (Studio cannot read a sandboxed document's console), and approval is
-  refused with the origin named in the diagnostics. KI-53 records what was measured; a genuinely
-  offline game would need the engine vendored into the server, which this beta does not do.
-- **Export is not a self-contained bundle.** The download is the artifact as-is. A CDN reference
-  still needs network access, and opening the file from disk runs it **without** the Studio sandbox.
+  execution or arbitrary host, and no remote asset: a game asks for Phaser 3 with one CDN tag and
+  the product inlines the copy of the engine it carries, so the artifact boots with no network at
+  all. That costs about 1.18 MB per game artifact. Artifacts approved before D059 keep their CDN
+  reference and still need that host reachable; KI-53 records the measurement behind the decision.
+- **One vendored engine version.** Only Phaser 3.80.1 is carried. A document that asks for a
+  different version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`,
+  a script body), keeps its network dependency and is reported as a named gap; it is never silently
+  given a different engine. Refreshing the pin means re-fetching and re-verifying the hash
+  (`pnpm run vendor:phaser`) and re-running the runtime gate.
+- **Export is the artifact as-is**, sandbox stripped: a game built after D059 is genuinely
+  self-contained and opens offline from disk; an older one still asks the CDN. Opening either from
+  disk runs it **without** the Studio sandbox — that is the point of the export, and the reason the
+  approval-time runtime check exists.
 - **Preview storage is temporary.** The sandboxed preview installs an in-document storage shim
   because real Web Storage access throws in an opaque origin. Data written there resets when the
   preview reloads and is never written into the artifact. The exported file keeps data normally,

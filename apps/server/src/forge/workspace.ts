@@ -1,17 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { type Dirent, constants as fsConstants } from 'node:fs';
-import {
-  copyFile,
-  lstat,
-  mkdir,
-  readdir,
-  readFile,
-  realpath,
-  rename,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
+import { lstat, mkdir, readdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   FORGE_PROJECT_ID_PATTERN,
@@ -33,6 +23,16 @@ import {
 } from '@mml/shared';
 import { verifyEmbeddedManifest } from '../media/embed.js';
 import { ensurePrivateDirectory, isMissingFile, syncDirectory, syncFile } from './fs-utils.js';
+import {
+  type AppliedVendor,
+  isPinnedVendorBody,
+  unvendorScripts,
+  VENDOR_MARKER_ATTRIBUTE,
+  type VendorGap,
+  vendoredLibrariesIn,
+  vendoredScriptIntegrityIssues,
+  vendorScripts,
+} from './vendored-scripts.js';
 
 /**
  * The only code allowed to touch generated application files.
@@ -82,7 +82,15 @@ export class ForgeError extends Error {
 }
 
 const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const MAX_BYTES = 1_500_000;
+/*
+ * Ceiling on one document's bytes. The margin exists for the vendored engine:
+ * a self-contained Phaser game carries a 1.18 MB library (KI-53) on top of the
+ * generated code and any approved images embedded at approval, so a game can be
+ * a legitimate artifact and still be several times the size of a form. The
+ * inline-script caps below are what bound the code a model wrote; this one only
+ * bounds the file.
+ */
+export const MAX_HTML_BYTES = 4_000_000;
 /**
  * Bound the work a generated document can request from `node --check`.
  *
@@ -93,6 +101,18 @@ const MAX_BYTES = 1_500_000;
 export const MAX_INLINE_SCRIPTS = 32;
 export const MAX_INLINE_SCRIPT_BYTES = 500_000;
 const INLINE_SCRIPT_CHECK_TIMEOUT_MS = 10_000;
+
+/**
+ * The staged bytes as the product would ship them, plus what the vendoring pass
+ * did to them. Callers compare `sha256` to fence on change; the two vendor fields
+ * are for reporting, never for a decision to trust.
+ */
+export type ForgeStagedSnapshot = {
+  html: string;
+  sha256: string;
+  vendored: AppliedVendor[];
+  vendor_gaps: VendorGap[];
+};
 
 /**
  * Resolve the version a rollback should restore.
@@ -315,7 +335,7 @@ export class ForgeWorkspace {
       try {
         const info = await lstat(file);
         modifiedAt = new Date(info.mtimeMs).toISOString();
-        if (info.size > 0 && info.size <= MAX_BYTES) {
+        if (info.size > 0 && info.size <= MAX_HTML_BYTES) {
           bytes = await this.readContainedBuffer(projectId, file);
         }
       } catch {
@@ -473,6 +493,20 @@ export class ForgeWorkspace {
     }
   }
 
+  /**
+   * The approved document as a person or a model should read it: the shipped
+   * bytes with a verified vendored engine reduced back to the one-line reference
+   * it was built from. Seeding a modification with the shipped bytes would hand a
+   * model 1.1 MB of third-party code to reproduce, and any re-serialization of it
+   * invalidates the hash that makes the copy trustworthy. Nothing that ships or
+   * verifies uses this view — preview, export, the browser check and integrity
+   * all use `currentHtml`.
+   */
+  async currentSourceHtml(projectId: string): Promise<string | null> {
+    const html = await this.currentHtml(projectId);
+    return html === null ? null : unvendorScripts(html);
+  }
+
   async currentHtml(projectId: string): Promise<string | null> {
     const state = await this.state(projectId);
     if (state.current_version === null) return null;
@@ -541,14 +575,49 @@ export class ForgeWorkspace {
   }
 
   async stagedHtml(projectId: string, jobId: string): Promise<string | null> {
+    const staged = await this.stagedVendored(projectId, jobId);
+    return staged === null ? null : staged.bytes.toString('utf8');
+  }
+
+  /**
+   * The staged bytes as the product intends to ship them: with the pinned engine
+   * inlined where the generated document referenced it (KI-53).
+   *
+   * Every read of a staged change goes through here — diff, preview, validation,
+   * the browser check, promotion — because the bytes a reviewer reads, the bytes
+   * a browser verified and the bytes promotion makes immutable have to be one
+   * byte sequence. A transform applied only on the way to disk would leave the
+   * review and the verification arguing about something neither shipped.
+   *
+   * The transform is deterministic and pure, so two reads of the same file agree
+   * on both the bytes and their hash; the `staged_changed` fence still catches a
+   * file that changed underneath.
+   */
+  private async stagedVendored(
+    projectId: string,
+    jobId: string,
+  ): Promise<{
+    bytes: Buffer;
+    sha256: string;
+    applied: AppliedVendor[];
+    gaps: VendorGap[];
+  } | null> {
     const file = this.stagingFile(projectId, jobId);
     try {
       await lstat(file);
     } catch {
       return null;
     }
-    // Preview and diff never read a symlink, even before validation runs.
-    return this.readContained(projectId, file);
+    // Never follow a symlink, even before validation runs.
+    const raw = await this.readContainedBuffer(projectId, file);
+    const outcome = vendorScripts(raw.toString('utf8'));
+    const bytes = Buffer.from(outcome.html, 'utf8');
+    return {
+      bytes,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      applied: outcome.applied,
+      gaps: outcome.gaps,
+    };
   }
 
   /**
@@ -558,20 +627,14 @@ export class ForgeWorkspace {
    * must be the exact byte sequence that passed the browser check, not whatever
    * happens to be on disk when approval completes.
    */
-  async stagedSnapshot(
-    projectId: string,
-    jobId: string,
-  ): Promise<{ html: string; sha256: string } | null> {
-    const file = this.stagingFile(projectId, jobId);
-    try {
-      await lstat(file);
-    } catch {
-      return null;
-    }
-    const bytes = await this.readContainedBuffer(projectId, file);
+  async stagedSnapshot(projectId: string, jobId: string): Promise<ForgeStagedSnapshot | null> {
+    const staged = await this.stagedVendored(projectId, jobId);
+    if (staged === null) return null;
     return {
-      html: bytes.toString('utf8'),
-      sha256: createHash('sha256').update(bytes).digest('hex'),
+      html: staged.bytes.toString('utf8'),
+      sha256: staged.sha256,
+      vendored: staged.applied,
+      vendor_gaps: staged.gaps,
     };
   }
 
@@ -624,10 +687,27 @@ export class ForgeWorkspace {
       issues.push('Resolved file escapes the project workspace.');
     }
 
-    const html = await readFile(file, 'utf8');
-    const content = await this.validateHtml(html);
-    issues.push(...content.issues);
-    return { ok: issues.length === 0, issues };
+    /*
+     * Read the bytes as they would ship. The containment checks above already
+     * named a symlink or an escaping parent, and `stagedVendored` refuses to
+     * read such a file rather than reading it; recording that refusal again
+     * would turn one condition into two issues. Any other failure is not ours
+     * to swallow.
+     */
+    let staged: { bytes: Buffer } | null = null;
+    try {
+      staged = await this.stagedVendored(projectId, jobId);
+    } catch (error) {
+      if (!(error instanceof ForgeError)) throw error;
+    }
+    if (staged === null) {
+      issues.push('Staging file index.html is missing.');
+    } else {
+      issues.push(...(await this.validateHtml(staged.bytes.toString('utf8'))).issues);
+    }
+    // The realpath checks and the refusing read can name the same condition.
+    const unique = [...new Set(issues)];
+    return { ok: unique.length === 0, issues: unique };
   }
 
   /**
@@ -642,7 +722,7 @@ export class ForgeWorkspace {
     const issues: string[] = [];
     const bytes = Buffer.byteLength(html);
     if (bytes < 100) issues.push('index.html is suspiciously small.');
-    if (bytes > MAX_BYTES) issues.push(`index.html exceeds ${MAX_BYTES} bytes.`);
+    if (bytes > MAX_HTML_BYTES) issues.push(`index.html exceeds ${MAX_HTML_BYTES} bytes.`);
     // Games keep the Phaser contract they were built with. Phaser may create its
     // canvas at runtime, so accept either a canvas element or an explicit
     // Phaser.Game initialisation. Every other request is a general browser
@@ -669,6 +749,12 @@ export class ForgeWorkspace {
         issues.push('No renderable application content found in <body>.');
       }
     }
+
+    // The engine this product vendors is not code a model wrote, and it is not
+    // exempt from scrutiny: it is checked by sha256 against the pin instead of
+    // by the caps and the parser that exist to bound model output. A marker that
+    // does not hash to the pin fails the document outright.
+    issues.push(...vendoredScriptIntegrityIssues(html));
 
     const scripts = extractInlineScripts(html);
     const scriptBytes = scripts.reduce((total, script) => total + Buffer.byteLength(script), 0);
@@ -701,17 +787,39 @@ export class ForgeWorkspace {
   }
 
   async diffStaged(projectId: string, jobId: string): Promise<ForgeDiff> {
-    const before = (await this.currentHtml(projectId)) ?? '';
-    const after = (await this.stagedHtml(projectId, jobId)) ?? '';
+    /*
+     * Both sides in the source view. A diff whose biggest hunk is a third-party
+     * engine the product inserted is a diff nobody can review, and the change
+     * under review is the model's own. The bytes that ship are still the vendored
+     * ones, and the summary says so instead of leaving that to inference.
+     */
+    const staged = await this.stagedVendored(projectId, jobId);
+    const before = (await this.currentSourceHtml(projectId)) ?? '';
+    const after = staged === null ? '' : unvendorScripts(staged.bytes.toString('utf8'));
     const validation = await this.validateStaged(projectId, jobId);
     const diff = unifiedDiff(before, after);
     const added = after.split('\n').length - before.split('\n').length;
+    const vendorNotes: string[] = [];
+    if (staged && staged.applied.length > 0) {
+      vendorNotes.push(
+        `the approved file will carry its own ${staged.applied.map((entry) => `${entry.name}@${entry.version}`).join(', ')}; the diff shows the document without it`,
+      );
+    }
+    if (staged && staged.gaps.length > 0) {
+      vendorNotes.push(
+        `${String(staged.gaps.length)} engine reference(s) this product cannot vendor: ${staged.gaps
+          .map((gap) => `${gap.url} (${gap.reason})`)
+          .join('; ')}`,
+      );
+    }
     return {
       job_id: jobId,
-      summary:
+      summary: [
         before === ''
           ? `New file index.html (${after.split('\n').length} lines).`
           : `index.html changed (${added >= 0 ? '+' : ''}${added} lines).`,
+        ...vendorNotes,
+      ].join(' '),
       files: [{ path: 'index.html', before, after, diff }],
       validation,
       // The manager attaches the job's advisory snapshot; the workspace never
@@ -782,8 +890,14 @@ export class ForgeWorkspace {
     const staged =
       options.html !== undefined
         ? Buffer.from(options.html, 'utf8')
-        : await this.readContainedBuffer(projectId, this.stagingFile(projectId, jobId));
+        : (await this.stagedVendored(projectId, jobId))?.bytes;
+    if (staged === undefined) {
+      throw new ForgeError('invalid_job_state', 'The staged review file is missing.');
+    }
     const sha256 = createHash('sha256').update(staged).digest('hex');
+    // What these bytes actually carry, read back from the bytes rather than
+    // trusted from a caller's claim.
+    const vendors = vendoredLibrariesIn(staged.toString('utf8'));
     // Bind promotion to the exact bytes runtime verification approved. Without
     // this, a staging rewrite between the browser check and approval would be
     // promoted under a verification result that never saw it.
@@ -805,20 +919,12 @@ export class ForgeWorkspace {
     // moves aside instead of failing on COPYFILE_EXCL forever.
     try {
       // Owner-only from creation; the rename keeps the mode on the version dir.
+      // The bytes written are the ones hashed above — including the vendored
+      // engine and any approved images — not a re-read of whatever the staging
+      // file holds now, so a version can never be a copy of something the
+      // review and the browser check did not see.
       await mkdir(temp, { mode: 0o700 });
-      if (options.html !== undefined) {
-        await writeFile(join(temp, 'index.html'), staged, {
-          encoding: 'utf8',
-          mode: 0o600,
-          flag: 'wx',
-        });
-      } else {
-        await copyFile(
-          this.stagingFile(projectId, jobId),
-          join(temp, 'index.html'),
-          fsConstants.COPYFILE_EXCL,
-        );
-      }
+      await writeFile(join(temp, 'index.html'), staged, { mode: 0o600, flag: 'wx' });
 
       const written = await readFile(join(temp, 'index.html'));
       if (createHash('sha256').update(written).digest('hex') !== sha256) {
@@ -863,6 +969,7 @@ export class ForgeWorkspace {
       sha256,
       ...(options.verification ? { approval_verification: options.verification } : {}),
       ...(options.media ? { media: options.media } : {}),
+      ...(vendors.length > 0 ? { vendors } : {}),
     });
     await this.writeState(projectId, {
       current: next,
@@ -893,10 +1000,6 @@ export class ForgeWorkspace {
   }
 
   /** Read a file only if it is a regular file contained by the project. */
-  private async readContained(projectId: string, file: string): Promise<string> {
-    return (await this.readContainedBuffer(projectId, file)).toString('utf8');
-  }
-
   private async readContainedBuffer(projectId: string, file: string): Promise<Buffer> {
     const stat = await lstat(file);
     if (stat.isSymbolicLink() || !stat.isFile()) {
@@ -954,12 +1057,33 @@ export class ForgeWorkspace {
   }
 }
 
+/**
+ * The inline scripts a generated document wrote, which is what the inline caps
+ * and the syntax checks are for. The library this product vendors carries a
+ * marker and is verified by hash instead, so it is not counted here; a marker
+ * that is not the pinned library is reported by `vendoredScriptIntegrityIssues`
+ * and fails validation rather than buying an exemption.
+ */
 export function extractInlineScripts(html: string): string[] {
   const scripts: string[] = [];
-  const pattern = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
+  const pattern = /<script\b((?![^>]*\bsrc=)[^>]*)>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null = pattern.exec(html);
   while (match) {
-    if (match[1] && match[1].trim().length > 0) scripts.push(match[1]);
+    const attrs = match[1] ?? '';
+    const body = match[2];
+    /*
+     * A vendor marker buys an exemption only when the bytes behind it are the
+     * pinned library. An unverified marker is treated as ordinary model code:
+     * counted against the caps and syntax-checked like anything else a model
+     * wrote, so the marker cannot be used to hide a large or broken script from
+     * either bound. Validation reports it by name as well.
+     */
+    const exempt =
+      new RegExp(`\\b${VENDOR_MARKER_ATTRIBUTE}=`, 'i').test(attrs) &&
+      isPinnedVendorBody(body ?? '');
+    if (!exempt && body && body.trim().length > 0) {
+      scripts.push(body);
+    }
     match = pattern.exec(html);
   }
   return scripts;

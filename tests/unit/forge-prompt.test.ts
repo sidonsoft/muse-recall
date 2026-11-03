@@ -306,13 +306,21 @@ describe('rendered memory budget in the production prompt', () => {
 });
 
 describe('Phase 15A frozen prompt snapshot', () => {
-  // The historical Phase 15A trial protocol passed a raw joined block. The
-  // production builder no longer accepts that input, so the trial reconstructs
-  // recorded prompt hashes from this snapshot (P1 #7). These checks pin that
-  // the snapshot has not drifted and still escapes untrusted raw text.
-  it('matches the production builder byte-for-byte on every shared case', () => {
+  /*
+   * The historical Phase 15A trial protocol passed a raw joined block. The
+   * production builder no longer accepts that input, so the trial reconstructs
+   * recorded prompt hashes from this snapshot (P1 #7). These checks pin that the
+   * snapshot has not drifted and still escapes untrusted raw text.
+   *
+   * They pin it against fixtures of the snapshot's own output, not against the
+   * production fixtures. When they shared one fixture, a deliberate production
+   * wording change (KI-53's vendoring instruction) silently re-pinned what the
+   * research wording was expected to say — the drift check would have approved
+   * the drift by moving the target.
+   */
+  it('still produces the wording the trial recorded, case by case', () => {
     expect(buildPhase15APrompt({ kind: 'generate', prompt: 'A small farmyard memory game.' })).toBe(
-      fixture('generate.txt'),
+      fixture('generate.phase15a.txt'),
     );
     expect(
       buildPhase15APrompt({
@@ -321,9 +329,9 @@ describe('Phase 15A frozen prompt snapshot', () => {
         request: REQUEST,
         memories: FORGE_PROMPT_MEMORIES,
       }),
-    ).toBe(fixture('modify-memory.txt'));
+    ).toBe(fixture('modify-memory.phase15a.txt'));
     expect(buildPhase15APrompt({ kind: 'modify', prompt: REQUEST, request: REQUEST })).toBe(
-      fixture('modify-no-memory.txt'),
+      fixture('modify-no-memory.phase15a.txt'),
     );
     expect(
       buildPhase15APrompt({
@@ -333,7 +341,35 @@ describe('Phase 15A frozen prompt snapshot', () => {
         memories: FORGE_PROMPT_MEMORIES,
         hasScreenshot: true,
       }),
-    ).toBe(fixture('modify-with-screenshot.txt'));
+    ).toBe(fixture('modify-with-screenshot.phase15a.txt'));
+  });
+
+  /*
+   * Production and research wording are allowed to part company, but only in
+   * ways someone wrote down. This check names the lines that differ so an
+   * unrecorded production change to the shared instructions still fails.
+   */
+  it('parts from the frozen wording only in the recorded vendoring lines', () => {
+    const frozen = fixture('generate.phase15a.txt').split('\n');
+    const production = fixture('generate.txt').split('\n');
+    const recordedProductionOnly = [
+      'If the request is a game, load Phaser 3 with exactly',
+      'Games still need a canvas, start/restart,',
+    ];
+    const recordedFrozenOnly = ['If the request is a game, use Phaser 3 from'];
+    const added = production.filter((line) => line.trim() !== '' && !frozen.includes(line));
+    const removed = frozen.filter((line) => line.trim() !== '' && !production.includes(line));
+    expect(added.map((line) => line.slice(0, 40))).toEqual(
+      recordedProductionOnly.map((line) => line.slice(0, 40)),
+    );
+    expect(removed.map((line) => line.slice(0, 40))).toEqual(
+      recordedFrozenOnly.map((line) => line.slice(0, 40)),
+    );
+    // Everything else is common, and in the same order.
+    const sharedInProduction = production.filter((line) => frozen.includes(line));
+    const sharedInFrozen = frozen.filter((line) => production.includes(line));
+    expect(sharedInProduction.join('\n')).toBe(sharedInFrozen.join('\n'));
+    expect(sharedInProduction.length).toBeGreaterThan(5);
   });
 
   it('wraps the historical raw block as escaped data without letting it close the block', () => {

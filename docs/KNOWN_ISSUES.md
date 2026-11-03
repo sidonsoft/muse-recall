@@ -729,7 +729,7 @@ screens in the managed browser, and fails on any console error on any screen. It
 is wired into both browser legs of CI, because dev-mode warnings are a class that
 production-bundle gates cannot cover.
 
-## KI-53 — a generated game needs the CDN, so "local" is not the same as "offline" (measured; dependency remains by design)
+## KI-53 — a generated game needs the CDN, so "local" is not the same as "offline" (closed: the product carries its own copy)
 
 **Observed.** A freshly installed app, opened for the first time with the offline echo provider,
 requests `https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js`. This is the product's own
@@ -776,13 +776,56 @@ throws must not be blamed on the CDN. Exit codes are separated honestly: `1` is 
 `2` means the approved CDN is unreachable here, so the reachable-engine cases cannot be measured —
 which is the same fact this entry is about, reported rather than hidden.
 
-**Still open, deliberately.** The dependency itself. Closing it means vendoring Phaser into the
-server's static bundle and pointing the prompt, the CSP and the runtime allowlist at the local copy
-(~1.18 MB, one version, its own update and licence questions), or accepting that games need network.
-The preview surface also stays unsatisfying: a sandboxed preview document gives Studio no console
-access, so a game that cannot fetch its engine shows an empty frame with no in-frame message. A
-message there needs a bridge inside the preview document — a separate change with its own review,
-not something to bolt onto this fix.
+**Closed (D059).** The dependency was removed rather than documented harder. The decision, taken as
+a product decision, was that a self-contained artifact is more reproducible and less dependent on
+third-party availability than a 1.18 MB saving is valuable.
+
+- **One pinned copy.** Phaser 3.80.1 — the version the prompt already named — 1 181 917 bytes,
+  sha256 `62081f6a1b51d040473f919ffedef9009953c20833518e146da5a8d1c9405ea8`, committed as a
+  generated module (`apps/server/src/forge/vendor/phaser-3.80.1.ts`) with the MIT licence text and
+  the pin URL inside it. `pnpm run vendor:phaser` re-fetches it and refuses to write if the hash or
+  byte length moved; `--check` proves the committed copy still matches what the CDN serves.
+- **The document stays what the model wrote.** Storage keeps the single
+  `<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>` tag. The
+  engine is inlined at the moment bytes reach something that runs them — preview, diff, validation,
+  runtime verification, promotion — by a pure `vendorScripts()` that refuses to touch anything but
+  that exact tag. A `defer`, `async`, `integrity` or `crossorigin` attribute, a script body, or any
+  other Phaser version is **not** rewritten; it is named as a `vendor_gaps` entry on the staging
+  response and on the preview response headers, and the document keeps the network policy instead of
+  being silently upgraded.
+- **Verification decides the network policy, per document.** `runtime-check.ts` now chooses
+  `vendored` (no remote origin granted at all) for a document that carries its engine and is fully
+  self-contained, and `cdn-allowlist` (the old rule) for one that still asks for it. The preview CSP
+  is computed from the served bytes the same way: a self-contained game is served with no remote
+  origin in `script-src` and `connect-src 'none'`. The approval message that used to read
+  "An application that gets its engine from the approved CDN cannot be approved while that host is
+  unreachable" now says so **only** for documents that actually still need it.
+- **The model is told, and is not shown the engine.** The production prompt names the exact tag and
+  says the product replaces it, forbids adding attributes or inlining an engine copy, and
+  modifications are seeded from the source view (`currentSourceHtml()`), not from 1.18 MB of base64.
+  A promoted artifact records which library and version it carries in its own version manifest, and
+  `unvendorScripts()` round-trips the shipped bytes back to the source view exactly.
+- **The marker is not trusted.** A generated page that stamps its own `data-forge-vendor` marker, or
+  declares a stale hash, gets no exemption: verification goes to the bytes, and an unverified block
+  counts as the model's own script against the inline-script budget and syntax checks.
+
+**Net added to measurement.** `pnpm verify:runtime` grew from five cases to eight and now runs the
+self-contained cases **first**, with no egress needed at all: a game carrying the vendored engine
+boots (canvas, visible content) with no remote origin granted, a self-contained game that phones
+home is blocked, a Phaser version this product does not vendor keeps its reference and is reported
+as a gap, and every case now states which network policy it was verified under. The report is
+written to `test-results/runtime/<stamp>/report.json` so the status document can cite the policy each
+case ran under instead of asserting it. Measured cost on this machine, where the CDN is reachable
+and cached: a full verification run is 1.6–2.0 s either way (the inlined engine is within ~0.2 s of
+the fetch), and each artifact grows by ~1.18 MB on disk and in the database; the staged/HTML cap was
+raised from 1.5 MB to 4 MB to keep room for the game code itself.
+
+**Still open, deliberately.** Two things. Artifacts approved before this change keep their CDN
+reference — they were paid for and reviewed as they are, and rewriting shipped bytes to change a
+dependency would move an artifact nobody approved; the CDN remains allowlisted for exactly that
+case. And the preview surface still gives Studio no console access, so any *other* missing resource
+in a sandboxed preview is still an empty frame with no in-frame message; that needs a bridge inside
+the preview document, which is its own change with its own review.
 
 
 ## KI-54 — a route that promised to change nothing created the Forge project anyway (closed)

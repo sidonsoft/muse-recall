@@ -32,14 +32,42 @@ export interface RuntimeCheckResult {
    * only act on the second one if the report says so.
    */
   remote_failures: string[];
+  /**
+   * Whether the checked document was held to a no-network policy (it carries
+   * its own engine) or to the CDN allowlist (it still asks the network for
+   * one). A passed check means different things under each.
+   */
+  network_policy?: ForgeRuntimeNetworkPolicy;
+  /** Remote engine references the check could not vendor, named. */
+  vendor_gaps?: string[];
   /** Browser identity/version, when the checker can report it. */
   browser?: string | null;
   /** Explicit launch policy and bounded diagnostics. */
   browser_selection?: ForgeRuntimeBrowserSelection;
 }
 
+/*
+ * Two network policies, chosen from the document under check rather than
+ * declared by the caller. A document that carries the engine itself (KI-53)
+ * needs no network at all, so the check grants it none: any outbound request
+ * from a vendored artifact is a finding. A document that still points at the
+ * approved CDN is checked under the old allowlist, because refusing its engine
+ * would report a broken game where the truth is an unvendored dependency — and
+ * that difference is recorded in `network_policy` rather than guessed later.
+ */
+export type ForgeRuntimeNetworkPolicy = 'vendored' | 'cdn-allowlist';
+
+import { externalReferences, VENDOR_MARKER_ATTRIBUTE, vendorGapUrls } from './vendored-scripts.js';
+
 /** The only remote origin a staged application may load during verification. */
 const ALLOWED_REMOTE_HOSTS = new Set(['cdn.jsdelivr.net']);
+
+/** Which policy applies to these document bytes. */
+export function runtimeNetworkPolicy(html: string): ForgeRuntimeNetworkPolicy {
+  return html.includes(`${VENDOR_MARKER_ATTRIBUTE}="`) && externalReferences(html).length === 0
+    ? 'vendored'
+    : 'cdn-allowlist';
+}
 
 /** Network destinations that never leave the machine / are not remote. */
 function isLocalScheme(protocol: string): boolean {
@@ -47,7 +75,10 @@ function isLocalScheme(protocol: string): boolean {
 }
 
 /** True when a request URL is permitted during headless verification. */
-export function isAllowedRuntimeRequest(raw: string): boolean {
+export function isAllowedRuntimeRequest(
+  raw: string,
+  policy: ForgeRuntimeNetworkPolicy = 'cdn-allowlist',
+): boolean {
   let url: URL;
   try {
     url = new URL(raw);
@@ -57,6 +88,8 @@ export function isAllowedRuntimeRequest(raw: string): boolean {
   }
   if (isLocalScheme(url.protocol)) return true;
   if (url.protocol !== 'https:') return false;
+  // A vendored document was verified with no remote origin at all.
+  if (policy === 'vendored') return false;
   return ALLOWED_REMOTE_HOSTS.has(url.hostname.toLowerCase());
 }
 
@@ -194,11 +227,15 @@ export async function checkGameRuntime(
       errors: [launched.error],
       blocked: [],
       remote_failures: [],
+      network_policy: runtimeNetworkPolicy(html),
+      vendor_gaps: vendorGapUrls(html),
       browser: null,
       browser_selection: launched.selection,
     };
   }
   const browser = launched.browser;
+  const networkPolicy = runtimeNetworkPolicy(html);
+  const vendorGaps = vendorGapUrls(html);
   let browserIdentity: string | null = null;
   try {
     browserIdentity = boundedRedacted(`Chromium ${await browser.version()}`, MAX_SELECTION_TEXT);
@@ -219,7 +256,7 @@ export async function checkGameRuntime(
     // allowlist rejects never reach here: they are recorded in `blocked`.
     page.on('requestfailed', (request) => {
       const url = request.url();
-      if (!isAllowedRuntimeRequest(url)) return;
+      if (!isAllowedRuntimeRequest(url, networkPolicy)) return;
       try {
         const line = remoteLoadFailure(new URL(url).origin, request.failure()?.errorText ?? '');
         if (!remoteFailures.includes(line)) remoteFailures.push(line);
@@ -237,7 +274,7 @@ export async function checkGameRuntime(
 
     await page.route('**/*', async (route) => {
       const url = route.request().url();
-      if (isAllowedRuntimeRequest(url)) {
+      if (isAllowedRuntimeRequest(url, networkPolicy)) {
         await route.continue();
         return;
       }
@@ -299,6 +336,8 @@ export async function checkGameRuntime(
       errors: [...reason, ...failure],
       blocked,
       remote_failures: remoteFailures,
+      network_policy: networkPolicy,
+      vendor_gaps: vendorGaps,
       browser: browserIdentity,
       browser_selection: selection,
     };

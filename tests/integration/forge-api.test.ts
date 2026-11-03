@@ -12,7 +12,7 @@ import { buildApp } from '../../apps/server/src/app.js';
 import { type AppConfig, SERVICE_VERSION } from '../../apps/server/src/config.js';
 import { buildForgePrompt } from '../../apps/server/src/forge/prompt.js';
 import { ForgeJobManager } from '../../apps/server/src/forge/runner.js';
-import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
+import { ForgeWorkspace, MAX_HTML_BYTES } from '../../apps/server/src/forge/workspace.js';
 import { MediaAssetStore } from '../../apps/server/src/media/assets.js';
 import { ProviderHealthTracker } from '../../apps/server/src/provider-health.js';
 import {
@@ -1318,7 +1318,10 @@ describe('forge workflow', () => {
     expect((await waitForFinish(h.app, generated)).status).toBe('succeeded');
     const staged = join(h.root, 'forge', 'demo-game', 'staging', generated, 'index.html');
     const current = await readFile(staged, 'utf8');
-    await writeFile(staged, `${current}\n<!-- ${'x'.repeat(1_600_000)} -->\n`);
+    // Sized against the cap the code exports, not a number remembered here: the
+    // cap had to grow to fit a self-contained game (KI-53), so a fixture written
+    // beside the old value would silently stop testing anything.
+    await writeFile(staged, `${current}\n<!-- ${'x'.repeat(MAX_HTML_BYTES + 1_000)} -->\n`);
 
     const approve = await h.app.inject({
       method: 'POST',
@@ -1494,20 +1497,24 @@ describe('forge workflow', () => {
     const stagedPreview = await preview(h.app, 'demo-game', generated);
     expect(stagedPreview.statusCode).toBe(200);
     const shimAt = stagedPreview.body.indexOf('data-forge-preview-storage');
-    const appScriptAt = stagedPreview.body.indexOf(
-      '<script src="https://cdn.jsdelivr.net/npm/phaser',
-    );
+    // The engine the artifact now carries, then the game's own script after it.
+    const engineAt = stagedPreview.body.indexOf('<script data-forge-vendor="phaser@3.80.1"');
+    const appScriptAt = stagedPreview.body.indexOf('new Phaser.Game');
     expect(shimAt).toBeGreaterThanOrEqual(0);
-    expect(appScriptAt).toBeGreaterThan(shimAt);
+    expect(engineAt).toBeGreaterThan(shimAt);
+    expect(appScriptAt).toBeGreaterThan(engineAt);
+    // Nothing in the served preview asks the network for the engine: the bytes
+    // being previewed carry it. KI-53.
+    expect(stagedPreview.body).not.toContain('cdn.jsdelivr.net');
 
     const csp = String(stagedPreview.headers['content-security-policy']);
     for (const directive of [
       'sandbox allow-scripts',
       "default-src 'none'",
-      "script-src 'unsafe-inline' https://cdn.jsdelivr.net",
+      "script-src 'unsafe-inline'",
       "style-src 'unsafe-inline'",
       'img-src data: blob:',
-      'connect-src https://cdn.jsdelivr.net',
+      "connect-src 'none'",
       "frame-ancestors 'self'",
       "base-uri 'none'",
       "form-action 'none'",
@@ -1515,6 +1522,9 @@ describe('forge workflow', () => {
     ]) {
       expect(csp).toContain(directive);
     }
+    // A document that carries its own engine is granted no remote origin. The
+    // wider grant survives only for artifacts that still reference the CDN.
+    expect(csp).not.toContain('cdn.jsdelivr.net');
     expect(csp).not.toContain('allow-same-origin');
 
     const stagedArtifact = await h.app.inject({

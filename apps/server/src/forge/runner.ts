@@ -33,6 +33,7 @@ import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } fro
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
 import { checkGameRuntime } from './runtime-check.js';
+import { unvendorScripts } from './vendored-scripts.js';
 import {
   applyWorkerWrapper,
   type ForgeWorkerWrapper,
@@ -897,7 +898,10 @@ export class ForgeJobManager {
             'Generate and approve an application before requesting a modification.',
           );
         }
-        const current = await this.workspace.currentHtml(input.projectId);
+        // Seed the modification with the source view, never the shipped bytes:
+        // a model handed a 1.1 MB engine block to reproduce will alter it, and
+        // the vendored copy is only trustworthy while its bytes are unchanged.
+        const current = await this.workspace.currentSourceHtml(input.projectId);
         if (current === null) {
           throw new ForgeError('no_current_version', 'The approved application could not be read.');
         }
@@ -1176,7 +1180,13 @@ export class ForgeJobManager {
       // passed. It is advisory metadata: do not add a separate durable write
       // that can block approval. The approved lifecycle record below carries
       // the snapshot atomically with the promotion result.
-      const decisionGuard = staged ? this.advisory(current, staged.html, true) : null;
+      // The advisory evaluates what the model wrote. The vendored engine is
+      // third-party bytes the product inserted, and letting it occupy the
+      // evaluation budget would mean the guard was reading Phaser rather than the
+      // code a decision applies to.
+      const decisionGuard = staged
+        ? this.advisory(current, unvendorScripts(staged.html), true)
+        : null;
       if (decisionGuard) {
         current.decision_guard = decisionGuard;
       }
@@ -1588,7 +1598,9 @@ export class ForgeJobManager {
     // validation and recorded beside — never inside — `validation`. The
     // blocking browser check runs on approve, which re-snapshots after it.
     const staged = await this.workspace.stagedHtml(job.project_id, job.id);
-    const decisionGuard = staged === null ? null : this.advisory(job, staged, false);
+    // Same rule as above: the source view, so the advisory sees the model's code.
+    const decisionGuard =
+      staged === null ? null : this.advisory(job, unvendorScripts(staged), false);
 
     await this.finish(job, {
       ...base,
@@ -1721,7 +1733,7 @@ export class ForgeJobManager {
 
   private async resetStaging(job: ForgeJob, staging: string): Promise<void> {
     if (job.kind === 'modify') {
-      const current = await this.workspace.currentHtml(job.project_id);
+      const current = await this.workspace.currentSourceHtml(job.project_id);
       if (current !== null) await writePrivateFile(join(staging, 'index.html'), current);
     } else {
       const file = join(staging, 'index.html');
