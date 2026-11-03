@@ -162,7 +162,7 @@ that it is a different environment, and this one was holding a defect.
 
 - install from the local store, no downloads, lockfile and tree untouched afterwards;
 - `pnpm run verify` inside the clone: exit 0 in ~27 s;
-- bundles built in the clone at the clone's own commit, clean tree: `treeClean: true`,
+- bundles built in the clone at the clone's own commit, clean build tree:
   `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
   server `3c7c7f2e5ac4…`, web `34ee5eda1b6f…` — the **web bundle is byte-identical to the
   author checkout's** at the same release line, the server bundle differs from the author

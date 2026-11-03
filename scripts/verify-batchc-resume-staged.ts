@@ -228,7 +228,7 @@ async function main(): Promise<void> {
   const provenance = verifyBuildProvenance({ root: ROOT });
   observations.buildProvenance = {
     commit: provenance.commit,
-    treeClean: provenance.treeClean,
+    treeCleanAtMeasure: provenance.treeCleanAtMeasure,
     server: {
       sourceHash: provenance.server.sourceHash,
       buildHash: provenance.server.buildHash,

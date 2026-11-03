@@ -331,8 +331,8 @@ describe('describeBundleIdentity', () => {
   it('says the bundles came from the tested commit when the manifests agree', () => {
     const identity: BundleIdentity = describeBundleIdentity({
       commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      treeClean: true,
-      treeStatus: '',
+      treeCleanAtMeasure: true,
+      treeStatusAtMeasure: '',
       server: manifestFor(
         'server',
         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -354,8 +354,8 @@ describe('describeBundleIdentity', () => {
   it('names both commits when the bundles predate the tested commit, and refuses to imply otherwise', () => {
     const identity = describeBundleIdentity({
       commit: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-      treeClean: true,
-      treeStatus: '',
+      treeCleanAtMeasure: true,
+      treeStatusAtMeasure: '',
       server: manifestFor(
         'server',
         '94d3c62c52225b5a8fe4e2a4e3bc8ddee99fa3f4',
@@ -382,8 +382,8 @@ describe('describeBundleIdentity', () => {
   it('reports each component separately when only one manifest is stale', () => {
     const identity = describeBundleIdentity({
       commit: 'cccccccccccccccccccccccccccccccccccccccc',
-      treeClean: true,
-      treeStatus: '',
+      treeCleanAtMeasure: true,
+      treeStatusAtMeasure: '',
       server: manifestFor(
         'server',
         'cccccccccccccccccccccccccccccccccccccccc',
@@ -414,8 +414,8 @@ it('refuses to carry a commit identity claim when the build came from a dirty tr
   });
   const identity = describeBundleIdentity({
     commit: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
-    treeClean: false,
-    treeStatus: ' M apps/server/src/routes/forge.ts\n',
+    treeCleanAtMeasure: false,
+    treeStatusAtMeasure: ' M apps/server/src/routes/forge.ts\n',
     server: dirty('server'),
     web: dirty('web'),
   });
@@ -426,4 +426,43 @@ it('refuses to carry a commit identity claim when the build came from a dirty tr
   expect(identity.note).toContain('uncommitted working tree');
   expect(identity.note).toContain('2 file(s) changed at build time');
   expect(identity.note).toContain('cannot carry a commit identity claim');
+});
+
+it('says which instant is dirty when the build was clean but the checkout is not', () => {
+  // The Palette Bench packet showed this combination: bundles built clean at 94867e5, measured
+  // while the working tree carried uncommitted harness edits. Both facts were in the report, under
+  // two similar names, and a reader took them for a contradiction (KI-84).
+  const identity = describeBundleIdentity({
+    commit: 'ffffffffffffffffffffffffffffffffffffffff',
+    treeCleanAtMeasure: false,
+    treeStatusAtMeasure: ' M scripts/build-review-app.ts\n M docs/KNOWN_ISSUES.md\n',
+    server: manifestFor('server', 'ffffffffffffffffffffffffffffffffffffffff', '2026-11-02T03:00:00.000Z'),
+    web: manifestFor('web', 'ffffffffffffffffffffffffffffffffffffffff', '2026-11-02T03:00:00.000Z'),
+  });
+  // The bytes are what the commit names, so the identity claim stands...
+  expect(identity.builtFromCleanTree).toBe(true);
+  expect(identity.supportsCommitIdentity).toBe(true);
+  // ...and the report still says what was not committed at the moment of measurement.
+  expect(identity.treeCleanAtMeasure).toBe(false);
+  expect(identity.note).toContain('the build ran over a clean tree at that commit');
+  expect(identity.note).toContain('2 file(s) changed while this measurement ran');
+  expect(identity.note).toContain('scripts/build-review-app.ts');
+  expect(identity.note).toContain('the gate that produced this report ran over work no commit names');
+  expect(identity.note).toContain('bundle bytes contain only what fffffff names');
+});
+
+it('keeps the two instants apart in the emitted field names, not only in the sentence', () => {
+  const identity = describeBundleIdentity({
+    commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    treeCleanAtMeasure: false,
+    treeStatusAtMeasure: ' M scripts/verify-studio-workflow.ts\n',
+    server: manifestFor('server', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-11-02T03:00:00.000Z'),
+    web: manifestFor('web', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-11-02T03:00:00.000Z'),
+  });
+  const keys = Object.keys(identity).sort();
+  // One name for the build instant, one for the measuring instant. A field called plain `treeClean`
+  // could describe either, which is how the two got read as each other.
+  expect(keys).toContain('builtFromCleanTree');
+  expect(keys).toContain('treeCleanAtMeasure');
+  expect(keys).not.toContain('treeClean');
 });

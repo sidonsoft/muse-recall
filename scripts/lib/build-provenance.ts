@@ -38,8 +38,14 @@ export interface BuildManifest {
 
 export interface ProvenanceReport {
   commit: string;
-  treeClean: boolean;
-  treeStatus: string;
+  /**
+   * Working-tree state of the checkout *while the gate ran*. This is not the state the bundles
+   * were built from: that is `server.treeClean` / `web.treeClean`, reported as
+   * `bundlesBuiltFromCleanTree`. The two answers differ whenever work is added after a clean
+   * build (a gate edit, a document edit), and reading one as the other is what KI-84 is about.
+   */
+  treeCleanAtMeasure: boolean;
+  treeStatusAtMeasure: string;
   server: BuildManifest;
   web: BuildManifest;
 }
@@ -57,6 +63,8 @@ export interface BundleIdentity {
   builtAtCommit: string;
   builtAtHead: boolean;
   builtFromCleanTree: boolean;
+  /** Tree state while the gate ran; a different instant from `builtFromCleanTree`. */
+  treeCleanAtMeasure: boolean;
   supportsCommitIdentity: boolean;
   serverBuiltAt: string;
   webBuiltAt: string;
@@ -97,11 +105,29 @@ export function describeBundleIdentity(report: ProvenanceReport): BundleIdentity
   } else if (atHead) {
     parts.push('the build ran over a clean tree at that commit');
   }
+  // A clean build measured by a dirty checkout is a legitimate combination — the bundle bytes are
+  // exactly what the commit names, while the code doing the measuring is not — but it has to be
+  // stated, or a reader is left with `treeClean: false` next to `supportsCommitIdentity: true`
+  // and no way to tell which instant each one describes.
+  if (cleanBuild && !report.treeCleanAtMeasure) {
+    const changed = report.treeStatusAtMeasure
+      .trim()
+      .split('\n')
+      .filter((line) => line !== '');
+    const named = changed.slice(0, 6).map((line) => line.trim());
+    parts.push(
+      `the checkout had ${String(changed.length)} file(s) changed while this measurement ran` +
+        (named.length > 0 ? ` (${named.join(', ')})` : '') +
+        `: the bundle bytes contain only what ${shortCommit(report.commit)} names, but the gate that ` +
+        `produced this report ran over work no commit names`,
+    );
+  }
   return {
     testedCommit: report.commit,
     builtAtCommit: atHead ? report.commit : built.join(','),
     builtAtHead: atHead,
     builtFromCleanTree: cleanBuild,
+    treeCleanAtMeasure: report.treeCleanAtMeasure,
     supportsCommitIdentity: atHead && cleanBuild,
     serverBuiltAt: report.server.builtAt,
     webBuiltAt: report.web.builtAt,
@@ -441,8 +467,8 @@ export function verifyBuildProvenance(options: {
   const info = gitInfo(root);
   return {
     commit: info.commit,
-    treeClean: info.treeClean,
-    treeStatus: info.treeStatus,
+    treeCleanAtMeasure: info.treeClean,
+    treeStatusAtMeasure: info.treeStatus,
     server,
     web,
   };

@@ -185,7 +185,8 @@ running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
 `test-results/batchd-playback-auth/2026-11-03-0700/report.json`: commit
-`2774a2b9ee5f` (KI-76 to KI-82, the fourth review's findings), `treeClean: true`,
+`2774a2b9ee5f` (KI-76 to KI-82, the fourth review's findings), `treeClean: true` (the state of the
+checkout while the gate ran — the field that meant that is now named `treeCleanAtMeasure`, see KI-84),
 `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
 `serverBuildHash: 1d18b46e93b5…` and **`webBuildHash: b2471becf70f…` — the web bundle moved
 again**, because the approval rail's dependency wording and scan-limit rendering changed.
@@ -212,8 +213,8 @@ deterministic fixture CLI.
 
 **The run that pair replaces, and why it cannot stand** is
 `test-results/batchd-playback-auth/2026-11-03-0659/report.json`: same commit, bundles built one
-minute earlier over a checkout with one uncommitted file. It reports `treeClean: false`,
-`bundlesBuiltFromCleanTree: false`, `supportsCommitIdentity: false` and an `identity_note` naming
+minute earlier over a checkout with one uncommitted file. It reports `bundlesBuiltFromCleanTree: false`
+(the build instant, the one that matters for an identity claim — see KI-84), `supportsCommitIdentity: false` and an `identity_note` naming
 the problem, and its check list carries one extra line saying so. It is kept because it is the
 clearest measured demonstration so far that KI-58's guard fires on a dirty build tree rather than
 quietly inheriting the previous claim.
@@ -235,7 +236,7 @@ The pair one commit earlier, `test-results/batchd-playback-auth/2026-11-03-0041/
 `identity_note`: `both bundles were built at 3dab9db; the build ran over a clean tree at that
 commit`. The pair one engine-move earlier —
 `test-results/batchd-playback-auth/2026-11-03-0027/report.json`, commit `3189df9b2850`,
-`treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
+`bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
 `supportsCommitIdentity: true`, server build `fecff3f9b6cd…`, web build `34ee5eda1b6f…`, and the
 report's own `identity_note`: `both bundles were built at 3189df9; the build ran over a clean tree
 at that commit`. **This is the first pair whose web bundle moved in this release line**, and the
@@ -278,7 +279,7 @@ the narration was not, which is how an operator re-runs a run that already spent
 
 - **rehearsal re-run at `c456600`** (`test-results/fresh-install/2026-11-03-0032`): **PASS 17
   checks** — install with no downloads, full suite in the clone, bundles built at the clone's own
-  commit (`treeClean: true`, `bundlesBuiltAtHead: true`, `supportsCommitIdentity: true`, server
+  commit (`bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`, server
   `3c7c7f2e5ac4`, web `34ee5eda1b6f` — byte-identical to the author checkout's web bundle), both
   restore drills green, live smoke refused with exit 2. The first-run line is `outbound none`, and
   §KI-74 in `docs/KNOWN_ISSUES.md` states what that line does and does not prove.
@@ -421,8 +422,10 @@ inputs equal that checkout's inputs. It does not, by itself, say which commit pr
 A run at `09d2258` passed with manifests naming `94d3c62` — legitimate, because the two commits
 differ only in documentation and `scripts/verify-*.ts`, none of which the production build hashes
 — but the report printed `commit: 09d2258…` and a reader could take that to mean the bytes were
-built there. The same run printed `treeClean: false`, because the working tree carried uncommitted
-edits while the gate ran: those bundles contained work no commit names. `describeBundleIdentity()`
+built there. The same run printed `treeClean: false` — unqualified, which is itself a defect fixed
+later by KI-84, since the field described the working tree while the gate ran rather than the tree the
+bundles were built from — and in that run the working tree did carry uncommitted edits: those bundles
+contained work no commit names. `describeBundleIdentity()`
 now separates the facts and the gate records `bundlesBuiltAtCommit`, `bundlesBuiltFromCleanTree` and
 `supportsCommitIdentity`, printing the explanation as a check line whenever it is not safe to read
 the pair as release identity.

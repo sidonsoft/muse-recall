@@ -798,7 +798,7 @@ async function main(): Promise<void> {
   const identity = describeBundleIdentity(provenance);
   observations.buildProvenance = {
     commit: provenance.commit,
-    treeClean: provenance.treeClean,
+    treeCleanAtMeasure: provenance.treeCleanAtMeasure,
     bundlesBuiltAtHead: identity.builtAtHead,
     bundlesBuiltFromCleanTree: identity.builtFromCleanTree,
     bundlesBuiltAtCommit: identity.builtAtCommit,

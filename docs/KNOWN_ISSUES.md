@@ -1196,7 +1196,10 @@ manifest and never surfaced by the gate.
    `scripts/lib/build-provenance.ts`) leaves the bundles valid, so the gate correctly
    passes at the newer commit while the bytes were produced from the older one.
 2. `treeClean: false` meant the build ran over a dirty tree. Commit fields agreeing does
-   not help: the bytes contain work no commit names.
+   not help: the bytes contain work no commit names. (That field name was itself imprecise: it
+   described the checkout *while the gate ran*, not the tree the build saw. KI-84 renamed it
+   `treeCleanAtMeasure` and made the identity note state both instants, because the two answers
+   legitimately differ and the old name invited a reader to read them as a contradiction.)
 
 **Fix.** `describeBundleIdentity()` in `scripts/lib/build-provenance.ts` reports
 `testedCommit`, `builtAtCommit`, `builtAtHead`, `bundlesBuiltFromCleanTree`,
@@ -2074,3 +2077,65 @@ dependency record that matches its own bytes", so its claim is no longer measure
 clean run measures **59** checks (`project studio-workflow-0cvcro`), and the unit test
 `tests/unit/gate-check-count.test.ts` pins the exact defect shape: same total, one named
 claim missing, no failure without the guard.
+
+## KI-84 — two true fields read as a contradiction, and a reviewer acted on that reading (closed)
+
+**Found by the reviewer, not by me.** Asked to judge the Palette Bench packet, the assessment reported
+the provenance as inconsistent — the packet printed `treeClean: false` beside
+`supportsCommitIdentity: true` — and recommended not using it for the current candidate. The
+recommendation was right for other reasons (below), but the contradiction it cited was not one.
+
+**Measured, from the packet's own `report.json`** (`observations.buildProvenance`,
+`test-results/human-review/palette-bench-2026-11-02-2250`):
+
+```
+commit 94867e5…  treeClean false  bundlesBuiltAtHead true  bundlesBuiltFromCleanTree true
+supportsCommitIdentity true
+identity_note "both bundles were built at 94867e5; the build ran over a clean tree at that commit"
+```
+
+Both values were correct, about **different instants**: the bundles were built clean at `94867e5`, and
+the working tree was dirty at 22:50 when the measurement ran — the uncommitted files were the review
+harness fixes from KI-73, which had not been committed yet. So the app bytes were exactly what the
+commit names, and what was uncommitted was the code doing the measuring: relevant when reading the
+counts, not when reading the artifact.
+
+**The defect is naming.** `treeClean` was the only name for the measure-time state, and
+`bundlesBuiltFromCleanTree` for the build-time state: adjacent, similar, and neither saying which
+instant it described. A reader had to already know the distinction to avoid misreading it, and this
+reader — who had not written the field — did not. A field whose correct reading depends on the
+author's memory is a field that needs a better name.
+
+**Fix.** `ProvenanceReport.treeClean`/`treeStatus` became `treeCleanAtMeasure`/`treeStatusAtMeasure`
+(the manifest's `treeClean` — the build instant — keeps its name, since it *is* the build instant), and
+`describeBundleIdentity()` now emits `treeCleanAtMeasure` alongside `builtFromCleanTree` and, when the
+two disagree, adds a note naming both instants and listing up to six paths that were changed while the
+measurement ran. Gates that record identity now print
+`bundlesBuiltFromCleanTree=…; treeCleanAtMeasure=…` instead of a bare `cleanTree`/`treeNowClean` pair.
+The rename is total in the way only a compiler can make it: `pnpm run typecheck:tests` failed on
+exactly the four fixtures still using the old name, which is the point of renaming rather than adding a
+second field beside the ambiguous one.
+
+**Two guards, both aimed at recurrence.**
+`tests/unit/build-provenance.test.ts` pins the disagreement case (clean build, dirty checkout):
+`supportsCommitIdentity` stays `true`, and the note must say `2 file(s) changed while this measurement
+ran`, name `scripts/build-review-app.ts`, and say the bundle bytes contain only what the commit names;
+a second test pins that the emitted keys contain `builtFromCleanTree` **and** `treeCleanAtMeasure` and
+**not** a plain `treeClean`. New `tests/unit/identity-field-names-in-docs.test.ts` reads the release
+documents and refuses (a) an unqualified `treeClean:` beside `supportsCommitIdentity` unless the same
+passage names the instant or cross-references KI-84, and (b) any back-ticked `bundles…`/`supports…`/
+`treeClean…` name that no gate actually prints — the allow-list is scraped from the `buildProvenance`
+blocks in the four gate sources, so it cannot itself go stale. It failed three times while I wrote it
+(`bundlesBuiltAtCommit` was real but not in my first allow-list; three status-document passages and one
+fresh-install passage quoted the old bare name), and each failure was a real doc/field drift.
+
+**Retained evidence is not rewritten.** The 2250 packet still prints `treeClean`; documents quoting it
+now name the instant in the same sentence, which is what the new doc gate enforces.
+
+**Limits, and the part of the reviewer's recommendation that stands.** Renaming a field does not make
+the packet current. The app was produced at `94867e5`, and the current candidate is `43127ec`. The five
+judgement rows and the four decision-compliance rows are blank because they are for a person, and the
+interactive rows are instructions for exactly that reason — a harness that filled them in would be
+scoring the app, which KI-71/KI-73 exist to prevent. So the packet cannot accept the candidate, and
+the reason is not the field naming: it is that the bytes under review predate the candidate, and no
+amount of re-measurement produces new app bytes.

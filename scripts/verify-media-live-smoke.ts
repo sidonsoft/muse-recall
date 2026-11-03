@@ -354,7 +354,7 @@ async function journey(): Promise<void> {
   observations.buildProvenance = provenance;
   observations.bundleIdentity = identity;
   console.log(
-    `  bundles: tested ${provenance.commit.slice(0, 7)}; built at ${identity.builtAtCommit.slice(0, 7)} cleanTree=${String(identity.builtFromCleanTree)}; treeNowClean=${String(provenance.treeClean)}; supportsCommitIdentity=${String(identity.supportsCommitIdentity)}`,
+    `  bundles: tested ${provenance.commit.slice(0, 7)}; built at ${identity.builtAtCommit.slice(0, 7)} bundlesBuiltFromCleanTree=${String(identity.builtFromCleanTree)}; treeCleanAtMeasure=${String(provenance.treeCleanAtMeasure)}; supportsCommitIdentity=${String(identity.supportsCommitIdentity)}`,
   );
   if (!identity.supportsCommitIdentity) {
     console.log(`  note: ${identity.note}`);

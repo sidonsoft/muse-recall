@@ -422,8 +422,8 @@ async function main(): Promise<void> {
   }
   observations.buildProvenance = {
     commit: provenance.commit,
-    treeClean: provenance.treeClean,
-    treeStatus: provenance.treeStatus,
+    treeCleanAtMeasure: provenance.treeCleanAtMeasure,
+    treeStatusAtMeasure: provenance.treeStatusAtMeasure,
     server: {
       sourceHash: provenance.server.sourceHash,
       sourceFiles: provenance.server.sourceFiles,
