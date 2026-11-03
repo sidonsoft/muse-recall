@@ -175,7 +175,13 @@ manifest. The identity pair for the newest commit is recorded by the identity ga
 running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-03-0027/report.json`: commit `3189df9b2850`,
+`test-results/batchd-playback-auth/2026-11-03-0041/report.json`: commit `3dab9db18a87`,
+`serverBuildHash: dc417e0d7ac6…`, `webBuildHash: 34ee5eda1b6f…` (web **unchanged** since the engine
+landed: the commits between are docs and gate scripts, which are not hashed inputs), and
+`identity_note: both bundles were built at 3dab9db; the build ran over a clean tree at that commit`.
+`pnpm run verify` at that commit: 122 files, 1 560 passed, 3 skipped; Biome 0 errors / 3 warnings /
+15 infos. The pair one engine-move earlier —
+`test-results/batchd-playback-auth/2026-11-03-0027/report.json`, commit `3189df9b2850`,
 `treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
 `supportsCommitIdentity: true`, server build `fecff3f9b6cd…`, web build `34ee5eda1b6f…`, and the
 report's own `identity_note`: `both bundles were built at 3189df9; the build ran over a clean tree
@@ -197,9 +203,13 @@ it approved still carries a CDN reference rather than the vendored engine. The p
 `44c67eb0345c…`) are kept, and the earlier `2026-11-02-1226` at `398e124` stays as the record of the
 first run that printed the `identity_note` wording (`KI-58`).
 
-A docs-only commit — including this remediation round — moves the build *identity* without
-moving bundle contents, because documentation and `scripts/verify-*.ts` are not hashed inputs.
-The rule stays mechanical: the identity a beta cut would carry is the `buildProvenance` block of
+A docs-only commit changes no hashed **input**, and that is not the same as changing no bundle
+bytes: the build manifest bakes the commit into the server bundle, so its hash moves with every
+commit while the source behind it is identical (`3dab9db` server `dc417e0d7ac6…` vs `3189df9`
+server `fecff3f9b6cd…`, web byte-identical `34ee5eda1b6f…` across both). A pair therefore cannot be
+inherited by reasoning about what changed — it has to be re-measured at the commit that would be
+cut, which is why the gate refuses to run against bundles that do not match the checkout running
+it. The rule stays mechanical: the identity a beta cut would carry is the `buildProvenance` block of
 the newest `test-results/batchd-playback-auth/` directory whose
 `observations.buildProvenance.supportsCommitIdentity` is `true`. The previous paragraph quoted a
 pair two commits behind HEAD and named a field the report does not emit; that is what this
