@@ -1,3 +1,5 @@
+> **Historical preservation record.** On 4 November 2026 the owner authorized promotion of the verified full beta and README to main and publication of v0.1.0. This supersedes the main-branch freeze below; existing submission and research tags remain immutable. A beta release does not itself establish a new hackathon submission.
+
 # Submission preservation manifest
 
 This file records which commit was submitted to the Cerebral Valley Meta AI Developer

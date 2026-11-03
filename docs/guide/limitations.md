@@ -8,7 +8,7 @@ scope and corrections.
 
 ## Deployment and security
 
-- **Single-user and loopback-only.** The API binds `127.0.0.1` by default. A non-loopback bind
+- **Single-user, loopback by default.** The API binds `127.0.0.1` by default. A non-loopback bind
   requires an `ACCESS_TOKEN`; with one set, every `/api` route except the open `GET /api/health`
   liveness probe demands the bearer header (see [security](../SECURITY.md)). There is no account
   model, per-user namespace, rate limiting or CSRF token: the token is one shared secret for the
@@ -24,7 +24,7 @@ scope and corrections.
 - Request bodies are capped at 1 MiB at the HTTP layer (`bodyLimit` in the Fastify constructor);
   oversized payloads are refused before any route handler runs.
 - There is no hosted deployment. The application is not reachable at a public URL. The
-  recorded 2:50 submission cut is committed under [`docs/demo/video/`](../demo/video/). See the
+  three-minute beta demo is committed under [`docs/demo/video/`](../demo/video/). See the
   [demo note](../demo/CORRECTABLE_MEMORY_DEMO.md).
 
 ## Load-time verification limits
@@ -60,8 +60,8 @@ Approval telemetry is forward-only: versions approved before it existed show “
 decision. A reviewer can approve a staged change after reading a `BLOCK · violation_detected`
 finding. The human is the enforcement layer.
 
-- The supported checks cover five source-pattern families: countdown mechanics, flashing effects,
-  mistake penalties, superseded palettes and colour-only cues. They inspect source text, not rendered
+- The supported checks cover seven source-pattern families: countdown mechanics, flashing effects,
+  mistake penalties, superseded palettes, colour-only cues, autoplaying media and external assets. They inspect source text, not rendered
   behavior.
 - `no_violation_detected` means the supported checks did not find a violation among the decisions
   they could map to a rule. It is **not** a compliance certificate and says nothing about

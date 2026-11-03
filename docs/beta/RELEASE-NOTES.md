@@ -32,7 +32,7 @@ not power Forge — and `FORGE_MUSE_BIN` can point at an absolute path.
 
 ```bash
 pnpm install
-pnpm run demo:seed          # seeds the forge-demo project and writes .env with MODEL_PROVIDER=echo
+pnpm run demo:seed          # seeds/reset the forge-demo project; does not write .env
 pnpm dev                    # API and web UI
 pnpm build && pnpm start    # production bundles instead
 ```

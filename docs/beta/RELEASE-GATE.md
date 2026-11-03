@@ -1,3 +1,5 @@
+> **v0.1.0 publication:** the owner authorized promotion of the full beta on 4 November 2026. The [release](https://github.com/sidonsoft/muse-recall/releases/tag/v0.1.0) carries the final commit-specific gate report. Measurements below are historical and retain their original identities. Publication does not fill the separate generated-application quality judgement sheet.
+
 # The final release gate
 
 One command:
