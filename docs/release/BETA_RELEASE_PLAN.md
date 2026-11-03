@@ -25,10 +25,15 @@ Decided by the owner: the first beta is **0.1.0**. Versions already read `0.1.0`
 everywhere, so there is **no version bump**. `integration` is promoted to `main` and
 submitted in place of the frozen `c32d03b`.
 
-1. Refresh test and evidence counts in the submission copy and README.
-2. Freeze `integration`; run `pnpm verify` and the browser gate on the final commit.
-3. Owner OK, then promote `integration` to `main` with a **merge commit** (Pages redeploys).
-4. Owner OK, then tag `submission-2026-11-04` (and `v0.1.0`) on the promoted `main`; create
+1. Land the recut demo video at the same paths (`docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4`
+   and `website/public/video/muse-recall-demo.mp4`) so the form link is unchanged, plus its
+   captions, transcript and the "2:50 / 12.7 MB / recorded 29 Oct" lines in the README,
+   submission copy and `V21_QA.md`.
+2. Refresh test and evidence counts in the submission copy and README.
+3. Freeze `integration`; run `pnpm verify` and the browser gate on the final commit.
+4. Owner OK, then promote `integration` to `main` with a **merge commit** (Pages redeploys).
+5. Check the live site plays the new video.
+6. Owner OK, then tag `submission-2026-11-04` (and `v0.1.0`) on the promoted `main`; create
    the Release from [notes/submission-2026-11-04.md](notes/submission-2026-11-04.md); attach the
    archive; record the SHA and checksum in a PR into `integration`.
 

@@ -21,6 +21,7 @@ no hosted service.
 - In the browser, no install: https://codespaces.new/sidonsoft/muse-recall?quickstart=1
 - Locally (Node 24, pnpm 10): `pnpm install && pnpm demo:seed && MODEL_PROVIDER=echo pnpm dev`
   (the offline `echo` provider needs no key)
+- Demo video (2:50): [Muse_Recall_Demo_V21_1080p.mp4](https://github.com/sidonsoft/muse-recall/blob/submission-2026-11-04/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
 - Website: https://sidonsoft.github.io/muse-recall/
 
 **What is in it**
