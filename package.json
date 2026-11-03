@@ -76,7 +76,9 @@
     "verify:review-live-smoke": "tsx scripts/verify-review-live-smoke.ts",
     "verify:batchc-ui": "tsx scripts/verify-batchc-ui.ts",
     "verify:batche-review-ui": "tsx scripts/verify-batche-review-ui.ts",
-    "verify:artifact-probes": "tsx scripts/verify-artifact-probes.ts"
+    "verify:artifact-probes": "tsx scripts/verify-artifact-probes.ts",
+    "verify:beta-journey": "tsx scripts/verify-beta-journey.ts",
+    "verify:release-gate": "tsx scripts/verify-release-gate.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

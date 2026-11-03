@@ -168,6 +168,13 @@ jobs:
       - name: Generated-artifact probe battery
         run: pnpm verify:artifact-probes
 
+      # The beta user journey itself: production bundles, real Studio UI, real browser, and no
+      # provider anywhere (the gate refuses to start if a provider credential is exported). It
+      # measures the two handover controls byte for byte, because a review of a generated app found
+      # a Copy control handing over output the app was no longer displaying.
+      - name: Beta user journey on production bundles
+        run: pnpm verify:beta-journey
+
       # Baselines live in the repository (tests/visual). The update run
       # uploads them for review/commit; drift runs upload the failing
       # actual screenshots and diff images for triage.
