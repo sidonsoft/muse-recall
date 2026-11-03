@@ -175,12 +175,16 @@ manifest. The identity pair for the newest commit is recorded by the identity ga
 running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-03-0041/report.json`: commit `3dab9db18a87`,
-`serverBuildHash: dc417e0d7ac6…`, `webBuildHash: 34ee5eda1b6f…` (web **unchanged** since the engine
-landed: the commits between are docs and gate scripts, which are not hashed inputs), and
-`identity_note: both bundles were built at 3dab9db; the build ran over a clean tree at that commit`.
-`pnpm run verify` at that commit: 122 files, 1 560 passed, 3 skipped; Biome 0 errors / 3 warnings /
-15 infos. The pair one engine-move earlier —
+`test-results/batchd-playback-auth/2026-11-03-0048/report.json`: commit `c000a85ca324` (the KI-75
+fix), `serverBuildHash: b1507048d914…` — **moved by that commit**, because `package.json` is a
+hashed input and KI-75 added the `vendor:phaser` script to it — while
+`webBuildHash: 34ee5eda1b6f…` is unchanged since the engine landed. `pnpm run verify` at that
+commit: 123 files, 1 564 passed, 3 skipped; Biome 0 errors / 3 warnings / 15 infos.
+The pair one commit earlier, `test-results/batchd-playback-auth/2026-11-03-0041/report.json`
+(`3dab9db18a87`,
+`serverBuildHash: dc417e0d7ac6…`, `webBuildHash: 34ee5eda1b6f…`) carries the same web bytes and the
+`identity_note`: `both bundles were built at 3dab9db; the build ran over a clean tree at that
+commit`. The pair one engine-move earlier —
 `test-results/batchd-playback-auth/2026-11-03-0027/report.json`, commit `3189df9b2850`,
 `treeClean: true`, `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`,
 `supportsCommitIdentity: true`, server build `fecff3f9b6cd…`, web build `34ee5eda1b6f…`, and the
