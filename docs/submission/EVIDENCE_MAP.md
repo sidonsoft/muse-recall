@@ -353,6 +353,15 @@ Phase 16 / 16B. Those claims are mapped here.
 
 ### C22 — The focused correction demo is recorded and committed
 
+**Historical identity:** the details below describe the 29 October video at `c32d03b`.
+On 4 November the same public filename was replaced by the three-minute beta demo:
+180.000 seconds, 10,876,299 bytes, SHA-256
+`6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`, 58 caption cues.
+See [current QA and footage provenance](../demo/video/V21_QA.md). The current cut combines
+retained live footage, product replays and labelled fixtures; it is not a continuous live session.
+The [historical cut](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
+remains in Git history.
+
 - **Evidence:** the recorded cut `Muse_Recall_Demo_V21_1080p.mp4` (170.47 s, SHA-256
   `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308`) and its `V21_QA.md`,
   transcript and 36-cue SRT, all in [`docs/demo/video/`](../demo/video/); the beat-by-beat record in

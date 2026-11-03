@@ -1,3 +1,5 @@
+> Historical record: video sizes, hashes and durations here refer to the earlier file at `c32d03b`. The public filename was reused on 4 November; see [current video QA](https://github.com/sidonsoft/muse-recall/blob/main/docs/demo/video/V21_QA.md) for current bytes and provenance.
+
 # Muse Recall — Pre-Submission Readiness Plan (revised after audit)
 
 **Meta AI Developer Hackathon · submissions due Wednesday 4 November 2026, 9:00 PM ET**

@@ -260,9 +260,14 @@ it did.
   deterministic `echo` provider are implemented; the open model was research-only.
 - **Not** "this is a live run" when showing the seeded fixture or a Phase 12A still.
 
-## 9. Recorded cut (29 October 2026)
+## 9. Historical recorded cut (29 October 2026)
 
-**File:** [`video/Muse_Recall_Demo_V21_1080p.mp4`](video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
+This section describes the file at commit `c32d03b`, not the current bytes. The same public
+filename was replaced on 4 November by the 180.000-second beta demo (10,876,299 bytes,
+SHA-256 `6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`).
+See [current verification](video/V21_QA.md). The old recording remains available in Git history.
+
+**Historical file:** [video at `c32d03b`](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
 (the V21 cut).
 **Duration:** 170.47 s (2:50.47) · 1920×1080 · 30 fps · H.264/AAC. **Voice:** ElevenLabs George;
 377 words.

@@ -6,7 +6,5 @@
 
 - [ ] `pnpm verify` passes
 - [ ] Base branch is `integration`
-- [ ] No frozen-entry paths touched while judging is open (`website/`,
-  `docs/hackathon-evidence/`, `docs/submission/`, `docs/demo/evidence/`);
-  tag/ref freezes are ruleset-enforced, this line covers the rest —
-  see [SUBMISSION_PRESERVATION.md](docs/release/SUBMISSION_PRESERVATION.md)
+- [ ] Checksummed research evidence and existing frozen tags are unchanged; see
+  [SUBMISSION_PRESERVATION.md](../docs/release/SUBMISSION_PRESERVATION.md)
