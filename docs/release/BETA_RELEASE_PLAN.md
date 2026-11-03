@@ -37,7 +37,7 @@ submitted in place of the frozen `c32d03b`.
    the Release from [notes/submission-2026-11-04.md](notes/submission-2026-11-04.md); attach the
    archive; record the SHA and checksum in a PR into `integration`.
 
-Release notes: [notes/v0.1.0-beta.md](notes/v0.1.0-beta.md) (changes in the beta) and
+Release notes: [notes/v0.1.0-beta.md](notes/v0.1.0-beta.md) (what v0.1.0 does) and
 [notes/submission-2026-11-04.md](notes/submission-2026-11-04.md) (Release body).
 
 ## After judging
