@@ -14,13 +14,17 @@ staging directory and stops. Only an explicit human approval promotes it.
   `<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>` tag, and
   the product replaces that tag with the copy of the engine it carries — the artifact you approve,
   export and open tomorrow needs nothing from that host. A document that asks for a **different**
-  Phaser version, or writes the tag in a form the product will not rewrite (`defer`, `integrity`, a
-  script body), keeps its network dependency and is **never silently given a different engine**: the
+  Phaser version, or writes the tag in a form the product will not rewrite without changing what the
+  document says (`defer`, `integrity`, any other attribute, a script body), keeps its network
+  dependency and is **never silently given a different engine**: the
   gap is reported as a URL by `vendor_gaps` on the staged snapshot and on the runtime-check
   result, and through the `x-forge-vendor-gaps` header on the preview response — and the review rail
   shows it to you before you decide, in the **Dependencies** block described under *Approve*. What it
   will not do is approve a document whose engine it could not load, and the runtime report states
-  which network policy the document was verified under. See D059 and D061 in `docs/DECISIONS.md`.
+  which network policy the document was verified under. Those delimiters are a format this product
+  writes, not a claim a document may make: a file that writes `forge-vendor:` markers itself is
+  refused as invalid source, because whatever sits inside them would be hidden from the diff you
+  review and still ship (D062). See D059 and D061 in `docs/DECISIONS.md`.
 - **Sandbox interaction:** generated code must use explicit click/keydown handlers and
   `<button type="button">`. Native form submission and top-level navigation are blocked in the
   sandboxed preview. Enter must be handled explicitly.
@@ -160,19 +164,29 @@ dependency in one of three states:
 
 - **Carried inside these bytes** — the product's own pinned copy of a library sits in these bytes,
   with the pin's SHA-256 and size, in place of the remote reference it replaced.
-- **Fetched at run time** — the application will ask a remote host for this when it runs, and
-  verification permits that host. The block says so in those words: approve it knowing that host must
+- **Loaded from a remote host** — the bytes ask a remote host for this, and the verification policy
+  permits that host. The block says so in those words: approve it knowing that host must
   answer, or ask for a change to the pinned reference.
-- **Blocked during verification** — the document reaches for a host the policy refuses, so that
-  dependency never arrived while the check was running. A passed load check did not see it.
+- **Refused by the verification policy** — the bytes reach for a host the policy refuses. The block
+  then distinguishes two things it would be easy to conflate: a request the check **actually
+  recorded** as refused, and a reach the policy **would** refuse where no request was recorded. A
+  passed load check never saw either dependency.
+
+A URL that merely appears inside the application's text — a comment, a string literal — is labelled
+as text found in the code, never as a request the application makes: a browser records no request at
+all for those characters. Whether such a line ever runs is not something a reading of the file can
+settle, and the block does not pretend otherwise.
 
 The block is measured from the bytes that would be promoted, not from the diff you are reading (the
 stored document keeps its one-line engine tag; the engine is inlined at the promotion boundary) and
-not from what the model said it used. Its recorded hash is the artifact's hash, so a later reading
-cannot quietly change what you were told you approved. A version approved before this record existed
-says **no dependency record was kept for these bytes**; nothing reconstructs one afterwards, and no
-approved artifact is rewritten to complete the panel. The block never renders a verdict: whether a
-remote dependency is acceptable is your decision, not the product's.
+not from what the model said it used. Every record also states **what the reading cannot see** — a
+request whose URL is assembled at run time leaves no text for a scan to find — and the block renders
+those limits even for a record written before the field existed, so an empty list can never be read
+as "this application cannot reach the network". Its recorded hash is the artifact's hash, so a later
+reading cannot quietly change what you were told you approved. A version approved before this record
+existed says **no dependency record was kept for these bytes**; nothing reconstructs one afterwards,
+and no approved artifact is rewritten to complete the panel. The block never renders a verdict:
+whether a remote dependency is acceptable is your decision, not the product's.
 
 The engine pin is not refreshed automatically anywhere. `pnpm run vendor:phaser -- --check` verifies
 the committed copy against the pin without network access; `pnpm run vendor:phaser -- --against-remote`

@@ -1076,3 +1076,62 @@ real browser refused, in both directions, and that a permitted load is never
 disclosed as blocked; `verify:studio-workflow` shows the block in production Studio
 and checks that the approved version's record hashes to its own artifact. The pin
 modes are pinned by `tests/unit/release-command-inventory.test.ts`.
+
+---
+
+### D062 — An artifact may not claim the product's own framing, and a static scan states what it cannot see
+
+**Context.** The fourth independent review attacked the invariants of D059 (carry the
+engine) and D061 (disclose what the bytes fetch) rather than the tests written for
+them, and found seven reproducible defects (KI-76 to KI-82). Two were not bugs in the
+usual sense but decisions the implementation had made implicitly: the source view
+collapses text between vendor delimiters, and a scan that finds nothing prints an
+empty list. Both turned a *representation* into an *assurance*.
+
+**Decision.**
+1. **Vendor delimiters are a format this product writes, never a claim an artifact
+   makes.** `unvendorScripts` collapses only the exact span `vendorScripts` itself
+   produces, and `vendorMarkerTextIssues` refuses `forge-vendor:` text in staged
+   source. Consequence, accepted deliberately: a model can no longer write anything
+   resembling the product's framing, and a document that tries is refused rather than
+   partially shown. The alternative — trusting author-written markers because an
+   integrity check would catch abuse later — was rejected: the check never ran against
+   the source view, and a reviewer cannot weigh what the diff hides. Measured before
+   the fix: 162 shipped bytes, 30-byte review view, payload executed.
+2. **A replacement is only allowed when it provably preserves the document.** An
+   engine tag is swapped only if it has exactly one `src` attribute, no other
+   attributes and no body. Otherwise the reference stays exactly as written and is
+   named. Consequence: more documents keep a remote engine than a permissive swap
+   would leave, and more gaps are reported — accepted, because silently deleting an
+   `onload` handler changes behaviour nobody approved, and because D061 already decided
+   the product swaps nothing silently. Both refused forms were run in a real browser
+   and still load and render.
+3. **One reading of a document.** The verification browser, the preview CSP and the
+   approval-panel disclosure answer "what do these bytes reference" from one parsing
+   module, including unquoted attributes and case-insensitive closing tags. The grant
+   follows the served bytes rather than a constant, so a self-contained document is
+   granted no remote origin in the iframe too. Accepted trade-off: the grant is per
+   origin rather than per directive, matching the browser; splitting it per directive
+   would add a fourth reading, and the defect was always too many readings.
+4. **A measurement states its own limits.** Dependency rows carry `basis`
+   (`document_reference` versus `code_text`) and `observed` (was a refusal actually
+   recorded against these bytes), and every disclosure carries `scan_limits`. The panel
+   renders those limits always, including for records written before the field existed.
+   Consequence: sentences get longer and less certain — "no remote reference was found"
+   replaces "fetches nothing outside themselves". Accepted: a comment naming a `fetch`
+   call had been presented as a request the policy refused, and a URL built at run time
+   produced an empty list that read as a guarantee.
+5. **Ledger parsing is a contract, not a convenience.** Every `[media-trace]` token is
+   validated whole against the format the adapter writes; prefix matching is refused,
+   because these bytes are what paid-call claims are read from. Damage is checked
+   before any mode-specific claim, so "zero dispatches" can only be stated about a log
+   the gate can read.
+
+**Conformance:** `tests/unit/forge-vendored-scripts.test.ts`,
+`tests/unit/forge-workspace.test.ts`, `tests/unit/forge-preview-policy-agreement.test.ts`,
+`tests/unit/forge-sandbox-policy.test.ts`, `tests/unit/forge-dependency-disclosure.test.ts`,
+`tests/unit/forge-dependency-view.test.ts`, `tests/unit/forge-dependency-panel.test.ts`,
+`tests/unit/media-trace-damage.test.ts`, `tests/unit/media-journey-policy.test.ts`;
+`verify:runtime` PASS 14 checks at `test-results/runtime/20261103-0658/report.json`,
+including three new measured cases (tag forms that cannot be swapped, uppercase closing
+tag, forged marker).

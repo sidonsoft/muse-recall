@@ -1788,6 +1788,13 @@ the promoted artifact's own hash. Unit coverage:
 and `tests/unit/forge-dependency-panel.test.ts` (4, including that reference text taken from a
 generated document is escaped rather than treated as HTML).
 
+**What this entry understated.** The fourth independent review measured that two of the sentences
+above claimed more than the measurement supported: a URL inside a comment was being presented as a
+request the policy refused, and an empty list was worded as an assurance about what the application
+does. The classifications, the byte-level measurement and the "not recorded" behaviour all held; the
+sentences did not. See KI-78 for the correction (`basis`, `observed`, `scan_limits`) and D062 for the
+rule it produced.
+
 **Limits that stay open on purpose.** The policy itself is not tightened: a document that references
 nothing still runs under the CDN grant, because narrowing which documents get a remote origin changes
 which artifacts can be approved on a machine with no network, and that is a separate decision with its
@@ -1844,3 +1851,191 @@ happened that had not.
 an interface, and this one had no implementation behind it. `package.json` is a hashed input, so the
 build identity moves with the fix; the pair after it is recorded in the status document, and no
 provider call was made for any of this.
+
+---
+
+## KI-76 — the source view collapsed delimiters a model could write itself, so a payload could hide in plain sight (closed)
+
+**Symptom.** A staged document containing one line of model code plus the strings
+`forge-vendor:phaser@3.80.1 start` and `… end` was represented by a 30-byte source
+view while the shipped file kept all 162 bytes and executed them. The payload was
+absent from the diff, absent from `currentSourceHtml()` that seeds the next
+modification, and absent from the source the inline-syntax checks read.
+
+**How it was found.** The fourth independent review (verdict: needs-work) attacked
+KI-53's own invariant — "the stored document is exactly what the model authored" —
+rather than the tests written for it. `unvendorScripts` collapsed from the first
+start marker it found to the **last** end marker it found, and nothing refused a
+staged file for writing those markers. The review reported the mutation; it was
+reproduced in the live checkout before being fixed.
+
+**What was wrong.** The delimiters were treated as data the product could trust to
+appear only where it had written them. They are a framing device: whatever sits
+between them is elided from the view a person reviews. Any author able to write
+those bytes can therefore choose what the reviewer never sees — including text
+borrowing the MIT notice to look legitimate. The integrity check the review expected
+(`vendoredScriptIntegrityIssues`) did exist and did refuse marked blocks *at the
+workspace*, which is what kept this out of the shipped product; it never ran against
+the staged **source**, so the deception succeeded one layer earlier.
+
+**Fix.** Delimiters are now a format this product writes, not a claim an author may
+make:
+
+- `unvendorScripts` collapses **only** the exact span `vendorScripts` produces —
+  license header, marker comment and pinned engine bytes — not an arbitrary span
+  between markers, and never two separate blocks;
+- `vendorMarkerTextIssues` refuses any `forge-vendor:` text in staged source, so a
+  smuggled block stays visible as the model's own code and fails the caps and
+  syntax checks with it;
+- `validateStaged` runs that refusal, and a test asserts the smuggled payload
+  appears in the review diff.
+
+**Limits that remain.** The scanner is still a scanner: it reads bytes, and this fix
+is about what the product is willing to treat as its own framing. A model can still
+write text that *looks* like a vendor marker in prose; that is now a parse failure,
+not an exemption, which is the honest outcome.
+
+**Evidence.** `tests/unit/forge-vendored-scripts.test.ts` (forged markers stay
+visible; two separate pinned references produce one block and one named gap, so
+`end` cannot be claimed at the end of a document), `tests/unit/forge-workspace.test.ts`
+(a staged document writing the markers is refused, and its payload is in the diff),
+`verify:runtime` check *"a document that writes the vendor markers itself is not
+trusted as carrying the engine"*.
+
+## KI-77 — a closing tag written in the wrong case, or attributes on the engine tag, silently changed what the product shipped (closed)
+
+**Symptom.** Two measured mutations, both real documents a browser runs:
+
+1. `<script src="…"></SCRIPT>` parsed as a script **with a body**, so its `src`
+   reached none of the scanners. `vendorScripts` then inserted the pinned engine and
+   left the author's `</SCRIPT>` text in the document: a shipped artifact with an
+   extra stray closing tag, and a document that had been asked about as "references
+   a remote engine" now described as self-contained.
+2. `<script src="<pinned>" onload="takeItAll()">` was vendored **and** the handler
+   was deleted. The reviewer approved bytes whose behaviour differed from the bytes
+   they were shown.
+
+**Fix.** Script bodies are no longer re-scanned for markup (HTML never treats tag
+characters inside a script body as markup), closing-tag matching is case-insensitive
+as the specification requires, and vendoring applies only to a tag it can replace
+without loss: exactly one `src` attribute, no other attributes, empty body. Anything
+else is left exactly as written and named as a gap with the reason ("carries
+attributes other than src (`onload=…`)", "has a script body of its own").
+
+**Measured, in a real browser, at `test-results/runtime/20261103-0658/report.json`:**
+a game whose engine tag carries an `onload` handler and a game whose engine tag has a
+body both still load their engine over the network and render — refused for vendoring,
+never refused as artifacts — and the uppercase form is vendored with no gap left
+behind. The runtime report's gap count is asserted equal to the count measured from
+the same served bytes, so no surface can be reading a different document from the one
+under review.
+
+## KI-78 — the disclosure reported comments as refused requests, and an empty list as an assurance (closed)
+
+**Symptom.** An artifact whose engine tag carried a comment naming a `fetch("https://…")`
+call was shown as *"Refused by the verification policy — its own code asks the browser
+for it"*. Measured with the product's own runtime probe, that document performs **no
+requests at all**: Chromium records nothing for a comment, and nothing for a string
+literal either. The panel was making a claim about behaviour the product had never
+observed, and D061's promise that disclosure is "measured from the bytes" was not true
+of the sentences built on top of those measurements.
+
+Compounding it: the record never stated what the reading could not see, so an empty
+dependency list read as "this app cannot reach the network". A URL assembled at run
+time — `const h="https://…"; fetch(h+"/collect")`, measured to be a real request in
+the browser — leaves no literal behind and produced exactly that empty list.
+
+**Fix.** A dependency row now carries:
+
+- `basis`: `document_reference` (the bytes ask for this: a tag or an asset URL) versus
+  `code_text` (the characters appear in code, which is not evidence the line runs);
+- `observed`: whether a check against these exact bytes recorded a request for that
+  origin being refused — `true`, `false`, or `null` when nothing was recorded. The
+  panel separates "verification saw this request refused" from "the policy would
+  refuse it, and no request was recorded", because a policy statement is not an event;
+- `scan_limits`, on every record: what a static reading cannot see. The web layer
+  renders them always, and renders a warning when a stored record predates the field,
+  so an empty list can never be read as "nothing was fetched".
+
+The summary sentence was rewritten for the same reason: *"No remote reference was
+found in these bytes: nothing in them asks another host to load something"* rather
+than a sentence that asserts what the application does not do.
+
+**Limits that remain.** This is still a static reading plus recorded refusals. It does
+not prove the application never contacts a host; it states what the bytes ask for and
+what verification actually observed. A document that fetches a URL it built at run
+time is invisible to it, and says so.
+
+**Evidence.** `tests/unit/forge-dependency-disclosure.test.ts` (a URL in a comment is
+labelled `code_text` with `observed: null`; a refusal is marked observed only when the
+check named that origin; limits appear on every record, quiet ones included),
+`tests/unit/forge-dependency-view.test.ts` and `tests/unit/forge-dependency-panel.test.ts`
+(observed and predicted refusals worded apart; an empty list always carries its
+limits, including for records that predate the field).
+
+## KI-79 — the preview handed every document a remote origin, and read a reference only if it was quoted (closed)
+
+**Symptom.** Two divergences between the surfaces that decide what a document may
+reach:
+
+- `previewContentSecurityPolicy` granted `https://cdn.jsdelivr.net` to **every**
+  preview, including a self-contained game and a document reaching for an unapproved
+  host — which is exactly what D059 decided a self-contained document must not have,
+  and what KI-74's own reasoning forbids: an artifact approved under a self-contained
+  policy served in an iframe that can reach the pinned CDN.
+- The policy and gap scans recognised `src="…"`, `src='…'` and `@font-face` `src:`,
+  but not an unquoted `src=`. The disclosure called such a reference a dependency that
+  is loaded, the runtime browser loaded it, and the preview blocked it — three
+  surfaces, three readings, and one review panel that disagreed with all of them.
+
+**Fix.** One parsing module (`apps/server/src/forge/network-policy.ts`) now answers
+"what do these bytes reference" for the verification browser, the preview CSP and the
+dependency record; the preview grant is derived from the references the **served
+bytes** carry, so a document that references nothing gets no remote origin and a
+non-allowlisted reference grants nothing anywhere.
+
+**Measured.** `tests/unit/forge-sandbox-policy.test.ts` now asserts behaviour rather
+than a grep: a vendored game is granted no remote origin, a document that needs the
+CDN still gets it, an unquoted reference is a reference (the same bytes open
+`script-src` and close `connect-src` consistently), and a document asking an
+unapproved host is granted neither that host nor the approved CDN.
+`tests/unit/forge-preview-policy-agreement.test.ts` pins the agreement across all
+three surfaces for scripts, images, engine-carrying documents and code-literal URLs.
+
+**Limits that remain.** The grant is per origin rather than per directive: an image
+reference to the approved CDN also leaves that origin reachable by `fetch`, which is
+how the verification browser behaves for the same bytes. Narrowing per directive would
+introduce a fourth reading of the same document, and the defect here was always
+too many readings.
+
+## KI-80 — the gap list lost a surviving reference, so "no gaps" could mean "the swap failed quietly" (closed)
+
+`vendorGapUrls` derived gaps by scanning the shipped bytes for a remote **marker**. A
+reference the product refused to vendor therefore left no gap when the marker scan
+missed it — the case the review measured was a pinned reference whose tag form the
+swapper declines, which vanished from `x-forge-vendor-gaps` while the shipped file
+still asked the CDN for 1.18 MB. Gaps now come from the document references that
+survive, which is what the header names and what the panel discloses.
+
+**Evidence.** `verify:runtime` asserts the gap URL list, the runtime report's
+`vendor_gaps`, and the disclosure row agree for each refused tag form, including the
+unquoted and uppercase variants.
+
+## KI-81 — the offline media journey accepted a ledger it could not read as "zero dispatches" (closed)
+
+`journeyLedgerIssues` returned for the upload rail as soon as it counted no dispatches,
+before any integrity check. Measured: a ledger carrying one orphan outcome line and one
+truncated `attempt=` line produced `dispatches: []` and `issues: []`, so the gate's
+headline claim — "the offline journey dispatched nothing" — was made about a log the
+gate could not parse. Damage is now checked before the mode branch, and a legible empty
+ledger still passes, because that claim is honest when the log is readable.
+
+## KI-82 — the ledger parser accepted fields that were only partly fields (closed)
+
+The parser matched key **prefixes** rather than whole tokens, so `attempt=1broken`
+counted as attempt 1, `status=200garbage` completed an answered paid dispatch, and
+unknown or repeated keys were skipped past. Since these are the bytes every paid-call
+claim is read from, prefix matching is a defect in the accounting rather than in a
+formatter: every token is now validated against the format the adapter writes
+(`attempt`, `path`, `model`; `outcome=response attempt=N status=NNN bytes=N [events=N]`;
+`outcome=error attempt=N error=<bounded text>`), and anything else is ledger damage.

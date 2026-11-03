@@ -161,6 +161,12 @@ because it was previously written as "no external network" and that is wrong. Th
 provider request and refuse to start when a provider credential is present. Since KI-53 closed, the
 game engine is no longer an exception either: a generated game carries the copy of Phaser this
 product vendors, and `pnpm verify:runtime` boots one with **no remote origin granted at all**. The
+most recent full set of offline gate numbers is at `2774a2b` (KI-76 to KI-82) and is named in
+*The newest identity pair that may stand for a beta cut* above: `verify` 127 files / 1 611 passed /
+3 skipped, `verify:runtime` **14**, `verify:studio-workflow` **58**, `verify:batchc-ui` 22,
+`verify:batche-review-ui` 20, `verify:batchd-playback-auth` 15, `verify:media-journey-offline` 6.
+The per-gate descriptions below are written against the older set they first ran with, and each
+carries its own commit stamp where it matters. The
 one remaining case that needs the network is a document that still references the CDN — an artifact
 approved before that change, or a Phaser version outside the pin — and `verify:runtime` exits 2 with
 the reason when that host is unreachable rather than reporting a product failure. The numbers below are the
@@ -175,29 +181,40 @@ manifest. The identity pair for the newest commit is recorded by the identity ga
 running it.
 
 **The newest identity pair that may stand for a beta cut** comes from
-`test-results/batchd-playback-auth/2026-11-03-0531/report.json`: commit
-`32300ff0937d` (KI-74, the approval-rail dependency disclosure), `treeClean: true`,
+`test-results/batchd-playback-auth/2026-11-03-0700/report.json`: commit
+`2774a2b9ee5f` (KI-76 to KI-82, the fourth review's findings), `treeClean: true`,
 `bundlesBuiltAtHead: true`, `bundlesBuiltFromCleanTree: true`, `supportsCommitIdentity: true`,
-`serverBuildHash: d5f219fbf414…` and **`webBuildHash: aca1962dccfa…` — the web bundle moved
-again**, because `packages/shared/src/forge.ts` gained the disclosure schemas that the review rail
-consumes. `pnpm run verify` at that commit: 126 files, 1 587 passed, 3 skipped; Biome 0 errors /
-3 warnings / 16 infos. The same round re-ran, against those bundles, `verify:batchc-ui` (22),
-`verify:batche-review-ui` (20), `verify:runtime` (**11** checks,
-`test-results/runtime/20261103-0532/report.json`), `verify:studio-workflow` (**58** checks, with
-`dependency-disclosure-staged.png` and `dependency-disclosure-approved.png` in
-`test-results/studio-after/`) and the offline media journey
-(`test-results/media-journey/2026-11-03-05331409`: 6 checks, 0 dispatches). Nothing that spends a
-provider call was re-run: the disclosure round made **no** paid call, and Studio's checks used the
-deterministic fixture CLI. The commit that records this round sits docs-only on top of `32300ff`, so
-the pair above is one commit behind HEAD; by the rule stated below, a cut is re-measured at the commit
-actually cut rather than inherited from it.
+`serverBuildHash: 1d18b46e93b5…` and **`webBuildHash: b2471becf70f…` — the web bundle moved
+again**, because the approval rail's dependency wording and scan-limit rendering changed.
+`pnpm run verify` at that commit: 127 files, 1 611 passed, 3 skipped; Biome 0 errors /
+3 warnings / 17 infos. The same round re-ran, against those bundles, `verify:batchc-ui` (22),
+`verify:batche-review-ui` (20), `verify:runtime` (**14** checks,
+`test-results/runtime/20261103-0658/report.json`), `verify:studio-workflow` (**58** checks,
+project `studio-workflow-0cc053`, with `dependency-disclosure-staged.png` and
+`dependency-disclosure-approved.png` in `test-results/studio-after/`) and the offline media journey
+(`test-results/media-journey/2026-11-03-07014215`: 6 checks, 0 dispatches). Nothing that spends a
+provider call was re-run: this round made **no** paid call, and Studio's checks used the
+deterministic fixture CLI.
+
+**The run that pair replaces, and why it cannot stand** is
+`test-results/batchd-playback-auth/2026-11-03-0659/report.json`: same commit, bundles built one
+minute earlier over a checkout with one uncommitted file. It reports `treeClean: false`,
+`bundlesBuiltFromCleanTree: false`, `supportsCommitIdentity: false` and an `identity_note` naming
+the problem, and its check list carries one extra line saying so. It is kept because it is the
+clearest measured demonstration so far that KI-58's guard fires on a dirty build tree rather than
+quietly inheriting the previous claim.
 
 **The pair that round superseded** is
-`test-results/batchd-playback-auth/2026-11-03-0048/report.json`: commit `c000a85ca324` (the KI-75
-fix), `serverBuildHash: b1507048d914…` — **moved by that commit**, because `package.json` is a
-hashed input and KI-75 added the `vendor:phaser` script to it — while
-`webBuildHash: 34ee5eda1b6f…` is unchanged since the engine landed. `pnpm run verify` at that
-commit: 123 files, 1 564 passed, 3 skipped; Biome 0 errors / 3 warnings / 15 infos.
+`test-results/batchd-playback-auth/2026-11-03-0531/report.json`: commit
+`32300ff0937da4cd4d08121d3dcde7fa0cfb1d66` (KI-74, the approval-rail dependency disclosure),
+`serverBuildHash: d5f219fbf41d…` (corrected here: this document previously printed
+`d5f219fbf414…`, a typo in a hash, which is the kind of drift KI-68 was about) and
+`webBuildHash: aca1962dccfa…`. `pnpm run verify` at that commit: 126 files, 1 587 passed,
+3 skipped; Biome 0 errors / 3 warnings / 16 infos, with `verify:runtime` at **11** checks
+(`test-results/runtime/20261103-0532/report.json`). The pair before that,
+`test-results/batchd-playback-auth/2026-11-03-0048/report.json` (`c000a85ca324`, the KI-75 fix,
+`serverBuildHash: b1507048d914…` moved by that commit because `package.json` is a hashed input,
+`webBuildHash: 34ee5eda1b6f…`), remains on disk with the older pairs.
 The pair one commit earlier, `test-results/batchd-playback-auth/2026-11-03-0041/report.json`
 (`3dab9db18a87`,
 `serverBuildHash: dc417e0d7ac6…`, `webBuildHash: 34ee5eda1b6f…`) carries the same web bytes and the
@@ -320,7 +337,8 @@ the narration was not, which is how an operator re-runs a run that already spent
   (`network_policy: vendored | cdn-allowlist`) in `test-results/runtime/<stamp>/report.json`.
 - `pnpm verify:batchc-ui`: PASS 22 checks. `pnpm verify:batche-review-ui`: PASS 20 checks,
   including the one-paid-call check and the stale-selection refusal.
-  `pnpm verify:studio-workflow`: 56 checks.
+  `pnpm verify:studio-workflow`: 56 checks at that commit; the same gate measures **58** at
+  `32300ff` and later, after the approval-rail dependency block was added to what it asserts.
 - `pnpm verify:batchc-resume-staged` **cannot be re-run at this commit, and refuses rather
   than pretending**: `job already published version 2; this isolate is consumed and cannot
   be re-approved offline` (`test-results/batchc-resume-staged/2026-11-02-0758`). The gate
@@ -735,6 +753,44 @@ not changed. All corrected: the newest pair is
 `test-results/fresh-install/2026-11-02-1300` while keeping the `1245`/`1248` pair as belonging to
 `c9c18cf`.
 
+### The fourth review: `d00d4d2..4035c2f`, verdict needs-work
+
+A fresh `codex/gpt-6.1-sol` session at medium effort, read-only inside a prepared snapshot
+(`/tmp/review-4035c2f`, same commit, dependencies installed, bundles built there, retained
+`test-results/` copied). It was pointed at the two most recent product decisions — KI-53's engine
+vendoring and KI-74's dependency disclosure — and told to attack the invariants those decisions
+claim rather than the tests written for them. Every gate it ran passed (`pnpm verify` 126 files /
+1 587 tests, `verify:runtime` 11, `verify:studio-workflow` 58, `verify:batchc-ui` 22,
+`verify:batche-review-ui` 20, `verify:batchd-playback-auth` 15, `verify:media-journey-offline` 6),
+and it noted that the snapshot's server bundle hash differs from the author checkout's for the same
+commit because build manifests carry build-time metadata — the web bundle was byte-identical, so
+that is build noise, not source drift.
+
+Seven findings, all reproduced in the live checkout before being fixed, all with a mutation test:
+
+| Finding | What the mutation measured | Fix |
+| --- | --- | --- |
+| KI-76 (P1) | a staged document writing the product's own vendor delimiters: 162 shipped bytes, 30-byte review view, payload executed | delimiters are a format only this product writes: `unvendorScripts` collapses exactly the span `vendorScripts` produces, and `vendorMarkerTextIssues` refuses marker text in staged source |
+| KI-77 (P1) | `<script src="…"></SCRIPT>` read as a script *with a body*: the engine was swapped and the author's closing text left behind | script bodies are not re-scanned for markup, closing tags match case-insensitively, and a tag with attributes or a body is left as written and named |
+| KI-77 (P2) | an engine tag carrying `onload` was vendored **and** the handler deleted | vendoring applies only where it provably preserves the document; both refused forms were run in Chromium and still load and render |
+| KI-77/78 (P2) | an unquoted `src=` was invisible to the policy scan, the gap list and the disclosure, so the preview served a script that could not load | one parsing module answers "what do these bytes reference" for the browser, the preview CSP and the panel, quoted or not |
+| KI-79 (P2) | the preview CSP granted `https://cdn.jsdelivr.net` to **every** document, including a self-contained game and one reaching for an unapproved host | the grant is derived from the references the served bytes carry; a non-allowlisted reference grants nothing anywhere |
+| KI-80 (P2) | a reference the product refused to vendor disappeared from `x-forge-vendor-gaps`, so "no gaps" meant "the swap failed quietly" | gaps come from the document references that survive, and `verify:runtime` asserts the gap list, the runtime report and the disclosure row agree |
+| KI-78 (P2) | a URL inside a **comment** was disclosed as a request the policy refused — measured in Chromium, that document performs no requests at all; and an empty list read as "fetches nothing outside themselves", while a URL built at run time (`const h="https://…"; fetch(h+"/collect")`) produced exactly that empty list | rows carry `basis` (`document_reference` vs `code_text`) and `observed` (was a refusal actually recorded against these bytes), and every record carries `scan_limits`, rendered always |
+| KI-81 (P2) | the offline journey's "the journey dispatched nothing" was claimed about a log the gate could not read (one orphan outcome line, one truncated `attempt=`) | ledger damage is checked before any mode-specific claim |
+| KI-82 (P3) | `attempt=1broken` counted as attempt 1 and `status=200garbage` completed a paid dispatch | every `[media-trace]` token is validated whole against the format the adapter writes |
+
+Two of these were not bugs in the usual sense but implicit decisions: the source view collapsed
+text between markers, and a scan that finds nothing printed an empty list. Both turned a
+*representation* into an *assurance*, which is what D062 now rules on. The review also found a typo
+**in this file**: `d5f219fbf414…` where the report says `d5f219fbf41d…` — corrected above, and the
+kind of drift KI-68 was about.
+
+Fixed in `2774a2b`. No provider call was made: every gate used the fixture CLI, and no paid gate was
+re-run. `verify:runtime` grew from 11 to **14** checks, the three new ones measuring the tag forms
+that cannot be swapped, the uppercase closing tag, and a forged marker — each against a real browser
+rather than a parser assertion.
+
 ## Self-review of the fix passes, in a new session
 
 The newest commits (`c9c18cf`, `36a861a`, `1bf4a82`) were unreviewed, so the author reviewed
@@ -797,17 +853,22 @@ limits. Two findings:
   outside the pin, a tag with `defer`/`integrity`/`async`/`crossorigin` or a script body, or an
   artifact approved before the change. What changed is that a person who can act on that now sees it
   in the rail where they approve: a **Dependencies** block classifies every dependency as
-  `bundled` (the product's pinned copy, with its sha256, sits in these bytes), `fetched` (the
-  application will ask a remote host when it runs, and verification permits that host) or `blocked`
-  (the document reached for a host the policy refuses, so the check that passed never saw that
-  dependency). It is measured from the staged bytes after the vendoring pass — the same bytes the
+  `bundled` (the product's pinned copy, with its sha256, sits in these bytes), `fetched` (these bytes
+  ask a remote host, and the policy permits that host) or `blocked` (these bytes reach for a host the
+  policy refuses, so the check that passed never saw that dependency). Since the fourth review, the
+  block also says **how** each row was found — a reference the document actually carries versus text
+  that merely resembles a request, measured in a browser to perform no request at all — and whether a
+  refusal was **observed** during verification or only implied by the policy. Every record states what
+  the reading cannot see (KI-78), and the rail renders those limits even for a record written before
+  the field existed, so an empty list never reads as a guarantee. It is measured from the staged bytes after the vendoring pass — the same bytes the
   preview, validation, the browser check and promotion read, and whose sha256 the record carries —
   never from the source view the diff renders and never from model claims. A version approved before
   the field existed says **no dependency record was kept**; nothing reconstructs one, and no historical
-  artifact was rewritten to make the panel look complete. Measured at `32300ff`: `verify:runtime`
-  11 checks (`test-results/runtime/20261103-0532`) including the cross-check against what the real
+  artifact was rewritten to make the panel look complete. Measured at `2774a2b`: `verify:runtime`
+  **14** checks (`test-results/runtime/20261103-0658`) including the cross-check against what the real
   browser refused, and `verify:studio-workflow` 58 checks with
-  `test-results/studio-after/dependency-disclosure-{staged,approved}.png`. The policy itself is
+  `test-results/studio-after/dependency-disclosure-{staged,approved}.png`; the superseded measurement
+  at `32300ff` (`verify:runtime` 11, `test-results/runtime/20261103-0532`) is kept rather than edited. The policy itself is
   unchanged (a document that references nothing still runs under the CDN grant, and the block says so
   in those words rather than implying a fetch), the block renders no verdict, and the engine pin is
   refreshed only by a deliberate human act (D061): `-- --check` is offline verification of the
