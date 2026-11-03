@@ -2139,3 +2139,68 @@ interactive rows are instructions for exactly that reason — a harness that fil
 scoring the app, which KI-71/KI-73 exist to prevent. So the packet cannot accept the candidate, and
 the reason is not the field naming: it is that the bytes under review predate the candidate, and no
 amount of re-measurement produces new app bytes.
+
+## KI-85 — a re-measured packet forgot what it had paid for (closed)
+
+**Found while answering a review question, on the harness's own output.** Asked whether the retained
+Palette Bench packet applied to the current candidate, I re-measured it (free, as designed) and
+compared the two reports. The new one's cost block read:
+
+```
+paid: { coding_jobs: 1, max_calls_per_job: 12, idempotency_key: null, media_dispatches: null,
+        coding_calls_known: null, coding_calls_unknown_jobs: null }
+```
+
+while the packet it was copied from recorded `3 internal calls` and
+`Idempotency-Key a6f98754-4fe0-4267-86b1-e43806c1523f`.
+
+**Cause.** A paid run writes its cost in the report's top-level `paid` block. A re-measurement spends
+nothing, so it carries the original in `observations.paid_basis_carried_forward` — and the carry line
+read `sourceReport.paid`. On the first hop that still found the truth (the source was a paid run). On
+the second hop the source was itself a re-measurement, whose `paid` was all nulls, so the record
+degraded to nulls. Nothing failed, because every field is nullable by design: an unstated cost prints
+as nothing rather than as a reassuring zero, which is right — but the packet then looked like an app
+whose price nobody knew.
+
+**Fix.** `carryCost()` in `scripts/lib/review-packet.ts` prefers whichever record states more, from
+either field, and `costChain()` lists every packet directory the record has travelled through, printed
+in the sheet as `this cost record was copied through`. `costRecordIsSilent()` decides whether the
+packet can state its own price at all; if it cannot, `packetIssues()` says so — an evidence problem,
+never to be read as a zero-cost app. The top-level `paid` block of a re-measurement now carries the
+original cost plus `this_run_spend: "none — this run paid nothing; the cost shown is the run that
+produced the app"`, because that block is what a reader looks at first.
+
+**Measured on the real data, in both directions.** Re-measuring the 2026-11-02-2250 packet with the fix
+(`test-results/human-review/palette-bench-2026-11-03-081952/report.json`) prints
+`1 coding job(s), 3 internal call(s), capped at 12, 0 provider media call(s), Idempotency-Key a6f98754…`,
+carries `bytes built at 94867e5… / measured by d706f2d…`, and reports `issues: []` with
+`app_facts` byte-equal to the original. Re-measuring the defective hop (`…-0811`, whose cost really
+was lost) cannot invent the numbers back: it prints `unknown internal calls` and flags the silent cost
+record. `tests/unit/review-packet.test.ts` adds six tests over the two-hop shape, the precedence rule,
+the chain, the silent-record flag, and the exact rendered rows. No provider call in this round: both
+packets are free re-measurements of bytes already paid for.
+
+## KI-86 — the review harness stamped evidence to the minute, and a second run overwrote the first (closed)
+
+**Caused by my own command, immediately.** To compare a fixed packet against the defective one I ran
+two re-measurements back to back. Both landed in the same minute, so both computed
+`palette-bench-2026-11-03-0817`, and the second wrote over the first. The destroyed packet was itself a
+free re-measurement (reproducible, same bytes, same steps), so nothing paid for was lost — but the
+harness broke the rule that retained evidence is never rewritten, and it broke it silently: the run
+printed a path and a PASS, not a collision.
+
+**Why it was likely to happen here specifically.** Review sessions run measurements in clusters —
+chase a harness defect, re-measure, re-measure again — which is exactly the pattern minute-granularity
+stamps collide under. Earlier packets in this line (`2207`, `2218`, `2233`, `2244`, `2245`, `2250`)
+survived only because minutes elapsed between runs.
+
+**Fix.** `scripts/lib/evidence-dir.ts`: `evidenceStamp()` keeps the seconds (17 characters, pinned by
+test because trimming them back to a minute is the regression), and `uniqueEvidenceDir(parent, base)`
+refuses to name an existing directory, moving aside to `-2`, `-3`, … and returning the names it found
+taken. `main()` prints the collision when it happens. Four tests in `tests/unit/evidence-dir.test.ts`
+assert the retained packet's bytes are untouched after a collision, which is the property that
+matters, not just the name chosen.
+
+**Measured on the real harness.** Two re-measurements five seconds apart produced
+`palette-bench-2026-11-03-081947` and `palette-bench-2026-11-03-081952`, both PASS, neither overwriting
+the other.

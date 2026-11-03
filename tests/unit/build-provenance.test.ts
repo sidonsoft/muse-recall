@@ -436,7 +436,11 @@ it('says which instant is dirty when the build was clean but the checkout is not
     commit: 'ffffffffffffffffffffffffffffffffffffffff',
     treeCleanAtMeasure: false,
     treeStatusAtMeasure: ' M scripts/build-review-app.ts\n M docs/KNOWN_ISSUES.md\n',
-    server: manifestFor('server', 'ffffffffffffffffffffffffffffffffffffffff', '2026-11-02T03:00:00.000Z'),
+    server: manifestFor(
+      'server',
+      'ffffffffffffffffffffffffffffffffffffffff',
+      '2026-11-02T03:00:00.000Z',
+    ),
     web: manifestFor('web', 'ffffffffffffffffffffffffffffffffffffffff', '2026-11-02T03:00:00.000Z'),
   });
   // The bytes are what the commit names, so the identity claim stands...
@@ -447,7 +451,9 @@ it('says which instant is dirty when the build was clean but the checkout is not
   expect(identity.note).toContain('the build ran over a clean tree at that commit');
   expect(identity.note).toContain('2 file(s) changed while this measurement ran');
   expect(identity.note).toContain('scripts/build-review-app.ts');
-  expect(identity.note).toContain('the gate that produced this report ran over work no commit names');
+  expect(identity.note).toContain(
+    'the gate that produced this report ran over work no commit names',
+  );
   expect(identity.note).toContain('bundle bytes contain only what fffffff names');
 });
 
@@ -456,7 +462,11 @@ it('keeps the two instants apart in the emitted field names, not only in the sen
     commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     treeCleanAtMeasure: false,
     treeStatusAtMeasure: ' M scripts/verify-studio-workflow.ts\n',
-    server: manifestFor('server', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-11-02T03:00:00.000Z'),
+    server: manifestFor(
+      'server',
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      '2026-11-02T03:00:00.000Z',
+    ),
     web: manifestFor('web', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-11-02T03:00:00.000Z'),
   });
   const keys = Object.keys(identity).sort();

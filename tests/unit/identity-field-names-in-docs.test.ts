@@ -6,7 +6,11 @@
 
 import { readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { describeBundleIdentity, type BuildManifest, type ProvenanceReport } from '../../scripts/lib/build-provenance.js';
+import {
+  type BuildManifest,
+  describeBundleIdentity,
+  type ProvenanceReport,
+} from '../../scripts/lib/build-provenance.js';
 
 const RELEASE_DOCS = [
   'docs/MULTIMODAL_STUDIO_STATUS.md',
@@ -61,7 +65,10 @@ describe('identity field names a release document may quote', () => {
       const text = readFileSync(doc, 'utf8');
       const window = 320;
       for (const match of text.matchAll(/supportsCommitIdentity/g)) {
-        const around = text.slice(Math.max(0, (match.index ?? 0) - window), (match.index ?? 0) + window);
+        const around = text.slice(
+          Math.max(0, (match.index ?? 0) - window),
+          (match.index ?? 0) + window,
+        );
         if (!/\btreeClean\s*:/.test(around)) continue;
         expect(
           around.includes('treeCleanAtMeasure') || around.includes('KI-84'),
@@ -92,12 +99,17 @@ describe('identity field names a release document may quote', () => {
         emitted.add(match[1] ?? '');
       }
     }
-    expect(emitted.has('bundlesBuiltFromCleanTree'), 'the identity pair gate stopped printing it').toBe(true);
+    expect(
+      emitted.has('bundlesBuiltFromCleanTree'),
+      'the identity pair gate stopped printing it',
+    ).toBe(true);
     expect(emitted.has('treeCleanAtMeasure'), 'the instantaneous field lost its name').toBe(true);
     const quoted = new Set<string>();
     for (const doc of RELEASE_DOCS) {
       const text = readFileSync(doc, 'utf8');
-      for (const match of text.matchAll(/\b(bundles[A-Za-z]+|supportsCommitIdentity|treeClean[A-Za-z]*)\b/g)) {
+      for (const match of text.matchAll(
+        /\b(bundles[A-Za-z]+|supportsCommitIdentity|treeClean[A-Za-z]*)\b/g,
+      )) {
         quoted.add(match[1] ?? '');
       }
     }
@@ -105,12 +117,17 @@ describe('identity field names a release document may quote', () => {
     // document quotes in backticks has to be something a report actually prints.
     const backticked = new Set<string>();
     for (const doc of RELEASE_DOCS) {
-      for (const match of readFileSync(doc, 'utf8').matchAll(/`(bundles[A-Za-z]+|supportsCommitIdentity|treeClean[A-Za-z]+)`/g)) {
+      for (const match of readFileSync(doc, 'utf8').matchAll(
+        /`(bundles[A-Za-z]+|supportsCommitIdentity|treeClean[A-Za-z]+)`/g,
+      )) {
         backticked.add(match[1] ?? '');
       }
     }
     for (const name of backticked) {
-      expect(emitted.has(name), `${name} is quoted as an identity field but no report emits it`).toBe(true);
+      expect(
+        emitted.has(name),
+        `${name} is quoted as an identity field but no report emits it`,
+      ).toBe(true);
     }
     expect(quoted.size).toBeGreaterThan(0);
   });

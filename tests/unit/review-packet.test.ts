@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  carryCost,
+  costChain,
+  costRecordIsSilent,
   decisionChecklist,
+  describeCost,
   type PacketFacts,
   packetIssues,
   REVIEW_DIMENSIONS,
@@ -185,5 +189,79 @@ describe('human review packet', () => {
     });
     expect(issues.join(' ')).toContain('cannot anchor a release identity');
     expect(issues.join(' ')).toContain('built at an older commit');
+  });
+});
+
+describe('cost records survive re-measurement hops (KI-85)', () => {
+  const paidRecord = {
+    coding_jobs: 1,
+    max_calls_per_job: 12,
+    idempotency_key: 'a6f98754-4fe0-4267-86b1-e43806c1523f',
+    media_dispatches: 0,
+    coding_calls_known: 3,
+    coding_calls_unknown_jobs: 0,
+  };
+
+  it('carries the original cost through a second hop instead of printing nulls', () => {
+    // The defect, from the 2026-11-03 re-measurement: reading only `paid` meant each hop degraded
+    // the record, so a packet two hops from the paid run said nothing about what it cost.
+    const hop1 = { paid: null, observations: { paid_basis_carried_forward: paidRecord } };
+    const carried = carryCost(hop1);
+    expect(carried).not.toBeNull();
+    expect(carried?.coding_calls_known).toBe(3);
+    expect(carried?.idempotency_key).toBe('a6f98754-4fe0-4267-86b1-e43806c1523f');
+    expect(costRecordIsSilent(carried)).toBe(false);
+  });
+
+  it('prefers the record that states more, whichever field it sits in', () => {
+    const emptyOwn = { paid: { coding_jobs: null, coding_calls_known: null }, observations: null };
+    expect(carryCost(emptyOwn)).toEqual({ coding_jobs: null, coding_calls_known: null });
+    const rich = {
+      paid: { coding_jobs: null },
+      observations: { paid_basis_carried_forward: paidRecord },
+    };
+    expect(carryCost(rich)?.coding_jobs).toBe(1);
+  });
+
+  it('names every packet the cost travelled through, newest first', () => {
+    const chain = costChain({ observations: { cost_chain: ['packet-hop2'] } }, 'packet-hop3');
+    expect(chain).toEqual(['packet-hop3', 'packet-hop2']);
+    expect(costChain(undefined, 'only-hop')).toEqual(['only-hop']);
+  });
+
+  it('says so plainly when a packet cannot state its own price', () => {
+    expect(costRecordIsSilent(null)).toBe(true);
+    expect(costRecordIsSilent({ coding_jobs: null, coding_calls_known: null })).toBe(true);
+    expect(describeCost(null)).toContain('cannot state what was paid');
+    expect(describeCost(paidRecord)).toContain('1 coding job(s)');
+    expect(describeCost(paidRecord)).toContain('3 internal call(s)');
+    expect(describeCost(paidRecord)).toContain('Idempotency-Key a6f98754');
+  });
+
+  it('flags a silent cost record as an evidence problem, not as a zero-cost app', () => {
+    const base = BASE;
+    const silent = packetIssues({ ...base, cost: { coding_jobs: null } });
+    expect(silent.some((issue) => issue.includes('cost record is silent'))).toBe(true);
+    const stated = packetIssues({ ...base, cost: paidRecord });
+    expect(stated.some((issue) => issue.includes('cost record is silent'))).toBe(false);
+  });
+
+  it('prints the built-at and measured-by commits apart, so a re-measure is not read as a new build', () => {
+    const base = BASE;
+    const sheet = renderReviewPacket(
+      {
+        ...base,
+        built_at_commit: '94867e5f8c67d382025b5a3dc62ccaf1c1432b27',
+        measured_by_commit: 'd706f2d0000000000000000000000000000000ab',
+        cost: paidRecord,
+        cost_chain: ['test-results/human-review/palette-bench-2026-11-02-2250'],
+      },
+      [],
+    );
+    expect(sheet).toContain('bytes built at / measured by');
+    expect(sheet).toContain('94867e5f8c67d382025b5a3dc62ccaf1c1432b27 / d706f2d');
+    expect(sheet).toContain('what was paid for the app');
+    expect(sheet).toContain('1 coding job(s), 3 internal call(s), capped at 12');
+    expect(sheet).toContain('this cost record was copied through');
   });
 });

@@ -1025,6 +1025,33 @@ app through the product's own path and writes a packet for a human to fill in.
   provider calls, refuses if the bytes no longer match the hash the original report recorded, and
   writes a new directory rather than editing the old packet.
 
+**The first human round came back: REVIEW PENDING, not accepted.** The assessment read the packet as
+well-formed but unusable for the current candidate: five quality rows and four decision rows blank,
+the interactive rows written as instructions, the tested build predating the candidate — and the
+provenance looked self-contradictory. Three of those four readings are the packet working as designed
+(the blanks and the instructions are for a person, and a harness that filled them in would be scoring
+the app). The fourth was a defect in my fields, and the reviewer was right to stop on it: `treeClean`
+and `bundlesBuiltFromCleanTree` sit adjacent and neither says which instant it describes. KI-84.
+
+**Does the current candidate contain what was tested — measured, not assumed.** The packet's build is
+`94867e5`, and `git merge-base --is-ancestor` says it is an ancestor of `43127ec` (18 commits between),
+as are `f8d8874` (the control/field split the packet used), `32300ff` and `4035c2f`. So the current
+candidate contains everything that round tested, plus three commits that move hashed product inputs:
+`3189df9` (engine vendoring), `32300ff` (dependency disclosure), `2774a2b` (KI-76 to KI-82) — and
+`d706f2d` moves the server bundle again because `scripts/lib/build-provenance.ts` is a hashed input.
+The reviewer-facing packet for the tested app is now
+`test-results/human-review/palette-bench-2026-11-03-081952`: a **free re-measurement of the same paid
+bytes** (`sha256 b306418d95db…`, identical to `-2026-11-02-2250`), taken by the harness at `d706f2d`,
+printing `1 coding job(s), 3 internal call(s), capped at 12, 0 provider media call(s),
+Idempotency-Key a6f98754…` and a `bytes built at / measured by` row so nobody can read it as a build at
+the current commit. Its `app_facts` are byte-equal to the 2250 packet's: the measurement layer did not
+drift across KI-73, KI-84 and KI-85.
+
+**What is still missing is not a measurement.** New app bytes at the current candidate cost exactly one
+coding job through `pnpm run review:app`, and no authorization to spend one has been given since
+`94867e5`. Re-measuring cannot produce them, and no offline gate can: the open question is whether a
+person would hand the app to a colleague.
+
 Two harness defects found on the way, recorded rather than smoothed over: KI-71 (a self-contained
 app was flagged as a network violator because egress was measured by hostname instead of protocol,
 and 464 lines of source were reported as 12,189 characters of "visible text") and KI-72 (the
@@ -1032,8 +1059,13 @@ harness passed an empty `FORGE_MUSE_API_KEY` through, killing the server on a ke
 then reported a dead socket instead of the server's own cause line — KI-59's rule, skipped).
 
 Evidence: `test-results/human-review/palette-bench-2026-11-02-2148` (the paid run and its bogus
-flag, kept), `-2026-11-02-2146` (the zero-cost refusal that exposed KI-72, kept), and
-`-2026-11-02-2151` (the corrected packet, 0 provider calls).
+flag, kept), `-2026-11-02-2146` (the zero-cost refusal that exposed KI-72, kept),
+`-2026-11-02-2151` and `-2026-11-02-2245` (the earlier corrected and used-state packets, kept),
+`-2026-11-02-2250` (the packet the first human round read — and the bytes every later packet
+re-measures), `-2026-11-03-0811` (kept as the measured evidence of KI-85: the hop where the cost
+record degraded to nulls), and `-2026-11-03-081947` / `-2026-11-03-081952` (two runs five seconds
+apart, kept as the measured evidence that KI-86's directory collision is fixed). None of the later
+packets spent anything.
 
 What this does **not** settle stays open and is now the list: whether the review model's findings
 about a Muse-built app match what a person would notice; whether a vision draft is worth the call

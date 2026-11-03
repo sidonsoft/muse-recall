@@ -51,7 +51,12 @@ import { isAbsolute, join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { PNG } from 'pngjs';
 import { launchVerificationBrowser, reportBrowserSelection } from './lib/browser.js';
-import { describeBundleIdentity, verifyBuildProvenance } from './lib/build-provenance.js';
+import {
+  describeBundleIdentity,
+  describeCurrentTree,
+  verifyBuildProvenance,
+} from './lib/build-provenance.js';
+import { evidenceStamp, uniqueEvidenceDir } from './lib/evidence-dir.js';
 import {
   classifyGateFailure,
   describeGateOutcome,
@@ -60,7 +65,14 @@ import {
 } from './lib/gate-outcome.js';
 import { readCodingJobs, totalCodingCalls } from './lib/media-live.js';
 import { accountDispatches, ledgerEvidence, readMediaTrace } from './lib/media-trace.js';
-import { type PacketFacts, packetIssues, renderReviewPacket } from './lib/review-packet.js';
+import {
+  type CostRecord,
+  carryCost,
+  costChain,
+  type PacketFacts,
+  packetIssues,
+  renderReviewPacket,
+} from './lib/review-packet.js';
 import { startupFailureExcerpt } from './lib/server-startup.js';
 
 const ROOT = process.cwd();
@@ -71,8 +83,12 @@ const DECISIONS_FILE =
 const MAX_CALLS_PER_JOB = Number(process.env.REVIEW_APP_MAX_CALLS ?? '12');
 const CODING_MODEL = process.env.REVIEW_APP_CODING_MODEL?.trim() || 'muse-wonder-1.0';
 const PROJECT = `review-${APP}`;
-const STAMP = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);
-const OUT = join(ROOT, 'test-results', 'human-review', `${APP}-${STAMP}`);
+const STAMP = evidenceStamp();
+const EVIDENCE_PARENT = join(ROOT, 'test-results', 'human-review');
+// Never write into a directory that already holds a packet: two runs in the same minute used to
+// collide here and the second destroyed the first (KI-86).
+const CHOSEN = uniqueEvidenceDir(EVIDENCE_PARENT, `${APP}-${STAMP}`);
+const OUT = CHOSEN.path;
 const JOB_TIMEOUT_MS = Number(process.env.REVIEW_APP_JOB_TIMEOUT_MS ?? '900000');
 /** Steps that bring the app to a used state before the second pair of captures. */
 const CAPTURE_STEPS = JSON.parse(process.env.REVIEW_APP_STEPS ?? '[]') as CaptureStep[];
@@ -444,7 +460,22 @@ function distinctColors(pngBytes: Buffer): number {
   return seen.size;
 }
 
-function writeReport(status: string, extra: Record<string, unknown> = {}): void {
+function writeReport(
+  status: string,
+  extra: Record<string, unknown> = {},
+  paidOverride?: CostRecord & { this_run_spend?: string },
+): void {
+  // The top-level `paid` block is what a reader looks at first, so on a re-measurement it has to
+  // carry the original cost with a marker that this run spent nothing. Printing nulls there is how
+  // KI-85's loss went unnoticed for a hop.
+  const paidBlock: CostRecord & { this_run_spend?: string } = paidOverride ?? {
+    coding_jobs: 1,
+    max_calls_per_job: MAX_CALLS_PER_JOB,
+    idempotency_key: (observations.idempotency_key as string | null) ?? null,
+    media_dispatches: (observations.media_dispatches as number | null) ?? null,
+    coding_calls_known: (observations.coding_calls_known as number | null) ?? null,
+    coding_calls_unknown_jobs: (observations.coding_calls_unknown_jobs as number | null) ?? null,
+  };
   const report = {
     ok: reportOk,
     gate: 'review-app',
@@ -452,14 +483,7 @@ function writeReport(status: string, extra: Record<string, unknown> = {}): void 
     project: PROJECT,
     stamp: STAMP,
     status,
-    paid: {
-      coding_jobs: 1,
-      max_calls_per_job: MAX_CALLS_PER_JOB,
-      idempotency_key: observations.idempotency_key ?? null,
-      media_dispatches: observations.media_dispatches ?? null,
-      coding_calls_known: observations.coding_calls_known ?? null,
-      coding_calls_unknown_jobs: observations.coding_calls_unknown_jobs ?? null,
-    },
+    paid: paidBlock,
     checks,
     observations: { ...observations, ...extra },
     generated_at: new Date().toISOString(),
@@ -650,6 +674,11 @@ async function remeasureFromBytes(sourceDir: string): Promise<void> {
   observations.coding_cli = sourceObservations.coding_cli ?? 'not recorded';
   observations.decisions = sourceObservations.decisions ?? [];
   observations.buildProvenance = sourceObservations.buildProvenance ?? {};
+  // The provenance above was written by the run that paid. It describes the bundles that produced
+  // these bytes; it says nothing about the code taking today's measurements, so say both (KI-84).
+  observations.buildProvenanceSource = `${sourceDir} (the paid run's own record; not this harness)`;
+  observations.measuredByCommit = describeCurrentTree(ROOT).commit;
+  observations.cost_chain = costChain(sourceObservations as never, sourceDir);
   observations.coding_job_records = sourceObservations.coding_job_records ?? [];
   observations.artifact = sourceObservations.artifact ?? {};
   observations.media_dispatches = sourceObservations.media_dispatches ?? 0;
@@ -658,6 +687,10 @@ async function remeasureFromBytes(sourceDir: string): Promise<void> {
     `re-measured the retained artifact at no cost: ${String(pageInfo.interactive_controls)} control(s), ${String(pageInfo.distinct_colors)} colour(s), ${String(pageInfo.console_errors)} console error(s)`,
   );
 
+  // Prefer whatever cost record the source is itself carrying: a paid packet writes `paid`, a
+  // re-measured one carries the original forward. Reading only `paid` lost the numbers on the
+  // second hop (KI-85).
+  const carriedCost: CostRecord | null = carryCost(sourceReport as never);
   const facts: PacketFacts = {
     project: PROJECT,
     app_name: APP,
@@ -666,6 +699,12 @@ async function remeasureFromBytes(sourceDir: string): Promise<void> {
     commit: String(
       (observations.buildProvenance as Record<string, unknown>).commit ?? 'not recorded',
     ),
+    built_at_commit: String(
+      (observations.buildProvenance as Record<string, unknown>).commit ?? 'not recorded',
+    ),
+    measured_by_commit: String(observations.measuredByCommit ?? 'not recorded'),
+    cost: carriedCost,
+    cost_chain: observations.cost_chain as string[],
     bundle_identity: {
       server_build_hash: String(
         (observations.buildProvenance as Record<string, unknown>).serverBuildHash ?? '',
@@ -729,13 +768,30 @@ async function remeasureFromBytes(sourceDir: string): Promise<void> {
   writeFileSync(join(OUT, 'review-packet.md'), renderReviewPacket(facts, issues));
   observations.packet_issues = issues;
   reportStatus = 'PASS (re-measured, no provider call)';
-  writeReport(reportStatus, { paid_basis_carried_forward: sourceReport.paid ?? null });
+  writeReport(
+    reportStatus,
+    {
+      paid_basis_carried_forward: carriedCost,
+      cost_chain: observations.cost_chain,
+    },
+    {
+      ...(carriedCost ?? {}),
+      this_run_spend:
+        'none — this run paid nothing; the cost shown is the run that produced the app',
+    },
+  );
   console.log(
     `\nPASS (re-measured): ${String(checks.length)} check(s) — packet: ${join(OUT, 'review-packet.md')} — 0 provider calls`,
   );
 }
 
 async function main(): Promise<void> {
+  if (CHOSEN.suffix !== '') {
+    console.log(
+      `evidence directory ${CHOSEN.taken.join(', ')} already held a packet, so this run writes ` +
+        `${CHOSEN.path} instead of overwriting it`,
+    );
+  }
   const remeasureDir = process.env.REVIEW_APP_REMEASURE_DIR?.trim();
   if (remeasureDir && remeasureDir.length > 0) {
     mkdirp(OUT);
@@ -1080,6 +1136,24 @@ async function main(): Promise<void> {
       brief_path: BRIEF_FILE,
       created_at: new Date().toISOString(),
       commit: provenance.commit,
+      built_at_commit: provenance.commit,
+      measured_by_commit: provenance.commit,
+      cost: {
+        coding_jobs: 1,
+        max_calls_per_job: MAX_CALLS_PER_JOB,
+        idempotency_key: String(observations.idempotency_key ?? '') || null,
+        media_dispatches: Number(observations.media_dispatches ?? 0),
+        coding_calls_known:
+          observations.coding_calls_known === null || observations.coding_calls_known === undefined
+            ? null
+            : Number(observations.coding_calls_known),
+        coding_calls_unknown_jobs:
+          observations.coding_calls_unknown_jobs === null ||
+          observations.coding_calls_unknown_jobs === undefined
+            ? null
+            : Number(observations.coding_calls_unknown_jobs),
+      },
+      cost_chain: [],
       bundle_identity: {
         server_build_hash: identity.serverBuildHash,
         web_build_hash: identity.webBuildHash,

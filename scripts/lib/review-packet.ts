@@ -67,6 +67,16 @@ export interface PacketFacts {
    * to know which one they are reading.
    */
   credential_basis?: string;
+  /**
+   * Which commit produced the bytes under review, and which commit's harness measured them. A
+   * re-measured packet keeps the first from the paid run and gains the second, so a reader can tell
+   * "the app was built at X" from "the numbers were taken by the code at Y" (KI-84's lesson).
+   */
+  built_at_commit?: string;
+  measured_by_commit?: string;
+  /** The cost record as it travelled, and every packet directory it passed through. */
+  cost?: CostRecord | null;
+  cost_chain?: string[];
   page: {
     title: string;
     interactive_controls: number;
@@ -120,6 +130,83 @@ export interface PacketFacts {
   };
 }
 
+/**
+ * What a packet says was paid for the app inside it. Every field is nullable on purpose: "unknown"
+ * has to be representable, or a missing measurement prints as a reassuring zero.
+ */
+export interface CostRecord {
+  coding_jobs?: number | null;
+  max_calls_per_job?: number | null;
+  idempotency_key?: string | null;
+  media_dispatches?: number | null;
+  coding_calls_known?: number | null;
+  coding_calls_unknown_jobs?: number | null;
+}
+
+interface SourceReport {
+  paid?: CostRecord | null;
+  observations?: { paid_basis_carried_forward?: CostRecord | null; cost_chain?: string[] } | null;
+}
+
+/**
+ * Carry the cost record across a re-measurement hop.
+ *
+ * A paid packet writes its own `paid` block. A re-measured packet does not spend anything, so it
+ * carries the original in `observations.paid_basis_carried_forward`. Reading only `paid` therefore
+ * loses the record on the second hop: the 2026-11-03 re-measurement of the Palette Bench packet
+ * printed nulls where the paid run had recorded one job, three calls and an idempotency key (KI-85).
+ */
+export function carryCost(source: SourceReport | null | undefined): CostRecord | null {
+  if (!source) return null;
+  const carried = source.observations?.paid_basis_carried_forward ?? null;
+  const own = source.paid ?? null;
+  // Prefer the record that says more: a re-measured source has `paid: null` and its truth carried.
+  const candidates = [carried, own].filter((c): c is CostRecord => c !== null);
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => score(b) - score(a));
+  return candidates[0] ?? null;
+}
+
+function score(record: CostRecord): number {
+  return Object.values(record).filter((v) => v !== null && v !== undefined).length;
+}
+
+/** Every packet directory this cost record has been copied through, oldest last. */
+export function costChain(source: SourceReport | null | undefined, sourceDir: string): string[] {
+  const prior = source?.observations?.cost_chain ?? [];
+  return [sourceDir, ...prior];
+}
+
+/** Whether a cost record says anything at all. Silent means the packet cannot state its own price. */
+export function costRecordIsSilent(record: CostRecord | null | undefined): boolean {
+  if (!record) return true;
+  return Object.values(record).every((v) => v === null || v === undefined);
+}
+
+export function describeCost(record: CostRecord | null | undefined): string {
+  if (costRecordIsSilent(record)) {
+    return 'not recorded — this packet cannot state what was paid for the app inside it';
+  }
+  const r = record as CostRecord;
+  const jobs = r.coding_jobs === null || r.coding_jobs === undefined ? '?' : String(r.coding_jobs);
+  const calls =
+    r.coding_calls_known === null || r.coding_calls_known === undefined
+      ? 'unknown internal calls'
+      : `${String(r.coding_calls_known)} internal call(s)`;
+  const cap =
+    r.max_calls_per_job === null || r.max_calls_per_job === undefined
+      ? ''
+      : `, capped at ${String(r.max_calls_per_job)}`;
+  const media =
+    r.media_dispatches === null || r.media_dispatches === undefined
+      ? 'media calls unknown'
+      : `${String(r.media_dispatches)} provider media call(s)`;
+  const key = r.idempotency_key
+    ? `, Idempotency-Key ${r.idempotency_key}`
+    : ', no Idempotency-Key recorded';
+  return `${jobs} coding job(s), ${calls}${cap}, ${media}${key}`;
+}
+
 /** The dimensions a human scores. Fixed, so two apps can be compared by hand. */
 export const REVIEW_DIMENSIONS: readonly string[] = [
   'Task fit — does it do every job the brief asked for, and only those?',
@@ -145,6 +232,12 @@ export function packetIssues(facts: PacketFacts): string[] {
   const issues: string[] = [];
   if (facts.artifact.version === null) {
     issues.push('no approved version: the packet captured an artifact the product never approved');
+  }
+  if (facts.cost !== undefined && costRecordIsSilent(facts.cost)) {
+    issues.push(
+      'the cost record is silent: the packet cannot say how many paid calls produced this app, so ' +
+        'its evidence cannot support any claim about what a review cost',
+    );
   }
   if (facts.artifact.bytes === 0) {
     issues.push('the artifact is empty: there is nothing to review');
@@ -244,6 +337,25 @@ export function renderReviewPacket(facts: PacketFacts, issues: readonly string[]
     ),
   );
   lines.push(row('provider media dispatches', String(facts.media_dispatches)));
+  if (facts.built_at_commit || facts.measured_by_commit) {
+    lines.push(
+      row(
+        'bytes built at / measured by',
+        `${facts.built_at_commit ?? 'unknown commit'} / ${facts.measured_by_commit ?? 'unknown commit'}`,
+      ),
+    );
+  }
+  if (facts.cost !== undefined) {
+    lines.push(row('what was paid for the app', describeCost(facts.cost)));
+  }
+  if (facts.cost_chain && facts.cost_chain.length > 0) {
+    lines.push(
+      row(
+        'this cost record was copied through',
+        facts.cost_chain.map((dir) => `\`${dir}\``).join(' → '),
+      ),
+    );
+  }
   lines.push(row('page title', facts.page.title || '(none)'));
   lines.push(row('interactive controls on the page', String(facts.page.interactive_controls)));
   lines.push(row('distinct colours in the initial capture', String(facts.page.distinct_colors)));
