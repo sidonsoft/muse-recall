@@ -130,10 +130,13 @@ function pinnedLibrary(
 }
 
 const OPEN_SCRIPT = /<script\b([^>]*)>/gi;
+/**
+ * The end of a script element. Case-insensitive, because `</SCRIPT>` is valid
+ * HTML and a case-sensitive search for it would swallow the rest of the document
+ * into one element. Optional attributes because `</script foo>` closes too.
+ */
+const CLOSE_SCRIPT = /<\/script(?:\s[^>]*)?>/gi;
 const SRC_ATTRIBUTE = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i;
-/** Attributes whose meaning an inlined replacement would not preserve. */
-const BEHAVIOUR_ATTRIBUTES =
-  /\b(type|defer|async|integrity|crossorigin|nomodule|charset|language|id)\b/i;
 /** A jsDelivr Phaser URL of any version, so a version gap can be named. */
 const CDN_PHASER_PATH =
   /^https:\/\/cdn\.jsdelivr\.net\/npm\/phaser@([^/]+)\/dist\/phaser\.min\.js$/i;
@@ -146,13 +149,66 @@ function attributeValue(attrs: string, name: string): string | null {
   return match[1] ?? match[2] ?? match[3] ?? '';
 }
 
+/**
+ * One `<script>` element, located rather than pattern-matched out of context.
+ *
+ * Elements are found in document order and the scan never re-enters an element's
+ * text: `<script` inside a script body is JavaScript text, not an element, and
+ * scanning it as one invented gaps out of string literals and could substitute
+ * inside them. The closing tag is matched case-insensitively for the same
+ * reason: a case-sensitive search treats `</SCRIPT>` as body text and then reads
+ * the remainder of the document as part of one element.
+ */
+type ScriptElement = {
+  start: number;
+  /** Just past the open tag's `>`. */
+  openEnd: number;
+  /** Just past the closing `</script>`, or the end of the document when unterminated. */
+  end: number;
+  attrs: string;
+  src: string | null;
+  /** The open tag's attributes other than `src`, normalised. */
+  otherAttributes: string;
+  body: string;
+};
+
+function scriptElements(html: string): ScriptElement[] {
+  const elements: ScriptElement[] = [];
+  let from = 0;
+  for (;;) {
+    OPEN_SCRIPT.lastIndex = from;
+    const open = OPEN_SCRIPT.exec(html);
+    if (open === null) break;
+    const openEnd = open.index + open[0].length;
+    CLOSE_SCRIPT.lastIndex = openEnd;
+    const close = CLOSE_SCRIPT.exec(html);
+    const attrs = open[1] ?? '';
+    elements.push({
+      start: open.index,
+      openEnd,
+      end: close === null ? html.length : close.index + close[0].length,
+      attrs,
+      src: attributeValue(attrs, 'src'),
+      otherAttributes: attrs.replace(SRC_ATTRIBUTE, '').replace(/\s+/g, ' ').trim(),
+      body: close === null ? html.slice(openEnd) : html.slice(openEnd, close.index),
+    });
+    // An element's text is text. Resuming past it is what stops a `<script`
+    // written inside a string literal from being read as markup.
+    from = close === null ? html.length : close.index + close[0].length;
+  }
+  return elements;
+}
+
 /** Every absolute http(s) URL the document would fetch on its own. */
 export function externalReferences(html: string): string[] {
   const found = new Set<string>();
-  const pattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+  // Unquoted attribute values are valid HTML and were invisible to a quoted-only
+  // scan, which let a remote reference hide from the network policy, the preview
+  // policy and gap reporting at once.
+  const pattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>`]+))/gi;
   let match: RegExpExecArray | null = pattern.exec(html);
   while (match) {
-    const value = match[1] ?? match[2] ?? '';
+    const value = match[1] ?? match[2] ?? match[3] ?? '';
     if (/^https?:\/\//i.test(value)) found.add(value);
     match = pattern.exec(html);
   }
@@ -179,38 +235,27 @@ export function vendorScripts(html: string): VendorOutcome {
     }
   }
 
-  OPEN_SCRIPT.lastIndex = 0;
-  for (;;) {
-    const match = OPEN_SCRIPT.exec(html);
-    if (match === null) break;
-    const attrs = match[1] ?? '';
-    const close = html.indexOf('</script', match.index + match[0].length);
-    // The whole element, the closing `>` included. Leaving one character behind
-    // would drop it after the span emitted here, which is how a round trip
-    // through the source view gained a stray `>`.
-    const closingAngle = close === -1 ? -1 : html.indexOf('>', close);
-    const endIndex = closingAngle === -1 ? html.length : closingAngle + 1;
-    out += html.slice(cursor, match.index);
-    cursor = endIndex;
+  for (const element of scriptElements(html)) {
+    out += html.slice(cursor, element.start);
+    cursor = element.end;
 
-    const src = attributeValue(attrs, 'src');
+    const src = element.src;
     const library = src ? LIBRARIES.find((entry) => entry.url === src) : undefined;
+    const cdnPhaser = src ? CDN_PHASER_PATH.exec(src) : null;
 
     if (src === null) {
       // An inline script. Leave it alone; validation owns what it may contain.
-      out += html.slice(match.index, endIndex);
+      out += html.slice(element.start, element.end);
       continue;
     }
 
-    const cdnPhaser = CDN_PHASER_PATH.exec(src);
     if (!library && !cdnPhaser) {
       // Not our library, not our business to rewrite.
-      out += html.slice(match.index, endIndex);
+      out += html.slice(element.start, element.end);
       continue;
     }
 
-    const tagStart = match.index;
-    const tagText = html.slice(tagStart, endIndex);
+    const tagText = html.slice(element.start, element.end);
     const emitGap = (url: string, reason: string): void => {
       gaps.push({ url, reason });
       out += tagText;
@@ -218,7 +263,7 @@ export function vendorScripts(html: string): VendorOutcome {
 
     if (!library) {
       emitGap(
-        src ?? '',
+        src,
         `${cdnPhaser?.[1] ?? 'an unmatched Phaser build'} is not the version this product vendors ` +
           `(${LIBRARIES.map((entry) => `${entry.name}@${entry.version}`).join(', ')}); ` +
           'the reference is left as written and still needs the network',
@@ -234,19 +279,27 @@ export function vendorScripts(html: string): VendorOutcome {
       continue;
     }
 
-    const otherAttributes = attrs.replace(SRC_ATTRIBUTE, '').replace(/\s+/g, ' ').trim();
-    if (otherAttributes !== '' && BEHAVIOUR_ATTRIBUTES.test(otherAttributes)) {
+    /*
+     * Vendoring is narrow on purpose: the tag it replaces is the one tag the
+     * product prompt asks for, `src` and nothing else. Anything else — `defer`,
+     * `type`, `integrity`, an event handler — changes what the tag does, and an
+     * inlined copy would silently drop it. That is not a substitution this
+     * product makes: the tag is left remote and the reason is named, so the
+     * reviewer sees a dependency instead of a document whose behaviour quietly
+     * changed. (A handler such as `onload` used to be dropped this way.)
+     */
+    if (element.otherAttributes !== '') {
       emitGap(
         src,
-        'the script tag carries attributes an inlined replacement would not preserve ' +
-          `(${otherAttributes}), so the reference is left as written`,
+        'the script tag carries attributes other than src (' +
+          `${element.otherAttributes}), which an inlined copy would not preserve, so the ` +
+          'reference is left as written',
       );
       continue;
     }
 
     // A script tag with a body is not something this can replace honestly.
-    const body = close === -1 ? '' : html.slice(match.index + match[0].length, close);
-    if (body.trim() !== '') {
+    if (element.body.trim() !== '') {
       emitGap(
         src,
         'the script tag has a body alongside its src, which is not a reference this can replace',
@@ -260,7 +313,7 @@ export function vendorScripts(html: string): VendorOutcome {
       continue;
     }
 
-    out += vendorSpan(library, pinned.source, pinned.notice);
+    out += canonicalVendorSpan(library, pinned.source, pinned.notice);
     applied.push({
       name: library.name,
       version: library.version,
@@ -275,7 +328,7 @@ export function vendorScripts(html: string): VendorOutcome {
   return { html: out, applied, gaps, external_urls: externalReferences(out) };
 }
 
-function vendorSpan(library: VendoredLibrary, source: string, notice: string): string {
+function canonicalVendorSpan(library: VendoredLibrary, source: string, notice: string): string {
   /*
    * The span is delimited on both ends so the source view can be recovered
    * exactly. The engine belongs in the shipped bytes, but it must not be what a
@@ -296,47 +349,57 @@ function vendorSpan(library: VendoredLibrary, source: string, notice: string): s
 }
 
 /**
- * The source view: the shipped bytes with each verified vendored engine replaced
- * by the one-line reference it came from. Round-trip exact — `vendorScripts`
- * reproduces the shipped bytes from this view byte for byte — so the review a
- * person reads and the code a model is handed stay readable without the artifact
- * being anything less than self-contained.
+ * The source view: the shipped bytes with each **canonical** vendored engine
+ * span replaced by the one-line reference it came from. Round-trip exact —
+ * `vendorScripts` reproduces the shipped bytes from this view byte for byte — so
+ * the review a person reads and the code a model is handed stay readable without
+ * the artifact being anything less than self-contained.
  *
- * A block whose contents do not hash to the pin is left as it is. Refusing to
- * show it would hide the very thing validation needs to report.
+ * Only the exact span this module writes is collapsed, and nothing around it is
+ * touched. An earlier version located a span by its delimiters and removed
+ * whatever sat between them, which meant a document that authored its own
+ * `forge-vendor:` comments could park executable code between a marker of its own
+ * making and the product's real span: the shipped bytes kept the code, the source
+ * view — the diff a human reads, and the file a modification starts from — lost it.
+ * Hashing one script body proves that body is the pinned library; it says nothing
+ * about the rest of a delimited region, and review elision needs a stronger
+ * guarantee than execution exemption.
+ *
+ * A block that is not byte-exact canonical is therefore left exactly as it is.
+ * Refusing to show it would hide the very thing validation has to report, and
+ * `vendoredScriptIntegrityIssues` fails any marked script that does not hash to
+ * the pin.
  */
 export function unvendorScripts(html: string): string {
   let out = html;
   for (const library of LIBRARIES) {
-    const start = `<!-- forge-vendor:${library.marker} start`;
-    const end = `<!-- forge-vendor:${library.marker} end -->`;
-    let index = out.indexOf(start);
-    while (index !== -1) {
-      const endAt = out.indexOf(end, index);
-      if (endAt === -1) break;
-      const span = out.slice(index, endAt + end.length);
-      const verified = verifiedSpanHoldsPin(span, library);
-      out =
-        out.slice(0, index) +
-        (verified ? `<script src="${library.url}"></script>` : span) +
-        out.slice(endAt + end.length);
-      index = out.indexOf(start, index + (verified ? 1 : span.length));
-    }
+    const pinned = pinnedLibrary(library);
+    if ('reason' in pinned) continue; // no canonical span can be named; leave bytes visible
+    const canonical = canonicalVendorSpan(library, pinned.source, pinned.notice);
+    const replacement = `<script src="${library.url}"></script>`;
+    out = out.split(canonical).join(replacement);
   }
   return out;
 }
 
-/** Does a delimited vendor span carry the pinned bytes? */
-function verifiedSpanHoldsPin(span: string, library: VendoredLibrary): boolean {
-  const open = new RegExp(
-    `<script\\b[^>]*${VENDOR_MARKER_ATTRIBUTE}="${library.marker}"[^>]*>`,
-    'i',
-  ).exec(span);
-  if (!open) return false;
-  const close = span.indexOf('</script', open.index + open[0].length);
-  if (close === -1) return false;
-  const content = span.slice(open.index + open[0].length, close);
-  return createHash('sha256').update(content).digest('hex') === library.sha256;
+/**
+ * The marker text this product writes, as it appears at the start of a canonical
+ * span. A staged file the model wrote must not contain it: the markers are
+ * delimiters of a region the product generates and the source view elides, so
+ * model-authored marker text is an attempt to put bytes in the artifact that the
+ * review never shows.
+ */
+export const VENDOR_MARKER_TEXT = `forge-vendor:`;
+
+/** Issues for a document that contains product vendor markers it did not write. */
+export function vendorMarkerTextIssues(html: string): string[] {
+  return html.includes(VENDOR_MARKER_TEXT)
+    ? [
+        'the document contains forge-vendor: marker text, which only the product writes. ' +
+          'Vendored blocks are inserted when the bytes are checked and promoted; staged source ' +
+          'may reference the pinned engine with a plain <script src> tag and nothing else.',
+      ]
+    : [];
 }
 
 /**
@@ -355,24 +418,15 @@ export type ExternalScriptReference = {
 
 export function externalScriptReferences(html: string): ExternalScriptReference[] {
   const found: ExternalScriptReference[] = [];
-  OPEN_SCRIPT.lastIndex = 0;
-  for (;;) {
-    const match = OPEN_SCRIPT.exec(html);
-    if (match === null) break;
-    const attrs = match[1] ?? '';
-    const close = html.indexOf('</script', match.index + match[0].length);
-    const closingAngle = close === -1 ? -1 : html.indexOf('>', close);
-    const endIndex = closingAngle === -1 ? html.length : closingAngle + 1;
-    const src = attributeValue(attrs, 'src');
+  for (const element of scriptElements(html)) {
+    const src = element.src;
     if (src && /^https?:\/\//i.test(src)) {
-      const body = close === -1 ? '' : html.slice(match.index + match[0].length, close);
       found.push({
         url: src,
-        other_attributes: attrs.replace(SRC_ATTRIBUTE, '').replace(/\s+/g, ' ').trim(),
-        has_body: body.trim() !== '',
+        other_attributes: element.otherAttributes,
+        has_body: element.body.trim() !== '',
       });
     }
-    OPEN_SCRIPT.lastIndex = endIndex;
   }
   return found;
 }
@@ -389,20 +443,21 @@ export function pinnedLibraries(): {
 
 /**
  * Remote engine references the document still depends on, named by URL.
- * A pinned-version reference that somehow survived, a jsDelivr Phaser of another
- * version, and any other Phaser-shaped remote URL all appear here; the check and
- * the reviewer see the same list.
+ *
+ * The rule is the document's own state, not a guess about why: any Phaser-shaped
+ * remote reference that survives in the shipped bytes is a gap. That matters for
+ * the cases vendoring *refused* — a pinned tag written with an extra attribute, a
+ * pinned tag with a body — where the reference is still remote even though the
+ * URL is one this product does vendor. An earlier version excluded pinned URLs
+ * whenever no vendor marker was present, which is exactly the shape those refused
+ * tags have, so the gap disappeared from `x-forge-vendor-gaps` and from the
+ * runtime report while the disclosure still named it.
  */
 export function vendorGapUrls(html: string): string[] {
-  const gaps: string[] = [];
-  for (const url of externalReferences(html)) {
-    if (!/phaser/i.test(url)) continue;
-    const pinned = LIBRARIES.some((entry) => entry.url === url);
-    const marked = html.includes(`${VENDOR_MARKER_ATTRIBUTE}=`);
-    if (pinned && !marked) continue; // the reference itself, unvendored
-    gaps.push(url);
-  }
-  return gaps;
+  const remote = new Set<string>(externalReferences(html));
+  // Script references the quoted-only scan can miss (unquoted src) still count.
+  for (const reference of externalScriptReferences(html)) remote.add(reference.url);
+  return [...remote].filter((url) => /phaser/i.test(url));
 }
 
 /**
@@ -412,11 +467,8 @@ export function vendorGapUrls(html: string): string[] {
  */
 export function vendoredScriptIntegrityIssues(html: string): string[] {
   const issues: string[] = [];
-  OPEN_SCRIPT.lastIndex = 0;
-  for (;;) {
-    const match = OPEN_SCRIPT.exec(html);
-    if (match === null) break;
-    const attrs = match[1] ?? '';
+  for (const element of scriptElements(html)) {
+    const attrs = element.attrs;
     if (!new RegExp(`\\b${VENDOR_MARKER_ATTRIBUTE}=`, 'i').test(attrs)) continue;
     const marker = attributeValue(attrs, VENDOR_MARKER_ATTRIBUTE) ?? '';
     const library = LIBRARIES.find((entry) => entry.marker === marker);
@@ -426,8 +478,7 @@ export function vendoredScriptIntegrityIssues(html: string): string[] {
       );
       continue;
     }
-    const close = html.indexOf('</script', match.index + match[0].length);
-    const content = close === -1 ? '' : html.slice(match.index + match[0].length, close);
+    const content = element.body;
     const pinned = pinnedLibrary(library);
     if ('reason' in pinned) {
       issues.push(`a vendored ${library.marker} script cannot be verified: ${pinned.reason}`);
@@ -452,19 +503,13 @@ export function vendoredScriptIntegrityIssues(html: string): string[] {
  */
 export function vendoredLibrariesIn(html: string): AppliedVendor[] {
   const found: AppliedVendor[] = [];
-  OPEN_SCRIPT.lastIndex = 0;
-  for (;;) {
-    const match = OPEN_SCRIPT.exec(html);
-    if (match === null) break;
-    const attrs = match[1] ?? '';
+  for (const element of scriptElements(html)) {
+    const attrs = element.attrs;
     if (!new RegExp(`\\b${VENDOR_MARKER_ATTRIBUTE}=`, 'i').test(attrs)) continue;
     const marker = attributeValue(attrs, VENDOR_MARKER_ATTRIBUTE) ?? '';
     const library = LIBRARIES.find((entry) => entry.marker === marker);
     if (!library) continue;
-    const close = html.indexOf('</script', match.index + match[0].length);
-    if (close === -1) continue;
-    const content = html.slice(match.index + match[0].length, close);
-    if (createHash('sha256').update(content).digest('hex') !== library.sha256) continue;
+    if (createHash('sha256').update(element.body).digest('hex') !== library.sha256) continue;
     found.push({
       name: library.name,
       version: library.version,

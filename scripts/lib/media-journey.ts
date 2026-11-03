@@ -74,6 +74,15 @@ export function parseAssetSource(value: string | undefined | null): {
 /** What the ledger must look like for the mode the journey is claiming. */
 export function journeyLedgerIssues(ledger: DispatchAccount, source: JourneyAssetSource): string[] {
   const issues: string[] = [];
+  /*
+   * Ledger integrity is checked **first**, in both rails. An earlier version
+   * returned as soon as the offline branch saw an empty dispatch list, so a log
+   * whose lines could not be read at all — an orphan outcome, a truncated trace —
+   * satisfied "zero dispatches". A count of zero is only evidence when the ledger
+   * is legible; an unreadable ledger cannot support the claim, and this is the
+   * exact assertion the offline gate prints.
+   */
+  issues.push(...ledgerIntegrityIssues(ledger, `${source} media journey`));
   if (source === 'upload') {
     if (ledger.dispatches.length !== 0) {
       const seen = ledger.dispatches
@@ -96,9 +105,9 @@ export function journeyLedgerIssues(ledger: DispatchAccount, source: JourneyAsse
       );
     }
   }
-  // Retries are part of ledger integrity: an attempt beyond 1 is a paid call
-  // nobody budgeted for, and it must fail the run rather than be reported.
-  issues.push(...ledgerIntegrityIssues(ledger, 'live media journey'));
+  // Per-path counts above already pin the live rail to one answered generate and
+  // one answered edit; retries, orphan outcomes and damaged lines are covered by
+  // the integrity pass at the top, which runs for both rails.
   return issues;
 }
 

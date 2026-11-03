@@ -575,7 +575,7 @@ async function main(): Promise<void> {
     if (
       (await dependencyBlock
         .getByText(
-          'These bytes fetch nothing outside themselves: every dependency is carried inside them.',
+          'No remote reference was found in these bytes: nothing in them asks another host to load something.',
         )
         .count()) === 0
     ) {
@@ -631,7 +631,7 @@ async function main(): Promise<void> {
     if (
       (await approvedBlock
         .getByText(
-          'These bytes fetch nothing outside themselves: every dependency is carried inside them.',
+          'No remote reference was found in these bytes: nothing in them asks another host to load something.',
         )
         .count()) === 0
     ) {

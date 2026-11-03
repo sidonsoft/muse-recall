@@ -89,9 +89,11 @@ export function DependencyDisclosure({ view }: { view: DependencyView }) {
       <p className="mt-2 text-[10.5px] leading-relaxed text-muted" data-testid="dependency-scope">
         Counted from the bytes that would be promoted, not from what the model said it used.{' '}
         {STATUS_LABELS.fetched} means the host must answer when the artifact runs;{' '}
-        {STATUS_LABELS.blocked} means verification refused the request, so a passed load check never
-        saw that dependency. The product swaps no dependency silently: a version it does not carry
-        is left exactly as written and named here.
+        {STATUS_LABELS.blocked} means the policy in force refuses that origin — and where the
+        verification browser actually recorded a request for it being refused, the row says so in
+        those words. The product swaps no dependency silently: a version it does not carry is left
+        exactly as written and named here. A reading of the file is not a record of what ran; the
+        notes state what this reading cannot see.
       </p>
     </section>
   );

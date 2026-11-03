@@ -274,4 +274,87 @@ describe('the disclosure the approval interface reads (KI-74)', () => {
     expect(after?.sha256).toBe(entry.sha256);
     expect(after?.dependencies === undefined).toBe(true);
   });
+
+  it('labels a URL found in code text as text, not as a request the application makes', () => {
+    /*
+     * Measured in a real browser during the review round: a comment and a string
+     * literal containing the same `fetch("https://…")` call produce **zero**
+     * requests, yet both used to be reported as dependencies verification refused.
+     * They are still worth showing — the policy would refuse such a reach — but
+     * only as what they are: text in the file.
+     */
+    const commented = documentWithTag(
+      `<script src="${PHASER_URL}"></script>`,
+      [
+        '<script>',
+        `// TODO swap back to fetch("https://example.org/collect") once the endpoint exists`,
+        'new Phaser.Game();',
+        '</script>',
+      ].join('\n'),
+    );
+    const rows = dependencyDisclosure(shipped(commented)).dependencies;
+    const text = rows.find((row) => row.reason === 'requested_by_application_code');
+    expect(text?.basis).toBe('code_text');
+    expect(text?.observed).toBeNull();
+    expect(text?.note).toContain('not evidence');
+    // The document is not self-contained: a remote reach is named somewhere in it.
+    expect(dependencyDisclosure(shipped(commented)).self_contained).toBe(false);
+  });
+
+  it('marks a refusal as observed only when the check reported that origin', () => {
+    const html = shipped(
+      documentWithTag(
+        `<script src="${PHASER_URL}"></script>`,
+        '<script>fetch("https://example.org/collect");new Phaser.Game();</script>',
+      ),
+    );
+    const seen = dependencyDisclosure(html, {
+      observations: { blockedOrigins: ['https://example.org'] },
+    });
+    const row = seen.dependencies.find((entry) => entry.origin === 'https://example.org');
+    expect(row?.observed).toBe(true);
+
+    const notSeen = dependencyDisclosure(html, { observations: { blockedOrigins: [] } });
+    expect(
+      notSeen.dependencies.find((entry) => entry.origin === 'https://example.org')?.observed,
+    ).toBe(false);
+
+    // No check recorded: nothing is claimed either way.
+    expect(
+      dependencyDisclosure(html).dependencies.find(
+        (entry) => entry.origin === 'https://example.org',
+      )?.observed,
+    ).toBeNull();
+  });
+
+  it('states the limits of the reading on every record, including a quiet one', () => {
+    const plain = dependencyDisclosure(
+      '<!doctype html><html><body><button type="button">go</button><script>const host="https://example.org";fetch(host+"/collect");</script></body></html>',
+    );
+    // A request assembled at run time is invisible to this scan, and the record
+    // must say so instead of reporting "no dependencies" as if that settled it.
+    expect(plain.dependencies).toEqual([]);
+    expect(plain.scan_limits?.length ?? 0).toBeGreaterThan(0);
+    expect((plain.scan_limits ?? []).join(' ')).toContain('assembled at run time');
+
+    const noisy = dependencyDisclosure(
+      shipped(documentWithTag(`<script src="${PHASER_URL}"></script>`)),
+    );
+    expect(noisy.scan_limits).toEqual(plain.scan_limits);
+  });
+
+  it('reads a remote reference written without quotes, like the browser does', () => {
+    // A quoted-only scan made an unquoted `src=` invisible to the policy, the gap
+    // list and the preview, while the browser loaded it anyway.
+    const unquoted = dependencyDisclosure(
+      '<!doctype html><html><body><script src=https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js></script><button type="button">go</button></body></html>',
+    );
+    expect(unquoted.dependencies.length).toBe(1);
+    const row = unquoted.dependencies[0] as (typeof unquoted.dependencies)[number];
+    expect(row.status).toBe('fetched');
+    expect(row.origin).toBe('https://cdn.jsdelivr.net');
+    expect(row.basis).toBe('document_reference');
+    expect(unquoted.self_contained).toBe(false);
+    expect(unquoted.network_policy).toBe('cdn-allowlist');
+  });
 });

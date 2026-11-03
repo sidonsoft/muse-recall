@@ -48,16 +48,25 @@ export const NOT_RECORDED_SUMMARY =
   'No dependency record was kept for these bytes — they were approved before dependency disclosure existed.';
 
 export const NO_DEPENDENCIES_SUMMARY =
-  'These bytes fetch nothing outside themselves: every dependency is carried inside them.';
+  'No remote reference was found in these bytes: nothing in them asks another host to load something.';
 
 export const SELF_CONTAINED_SUMMARY =
-  'These bytes carry their libraries and fetch nothing outside themselves.';
+  'These bytes carry their own libraries, and no remote reference was found in them.';
+
+/**
+ * Rendered when a stored record predates `scan_limits`. Silence here would be the
+ * worst reading of all: the reader would take an empty list as proof that nothing
+ * was fetched, when all it proves is that no reference was found by a scan.
+ */
+export const UNKNOWN_SCAN_LIMITS =
+  'this record does not state what its reading cannot see, so treat an empty list as "no remote ' +
+  'reference found", never as "nothing was fetched"';
 
 /** Pinned status labels. */
 export const STATUS_LABELS = {
   bundled: 'Carried inside these bytes',
-  fetched: 'Fetched at run time',
-  blocked: 'Blocked during verification',
+  fetched: 'Loaded from a remote host',
+  blocked: 'Refused by the verification policy',
 } as const;
 
 /**
@@ -102,11 +111,37 @@ function explanation(dependency: ForgeDependency): string {
     case 'vendored_copy_and_remote_copy':
       return `these bytes carry a pinned copy and still reference the remote one; the copy is what loads, but the remote reference is still in the file`;
     case 'requested_by_application_code':
-      return `the application's own code asks the browser for this URL when it runs`;
+      /*
+       * Found by reading code text, not by a reference the browser loads. The
+       * same characters in a comment or a string literal produce this row and
+       * produce no request at all (measured), so the sentence says where the URL
+       * was found rather than claiming the application asks for it.
+       */
+      return (
+        "this URL appears as a literal in the application's code text rather than in a tag; " +
+        'whether that line ever runs is not something a reading of the file can settle'
+      );
     case 'remote_asset':
     default:
       return `this application loads it from the remote host when it runs`;
   }
+}
+
+/**
+ * Whether anything was *seen*, as opposed to what the rules predict. A static
+ * reading can say a policy would refuse an origin; only the browser check can say
+ * a request was attempted and refused. Conflating them is how "blocked during
+ * verification" came to be reported for text the browser never asked for.
+ */
+function observationClause(dependency: ForgeDependency): string | null {
+  if (dependency.status === 'bundled') return null;
+  if (dependency.observed === true) {
+    return 'the verification browser recorded a request for this origin being refused';
+  }
+  if (dependency.observed === false) {
+    return 'no request for this origin was recorded during verification; this is what the policy in force does with it';
+  }
+  return 'no browser run was recorded against these bytes when this was written, so nothing here was observed either way';
 }
 
 /** One row per dependency, grouped bundled-then-remote by the server's order. */
@@ -134,6 +169,22 @@ export function dependencyView(
         'contain was refused during verification and would have to be reached when the artifact runs',
     );
   }
+  if (disclosure.dependencies.some((row) => row.basis === 'code_text')) {
+    notes.push(
+      'one or more rows above were found by reading the application\u2019s code text, not by a ' +
+        'reference the browser loads: a URL written in a comment or a string reads the same here',
+    );
+  }
+  /*
+   * The server states what this reading cannot see. It is rendered always rather
+   * than only when a row looks doubtful, because the dangerous misreading is the
+   * empty list: "no dependencies" is a finding about a scan, not a record of what
+   * the application did.
+   */
+  const limits = disclosure.scan_limits ?? [UNKNOWN_SCAN_LIMITS];
+  if (limits.length > 0) {
+    notes.push(`what this record cannot see: ${limits.join('; ')}.`);
+  }
   return {
     summary:
       disclosure.dependencies.length === 0
@@ -151,13 +202,17 @@ export function dependencyView(
             // read as if something were fetched.
             `verification would have permitted ${disclosure.granted_origins.join(', ')}; these bytes reference nothing remote`
           : `verification permitted: ${disclosure.granted_origins.join(', ')}`,
-    rows: disclosure.dependencies.map((dependency) => ({
-      kind: dependency.status,
-      status: STATUS_LABELS[dependency.status],
-      subject: subject(dependency),
-      explanation: explanation(dependency),
-      source: source(dependency),
-    })),
+    rows: disclosure.dependencies.map((dependency) => {
+      const clause = observationClause(dependency);
+      return {
+        kind: dependency.status,
+        status: STATUS_LABELS[dependency.status],
+        subject: subject(dependency),
+        explanation:
+          clause === null ? explanation(dependency) : `${explanation(dependency)}. ${clause}.`,
+        source: source(dependency),
+      };
+    }),
     notes,
   };
 }

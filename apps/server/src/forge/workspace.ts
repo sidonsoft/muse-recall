@@ -33,6 +33,7 @@ import {
   type VendorGap,
   vendoredLibrariesIn,
   vendoredScriptIntegrityIssues,
+  vendorMarkerTextIssues,
   vendorScripts,
 } from './vendored-scripts.js';
 
@@ -603,6 +604,8 @@ export class ForgeWorkspace {
     sha256: string;
     applied: AppliedVendor[];
     gaps: VendorGap[];
+    /** The staged file as written, before the vendoring pass. */
+    source: string;
   } | null> {
     const file = this.stagingFile(projectId, jobId);
     try {
@@ -612,13 +615,15 @@ export class ForgeWorkspace {
     }
     // Never follow a symlink, even before validation runs.
     const raw = await this.readContainedBuffer(projectId, file);
-    const outcome = vendorScripts(raw.toString('utf8'));
+    const source = raw.toString('utf8');
+    const outcome = vendorScripts(source);
     const bytes = Buffer.from(outcome.html, 'utf8');
     return {
       bytes,
       sha256: createHash('sha256').update(bytes).digest('hex'),
       applied: outcome.applied,
       gaps: outcome.gaps,
+      source,
     };
   }
 
@@ -724,7 +729,7 @@ export class ForgeWorkspace {
      * would turn one condition into two issues. Any other failure is not ours
      * to swallow.
      */
-    let staged: { bytes: Buffer } | null = null;
+    let staged: { bytes: Buffer; source: string } | null = null;
     try {
       staged = await this.stagedVendored(projectId, jobId);
     } catch (error) {
@@ -734,6 +739,15 @@ export class ForgeWorkspace {
       issues.push('Staging file index.html is missing.');
     } else {
       issues.push(...(await this.validateHtml(staged.bytes.toString('utf8'))).issues);
+      /*
+       * The vendor delimiters belong to the product. A staged file that contains
+       * `forge-vendor:` text wrote them itself, and the source view collapses only
+       * spans this build produces byte for byte — so anything parked between
+       * model-authored markers would sit in the artifact while the diff and the
+       * modification seed skipped past it. Refusing the whole change is the honest
+       * outcome: it is checked where a person can read why, not elided.
+       */
+      issues.push(...vendorMarkerTextIssues(staged.source));
     }
     // The realpath checks and the refusing read can name the same condition.
     const unique = [...new Set(issues)];

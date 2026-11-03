@@ -73,8 +73,39 @@ function bounded(value: string, max = 400): string {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
+/**
+ * What a browser run actually saw, when one has run. A static reading of the
+ * bytes can name a dependency; only the check can say a request happened. The
+ * two are kept apart so the panel never reports a guess as an observation.
+ */
+export type DisclosureObservations = {
+  /** Origins the verification browser attempted and the policy refused. */
+  blockedOrigins?: string[];
+};
+
+/** Was this origin recorded as refused during the check? Null: nothing observed. */
+function refusalObserved(
+  origin: string | null,
+  observations?: DisclosureObservations,
+): boolean | null {
+  if (observations === undefined || origin === null) return null;
+  return (observations.blockedOrigins ?? []).includes(origin);
+}
+
+/** What this reading cannot see, rendered verbatim in the panel. */
+const SCAN_LIMITS: readonly string[] = [
+  'a reading of the bytes, not a record of what ran: a request whose URL is assembled at run ' +
+    'time will not appear here',
+  'a URL that appears only in a comment or a string literal can appear here even if the code never ' +
+    'asks the browser for it',
+];
+
 /** Every remote reference the document makes, and what the policy does with it. */
-function remoteRows(html: string, policy: ForgeNetworkPolicy): ForgeDependency[] {
+function remoteRows(
+  html: string,
+  policy: ForgeNetworkPolicy,
+  observations?: DisclosureObservations,
+): ForgeDependency[] {
   const rows: ForgeDependency[] = [];
   const seen = new Set<string>();
   const vendored = vendoredLibrariesIn(html);
@@ -120,6 +151,8 @@ function remoteRows(html: string, policy: ForgeNetworkPolicy): ForgeDependency[]
       sha256: null,
       bytes: null,
       note: bounded(note),
+      basis: 'document_reference',
+      observed: refusalObserved(origin, observations),
     });
     seen.add(ref.url);
   }
@@ -139,13 +172,19 @@ function remoteRows(html: string, policy: ForgeNetworkPolicy): ForgeDependency[]
       sha256: null,
       bytes: null,
       note: 'a remote asset the application loads when it runs',
+      basis: 'document_reference',
+      observed: refusalObserved(origin, observations),
     });
     seen.add(url);
   }
 
-  // URLs the application's own script asks the browser to fetch. These never
-  // appear as a tag, so they are the case the tag scan cannot see — and the
-  // runtime policy refuses them all the same.
+  // URLs that appear as literals in the application's own script text. These never
+  // appear as a tag, so they are the case the tag scan cannot see — and they are
+  // reported as **text**, not as requests: the same characters inside a comment or
+  // a string literal produce this row even though the browser made no request
+  // (measured in Chromium: zero requests for either), while a request assembled
+  // from a variable produces no row at all. The status states what the policy in
+  // force would do with such a request, which is a fact about the policy.
   CODE_REQUEST.lastIndex = 0;
   let match: RegExpExecArray | null = CODE_REQUEST.exec(html);
   while (match !== null) {
@@ -161,7 +200,11 @@ function remoteRows(html: string, policy: ForgeNetworkPolicy): ForgeDependency[]
         origin: origin === null ? null : bounded(origin, 300),
         sha256: null,
         bytes: null,
-        note: "a literal URL in the application's own code, requested at run time",
+        note:
+          "this URL appears as a literal in the application's code text, which is not evidence " +
+          'that the line ever runs',
+        basis: 'code_text',
+        observed: refusalObserved(origin, observations),
       });
       seen.add(url);
     }
@@ -178,10 +221,14 @@ function remoteRows(html: string, policy: ForgeNetworkPolicy): ForgeDependency[]
  */
 export function dependencyDisclosure(
   html: string,
-  options: { recordedAt?: string; now?: () => Date } = {},
+  options: {
+    recordedAt?: string;
+    now?: () => Date;
+    observations?: DisclosureObservations;
+  } = {},
 ): ForgeDependencyDisclosure {
   const policy = documentNetworkPolicy(html);
-  const rows = remoteRows(html, policy);
+  const rows = remoteRows(html, policy, options.observations);
   const bundled: ForgeDependency[] = vendoredLibrariesIn(html).map((entry) => ({
     status: 'bundled' as const,
     reason: 'bundled_pinned_copy' as const,
@@ -194,6 +241,8 @@ export function dependencyDisclosure(
     note:
       `carried by this product at the pinned sha256 in place of ${entry.replaced_url}; ` +
       `${String(entry.bytes)} bytes`,
+    basis: 'document_reference' as const,
+    observed: null as boolean | null,
   }));
   const ordered = [...bundled, ...rows].slice(0, MAX_ROWS);
   const pending = html.match(MEDIA_PLACEHOLDER)?.length ?? 0;
@@ -203,12 +252,14 @@ export function dependencyDisclosure(
     // survives the vendoring pass. The policy alone does not say that: a plain
     // app with no engine is on the allowlist policy and still asks for nothing,
     // and a document that carries an engine but also references a remote asset is
-    // not self-contained even though it bundles the engine.
+    // not self-contained even though it bundles the engine. What this says is "no
+    // remote reference found"; `scan_limits` says what a finding cannot cover.
     self_contained: rows.length === 0,
     granted_origins:
       policy === 'vendored' ? [] : ALLOWED_REMOTE_ORIGINS.map((origin) => bounded(origin, 300)),
     dependencies: ordered,
     pending_media_references: pending,
+    scan_limits: [...SCAN_LIMITS],
     html_sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
     recorded_at: options.recordedAt ?? (options.now ?? (() => new Date()))().toISOString(),
   };

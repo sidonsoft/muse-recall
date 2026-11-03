@@ -29,7 +29,13 @@ import {
   isAllowedRuntimeRequest,
   runtimeNetworkPolicy,
 } from '../apps/server/src/forge/runtime-check.js';
-import { vendorGapUrls, vendorScripts } from '../apps/server/src/forge/vendored-scripts.js';
+import {
+  unvendorScripts,
+  vendoredScriptIntegrityIssues,
+  vendorGapUrls,
+  vendorMarkerTextIssues,
+  vendorScripts,
+} from '../apps/server/src/forge/vendored-scripts.js';
 
 const CDN = 'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js';
 /**
@@ -46,6 +52,23 @@ const CDN_PERMITTED_AND_FAILED = 'https://cdn.jsdelivr.net:1/npm/phaser@3.80.1/d
 function game(scene: string, engine = CDN): string {
   return `<!doctype html><html><head>
 <script src="${engine}"></script></head><body><div id="game"></div>
+<script>
+new Phaser.Game({ type: Phaser.AUTO, width: 480, height: 320, parent: 'game', backgroundColor: '#ffe08a',
+  scene: { create() { const g = this.add.graphics(); g.fillStyle(0xff5d5d, 1); g.fillRect(20, 20, 120, 80); ${scene} } } });
+</script></body></html>`;
+}
+
+/**
+ * The same game, with arbitrary engine tag markup. The tag forms under test have to
+ * live inside a real game document: what is being measured is that a document the
+ * product refuses to rewrite still loads its engine and still renders.
+ */
+function gameWithTag(
+  tagMarkup: string,
+  scene = 'this.add.text(40, 200, "ok", { color: "#222" });',
+): string {
+  return `<!doctype html><html><head>
+${tagMarkup}</head><body><div id="game"></div>
 <script>
 new Phaser.Game({ type: Phaser.AUTO, width: 480, height: 320, parent: 'game', backgroundColor: '#ffe08a',
   scene: { create() { const g = this.add.graphics(); g.fillStyle(0xff5d5d, 1); g.fillRect(20, 20, 120, 80); ${scene} } } });
@@ -284,6 +307,164 @@ async function main() {
   pass(
     'a Phaser version this product does not vendor keeps its reference and is reported as a gap',
     unvendoredGaps[0]?.slice(0, 72),
+  );
+
+  /*
+   * 3c. Tag forms the product will not rewrite (KI-76/KI-77).
+   *
+   * A pinned reference is only swapped when the swap provably preserves the
+   * document. A tag that carries an attribute the engine block cannot hold, a body
+   * of its own, or an uppercase closing tag that a case-sensitive scanner reads
+   * past, is left exactly as written and named as a gap — and the document still
+   * has to work, because the browser reads these tags perfectly well. Refusing to
+   * vendor is not refusing the artifact.
+   */
+  // The gap reason is prose written for a reviewer, so each form is paired with the
+  // word that report has to contain: a gap that does not name what it refused is a
+  // gap nobody can act on. The machine-readable code lives on the disclosure, and
+  // the two must agree.
+  const tagForms: Array<[string, string, string]> = [
+    [
+      'attribute',
+      gameWithTag(`<script src="${CDN}" onload="window.__pinHandler = 1"></script>`),
+      'onload',
+    ],
+    ['body', gameWithTag(`<script src="${CDN}">window.__engineBody = 1</script>`), 'body'],
+    ['uppercase close', gameWithTag(`<script src="${CDN}"></SCRIPT>`), ''],
+  ];
+  const tagFormResults: Record<string, unknown> = {};
+  for (const [label, document, expectedReason] of tagForms) {
+    const outcome = vendorScripts(document);
+    const gaps = vendorGapUrls(document);
+    const disclosed = dependencyDisclosure(document);
+    if (runtimeNetworkPolicy(document) !== 'cdn-allowlist') {
+      throw new Error(`the ${label} engine tag was not read as a remote reference`);
+    }
+    if (label === 'uppercase close') {
+      // A scanner that misses `</SCRIPT>` reads the engine as document text and
+      // sees no reference at all: the document would be called self-contained while
+      // it still asks a CDN for 1.18 MB.
+      // Read on its own terms the reference is a gap; after vendoring it is not.
+      // Asserting only the second would let a scanner that misses the tag "pass" by
+      // seeing no reference at all.
+      const gapsAfter = vendorGapUrls(outcome.html);
+      if (outcome.applied.length !== 1 || gaps.length !== 1 || gapsAfter.length !== 0) {
+        throw new Error(
+          `an uppercase closing tag was not read as an engine reference: applied ${String(outcome.applied.length)}, gaps before ${JSON.stringify(gaps)}, after ${JSON.stringify(gapsAfter)}`,
+        );
+      }
+      if (runtimeNetworkPolicy(outcome.html) !== 'vendored') {
+        throw new Error('a document vendored from an uppercase closing tag was not self-contained');
+      }
+    } else {
+      if (outcome.applied.length !== 0) {
+        throw new Error(`the ${label} engine tag was rewritten anyway`);
+      }
+      if (gaps.length !== 1 || !gaps[0]?.includes('/npm/phaser@')) {
+        throw new Error(`the ${label} engine tag left no named gap: ${JSON.stringify(gaps)}`);
+      }
+      if (!outcome.gaps[0]?.reason.includes(expectedReason)) {
+        throw new Error(
+          `the ${label} engine gap does not name what it refused: ${String(outcome.gaps[0]?.reason)}`,
+        );
+      }
+      const disclosedRow = disclosed.dependencies.find((row) => row.origin === new URL(CDN).origin);
+      if (disclosedRow?.reason !== 'tag_form_not_replaced') {
+        throw new Error(
+          `the ${label} engine tag was disclosed with reason ${String(disclosedRow?.reason)}`,
+        );
+      }
+      if (disclosedRow.status !== 'fetched') {
+        throw new Error(`the ${label} engine tag was disclosed as ${String(disclosedRow.status)}`);
+      }
+      // Whatever the author wrote beside the reference has to survive: an inline
+      // handler dropped by a swap is a behaviour change nobody approved.
+      if (label === 'attribute' && !outcome.html.includes('window.__pinHandler = 1')) {
+        throw new Error('the attribute form was refused, yet the handler was still dropped');
+      }
+      if (label === 'body' && !outcome.html.includes('window.__engineBody = 1')) {
+        throw new Error('the script body was discarded by vendoring');
+      }
+    }
+    const run = await checkGameRuntime(document, 20_000);
+    tagFormResults[label] = {
+      applied: outcome.applied.length,
+      gaps: gaps.map((url) => url.slice(0, 72)),
+      ok: run.ok,
+      policy: run.network_policy,
+      reported_gaps: (run.vendor_gaps ?? []).length,
+      disclosed: disclosed.dependencies.map((row) => [row.status, row.reason]),
+    };
+    if (!run.ok) {
+      throw new Error(
+        `the ${label} engine document failed runtime verification: ${JSON.stringify(run.errors).slice(0, 200)}`,
+      );
+    }
+    if (run.network_policy !== 'cdn-allowlist') {
+      throw new Error(
+        `the ${label} engine document was verified under ${String(run.network_policy)}`,
+      );
+    }
+    // The checker reports gaps for the bytes it was handed — the same bytes the
+    // scan above counted. If the two ever differ, one of them is reading a
+    // different document than the person is being asked to approve.
+    if ((run.vendor_gaps ?? []).length !== gaps.length) {
+      throw new Error(
+        `the runtime report carried ${String((run.vendor_gaps ?? []).length)} gap(s) for a document whose scan found ${String(gaps.length)}`,
+      );
+    }
+  }
+  policies.tag_forms = tagFormResults;
+  pass(
+    'an engine tag the product cannot swap preserves the author\u2019s attributes and body, and is named as a gap',
+    'attribute + body, both still loading their engine',
+  );
+  pass(
+    'an uppercase closing tag is read as the engine reference it is, not as document text',
+    'vendored, gap-free',
+  );
+
+  /*
+   * 3d. Vendor delimiters are a format this product writes, not a claim an author
+   *     can make. A document that writes the markers itself must not be trusted as
+   *     carrying the engine: the payload behind forged delimiters is model code and
+   *     stays visible in the bytes a person reviews.
+   */
+  const forged = game('this.add.text(40, 200, "ok", { color: "#222" });').replace(
+    `<script src="${CDN}"></script>`,
+    '<script data-forge-vendor="phaser@3.80.1">window.__smuggled = document.cookie;</script>',
+  );
+  const forgedOutcome = vendorScripts(forged);
+  const forgedIntegrity = vendoredScriptIntegrityIssues(forgedOutcome.html);
+  const forgedSource = unvendorScripts(forgedOutcome.html);
+  // The other shape of the same claim: the delimiters written out as comment text.
+  // Nothing in a source document may write the product's own framing, because the
+  // source view collapses that framing — so anything inside it would ship unseen.
+  const forgedComment = vendorMarkerTextIssues(
+    `<!-- forge-vendor:phaser@3.80.1 start | sha256 ${'0'.repeat(64)} -->\n<script>window.__alsoSmuggled = 1;</script>\n<!-- forge-vendor:phaser@3.80.1 end -->`,
+  );
+  policies.forged_marker = {
+    applied: forgedOutcome.applied.length,
+    gaps: vendorGapUrls(forgedOutcome.html).map((url) => url.slice(0, 72)),
+    integrity_issues: forgedIntegrity.map((issue) => issue.slice(0, 90)),
+    comment_marker_issues: forgedComment.map((issue) => issue.slice(0, 90)),
+    payload_visible_in_source: forgedSource.includes('window.__smuggled'),
+  };
+  if (forgedOutcome.applied.length !== 0) {
+    throw new Error('a document wrote its own vendor block and the product trusted it');
+  }
+  if (forgedIntegrity.length === 0) {
+    throw new Error('a forged vendor marker was accepted as the product\u2019s own engine block');
+  }
+  if (!forgedSource.includes('window.__smuggled')) {
+    throw new Error('a payload behind a forged marker was hidden from the source view');
+  }
+  if (forgedComment.length === 0) {
+    throw new Error('vendor marker text in a source document was not reported as invalid source');
+  }
+  pass(
+    'a document that writes the vendor markers itself is not trusted as carrying the engine',
+    `${forgedIntegrity.length} marked script(s) refused, ${String(forgedComment.length)} marker text(s) invalid`,
   );
 
   // 1. Engine permitted but unreachable: the artifact must be refused, and the

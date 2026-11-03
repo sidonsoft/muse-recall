@@ -149,3 +149,32 @@ describe('media journey asset provenance labels', () => {
     expect(labeled.asset_provenance).toContain('paid generate + edit');
   });
 });
+
+describe('the offline journey cannot call a damaged ledger "zero dispatches"', () => {
+  it('reports ledger damage in upload mode even when no dispatch is counted', () => {
+    /*
+     * The offline gate's headline claim is "the journey dispatched nothing". An
+     * earlier version of the check returned as soon as the upload branch saw an
+     * empty list, so a ledger that could not be read at all satisfied it: the
+     * claim was then about a log the gate could not parse, not about a run.
+     */
+    const orphanOutcome = ledger(['outcome=response attempt=1 status=200 bytes=171670']);
+    expect(orphanOutcome.dispatches).toEqual([]);
+    const orphanIssues = journeyLedgerIssues(orphanOutcome, 'upload');
+    expect(orphanIssues.join(' ')).toContain('answer no dispatch');
+
+    const truncated = ledger(['attempt=']);
+    expect(truncated.dispatches).toEqual([]);
+    expect(truncated.malformedLines.length).toBeGreaterThan(0);
+    expect(journeyLedgerIssues(truncated, 'upload').join(' ')).toContain('could not be parsed');
+
+    // A legible empty ledger still passes: the claim is honest when the log is
+    // readable and truly records nothing.
+    expect(journeyLedgerIssues(ledger([]), 'upload')).toEqual([]);
+  });
+
+  it('still refuses a live rail that paid the wrong number of calls', () => {
+    const issues = journeyLedgerIssues(ledger([GENERATE_START, GENERATE_OUTCOME]), 'live');
+    expect(issues.join(' ')).toContain('/v1/images/edits');
+  });
+});

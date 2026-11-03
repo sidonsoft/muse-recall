@@ -115,14 +115,92 @@ describe('the engine Forge vendors into generated games', () => {
   });
 
   it('reports a document that carries the engine and still asks for it over the network', () => {
-    const vendored = vendorScripts(gameDocument());
-    const tampered = vendored.html.replace(
-      '</body>',
-      `<script src="${PHASER_URL}"></script></body>`,
+    /*
+     * Two references in the source view: the first gets the carried copy, the
+     * second is reported rather than dropped. The second tag is a real element;
+     * tag-shaped text inside a script body is not a reference at all, which is
+     * why this is written as a source document rather than by splicing bytes
+     * into a finished artifact (the engine's own text contains `</body>`, so a
+     * string replacement lands inside it).
+     */
+    const outcome = vendorScripts(
+      gameDocument(`<script src="${PHASER_URL}"></script><script src="${PHASER_URL}"></script>`),
     );
-    const outcome = vendorScripts(tampered);
-    expect(outcome.applied).toEqual([]);
+    expect(outcome.applied.length).toBe(1);
     expect(outcome.gaps[0]?.reason).toContain('already carries a vendored phaser@3.80.1');
+    expect(vendorGapUrls(outcome.html)).toEqual([PHASER_URL]);
+  });
+
+  it('replaces a reference whose closing tag is written in another case', () => {
+    // `</SCRIPT>` is valid HTML. A case-sensitive search reads it as body text
+    // and then treats the rest of the document as part of one element, which is
+    // how a game lost its canvas and its Phaser initialisation.
+    const outcome = vendorScripts(
+      gameDocument().replace(
+        `<script src="${PHASER_URL}"></script>`,
+        `<script src="${PHASER_URL}"></SCRIPT>`,
+      ),
+    );
+    expect(outcome.applied.length).toBe(1);
+    expect(outcome.gaps).toEqual([]);
+    expect(outcome.html).toContain('new Phaser.Game');
+    expect(outcome.html).toContain('id="game"');
+    expect(vendoredLibrariesIn(outcome.html).length).toBe(1);
+  });
+
+  it('ignores tag-shaped text inside a script body instead of acting on it', () => {
+    // A game that builds the engine tag as a string (a loader, a template, a
+    // comment) is not asking for a second reference. Treating the text as markup
+    // invented gaps out of nothing and could substitute inside a string literal.
+    const literal = `<script>const markup = "<script src='${PHASER_URL}'></" + "script>";</script>`;
+    const outcome = vendorScripts(gameDocument(literal + `<script src="${PHASER_URL}"></script>`));
+    expect(outcome.applied.length).toBe(1);
+    expect(outcome.gaps).toEqual([]);
+    expect((outcome.html.match(new RegExp(VENDOR_MARKER_ATTRIBUTE, 'g')) ?? []).length).toBe(1);
+    expect(outcome.html).toContain('const markup');
+  });
+
+  it('leaves a pinned tag whose attributes an inlined copy would drop', () => {
+    // `onload` is behaviour. Silently inlining would ship a document that no
+    // longer runs the handler it was reviewed with, so the tag stays remote and
+    // the reason is named — and the reference still counts as a gap.
+    const tagged = gameDocument(
+      `<script src="${PHASER_URL}" onload="window.gameStarted=true"></script>`,
+    );
+    const outcome = vendorScripts(tagged);
+    expect(outcome.applied).toEqual([]);
+    expect(outcome.gaps.length).toBe(1);
+    expect(outcome.gaps[0]?.reason).toContain('attributes other than src');
+    expect(outcome.html).toContain('gameStarted');
+    expect(vendorGapUrls(outcome.html)).toEqual([PHASER_URL]);
+  });
+
+  it('cannot be made to hide a script behind model-authored vendor markers', () => {
+    /*
+     * The defect this pins: an earlier source view removed whatever sat between
+     * vendor delimiters once one script body inside them hashed to the pin. A
+     * document that wrote its own markers could therefore put executable code in
+     * the artifact and keep it out of the diff a person reads, and out of the file
+     * a modification starts from. Hashing a body says nothing about the rest of a
+     * delimited region, so only the exact span this module writes is elided.
+     */
+    const smuggled = [
+      '<!doctype html><html><body>',
+      '<!-- forge-vendor:phaser@3.80.1 start -->',
+      '<script>window.hiddenPayload = true;</script>',
+      `<script src="${PHASER_URL}"></script>`,
+      '<!-- forge-vendor:phaser@3.80.1 end -->',
+      '</body></html>',
+    ].join('');
+    const outcome = vendorScripts(smuggled);
+    expect(outcome.applied.length).toBe(1);
+    expect(outcome.html).toContain('hiddenPayload');
+    const view = unvendorScripts(outcome.html);
+    // Visible to review, and the round trip is byte-exact: nothing is removed
+    // from the source view that the shipped bytes do not also carry.
+    expect(view).toContain('hiddenPayload');
+    expect(unvendorScripts(outcome.html)).toBe(smuggled);
+    expect(view).not.toContain(VENDOR_MARKER_ATTRIBUTE);
   });
 
   it('does not touch another package it does not vendor', () => {

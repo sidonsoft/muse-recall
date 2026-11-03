@@ -31,8 +31,9 @@ import {
   decisionExcerpt,
   isActiveProjectDecision,
 } from '../forge/decision-reference.js';
+import { previewRemoteGrant } from '../forge/network-policy.js';
 import type { ForgeJobManager } from '../forge/runner.js';
-import { externalReferences, vendorGapUrls } from '../forge/vendored-scripts.js';
+import { vendorGapUrls } from '../forge/vendored-scripts.js';
 import { ForgeError, type ForgeWorkspace } from '../forge/workspace.js';
 import { beginIdempotency, type IdempotencyStore } from '../idempotency.js';
 import {
@@ -786,15 +787,23 @@ export function registerForgeRoutes(
  * references the CDN keeps the older, wider grant rather than failing on it.
  */
 export function previewContentSecurityPolicy(html: string): string {
-  const remote = externalReferences(html);
-  const remoteGrant = remote.length === 0 ? null : 'https://cdn.jsdelivr.net';
+  /*
+   * Grants are derived from what the served bytes reference and what the policy
+   * in force permits — the same reading the verification check and the approval
+   * disclosure use. A quoted-only scan used to decide this, so an unquoted script
+   * tag or an allowlisted image could be reported as a dependency that is fetched
+   * while the preview itself refused it.
+   */
+  const remote = previewRemoteGrant(html);
+  const grant = remote.length === 0 ? null : remote.join(' ');
   return [
     'sandbox allow-scripts',
     "default-src 'none'",
-    `script-src 'unsafe-inline'${remoteGrant ? ` ${remoteGrant}` : ''}`,
+    `script-src 'unsafe-inline'${grant ? ` ${grant}` : ''}`,
     "style-src 'unsafe-inline'",
-    'img-src data: blob:',
-    `connect-src ${remoteGrant ?? "'none'"}`,
+    `img-src data: blob:${grant ? ` ${grant}` : ''}`,
+    ...(grant === null ? [] : [`font-src ${grant}`]),
+    `connect-src ${grant ?? "'none'"}`,
     "frame-ancestors 'self'",
     "base-uri 'none'",
     "form-action 'none'",

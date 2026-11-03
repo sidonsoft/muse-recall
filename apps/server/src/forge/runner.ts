@@ -30,7 +30,7 @@ import { forgeChildEnv } from './child-env.js';
 import { isCliAvailable } from './cli-lookup.js';
 import { evaluateDecisionGuardAdvisory } from './decision-guard.js';
 import { decisionReference, pinnedRetrieved } from './decision-reference.js';
-import { dependencyDisclosure } from './dependencies.js';
+import { type DisclosureObservations, dependencyDisclosure } from './dependencies.js';
 import { ensurePrivateDirectory, syncDirectory, syncFile, writePrivateFile } from './fs-utils.js';
 import { type ForgeJobPersistence, ForgeJobStore } from './job-store.js';
 import { buildForgePrompt, buildRetrievalQuery } from './prompt.js';
@@ -1141,6 +1141,17 @@ export class ForgeJobManager {
       const runtime = staged
         ? await this.runtimeCheck(staged.html)
         : { ok: false, errors: ['The staged application is missing.'] };
+      /*
+       * What the check refused, if it reported that at all. Passing it to the
+       * disclosure is what lets the panel tell "this origin was recorded being
+       * refused" from "the policy would refuse this origin" — the first is an
+       * observation, the second is a reading of the rules.
+       */
+      const observations: DisclosureObservations | undefined = Array.isArray(
+        runtime.blocked_origins,
+      )
+        ? { blockedOrigins: runtime.blocked_origins }
+        : undefined;
       const browserSelection = this.boundedBrowserSelection(runtime.browser_selection);
       const browser = runtime.browser ? this.boundedText(runtime.browser, 160) : null;
       if (!runtime.ok) {
@@ -1154,7 +1165,7 @@ export class ForgeJobManager {
           error: 'Runtime verification failed.',
           validation: { ok: false, issues: runtimeDetails },
           dependencies: staged
-            ? dependencyDisclosure(staged.html, { recordedAt: checkedAt })
+            ? dependencyDisclosure(staged.html, { recordedAt: checkedAt, observations })
             : null,
           approval_verification: staged
             ? {
@@ -1252,7 +1263,7 @@ export class ForgeJobManager {
        * person approving than the one being promoted.
        */
       const dependencies = staged
-        ? dependencyDisclosure(staged.html, { recordedAt: checkedAt })
+        ? dependencyDisclosure(staged.html, { recordedAt: checkedAt, observations })
         : null;
       const approvalVerification: ForgeApprovalVerification = {
         // The resolved-bytes validation, not the generation-time record: the

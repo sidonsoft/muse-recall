@@ -28,6 +28,7 @@ function disclosure(
     granted_origins: partial.granted_origins ?? [],
     dependencies: partial.dependencies,
     pending_media_references: partial.pending_media_references ?? 0,
+    ...(partial.scan_limits === undefined ? {} : { scan_limits: partial.scan_limits }),
     html_sha256: partial.html_sha256 ?? 'a'.repeat(64),
     recorded_at: partial.recorded_at ?? '2026-11-03T09:00:00.000Z',
   };
@@ -66,7 +67,11 @@ const blockedByPolicy = {
   origin: 'https://example.org',
   sha256: null,
   bytes: null,
-  note: "a literal URL in the application's own code, requested at run time",
+  note:
+    "this URL appears as a literal in the application's code text, which is not evidence that the " +
+    'line ever runs',
+  basis: 'code_text' as const,
+  observed: null as boolean | null,
 };
 
 describe('the dependency disclosure a reviewer reads (KI-74)', () => {
@@ -147,11 +152,59 @@ describe('the dependency disclosure a reviewer reads (KI-74)', () => {
     const row = view.rows[1] as (typeof view.rows)[number];
     expect(row.kind).toBe('blocked');
     expect(row.status).toBe(STATUS_LABELS.blocked);
-    expect(row.explanation).toContain("application's own code asks the browser");
+    // A URL found in code text is reported as text, not as a request: Chromium
+    // records no request at all for the same characters inside a comment or a
+    // string literal, so claiming the application "asks the browser" for it is a
+    // claim this reading cannot support.
+    expect(row.explanation).toContain("appears as a literal in the application's code text");
+    expect(row.explanation).toContain('no browser run was recorded against these bytes');
+    expect(row.explanation).not.toContain('asks the browser for this URL when it runs');
     expect(row.source).toBe('https://example.org');
     // A no-network policy plus a remote row is stated in plain terms, because a
     // passed load check under that policy never saw the dependency.
     expect(view.notes.join(' ')).toContain('refused during verification');
+    // And the reader is told which rows came from reading code text.
+    expect(view.notes.join(' ')).toContain('found by reading the application');
+  });
+
+  it('never lets an empty list read as proof that nothing was fetched', () => {
+    const withLimits = dependencyView(
+      disclosure({
+        dependencies: [],
+        scan_limits: ['a request whose URL is assembled at run time will not appear here'],
+      }),
+    );
+    expect(withLimits.summary).toContain('No remote reference was found in these bytes');
+    expect(withLimits.notes.join(' ')).toContain('what this record cannot see');
+    expect(withLimits.notes.join(' ')).toContain('assembled at run time');
+
+    // A record written before the field existed gets the warning anyway: silence
+    // is the reading that turns a scan into an assurance.
+    const withoutLimits = dependencyView(disclosure({ dependencies: [] }));
+    expect(withoutLimits.notes.join(' ')).toContain('never as "nothing was fetched"');
+  });
+
+  it('says a refusal was observed only when a check observed it', () => {
+    const seen = dependencyView(
+      disclosure({
+        self_contained: false,
+        dependencies: [{ ...blockedByPolicy, observed: true }],
+      }),
+    );
+    expect((seen.rows[0] as (typeof seen.rows)[number]).explanation).toContain(
+      'recorded a request for this origin being refused',
+    );
+    const predicted = dependencyView(
+      disclosure({
+        self_contained: false,
+        network_policy: 'cdn-allowlist',
+        granted_origins: ['https://cdn.jsdelivr.net'],
+        dependencies: [{ ...blockedByPolicy, observed: false }],
+      }),
+    );
+    const text = (predicted.rows[0] as (typeof predicted.rows)[number]).explanation;
+    expect(text).toContain('no request for this origin was recorded during verification');
+    expect(text).not.toContain('recorded a request for this origin being refused');
   });
 
   it('does not let a policy grant read as a fetch that did not happen', () => {

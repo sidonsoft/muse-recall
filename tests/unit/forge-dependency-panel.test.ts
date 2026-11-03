@@ -25,6 +25,7 @@ function disclosure(
     granted_origins: partial.granted_origins ?? [],
     dependencies: rows,
     pending_media_references: partial.pending_media_references ?? 0,
+    ...(partial.scan_limits === undefined ? {} : { scan_limits: partial.scan_limits }),
     html_sha256: partial.html_sha256 ?? 'a'.repeat(64),
     recorded_at: partial.recorded_at ?? '2026-11-03T09:00:00.000Z',
   };
@@ -63,7 +64,14 @@ const blocked = {
   origin: 'https://exfiltration.example',
   sha256: null,
   bytes: null,
-  note: "a literal URL in the application's own code, requested at run time",
+  note:
+    "this URL appears as a literal in the application's code text, which is not evidence that the " +
+    'line ever runs',
+  // This fixture models the case where the check really did refuse a request for
+  // that origin; the row wording for a prediction rather than an observation is
+  // pinned separately below.
+  basis: 'code_text' as const,
+  observed: true as boolean | null,
 };
 
 function markup(view: ReturnType<typeof dependencyView>): string {
@@ -88,8 +96,8 @@ describe('the dependency block a reviewer sees (KI-74)', () => {
     }
     // A reviewer skimming the rail reads the status words, not the attributes.
     expect(html).toContain('Carried inside these bytes');
-    expect(html).toContain('Fetched at run time');
-    expect(html).toContain('Blocked during verification');
+    expect(html).toContain('Loaded from a remote host');
+    expect(html).toContain('Refused by the verification policy');
     // The unsupported version is named with the version it asked for, and the
     // pin the product carries, in the same block.
     expect(html).toContain('phaser 3.55.0');
@@ -136,6 +144,46 @@ describe('the dependency block a reviewer sees (KI-74)', () => {
     // A passed check under this policy never saw the blocked reach; the block has
     // to say that rather than leave the reader to guess which green means what.
     expect(html).toContain('refused during verification');
-    expect(html).toContain('so a passed load check never saw that dependency');
+    // And the row itself says whether a request was *seen* being refused or the
+    // policy merely would refuse it: one is an observation, the other a reading.
+    expect(html).toContain('recorded a request for this origin being refused');
+    expect(html).toContain('the policy in force refuses that origin');
+  });
+
+  it('states what the reading cannot see, even for a record that never said', () => {
+    const stated = markup(
+      dependencyView(
+        disclosure([bundled], {
+          scan_limits: ['a request whose URL is assembled at run time will not appear here'],
+        }),
+      ),
+    );
+    expect(stated).toContain('what this record cannot see');
+    expect(stated).toContain('assembled at run time will not appear here');
+
+    // An empty list is the dangerous case: it is a finding about a scan, not a
+    // record of what ran. A record that predates the field must not go silent.
+    const unstated = markup(dependencyView(disclosure([])));
+    expect(unstated).toContain('what this record cannot see');
+    // Rendered as static markup, the quotes arrive escaped: asserting the source
+    // form would pass only if the component leaked HTML, which it must not.
+    expect(unstated).toContain('never as &quot;nothing was fetched&quot;');
+  });
+
+  it('does not report a predicted refusal as an observed one', () => {
+    const html = markup(
+      dependencyView(
+        disclosure([{ ...blocked, observed: null }], {
+          self_contained: false,
+          network_policy: 'cdn-allowlist',
+          granted_origins: ['https://cdn.jsdelivr.net'],
+        }),
+      ),
+    );
+    expect(html).toContain('no browser run was recorded against these bytes');
+    expect(html).not.toContain('recorded a request for this origin being refused');
+    // Code text is labelled as text, because the same characters in a comment
+    // produce this row and produce no request at all.
+    expect(html).toContain('found by reading the application');
   });
 });

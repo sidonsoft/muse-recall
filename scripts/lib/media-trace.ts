@@ -32,28 +32,93 @@ export interface MediaTraceEntry {
 export function parseMediaTrace(text: string): MediaTraceEntry[] {
   const entries: MediaTraceEntry[] = [];
   for (const line of text.split('\n')) {
-    if (!line.includes('[media-trace]')) continue;
-    const attempt = /attempt=(\d+)/.exec(line)?.[1];
-    if (attempt === undefined || Number(attempt) < 1) {
-      entries.push({ attempt: 0, malformed: line.trim().slice(0, 200) });
-      continue;
-    }
-    const entry: MediaTraceEntry = { attempt: Number(attempt) };
-    const path = /path=(\S+)/.exec(line)?.[1];
-    if (path !== undefined) entry.path = path;
-    const model = /model=(\S+)/.exec(line)?.[1];
-    if (model !== undefined) entry.model = model;
-    const outcome = /outcome=(\S+)/.exec(line)?.[1];
-    if (outcome !== undefined) entry.outcome = outcome;
-    const status = /status=(\d+)/.exec(line)?.[1];
-    if (status !== undefined) entry.status = Number(status);
-    if (entry.path === undefined && entry.outcome === undefined) {
-      entries.push({ attempt: Number(attempt), malformed: line.trim().slice(0, 200) });
-      continue;
-    }
-    entries.push(entry);
+    if (!line.includes(TRACE_TAG)) continue;
+    entries.push(parseTraceLine(line));
   }
   return entries;
+}
+
+/** The tag that makes a line part of the ledger. */
+const TRACE_TAG = '[media-trace]';
+
+/**
+ * Fields the adapter writes, and nothing else. A ledger reader that invents no
+ * limits reads a damaged line as a clean one: `attempt=1broken` used to parse as
+ * attempt 1, and `outcome=nonsense status=200garbage` completed an expected paid
+ * dispatch. So every token is validated whole, an unknown key is damage rather
+ * than something to skip past, and the shapes below are what the writer emits.
+ */
+const TRACE_KEYS = ['attempt', 'path', 'model', 'outcome', 'status', 'bytes', 'events'] as const;
+const TRACE_OUTCOMES = ['response', 'error'] as const;
+const TRACE_KEY_TOKEN = /^([a-z][a-z0-9]*)=(\S+)$/;
+
+function damaged(line: string): MediaTraceEntry {
+  return { attempt: 0, malformed: line.trim().slice(0, 200) };
+}
+
+function parseTraceLine(line: string): MediaTraceEntry {
+  // A pino JSON wrapper puts the message inside a string; read the message, not
+  // the JSON punctuation, so a wrapped log does not look damaged.
+  const wrapped = /"msg":"((?:[^"\\]|\\.)*)"/.exec(line);
+  const unwrapped = line.slice(line.indexOf(TRACE_TAG) + TRACE_TAG.length);
+  // A JSON-wrapped message carries the tag inside the string, so strip it from
+  // whichever body was chosen: the fields follow it in both shapes.
+  const raw = wrapped?.[1] ?? unwrapped;
+  const body = raw.startsWith(TRACE_TAG) ? raw.slice(TRACE_TAG.length) : raw;
+
+  /*
+   * `error=` carries human text, which may contain spaces. Splitting it off first
+   * is what lets every remaining token be validated whole instead of hoping.
+   */
+  const errorAt = body.search(/(?:^|\s)error=/);
+  const head = errorAt === -1 ? body : body.slice(0, errorAt);
+  const hasErrorText = errorAt !== -1;
+
+  const fields = new Map<string, string>();
+  for (const token of head.trim().split(/\s+/).filter(Boolean)) {
+    const match = TRACE_KEY_TOKEN.exec(token);
+    if (match === null) return damaged(line); // free text where a field belongs
+    const key = match[1] ?? '';
+    if (!(TRACE_KEYS as readonly string[]).includes(key)) return damaged(line);
+    if (fields.has(key)) return damaged(line); // same field twice: which one is the ledger?
+    fields.set(key, match[2] ?? '');
+  }
+
+  const attemptText = fields.get('attempt');
+  if (attemptText === undefined || !/^\d+$/.test(attemptText)) return damaged(line);
+  const attempt = Number(attemptText);
+  if (attempt < 1) return damaged(line);
+
+  const outcome = fields.get('outcome');
+  if (outcome !== undefined && !(TRACE_OUTCOMES as readonly string[]).includes(outcome)) {
+    return damaged(line);
+  }
+  const path = fields.get('path');
+  if (path !== undefined && !path.startsWith('/')) return damaged(line);
+  const statusText = fields.get('status');
+  if (statusText !== undefined && !/^[1-5]\d{2}$/.test(statusText)) return damaged(line);
+  for (const key of ['bytes', 'events'] as const) {
+    const value = fields.get(key);
+    if (value !== undefined && !/^\d+$/.test(value)) return damaged(line);
+  }
+  if (fields.get('model') !== undefined && fields.get('attempt') === undefined) {
+    return damaged(line);
+  }
+  if (path === undefined && outcome === undefined) return damaged(line);
+  // An outcome line that does not carry the fields that make it an outcome is a
+  // truncated write, not a clean record: an answer cannot be inferred from it.
+  if (outcome === 'response' && (statusText === undefined || fields.get('bytes') === undefined)) {
+    return damaged(line);
+  }
+  if (outcome === 'error' && !hasErrorText) return damaged(line);
+
+  const entry: MediaTraceEntry = { attempt };
+  if (path !== undefined) entry.path = path;
+  const model = fields.get('model');
+  if (model !== undefined) entry.model = model;
+  if (outcome !== undefined) entry.outcome = outcome;
+  if (statusText !== undefined) entry.status = Number(statusText);
+  return entry;
 }
 
 /** Read and parse a trace log. Missing/unreadable logs are an empty trace. */

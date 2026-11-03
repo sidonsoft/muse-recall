@@ -99,6 +99,16 @@ export const FORGE_DEPENDENCY_REASONS = [
 export const ForgeDependencyReasonSchema = z.enum(FORGE_DEPENDENCY_REASONS);
 export type ForgeDependencyReason = z.infer<typeof ForgeDependencyReasonSchema>;
 
+/**
+ * How a row was found. This is not a detail: a URL sitting in a comment or a
+ * string literal is not a request, and a request assembled at run time from a
+ * variable is not visible to any reading of the bytes. A reviewer shown both as
+ * "dependencies" is being shown a scan as if it were an observation.
+ */
+export const FORGE_DEPENDENCY_BASES = ['document_reference', 'code_text'] as const;
+export const ForgeDependencyBasisSchema = z.enum(FORGE_DEPENDENCY_BASES);
+export type ForgeDependencyBasis = z.infer<typeof ForgeDependencyBasisSchema>;
+
 export const ForgeDependencySchema = z.object({
   status: ForgeDependencyStatusSchema,
   reason: ForgeDependencyReasonSchema,
@@ -121,6 +131,14 @@ export const ForgeDependencySchema = z.object({
   bytes: z.number().int().min(1).nullable(),
   /** Why this row has this status, in bounded human-readable text. */
   note: z.string().min(1).max(400),
+  /** How this row was found — a reference the browser loads, or text in code. */
+  basis: ForgeDependencyBasisSchema.optional(),
+  /**
+   * Did the verification browser actually attempt this origin? Null means the
+   * record was written before or without a browser run, so nothing was observed
+   * either way — it does not mean "no request".
+   */
+  observed: z.boolean().nullable().optional(),
 });
 export type ForgeDependency = z.infer<typeof ForgeDependencySchema>;
 
@@ -139,6 +157,13 @@ export const ForgeDependencyDisclosureSchema = z.object({
    * whether the disclosure predates embedding.
    */
   pending_media_references: z.number().int().min(0),
+  /**
+   * What this reading cannot see, stated so the list is never mistaken for a
+   * record of what the application did. The panel renders these; it does not
+   * decide whether to mention them. Absent means the record predates the field,
+   * which the interface says out loud rather than leaving silent.
+   */
+  scan_limits: z.array(z.string().min(1).max(300)).max(6).optional(),
   /** sha256 of the exact bytes this disclosure was measured from. */
   html_sha256: z
     .string()

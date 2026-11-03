@@ -97,4 +97,52 @@ describe('the live chain gate reads a damaged ledger as a failure', () => {
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain('could not be parsed');
   });
+
+  it('refuses to read a field that is only partly a field', () => {
+    /*
+     * A prefix match used to accept these: `attempt=1broken` counted as attempt 1,
+     * and `status=200garbage` completed an answered paid dispatch. A ledger that
+     * parses parts of a token cannot support an exact call count, so every field
+     * is validated whole.
+     */
+    for (const line of [
+      'attempt=1broken path=/v1/images/generations model=muse-image-1.0',
+      'attempt=1 path=/v1/images/generations model=muse-image-1.0 status=200garbage',
+      'attempt=1 path=/v1/images/generations model=muse-image-1.0 outcome=nonsense',
+      'attempt=1 path=/v1/images/generations model=muse-image-1.0 unknown=field',
+      'attempt=1 attempt=2 path=/v1/images/generations model=muse-image-1.0',
+      'attempt=1 path=v1/images/generations model=muse-image-1.0',
+      'outcome=response attempt=1 status=200',
+      'outcome=error attempt=1',
+    ]) {
+      const entries = parseMediaTrace(traced([line]));
+      expect(entries, line).toHaveLength(1);
+      expect(entries[0]?.malformed, line).toContain(line);
+    }
+  });
+
+  it('still reads the lines the adapter really writes, bare and inside a JSON log', () => {
+    const bare = parseMediaTrace(
+      traced([...ONE_ANSWERED_CALL, 'outcome=error attempt=2 error=fetch failed: socket hang up']),
+    );
+    expect(bare.every((entry) => entry.malformed === undefined)).toBe(true);
+    expect(bare[2]?.outcome).toBe('error');
+
+    const wrapped = parseMediaTrace(
+      '{"level":30,"time":"2026-11-03T09:00:00.000Z","msg":"[media-trace] attempt=1 path=/v1/images/generations model=muse-image-1.0"}',
+    );
+    expect(wrapped[0]?.malformed).toBeUndefined();
+    expect(wrapped[0]?.path).toBe('/v1/images/generations');
+    expect(wrapped[0]?.model).toBe('muse-image-1.0');
+  });
+
+  it('does not turn an answered pair into damage for carrying stream event counts', () => {
+    const entries = parseMediaTrace(
+      traced([
+        'attempt=1 path=/v1/responses model=muse-spark-1.3',
+        'outcome=response attempt=1 status=200 bytes=512 events=41',
+      ]),
+    );
+    expect(entries.every((entry) => entry.malformed === undefined)).toBe(true);
+  });
 });

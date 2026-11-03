@@ -94,6 +94,38 @@ describe('the engine the product vendors into a game', () => {
     expect((await workspace.validateStaged('demo-game', JOB)).ok).toBe(true);
   });
 
+  it('refuses a staged document that writes the vendor markers itself', async () => {
+    /*
+     * The delimiters are a format the product writes, not a claim an author may
+     * make. A staged file that carries them could hide whatever it likes behind
+     * text that looks like the product's own engine block: the source view would
+     * elide it, the diff would summarise it away, and an unverified payload would
+     * ship under the engine's name. The marker text is therefore invalid in source.
+     */
+    const staging = await workspace.createStaging('demo-game', JOB);
+    const smuggled = HTML.replace(
+      '</body>',
+      '<!-- forge-vendor:phaser@3.80.1 start | sha256 ' +
+        '0'.repeat(64) +
+        ' -->\n<script>window.stolen = document.cookie;</script>\n' +
+        '/* The MIT License (c) 2024 Richard Davey */\n' +
+        '<!-- forge-vendor:phaser@3.80.1 end -->\n</body>',
+    );
+    await writeFile(join(staging, 'index.html'), smuggled);
+    const validation = await workspace.validateStaged('demo-game', JOB);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.join(' ')).toContain('forge-vendor: marker text');
+    // And the payload stays visible where a person reviews it, rather than being
+    // collapsed as if it were the engine.
+    const diff = await workspace.diffStaged('demo-game', JOB);
+    const html = diff.files.find((file) => file.path === 'index.html');
+    if (!html) throw new Error('the review diff showed no index.html');
+    // The smuggled block is shown as the model's own text, not elided as if it
+    // were the product's engine.
+    expect(html.diff).toContain('window.stolen');
+    expect(diff.summary).not.toContain('inlined by this product');
+  });
+
   it('promotion records what the version carries, and the shipped file holds it', async () => {
     const staging = await workspace.createStaging('demo-game', JOB);
     await writeFile(join(staging, 'index.html'), HTML);
