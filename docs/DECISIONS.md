@@ -960,3 +960,44 @@ execution still refuses without the flag and persists with it. The
 session runtime's per-write approval flow is untouched — that surface
 keeps the property honestly, and `requiresConfirmation`'s doc now names
 which surface enforces what.
+
+---
+
+### D059 — HTML Studio carries its own copy of the game engine
+
+**Context:** KI-53 measured that a generated game fetched its engine from
+`https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js`, and that when
+that one request failed the artifact was refused while the Studio preview showed
+a blank frame with no explanation. The app is otherwise self-hosted with no
+outbound dependency, so availability, reproducibility and the meaning of
+"local" all came down to one third party answering a request. An offline or
+air-gapped machine could not approve any game at all, and an artifact approved
+today could stop working tomorrow without its bytes changing.
+**Decision:** Vendor the engine. One pinned copy — Phaser 3.80.1, the version the
+prompt already named — 1 181 917 bytes, sha256 `62081f6a1b51d040473f919ffedef9009953c20833518e146da5a8d1c9405ea8`,
+committed as a generated module with the MIT licence text inside it and a script
+(`pnpm run vendor:phaser`) that re-fetches and refuses to write if the hash or
+length moved. The document is stored in its **source** form, with the one
+`<script src="…jsdelivr…phaser@3.80.1…">` tag, and the engine is inlined at the
+moment the bytes are handed to anything that runs them: preview, diff,
+validation, runtime verification, and promotion. The model is told about the
+substitution, is given the short source view when asked to modify an artifact,
+and is not allowed to inline its own copy of the engine.
+**Conformance:** `verify:runtime` runs both policies in a real browser: a game
+that carries the vendored engine boots with **no remote origin granted at all**
+(8 checks; `test-results/runtime/`), a game that still needs the CDN keeps the
+old allowlist, and a Phaser version this product does not vendor keeps its
+reference and is reported as a named gap rather than silently re-pointed at the
+pinned copy. `tests/unit/forge-vendored-scripts.test.ts` pins that a forged
+vendor marker buys no exemption (verification goes to the bytes), that a
+`defer`/`integrity`/`async` tag is never rewritten, that the source view round
+trips byte-for-byte, and that the vendored block cannot be used to smuggle code
+past the inline-script budget. Promotion records which library and version each
+version carries. Research fixtures are **not** regenerated: the Phase 16/17
+protocol bytes depend on prompt and artifact hashes, so those prompts keep their
+own frozen text and the production prompt is separated from it.
+**Cost, measured here:** each game artifact grows by ~1.18 MB on disk and in the
+database; a full runtime verification takes 1.6–2.0 s either way on this machine,
+where the CDN is reachable and cached, so inlining is within ~0.2 s of fetching.
+Artifacts approved before this change are not rewritten, and the CDN stays
+allowlisted for documents that still reference it.
