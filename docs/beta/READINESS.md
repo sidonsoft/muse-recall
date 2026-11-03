@@ -1,6 +1,6 @@
-> **v0.1.0 publication:** the owner authorized promotion of the full beta on 4 November 2026. The [release](https://github.com/sidonsoft/muse-recall/releases/tag/v0.1.0) carries the final commit-specific gate report. Measurements below are historical and retain their original identities. Publication does not fill the separate generated-application quality judgement sheet.
+> **Published beta:** [v0.1.0](https://github.com/sidonsoft/muse-recall/releases/tag/v0.1.0) is fixed at `707921db83a374d155d3929ef9b99092bcd4e8f1`. The owner authorized publication on 4 November 2026. Its [commit-specific report](https://github.com/sidonsoft/muse-recall/releases/download/v0.1.0/release-gate-report.json) records ten passing gates, a clean build and zero provider calls. Report and evidence archives, source and checksums are attached to the release. The measurements and verdict below are historical. The separate generated-application quality sheet remains unscored; publication does not fill it.
 
-# Beta readiness report
+# Historical beta readiness report
 
 Written for the beta on the `integration` branch, at the commit whose production bytes are quoted below
 (`6abc769`). Every number here was measured, and each one names the directory it came from. Where
@@ -10,7 +10,7 @@ identity below does not travel forward on its own. For that reason the newest pa
 the last directory under `test-results/release-gate/` rather than by trusting this sentence: each run
 records the commit it built, so the evidence stays attributable even as the documents move.
 
-## Verdict
+## Historical verdict (before owner publication authorization)
 
 **HUMAN SIGN-OFF REQUIRED.**
 

@@ -222,3 +222,41 @@ jobs:
 
       - name: Re-verify the locked research chain
         run: pnpm exec tsx scripts/verify-phase17.ts && pnpm exec tsx scripts/verify-phase17-sums.ts && pnpm exec tsx scripts/verify-phase17-strict.ts
+
+  release-gates:
+    name: Production release gates (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright Chromium
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-release-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install managed Chromium
+        run: pnpm exec playwright-core install --with-deps chromium
+      - name: Install offline video fixture encoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Run all ten production gates
+        run: pnpm verify:release-gate
+      - name: Retain commit-specific reports and browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: production-release-gates-${{ github.sha }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: warn

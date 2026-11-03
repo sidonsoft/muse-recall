@@ -26,9 +26,9 @@
  * - **"No provider call" must be evidenced, not asserted.** The server's `[media-trace]` log is read,
  *   checked for damage, and required to be empty.
  */
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -249,7 +249,7 @@ async function main(): Promise<number> {
     );
   }
   const identity = describeBundleIdentity(provenance);
-  const head = readFileSync(join(ROOT, '.git/HEAD'), 'utf8').trim();
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
   observations.build_provenance = {
     commit: provenance.commit,
     head_ref: head,

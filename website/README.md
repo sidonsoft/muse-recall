@@ -78,9 +78,11 @@ GitHub Actions**, then re-run the latest "Website" workflow from the Actions tab
 The site used to live in `sidonsoft/muse-recall-website` (published at
 `sidonsoft.github.io/muse-recall-website/`); its full history was imported here.
 
-The demo video is served from `public/video/` (copied from
-`muse-recall/docs/demo/video/`, SHA-256 `4020c0c6…b308`, re-muxed with
-`-movflags +faststart` so playback starts before the whole file downloads).
+The current three-minute demo is served from `public/video/`. Its MP4 is byte-identical to
+`docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4`: SHA-256
+`6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`, 10,876,299 bytes.
+The earlier 170.47-second video and its different website remux belong to historical commit
+`c32d03b`; the public filenames were reused on 4 November. See [current QA](../docs/demo/video/V21_QA.md).
 
 ## Structure
 
