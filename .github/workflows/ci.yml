@@ -246,6 +246,10 @@ jobs:
           key: playwright-${{ runner.os }}-release-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install managed Chromium
         run: pnpm exec playwright-core install --with-deps chromium
+      - name: Install offline video fixture encoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
       - name: Run all ten production gates
         run: pnpm verify:release-gate
       - name: Retain commit-specific reports and browser evidence
