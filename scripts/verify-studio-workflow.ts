@@ -644,6 +644,10 @@ async function main(): Promise<void> {
         'the approval rail disclosed dependencies without stating what that reading cannot see',
       );
     }
+    // `innerText` on purpose: the claim under test is that the limits note is *legible to the person
+    // approving*, so hidden text cannot count. The lint rule wants `textContent`; that would pass on a
+    // note no approver can see.
+    // biome-ignore lint/performance/useDomNodeTextContent: the assertion is about visible text
     const noteText = (await notes.innerText()).replace(/\s+/g, ' ');
     if (!noteText.includes('what this record cannot see')) {
       throw new Error(

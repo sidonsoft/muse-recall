@@ -102,6 +102,9 @@ Each run is one coding job. Nothing in this flow makes a media call.
   behaviour was reproducible.
 - Decisions are checked by a human against pinned wording. Nothing here verifies
   that the app "followed" a decision.
+- `issues: []` means the evidence is fit to judge from. It has never meant the app
+  has no defects, and a person reading a packet should not have to remember that:
+  the second round printed it over bytes with three defects in them (KI-87).
 
 ## Wording rules that changed after the first review round (D060)
 
@@ -138,3 +141,39 @@ Everything between them is free: `…-2250` (the packet the first human round re
 the measured evidence of KI-85's lost cost record), `…-081947` and `…-081952` (free re-measurements of
 the original bytes, and the evidence that KI-86's directory collision is fixed). Retained packets are
 never rewritten — a corrected measurement always gets a new directory (KI-86).
+
+## The probe battery: what a capture cannot see
+
+A review packet measures a state. Staleness, numeric wrap-around and lost history are properties of
+*sequences*, and no set of assertions about one load finds them: the second round's capture printed
+`issues: []` over an artifact with three defects a person found by clicking things.
+
+`pnpm run verify:artifact-probes` runs the sequences. Two modes, deliberately different:
+
+```bash
+# CI. Two fixtures — one that keeps handing over output it no longer displays, one that refreshes it —
+# and the battery must flag the first and leave the second alone. This gates the battery itself.
+pnpm run verify:artifact-probes
+
+# Against a retained packet. Reports findings; does not fail, because a defect in a generated app is a
+# measurement of that app, not a product failure. The packet is never rewritten.
+PROBE_PACKET=test-results/human-review/<packet> \
+PROBE_INTERACTIONS='{"fill":{"label":"Seed","value":"77"},
+  "regenerate":"Generate palette from current seed",
+  "publish":"Export palette as CSS custom properties",
+  "copy":"Copy exported CSS to clipboard",
+  "destructive":"Clear palette"}' pnpm run verify:artifact-probes
+```
+
+The control names are accessible names, which for this artifact are `aria-label` text rather than the
+visible words — the copy button says "Copy CSS" on screen and is named "Copy exported CSS to clipboard".
+Passing the visible words gets a timeout, which is the honest failure: the probe could not find the
+affordance a user would name.
+
+Bytes are served over `http://127.0.0.1` rather than `file://` because a file document has an opaque
+origin and the clipboard API refuses to run there — and the clipboard is exactly where KI-88's stale
+palette was hiding.
+
+What the battery cannot do: it proves those three sequences behave in a named way. It does not rank the
+app, and a clean battery run says nothing about quality. A finding here enters the reviewer's evidence
+as KI-88, KI-89 and KI-90 did — as something a person weighs against the decisions, not as a failed gate.

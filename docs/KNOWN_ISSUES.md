@@ -2204,3 +2204,70 @@ matters, not just the name chosen.
 **Measured on the real harness.** Two re-measurements five seconds apart produced
 `palette-bench-2026-11-03-081947` and `palette-bench-2026-11-03-081952`, both PASS, neither overwriting
 the other.
+
+## KI-87 — a review capture said `issues: []` over an artifact with three defects (closed)
+
+**The capture was accurate about what it measured.** The second Palette Bench packet asserted the
+artifact loaded from its own bytes, touched no local storage, logged no console error and made no
+non-local request, and recorded controls, contrast and status text. All of that held. A person then
+drove three sequences — export, regenerate, copy; two seeds far apart; a clear followed by a reload —
+and found three defects, none of which any of those assertions could have seen.
+
+**The blind spot is the shape of the measurement, not its quality.** A load plus a scripted fill and
+click measures a *state*. Staleness, numeric wrap-around and lost history are properties of
+*sequences*. No set of assertions about one state finds them, and `issues: []` reads, to someone
+skimming a two-page packet before deciding, as "nothing is wrong with this app". It has never meant
+that here: the packet's own text says the flags judge the evidence, not the application. That sentence
+is true and it was not enough, because the failure mode is silence rather than a wrong claim.
+
+**Fix.** The review harness now runs sequence probes: `scripts/lib/artifact-probes.ts` and
+`pnpm run verify:artifact-probes`, CI-gated. Two rules inside it:
+
+- **Nothing handed over is not staleness.** An empty export box after a "copied to your clipboard"
+  message is a different defect from handing over an old palette, and calling it stale would report a
+  comparison that never happened. It is its own finding.
+- **"No undo control before the reload and none after" is not a pass.** The first draft compared the
+  two booleans for equality, which read the *absence* of an undo affordance as one that survived. A
+  helper whose entire job is to stop a sloppy reading has to refuse the sloppiest one available.
+
+**Measured.** Against `test-results/human-review/palette-bench-2026-11-03-082925` — the bytes a human
+had just reviewed, at `2026-11-03-091706` — the battery reported all three: a published output
+carrying five colours the application is not displaying and omitting five it is; seeds `1` and
+`4294967297` producing one palette; and undo that does not carry across a reload while a destructive
+action after the reload still offers a way back. Free, local, and reproducible on the retained bytes.
+
+## KI-88 — the generated Palette Bench hands over colours it is not displaying (open; a finding about a generated artifact)
+
+Sequence: Export, change the seed, Generate, Copy CSS. The exported region is never rewritten, so the
+clipboard carries the palette the screen no longer shows — five colours on screen, five different ones
+in what the user pastes. The bytes are `artifact.html` in
+`test-results/human-review/palette-bench-2026-11-03-082925/`, sha256
+`529e520aac9e4e04711a7c42df7f7b9821dc82fa83ffabbf4c42dc525f82eb67`.
+
+**Scope, stated because it matters to what "open" means.** This product did not cause it and cannot fix
+it: the model wrote the application, and rewriting a retained review artifact would destroy the
+evidence. What this product owes is discovery, and that is what KI-87 bought. A next brief can state
+the rule ("a published output must reflect the state it was published from") and be probed against it.
+
+## KI-89 — the generated Palette Bench seed field accepts values that produce the same app (open; same scope as KI-88)
+
+`parseInt(value, 10)` feeding a 32-bit multiply means seed `1` and seed `4294967297` render the same
+five colours. The field accepts both and says nothing about the second doing nothing. The probe names
+that as a truncation *because* it tested the specific shape — seeds exactly 2^32 apart. A generator
+with a merely small output space is a design decision, and the helper reports that separately, in words
+that do not blame `Math.imul` for a choice nobody made.
+
+## KI-90 — undo in the generated Palette Bench is session-scoped (open; same scope as KI-88)
+
+The seeded decision says every destructive action is undoable. Inside one load it holds: Clear shows
+Undo, Undo restores. Across a reload the history is gone. The probe separates that from "Undo does
+nothing", because a destructive action taken *after* the reload does offer a way back — and the
+decision is judged word for word, so "satisfied inside a session, not across one" has to be stated
+rather than left for a reviewer to infer from a screenshot.
+
+## KI-91 — the generated Palette Bench is harder to compare on a phone than the decisions assume (open enhancement; same scope)
+
+At 390 px the five swatches stack, so comparing a palette means scrolling rather than seeing. No
+decision forbids it and the packet never claimed otherwise; the reviewer's judgement stands. Recorded
+so the next brief can ask for the property instead of hoping the model infers a layout rule it was not
+given — the same lesson as the accent rule in D060, one screen earlier in the same review round.

@@ -75,7 +75,8 @@
     "verify:image-live-smoke": "tsx scripts/verify-image-live-smoke.ts",
     "verify:review-live-smoke": "tsx scripts/verify-review-live-smoke.ts",
     "verify:batchc-ui": "tsx scripts/verify-batchc-ui.ts",
-    "verify:batche-review-ui": "tsx scripts/verify-batche-review-ui.ts"
+    "verify:batche-review-ui": "tsx scripts/verify-batche-review-ui.ts",
+    "verify:artifact-probes": "tsx scripts/verify-artifact-probes.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -1160,3 +1160,57 @@ What this does **not** settle stays open and is now the list: whether the review
 about a Muse-built app match what a person would notice; whether a vision draft is worth the call
 that produces it; whether generated apps are good enough to ship. Those need a person with the
 packet in front of them, and the packets now exist.
+
+### A person judged the app, and what they found said more about the harness than about the app
+
+**The verdict, as given:** **accept with conditions**. Of the four seeded decisions, three were
+assessed as passing and one partial — undo is session-scoped, so "every destructive action is
+undoable" holds inside a load and not across a reload (KI-90). The five quality rows are still blank:
+the conditions came out of the decisions and out of three defects, not from the judgement sheet, and no
+machine filled anything in.
+
+**The three defects** are KI-88 (the app hands over colours it is not displaying: Export, regenerate,
+Copy CSS and the clipboard carries the palette the screen no longer shows), KI-89 (seeds `1` and
+`4294967297` render one palette, because the seed field accepts a number the generator folds into 32
+bits) and KI-90, plus KI-91 as an enhancement. All are findings about a generated artifact and are
+recorded as open: a retained review artifact is not something this product edits, and rewriting it
+would destroy the evidence that the review happened.
+
+**Why they belong in this document anyway.** The capture had already measured those exact bytes and
+printed `issues: []`. That flag was accurate about every thing it measured — load from retained bytes,
+no storage, no console error, no non-local request, controls and contrast recorded. It is the wrong
+*shape* for the question. A load plus a scripted fill-and-click measures a state; staleness, numeric
+wrap-around and lost history are properties of **sequences**. No set of assertions about one state can
+find them, and `issues: []` reads, to a person skimming a two-page packet before deciding, as "nothing
+is wrong with this app". The packet's own wording — the flags judge the evidence, not the application —
+is true and was not enough, because the failure mode is silence rather than a wrong claim.
+
+**What changed.** The review harness runs sequence probes now:
+`scripts/lib/artifact-probes.ts`, `pnpm run verify:artifact-probes`, CI-gated. Fixture mode runs two
+documents, one that keeps handing over output it no longer displays and one that refreshes it, and the
+battery must flag the first and leave the second alone — because a battery that cannot tell those apart
+would print "no findings" over the real defect. Packet mode runs against retained bytes and *reports*,
+never fails the run: a defect in a generated app is a measurement of that app, not a product failure.
+Bytes are served over `http://127.0.0.1`, not `file://`, because a file document has an opaque origin
+and the clipboard API refuses to work there — and the clipboard is exactly where KI-88 was hiding.
+Control names are accessible names: this artifact's copy button reads "Copy CSS" on screen and is named
+"Copy exported CSS to clipboard", and passing the visible words fails, which is the honest outcome —
+the probe could not find the affordance a user would name.
+
+**Measured.** Re-run against the bytes the reviewer had just judged
+(`test-results/human-review/palette-bench-2026-11-03-082925`, evidence at
+`test-results/artifact-probes/2026-11-03-091706`), the battery reported all three: a published output
+carrying five colours the application is not displaying and omitting five it is; seeds `1` and
+`4294967297` producing one palette; and undo that does not carry across a reload while a destructive
+action taken after the reload still offers a way back. Free, local, reproducible on retained bytes. Two
+rules had to be fixed inside the helpers first: "nothing was handed over" is not staleness, and "no undo
+control before the reload and none after" is not a pass — the first draft compared two booleans for
+equality and read the *absence* of an undo affordance as one that survived (KI-87, with 16 unit tests
+on the wording).
+
+**The loop this exercise was built to test worked, and not in the way planned.** The plan was that the
+review model's eye would be checked against a human's. It was — and what the human found, first, was a
+blind spot in the harness. That is still the value: **the product's own artifact showed the review
+harness what the review harness could not see**, and the harness is now wider because of it. The three
+conclusions hold, with the harness conclusion now carrying a named blind spot that has been closed
+rather than a clean bill of health.

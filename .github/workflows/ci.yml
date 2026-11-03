@@ -160,6 +160,14 @@ jobs:
       - name: Run the media journey on uploaded bytes
         run: pnpm verify:media-journey-offline
 
+      # A review capture measures a state; staleness, numeric wrap-around and lost
+      # history are properties of sequences. The human review found three of them in
+      # an artifact the capture had called clean. This leg proves the probe battery
+      # can tell a stale published output from a fresh one, so it cannot print
+      # "no findings" over the defect it exists to catch.
+      - name: Generated-artifact probe battery
+        run: pnpm verify:artifact-probes
+
       # Baselines live in the repository (tests/visual). The update run
       # uploads them for review/commit; drift runs upload the failing
       # actual screenshots and diff images for triage.
