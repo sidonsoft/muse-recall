@@ -8,7 +8,7 @@ const COMMANDS = [
   ['The interactive loop', '#loop'],
   ['Memory timeline', '#timeline'],
   ['The working workflow', '#how'],
-  ['What the v0.1.0 beta does', '#beta'],
+  ['What the beta does', '#beta'],
   ['HTML Studio: stage, verify, approve, roll back', '#studio'],
   ['References: images, voice, video, screenshot review', '#media'],
   ['Meta SAM: isolate an object from a reference image', '#sam'],
@@ -25,7 +25,7 @@ const COMMANDS = [
   ['Known limitations', '#honesty'],
   ['This page, verified', '#sitecheck'],
   ['Source code on GitHub', REPO],
-  ['v0.1.0 release', `${REPO}/releases/tag/v0.1.0`],
+  ['Latest beta release', `${REPO}/releases/latest`],
   ['Phase 17 results', `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`],
   ['Recording provenance for the demo', `${REPO}/blob/main/docs/demo/video/V21_QA.md`],
 ];

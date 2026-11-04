@@ -1,7 +1,7 @@
 import React from 'react';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
-const RELEASE = `${REPO}/releases/tag/v0.1.0`;
+const RELEASE = `${REPO}/releases/latest`;
 
 export default function Nav() {
   return (
@@ -34,7 +34,7 @@ export default function Nav() {
             <a href="#proof">Demonstrated vs not claimed</a>
             <a href="#honesty">Known limitations</a>
             <a href={RELEASE} target="_blank" rel="noreferrer">
-              v0.1.0 release
+              Latest beta release
             </a>
           </div>
         </details>
