@@ -65,18 +65,27 @@ describe('setup.sh preserves judge work', () => {
     expect(setup).toContain('Keeping the existing .env');
   });
 
-  it('never reseeds an existing demo project unless explicitly forced', () => {
+  it('delegates the seed decision to the guard and fails safe', () => {
     // The seed wipes forge-demo versions/staging/jobs, so an unconditional
-    // run would delete generated work on every container start.
-    expect(setup).toContain('SEED_DEMO=force');
-    expect(setup).toContain('Keeping the existing forge-demo');
-    expect(setup).toContain('state.json');
+    // run would delete generated work on every container start. The shell
+    // must not re-implement path resolution: the guard owns it, and a guard
+    // failure resolves to `skip`, never to a seed.
+    expect(setup).toContain('codespaces-seed-check.ts');
+    expect(setup).toContain('SEED_DECISION=skip');
+    // The only seed invocation is inside the guard's `seed` branch.
+    expect(setup).toContain('if [ "$SEED_DECISION" = "seed" ]');
+    expect(setup.match(/pnpm demo:seed/g)?.length).toBe(1);
   });
 
-  it('installs the pinned Playwright browser the approval check needs', () => {
+  it('installs the pinned Playwright browser for the application user', () => {
     expect(setup).toContain('playwright-core install');
     expect(setup).toContain('chromium');
-    expect(setup).toContain('--with-deps');
+    // Only system libraries elevate, via Playwright's supported split; the
+    // browser itself is downloaded and launch-checked as the app user, so its
+    // files never land in root's cache.
+    expect(setup).toContain('install-deps chromium');
+    expect(setup).toContain('as_app_user');
+    expect(setup).toContain('codespaces-verify-browser.ts');
   });
 
   it('leaves the Muse CLI to an explicit opt-in, never a silent latest', () => {
@@ -126,7 +135,24 @@ describe('start.sh and status.sh are safe to re-run', () => {
     expect(start).toContain('/api/live');
     expect(start).toContain('already running');
     expect(start).toContain('nohup');
-    expect(start).not.toMatch(/^\s*rm\s/m);
+    // Lock and stale-pid cleanup are the only removals: never user data.
+    expect(start).not.toMatch(/rm\s+.*(data|workspaces|\.env|\/\s*$)/);
+    // Concurrent starts serialise on an atomic lock, and the app detaches
+    // into its own process group so stop can signal exactly the app tree.
+    expect(start).toContain('start.lock');
+    expect(start).toContain('setsid');
+  });
+
+  it('stop signals the app tree, never a process name', () => {
+    expect(existsSync(join(ROOT, '.devcontainer/stop.sh'))).toBe(true);
+    const stop = read('.devcontainer/stop.sh');
+    // No name-based signalling anywhere: pgrep is used only with -P (parent
+    // pid), never -f (command-line pattern). Mentioning `pnpm dev` in a
+    // comment as an example of what is spared is documentation, not a target.
+    expect(stop).not.toMatch(/pkill\s+-f/);
+    expect(stop).not.toMatch(/pgrep\s+-f/);
+    expect(stop).not.toContain('killall');
+    expect(stop).toContain('process group');
   });
 
   it('status only reports, with bounded probes that cannot hang an attach', () => {
@@ -159,5 +185,15 @@ describe('judge walkthrough stays accurate', () => {
     expect(walkthrough).toContain('FORGE_MUSE_MODEL');
     expect(walkthrough).toContain('MUSE_MODEL');
     expect(walkthrough).toContain('MODEL_PROVIDER');
+  });
+
+  it('labels the live path experimental and separates install, login and inference', () => {
+    // Launcher platform support is not verified authentication or execution.
+    expect(walkthrough).toMatch(/unverified in codespaces/i);
+    expect(walkthrough).toMatch(/experimental/i);
+    // Switching providers stops the background app first — never a second
+    // server over the first.
+    expect(walkthrough).toContain('.devcontainer/stop.sh');
+    expect(walkthrough).not.toContain('pkill -f');
   });
 });

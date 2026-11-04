@@ -37,6 +37,10 @@ restarting anything. The web app opens on the forwarded port 5173. Browsing the 
 its memory, corrections, retrieval explanation, Decision Guard and version history all work
 there. Generating or changing an app needs the Muse Code CLI, which the codespace does not
 install by default, so the generate buttons are disabled there with a note explaining why;
+switching providers later means stopping the background app (`bash .devcontainer/stop.sh`)
+before starting again — never a second server over the first. The opt-in live setup
+(CLI install, device-code login, media key) is documented in the container README and is
+experimental until it has passed in an actual Codespace;
 the container README documents the opt-in live setup (`INSTALL_MUSE_CLI=1`, `muse login`,
 and a separate `FORGE_MUSE_API_KEY` secret for media). Follow the
 [five-minute offline walkthrough](../../.devcontainer/README.md#a-five-minute-walkthrough-offline)

@@ -8,8 +8,9 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.." 2>/dev/null || true
 
-API="http://127.0.0.1:8787/api/live"
-WEB="http://127.0.0.1:5173"
+# Overridable for the lifecycle test harness; production defaults shown.
+API="${CODESPACES_APP_API:-http://127.0.0.1:8787/api/live}"
+WEB="${CODESPACES_APP_WEB:-http://127.0.0.1:5173}"
 
 if [ -n "${CODESPACE_NAME:-}" ] && [ -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]; then
   APP_URL="https://${CODESPACE_NAME}-5173.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
@@ -37,5 +38,5 @@ else
   echo "  provider: no .env yet — run bash .devcontainer/setup.sh first"
 fi
 echo "  walkthrough: .devcontainer/README.md (5-minute offline tour + optional live setup)"
-echo "  stop:        pkill -f 'pnpm dev' (or kill the pid in .devcontainer/.logs/dev.pid)"
+echo "  stop:        bash .devcontainer/stop.sh   (signals only the background app tree)"
 echo

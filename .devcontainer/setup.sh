@@ -59,27 +59,39 @@ fi
 # --- Verification browser -------------------------------------------------
 # The approval flow loads every staged application in managed Chromium before it
 # can be approved, so the container needs the Playwright build the lockfile
-# pins — the same command CI uses. System libraries (--with-deps) need root:
-# use passwordless sudo when available, install the browser alone otherwise and
-# say so. A failed browser install never fails setup: offline exploration does
-# not need it, and the exact next step is printed.
+# pins — the same browser CI installs. Browser files must belong to the user
+# that runs the app: only the system-library step elevates (Playwright's
+# supported `install-deps` split), while the download and the launch check run
+# as the application user. A failed browser install never fails setup: offline
+# exploration does not need it, and the exact recovery step is printed.
+APP_USER="${SUDO_USER:-$(id -un)}"
+as_app_user() {
+  # Run "$@" as the application user, preserving this script's PATH (pnpm).
+  if [ "$(id -u)" = "0" ] && [ "$APP_USER" != "root" ]; then
+    sudo -H -u "$APP_USER" env PATH="$PATH" "$@"
+  else
+    "$@"
+  fi
+}
+can_elevate() {
+  [ "$(id -u)" = "0" ] || (command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null)
+}
 if [ "${SKIP_BROWSER_INSTALL:-}" = "1" ]; then
   echo "Skipping Playwright Chromium install (SKIP_BROWSER_INSTALL=1)."
 else
-  SUDO=""
-  if [ "$(id -u)" != "0" ] && command -v sudo >/dev/null 2>&1; then
-    SUDO="sudo"
-  fi
-  if [ "$(uname -s)" = "Linux" ]; then
+  if [ "$(uname -s)" = "Linux" ] && can_elevate; then
+    ELEVATE=""
+    [ "$(id -u)" != "0" ] && ELEVATE="sudo"
     # shellcheck disable=SC2086
-    if ! $SUDO pnpm exec playwright-core install --with-deps chromium; then
-      echo "WARNING: 'install --with-deps chromium' failed; trying the browser alone."
-      pnpm exec playwright-core install chromium \
-        || echo "WARNING: managed Chromium is not installed. Approval and 'pnpm verify:studio-workflow' will fail until 'pnpm exec playwright-core install --with-deps chromium' succeeds."
-    fi
-  else
-    pnpm exec playwright-core install chromium \
-      || echo "WARNING: managed Chromium is not installed (see above). Offline browsing still works."
+    $ELEVATE pnpm exec playwright-core install-deps chromium \
+      || echo "WARNING: system-library install failed; the browser download continues, but launch may fail for missing libraries."
+  elif [ "$(uname -s)" = "Linux" ]; then
+    echo "No privilege elevation available: installing the browser without system libraries (launch may fail; the recovery command will be printed)."
+  fi
+  if ! as_app_user pnpm exec playwright-core install chromium; then
+    echo "WARNING: managed Chromium is not installed. Approval and 'pnpm verify:studio-workflow' will fail until 'pnpm exec playwright-core install --with-deps chromium' succeeds."
+  elif ! as_app_user pnpm exec tsx scripts/codespaces-verify-browser.ts; then
+    echo "WARNING: managed Chromium is installed but did not launch (see above). Approval needs it; offline browsing does not."
   fi
 fi
 
@@ -97,31 +109,20 @@ fi
 
 # --- Demo seed (never overwrites) ------------------------------------------
 # seedForgeDemo wipes and rewrites the forge-demo workspace (versions, staging,
-# jobs), so re-running it would delete a judge's generated work. Seed only when
-# the project has no state yet; SEED_DEMO=force explicitly re-runs it.
-env_value() {
-  # Print the value of $1 from .env, or $2 when absent. No sourcing: .env is
-  # not a shell script and must never be executed.
-  local key="$1" fallback="$2" line
-  line="$(grep -E "^${key}=" .env 2>/dev/null | tail -1 || true)"
-  if [ -z "$line" ]; then
-    printf '%s\n' "$fallback"
-  else
-    printf '%s\n' "${line#*=}"
-  fi
-}
-
-WORKSPACE_ROOT="$(env_value WORKSPACE_ROOT ./workspaces)"
-DEMO_STATE="${WORKSPACE_ROOT%/}/forge/forge-demo/state.json"
-if [ "${SEED_DEMO:-auto}" = "never" ]; then
-  echo "Skipping the demo seed (SEED_DEMO=never)."
-elif [ "${SEED_DEMO:-auto}" = "force" ]; then
-  echo "Reseeding forge-demo (SEED_DEMO=force) — generated versions in that project will be replaced."
-  pnpm demo:seed
-elif [ -f "$DEMO_STATE" ]; then
-  echo "Keeping the existing forge-demo project ($DEMO_STATE exists); not reseeding."
-  echo "To reset it to the recorded version 1: stop the app, then SEED_DEMO=force bash .devcontainer/setup.sh"
-else
+# jobs), so re-running it would delete a judge's generated work. The decision
+# comes from scripts/codespaces-seed-check.ts, which uses the seed's own Node
+# environment resolution (shell overrides win, quoted values and spaces parse
+# as the seed parses them). Anything ambiguous resolves to `skip`: an
+# unchecked seed is the destructive direction.
+SEED_GUARD_LOG="$(mktemp "${TMPDIR:-/tmp}/seed-guard.XXXXXX")"
+SEED_DECISION="$(pnpm exec tsx scripts/codespaces-seed-check.ts 2>"$SEED_GUARD_LOG" || echo SEED_DECISION=skip)"
+SEED_DECISION="${SEED_DECISION##*SEED_DECISION=}"
+# The guard prints its reason on stderr; surface it so a skip is explained,
+# not silent. A guard failure also lands here as `skip`: an unchecked seed
+# is the destructive direction.
+grep -v '^config: ' "$SEED_GUARD_LOG" | tail -3 || true
+rm -f "$SEED_GUARD_LOG"
+if [ "$SEED_DECISION" = "seed" ]; then
   pnpm demo:seed
 fi
 

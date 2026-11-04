@@ -24,7 +24,7 @@ reattach prints its links and health without restarting anything.
 | Container start | automatic (`start.sh`) | starts `pnpm dev` in the background only if the app is not already healthy |
 | Reattach | automatic (`status.sh`) | prints the app link and health; never starts or stops anything |
 | Logs | `tail -f .devcontainer/.logs/dev.log` | background `pnpm dev` output |
-| Stop the app | `kill $(cat .devcontainer/.logs/dev.pid)` | then `bash .devcontainer/start.sh` to bring it back |
+| Stop the app | `bash .devcontainer/stop.sh` | signals only the background app tree; `bash .devcontainer/start.sh` brings it back |
 
 Setup is safe to re-run: it keeps an existing `.env` and never reseeds an existing
 `forge-demo` project, so your generated versions, staging and jobs survive. To reset the
@@ -90,10 +90,24 @@ muse login                                        # device code prints in this t
 
 `muse login` inside Codespaces is the same device-code flow as on a laptop: the terminal
 prints a code and a URL, you approve it in your own browser. This container's `open`
-handling may not pop a browser for you — if nothing opens, copy the URL by hand. Then:
+handling may not pop a browser for you — if nothing opens, copy the URL by hand.
+
+> **Unverified in Codespaces.** The launcher supports Linux (that is platform
+> support, verified by inspection), but the device-code login, an authenticated
+> call, and running the app against it have **not** passed in an actual
+> Codespace. Treat this whole section as experimental until that run exists.
+> Distinguish the three states: the launcher installs a binary (detection), the
+> login proves your account (authentication, unverified here), and only a
+> successful job proves inference (verified by nobody yet in this container).
+
+Switching providers restarts the app — never run a second server over the
+background one. Stop the automatic instance first, change `.env`, then start
+again:
 
 ```bash
-MODEL_PROVIDER=muse-cli pnpm dev    # after changing providers, restart the app
+bash .devcontainer/stop.sh   # stop the background app (signals only its own tree)
+# set MODEL_PROVIDER=muse-cli in .env (the server reads it once, at startup)
+bash .devcontainer/start.sh  # start again; reattach any time to see the links
 ```
 
 Generate buttons enable only when the CLI is found on `PATH` (override with `MUSE_BIN`
@@ -106,7 +120,8 @@ generation/editing, SAM segmentation, transcription, clip observation and screen
 review authenticate with a separate server-side key. Add it as a
 [Codespaces secret](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces)
 named `FORGE_MUSE_API_KEY` (user or repository scope), rebuild or restart the container
-so the environment picks it up, then restart the app. The server never sends the key to
+so the environment picks it up, then stop and start the app (`bash .devcontainer/stop.sh`
+followed by `bash .devcontainer/start.sh`). The server never sends the key to
 the browser, never logs it, and reports only whether it is configured.
 
 **3 · Which knob is which.** All three need an app restart — the server reads them once
@@ -143,7 +158,7 @@ pnpm build     # production web + server builds
 - Application validation needs the managed Chromium that setup installs. Without it,
   staging still works but approval cannot run its load-time browser check; rerun
   `pnpm exec playwright-core install --with-deps chromium` (needs root via sudo).
-- To start over, stop the app, delete `data/` and `workspaces/`, then run
+- To start over, stop the app (`bash .devcontainer/stop.sh`), delete `data/` and `workspaces/`, then run
   `bash .devcontainer/setup.sh` (or `SEED_DEMO=force` to reseed without deleting).
 - **Launch count.** When the codespace is created, setup makes one anonymous request
   that adds 1 to a public counter, so the author can see how many codespaces were
