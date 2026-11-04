@@ -47,39 +47,22 @@ function ClassKey() {
   );
 }
 
-/* ── The three-minute beta demo ────────────────────────────────────────────── */
+/* ── The three-minute beta demo ──────────────────────────────────────────────
+   The player, four links and one scope line. Beat-by-beat evidence classes,
+   caption counts, narration production and the earlier cuts live in
+   docs/demo/video/V21_QA.md — the labels that matter to a viewer are carried
+   inside the video itself. */
 export function Watch() {
-  const beats = [
-    ['0:00', 'Owner-confirmed disclosure: no product code existed before the event.', 'Recorded disclosure card'],
-    ['0:05', 'Save one project decision, ask for a game, review the staged result, approve v1.', 'Recorded live call — generation waits shown sped up and labelled'],
-    ['0:25', 'A fresh page, a new request, Guard says not verified, the proposal is rejected.', 'Recorded live call'],
-    ['0:34', 'Correct the decision: the old record becomes superseded, the replacement active.', 'Recorded live session — UI actions condensed'],
-    ['0:43', 'Repeat the request: the retired palette comes back and the Guard flags it.', 'Recorded live call — the real failure, kept in'],
-    ['0:51', 'Ask explicitly for the project’s current decisions; approve v2.', 'Recorded live call'],
-    ['1:08', 'Where Meta is used: the coding CLI for applications, media APIs for image, segmentation, speech and vision.', 'Running beta UI over a retained live generation'],
-    ['1:22', 'Decision history, what a generation received, memory export and import.', 'Recorded UI plus actual export/import terminal output'],
-    ['1:35', 'Upload, generate and edit image assets.', 'Retained live provider outputs'],
-    ['1:42', 'Meta’s SAM isolates an object, the transparent cutout is reviewed, approved and inserted.', 'Retained live SAM output; the approval and insertion are a labelled replay with no new call'],
-    ['1:57', 'Media references in one panel: upload or record, play back, summarise a clip, use it in a new request — the suggestions still need a person.', 'Running beta UI — the reference clips are playback fixtures, the observations shown are recorded detail'],
-    ['2:12', 'Screenshot review against selected decision revisions; the human still approves.', 'Deterministic fixture'],
-    ['2:30', 'Phase 17 counts with their scope, and the open findings on a generated application.', 'Running beta UI over retained output; the trial is a separate fixed-task experiment'],
-    ['2:55', 'Close: the memory your project keeps.', 'Title card'],
-  ];
   return (
     <section className="block" id="watch">
       <div className="container">
         <div className="section-head center">
-          <p className="kicker">Watch the beta demo · exactly 3:00</p>
+          <p className="kicker">Watch the beta demo · 3:00</p>
           <h2>Remember the brief. Bring the references. Review the change.</h2>
           <p>
-            Three minutes across the beta: correctable decisions and the stale-palette failure that
-            needed an explicit follow-up request, decision provenance and memory export, image
-            generation and editing, a SAM cutout inserted into a request, voice and video sources,
-            screenshot review and version approval. The model-role explanation starts at 1:08 and the
-            SAM explanation at 1:42. Nothing is presented as one continuous live session: every beat
-            says what kind of evidence it is — the first minute is labelled on screen as
-            <em> recorded live Muse Spark, actual CLI requests and results</em>, while later beats are
-            labelled retained outputs, product replays or deterministic fixtures.
+            Watch Muse Recall turn project decisions into a reviewable application workflow, with
+            correctable memory, media references and Meta SAM — including the one correction the
+            model did not apply until it was asked for explicitly.
           </p>
         </div>
         <figure className="figure video-figure reveal">
@@ -96,63 +79,22 @@ export function Watch() {
             {/* Captions are burned into the picture, so the sidecar track is offered but not
                 switched on by default: showing both would double-render the same text. */}
             <track kind="captions" srcLang="en" label="English (same text as burned in)" src="./video/muse-recall-demo.en.vtt" />
-            <a href="./video/muse-recall-demo.mp4">Download the demo video (mp4, 14.9 MB)</a>
+            <a href="./video/muse-recall-demo.mp4">Download the demo video</a>
           </video>
           <figcaption>
-            1920×1080 · 30 fps · exactly 180.000 s · 57 caption cues burned into the picture, with the
-            same cues offered as a{' '}
-            <a href="./video/muse-recall-demo.en.vtt" download>WebVTT track</a> (switch it on in the
-            player&apos;s caption menu — it is left off so the text is not shown twice) and an SRT
-            sidecar in the{' '}
+            Captions are burned into the picture, and the player offers the same text as a caption
+            track.{' '}
+            <a href="./video/muse-recall-demo.mp4" download>Download video</a> ·{' '}
+            <a href="./video/muse-recall-demo.en.vtt" download>Captions</a> ·{' '}
+            <a href="./video/muse-recall-demo-transcript.txt">Transcript</a> ·{' '}
             <a href={DEMOQA} target="_blank" rel="noreferrer">
-              repository
+              Recording details
             </a>
-            ) ·{' '}
-            <a href="./video/muse-recall-demo.mp4" download>download mp4 (14.9 MB)</a> ·{' '}
-            <a href="./video/muse-recall-demo-transcript.txt">plain-text transcript</a> ·{' '}
-            <a href={DEMOQA} target="_blank" rel="noreferrer">
-              checksum, narration identity and recording provenance
-            </a>
-            . The voice-over is one synthetic narration (Bella, generated with Eleven v4) at natural
-            speed, and no new inference calls were made while the cut was assembled — that is a
-            statement about production, not about the footage: the opening minute shows recorded live
-            Muse Spark requests and their results, and the later beats are retained outputs, labelled
-            replays or fixtures.
           </figcaption>
         </figure>
-
-        <div className="evidence-wrap reveal">
-          <table className="evidence">
-            <caption>What each beat of the cut is made of</caption>
-            <thead>
-              <tr>
-                <th scope="col">Time</th>
-                <th scope="col">On screen</th>
-                <th scope="col">Evidence class</th>
-              </tr>
-            </thead>
-            <tbody>
-              {beats.map(([t, beat, kind]) => (
-                <tr key={t + beat}>
-                  <td>
-                    <code>{t}</code>
-                  </td>
-                  <td>{beat}</td>
-                  <td>{kind}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
         <p className="footnote reveal">
-          Narration is one complete take of a single voice, unmodified at normal speed; measured
-          silence was trimmed and no other narration is mixed in. No new provider call was made to
-          assemble the cut. The two earlier cuts — 3:00 at tag <code>v0.1.0</code> and 2:50.47 at
-          commit <code>c32d03b</code> — keep their own records in the repository rather than being
-          overwritten; neither is a submission record, because submission has not happened.{' '}
-          <a href={DEMOQA} target="_blank" rel="noreferrer">
-            Full recording scope, audio measurements and SHA-256 →
-          </a>
+          The demo combines recorded live model calls with retained outputs and labelled replays or
+          fixtures.
         </p>
       </div>
     </section>
@@ -1059,7 +1001,7 @@ export function ForJudges() {
   const cards = [
     {
       icon: 'video',
-      h: 'Beta demo — 3:00, every beat tagged',
+      h: 'Beta demo — 3:00, every beat labelled on screen',
       p: (
         <>
           Correctable decisions, generation context and memory export, images, a SAM cutout,
@@ -1156,9 +1098,7 @@ export function ForJudges() {
             <a href={RUNOTES} target="_blank" rel="noreferrer">
               beta release notes
             </a>
-            . Publishing that beta is not a submission record: the repository states plainly which
-            owner actions are still outstanding. Every claim on this page carries an evidence class
-            in the{' '}
+            . Every claim on this page carries an evidence class in the{' '}
             <a href={EVMAP} target="_blank" rel="noreferrer">evidence map</a>.
           </p>
         </div>
@@ -1571,7 +1511,7 @@ export function ProofVsRoadmap() {
     'Multi-user deployment — needs accounts, CSRF, isolation and a shared lease for idempotency and job locking first',
     'Hosted deployment — there is no public URL for the product; this site is a static landing page',
     'Support for anything but the Muse Code CLI and the deterministic echo provider, and evaluation across many tasks, games or models',
-    'A completed human acceptance decision, and the outstanding owner submission actions — the repository keeps both on its checklist rather than closing them quietly',
+    'A completed human acceptance decision — the repository keeps that item open on its checklist rather than closing it quietly',
   ];
   return (
     <section className="block" id="proof">
@@ -1694,15 +1634,15 @@ export function SiteVerified() {
             <p>
               The landing page runs its own test suite, in the same spirit as <code>pnpm verify</code>{' '}
               upstream: <code>npm run site</code> · <code>npm run qa</code> · <code>npm run links</code>,
-              on a second browser engine in CI. Every figure, screenshot and download size on this
-              page is re-checked against the product repository on every push — including the demo
-              video, whose posted size must match the bytes actually served.
+              on a second browser engine in CI. Every figure, screenshot and quote on this page is
+              re-checked against the product repository on every push — including the demo video,
+              whose served bytes must match the file and the checksum recorded in its QA record.
             </p>
             <ClassKey />
           </div>
           <div className="stats" role="list">
             <div role="listitem">
-              <b>33/33</b>
+              <b>34/34</b>
               <span>headless QA checks · local + CI (the badge is checked against the suite total)</span>
             </div>
             <div role="listitem">
@@ -1762,7 +1702,7 @@ export function Footer() {
       <div className="container footer-inner">
         <span>
           © 2026 Muse Recall contributors · MIT · built during the Meta Muse hackathon (“Push the
-          Frontier”); v0.1.0 is a published beta, not a submission record
+          Frontier”); v0.1.0 is a published beta
         </span>
         <span className="footnote">
           This page is built from the{' '}

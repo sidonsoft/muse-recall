@@ -14,7 +14,9 @@ carries the open findings rather than hiding them.
 ## Stack
 
 - Vite + React 18, hand-written CSS design system (no UI framework)
-- Sections: three-minute demo with beat-by-beat evidence table, interactive
+- Sections: three-minute demo — player, four links (Download video / Captions / Transcript /
+  Recording details) and one scope line, with the beat-by-beat evidence record and every
+  specification kept in [`docs/demo/video/V21_QA.md`](../docs/demo/video/V21_QA.md) —, interactive
   "one request, three memory states" widget, memory timeline, beta capability grid,
   HTML Studio, media references, **Meta SAM cutouts as their own section**, bundled-engine
   economics, the seven Decision Guard rule families, a model-role table, integrations
@@ -35,7 +37,7 @@ npm ci
 npm run dev      # → http://localhost:5173
 npm run site     # production build + pre-render into dist/index.html  (what CI runs)
 npm run preview  # serve dist/ on :4173
-npm run qa       # 33 checks against `vite preview` (needs headless Chrome)
+npm run qa       # 34 checks against `vite preview` (needs headless Chrome)
 npm run links    # audit every upstream link against the repo tree
 ```
 
@@ -54,9 +56,9 @@ Chrome 156.0.8078.80, Playwright's Chromium driver):
 
 | Check | Result |
 | --- | --- |
-| `npm run site` | client bundle 245.5 kB (76.2 kB gzip) · CSS 35.6 kB (8.0 kB gzip) — one hand-written stylesheet, no framework · 105,705 chars of static HTML pre-rendered into `dist/index.html` |
-| `npm run qa` | **33/33** — a11y audit, the widget's three memory states and per-state explanations, mobile overflow at 390 px, mobile menu, ⌘K palette, timeline accordion, LCP/CLS, pre-rendered HTML probes (hero promise, SAM heading, evidence classes, demo markup, JSON-LD duration), 404 fallback, **canonical and the
-Open Graph URLs pinned as exact strings to the deployed GitHub Pages origin**, demo video + poster + caption track reachable, **posted download size compared with the bytes actually served**, caption sidecar parses (57 cues, no overlaps, last cue inside 180.000 s), transcript served with timecoded beats, caption sidecar offered without double-rendering the burned-in text, every in-page anchor resolves, **every `./assets` and `./video` path named in the built output returns 200**, seven Guard families and seven shared tools counted in the DOM, manifest + icons, 11 images loaded as WebP, hero aspect-ratio and responsive variant, reduced-motion, copy button and command payload, lightbox open/arrow/Escape, JS-disabled fallback, keyboard (skip link first, no unnamed controls), and the self-referential badge gate |
+| `npm run site` | client bundle 241.4 kB (74.9 kB gzip) · CSS 35.7 kB (8.1 kB gzip) — one hand-written stylesheet, no framework · 101,213 chars of static HTML pre-rendered into `dist/index.html` |
+| `npm run qa` | **34/34** — a11y audit, the widget's three memory states and per-state explanations, mobile overflow at 390 px, mobile menu, ⌘K palette, timeline accordion, LCP/CLS, pre-rendered HTML probes (hero promise, SAM heading, demo intro line, evidence classes, demo markup, JSON-LD duration), 404 fallback, **canonical and the
+Open Graph URLs pinned as exact strings to the deployed GitHub Pages origin**, demo video + poster + caption track reachable, **the served MP4's size and SHA-256 compared with the repository copy and with the checksum `V21_QA.md` records for it**, **the demo figure's four links and its single scope line, with no submission commentary in the section**, caption sidecar parses (57 cues, no overlaps, last cue inside 180.000 s), transcript served with timecoded beats, caption sidecar offered without double-rendering the burned-in text, every in-page anchor resolves, **every `./assets` and `./video` path named in the built output returns 200**, seven Guard families and seven shared tools counted in the DOM, manifest + icons, 11 images loaded as WebP, hero aspect-ratio and responsive variant, reduced-motion, copy button and command payload, lightbox open/arrow/Escape, JS-disabled fallback, keyboard (skip link first, no unnamed controls), and the self-referential badge gate |
 | `npm run links` | **27 unique paths, 0 broken**; the `v0.1.0` tag resolves to `707921db83a374d155d3929ef9b99092bcd4e8f1`, and `CITED_COMMIT` (set in the `qa` CI job) asserts the tag still points where the copy says it does |
 | Playwright flow, Chromium driver (`BROWSER=chromium node scripts/firefox-check.mjs`) | PASS — desktop and mobile, no console/page errors, 11 WebP images loaded |
 | Playwright flow, Gecko (CI `gecko` job) | runs in CI; the bundled Firefox 157 driver cannot start on macOS 27, which is why the job exists (see the script header) |
