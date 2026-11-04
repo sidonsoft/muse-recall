@@ -63,7 +63,7 @@ Do not cite these as the current file. Both remain in Git history at the commits
 
 | Cut | Identity | Where it lives |
 |---|---|---|
-| 29 Oct 2026, 2:50.47 | 12,721,832 B · SHA-256 `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308` · 36 caption cues · ElevenLabs George | commit [`c32d03b`](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true); beat record in [`docs/demo/CORRECTABLE_MEMORY_DEMO.md`](../demo/CORRECTABLE_MEMORY_DEMO.md) §9 |
+| 29 Oct 2026, 2:50.47 | 12,721,832 B · SHA-256 `4020c0c6fff3faa6b0caf4451bd921908b5fd3bf375a3b6d6407f811c913b308` · 36 caption cues · ElevenLabs George | commit [`c32d03b`](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true); beat record in [`docs/demo/CORRECTABLE_MEMORY_DEMO.md`](../CORRECTABLE_MEMORY_DEMO.md) §9 |
 | 4 Nov 2026, published with the v0.1.0 release | 3:00 · 10,876,299 B · SHA-256 `6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b` · 58 caption cues · ElevenLabs George, natural speed 1.0, −16.02 LUFS, −1.47 dBFS true peak | tag [`v0.1.0`](https://github.com/sidonsoft/muse-recall/blob/v0.1.0/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true) at `707921db83a374d155d3929ef9b99092bcd4e8f1`. The v0.1.0 GitHub Release also carries that cut as an asset (`Muse_Recall_Beta_Demo_3min.mp4`, 10,876,299 B) with its own `Muse_Recall_Beta_Demo.srt` and `Demo-Transcript.txt`; the tag object (`27e27ee…` → commit `707921d…`) and all release assets are unchanged |
 
 **No `submission-2026-11-04` tag exists on the remote.** `git ls-remote --tags origin` lists
@@ -72,9 +72,13 @@ nothing for a 4 November submission tree. The [roadmap](../../roadmap/POST_HACKA
 and [preservation manifest](../../release/SUBMISSION_PRESERVATION.md) describe such a tag as work
 still to do ("to record"), and [`docs/release/notes/submission-2026-11-04.md`](../../release/notes/submission-2026-11-04.md)
 is an unpublished template. Nothing in this record depends on that tag. The submission itself is a
-separate fact, and it happened: the original entry was confirmed on 29 October 2026 and the beta
-update to it was verified saved on 4 November 2026. Neither recorded the commit behind the entry, so
-that tag stays unfinished preservation work rather than a missing submission record. The previous cut
+separate fact, and it happened: the original entry was confirmed at 2026-10-29T11:01:12Z and the
+beta update to it was verified persisted at 2026-11-04T01:30:03Z by reloading the submission page.
+Neither reading recorded the commit behind the entry, so a tag naming the **submitted** tree stays
+open as a missing-fact problem, not a missing-submission problem. Preserving the `main` snapshot
+that was observed during the 4 November verification (`5770303…`, archived and checksummed,
+unpublished) is a separate act and does not wait on that fact — see the manifest's "What
+preservation can and cannot mean now". The previous cut
 is reachable at `v0.1.0` and through `main`'s history at
 `707921db83a374d155d3929ef9b99092bcd4e8f1`, not through a submission tag.
 

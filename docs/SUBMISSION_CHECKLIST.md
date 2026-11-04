@@ -1,11 +1,18 @@
 # Submission checklist
 
-Status on 4 November 2026: **v0.1.0 published; the hackathon entry exists.** The original entry was
-confirmed on 29 October 2026, and the beta update to that entry was verified saved on 4 November
-2026 (owner-confirmed: the submission platform cannot be read from this repository, so the stored
-field values are not re-verified here). Two things are **not** on record: which commit stood behind
-the entry on those dates, and any tag or archive for the submitted tree. The repository is public and
-the static website is deployed. A hosted application is not required by the Discord guidance supplied by the owner. The local application runs from the public repository; the website is a landing page, not a hosted app.
+Status on 4 November 2026: **v0.1.0 published; the hackathon entry exists.** The original entry
+was confirmed at **2026-10-29T11:01:12Z**, and the beta update to that entry was **verified
+persisted at 2026-11-04T01:30:03Z** by reloading the submission page and reading the saved state
+back (owner-side verification: the platform cannot be read from this repository, the precise save
+time is not established, and the stored field values are not re-verified here). Two things are
+**not** on record: which commit stood behind the entry on those dates — the entry stores the
+unversioned repository URL, so it pinned no commit — and any published tag or archive naming that
+submitted tree. A dated archive of the `main` snapshot observed at the 4 November verification
+exists and is unpublished (`5770303…`, SHA-256 `f9863520…6aae`); [the preservation
+manifest](release/SUBMISSION_PRESERVATION.md) separates what each artifact can and cannot claim.
+The repository is public and the static website is deployed. A hosted application is not required
+by the Discord guidance supplied by the owner. The local application runs from the public
+repository; the website is a landing page, not a hosted app.
 
 ## Current release and demo
 
