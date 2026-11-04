@@ -34,6 +34,23 @@ Checked against the live site and the raw `main` paths, not the local build:
 | Mobile layout and navigation | no horizontal overflow (scrollWidth == clientWidth at 390 px), video box 325 px inside the viewport, mobile menu is a native `<details><summary>Menu` with section links, first tab stop is "Skip to content" and its target exists |
 | Copy that was live-checked | the Watch footnote now names both historical cuts by reference (3:00 at tag `v0.1.0`, 2:50.47 at commit `c32d03b`) and states neither is a submission record — the earlier wording called the 2:50 file a "submission cut" |
 
+#### Superseded on 4 November by the demo-section cleanup (PR #279, promoted by #280)
+
+The last row above describes the page **before** the demo-section cleanup. PR #279 squashed to
+`integration` as `d65f674214ed113c5b43e4cfa28da0a4d5714e90` and PR #280 promoted it to `main` as
+`be8eb97a373fa8385a0f0cd292f5d575cea18b62`; that is also the first merge that could publish anything,
+because `website.yml` builds and deploys only on a push to `main`. The Watch footnote is gone: the
+section now carries one product sentence, the full-width player, four links (**Download video ·
+Captions · Transcript · Recording details**, the last pointing at `main`'s `V21_QA.md`) and one scope
+line naming recorded live calls, retained outputs and labelled replays. The historical cuts are named
+only in [V21_QA.md](demo/video/V21_QA.md). Nothing on the page discusses submission any more, and
+`qa.mjs` now fails if submission commentary returns to `#watch`.
+
+Re-checked against the live site after website workflow run `41774329864` (`build-pages` ✓,
+`deploy` ✓): `index.html` 143,797 B with the QA badge at **34/34**; MP4 200 · **14,903,823 B ·
+`d1695c04…40d`** — identical to the `main` tree, byte-for-byte unchanged by the cleanup; poster
+122,193 B; WebVTT 4,556 B; transcript 2,861 B. No media path appears in that diff.
+
 ## Guidance and remaining owner actions
 
 The owner supplied Discord guidance on 4 November: a hosted app is optional; judges need a runnable public repo and a demo of three minutes or less. Marketing production tools are distinct from models called by the product at runtime. Product runtime model calls must use Meta models. This records the supplied guidance, not independent verification of the complete Official Rules.
