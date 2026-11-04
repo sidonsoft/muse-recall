@@ -10,6 +10,7 @@ const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
 const STATS17 = `${REPO}/blob/main/docs/hackathon-evidence/phase17/STATS_CORRECTION.md`;
 const DOCS16 = `${REPO}/blob/main/docs/hackathon-evidence/phase16/EVIDENCE_CARD.md`;
 const GUIDE = `${REPO}/blob/main/docs/guide/README.md`;
+const JUDGES = `${REPO}/blob/main/docs/guide/FOR_JUDGES.md`;
 const CODESPACES = 'https://codespaces.new/sidonsoft/muse-recall?quickstart=1';
 const LIMITS = `${REPO}/blob/main/docs/guide/limitations.md`;
 const MEDIA = `${REPO}/blob/main/docs/MULTIMODAL_STUDIO_STATUS.md`;
@@ -1000,6 +1001,31 @@ export function Evidence() {
 export function ForJudges() {
   const cards = [
     {
+      icon: 'check',
+      h: 'Run it yourself — three paths, two minutes to check yours',
+      p: (
+        <>
+          <code>pnpm judge:check</code> reports local prerequisites and fixes for anything missing:
+          {' '}<b>coding CLI</b>, <b>media API</b>,{' '}
+          <b>verification browser</b> and the <b>offline demo data</b>. The check itself is
+          read-only — no model call, no network request, no quota spend, and it prints no
+          credential. Login, provider access and quota remain unverified. Offline exploration
+          needs no provider credential; generating needs the Muse Code CLI installed <i>and</i>
+          {' '}logged in; media and SAM need their own server-side key.{' '}
+          <b>Codespaces gives you the exploration path as shipped:</b> the image installs no CLI
+          and starts on the offline provider, so Generate is disabled with a note beside it. There
+          is no automatic CLI or browser installation, no startup guarantee for a container you
+          provision yourself, and this project has never run generation or a CLI login from a
+          codespace — so nothing here claims that works, and{' '}
+          <code>judge:check</code> reports such a machine from what it actually finds.{' '}
+          <a href={JUDGES} target="_blank" rel="noreferrer">
+            For judges: start here
+          </a>{' '}
+          carries the commands, the expected results and troubleshooting.
+        </>
+      ),
+    },
+    {
       icon: 'video',
       h: 'Beta demo — 3:00, every beat labelled on screen',
       p: (
@@ -1102,7 +1128,7 @@ export function ForJudges() {
             <a href={EVMAP} target="_blank" rel="noreferrer">evidence map</a>.
           </p>
         </div>
-        <div className="features-grid grid-5">
+        <div className="features-grid grid-6">
           {cards.map((c) => (
             <div className="feature reveal" key={c.h}>
               <div className="icon" aria-hidden="true">
@@ -1402,10 +1428,11 @@ export function Quickstart() {
           <p>
             The seeded project carries decisions — one already superseded — with version 1 approved,
             so provenance, correction and version history are all inspectable. The offline{' '}
-            <code>echo</code> provider covers browsing and chat with no outbound request outside
-            loopback. It does <b>not</b> generate Studio applications: real generation needs a working,
-            logged-in <b>Muse Code CLI</b>, and media features need a separate server-side media
-            credential.
+            <code>echo</code> provider covers browsing and chat with no provider call: the only host
+            the app is documented to reach is the one allowlisted CDN entry,{' '}
+            <code>cdn.jsdelivr.net</code>. It does <b>not</b> generate Studio applications: real
+            generation needs a working, logged-in <b>Muse Code CLI</b>, and media features need a
+            separate server-side media credential.
           </p>
           <p>
             Prefer no install at all?{' '}

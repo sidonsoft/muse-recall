@@ -2445,6 +2445,17 @@ section[id] {
   }
 }
 
+/* Six-card grids: three and three, no empty cell */
+@media screen and (min-width: 1000px) {
+  .grid-6 {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .grid-6 > * {
+    grid-column: span 2;
+  }
+}
+
 /* Timeline lines up with its left-aligned heading */
 .timeline {
   margin: 0;
