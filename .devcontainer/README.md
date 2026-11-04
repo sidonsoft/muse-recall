@@ -5,18 +5,36 @@
 - You need a GitHub account. The codespace runs in your account and uses your Codespaces
   allowance while it is running, so stop or delete it when you are done
   ([your codespaces](https://github.com/codespaces)).
-- The first start takes about three minutes. The editor can look empty while the container
-  builds.
+- The first start takes about three minutes (dependencies, the Playwright browser, the
+  demo seed). The editor can look empty while the container builds.
 - VS Code asks whether you trust the authors of this workspace. Choose to trust it, or
   setup cannot continue.
-- Setup installs dependencies, writes a local `.env` for the offline provider, seeds the
-  demo project and runs `pnpm dev` in the terminal. The app opens in a new browser tab. If
-  it does not, open the **Ports** tab and click the globe icon next to
-  **Muse Recall (web)**.
+
+## What you get
+
+The container opens on the **offline exploration path**: dependencies installed, `.env`
+written with `MODEL_PROVIDER=echo` (the deterministic offline provider, labelled as such
+in the UI), managed Chromium installed for the approval browser check, and the
+`forge-demo` project seeded. The app starts automatically when the container starts; every
+reattach prints its links and health without restarting anything.
+
+| State | Command | What it does |
+| --- | --- | --- |
+| First create | automatic (`setup.sh`) | install, browser, `.env`, seed — skips anything already present |
+| Container start | automatic (`start.sh`) | starts `pnpm dev` in the background only if the app is not already healthy |
+| Reattach | automatic (`status.sh`) | prints the app link and health; never starts or stops anything |
+| Logs | `tail -f .devcontainer/.logs/dev.log` | background `pnpm dev` output |
+| Stop the app | `kill $(cat .devcontainer/.logs/dev.pid)` | then `bash .devcontainer/start.sh` to bring it back |
+
+Setup is safe to re-run: it keeps an existing `.env` and never reseeds an existing
+`forge-demo` project, so your generated versions, staging and jobs survive. To reset the
+demo to the recorded version 1: stop the app, then
+`SEED_DEMO=force bash .devcontainer/setup.sh`.
 
 ## A five-minute walkthrough (offline)
 
-Each step says what you should see.
+Each step says what you should see. The app link is printed on every attach; it looks
+like `https://<codespace>-5173.app.github.dev`.
 
 1. **HTML Studio opens on the demo project.** The project list shows **Muse Recall demo**
    (project `forge-demo`); open it and the version history lists **v1** as the current
@@ -40,51 +58,93 @@ Each step says what you should see.
 5. **Check the version history.** Back in HTML Studio, the **Review** column shows
    **No staged change** and, under **Version history**, **v1 Demo baseline (recorded real
    Spark generation)** marked *current*.
-6. **Read the Decision Guard panel for what it is.** It says **NOT EVALUATED** here. The
+6. **Read the Decision Guard panel for what it is.** It reads **NOT EVALUATED** here. The
    Guard checks a *staged* change against active decisions, and the seeded project has no
-   staged change. In the demo video (at 1:20) it flags a change that brings back the sunset
+   staged change. In the demo video (at 0:43) it flags a change that brings back the sunset
    palette; it is advisory and never blocks approval.
 7. **Optional: make a correction yourself.** In Memory, open a decision and use
    **Correct memory**. The correction becomes the active record and the old one moves to
    superseded, exactly as in step 2. Run step 4 again to see retrieval follow it.
 
-## What needs the Muse CLI
+The recorded generate → review → approve loop is shown in the
+[3:00 demo video](https://sidonsoft.github.io/muse-recall/video/muse-recall-demo.mp4).
+The opening minute is recorded live Muse Spark calls; later beats mix retained model
+outputs, product replays and labelled fixtures — the
+[QA record](../docs/demo/video/V21_QA.md) classifies every beat, so the video never stands
+as live proof of this container. The in-repo source of the same cut and its captions live
+in [docs/demo/video](../docs/demo/video/).
 
-The codespace runs on the deterministic offline provider (`MODEL_PROVIDER=echo`). It is
-**not a model**, and the UI labels it as one. Generating a new app or a change (**Generate
-change**, **New app**) needs the Meta Muse Code CLI, which the image does not install. Those
-buttons are disabled, and a note next to them explains why. For the complete generate,
-review, approve and roll back loop, watch the 3:00
-[demo video](../docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true). It mixes recorded
-live calls, retained model outputs, product replays and labelled fixtures, and its
-[QA record](../docs/demo/video/V21_QA.md) says which beat is which.
+## Optional live setup (your machine credentials, your quota)
 
-That is the shipped starting point, not a wall: you can install the CLI in a codespace, run
-`muse login`, and start with `MODEL_PROVIDER=muse-cli`, which is the same path the main
-[Quickstart](../README.md#quickstart) describes for your own machine. Two honesty notes: this
-project has **not** run live generation from a codespace, so nothing here promises that it
-works, and the readiness probe will not pretend either — run `pnpm judge:check` in the
-codespace terminal and it reports the CLI row from what is actually on that machine's PATH
-(`not here` with no binary, `unverified` with a binary and no login check).
+Offline is the default. Live generation and live media are opt-in, use **your**
+credentials, and spend **your** quota — setup makes no paid call on its own.
 
-The System screen in the app shows the same rows, and its startup log prints them on every
-server start.
+**1 · Text generation (Muse Code CLI).** The container does not install the CLI by
+default: the installer follows the release channel (no pinned build exists), and a login
+is a human step anyway. To enable it:
+
+```bash
+INSTALL_MUSE_CLI=1 bash .devcontainer/setup.sh   # official launcher, records the version it installed
+muse login                                        # device code prints in this terminal; approve it in your browser
+```
+
+`muse login` inside Codespaces is the same device-code flow as on a laptop: the terminal
+prints a code and a URL, you approve it in your own browser. This container's `open`
+handling may not pop a browser for you — if nothing opens, copy the URL by hand. Then:
+
+```bash
+MODEL_PROVIDER=muse-cli pnpm dev    # after changing providers, restart the app
+```
+
+Generate buttons enable only when the CLI is found on `PATH` (override with `MUSE_BIN`
+for chat or `FORGE_MUSE_BIN` for Studio). A present CLI with an expired login fails at
+job time with an auth error — run the System screen's **live check**
+(`POST /api/health/muse`) to confirm before judging the loop.
+
+**2 · Media and SAM (`FORGE_MUSE_API_KEY`).** A CLI login does **not** enable media: image
+generation/editing, SAM segmentation, transcription, clip observation and screenshot
+review authenticate with a separate server-side key. Add it as a
+[Codespaces secret](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces)
+named `FORGE_MUSE_API_KEY` (user or repository scope), rebuild or restart the container
+so the environment picks it up, then restart the app. The server never sends the key to
+the browser, never logs it, and reports only whether it is configured.
+
+**3 · Which knob is which.** All three need an app restart — the server reads them once
+at startup and `.env` belongs in the repository root (never commit it).
+
+| Variable | Controls | Default |
+| --- | --- | --- |
+| `MODEL_PROVIDER` | chat, provider bench and `muse:probe`: `muse-cli` (real) or `echo` (offline) | `muse-cli` (`echo` in this container's `.env`) |
+| `MUSE_MODEL` | chat/bench/probe model only — it does **not** change Studio generation | `muse-wonder-1.0` |
+| `FORGE_MUSE_MODEL` | HTML Studio generation model; unset means the CLI's own default | unset |
+| `FORGE_MUSE_API_KEY` | Studio API-mode credential (≥ 10 chars); unset means Studio rides the CLI login | unset |
+| `FORGE_MEDIA_MODEL`, `FORGE_SAM_MODEL`, `FORGE_VISION_MODEL`, `FORGE_TRANSCRIBE_MODEL`, `FORGE_VIDEO_MODEL` | media endpoints; each rejects the coding model ids, so they are independent knobs | image / SAM-3.1-class / vision / transcribe / video defaults in `.env.example` |
+
+Every live smoke check (`pnpm muse:probe`, `pnpm verify:*-live-smoke`) makes a real,
+billable call: run them deliberately, with a spending limit you set. Never present a
+retained output or a fixture as a live result — see the QA record above.
 
 ## Checks you can run
 
 ```bash
 pnpm verify    # lint + typecheck + the full test suite
-pnpm build     # production web + server build
+pnpm build     # production web + server builds
 ```
 
 ## Notes
 
 - No secrets are needed or stored. `.env` is created from `.env.example` and is ignored
-  by git.
-- The API still binds to loopback only. Codespaces delivers the app's requests with
-  `Origin: https://localhost:5173`. Only when it runs inside a codespace, the server also
-  trusts that origin and the codespace's own forwarded address
-  (`apps/server/src/codespaces.ts`). Other sites, ports and codespaces are still rejected.
+  by git. Reseeding never touches it.
+- The API still binds to loopback only, and the forwarded ports stay private. Codespaces
+  delivers the app's requests with `Origin: https://localhost:5173`. Only when it runs
+  inside a codespace, the server also trusts that origin and the codespace's own
+  forwarded address (`apps/server/src/codespaces.ts`). Other sites, ports and codespaces
+  are still rejected — no public port or relaxed origin is needed, and none is added.
+- Application validation needs the managed Chromium that setup installs. Without it,
+  staging still works but approval cannot run its load-time browser check; rerun
+  `pnpm exec playwright-core install --with-deps chromium` (needs root via sudo).
+- To start over, stop the app, delete `data/` and `workspaces/`, then run
+  `bash .devcontainer/setup.sh` (or `SEED_DEMO=force` to reseed without deleting).
 - **Launch count.** When the codespace is created, setup makes one anonymous request
   that adds 1 to a public counter, so the author can see how many codespaces were
   started. It is a plain `GET` to
@@ -106,5 +166,3 @@ pnpm build     # production web + server build
   service answers `{"error":"Key not found"}` rather than `0` - owner test launches
   deliberately increment a separate counter, so a missing key means "no real
   launches yet", not a broken link; the key is created by the first matching `hit`).
-- To start over, stop `pnpm dev`, delete `data/` and `workspaces/`, then run
-  `pnpm demo:seed` and `pnpm dev` again.
