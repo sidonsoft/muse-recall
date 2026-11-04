@@ -354,11 +354,20 @@ Phase 16 / 16B. Those claims are mapped here.
 ### C22 — The focused correction demo is recorded and committed
 
 **Historical identity:** the details below describe the 29 October video at `c32d03b`.
-On 4 November the same public filename was replaced by the three-minute beta demo:
-180.000 seconds, 10,876,299 bytes, SHA-256
-`6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`, 58 caption cues.
-See [current QA and footage provenance](../demo/video/V21_QA.md). The current cut combines
-retained live footage, product replays and labelled fixtures; it is not a continuous live session.
+The same public filename has been replaced twice since. It now carries the Bella / Eleven v4
+recut: 180.000 seconds, 14,903,823 bytes, SHA-256
+`d1695c04fbac57779f14be7d834478b86e868291d0f326710cc62dc5fe3a440d`, 57 caption cues. The
+intermediate 4 November cut (180.000 seconds, 10,876,299 bytes, SHA-256
+`6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`, 58 cues) stays at the
+[`v0.1.0`](https://github.com/sidonsoft/muse-recall/blob/v0.1.0/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
+tag only, unchanged; it is also the `Muse_Recall_Beta_Demo_3min.mp4` asset on that GitHub Release.
+There is **no** `submission-2026-11-04` tag on the remote — `git ls-remote --tags origin` lists
+`v0.1.0`, `submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*`, and that
+tag is planned work in [POST_HACKATHON_ROADMAP.md](../roadmap/POST_HACKATHON_ROADMAP.md), not an
+existing reference. See
+[current QA and footage provenance](../demo/video/V21_QA.md). Both current cuts combine
+recorded live calls, retained model outputs, product replays and labelled fixtures; neither is a
+continuous live session.
 The [historical cut](https://github.com/sidonsoft/muse-recall/blob/c32d03b/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
 remains in Git history.
 

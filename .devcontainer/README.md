@@ -53,9 +53,11 @@ The codespace runs on the deterministic offline provider (`MODEL_PROVIDER=echo`)
 **not a model**, and the UI labels it as one. Generating a new app or a change (**Generate
 change**, **New app**) needs the Meta Muse Code CLI, which is not installed here. Those
 buttons are disabled, and a note next to them explains why. For the complete generate,
-review, approve and roll back loop, watch the 2:50
-[demo video](../docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true), recorded from a
-live Muse Spark session. To run it with Muse yourself, see the main
+review, approve and roll back loop, watch the 3:00
+[demo video](../docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true). It mixes recorded
+live calls, retained model outputs, product replays and labelled fixtures, and its
+[QA record](../docs/demo/video/V21_QA.md) says which beat is which. To run it with Meta
+yourself, see the main
 [Quickstart](../README.md#quickstart).
 
 ## Checks you can run

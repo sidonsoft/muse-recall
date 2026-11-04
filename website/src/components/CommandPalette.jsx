@@ -4,22 +4,30 @@ import Icon from './Icon.jsx';
 const REPO = 'https://github.com/sidonsoft/muse-recall';
 
 const COMMANDS = [
-  ['Watch the demo video', '#watch'],
+  ['Watch the beta demo (3:00)', '#watch'],
   ['The interactive loop', '#loop'],
-  ['How it works', '#how'],
   ['Memory timeline', '#timeline'],
+  ['The working workflow', '#how'],
+  ['What the v0.1.0 beta does', '#beta'],
+  ['HTML Studio: stage, verify, approve, roll back', '#studio'],
+  ['References: images, voice, video, screenshot review', '#media'],
+  ['Meta SAM: isolate an object from a reference image', '#sam'],
   ['Retrieval engine', '#engine'],
   ['Decision Guard', '#guard'],
-  ['Evidence — Phase 17 & 16', '#evidence'],
+  ['Which model runs what', '#models'],
+  ['Shared tools, MCP, REST, backups', '#integrate'],
+  ['Evidence — Phase 17, Phase 16, beta gates', '#evidence'],
   ['For judges', '#judges'],
   ['Beyond games (FocusFlow)', '#beyond'],
   ['Screenshots', '#gallery'],
-  ['Run it locally', '#quickstart'],
-  ['Demonstrated vs future work', '#proof'],
+  ['Run the beta locally', '#quickstart'],
+  ['Demonstrated vs not claimed', '#proof'],
   ['Known limitations', '#honesty'],
   ['This page, verified', '#sitecheck'],
   ['Source code on GitHub', REPO],
+  ['v0.1.0 release', `${REPO}/releases/tag/v0.1.0`],
   ['Phase 17 results', `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`],
+  ['Recording provenance for the demo', `${REPO}/blob/main/docs/demo/video/V21_QA.md`],
 ];
 
 export default function CommandPalette() {

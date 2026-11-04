@@ -1,6 +1,6 @@
 # Muse Recall — UX and product positioning report
 
-> **Historical document.** This is the UX and product positioning report from the HTML Studio repositioning. The submission now uses the 2:50 correctable-memory cut and the Phase 17 trial; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+> **Historical document.** This is the UX and product positioning report from the HTML Studio repositioning. The published demo is now the three-minute beta cut (`docs/demo/video/`, identity in its [QA record](demo/video/V21_QA.md)) and the behavioural record is the Phase 17 trial; no hackathon submission has been made; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
 
 **Working branch:** `agent/muse-recall-product-positioning`
 **Implementation commit:** `1413c398068e5e359f5b42733f822802a42ba8b5`
