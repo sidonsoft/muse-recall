@@ -14,6 +14,7 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
+source .devcontainer/process-identity.sh
 
 LOG_DIR="${CODESPACES_LOG_DIR:-.devcontainer/.logs}"
 PID_FILE="${CODESPACES_PID_FILE:-$LOG_DIR/dev.pid}"
@@ -34,8 +35,14 @@ fi
 pid="$(cat "$PID_FILE" 2>/dev/null || true)"
 if ! pid_alive "$pid"; then
   echo "Removing the stale pid file (process ${pid:-unknown} is not running)."
-  rm -f "$PID_FILE"
+  rm -f "$PID_FILE" "$PID_FILE.identity"
   exit 0
+fi
+
+if ! recorded_process_matches "$pid" "$PID_FILE.identity"; then
+  echo "Refusing to signal pid $pid: its saved process identity is missing or does not match."
+  echo "The record may be from a previous container or an older script. Inspect it before manual cleanup."
+  exit 1
 fi
 
 echo "Stopping the background app (pid $pid and its process group)…"
@@ -99,5 +106,5 @@ if app_alive; then
   echo "The app tree is still alive; leaving $PID_FILE in place for inspection."
   exit 1
 fi
-rm -f "$PID_FILE"
+rm -f "$PID_FILE" "$PID_FILE.identity"
 echo "Stopped."

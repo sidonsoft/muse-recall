@@ -243,7 +243,7 @@ describe('lifecycle behaviour', () => {
       runScriptAsync(START, env),
       runScriptAsync(START, env),
     ]);
-    for (const result of results) expect(result.status).toBe(0);
+    for (const result of results) expect(result.status, result.stdout).toBe(0);
     expect(bootCount(h)).toBe(1);
   }, 120_000);
 
@@ -253,7 +253,7 @@ describe('lifecycle behaviour', () => {
     writeFileSync(join(h.logDir, 'start.lock', 'pid'), 'not-a-pid');
     const env = scriptEnv(h, { CODESPACES_START_CMD: startCmd(h) });
     const results = await Promise.all(Array.from({ length: 4 }, () => runScriptAsync(START, env)));
-    for (const result of results) expect(result.status).toBe(0);
+    for (const result of results) expect(result.status, result.stdout).toBe(0);
     expect(bootCount(h)).toBe(1);
   }, 120_000);
 
@@ -327,6 +327,44 @@ describe('lifecycle behaviour', () => {
       /* cleanup */
     }
   }, 120_000);
+
+  it('does not start over a live legacy PID without identity evidence', async () => {
+    const h = setupHarness();
+    const { spawn } = await import('node:child_process');
+    const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 3600000)'], {
+      stdio: 'ignore',
+      detached: true,
+    });
+    sentinel.unref();
+    mkdirSync(h.logDir, { recursive: true });
+    writeFileSync(h.pidFile, String(sentinel.pid));
+    try {
+      const result = runScript(START, scriptEnv(h, { CODESPACES_START_CMD: startCmd(h) }));
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('no process identity');
+      expect(bootCount(h)).toBe(0);
+      expect(pidAlive(sentinel.pid as number)).toBe(true);
+    } finally {
+      process.kill(sentinel.pid as number, 'SIGKILL');
+    }
+  }, 30_000);
+
+  it('refuses a live PID belonging to a different process identity', async () => {
+    const h = setupHarness();
+    const { spawn } = await import('node:child_process');
+    const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 3600000)'], {
+      stdio: 'ignore',
+      detached: true,
+    });
+    sentinel.unref();
+    mkdirSync(h.logDir, { recursive: true });
+    writeFileSync(h.pidFile, String(sentinel.pid));
+    writeFileSync(`${h.pidFile}.identity`, 'different-container-and-process');
+    const stopped = runScript(STOP, scriptEnv(h));
+    expect(stopped.status).toBe(1);
+    expect(stopped.stdout).toContain('identity');
+    expect(pidAlive(sentinel.pid as number)).toBe(true);
+  }, 30_000);
 
   it('stopping an already-stopped app is a no-op success', () => {
     const h = setupHarness();
