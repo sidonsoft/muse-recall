@@ -18,9 +18,10 @@
 
 Each step says what you should see.
 
-1. **HTML Studio opens on the demo project.** The header reads **Muse Recall demo**
-   (project `forge-demo`) with a **v1 approved** badge, and the preview shows the approved
-   game.
+1. **HTML Studio opens on the demo project.** The project list shows **Muse Recall demo**
+   (project `forge-demo`); open it and the version history lists **v1** as the current
+   approved version, the preview shows the approved game, and the recorded SHA-256 of those
+   bytes is shown with the version.
    **Project memory** on the left lists two **ACTIVE** decisions (an ocean palette and a
    child-safety rule) and one **SUPERSEDED** decision (a warm sunset palette).
 2. **Open the superseded decision.** Choose **Open Memory**, then click the sunset palette
@@ -51,14 +52,23 @@ Each step says what you should see.
 
 The codespace runs on the deterministic offline provider (`MODEL_PROVIDER=echo`). It is
 **not a model**, and the UI labels it as one. Generating a new app or a change (**Generate
-change**, **New app**) needs the Meta Muse Code CLI, which is not installed here. Those
+change**, **New app**) needs the Meta Muse Code CLI, which the image does not install. Those
 buttons are disabled, and a note next to them explains why. For the complete generate,
 review, approve and roll back loop, watch the 3:00
 [demo video](../docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true). It mixes recorded
 live calls, retained model outputs, product replays and labelled fixtures, and its
-[QA record](../docs/demo/video/V21_QA.md) says which beat is which. To run it with Meta
-yourself, see the main
-[Quickstart](../README.md#quickstart).
+[QA record](../docs/demo/video/V21_QA.md) says which beat is which.
+
+That is the shipped starting point, not a wall: you can install the CLI in a codespace, run
+`muse login`, and start with `MODEL_PROVIDER=muse-cli`, which is the same path the main
+[Quickstart](../README.md#quickstart) describes for your own machine. Two honesty notes: this
+project has **not** run live generation from a codespace, so nothing here promises that it
+works, and the readiness probe will not pretend either — run `pnpm judge:check` in the
+codespace terminal and it reports the CLI row from what is actually on that machine's PATH
+(`not here` with no binary, `unverified` with a binary and no login check).
+
+The System screen in the app shows the same rows, and its startup log prints them on every
+server start.
 
 ## Checks you can run
 

@@ -4,6 +4,10 @@ Set up Muse Recall on a local machine, load the recorded demo, and make a first 
 
 [Guide](README.md) · [Getting started](getting-started.md) · [Project memory](project-memory.md) · [HTML Studio](html-studio.md) · [Architecture](architecture.md) · [Limitations](limitations.md)
 
+Judges and first-time reviewers: start with
+[For judges: start here](FOR_JUDGES.md) — three paths, exact commands, expected results and
+the startup status panel.
+
 ## Prerequisites
 
 | Requirement | Version | Why |
@@ -29,8 +33,12 @@ account; the first start takes about three minutes, and VS Code asks you to trus
 dependencies, writes `.env` with `MODEL_PROVIDER=echo`, seeds the `forge-demo` project and starts
 `pnpm dev`; the web app opens on the forwarded port 5173. Browsing the project, its memory,
 corrections, retrieval explanation, Decision Guard and version history all work there.
-Generating or changing an app needs the Muse Code CLI, which the codespace does not include, so
-the generate buttons are disabled there with a note explaining why. Follow the
+Generating or changing an app needs the Muse Code CLI, which the container image does not
+install as shipped, so the generate buttons are disabled there with a note explaining why.
+Installing the CLI yourself and starting with `MODEL_PROVIDER=muse-cli` is possible, but this
+project has not run live generation from a codespace, so nothing here promises that works;
+`pnpm judge:check` in the codespace terminal reports the CLI row from what is on that
+machine's PATH. Follow the
 [five-minute offline walkthrough](../../.devcontainer/README.md#a-five-minute-walkthrough-offline)
 for what to look at and what each screen should show.
 
@@ -153,6 +161,7 @@ The root `package.json` is the source of truth. These are the useful entry point
 | Command | What it does |
 | --- | --- |
 | `pnpm verify` | Lint, typecheck and the unit/integration test suite. |
+| `pnpm judge:check` | Which of the three documented paths this machine can complete — coding CLI, media key, verification browser, offline demo data — with the fix for each gap. Read-only: no model call, no network request, no quota spend, and it prints the same rows the API logs at startup and the System screen shows. |
 | `pnpm build` | Production web and server builds. |
 | `pnpm muse:probe` | One real headless Muse call, with latency and token usage. |
 | `MML_LIVE_MUSE=1 pnpm test` | Adds the opt-in live Muse integration tests. |

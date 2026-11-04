@@ -2,7 +2,9 @@ import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { createModelProvider } from '@mml/muse-provider';
 import { buildApp } from './app.js';
 import { loadConfig, loadDotEnv } from './config.js';
+import { ForgeWorkspace } from './forge/workspace.js';
 import { isLoopbackSocketAddress } from './host-guard.js';
+import { formatSetupPanel, gatherDemoSeedFacts, probeSetupReadiness } from './setup-readiness.js';
 
 /**
  * Server entrypoint: load config, open the database, build the app, listen.
@@ -90,6 +92,40 @@ async function main(): Promise<void> {
     },
     'Muse Recall API ready',
   );
+
+  /*
+   * The setup panel, printed on every start. A judge's first failure is almost
+   * never a server error: it is a missing seed, a missing browser, or expecting
+   * live generation from an `echo` run. Those all look like a healthy server
+   * showing an empty screen, so the answer goes to the terminal the judge is
+   * already reading. The probe itself performs no request and no model call — it
+   * reads files, PATH and configuration, and inspects the demo project through
+   * read-only queries — and a probe failure must never take the server down.
+   */
+  try {
+    const setup = probeSetupReadiness({
+      providerId: provider.id,
+      cliBin: config.forge?.museBin ?? config.provider.museBin,
+      mediaApiKey: config.forge?.apiKey ?? null,
+      mediaModel: config.media?.model,
+      samModel: config.media?.samModel,
+      demo_seed: await gatherDemoSeedFacts({
+        databasePath: config.databasePath,
+        workspace: new ForgeWorkspace(config.workspaceRoot),
+      }),
+    });
+    app.log.info(formatSetupPanel(setup));
+    if (setup.offline_seed.state === 'missing') {
+      app.log.warn(
+        'The offline demo is not seeded, so Studio opens with no project. Run `pnpm demo:seed` and restart.',
+      );
+    }
+  } catch (error) {
+    app.log.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'setup readiness probe could not complete; GET /api/health omits the setup block',
+    );
+  }
 }
 
 main().catch((error: unknown) => {

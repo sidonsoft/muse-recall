@@ -1,6 +1,6 @@
 # Project status
 
-> **Historical document.** This is the Phase 6 status snapshot. The published demo is now the three-minute beta cut (`docs/demo/video/`, identity in its [QA record](demo/video/V21_QA.md)) and the behavioural record is the Phase 17 trial; no hackathon submission has been made; see the [README](../README.md#project-status) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+> **Historical document.** This is the Phase 6 status snapshot. The published demo is now the three-minute beta cut (`docs/demo/video/`, identity in its [QA record](demo/video/V21_QA.md)) and the behavioural record is the Phase 17 trial; the hackathon entry was confirmed on 29 Oct 2026 and updated with the beta on 4 Nov 2026 (see [submission preservation](release/SUBMISSION_PRESERVATION.md)); see the [README](../README.md#project-status) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
 
 **Last updated:** 2026-10-27
 **Milestone:** Phase 6 — Evaluation, stabilization, and submission preparation
