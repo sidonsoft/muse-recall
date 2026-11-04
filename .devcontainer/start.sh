@@ -92,23 +92,6 @@ release_lock() {
   fi
 }
 
-wait_for_lock() {
-  # A live holder is actively starting the app: wait for health, not the lock.
-  local waited=0
-  while [ "$waited" -lt "$WAIT_SECS" ]; do
-    if app_up; then
-      echo "Another start is in progress; the app became healthy while waiting."
-      return 0
-    fi
-    if [ ! -d "$LOCK_DIR" ]; then
-      return 2
-    fi
-    sleep 2
-    waited=$((waited + 2))
-  done
-  return 1
-}
-
 if app_up; then
   echo "Muse Recall is already running (API and web both answer)."
   bash .devcontainer/status.sh
@@ -116,25 +99,22 @@ if app_up; then
 fi
 
 mkdir -p "$LOG_DIR"
-if ! acquire_lock; then
-  wait_for_lock
-  lock_wait=$?
-  if [ "$lock_wait" = "0" ]; then
+lock_deadline=$((SECONDS + WAIT_SECS))
+while ! acquire_lock; do
+  if app_up; then
+    echo "Another start is in progress; the app became healthy while waiting."
     bash .devcontainer/status.sh
     exit 0
-  elif [ "$lock_wait" = "2" ]; then
-    # The holder finished without the app becoming healthy; try ourselves.
-    if ! acquire_lock; then
-      echo "Could not take the start lock; another start is still running."
-      echo "If it is stuck, remove $LOCK_DIR (only when no start is running) and re-run."
-      exit 1
-    fi
-  else
+  fi
+  if [ "$SECONDS" -ge "$lock_deadline" ]; then
     echo "Waited ${WAIT_SECS}s for the in-progress start, but the app is still not healthy."
-    echo "Inspect the holder's output, then re-run: bash .devcontainer/start.sh"
+    echo "Inspect $LOCK_DIR and $LOG_DIR/start.recovery before removing stale locks."
     exit 1
   fi
-fi
+  # Retry if another waiter acquired a lock that briefly disappeared. A
+  # one-shot retry would fail even though that winner is starting normally.
+  sleep 1
+done
 trap release_lock EXIT
 
 if healthy || web_ok; then
