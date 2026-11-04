@@ -52,17 +52,17 @@ export function Watch() {
   const beats = [
     ['0:00', 'Owner-confirmed disclosure: no product code existed before the event.', 'Recorded disclosure card'],
     ['0:05', 'Save one project decision, ask for a game, review the staged result, approve v1.', 'Recorded live call — generation waits shown sped up and labelled'],
-    ['0:24', 'A fresh page, a new request, Guard says not verified, the proposal is rejected.', 'Recorded live call'],
-    ['0:33', 'Correct the decision: the old record becomes superseded, the replacement active.', 'Recorded live session — UI actions condensed'],
+    ['0:25', 'A fresh page, a new request, Guard says not verified, the proposal is rejected.', 'Recorded live call'],
+    ['0:34', 'Correct the decision: the old record becomes superseded, the replacement active.', 'Recorded live session — UI actions condensed'],
     ['0:43', 'Repeat the request: the retired palette comes back and the Guard flags it.', 'Recorded live call — the real failure, kept in'],
     ['0:51', 'Ask explicitly for the project’s current decisions; approve v2.', 'Recorded live call'],
     ['1:08', 'Where Meta is used: the coding CLI for applications, media APIs for image, segmentation, speech and vision.', 'Running beta UI over a retained live generation'],
     ['1:22', 'Decision history, what a generation received, memory export and import.', 'Recorded UI plus actual export/import terminal output'],
     ['1:35', 'Upload, generate and edit image assets.', 'Retained live provider outputs'],
     ['1:42', 'Meta’s SAM isolates an object, the transparent cutout is reviewed, approved and inserted.', 'Retained live SAM output; the approval and insertion are a labelled replay with no new call'],
-    ['1:57', 'Voice and video as sources: record or upload, play back, transcribe, inspect a clip.', 'Running beta UI with upload/playback fixtures — no fresh transcription implied'],
+    ['1:57', 'Media references in one panel: upload or record, play back, summarise a clip, use it in a new request — the suggestions still need a person.', 'Running beta UI — the reference clips are playback fixtures, the observations shown are recorded detail'],
     ['2:12', 'Screenshot review against selected decision revisions; the human still approves.', 'Deterministic fixture'],
-    ['2:29', 'Phase 17 counts with their scope, and the open findings on a generated application.', 'Running beta UI over retained output; the trial is a separate fixed-task experiment'],
+    ['2:30', 'Phase 17 counts with their scope, and the open findings on a generated application.', 'Running beta UI over retained output; the trial is a separate fixed-task experiment'],
     ['2:55', 'Close: the memory your project keeps.', 'Title card'],
   ];
   return (
@@ -77,7 +77,9 @@ export function Watch() {
             generation and editing, a SAM cutout inserted into a request, voice and video sources,
             screenshot review and version approval. The model-role explanation starts at 1:08 and the
             SAM explanation at 1:42. Nothing is presented as one continuous live session: every beat
-            says what kind of evidence it is.
+            says what kind of evidence it is — the first minute is labelled on screen as
+            <em> recorded live Muse Spark, actual CLI requests and results</em>, while later beats are
+            labelled retained outputs, product replays or deterministic fixtures.
           </p>
         </div>
         <figure className="figure video-figure reveal">
@@ -112,7 +114,10 @@ export function Watch() {
               checksum, narration identity and recording provenance
             </a>
             . The voice-over is one synthetic narration (Bella, generated with Eleven v4) at natural
-            speed; nothing in the cut made a new model call.
+            speed, and no new inference calls were made while the cut was assembled — that is a
+            statement about production, not about the footage: the opening minute shows recorded live
+            Muse Spark requests and their results, and the later beats are retained outputs, labelled
+            replays or fixtures.
           </figcaption>
         </figure>
 

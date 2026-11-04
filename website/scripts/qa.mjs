@@ -251,6 +251,9 @@ try {
 
   // 5. pre-rendered static HTML: crawlers, bots, and JS-disabled readers see content
   const html = await (await fetch(URL_)).text();
+  // Some meta tags are written across several lines in the source head, so metadata probes are
+  // matched against a whitespace-flattened copy as well as the raw bytes.
+  const htmlFlat = html.replace(/\s+/g, ' ');
   const missing = [
     ['hero product promise', 'local-first studio for building small browser applications'],
     ['hero headline phrase', 'orrectable project memory'],
@@ -260,13 +263,19 @@ try {
     ['evidence table', 'Phase 17'],
     ['timeline records', 'Sunset → ocean'],
     ['JSON-LD', 'SoftwareSourceCode'],
+    // Metadata has to name the origin the site is really served from. The deployed page is GitHub
+    // Pages; the prerender default is a pages.dev host and the docs also reference a CDN mirror,
+    // so these probes pin whichever origin the head currently commits to.
+    ['canonical names the deployed GitHub Pages origin', '<link rel="canonical" href="https://sidonsoft.github.io/muse-recall/"'],
+    ['og:url names the deployed GitHub Pages origin', 'property="og:url" content="https://sidonsoft.github.io/muse-recall/"'],
+    ['og:image is on the same origin as og:url', 'property="og:image" content="https://sidonsoft.github.io/muse-recall/assets/og-image.png"'],
     ['demo video markup', './video/muse-recall-demo.mp4'],
     ['JSON-LD VideoObject', '"@type": "VideoObject"'],
     ['VideoObject duration', 'PT3M0S'],
     ['site self-verification', 'held to the same bar'],
     ['manifest link', 'rel="manifest"'],
     ['apple-touch-icon', 'apple-touch-icon'],
-  ].filter(([, probe]) => !html.includes(probe));
+  ].filter(([, probe]) => !html.includes(probe) && !htmlFlat.includes(probe));
   check('static HTML pre-rendered (works without JS)', missing.length === 0, missing.map(([n]) => n + ' missing').join(', ') || `len=${html.length}`);
   const r404 = await fetch(URL_ + '404.html');
   const body404 = await r404.text();

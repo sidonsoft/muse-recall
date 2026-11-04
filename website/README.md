@@ -54,8 +54,9 @@ Chrome 156.0.8078.80, Playwright's Chromium driver):
 
 | Check | Result |
 | --- | --- |
-| `npm run site` | client bundle 245.1 kB (76.1 kB gzip) · CSS 35.6 kB (8.0 kB gzip) — one hand-written stylesheet, no framework · 105,185 chars of static HTML pre-rendered into `dist/index.html` |
-| `npm run qa` | **33/33** — a11y audit, the widget's three memory states and per-state explanations, mobile overflow at 390 px, mobile menu, ⌘K palette, timeline accordion, LCP/CLS, pre-rendered HTML probes (hero promise, SAM heading, evidence classes, demo markup, JSON-LD duration), 404 fallback, demo video + poster + caption track reachable, **posted download size compared with the bytes actually served**, caption sidecar parses (57 cues, no overlaps, last cue inside 180.000 s), transcript served with timecoded beats, caption sidecar offered without double-rendering the burned-in text, every in-page anchor resolves, **every `./assets` and `./video` path named in the built output returns 200**, seven Guard families and seven shared tools counted in the DOM, manifest + icons, 11 images loaded as WebP, hero aspect-ratio and responsive variant, reduced-motion, copy button and command payload, lightbox open/arrow/Escape, JS-disabled fallback, keyboard (skip link first, no unnamed controls), and the self-referential badge gate |
+| `npm run site` | client bundle 245.5 kB (76.2 kB gzip) · CSS 35.6 kB (8.0 kB gzip) — one hand-written stylesheet, no framework · 105,705 chars of static HTML pre-rendered into `dist/index.html` |
+| `npm run qa` | **33/33** — a11y audit, the widget's three memory states and per-state explanations, mobile overflow at 390 px, mobile menu, ⌘K palette, timeline accordion, LCP/CLS, pre-rendered HTML probes (hero promise, SAM heading, evidence classes, demo markup, JSON-LD duration), 404 fallback, **canonical and the
+Open Graph URLs pinned as exact strings to the deployed GitHub Pages origin**, demo video + poster + caption track reachable, **posted download size compared with the bytes actually served**, caption sidecar parses (57 cues, no overlaps, last cue inside 180.000 s), transcript served with timecoded beats, caption sidecar offered without double-rendering the burned-in text, every in-page anchor resolves, **every `./assets` and `./video` path named in the built output returns 200**, seven Guard families and seven shared tools counted in the DOM, manifest + icons, 11 images loaded as WebP, hero aspect-ratio and responsive variant, reduced-motion, copy button and command payload, lightbox open/arrow/Escape, JS-disabled fallback, keyboard (skip link first, no unnamed controls), and the self-referential badge gate |
 | `npm run links` | **27 unique paths, 0 broken**; the `v0.1.0` tag resolves to `707921db83a374d155d3929ef9b99092bcd4e8f1`, and `CITED_COMMIT` (set in the `qa` CI job) asserts the tag still points where the copy says it does |
 | Playwright flow, Chromium driver (`BROWSER=chromium node scripts/firefox-check.mjs`) | PASS — desktop and mobile, no console/page errors, 11 WebP images loaded |
 | Playwright flow, Gecko (CI `gecko` job) | runs in CI; the bundled Firefox 157 driver cannot start on macOS 27, which is why the job exists (see the script header) |
@@ -86,7 +87,10 @@ Two older cuts live in Git history, not on these paths: the 2:50.47 / `4020c0c6�
 commit `c32d03b`, and the 3:00 / `6c9e985c…` cut published with the
 [`v0.1.0`](https://github.com/sidonsoft/muse-recall/blob/v0.1.0/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
 release at `707921d`, where the same cut is also published as the release asset
-`Muse_Recall_Beta_Demo_3min.mp4` — that tag and its release assets are unchanged. Full provenance,
+`Muse_Recall_Beta_Demo_3min.mp4` — that tag and its release assets are unchanged. There is **no**
+`submission-2026-11-04` tag on the remote: `git ls-remote --tags origin` lists `v0.1.0`,
+`submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*` only, and that tag is
+planned work in the roadmap, so no copy here cites it. Full provenance,
 including the audio-editing measurements and a container-size discrepancy in the upstream
 `QA.json`, is in [`docs/demo/video/V21_QA.md`](../docs/demo/video/V21_QA.md). Editing sources
 and intermediate renders stay outside the repository.
@@ -98,6 +102,8 @@ index.html               meta, JSON-LD, preloads, no-JS fallback
 vite.config.js
 public/
   assets/                real screenshots (+ WebP variants and srcset sizes)
+                         og-image.png — 1200×630 social card, 230,993 B, SHA-256
+                         b7a41709c4c3c7d8c0eb90c169caf57362cc0688aea648fa7b7b6ad54e468714
   video/                 current demo cut, WebVTT sidecar, transcript, poster
   404.html  robots.txt  site.webmanifest  icons/
 scripts/
@@ -121,13 +127,24 @@ src/
 - Do not describe the page as a submission, an acceptance, or a hosted product. Single-user
   beta, loopback by default, optional shared bearer access; offline setup browses and chats but
   generating an application needs the Muse Code CLI, and media needs separate credentials.
+- The social card (`public/assets/og-image.png`) quotes research numbers, so it has to label them
+  the way the evidence docs do: the `37/57 → 0/58` pair is the **Muse Spark** stratum inside the
+  480-run pre-registered experiment across two models and six fixed strata, and the card says the
+  checks are source-pattern checks on generated source, not general correctness. `og:image:alt`
+  carries the same qualification. It is generated from an HTML mock outside the repository; if you
+  regenerate it, update the SHA-256 above and re-check the alt text.
 - After changing copy, media or links: `npm run site && npm run qa && npm run links`. If you add
   a QA check, update the count in the `SiteVerified` stats — the badge gate will fail otherwise.
-- Known follow-up, not fixed here: `scripts/prerender.mjs` defaults `SITE` to
-  `https://muse-recall.pages.dev`, and that value feeds `<link rel="canonical">` and the
-  Open Graph URLs, while the deployed site and the workflow comments use
-  `https://sidonsoft.github.io/muse-recall/`. Whichever origin is authoritative should be set
-  once, in one place.
+- What the metadata actually does, so nobody re-invents a switch: `scripts/prerender.mjs` has no
+  `SITE` setting. It reads `SITE_URL` from the environment only to build absolute URLs
+  (`SITE_URL || DEFAULT_ORIGIN`, default `https://muse-recall.pages.dev`), and the prerendered head
+  keeps the absolute URLs `index.html` already carries — which are hardcoded to GitHub Pages
+  (`og:url`, `og:image`, `twitter:image`, JSON-LD `url`). The `<head>` asset links are relative
+  (`./assets/…`) and resolve wherever the site is served. This branch added
+  `<link rel="canonical" href="https://sidonsoft.github.io/muse-recall">` to match `og:url`, and
+  `qa.mjs` pins canonical, `og:url` and `og:image` as exact strings. There is no single switch to
+  repoint the site: moving the deployment means changing those absolute URLs in `index.html` (and
+  the prerender default) together, and the QA probes will tell you which ones you missed.
 
 ## Deploy
 

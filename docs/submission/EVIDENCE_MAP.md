@@ -360,7 +360,11 @@ recut: 180.000 seconds, 14,903,823 bytes, SHA-256
 intermediate 4 November cut (180.000 seconds, 10,876,299 bytes, SHA-256
 `6c9e985c6cfe2acdf990e8f86d9f0c92c3d75f4289d5e5cf50968f7f84dd9e8b`, 58 cues) stays at the
 [`v0.1.0`](https://github.com/sidonsoft/muse-recall/blob/v0.1.0/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true)
-tag and the frozen `submission-2026-11-04` tag, unchanged. See
+tag only, unchanged; it is also the `Muse_Recall_Beta_Demo_3min.mp4` asset on that GitHub Release.
+There is **no** `submission-2026-11-04` tag on the remote — `git ls-remote --tags origin` lists
+`v0.1.0`, `submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*`, and that
+tag is planned work in [POST_HACKATHON_ROADMAP.md](../roadmap/POST_HACKATHON_ROADMAP.md), not an
+existing reference. See
 [current QA and footage provenance](../demo/video/V21_QA.md). Both current cuts combine
 recorded live calls, retained model outputs, product replays and labelled fixtures; neither is a
 continuous live session.
