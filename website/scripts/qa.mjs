@@ -11,8 +11,10 @@
 //        CHROME_PATH=/path/to/chrome npm run qa
 
 import { spawn, spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const PREVIEW_PORT = 4173;
@@ -259,6 +261,7 @@ try {
     ['hero headline phrase', 'orrectable project memory'],
     ['beta capability grid', 'Generation context you can read back'],
     ['SAM workflow', 'Select the object. Keep the transparency'],
+    ['demo product intro', 'turn project decisions into a reviewable application workflow'],
     ['evidence classes', 'Deterministic fixture'],
     ['evidence table', 'Phase 17'],
     ['timeline records', 'Sunset → ocean'],
@@ -294,10 +297,14 @@ try {
   }
   check('demo video, poster and captions reachable', !!vid && vid.controls && vidOk.length === 3 && vidOk.every(Boolean), JSON.stringify({ vid, vidOk }));
 
-  // 5b. demo media: served bytes match the posted download size, captions parse, transcript serves
+  // 5b. demo media: captions parse, transcript serves, and the copy's links are the ones offered
   const media = await (async () => {
     const range = await fetch(URL_ + 'video/muse-recall-demo.mp4', { headers: { Range: 'bytes=0-0' } });
     const total = Number((range.headers.get('content-range') || '').split('/')[1]);
+    const served = new Uint8Array(await (await fetch(URL_ + 'video/muse-recall-demo.mp4')).arrayBuffer());
+    const servedSha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', served))]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
     const vtt = await (await fetch(URL_ + 'video/muse-recall-demo.en.vtt')).text();
     const cues = vtt.split('\n\n').filter((b) => b.includes('-->'));
     const ends = cues
@@ -305,13 +312,20 @@ try {
       .map((t) => t.split(':').reduce((acc, p) => acc * 60 + Number(p.replace(',', '.')), 0));
     const transcript = await fetch(URL_ + 'video/muse-recall-demo-transcript.txt');
     const transcriptBody = await transcript.text();
-    const labels = await evalJS(`(() => {
+    const figure = await evalJS(`(() => {
       const f = document.querySelector("#watch figure.video-figure");
-      return [...f.querySelectorAll("a")].map((a) => a.textContent.trim()).join(" | ");
+      const links = [...f.querySelectorAll("a")].map((a) => ({ text: a.textContent.trim(), href: a.getAttribute("href") }));
+      return {
+        labels: links.map((a) => a.text).join(" | "),
+        details: links.filter((a) => /V21_QA\.md/.test(a.href || "")),
+        scope: (document.querySelector("#watch .footnote") || {}).textContent || "",
+        watchText: document.querySelector("#watch").textContent,
+      };
     })()`);
     return {
       total,
-      labels,
+      servedSha,
+      figure,
       cues: cues.length,
       lastCueEnd: ends[ends.length - 1],
       overlaps: ends.filter((e, i) => i > 0 && e < ends[i - 1]).length,
@@ -321,12 +335,44 @@ try {
       posterBytes: Number((await fetch(URL_ + 'video/muse-recall-demo-poster.jpg', { method: 'HEAD' })).headers.get('content-length') || 0),
     };
   })();
-  const declaredMb = [...media.labels.matchAll(/([\d.]+)\s*MB/g)].map((m) => Number(m[1]));
-  const servedMb = Math.round((media.total / 1e6) * 10) / 10;
+  // The page no longer prints a download size or a checksum, so integrity is pinned against the
+  // repository instead: what a visitor downloads must be the file the repo ships, and the SHA-256
+  // its QA record publishes must be the hash of those bytes. Swapping media on the site, drifting
+  // the repo copy, or letting the QA record go stale all fail here. Copy-dependent by design:
+  // V21_QA.md is documentation, so this asserts consistency rather than restating the numbers.
+  const repoMedia = await (async () => {
+    const root = path.resolve(process.cwd(), '..');
+    const file = path.join(root, 'docs', 'demo', 'video', 'Muse_Recall_Demo_V21_1080p.mp4');
+    const qaDoc = path.join(root, 'docs', 'demo', 'video', 'V21_QA.md');
+    if (!fs.existsSync(file) || !fs.existsSync(qaDoc)) return { missing: true };
+    const bytes = fs.readFileSync(file);
+    const repoSha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const doc = fs.readFileSync(qaDoc, 'utf8');
+    const docSha = (doc.match(/\|\s*SHA-256\s*\|\s*`([0-9a-f]{64})`/) || [])[1] || '';
+    const docSize = Number(((doc.match(/\|\s*Size\s*\|\s*([\d,]+)\s*bytes/) || [])[1] || '').replace(/,/g, ''));
+    return { repoBytes: bytes.length, repoSha, docSha, docSize };
+  })();
   check(
-    'posted download size matches the served video bytes',
-    media.total > 0 && declaredMb.length >= 1 && declaredMb.every((mb) => Math.abs(mb - servedMb) < 0.06),
-    `served=${media.total} B (${servedMb} MB) · labels=[${declaredMb.join(', ')}]`
+    'served demo bytes match the repository file and the checksum its QA record publishes',
+    !repoMedia.missing &&
+      media.servedSha === repoMedia.repoSha &&
+      media.total === repoMedia.repoBytes &&
+      repoMedia.docSize === repoMedia.repoBytes &&
+      repoMedia.docSha === repoMedia.repoSha,
+    repoMedia.missing
+      ? 'docs/demo/video not found — run qa from the website/ folder'
+      : `served=${media.total}B sha=${media.servedSha.slice(0, 12)} · repo=${repoMedia.repoBytes}B sha=${repoMedia.repoSha.slice(0, 12)} · V21_QA size=${repoMedia.docSize} sha=${(repoMedia.docSha || '').slice(0, 12)}`,
+  );
+  check(
+    'demo figure offers Download video, Captions, Transcript and one Recording details link',
+      ['Download video', 'Captions', 'Transcript', 'Recording details'].every((l) => media.figure.labels.includes(l)) &&
+      media.figure.details.length === 1 &&
+      /docs\/demo\/video\/V21_QA\.md/.test(media.figure.details[0].href) &&
+      /recorded live model calls with retained outputs and labelled replays or fixtures/.test(media.figure.scope) &&
+      !/submission/i.test(media.figure.watchText),
+    `labels=[${media.figure.labels}] details=${JSON.stringify(media.figure.details)} scope=${JSON.stringify(media.figure.scope.trim())}`,
   );
   check(
     'caption track parses: cues present, no overlaps, all inside the runtime',

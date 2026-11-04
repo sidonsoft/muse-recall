@@ -2329,6 +2329,8 @@ pre.code .hl {
 
 .video-figure figcaption a {
   color: var(--text);
+  /* The four demo links are short actions; keep each one on a single line at phone widths. */
+  white-space: nowrap;
 }
 
 @media print {
