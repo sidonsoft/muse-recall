@@ -52,3 +52,6 @@ workspaces/
 # python bytecode from the research verifiers
 __pycache__/
 *.pyc
+
+# Local Codespaces process IDs, locks and logs
+.devcontainer/.logs/

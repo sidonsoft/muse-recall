@@ -8,7 +8,7 @@ export default function Hero() {
     <section className="hero" id="top">
       <div className="container">
         <span className="eyebrow">
-          <span className="dot" aria-hidden="true" /> v0.1.1 beta · local-first · single-user ·
+          <span className="dot" aria-hidden="true" /> v0.1.2 beta · local-first · single-user ·
           MIT ·{' '}
           <a href={RELEASE} target="_blank" rel="noreferrer">
             release notes

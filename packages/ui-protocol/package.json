@@ -1,6 +1,6 @@
 {
   "name": "@mml/ui-protocol",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Declarative, validated UI specifications for model-generated interfaces.",

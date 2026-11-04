@@ -1,6 +1,6 @@
 {
   "name": "@mml/decision-guard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Deterministic decision-compliance engine: checks generated source against explicitly supported project decisions (PASS / BLOCK / UNVERIFIED). Pure: no IO, no eval, no network.",

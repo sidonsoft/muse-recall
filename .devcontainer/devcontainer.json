@@ -1,7 +1,8 @@
 {
-  // One-click judge environment: installs dependencies, seeds the recorded demo
-  // project and starts the app on the deterministic offline provider. No Muse
-  // account, API key or secret is needed. See .devcontainer/README.md.
+  // One-click judge environment: installs dependencies, verifies the app runs
+  // on the deterministic offline provider, and seeds the recorded demo
+  // project. No Muse account, API key or secret is needed. See
+  // .devcontainer/README.md. Ports stay private and the API stays loopback-only.
   "name": "Muse Recall",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
   "hostRequirements": {
@@ -9,7 +10,8 @@
     "memory": "4gb"
   },
   "postCreateCommand": "bash .devcontainer/setup.sh",
-  "postAttachCommand": "pnpm dev",
+  "postStartCommand": "bash .devcontainer/start.sh",
+  "postAttachCommand": "bash .devcontainer/status.sh",
   "forwardPorts": [5173, 8787],
   "portsAttributes": {
     "5173": {

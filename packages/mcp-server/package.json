@@ -1,6 +1,6 @@
 {
   "name": "@mml/mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "MCP (stdio) surface for the shared tool contract: the same six bounded tools over the Model Context Protocol.",

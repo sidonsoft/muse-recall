@@ -22,7 +22,7 @@ const EVMAP = `${REPO}/blob/main/docs/submission/EVIDENCE_MAP.md`;
 const RUNBOOKS = `${REPO}/blob/main/docs/ops/OPERATOR_RUNBOOKS.md`;
 const STUDBGUIDE = `${REPO}/blob/main/docs/guide/html-studio.md`;
 const MEMORYGUIDE = `${REPO}/blob/main/docs/guide/project-memory.md`;
-const RUNOTES = `${REPO}/blob/main/docs/release/notes/v0.1.1-beta.md`;
+const RUNOTES = `${REPO}/blob/main/docs/release/notes/v0.1.2-beta.md`;
 const ARCH = `${REPO}/blob/main/docs/ARCHITECTURE_OVERVIEW.md`;
 
 /* One shared vocabulary, used everywhere the page describes footage or results:
@@ -273,7 +273,7 @@ export function Features() {
     <section className="block" id="beta">
       <div className="container">
         <div className="section-head center">
-          <p className="kicker">v0.1.1 beta · what it does</p>
+          <p className="kicker">v0.1.2 beta · what it does</p>
           <h2>Deterministic infrastructure around the model</h2>
           <p>
             The coding CLI writes the application; Meta media APIs carry images, segmentation,
@@ -1015,8 +1015,9 @@ export function ForJudges() {
           {' '}logged in; media and SAM need their own server-side key.{' '}
           <b>Codespaces gives you the exploration path as shipped:</b> the image installs no CLI
           and starts on the offline provider, so Generate is disabled with a note beside it. There
-          is no automatic CLI or browser installation, no startup guarantee for a container you
-          provision yourself, and this project has never run generation or a CLI login from a
+          is no automatic CLI installation. Setup installs and launch-checks the verification
+          browser, preserves existing demo work, starts the app once and only reports on reattach.
+          A fresh cloud Codespace remains unverified; this project has never run generation or a CLI login from a
           codespace — so nothing here claims that works, and{' '}
           <code>judge:check</code> reports such a machine from what it actually finds.{' '}
           <a href={JUDGES} target="_blank" rel="noreferrer">
@@ -1643,7 +1644,7 @@ export function Honesty() {
           </a>{' '}
           ·{' '}
           <a href={RUNOTES} target="_blank" rel="noreferrer">
-            v0.1.1 beta release notes
+            v0.1.2 beta release notes
           </a>
         </p>
       </div>
