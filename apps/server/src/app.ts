@@ -55,7 +55,7 @@ import { memoryMeta, registerMemoryRoutes } from './routes/memories.js';
 import { registerSessionRoutes } from './routes/sessions.js';
 import { registerToolRoutes } from './routes/tools.js';
 import { registerUiRoutes } from './routes/ui.js';
-import { probeSetupReadiness } from './setup-readiness.js';
+import { gatherDemoSeedFacts, probeSetupReadiness } from './setup-readiness.js';
 
 export interface AppDependencies {
   config: AppConfig;
@@ -597,19 +597,22 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         provider: { state: providerStatus },
       },
       // Setup readiness for the three documented judge paths (browse offline,
-      // generate live, use live media/SAM). Read-only and offline by design:
-      // file existence, PATH lookup and "is a key configured" — no model call,
-      // no quota, never a secret value. The System screen renders it as a panel
-      // and `formatSetupPanel` prints the same rows at startup and in
-      // `pnpm judge:check`.
+      // generate live, use live media/SAM). Read-only by design: PATH lookup,
+      // configuration, a `SELECT` on the projects table and the demo project's
+      // approved artifact hashed against its recorded hash. No model call, no
+      // quota, nothing written, never a secret value. `formatSetupPanel` prints
+      // the same rows at startup and in `pnpm judge:check`, and the System
+      // screen renders them.
       setup: probeSetupReadiness({
         providerId: provider.id,
         cliBin: config.forge?.museBin ?? config.provider.museBin,
         mediaApiKey: config.forge?.apiKey ?? null,
         mediaModel: config.media?.model,
         samModel: config.media?.samModel,
-        databasePath: dbPath,
-        workspaceRoot: config.workspaceRoot,
+        demo_seed: await gatherDemoSeedFacts({
+          databasePath: dbPath,
+          workspace: forgeWorkspace,
+        }),
       }),
     });
 

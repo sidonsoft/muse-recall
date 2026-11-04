@@ -1,4 +1,11 @@
-import type { ForgeHealthSummary, HealthResponse, ServiceMeta, SetupProbe } from '@mml/shared';
+import type {
+  ForgeHealthSummary,
+  HealthResponse,
+  ServiceMeta,
+  SetupProbe,
+  SetupRowKey,
+} from '@mml/shared';
+import { setupStateWord } from '@mml/shared';
 import { formatLatency, formatTokens, formatUptime, shortenPath } from '../lib/format.ts';
 import { Icon } from './Icon.tsx';
 import { ProviderBench } from './ProviderBench.tsx';
@@ -243,29 +250,24 @@ const SETUP_TONE: Record<SetupProbe['state'], Tone> = {
   not_probed: 'idle',
 };
 
-const SETUP_WORD: Record<SetupProbe['state'], string> = {
-  ready: 'ready',
-  missing: 'missing',
-  not_available: 'not here',
-  not_probed: 'unverified',
-};
-
 /**
  * Prerequisite panel for the three documented judge paths.
  *
  * It reports what this machine has, not what a model would do: the states come
- * from a probe that performs no request and spends no quota, and the same rows
- * are printed by the API at startup and by `pnpm judge:check`. "not here" is a
- * separate state from "missing" on purpose — running the offline provider or
- * browsing inside a codespace is a setup the reader chose, not a broken install,
- * and a panel that calls a deliberate setup an error teaches people to ignore it.
+ * from a read-only probe that performs no request, spends no quota and writes
+ * nothing, and the same rows are printed by the API at startup and by
+ * `pnpm judge:check`. The state word is per row (`configured`, `installed`,
+ * `seeded`) because a key being present is not the same as provider access, an
+ * executable existing is not the same as a browser that launches, and "not here"
+ * is a deliberate setup rather than a broken install — a panel that calls a
+ * deliberate setup an error teaches people to ignore it.
  */
 function SetupPanel({ setup }: { setup: NonNullable<HealthResponse['setup']> }) {
-  const rows: Array<{ key: string; label: string; probe: SetupProbe }> = [
+  const rows: Array<{ key: SetupRowKey; label: string; probe: SetupProbe }> = [
     { key: 'cli', label: 'Generate live applications (coding CLI)', probe: setup.cli },
-    { key: 'media', label: 'Live media, SAM and screenshot review', probe: setup.media_api },
+    { key: 'media_api', label: 'Live media, SAM and screenshot review', probe: setup.media_api },
     { key: 'browser', label: 'Browser verification before approval', probe: setup.browser },
-    { key: 'seed', label: 'Offline demo workspace', probe: setup.offline_seed },
+    { key: 'offline_seed', label: 'Offline demo project', probe: setup.offline_seed },
   ];
   return (
     <Panel>
@@ -273,7 +275,7 @@ function SetupPanel({ setup }: { setup: NonNullable<HealthResponse['setup']> }) 
         <SectionTitle
           icon="check"
           title="Setup readiness"
-          hint="Prerequisites for the documented paths, checked on this machine: files, PATH and configuration. No model call, no quota, no secret values — login state and quota stay unverified until you run the command shown."
+          hint="What this machine has, read without writing anything: PATH, configuration, and the demo project's approved version and artifact bytes. No model call, no quota spend, no secret value. Presence is not a live check — login, provider access and quota stay unverified until you run the command shown or make a real call."
         />
         <ul className="mt-3 space-y-3">
           {rows.map((row) => (
@@ -281,7 +283,7 @@ function SetupPanel({ setup }: { setup: NonNullable<HealthResponse['setup']> }) 
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-[12px] font-medium text-ink-dim">{row.label}</p>
                 <StatusPill tone={SETUP_TONE[row.probe.state]}>
-                  {SETUP_WORD[row.probe.state]}
+                  {setupStateWord(row.key, row.probe.state)}
                 </StatusPill>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted">{row.probe.detail}</p>

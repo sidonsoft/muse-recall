@@ -7,12 +7,17 @@ no account, no infrastructure to provision.
 [Guide](README.md) · [Getting started](getting-started.md) · [HTML Studio](html-studio.md) ·
 [Project memory](project-memory.md) · [Limitations](limitations.md)
 
-**First command — two minutes, no credential, no request leaves your machine:**
+**First command — about two minutes:**
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm judge:check
 ```
+
+`pnpm install` downloads the workspace's dependencies from the package registry. The check
+itself makes no network request and no model call, sends no credential, and writes nothing.
+On the published `v0.1.0` tag this command does not exist — that tag predates it; the rest of
+this page works there.
 
 It prints a setup panel (CLI / media API / browser / offline demo), then the exact
 commands for all three paths. Read the panel before you start the server: most failed
@@ -23,7 +28,7 @@ first runs are a missing prerequisite, not a broken app.
 | Path | What you can see with your own eyes | What it needs | What it cannot show |
 | --- | --- | --- | --- |
 | **1 · Explore offline** | The seeded `forge-demo` project: an approved application with version history, ACTIVE and SUPERSEDED decisions, retrieval explanation for the next generation, audit history after a correction | Nothing but Node 24+ and pnpm 10.x. `MODEL_PROVIDER=echo` is the deterministic offline provider, not a model | Live generation. The Generate buttons are disabled here, on purpose |
-| **2 · Generate live applications** | Prompt → staged proposal → preview / source / diff / memory references / Decision Guard findings → approve publishes a version; request a change and compare | Meta Muse Code CLI installed and `muse login`, plus a verification browser (`pnpm exec playwright-core install chromium`). Not available inside Codespaces | Approving without a browser check: a staged application is loaded in a real browser before approval is offered |
+| **2 · Generate live applications** | Prompt → staged proposal → preview / source / diff / memory references / Decision Guard findings → approve publishes a version; request a change and compare | Meta Muse Code CLI installed and `muse login`, plus a verification browser (`pnpm exec playwright-core install chromium`). A codespace as shipped runs `echo` instead, where these buttons are disabled — see below | Approving without a browser check: a staged application is loaded in a real browser before approval is offered |
 | **3 · Live media and SAM** | Image generation and editing, selecting an object and extracting a transparent cutout, transcription, clip observation, screenshot review of a staged change | A separate **server-side** `FORGE_MUSE_API_KEY` in `.env`, and provider quota | Being covered by a CLI login. The CLI login does not configure media at all |
 
 Pick path 1 if you have five minutes. Pick path 2 if you want to see the loop the demo
@@ -60,7 +65,7 @@ needed anywhere on this path.
 
 ## Path 2 · Generate live applications
 
-On your own machine (not a codespace):
+Wherever the CLI is installed — your own machine, or a codespace you provisioned yourself:
 
 ```bash
 muse --version                                   # Meta Muse Code CLI on PATH
@@ -97,7 +102,9 @@ MODEL_PROVIDER=muse-cli pnpm dev
 
 Expected: image generate/edit, reference-object selection and cutout, transcription and
 clip observation return results, and screenshot review of a staged change becomes
-available. The setup panel's **Media API** row changes from `missing` to `ready`.
+available. The setup panel's **Media API** row changes from missing to *configured*: it
+reports that `FORGE_MUSE_API_KEY` is present and long enough, and that the probe made no
+request — provider access and remaining quota stay unverified until you make a call.
 
 A CLI login does not enable this path: media endpoints authenticate with the server-side
 `FORGE_MUSE_API_KEY`. Keys stay server-side — they are never sent to the browser, never
@@ -108,19 +115,29 @@ smoke checks exist for every media surface (`pnpm verify:media-live-smoke`,
 `pnpm verify:image-live-smoke`, `pnpm verify:review-live-smoke`) — they make real,
 billable calls, so run them deliberately.
 
-## Codespaces: exploration only, in this build
+## Codespaces: what the container gives you
 
 A codespace opens the app in about three minutes with dependencies installed, `.env`
-written with `MODEL_PROVIDER=echo`, and `forge-demo` already seeded. Everything in
-**Path 1** works there.
+written with `MODEL_PROVIDER=echo`, the verification browser installed, and `forge-demo`
+already seeded. Everything in **Path 1** works there.
 
-**It cannot generate live applications.** The Muse Code CLI is not installed in the
-container and is not logged in, so **Generate change** and **New app** are disabled, with a
-note beside them saying why. That is a deliberate limit of this build, not a bug to work
-around; the generate → review → approve → correct loop is shown in the
-[3:00 demo](../demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true), whose
-[QA record](../demo/video/V21_QA.md) labels which beat is a recorded live call, a retained
-output, a replay or a fixture.
+**As shipped, it does not generate live applications.** The image installs no Muse Code CLI,
+and the default provider is `echo`, so **Generate change** and **New app** are disabled with a
+note beside them saying why. That is a deliberate starting configuration, not a ceiling:
+installing the CLI yourself, running `muse login`, and starting with `MODEL_PROVIDER=muse-cli`
+is the same Path 2 you would run locally. **This project has not run Path 2 from a
+codespace**, so nothing here claims that it works there; `pnpm judge:check` reads that
+machine's actual configuration and reports what it finds — the CLI row is `not here` when no
+binary is on PATH, `unverified` when one is (login is never probed), and it never says
+"configured" just because `MODEL_PROVIDER` is set.
+
+If you generate from a codespace, note the browser: `pnpm dev` does not install Chromium
+there beyond the container's post-create step, and approval requires a staged application to
+load in a real browser.
+
+The container's own README documents the walkthrough and one network detail worth knowing:
+codespace setup makes a single anonymous launch-counter request, opt-out with
+`DO_NOT_TRACK=1` or `MUSE_RECALL_NO_COUNT=1` ([.devcontainer/README.md](../../.devcontainer/README.md)).
 
 The container's own README documents the walkthrough and one network detail worth knowing:
 codespace setup makes a single anonymous launch-counter request, opt-out with
@@ -137,25 +154,28 @@ The same four rows appear in three places, from one probe, so they cannot disagr
 | Without starting anything | `pnpm judge:check` |
 | Machine-readable | `GET /api/health` → `setup` block (loopback only; `curl -s http://127.0.0.1:8787/api/health`) |
 
-Row meanings, including the two that are easy to misread:
+Row meanings, including the ones that are easy to misread:
 
-| State | Meaning | What to do |
-| --- | --- | --- |
-| `ready` | the prerequisite is present | nothing |
-| `MISSING` / missing | needed and absent | run the `fix:` line the row prints |
-| `not here` / not_available | this environment deliberately cannot do it — the offline provider, or Codespaces generation | choose another path; this is not a broken install |
-| `unverified` / not_probed | the piece is present, but a deeper fact is not checked | `muse login`, or a live check: **System → live check** (`POST /api/health/muse`) |
+| State | Word in that row | Meaning | What to do |
+| --- | --- | --- | --- |
+| `ready` | `configured` (media), `installed` (browser), `seeded` (demo) | the prerequisite is present, by a read-only check | the word says what was checked, not that it works end to end |
+| `missing` | `MISSING` | needed and absent | run the `fix:` line the row prints |
+| `not_available` | `not here` | this setup deliberately omits it — for example the `echo` provider, or a codespace with no CLI on PATH | choose another path, or change the configuration; this is not a broken install |
+| `not_probed` | `unverified` | the piece may be present, but a deeper fact was not checked — CLI login, a browser that was never launched, a demo nobody inspected | `muse login`, or a live check: **System → live check** (`POST /api/health/muse`) |
 
-The probe performs **no model call and no quota spend**, and never prints a secret value.
-Login validity and remaining quota are reported as unverified rather than guessed, because
-a startup panel that infers them starts lying the first time a token expires.
+The probe performs **no model call, no network request and no quota spend**, and never
+prints a secret value. CLI login, provider access and remaining quota are reported as
+unverified rather than guessed, because a startup panel that infers them starts lying the
+first time a token expires. The **Offline demo** row is the exception: it is checked, and
+says so — the project record, the version that project reports approved, and that version's
+bytes against their recorded hash, all read-only.
 
 ## Troubleshooting
 
 | Symptom | What it means | Fix |
 | --- | --- | --- |
 | Studio opens with no project, or memory looks empty | nothing is seeded yet | stop the server, `pnpm demo:seed`, start it again — seeding before the first start is required |
-| **Generate change** / **New app** disabled, with a note | `MODEL_PROVIDER=echo`, or you are in a codespace | that is Path 1; for Path 2 run `MODEL_PROVIDER=muse-cli pnpm dev` on your own machine with the CLI installed and logged in |
+| **Generate change** / **New app** disabled, with a note | `MODEL_PROVIDER=echo`, or no Muse CLI on this machine (a codespace as shipped) | that is Path 1; for Path 2 install the CLI, `muse login`, and run `MODEL_PROVIDER=muse-cli pnpm dev` |
 | Generation never produces a staged change, CLI errors mention auth | the CLI is present but not logged in | `muse login` (login state is never probed by the server) |
 | Review says the verification browser "could not be launched" | no managed Chromium for the selected policy | `pnpm exec playwright-core install chromium`, or set `FORGE_RUNTIME_BROWSER=chrome` with Chrome installed |
 | Verification reports `Blocked network request to <origin>` | the generated page asked for a host outside the runtime allowlist — the guard working | leave it: the disclosure is part of the review record; only an application that needs no unapproved host can be approved |

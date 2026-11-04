@@ -14,9 +14,11 @@ The first version is only the beginning. Next week, your AI builder needs to rem
 
 ### For judges: start here
 
-Three paths, each runnable on its own. Run `pnpm judge:check` first: it prints which ones
-this machine can complete and the exact fix for anything missing — no model call, no
-credential, nothing leaves the machine. Full page with expected results and
+Three paths, each runnable on its own. On current `main`, run `pnpm judge:check` first: it
+prints which ones this machine can complete and the exact fix for anything missing. The check
+itself makes no model call and no network call, sends no credential, and writes nothing (the
+`pnpm install` before it does download dependencies). The published `v0.1.0` tag predates that
+command; see [Quick start](#quick-start). Full page with expected results and
 troubleshooting: [For judges: start here](docs/guide/FOR_JUDGES.md).
 
 | Path | What it needs | What you should see |
@@ -25,9 +27,13 @@ troubleshooting: [For judges: start here](docs/guide/FOR_JUDGES.md).
 | **Generate live applications** | Meta Muse Code CLI installed and `muse login`, plus a verification browser | a staged proposal you inspect — preview, source, diff, the memory references it received, Decision Guard findings — then approve or reject. The staged application is loaded in a real browser before approval is offered |
 | **Live media and SAM** | a separate **server-side** `FORGE_MUSE_API_KEY` in `.env`, and provider quota | image generation and editing, selecting an object and extracting a transparent cutout, transcription, clip observation, screenshot review of a staged change |
 
-**Codespaces runs the first path only.** It opens in about three minutes with the demo
-already seeded, and **Generate change** / **New app** are disabled with an explanation,
-because the container has no logged-in Muse CLI: live generation needs your own machine.
+**The container as shipped runs the first path.** Codespaces opens in about three minutes
+with the demo already seeded, and **Generate change** / **New app** are disabled with an
+explanation: the default provider there is `echo` and the image installs no Muse CLI. Live
+generation from a codespace is possible — install the CLI, `muse login`, start with
+`MODEL_PROVIDER=muse-cli` — but that is extra setup on your account, and this project has not
+run it from a codespace, so `pnpm judge:check` reports the CLI row from what it finds on that
+machine's PATH rather than assuming either way.
 
 The same three prerequisites appear as a **setup status panel** — in the API's startup log,
 as the first panel on the **System** screen, and from `pnpm judge:check` — distinguishing
@@ -90,14 +96,25 @@ Database and media backup/restore tools, restore drills, health alerts, recovery
 
 ## Quick start
 
-### Get the beta
+### Get the code
+
+Two checkouts, and the commands below are written for the first one:
 
 ```bash
-git clone --branch v0.1.0 https://github.com/sidonsoft/muse-recall.git
+# current main — what this README and the judge guide describe
+git clone https://github.com/sidonsoft/muse-recall.git
 cd muse-recall
 ```
 
-The [Codespaces walkthrough](.devcontainer/README.md) offers a browser-based setup for browsing: dependencies installed, a `.env` on the offline provider, and the demo seeded. **It cannot generate live applications** — the container has no logged-in Muse Code CLI, so the Generate buttons are disabled with an explanation. Run generation on your own machine instead. Its setup includes an anonymous launch counter, with an opt-out documented there.
+```bash
+# the published release, a frozen tag
+git clone --branch v0.1.0 https://github.com/sidonsoft/muse-recall.git
+```
+
+`v0.1.0` predates `pnpm judge:check`, so on that checkout skip that one command; everything
+else below is the same. The tag is not updated for later fixes.
+
+The [Codespaces walkthrough](.devcontainer/README.md) offers a browser-based setup for browsing: dependencies installed, a `.env` on the offline provider, and the demo seeded. As shipped it **cannot generate live applications** — the container runs the `echo` provider and has no logged-in Muse Code CLI, so the Generate buttons are disabled with an explanation. Its setup includes an anonymous launch counter, with an opt-out documented there.
 
 ### Browse without a Muse account
 
@@ -109,6 +126,8 @@ pnpm judge:check        # what can this machine do? prints the fix for anything 
 pnpm demo:seed          # run this before the first server start
 MODEL_PROVIDER=echo pnpm dev
 ```
+
+(`pnpm judge:check` exists on `main`; on the `v0.1.0` checkout, leave that line out.)
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173); the API runs on `127.0.0.1:8787`. Open `forge-demo` to inspect a recorded game, project decisions, a superseded palette and version history. No provider credential is needed for this browsing path.
 

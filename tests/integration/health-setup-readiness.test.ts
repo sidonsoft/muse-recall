@@ -1,4 +1,5 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MemoryEngine, openDatabase } from '@mml/memory-engine';
@@ -9,16 +10,34 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../apps/server/src/app.js';
 import type { AppConfig } from '../../apps/server/src/config.js';
 import { SERVICE_VERSION } from '../../apps/server/src/config.js';
+import { ForgeWorkspace } from '../../apps/server/src/forge/workspace.js';
+import {
+  formatSetupPanel,
+  gatherDemoSeedFacts,
+  probeSetupReadiness,
+  SEEDED_DEMO_PROJECT,
+} from '../../apps/server/src/setup-readiness.js';
 
 /**
- * The setup readiness block inside GET /api/health.
+ * The setup readiness block inside GET /api/health, exercised with the real
+ * Forge workspace and a real SQLite file.
  *
- * The unit tests cover the probe's decisions; this covers the wiring, because a
- * panel that exists only in a script would drift from what the System screen
- * renders. It also pins the promise the panel makes to a judge: the health route
- * answers the prerequisite question without a model call, so it stays usable on
- * a machine that has no credentials configured at all — which is the state a
- * first-time reader is in.
+ * The unit tests cover the probe's decisions from supplied facts; this covers the
+ * wiring *and* the facts themselves, because the interesting failure mode is a
+ * probe that calls the demo "ready" from something weaker — a database file that
+ * exists, a workspace directory that exists, an unrelated project. A judge who is
+ * told the demo is seeded and then opens an empty Studio stops trusting every row
+ * on the panel, so these tests pin the negative cases:
+ *
+ *   - a fresh instance with nothing seeded: `missing`, with the seed command;
+ *   - an unrelated project that *is* seeded: the demo is still `missing`;
+ *   - a real seeded demo: `ready`, and the detail names what was inspected;
+ *   - a demo whose artifact no longer matches its recorded hash: `missing`, and
+ *     the panel says the app will refuse to serve those bytes.
+ *
+ * Nothing here mutates a real user's data: every fixture lives in a temp
+ * directory, and the probe's own reads are asserted not to create or repair
+ * anything.
  */
 
 const openApps: FastifyInstance[] = [];
@@ -64,38 +83,75 @@ function testConfig(workspaceRoot: string, databasePath: string): AppConfig {
   };
 }
 
-async function appOnFreshWorkspace() {
+async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), 'setup-readiness-health-'));
   roots.push(dir);
   const dbFile = join(dir, 'app.db');
   const database = openDatabase({ path: dbFile, wal: false });
   openDatabases.push(database);
-  const provider = new EchoProvider();
+  const engine = new MemoryEngine(database.db);
+  const workspaceRoot = join(dir, 'workspaces');
   const app = await buildApp({
-    config: testConfig(join(dir, 'workspaces'), dbFile),
+    config: testConfig(workspaceRoot, dbFile),
     db: database.db,
     dbPath: dbFile,
-    provider,
-    engine: new MemoryEngine(database.db),
+    provider: new EchoProvider(),
+    engine,
   });
   openApps.push(app);
-  return app;
+  return { app, engine, dbFile, workspaceRoot };
+}
+
+async function health(app: FastifyInstance): Promise<HealthResponse> {
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/health',
+    headers: { host: '127.0.0.1:8787' },
+  });
+  expect(response.statusCode).toBe(200);
+  const payload = response.json().data as HealthResponse;
+  expect(() => HealthResponseSchema.parse(payload)).not.toThrow();
+  return payload;
+}
+
+/**
+ * Write a project the same shape the product uses on disk: a `state.json` that
+ * points at an approved version, and the version file itself. `recordedSha` may
+ * deliberately disagree with `bytes` to stage a corrupted artifact.
+ */
+async function writeForgeProject(
+  workspaceRoot: string,
+  projectId: string,
+  options: { bytes: string; recordedSha?: string },
+): Promise<string> {
+  const sha =
+    options.recordedSha ?? createHash('sha256').update(options.bytes, 'utf8').digest('hex');
+  const projectDir = join(workspaceRoot, 'forge', projectId);
+  await mkdir(join(projectDir, 'versions', '1'), { recursive: true });
+  await writeFile(
+    join(projectDir, 'state.json'),
+    JSON.stringify({
+      project_id: projectId,
+      current_version: 1,
+      versions: [
+        {
+          version: 1,
+          created_at: '2026-10-27T00:00:00.000Z',
+          summary: 'fixture baseline',
+          sha256: sha,
+        },
+      ],
+      can_rollback: false,
+    }),
+  );
+  await writeFile(join(projectDir, 'versions', '1', 'index.html'), options.bytes, 'utf8');
+  return sha;
 }
 
 describe('setup readiness in GET /api/health', () => {
   it('reports the prerequisite states for an unseeded, credential-free test instance', async () => {
-    const app = await appOnFreshWorkspace();
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/health',
-      headers: { host: '127.0.0.1:8787' },
-    });
-    expect(response.statusCode).toBe(200);
-
-    const payload = response.json().data as HealthResponse;
-    expect(() => HealthResponseSchema.parse(payload)).not.toThrow();
-
-    const setup = payload.setup;
+    const { app } = await fixture();
+    const setup = (await health(app)).setup;
     expect(setup).toBeTruthy();
     // The environment is whatever runs the suite; both are honest answers.
     expect(['local', 'codespaces']).toContain(setup?.environment);
@@ -108,9 +164,10 @@ describe('setup readiness in GET /api/health', () => {
     // A fresh temp workspace has no seeded demo, which is the most common reason
     // a first Studio session looks empty.
     expect(setup?.offline_seed.state).toBe('missing');
+    expect(setup?.offline_seed.detail).toContain(SEEDED_DEMO_PROJECT);
     expect(setup?.offline_seed.fix).toContain('pnpm demo:seed');
     // The browser row is machine-dependent, so only its shape is pinned: whatever
-    // it says, it says what to do about it.
+    // it says, it says what it actually checked.
     expect(['ready', 'missing', 'not_available', 'not_probed']).toContain(setup?.browser.state);
     expect((setup?.browser.detail ?? '').length).toBeGreaterThan(10);
     if (setup?.browser.state === 'missing') {
@@ -118,16 +175,106 @@ describe('setup readiness in GET /api/health', () => {
     }
   });
 
-  it('does not let the setup block change the liveness verdict', async () => {
-    const app = await appOnFreshWorkspace();
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/health',
-      headers: { host: '127.0.0.1:8787' },
+  it('does not report the demo ready when a different project is the seeded one', async () => {
+    const { app, engine, workspaceRoot } = await fixture();
+    // A real application project, complete and valid: exactly the state that a
+    // weaker "does some workspace content exist?" check would mistake for a seed.
+    engine.ensureProject('palette-bench', 'Palette Bench');
+    await writeForgeProject(workspaceRoot, 'palette-bench', {
+      bytes: '<!doctype html><title>Palette Bench</title>',
     });
-    const payload = response.json().data as HealthResponse;
+
+    const setup = (await health(app)).setup;
+    expect(setup?.offline_seed.state).toBe('missing');
+    expect(setup?.offline_seed.detail).toContain(SEEDED_DEMO_PROJECT);
+    expect(setup?.offline_seed.detail).not.toContain('Palette Bench');
+    expect(setup?.offline_seed.detail).not.toMatch(/match their recorded hash/);
+    expect(setup?.offline_seed.fix).toContain('pnpm demo:seed');
+  });
+
+  it('reports the demo ready from the project, its version and its artifact bytes', async () => {
+    const { app, engine, workspaceRoot } = await fixture();
+    const bytes = '<!doctype html><title>Muse Recall demo</title>';
+    const sha = await writeForgeProject(workspaceRoot, SEEDED_DEMO_PROJECT, { bytes });
+    engine.ensureProject(SEEDED_DEMO_PROJECT, 'Muse Recall demo');
+
+    const setup = (await health(app)).setup;
+    expect(setup?.offline_seed.state).toBe('ready');
+    // It names what it established, in terms a reader can check.
+    expect(setup?.offline_seed.detail).toContain('Muse Recall demo');
+    expect(setup?.offline_seed.detail).toContain(SEEDED_DEMO_PROJECT);
+    expect(setup?.offline_seed.detail).toContain('v1');
+    expect(setup?.offline_seed.detail).toContain('match their recorded hash');
+    expect(setup?.offline_seed.detail).toContain('Read-only');
+    expect(sha).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('refuses to call a corrupted demo artifact ready', async () => {
+    const { app, engine, workspaceRoot } = await fixture();
+    engine.ensureProject(SEEDED_DEMO_PROJECT, 'Muse Recall demo');
+    await writeForgeProject(workspaceRoot, SEEDED_DEMO_PROJECT, {
+      bytes: '<!doctype html><title>edited by hand</title>',
+      recordedSha: createHash('sha256').update('original bytes', 'utf8').digest('hex'),
+    });
+
+    const setup = (await health(app)).setup;
+    expect(setup?.offline_seed.state).toBe('missing');
+    expect(setup?.offline_seed.detail).toContain('no longer match their recorded hash');
+    expect(setup?.offline_seed.fix).toContain('Recovery');
+  });
+
+  it('leaves an unrelated project untouched while inspecting the demo', async () => {
+    const { engine, dbFile, workspaceRoot } = await fixture();
+    engine.ensureProject('palette-bench', 'Palette Bench');
+    const sha = await writeForgeProject(workspaceRoot, 'palette-bench', {
+      bytes: '<!doctype html><title>Palette Bench</title>',
+    });
+
+    const before = await gatherDemoSeedFacts({
+      databasePath: dbFile,
+      workspace: new ForgeWorkspace(workspaceRoot),
+    });
+    expect(before.record).toBe('absent');
+    expect(before.current_version).toBeNull();
+    expect(before.artifact).toBe('unchecked');
+
+    // The read-only claim, checked rather than asserted in a comment: after the
+    // probe ran, the other project's bytes and state are still what they were.
+    const { readFile } = await import('node:fs/promises');
+    const stateFile = join(workspaceRoot, 'forge', 'palette-bench', 'state.json');
+    expect(JSON.parse(await readFile(stateFile, 'utf8')).versions[0].sha256).toBe(sha);
+    const after = await gatherDemoSeedFacts({
+      databasePath: dbFile,
+      workspace: new ForgeWorkspace(workspaceRoot),
+    });
+    expect(after).toEqual(before);
+  });
+
+  it('does not let the setup block change the liveness verdict', async () => {
+    const { app } = await fixture();
+    const payload = await health(app);
     // Missing prerequisites are onboarding facts, not a sick server.
     expect(payload.setup?.offline_seed.state).toBe('missing');
     expect(payload.status).toBe('ok');
+  });
+
+  it('prints the same rows the payload carries, without claiming a live check', async () => {
+    const { app } = await fixture();
+    const setup = (await health(app)).setup;
+    if (!setup) throw new Error('the health payload carried no setup block');
+    const panel = formatSetupPanel(setup);
+    for (const label of ['CLI', 'Media API', 'Browser validation', 'Offline demo']) {
+      expect(panel).toContain(label);
+    }
+    expect(panel).toContain('MISSING');
+    expect(panel).toContain('fix:');
+    expect(panel).toContain('not "verified"');
+    expect(panel).toContain('docs/guide/FOR_JUDGES.md');
+    expect(panel).toContain('(2) generate live applications');
+    // Nothing in a printed panel may leak a credential value.
+    expect(panel).not.toMatch(/api[_-]?key\s*[:=]\s*\S/);
+    const probed = probeSetupReadiness({ providerId: 'muse-cli', mediaApiKey: null });
+    expect(probed.offline_seed.state).toBe('not_probed');
+    expect(probed.offline_seed.detail).toContain('not inspected');
   });
 });

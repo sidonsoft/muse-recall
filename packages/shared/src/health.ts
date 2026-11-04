@@ -117,6 +117,34 @@ export const SetupProbeSchema = z.object({
 });
 export type SetupProbe = z.infer<typeof SetupProbeSchema>;
 
+/**
+ * How each state is worded to a reader. "ready" is not one thing across rows:
+ * the media row means a key is configured, the browser row means an executable
+ * exists, the demo row means the project and its artifact were inspected. Naming
+ * the state per row keeps a presence check from reading like a live check, and
+ * keeps the terminal panel and the System screen using the same words.
+ */
+export const SETUP_STATE_WORD: Record<SetupProbeState, string> = {
+  ready: 'ready',
+  missing: 'missing',
+  not_available: 'not here',
+  not_probed: 'unverified',
+};
+
+/** What "ready" means for each row, said in the row's own terms. */
+export const SETUP_READY_WORD: Record<SetupRowKey, string> = {
+  cli: 'found',
+  media_api: 'configured',
+  browser: 'installed',
+  offline_seed: 'seeded',
+};
+
+export type SetupRowKey = 'cli' | 'media_api' | 'browser' | 'offline_seed';
+
+export function setupStateWord(row: SetupRowKey, state: SetupProbeState): string {
+  return state === 'ready' ? SETUP_READY_WORD[row] : SETUP_STATE_WORD[state];
+}
+
 export const SetupReadinessSchema = z.object({
   generated_at: z.iso.datetime(),
   /** `codespaces` changes what the generation path can promise. */

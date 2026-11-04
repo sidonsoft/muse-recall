@@ -1,14 +1,18 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { basename } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import {
   DEFAULT_MEDIA_IMAGE_MODEL,
   DEFAULT_SAM_MODEL,
   type SetupProbe,
   type SetupReadiness,
   SetupReadinessSchema,
+  type SetupRowKey,
+  setupStateWord,
 } from '@mml/shared';
 import { chromium } from 'playwright-core';
 import { isCliAvailable } from './forge/cli-lookup.js';
+import { ForgeError, type ForgeWorkspace } from './forge/workspace.js';
 
 /**
  * Setup readiness: the three documented judge paths, stated as prerequisites
@@ -34,6 +38,116 @@ import { isCliAvailable } from './forge/cli-lookup.js';
 /** The demo project `pnpm demo:seed` creates (the README first run). */
 export const SEEDED_DEMO_PROJECT = 'forge-demo';
 
+/**
+ * What a read-only inspection of the demo seed established. The readiness probe
+ * refuses to call the demo "ready" from a file listing: the demo is the project,
+ * the approved version that project reports, and the artifact those bytes point
+ * at. Anything this inspection cannot establish is reported as such rather than
+ * rounded up to "ready".
+ */
+export interface DemoSeedFacts {
+  /** The SQLite file the server was configured with. */
+  database: 'file' | 'in_memory' | 'absent' | 'unreadable';
+  /** Is the demo project a record in the memory database? */
+  record: 'present' | 'absent' | 'unchecked';
+  project_name: string | null;
+  /** Can the Forge state for the demo project be read? */
+  workspace_state: 'readable' | 'absent' | 'unreadable';
+  current_version: number | null;
+  version_count: number;
+  /** The approved artifact the state points at, checked against its recorded hash. */
+  artifact: 'hash_verified' | 'missing' | 'hash_mismatch' | 'no_hash_recorded' | 'unchecked';
+}
+
+function openReadOnly(databasePath: string): DatabaseSync | null {
+  // `readOnly` is the same option the backup tools use, and the file is checked
+  // first so a readiness probe can never create an empty database on a typo.
+  if (!safeExists(databasePath)) return null;
+  try {
+    return new DatabaseSync(databasePath, { readOnly: true });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gather the demo-seed facts with read-only operations: a `SELECT` against the
+ * projects table, the Forge `state.json` the app itself would read, and the
+ * approved artifact bytes hashed and compared with the hash recorded in that
+ * state. Nothing is created, seeded, migrated or repaired here.
+ */
+export async function gatherDemoSeedFacts(options: {
+  databasePath: string;
+  workspace: ForgeWorkspace;
+  projectId?: string;
+}): Promise<DemoSeedFacts> {
+  const projectId = options.projectId ?? SEEDED_DEMO_PROJECT;
+  const facts: DemoSeedFacts = {
+    database: 'file',
+    record: 'unchecked',
+    project_name: null,
+    workspace_state: 'absent',
+    current_version: null,
+    version_count: 0,
+    artifact: 'unchecked',
+  };
+
+  if (options.databasePath === ':memory:') {
+    facts.database = 'in_memory';
+  } else {
+    const db = openReadOnly(options.databasePath);
+    if (db === null) {
+      facts.database = safeExists(options.databasePath) ? 'unreadable' : 'absent';
+    } else {
+      try {
+        const row = db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId) as
+          | { name: string | null }
+          | undefined;
+        facts.record = row ? 'present' : 'absent';
+        facts.project_name = row?.name ?? null;
+      } catch {
+        // No projects table (or a locked file): say "unchecked", not "absent".
+        facts.record = 'unchecked';
+      } finally {
+        try {
+          db.close();
+        } catch {
+          /* closing a read-only handle is not worth failing a probe over */
+        }
+      }
+    }
+  }
+
+  try {
+    const state = await options.workspace.state(projectId);
+    facts.workspace_state = 'readable';
+    facts.current_version = state.current_version;
+    facts.version_count = state.versions.length;
+    const entry = state.versions.find((version) => version.version === state.current_version);
+    if (state.current_version === null) {
+      facts.artifact = 'unchecked';
+    } else if (!entry?.sha256) {
+      facts.artifact = 'no_hash_recorded';
+    } else {
+      try {
+        // `currentHtml` re-reads the artifact and throws if the bytes no longer
+        // match the recorded hash; a null return means the file is not there.
+        const html = await options.workspace.currentHtml(projectId);
+        facts.artifact = html === null ? 'missing' : 'hash_verified';
+      } catch (error) {
+        facts.artifact =
+          error instanceof ForgeError && error.code === 'version_corrupt'
+            ? 'hash_mismatch'
+            : 'unchecked';
+      }
+    }
+  } catch {
+    facts.workspace_state = 'unreadable';
+  }
+
+  return facts;
+}
+
 export interface SetupReadinessInput {
   env?: NodeJS.ProcessEnv;
   /** Active provider id (`muse-cli` or `echo`). */
@@ -46,13 +160,16 @@ export interface SetupReadinessInput {
   samModel?: string;
   /** `managed` (Playwright Chromium) or `chrome` (system Chrome). */
   runtimeBrowser?: 'managed' | 'chrome';
-  databasePath: string;
-  workspaceRoot: string;
+  /**
+   * Read-only demo-seed facts from `gatherDemoSeedFacts`. Omitted means this
+   * surface did not inspect the demo, which the row reports as `not_probed`
+   * instead of guessing from file existence.
+   */
+  demo_seed?: DemoSeedFacts;
   /** Injectable for tests; the real lookups are the defaults. */
   cliLookup?: (bin: string) => boolean;
   browserExecutable?: () => string | null;
   fileExists?: (path: string) => boolean;
-  workspaceEntries?: (path: string) => string[];
 }
 
 function inCodespaces(env: NodeJS.ProcessEnv): boolean {
@@ -127,12 +244,7 @@ export function probeSetupReadiness(input: SetupReadinessInput): SetupReadiness 
       lookup,
       exists,
     }),
-    offline_seed: probeSeed({
-      databasePath: input.databasePath,
-      workspaceRoot: input.workspaceRoot,
-      exists,
-      entries: input.workspaceEntries ?? listDirectoryNames,
-    }),
+    offline_seed: probeSeed(input.demo_seed),
   });
 }
 
@@ -142,14 +254,6 @@ function probeCli(options: {
   cliBin: string;
   lookup: (bin: string) => boolean;
 }): SetupProbe {
-  if (options.codespace) {
-    return {
-      state: 'not_available',
-      detail:
-        'Codespaces supports the offline exploration path only: this container has no logged-in Muse CLI, so live application generation cannot run here.',
-      fix: 'Explore here; generate on your own machine — install the Muse CLI, run `muse login`, then `MODEL_PROVIDER=muse-cli pnpm dev`. Guide: docs/guide/FOR_JUDGES.md.',
-    };
-  }
   if (options.providerId !== 'muse-cli') {
     return {
       state: 'not_available',
@@ -157,16 +261,25 @@ function probeCli(options: {
       fix: 'After seeding, restart with `MODEL_PROVIDER=muse-cli pnpm dev` — that path needs the Muse CLI installed and logged in.',
     };
   }
+  // Being a codespace does not decide whether generation can run here: this
+  // instance's provider setting and whether a CLI is actually on PATH do. The
+  // documented default container installs and authenticates neither, which is a
+  // missing prerequisite — said plainly, without pretending the platform forbids
+  // it or that a hand-provisioned codespace is broken.
   if (!options.lookup(options.cliBin)) {
     return {
       state: 'missing',
-      detail: `No coding CLI found on PATH as "${options.cliBin}" (configured by MUSE_BIN / FORGE_MUSE_BIN).`,
-      fix: 'Install the Muse CLI, then `muse login`. If the binary is not on PATH, point MUSE_BIN (or FORGE_MUSE_BIN for Studio alone) at it.',
+      detail: options.codespace
+        ? `No coding CLI found on PATH as "${options.cliBin}" in this codespace: the documented devcontainer does not install or authenticate the Muse CLI, so as shipped it cannot generate.`
+        : `No coding CLI found on PATH as "${options.cliBin}" (configured by MUSE_BIN / FORGE_MUSE_BIN).`,
+      fix: 'Install the Muse Code CLI, then `muse login`. If the binary is not on PATH, point MUSE_BIN (or FORGE_MUSE_BIN for Studio alone) at it.',
     };
   }
   return {
     state: 'not_probed',
-    detail: `Found the coding CLI as "${options.cliBin}" on PATH. Login state is deliberately not probed: that would be a live call.`,
+    detail: options.codespace
+      ? `Found "${options.cliBin}" on PATH in this codespace, so generation is not blocked by a missing binary; authentication and provider access remain unverified, because checking them would be a live call.`
+      : `Found the coding CLI as "${options.cliBin}" on PATH. Login state is deliberately not probed: that would be a live call.`,
     fix: 'If you have not logged in on this machine, run `muse login`. Then confirm the panel with `pnpm judge:check`.',
   };
 }
@@ -186,7 +299,7 @@ function probeMedia(options: {
   }
   return {
     state: 'ready',
-    detail: `A server-side media key is configured (image ${options.mediaModel}, segmentation ${options.samModel}). The key value itself is never reported.`,
+    detail: `A server-side media key is configured and length-checked (image ${options.mediaModel}, segmentation ${options.samModel}); the value is never reported. No request was made, so provider access and remaining quota are unverified.`,
     fix: null,
   };
 }
@@ -202,7 +315,7 @@ function probeBrowser(options: {
     if (found) {
       return {
         state: 'ready',
-        detail: `FORGE_RUNTIME_BROWSER=chrome and a system Chrome is present (${basename(found)}).`,
+        detail: `FORGE_RUNTIME_BROWSER=chrome and a system Chrome was found (${basename(found)}). It was not launched, so launchability stays unverified.`,
         fix: null,
       };
     }
@@ -218,7 +331,7 @@ function probeBrowser(options: {
     const label = path.split(/[\\/]/).filter(Boolean).slice(-2).join('/');
     return {
       state: 'ready',
-      detail: `Managed Chromium is installed for application verification (${label}).`,
+      detail: `A managed Chromium executable exists for application verification (${label}). It was not launched: a browser runs only when a staged application is verified.`,
       fix: null,
     };
   }
@@ -230,45 +343,105 @@ function probeBrowser(options: {
   };
 }
 
-function probeSeed(options: {
-  databasePath: string;
-  workspaceRoot: string;
-  exists: (path: string) => boolean;
-  entries: (path: string) => string[];
-}): SetupProbe {
-  // `:memory:` is what the test bench and a few scripts open. There is no file
-  // to check there, and saying "missing" would send a judge off to seed a
-  // database that the instance is not using.
-  if (options.databasePath === ':memory:') {
+function probeSeed(facts: DemoSeedFacts | undefined): SetupProbe {
+  // No facts means this surface did not inspect the demo. Saying "missing" would
+  // send a reader off to re-seed a database nobody looked at.
+  if (!facts) {
     return {
       state: 'not_probed',
       detail:
-        'This instance opened an in-memory database, so there is no seeded demo file behind it to check.',
+        'The demo seed was not inspected on this surface, so the panel does not claim it is present.',
+      fix: 'Run `pnpm judge:check` — it inspects the project record, its approved version and that artifact read-only.',
+    };
+  }
+  if (facts.database === 'in_memory') {
+    return {
+      state: 'not_probed',
+      detail:
+        'This instance opened an in-memory database, so there is no demo seed behind it to inspect.',
       fix: 'Run `pnpm demo:seed`, then start the documented way (`pnpm dev`), which opens the SQLite file at the checkout root.',
     };
   }
-  const database = options.exists(options.databasePath);
-  const workspaces = options.entries(options.workspaceRoot);
-  if (database && workspaces.length > 0) {
+  if (facts.database === 'absent' || facts.database === 'unreadable') {
+    return {
+      state: facts.database === 'absent' ? 'missing' : 'not_probed',
+      detail:
+        facts.database === 'absent'
+          ? 'Nothing to browse yet: the database file this server opens does not exist.'
+          : 'The database file exists but could not be opened read-only, so the demo seed is unverified.',
+      fix: 'Run `pnpm demo:seed` before starting the server; it creates the database and the demo project inside it.',
+    };
+  }
+  const demo = `"${facts.project_name ?? SEEDED_DEMO_PROJECT}"`;
+
+  // Ready means all three facts at once: the memory record, the version the
+  // record's workspace reports, and that version's bytes matching their hash.
+  if (
+    facts.record === 'present' &&
+    facts.workspace_state === 'readable' &&
+    facts.current_version !== null &&
+    facts.artifact === 'hash_verified'
+  ) {
     return {
       state: 'ready',
       detail:
-        `The files behind the offline demo are in place: ${basename(options.databasePath)} plus ` +
-        `${workspaces.length} workspace ${workspaces.length === 1 ? 'directory' : 'directories'} ` +
-        `under ${basename(options.workspaceRoot)}. Open the seeded "${SEEDED_DEMO_PROJECT}" project in Studio.`,
+        `Project ${demo} (id ${SEEDED_DEMO_PROJECT}) is a record in the database and reports v${facts.current_version} ` +
+        `approved (${facts.version_count} version${facts.version_count === 1 ? '' : 's'}); those artifact bytes match ` +
+        `their recorded hash. Read-only: nothing was seeded or written.`,
       fix: null,
     };
   }
-  const absent = [
-    database ? null : `no database file (${basename(options.databasePath)})`,
-    workspaces.length > 0
-      ? null
-      : `no workspace directories under ${basename(options.workspaceRoot)}`,
-  ].filter((part): part is string => part !== null);
+
+  if (facts.artifact === 'hash_mismatch') {
+    return {
+      state: 'missing',
+      detail: `Project ${demo} reports v${facts.current_version}, but those bytes no longer match their recorded hash — the app refuses to serve them.`,
+      fix: 'For the demo, `pnpm demo:seed` re-creates it. For a real project use Studio → Recovery (inspect, then repair); this check changed nothing.',
+    };
+  }
+  if (facts.artifact === 'missing') {
+    return {
+      state: 'missing',
+      detail: `Project ${demo} reports v${facts.current_version} approved, but that version file is not in the workspace.`,
+      fix: 'Re-seed the demo with `pnpm demo:seed`, or inspect the project under Studio → Recovery.',
+    };
+  }
+  if (facts.workspace_state === 'unreadable' || facts.record === 'unchecked') {
+    return {
+      state: 'not_probed',
+      detail:
+        'The demo project could not be fully inspected (its workspace state is unreadable, or the projects table was unavailable), so this row stays unverified rather than guessed.',
+      fix: `Open Studio → Recovery for ${facts.project_name ? `"${facts.project_name}"` : 'that project'} (inspect, then repair), or re-seed the demo with \`pnpm demo:seed\`.`,
+    };
+  }
+  if (facts.current_version === null) {
+    return {
+      state: 'missing',
+      detail:
+        facts.record === 'present'
+          ? `Project ${demo} exists in memory but has no approved version, so Studio opens with nothing to review.`
+          : `Nothing to browse yet: no project record and no approved version for id ${SEEDED_DEMO_PROJECT}.`,
+      fix: `Run \`pnpm demo:seed\` before starting the server — it creates the "${SEEDED_DEMO_PROJECT}" project, its decisions and its approved version 1 (re-running resets it).`,
+    };
+  }
+  if (facts.artifact === 'no_hash_recorded') {
+    return {
+      state: 'not_probed',
+      detail: `Project ${demo} reports v${facts.current_version}, but that version recorded no hash, so there is no expected digest to compare its bytes against.`,
+      fix: 'Open Studio → Recovery for that project to inspect the history.',
+    };
+  }
+  if (facts.artifact === 'unchecked') {
+    return {
+      state: 'not_probed',
+      detail: `Project ${demo} reports v${facts.current_version}, but its artifact was not opened, so this row cannot claim its bytes.`,
+      fix: `Run \`pnpm judge:check\`, which reads the project record, its version and that artifact.`,
+    };
+  }
   return {
     state: 'missing',
-    detail: `Nothing to browse yet: ${absent.join('; ')}.`,
-    fix: `Run \`pnpm demo:seed\` before starting the server — it creates the "${SEEDED_DEMO_PROJECT}" project and its workspace (re-running resets it to its recorded version 1).`,
+    detail: `The workspace holds ${demo} at v${facts.current_version}, but that id is not a project record in this database: memory, decisions and retrieval will look empty.`,
+    fix: `Run \`pnpm demo:seed\` to rebuild the "${SEEDED_DEMO_PROJECT}" project and its memory records.`,
   };
 }
 
@@ -280,23 +453,8 @@ function safeExists(path: string): boolean {
   }
 }
 
-/** Directory names under a path, or [] when it does not exist or cannot be read. */
-function listDirectoryNames(path: string): string[] {
-  try {
-    return readdirSync(path, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
-  } catch {
-    return [];
-  }
-}
-
-const STATE_WORD: Record<SetupProbe['state'], string> = {
-  ready: 'ready',
-  missing: 'MISSING',
-  not_available: 'not here',
-  not_probed: 'unverified',
-};
+const STATE_WORD_NOTE =
+  'Read-only presence/configuration checks: no model call, no quota spend, nothing written, no secret value printed. "configured" and "installed" are not "verified".';
 
 /**
  * The panel as a human reads it in a terminal. One function feeds both the
@@ -305,21 +463,25 @@ const STATE_WORD: Record<SetupProbe['state'], string> = {
  * another stops trusting either of them.
  */
 export function formatSetupPanel(setup: SetupReadiness): string {
-  const rows: Array<[string, SetupProbe]> = [
-    ['CLI', setup.cli],
-    ['Media API', setup.media_api],
-    ['Browser validation', setup.browser],
-    ['Offline demo', setup.offline_seed],
+  const rows: Array<[SetupRowKey, string, SetupProbe]> = [
+    ['cli', 'CLI', setup.cli],
+    ['media_api', 'Media API', setup.media_api],
+    ['browser', 'Browser validation', setup.browser],
+    ['offline_seed', 'Offline demo', setup.offline_seed],
   ];
   const lines = [`Setup status — ${setup.environment}, provider ${setup.provider}`];
-  for (const [label, probe] of rows) {
-    lines.push(`  ${label.padEnd(19)} ${STATE_WORD[probe.state]}`);
+  for (const [key, label, probe] of rows) {
+    const word = setupStateWord(key, probe.state);
+    // In a terminal, the rows that need action are the ones you scan for; the UI
+    // keeps the same words at their own case.
+    lines.push(`  ${label.padEnd(19)} ${probe.state === 'missing' ? word.toUpperCase() : word}`);
     lines.push(`    ${probe.detail}`);
     if (probe.fix) lines.push(`    fix: ${probe.fix}`);
   }
   lines.push(
-    '  Paths: (1) browse the seeded demo offline · (2) generate live applications (Muse CLI) · (3) media and SAM (FORGE_MUSE_API_KEY).',
+    '  Paths: (1) browse the demo project offline · (2) generate live applications (Muse CLI) · (3) media and SAM (FORGE_MUSE_API_KEY).',
   );
   lines.push('  Everything on those paths is documented in docs/guide/FOR_JUDGES.md.');
+  lines.push(`  ${STATE_WORD_NOTE}`);
   return lines.join('\n');
 }

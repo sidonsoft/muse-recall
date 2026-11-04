@@ -2,8 +2,9 @@ import { MemoryEngine, openDatabase } from '@mml/memory-engine';
 import { createModelProvider } from '@mml/muse-provider';
 import { buildApp } from './app.js';
 import { loadConfig, loadDotEnv } from './config.js';
+import { ForgeWorkspace } from './forge/workspace.js';
 import { isLoopbackSocketAddress } from './host-guard.js';
-import { formatSetupPanel, probeSetupReadiness } from './setup-readiness.js';
+import { formatSetupPanel, gatherDemoSeedFacts, probeSetupReadiness } from './setup-readiness.js';
 
 /**
  * Server entrypoint: load config, open the database, build the app, listen.
@@ -95,10 +96,11 @@ async function main(): Promise<void> {
   /*
    * The setup panel, printed on every start. A judge's first failure is almost
    * never a server error: it is a missing seed, a missing browser, or expecting
-   * live generation from an `echo` run or a codespace. All of those look like a
-   * healthy server showing an empty screen, so the answer goes to the terminal
-   * the judge is already reading. Offline by construction — no request leaves
-   * the machine here — and a probe failure must never take the server down.
+   * live generation from an `echo` run. Those all look like a healthy server
+   * showing an empty screen, so the answer goes to the terminal the judge is
+   * already reading. The probe itself performs no request and no model call — it
+   * reads files, PATH and configuration, and inspects the demo project through
+   * read-only queries — and a probe failure must never take the server down.
    */
   try {
     const setup = probeSetupReadiness({
@@ -107,8 +109,10 @@ async function main(): Promise<void> {
       mediaApiKey: config.forge?.apiKey ?? null,
       mediaModel: config.media?.model,
       samModel: config.media?.samModel,
-      databasePath: config.databasePath,
-      workspaceRoot: config.workspaceRoot,
+      demo_seed: await gatherDemoSeedFacts({
+        databasePath: config.databasePath,
+        workspace: new ForgeWorkspace(config.workspaceRoot),
+      }),
     });
     app.log.info(formatSetupPanel(setup));
     if (setup.offline_seed.state === 'missing') {

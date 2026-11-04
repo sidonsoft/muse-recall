@@ -3,17 +3,21 @@
  * documented paths this machine can actually complete, before they start the
  * server and guess from an empty screen.
  *
- * Why this exists: the three paths (browse the seeded demo offline, generate
+ * Why this exists: the three paths (browse the demo project offline, generate
  * live applications through the coding CLI, use live media and SAM through a
  * server-side key) fail in ways that all look identical from the browser —
  * Studio opens fine and shows nothing interesting. The causes are local and
  * checkable: an unseeded workspace, no verification browser, no CLI on PATH, a
- * missing media key, or a codespace that was never meant to generate.
+ * missing media key, or a container whose shipped default is the offline
+ * provider.
  *
- * It performs **no network request and no model call**: file existence, PATH
- * lookup and environment presence only, which is also why it is safe to run
- * with no credentials configured. Login validity and quota are reported as
- * unverified with the command that settles them, rather than inferred.
+ * It performs **no network request and no model call of its own**: the probe is
+ * PATH lookup, configuration, read-only queries and file hashing, which is also
+ * why it is safe to run with no credentials configured. That is a claim about
+ * this command, not about setup: `pnpm install` downloads dependencies from the
+ * package registry, and running this script needs them installed. Login
+ * validity and quota are reported as unverified with the command that settles
+ * them, rather than inferred.
  *
  * The panel text comes from the same `probeSetupReadiness` + `formatSetupPanel`
  * the server prints at startup and that `GET /api/health` serves to the System
@@ -25,8 +29,10 @@
 import { spawnSync } from 'node:child_process';
 import type { SetupReadiness } from '@mml/shared';
 import { loadConfig, loadDotEnv } from '../apps/server/src/config.js';
+import { ForgeWorkspace } from '../apps/server/src/forge/workspace.js';
 import {
   formatSetupPanel,
+  gatherDemoSeedFacts,
   probeSetupReadiness,
   SEEDED_DEMO_PROJECT,
 } from '../apps/server/src/setup-readiness.js';
@@ -61,7 +67,7 @@ function lines(setup: SetupReadiness): string[] {
   out.push('');
   out.push('What each path needs, and what you should see');
   out.push('');
-  out.push('  1 · Explore offline (no credential, no request leaves the machine)');
+  out.push('  1 · Explore offline (no credential; this path makes no provider call)');
   out.push('       pnpm install --frozen-lockfile');
   out.push('       pnpm demo:seed');
   out.push('       MODEL_PROVIDER=echo pnpm dev');
@@ -72,7 +78,7 @@ function lines(setup: SetupReadiness): string[] {
     '       Expected: the System screen says the offline provider is active — that is this path working, not a failure.',
   );
   out.push('');
-  out.push('  2 · Generate live applications (your machine, not a codespace)');
+  out.push('  2 · Generate live applications (needs the CLI installed and logged in)');
   out.push('       muse --version && muse login');
   out.push('       pnpm exec playwright-core install chromium');
   out.push('       MODEL_PROVIDER=muse-cli pnpm dev');
@@ -93,13 +99,23 @@ function lines(setup: SetupReadiness): string[] {
   );
   out.push('');
   out.push(
-    '  Codespaces: exploration path only in this build — it cannot generate live applications.',
+    '  Codespaces: the documented container installs neither the Muse CLI nor a login, so as',
   );
+  out.push(
+    '       shipped it runs the exploration path. The panel reads this instance’s actual provider',
+  );
+  out.push(
+    '       setting and PATH, so a container you provisioned yourself is judged on what it has —',
+  );
+  out.push(
+    '       though this project has not run live generation from a codespace, and login state is',
+  );
+  out.push('       never probed: it would be a live call.');
   out.push('  Guide and troubleshooting: docs/guide/FOR_JUDGES.md');
   return out;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const envFile = loadDotEnv();
   const config = loadConfig();
   const setup = probeSetupReadiness({
@@ -108,8 +124,12 @@ function main(): void {
     mediaApiKey: config.forge?.apiKey ?? null,
     mediaModel: config.media?.model,
     samModel: config.media?.samModel,
-    databasePath: config.databasePath,
-    workspaceRoot: config.workspaceRoot,
+    // Read-only inspection of the demo itself: the project record, the approved
+    // version that project reports, and the artifact bytes against their hash.
+    demo_seed: await gatherDemoSeedFacts({
+      databasePath: config.databasePath,
+      workspace: new ForgeWorkspace(config.workspaceRoot),
+    }),
   });
   if (envFile) console.log(`env file: ${envFile}`);
   console.log(lines(setup).join('\n'));
@@ -118,4 +138,4 @@ function main(): void {
   // first command in a guide. `GET /api/health` carries the same rows for gates.
 }
 
-main();
+void main();
