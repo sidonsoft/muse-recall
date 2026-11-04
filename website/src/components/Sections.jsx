@@ -147,8 +147,9 @@ export function Watch() {
         <p className="footnote reveal">
           Narration is one complete take of a single voice, unmodified at normal speed; measured
           silence was trimmed and no other narration is mixed in. No new provider call was made to
-          assemble the cut. The earlier published cut and the 2:50 submission cut keep their own
-          records in the repository rather than being overwritten.{' '}
+          assemble the cut. The two earlier cuts — 3:00 at tag <code>v0.1.0</code> and 2:50.47 at
+          commit <code>c32d03b</code> — keep their own records in the repository rather than being
+          overwritten; neither is a submission record, because submission has not happened.{' '}
           <a href={DEMOQA} target="_blank" rel="noreferrer">
             Full recording scope, audio measurements and SHA-256 →
           </a>
