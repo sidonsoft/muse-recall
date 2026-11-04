@@ -4,6 +4,10 @@ Set up Muse Recall on a local machine, load the recorded demo, and make a first 
 
 [Guide](README.md) · [Getting started](getting-started.md) · [Project memory](project-memory.md) · [HTML Studio](html-studio.md) · [Architecture](architecture.md) · [Limitations](limitations.md)
 
+Judges and first-time reviewers: start with
+[For judges: start here](FOR_JUDGES.md) — three paths, exact commands, expected results and
+the startup status panel.
+
 ## Prerequisites
 
 | Requirement | Version | Why |
@@ -153,6 +157,7 @@ The root `package.json` is the source of truth. These are the useful entry point
 | Command | What it does |
 | --- | --- |
 | `pnpm verify` | Lint, typecheck and the unit/integration test suite. |
+| `pnpm judge:check` | Which of the three documented paths this machine can complete — coding CLI, media key, verification browser, seeded demo — with the fix for each gap. No model call, no quota, prints the same rows the API logs at startup and the System screen shows. |
 | `pnpm build` | Production web and server builds. |
 | `pnpm muse:probe` | One real headless Muse call, with latency and token usage. |
 | `MML_LIVE_MUSE=1 pnpm test` | Adds the opt-in live Muse integration tests. |

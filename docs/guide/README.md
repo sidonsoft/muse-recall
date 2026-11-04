@@ -18,6 +18,7 @@ evidence documents.
 
 | Page | Read it for |
 | --- | --- |
+| [For judges: start here](FOR_JUDGES.md) | The three paths a reviewer can actually complete, exact commands, expected results, the startup status panel and troubleshooting |
 | [Getting started](getting-started.md) | Prerequisites, install, environment, demo seed, run, verification commands, troubleshooting |
 | [Project memory](project-memory.md) | Decision types, creation, correction and supersession, retrieval, Forge mode, the exact prompt block |
 | [HTML Studio](html-studio.md) | Generate and modify, staging, review, approve, reject, rollback, Decision Guard, export |

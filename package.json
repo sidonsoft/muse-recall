@@ -49,6 +49,7 @@
     "verify:fresh-install": "tsx scripts/verify-fresh-install.ts",
     "review:app": "tsx scripts/build-review-app.ts",
     "verify:first-run": "tsx scripts/verify-first-run.ts",
+    "judge:check": "tsx scripts/judge-check.ts",
     "verify:forge": "tsx scripts/verify-forge.ts",
     "verify:runtime": "tsx scripts/verify-runtime.ts",
     "vendor:phaser": "tsx scripts/vendor-phaser.ts",

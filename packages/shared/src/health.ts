@@ -89,6 +89,50 @@ export const AlertSignalsSchema = z.object({
 });
 export type AlertSignals = z.infer<typeof AlertSignalsSchema>;
 
+/**
+ * Setup readiness — the "can this judge actually run each documented path?"
+ * panel (server startup, `pnpm judge:check`, and the System screen).
+ *
+ * It deliberately reports *configuration and local prerequisites*, never model
+ * availability: probing it performs no network request and spends no quota, so
+ * it can run on every startup. A live provider call stays a deliberate POST to
+ * `/api/health/muse`.
+ *
+ * Four states, chosen so "not needed for this path" never reads as a failure:
+ *   ready          the prerequisite is present
+ *   missing        needed and absent; `fix` says what to run
+ *   not_available  cannot be satisfied in this environment (Codespaces CLI)
+ *   not_probed     present, but the deeper condition is not checked here
+ *                  (a CLI binary on PATH says nothing about its login state)
+ */
+export const SetupProbeStateSchema = z.enum(['ready', 'missing', 'not_available', 'not_probed']);
+export type SetupProbeState = z.infer<typeof SetupProbeStateSchema>;
+
+export const SetupProbeSchema = z.object({
+  state: SetupProbeStateSchema,
+  /** What was actually seen, bounded, secret-free. */
+  detail: z.string().max(240),
+  /** Exact command or setting that would change this row; null when nothing to do. */
+  fix: z.string().max(300).nullable(),
+});
+export type SetupProbe = z.infer<typeof SetupProbeSchema>;
+
+export const SetupReadinessSchema = z.object({
+  generated_at: z.iso.datetime(),
+  /** `codespaces` changes what the generation path can promise. */
+  environment: z.enum(['local', 'codespaces']),
+  provider: z.string(),
+  /** Path 2 — live application generation through the coding CLI. */
+  cli: SetupProbeSchema,
+  /** Path 3 — image / segmentation / transcription / screenshot review. */
+  media_api: SetupProbeSchema,
+  /** Whether a staged application can be verified in a real browser. */
+  browser: SetupProbeSchema,
+  /** Path 1 — the seeded offline demo workspace and its database. */
+  offline_seed: SetupProbeSchema,
+});
+export type SetupReadiness = z.infer<typeof SetupReadinessSchema>;
+
 export const HealthResponseSchema = z.object({
   status: ServiceStatusSchema,
   service: z.literal('muse-memory-lab'),
@@ -100,6 +144,8 @@ export const HealthResponseSchema = z.object({
   provider: ProviderCheckSchema,
   forge: ForgeHealthSummarySchema.optional(),
   alerts: AlertSignalsSchema.optional(),
+  /** Setup readiness for the three documented judge paths. */
+  setup: SetupReadinessSchema.optional(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 

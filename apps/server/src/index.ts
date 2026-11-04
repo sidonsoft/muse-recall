@@ -3,6 +3,7 @@ import { createModelProvider } from '@mml/muse-provider';
 import { buildApp } from './app.js';
 import { loadConfig, loadDotEnv } from './config.js';
 import { isLoopbackSocketAddress } from './host-guard.js';
+import { formatSetupPanel, probeSetupReadiness } from './setup-readiness.js';
 
 /**
  * Server entrypoint: load config, open the database, build the app, listen.
@@ -90,6 +91,37 @@ async function main(): Promise<void> {
     },
     'Muse Recall API ready',
   );
+
+  /*
+   * The setup panel, printed on every start. A judge's first failure is almost
+   * never a server error: it is a missing seed, a missing browser, or expecting
+   * live generation from an `echo` run or a codespace. All of those look like a
+   * healthy server showing an empty screen, so the answer goes to the terminal
+   * the judge is already reading. Offline by construction — no request leaves
+   * the machine here — and a probe failure must never take the server down.
+   */
+  try {
+    const setup = probeSetupReadiness({
+      providerId: provider.id,
+      cliBin: config.forge?.museBin ?? config.provider.museBin,
+      mediaApiKey: config.forge?.apiKey ?? null,
+      mediaModel: config.media?.model,
+      samModel: config.media?.samModel,
+      databasePath: config.databasePath,
+      workspaceRoot: config.workspaceRoot,
+    });
+    app.log.info(formatSetupPanel(setup));
+    if (setup.offline_seed.state === 'missing') {
+      app.log.warn(
+        'The offline demo is not seeded, so Studio opens with no project. Run `pnpm demo:seed` and restart.',
+      );
+    }
+  } catch (error) {
+    app.log.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'setup readiness probe could not complete; GET /api/health omits the setup block',
+    );
+  }
 }
 
 main().catch((error: unknown) => {

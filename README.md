@@ -12,6 +12,28 @@ The first version is only the beginning. Next week, your AI builder needs to rem
 
 > **v0.1.0 beta.** A local-first, single-user studio, with correctable memory, media references and staged application review. [Download the release](https://github.com/sidonsoft/muse-recall/releases/tag/v0.1.0) · [Beta release notes](docs/release/notes/v0.1.0-beta.md).
 
+### For judges: start here
+
+Three paths, each runnable on its own. Run `pnpm judge:check` first: it prints which ones
+this machine can complete and the exact fix for anything missing — no model call, no
+credential, nothing leaves the machine. Full page with expected results and
+troubleshooting: [For judges: start here](docs/guide/FOR_JUDGES.md).
+
+| Path | What it needs | What you should see |
+| --- | --- | --- |
+| **Explore offline** — the seeded demo, retained outputs and labelled examples | Node 24+ and pnpm 10.x only. No credential, no key | `pnpm demo:seed` then `MODEL_PROVIDER=echo pnpm dev`, open `forge-demo`: an approved application with version history, ACTIVE and SUPERSEDED decisions, and a retrieval explanation for what the next generation would receive |
+| **Generate live applications** | Meta Muse Code CLI installed and `muse login`, plus a verification browser | a staged proposal you inspect — preview, source, diff, the memory references it received, Decision Guard findings — then approve or reject. The staged application is loaded in a real browser before approval is offered |
+| **Live media and SAM** | a separate **server-side** `FORGE_MUSE_API_KEY` in `.env`, and provider quota | image generation and editing, selecting an object and extracting a transparent cutout, transcription, clip observation, screenshot review of a staged change |
+
+**Codespaces runs the first path only.** It opens in about three minutes with the demo
+already seeded, and **Generate change** / **New app** are disabled with an explanation,
+because the container has no logged-in Muse CLI: live generation needs your own machine.
+
+The same three prerequisites appear as a **setup status panel** — in the API's startup log,
+as the first panel on the **System** screen, and from `pnpm judge:check` — distinguishing
+*coding CLI*, *media API configured* and *browser validation ready*, with the command that
+fixes anything missing. A missing prerequisite should never look like a broken app.
+
 ## See the workflow
 
 ![Current beta Studio displaying the retained live-generated Palette Bench application, media panels, decision provenance and version history](docs/assets/readme-beta/studio-beta.png)
@@ -75,7 +97,7 @@ git clone --branch v0.1.0 https://github.com/sidonsoft/muse-recall.git
 cd muse-recall
 ```
 
-The [Codespaces walkthrough](.devcontainer/README.md) offers a browser-based setup for browsing. Real application generation still needs a configured coding CLI. Its setup includes an anonymous launch counter, with an opt-out documented there.
+The [Codespaces walkthrough](.devcontainer/README.md) offers a browser-based setup for browsing: dependencies installed, a `.env` on the offline provider, and the demo seeded. **It cannot generate live applications** — the container has no logged-in Muse Code CLI, so the Generate buttons are disabled with an explanation. Run generation on your own machine instead. Its setup includes an anonymous launch counter, with an opt-out documented there.
 
 ### Browse without a Muse account
 
@@ -83,7 +105,8 @@ You need **Node.js 24+** and **pnpm 10.x**; the workspace pins pnpm `10.32.1`. F
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm demo:seed
+pnpm judge:check        # what can this machine do? prints the fix for anything missing
+pnpm demo:seed          # run this before the first server start
 MODEL_PROVIDER=echo pnpm dev
 ```
 
