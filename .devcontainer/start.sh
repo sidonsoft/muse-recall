@@ -23,6 +23,7 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
+source .devcontainer/process-identity.sh
 
 API="${CODESPACES_APP_API:-http://127.0.0.1:8787/api/live}"
 WEB="${CODESPACES_APP_WEB:-http://127.0.0.1:5173}"
@@ -91,23 +92,6 @@ release_lock() {
   fi
 }
 
-wait_for_lock() {
-  # A live holder is actively starting the app: wait for health, not the lock.
-  local waited=0
-  while [ "$waited" -lt "$WAIT_SECS" ]; do
-    if app_up; then
-      echo "Another start is in progress; the app became healthy while waiting."
-      return 0
-    fi
-    if [ ! -d "$LOCK_DIR" ]; then
-      return 2
-    fi
-    sleep 2
-    waited=$((waited + 2))
-  done
-  return 1
-}
-
 if app_up; then
   echo "Muse Recall is already running (API and web both answer)."
   bash .devcontainer/status.sh
@@ -115,25 +99,22 @@ if app_up; then
 fi
 
 mkdir -p "$LOG_DIR"
-if ! acquire_lock; then
-  wait_for_lock
-  lock_wait=$?
-  if [ "$lock_wait" = "0" ]; then
+lock_deadline=$((SECONDS + WAIT_SECS))
+while ! acquire_lock; do
+  if app_up; then
+    echo "Another start is in progress; the app became healthy while waiting."
     bash .devcontainer/status.sh
     exit 0
-  elif [ "$lock_wait" = "2" ]; then
-    # The holder finished without the app becoming healthy; try ourselves.
-    if ! acquire_lock; then
-      echo "Could not take the start lock; another start is still running."
-      echo "If it is stuck, remove $LOCK_DIR (only when no start is running) and re-run."
-      exit 1
-    fi
-  else
+  fi
+  if [ "$SECONDS" -ge "$lock_deadline" ]; then
     echo "Waited ${WAIT_SECS}s for the in-progress start, but the app is still not healthy."
-    echo "Inspect the holder's output, then re-run: bash .devcontainer/start.sh"
+    echo "Inspect $LOCK_DIR and $LOG_DIR/start.recovery before removing stale locks."
     exit 1
   fi
-fi
+  # Retry if another waiter acquired a lock that briefly disappeared. A
+  # one-shot retry would fail even though that winner is starting normally.
+  sleep 1
+done
 trap release_lock EXIT
 
 if healthy || web_ok; then
@@ -149,14 +130,19 @@ fi
 # means someone else owns the app.
 if [ -f "$PID_FILE" ]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
-  if pid_alive "$old_pid"; then
+  if pid_alive "$old_pid" && [ ! -r "$PID_FILE.identity" ]; then
+    echo "A live pid $old_pid has no process identity; inspect the old record before starting another app."
+    exit 1
+  fi
+  if pid_alive "$old_pid" && recorded_process_matches "$old_pid" "$PID_FILE.identity"; then
     echo "A previous background start (pid $old_pid) is still alive but unhealthy; leaving it alone."
     echo "Stop it ('bash .devcontainer/stop.sh'), then re-run this script."
     release_lock
     exit 0
   else
     echo "Removing the stale pid file from dead process ${old_pid:-unknown}."
-    rm -f "$PID_FILE"
+    # A reused PID belongs to somebody else: discard only our stale record.
+    rm -f "$PID_FILE" "$PID_FILE.identity"
   fi
 fi
 
@@ -171,7 +157,12 @@ else
   # shellcheck disable=SC2086
   nohup bash -c "$START_CMD" >"$LOG_DIR/dev.log" 2>&1 &
 fi
-echo "$!" >"$PID_FILE"
+app_pid="$!"
+process_identity "$app_pid" >"$PID_FILE.identity" || {
+  echo "The app exited before its process identity could be recorded; inspect $LOG_DIR/dev.log."
+  exit 1
+}
+echo "$app_pid" >"$PID_FILE"
 disown 2>/dev/null || true
 
 READY=0
