@@ -4,7 +4,8 @@ import Lightbox from './Lightbox.jsx';
 import Icon from './Icon.jsx';
 
 const REPO = 'https://github.com/sidonsoft/muse-recall';
-const RELEASE = `${REPO}/releases/tag/v0.1.0`;
+const RELEASE = `${REPO}/releases/latest`;
+const ORIGINAL_RELEASE = `${REPO}/releases/tag/v0.1.0`;
 const RELEASE_SHA = `${REPO}/commit/707921db83a374d155d3929ef9b99092bcd4e8f1`;
 const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
 const STATS17 = `${REPO}/blob/main/docs/hackathon-evidence/phase17/STATS_CORRECTION.md`;
@@ -21,7 +22,7 @@ const EVMAP = `${REPO}/blob/main/docs/submission/EVIDENCE_MAP.md`;
 const RUNBOOKS = `${REPO}/blob/main/docs/ops/OPERATOR_RUNBOOKS.md`;
 const STUDBGUIDE = `${REPO}/blob/main/docs/guide/html-studio.md`;
 const MEMORYGUIDE = `${REPO}/blob/main/docs/guide/project-memory.md`;
-const RUNOTES = `${REPO}/blob/main/docs/release/notes/v0.1.0-beta.md`;
+const RUNOTES = `${REPO}/blob/main/docs/release/notes/v0.1.1-beta.md`;
 const ARCH = `${REPO}/blob/main/docs/ARCHITECTURE_OVERVIEW.md`;
 
 /* One shared vocabulary, used everywhere the page describes footage or results:
@@ -272,7 +273,7 @@ export function Features() {
     <section className="block" id="beta">
       <div className="container">
         <div className="section-head center">
-          <p className="kicker">v0.1.0 beta · what it does</p>
+          <p className="kicker">v0.1.1 beta · what it does</p>
           <h2>Deterministic infrastructure around the model</h2>
           <p>
             The coding CLI writes the application; Meta media APIs carry images, segmentation,
@@ -1111,13 +1112,13 @@ export function ForJudges() {
           <p className="kicker">For judges and reviewers</p>
           <h2>Everything you need, one click away</h2>
           <p>
-            <b>v0.1.0 is published</b> at{' '}
+            <b>The original v0.1.0 beta is preserved</b> at{' '}
             <a href={RELEASE_SHA} target="_blank" rel="noreferrer">
               commit <code>707921d</code>
             </a>{' '}
             with the release notes, a source
             archive, checksums and a ten-gate report measured at that exact commit —{' '}
-            <a href={RELEASE} target="_blank" rel="noreferrer">
+            <a href={ORIGINAL_RELEASE} target="_blank" rel="noreferrer">
               the v0.1.0 release
             </a>{' '}
             ·{' '}
@@ -1464,8 +1465,8 @@ export function Quickstart() {
             )}
           </button>
           <pre className="code">
-            <span className="cmt"># v0.1.0 beta · Node 24+ · pnpm 10 (the workspace pins 10.32.1)</span>{'\n'}
-            <span className="hl">git clone --branch v0.1.0 {REPO}.git</span>{'\n'}
+            <span className="cmt"># current beta · Node 24+ · pnpm 10 (the workspace pins 10.32.1)</span>{'\n'}
+            <span className="hl">git clone {REPO}.git</span>{'\n'}
             cd muse-recall{'\n'}
             pnpm install --frozen-lockfile{'\n'}
             <span className="hl">pnpm demo:seed</span>{'         '}
@@ -1490,7 +1491,7 @@ export function Quickstart() {
         </div>
         <p className="footnote reveal">
           A retained gate pass belongs to the commit it ran on; the{' '}
-          <a href={RELEASE} target="_blank" rel="noreferrer">
+          <a href={ORIGINAL_RELEASE} target="_blank" rel="noreferrer">
             v0.1.0 release
           </a>{' '}
           attaches the report and evidence{' '}
@@ -1642,7 +1643,7 @@ export function Honesty() {
           </a>{' '}
           ·{' '}
           <a href={RUNOTES} target="_blank" rel="noreferrer">
-            v0.1.0 beta release notes
+            v0.1.1 beta release notes
           </a>
         </p>
       </div>
@@ -1708,7 +1709,7 @@ export function CTA() {
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a className="btn btn-primary" href={RELEASE} target="_blank" rel="noreferrer">
-              Get v0.1.0
+              Get the latest beta
             </a>
             <a className="btn btn-ghost" href={REPO} target="_blank" rel="noreferrer">
               View the source
@@ -1729,7 +1730,7 @@ export function Footer() {
       <div className="container footer-inner">
         <span>
           © 2026 Muse Recall contributors · MIT · built during the Meta Muse hackathon (“Push the
-          Frontier”); v0.1.0 is a published beta
+          Frontier”); single-user beta
         </span>
         <span className="footnote">
           This page is built from the{' '}
@@ -1748,7 +1749,7 @@ export function Footer() {
             muse-recall on GitHub
           </a>
           <a href={RELEASE} target="_blank" rel="noreferrer">
-            v0.1.0 release
+            Latest beta release
           </a>
           <a href={`${REPO}#what-is-verified`} target="_blank" rel="noreferrer">
             Reproduce the evidence
