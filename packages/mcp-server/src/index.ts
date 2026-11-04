@@ -69,7 +69,7 @@ export function buildMcpServer(
   const contractVersion = options.contractVersion ?? TOOL_CONTRACT_VERSION;
 
   const server = new Server(
-    { name: options.name ?? 'muse-recall', version: options.version ?? '0.1.0' },
+    { name: options.name ?? 'muse-recall', version: options.version ?? '0.1.1' },
     {
       capabilities: { tools: {}, resources: {} },
       instructions: MCP_INSTRUCTIONS,

@@ -69,6 +69,15 @@ while ((m = re.exec(all))) {
     }
     continue;
   }
+  // GitHub's stable Latest route is not a file in the repository. A release
+  // must already exist; pinned historical tag links are still checked below.
+  // The publish step separately verifies which release this redirect selects.
+  if (loc === '/releases/latest') {
+    const existing = spawnSync('git', ['-C', UP, 'rev-parse', '--verify', 'refs/tags/v0.1.0^{commit}']);
+    if (existing.status === 0) console.log('OK   GitHub Latest release route (release history exists)');
+    else { fails++; console.log('MISS release history for Latest route'); }
+    continue;
+  }
   // A release tag: it must exist, and it must still name the commit the copy cites.
   const tag = loc.match(/^\/releases\/tag\/(.+)$/)?.[1];
   if (tag) {

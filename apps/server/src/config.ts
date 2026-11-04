@@ -28,7 +28,7 @@ import { codespacesWebOrigins } from './codespaces.js';
 import { isLoopbackBindHost } from './host-guard.js';
 
 export const SERVICE_NAME = 'muse-memory-lab' as const;
-export const SERVICE_VERSION = '0.1.0';
+export const SERVICE_VERSION = '0.1.1';
 
 const EnvSchema = z
   .object({
