@@ -1,4 +1,11 @@
-import type { ForgeHealthSummary, HealthResponse, ServiceMeta } from '@mml/shared';
+import type {
+  ForgeHealthSummary,
+  HealthResponse,
+  ServiceMeta,
+  SetupProbe,
+  SetupRowKey,
+} from '@mml/shared';
+import { setupStateWord } from '@mml/shared';
 import { formatLatency, formatTokens, formatUptime, shortenPath } from '../lib/format.ts';
 import { Icon } from './Icon.tsx';
 import { ProviderBench } from './ProviderBench.tsx';
@@ -44,6 +51,8 @@ export function Overview({
           </p>
         </div>
       ) : null}
+
+      {health.setup ? <SetupPanel setup={health.setup} /> : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel>
@@ -234,6 +243,77 @@ export function Overview({
  * operator sees outstanding job-interruption and storage notices without
  * opening a project. Acknowledgement and repair stay in the Studio view.
  */
+const SETUP_TONE: Record<SetupProbe['state'], Tone> = {
+  ready: 'ok',
+  missing: 'err',
+  not_available: 'warn',
+  not_probed: 'idle',
+};
+
+/**
+ * Prerequisite panel for the three documented judge paths.
+ *
+ * It reports what this machine has, not what a model would do: the states come
+ * from a read-only probe that performs no request, spends no quota and writes
+ * nothing, and the same rows are printed by the API at startup and by
+ * `pnpm judge:check`. The state word is per row (`configured`, `installed`,
+ * `seeded`) because a key being present is not the same as provider access, an
+ * executable existing is not the same as a browser that launches, and "not here"
+ * is a deliberate setup rather than a broken install — a panel that calls a
+ * deliberate setup an error teaches people to ignore it.
+ */
+function SetupPanel({ setup }: { setup: NonNullable<HealthResponse['setup']> }) {
+  const rows: Array<{ key: SetupRowKey; label: string; probe: SetupProbe }> = [
+    { key: 'cli', label: 'Generate live applications (coding CLI)', probe: setup.cli },
+    { key: 'media_api', label: 'Live media, SAM and screenshot review', probe: setup.media_api },
+    { key: 'browser', label: 'Browser verification before approval', probe: setup.browser },
+    { key: 'offline_seed', label: 'Offline demo project', probe: setup.offline_seed },
+  ];
+  return (
+    <Panel>
+      <section aria-label="Setup readiness">
+        <SectionTitle
+          icon="check"
+          title="Setup readiness"
+          hint="What this machine has, read without writing anything: PATH, configuration, and the demo project's approved version and artifact bytes. No model call, no quota spend, no secret value. Presence is not a live check — login, provider access and quota stay unverified until you run the command shown or make a real call."
+        />
+        <ul className="mt-3 space-y-3">
+          {rows.map((row) => (
+            <li key={row.key} className="border-t border-line/70 pt-2 first:border-0 first:pt-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-[12px] font-medium text-ink-dim">{row.label}</p>
+                <StatusPill tone={SETUP_TONE[row.probe.state]}>
+                  {setupStateWord(row.key, row.probe.state)}
+                </StatusPill>
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted">{row.probe.detail}</p>
+              {row.probe.fix ? (
+                <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                  fix: <code className="font-mono text-[11px] text-ink-dim">{row.probe.fix}</code>
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[10px] leading-relaxed text-muted">
+          The API prints these rows at startup, and{' '}
+          <code className="font-mono">pnpm judge:check</code> prints them without starting the
+          server. Commands, expected results and troubleshooting for all three paths:{' '}
+          <a
+            href="https://github.com/sidonsoft/muse-recall/blob/main/docs/guide/FOR_JUDGES.md"
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent underline"
+          >
+            For judges: start here
+          </a>
+          .
+        </p>
+      </section>
+    </Panel>
+  );
+}
+
 function RecoverySummary({ forge }: { forge: ForgeHealthSummary }) {
   const clean =
     forge.storage_ok && forge.unacknowledged_issues === 0 && forge.interrupted_jobs_current === 0;

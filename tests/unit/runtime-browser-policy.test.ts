@@ -28,6 +28,29 @@ describe('runtime browser policy', () => {
     expect(result.browser_selection?.failure).toContain('Invalid FORGE_RUNTIME_BROWSER');
   });
 
+  it.each([
+    { browser: undefined, channel: 'chrome', expected: 'chrome' },
+    { browser: 'managed', channel: 'chrome', expected: undefined },
+    { browser: 'chrome', channel: undefined, expected: 'chrome' },
+  ])('launches the selected browser for %j', async ({ browser, channel, expected }) => {
+    if (browser === undefined) delete process.env.FORGE_RUNTIME_BROWSER;
+    else process.env.FORGE_RUNTIME_BROWSER = browser;
+    if (channel === undefined) delete process.env.FORGE_RUNTIME_CHANNEL;
+    else process.env.FORGE_RUNTIME_CHANNEL = channel;
+    // Stop at launch so policy is exercised without a real browser or network.
+    const launch = vi.spyOn(chromium, 'launch').mockRejectedValue(new Error('test launch stopped'));
+    try {
+      const result = await checkGameRuntime('<html><body>ok</body></html>');
+      expect(launch).toHaveBeenCalledOnce();
+      expect(launch).toHaveBeenCalledWith(
+        expected ? { channel: expected, headless: true } : { headless: true },
+      );
+      expect(result.browser_selection?.policy).toBe(expected ?? 'managed');
+    } finally {
+      launch.mockRestore();
+    }
+  });
+
   it('bounds and redacts the complete long launch diagnostic and keeps setup guidance', async () => {
     process.env.FORGE_RUNTIME_BROWSER = 'managed';
     const launch = vi
