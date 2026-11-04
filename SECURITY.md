@@ -34,4 +34,4 @@ vulnerability, unless it lets the model do something the app should have blocked
 | --- | --- |
 | `integration` (latest) | Yes, fixes land here first |
 | `main` (latest) | Yes, through promotion from `integration` |
-| `submission-2026-11-04` tag | No. It is the frozen hackathon submission and is never rewritten. Issues in it are fixed on `integration` and disclosed in an advisory. |
+| `submission-2026-11-04` tag — **planned, not created** (`git ls-remote --tags origin` shows no such tag) | No. If a submission tag is cut it is never rewritten: issues found in that tree are fixed on `integration` and disclosed in an advisory. |
