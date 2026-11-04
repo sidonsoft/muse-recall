@@ -60,8 +60,8 @@ Open Graph URLs pinned as exact strings to the deployed GitHub Pages origin**, d
 | `npm run links` | **27 unique paths, 0 broken**; the `v0.1.0` tag resolves to `707921db83a374d155d3929ef9b99092bcd4e8f1`, and `CITED_COMMIT` (set in the `qa` CI job) asserts the tag still points where the copy says it does |
 | Playwright flow, Chromium driver (`BROWSER=chromium node scripts/firefox-check.mjs`) | PASS — desktop and mobile, no console/page errors, 11 WebP images loaded |
 | Playwright flow, Gecko (CI `gecko` job) | runs in CI; the bundled Firefox 157 driver cannot start on macOS 27, which is why the job exists (see the script header) |
-| Lighthouse 12.8.2, mobile preset (412×823, simulated throttle) | Performance **97** · Accessibility **100** · Best Practices **100** · SEO **100** — FCP 1.2 s, LCP 2.5 s, TBT 0 ms, CLS 0, 266 KiB total |
-| Lighthouse 12.8.2, desktop preset | **100 / 100 / 100 / 100** — FCP 0.3 s, LCP 0.6 s, TBT 0 ms, CLS 0, 296 KiB total |
+| Lighthouse 12.8.2, mobile preset (412×823, simulated throttle) | Performance **97** · Accessibility **100** · Best Practices **100** · SEO **100** — FCP 1.2 s, LCP 2.5 s, TBT 0 ms, CLS 0, 264 KiB total |
+| Lighthouse 12.8.2, desktop preset | **100 / 100 / 100 / 100** — FCP 0.3 s, LCP 0.6 s, TBT 0 ms, CLS 0, 294 KiB total |
 
 What is **not** perfect, and why it is left that way: mobile performance loses three points to
 `unused-javascript` (~20 kB of the React bundle not needed for first paint), `dom-size`
