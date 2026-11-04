@@ -4,13 +4,16 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   DEFAULT_MEDIA_IMAGE_MODEL,
   DEFAULT_SAM_MODEL,
+  redactSecrets,
   type SetupProbe,
+  SetupProbeSchema,
   type SetupReadiness,
   SetupReadinessSchema,
   type SetupRowKey,
   setupStateWord,
 } from '@mml/shared';
 import { chromium } from 'playwright-core';
+import { type BrowserPolicy, browserPolicy } from './forge/browser-policy.js';
 import { isCliAvailable } from './forge/cli-lookup.js';
 import { ForgeError, type ForgeWorkspace } from './forge/workspace.js';
 
@@ -217,34 +220,49 @@ export function probeSetupReadiness(input: SetupReadinessInput): SetupReadiness 
   const env = input.env ?? process.env;
   const exists = input.fileExists ?? safeExists;
   const lookup = input.cliLookup ?? ((bin: string) => isCliAvailable(bin, env));
-  const runtimeBrowser =
-    input.runtimeBrowser ?? (env.FORGE_RUNTIME_BROWSER === 'chrome' ? 'chrome' : 'managed');
+  const runtimeBrowser = input.runtimeBrowser ?? browserPolicy(env);
   // Same default the configuration schema gives MUSE_BIN, so a caller that has
   // no Forge/provider override still gets the documented binary name.
   const cliBin = input.cliBin?.trim() || 'muse';
 
+  // Bound every row at the shared schema boundary, including diagnostics from
+  // long configured paths or names. Redact before truncating any credential.
+  const bound = (probe: SetupProbe): SetupProbe => ({
+    ...probe,
+    detail: boundedText(probe.detail, SetupProbeSchema.shape.detail.maxLength ?? 240),
+    fix:
+      probe.fix === null
+        ? null
+        : boundedText(probe.fix, SetupProbeSchema.shape.fix.unwrap().maxLength ?? 300),
+  });
   return SetupReadinessSchema.parse({
     generated_at: new Date().toISOString(),
     environment: inCodespaces(env) ? 'codespaces' : 'local',
     provider: input.providerId,
-    cli: probeCli({
-      codespace: inCodespaces(env),
-      providerId: input.providerId,
-      cliBin,
-      lookup,
-    }),
-    media_api: probeMedia({
-      key: input.mediaApiKey,
-      mediaModel: input.mediaModel ?? env.FORGE_MEDIA_MODEL ?? DEFAULT_MEDIA_IMAGE_MODEL,
-      samModel: input.samModel ?? env.FORGE_SAM_MODEL ?? DEFAULT_SAM_MODEL,
-    }),
-    browser: probeBrowser({
-      policy: runtimeBrowser,
-      executable: input.browserExecutable,
-      lookup,
-      exists,
-    }),
-    offline_seed: probeSeed(input.demo_seed),
+    cli: bound(
+      probeCli({
+        codespace: inCodespaces(env),
+        providerId: input.providerId,
+        cliBin,
+        lookup,
+      }),
+    ),
+    media_api: bound(
+      probeMedia({
+        key: input.mediaApiKey,
+        mediaModel: input.mediaModel ?? env.FORGE_MEDIA_MODEL ?? DEFAULT_MEDIA_IMAGE_MODEL,
+        samModel: input.samModel ?? env.FORGE_SAM_MODEL ?? DEFAULT_SAM_MODEL,
+      }),
+    ),
+    browser: bound(
+      probeBrowser({
+        policy: runtimeBrowser,
+        executable: input.browserExecutable,
+        lookup,
+        exists,
+      }),
+    ),
+    offline_seed: bound(probeSeed(input.demo_seed)),
   });
 }
 
@@ -270,16 +288,16 @@ function probeCli(options: {
     return {
       state: 'missing',
       detail: options.codespace
-        ? `No coding CLI found on PATH as "${options.cliBin}" in this codespace: the documented devcontainer does not install or authenticate the Muse CLI, so as shipped it cannot generate.`
-        : `No coding CLI found on PATH as "${options.cliBin}" (configured by MUSE_BIN / FORGE_MUSE_BIN).`,
+        ? `No coding CLI found on PATH as "${boundedText(options.cliBin, 48)}" in this codespace: the documented devcontainer does not install or authenticate the Muse CLI, so as shipped it cannot generate.`
+        : `No coding CLI found on PATH as "${boundedText(options.cliBin, 48)}" (configured by MUSE_BIN / FORGE_MUSE_BIN).`,
       fix: 'Install the Muse Code CLI, then `muse login`. If the binary is not on PATH, point MUSE_BIN (or FORGE_MUSE_BIN for Studio alone) at it.',
     };
   }
   return {
     state: 'not_probed',
     detail: options.codespace
-      ? `Found "${options.cliBin}" on PATH in this codespace, so generation is not blocked by a missing binary; authentication and provider access remain unverified, because checking them would be a live call.`
-      : `Found the coding CLI as "${options.cliBin}" on PATH. Login state is deliberately not probed: that would be a live call.`,
+      ? `Found "${boundedText(options.cliBin, 48)}" on PATH in this codespace, so generation is not blocked by a missing binary; authentication and provider access remain unverified, because checking them would be a live call.`
+      : `Found the coding CLI as "${boundedText(options.cliBin, 48)}" on PATH. Login state is deliberately not probed: that would be a live call.`,
     fix: 'If you have not logged in on this machine, run `muse login`. Then confirm the panel with `pnpm judge:check`.',
   };
 }
@@ -299,17 +317,25 @@ function probeMedia(options: {
   }
   return {
     state: 'ready',
-    detail: `A server-side media key is configured and length-checked (image ${options.mediaModel}, segmentation ${options.samModel}); the value is never reported. No request was made, so provider access and remaining quota are unverified.`,
+    detail: `A server-side media key is configured and length-checked (image ${boundedText(options.mediaModel, 24)}, segmentation ${boundedText(options.samModel, 24)}); the value is never reported. No request was made, so provider access and remaining quota are unverified.`,
     fix: null,
   };
 }
 
 function probeBrowser(options: {
-  policy: 'managed' | 'chrome';
+  policy: BrowserPolicy | null;
   executable?: () => string | null;
   lookup: (bin: string) => boolean;
   exists: (path: string) => boolean;
 }): SetupProbe {
+  if (options.policy === null) {
+    return {
+      state: 'missing',
+      detail:
+        'Invalid FORGE_RUNTIME_BROWSER value: approval-time browser verification refuses this configuration.',
+      fix: 'Set FORGE_RUNTIME_BROWSER=managed (install Chromium with `pnpm exec playwright-core install chromium`), or FORGE_RUNTIME_BROWSER=chrome with Chrome installed.',
+    };
+  }
   if (options.policy === 'chrome') {
     const found = systemChromePath({ lookup: options.lookup, exists: options.exists });
     if (found) {
@@ -372,7 +398,7 @@ function probeSeed(facts: DemoSeedFacts | undefined): SetupProbe {
       fix: 'Run `pnpm demo:seed` before starting the server; it creates the database and the demo project inside it.',
     };
   }
-  const demo = `"${facts.project_name ?? SEEDED_DEMO_PROJECT}"`;
+  const demo = `"${boundedText(facts.project_name ?? SEEDED_DEMO_PROJECT, 40)}"`;
 
   // Ready means all three facts at once: the memory record, the version the
   // record's workspace reports, and that version's bytes matching their hash.
@@ -411,7 +437,7 @@ function probeSeed(facts: DemoSeedFacts | undefined): SetupProbe {
       state: 'not_probed',
       detail:
         'The demo project could not be fully inspected (its workspace state is unreadable, or the projects table was unavailable), so this row stays unverified rather than guessed.',
-      fix: `Open Studio → Recovery for ${facts.project_name ? `"${facts.project_name}"` : 'that project'} (inspect, then repair), or re-seed the demo with \`pnpm demo:seed\`.`,
+      fix: `Open Studio → Recovery for ${facts.project_name ? `"${boundedText(facts.project_name, 40)}"` : 'that project'} (inspect, then repair), or re-seed the demo with \`pnpm demo:seed\`.`,
     };
   }
   if (facts.current_version === null) {
@@ -443,6 +469,12 @@ function probeSeed(facts: DemoSeedFacts | undefined): SetupProbe {
     detail: `The workspace holds ${demo} at v${facts.current_version}, but that id is not a project record in this database: memory, decisions and retrieval will look empty.`,
     fix: `Run \`pnpm demo:seed\` to rebuild the "${SEEDED_DEMO_PROJECT}" project and its memory records.`,
   };
+}
+
+/** Keep the schema limit inclusive of the truncation marker. */
+function boundedText(value: string, limit: number): string {
+  const redacted = redactSecrets(value);
+  return redacted.length > limit ? `${redacted.slice(0, limit - 1)}…` : redacted;
 }
 
 function safeExists(path: string): boolean {

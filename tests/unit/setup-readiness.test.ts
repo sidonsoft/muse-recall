@@ -102,6 +102,69 @@ describe('setup readiness probe', () => {
     expect(dir).toBeTruthy();
   });
 
+  it.each([true, false])('bounds long diagnostics with CLI present=%s', (cliPresent) => {
+    const { input } = base(CODESPACE);
+    const setup = probeSetupReadiness({
+      ...input,
+      cliBin: `/opt/${'nested/'.repeat(60)}muse`,
+      cliLookup: () => cliPresent,
+      mediaApiKey: 'do-not-print-this-key',
+      mediaModel: 'i'.repeat(200),
+      samModel: 's'.repeat(200),
+      demo_seed: { ...seededFacts(), project_name: 'Demo project '.repeat(100) },
+    });
+    expect(setup.cli.state).toBe(cliPresent ? 'not_probed' : 'missing');
+    expect(setup.media_api.state).toBe('ready');
+    expect(setup.media_api.detail).toContain('quota are unverified');
+    expect(setup.offline_seed.state).toBe('ready');
+    expect(setup.offline_seed.detail).toContain('match their recorded hash');
+    expect(() => SetupReadinessSchema.parse(setup)).not.toThrow();
+    expect(JSON.stringify(setup)).not.toContain('do-not-print-this-key');
+    expect(setup.cli.fix).toContain('muse login');
+  });
+
+  it('redacts credentials in diagnostic labels before shortening them', () => {
+    const { input } = base();
+    const secret = 'supersecretvalue';
+    const setup = probeSetupReadiness({
+      ...input,
+      cliBin: `/opt/api_key=${secret}/${'long/'.repeat(100)}muse`,
+      demo_seed: { ...seededFacts(), project_name: `api_key=${secret} ${'name'.repeat(100)}` },
+    });
+    expect(JSON.stringify(setup)).not.toContain(secret);
+    expect(setup.cli.detail).toContain('[REDACTED]');
+    expect(setup.offline_seed.detail).toContain('[REDACTED]');
+    expect(setup.offline_seed.detail).toContain('match their recorded hash');
+  });
+
+  it('honors the legacy Chrome policy even when managed Chromium is installed', () => {
+    const { input } = base({ FORGE_RUNTIME_CHANNEL: 'chrome' });
+    const setup = probeSetupReadiness({ ...input, cliLookup: () => false });
+    expect(setup.browser.state).toBe('missing');
+    expect(setup.browser.fix).toContain('FORGE_RUNTIME_BROWSER=managed');
+  });
+
+  it('lets explicit managed policy override the legacy Chrome policy', () => {
+    const { input } = base({ FORGE_RUNTIME_CHANNEL: 'chrome', FORGE_RUNTIME_BROWSER: 'managed' });
+    expect(probeSetupReadiness(input).browser.state).toBe('ready');
+  });
+
+  it.each(['chrmo', ''])(
+    'rejects invalid browser policy %j without probing an executable',
+    (policy) => {
+      const { input } = base({ FORGE_RUNTIME_BROWSER: policy });
+      const setup = probeSetupReadiness({
+        ...input,
+        browserExecutable: () => {
+          throw new Error('must not probe');
+        },
+      });
+      expect(setup.browser.state).toBe('missing');
+      expect(setup.browser.detail).toContain('Invalid FORGE_RUNTIME_BROWSER');
+      expect(setup.browser.fix).toContain('FORGE_RUNTIME_BROWSER=managed');
+    },
+  );
+
   it('a CLI on PATH is never reported as logged in', () => {
     const { input } = base();
     const setup = probeSetupReadiness({ ...input, demo_seed: seededFacts() });

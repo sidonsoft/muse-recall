@@ -1,5 +1,6 @@
 import { type ForgeRuntimeBrowserSelection, redactSecrets } from '@mml/shared';
 import { type Browser, chromium } from 'playwright-core';
+import { browserPolicy } from './browser-policy.js';
 
 /**
  * Runs a staged browser application in a real browser before it can be approved.
@@ -114,15 +115,6 @@ export function remoteLoadFailure(origin: string, errorText: string): string {
       'An application that gets its engine from the approved CDN cannot be approved while that host is unreachable.',
     MAX_DIAGNOSTIC_TEXT,
   );
-}
-
-type BrowserPolicy = 'managed' | 'chrome';
-
-function browserPolicy(): BrowserPolicy | null {
-  const configured =
-    process.env.FORGE_RUNTIME_BROWSER ??
-    (process.env.FORGE_RUNTIME_CHANNEL === 'chrome' ? 'chrome' : 'managed');
-  return configured === 'managed' || configured === 'chrome' ? configured : null;
 }
 
 const MAX_SELECTION_TEXT = 160;

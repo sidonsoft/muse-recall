@@ -83,7 +83,7 @@ function testConfig(workspaceRoot: string, databasePath: string): AppConfig {
   };
 }
 
-async function fixture() {
+async function fixture(overrides: Partial<AppConfig> = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'setup-readiness-health-'));
   roots.push(dir);
   const dbFile = join(dir, 'app.db');
@@ -92,7 +92,7 @@ async function fixture() {
   const engine = new MemoryEngine(database.db);
   const workspaceRoot = join(dir, 'workspaces');
   const app = await buildApp({
-    config: testConfig(workspaceRoot, dbFile),
+    config: { ...testConfig(workspaceRoot, dbFile), ...overrides },
     db: database.db,
     dbPath: dbFile,
     provider: new EchoProvider(),
@@ -173,6 +173,34 @@ describe('setup readiness in GET /api/health', () => {
     if (setup?.browser.state === 'missing') {
       expect(setup.browser.fix).toContain('playwright-core install chromium');
     }
+  });
+
+  it('serves health with maximum-length model IDs and a long demo name', async () => {
+    const key = 'a-private-server-key';
+    const { app, engine, workspaceRoot } = await fixture({
+      forge: {
+        maxRuntimeMs: 600_000,
+        maxCalls: 25,
+        maxInputTokens: 1_500_000,
+        museBin: null,
+        apiKey: key,
+        model: null,
+        fallbackApiKey: null,
+        fallbackModel: null,
+        reasoningEffort: 'medium',
+      },
+      media: { model: 'i'.repeat(200), samModel: 's'.repeat(200), visionModel: 'vision-test' },
+    });
+    engine.ensureProject(SEEDED_DEMO_PROJECT, 'Demo project '.repeat(20));
+    await writeForgeProject(workspaceRoot, SEEDED_DEMO_PROJECT, {
+      bytes: '<!doctype html><title>Demo</title>',
+    });
+    const setup = (await health(app)).setup;
+    expect(setup?.media_api.state).toBe('ready');
+    expect(setup?.media_api.detail).toContain('quota are unverified');
+    expect(setup?.offline_seed.state).toBe('ready');
+    expect(setup?.offline_seed.detail).toContain('match their recorded hash');
+    expect(JSON.stringify(setup)).not.toContain(key);
   });
 
   it('does not report the demo ready when a different project is the seeded one', async () => {
