@@ -1,6 +1,11 @@
 # Submission checklist
 
-Status on 4 November 2026: **v0.1.0 published; hackathon not yet submitted.** The repository is public and the static website is deployed. A hosted application is not required by the Discord guidance supplied by the owner. The local application runs from the public repository; the website is a landing page, not a hosted app.
+Status on 4 November 2026: **v0.1.0 published; the hackathon entry exists.** The original entry was
+confirmed on 29 October 2026, and the beta update to that entry was verified saved on 4 November
+2026 (owner-confirmed: the submission platform cannot be read from this repository, so the stored
+field values are not re-verified here). Two things are **not** on record: which commit stood behind
+the entry on those dates, and any tag or archive for the submitted tree. The repository is public and
+the static website is deployed. A hosted application is not required by the Discord guidance supplied by the owner. The local application runs from the public repository; the website is a landing page, not a hosted app.
 
 ## Current release and demo
 
@@ -10,7 +15,8 @@ Status on 4 November 2026: **v0.1.0 published; hackathon not yet submitted.** Th
 - [x] Current published demo: exactly **180.000 seconds**, 1920×1080, 30 fps; **14,903,823 bytes**; SHA-256 `d1695c04fbac57779f14be7d834478b86e868291d0f326710cc62dc5fe3a440d`; 57 caption cues; Bella narration on Eleven v4. [Video, transcript, poster and QA](demo/video/V21_QA.md).
 - [x] Website and repository serve identical video bytes. Two older cuts belong to history, not to the current path: the 2:50.47 / `4020c0c6…` file at commit `c32d03b`, and the 3:00 / `6c9e985c…` cut published with the v0.1.0 release at `707921d` (that tag and its assets are unchanged).
 - [x] Recut published on 4 November against the latest owner-supplied Discord guidance: it opens with the owner-confirmed statement that no product code existed before the event, leads with the recorded generate → review → reject → correct → approve loop, keeps about 156.6 of its 180 seconds on moving product or terminal footage, names the model roles (Muse Code CLI for application generation and change, Meta model APIs for media) and the Meta SAM cutout workflow, is English, and runs exactly 3:00. Beat-level provenance and evidence classes are in [V21_QA.md](demo/video/V21_QA.md).
-- [ ] Owner decides whether that cut satisfies the guidance point about **live Meta calls being visible**. Two facts must not be merged. The footage does contain live calls: the first minute is labelled on screen as "Recorded live Muse Spark · actual CLI requests and results", showing the CLI request, the running job and the returned application. What did not happen is new inference calls **while assembling** the cut — that is production provenance, and the later beats are labelled retained media outputs, product replays or deterministic fixtures. Whether the guidance asks for calls performed live while recording, or recorded calls made visible on screen, is the owner's reading to make. Nothing here claims Official-Rules compliance, and submission has not happened.
+- [ ] Owner decides whether that cut satisfies the guidance point about **live Meta calls being visible**. Two facts must not be merged. The footage does contain live calls: the first minute is labelled on screen as "Recorded live Muse Spark · actual CLI requests and results", showing the CLI request, the running job and the returned application. What did not happen is new inference calls **while assembling** the cut — that is production provenance, and the later beats are labelled retained media outputs, product replays or deterministic fixtures. Whether the guidance asks for calls performed live while recording, or recorded calls made visible on screen, is the owner's reading to make. Nothing here claims Official-Rules compliance: the entry exists (29 October, updated 4
+November), while the rules-acceptance item below stays open.
 
 ### Publication and judge-link verification (4 November, after promotion)
 
@@ -36,10 +42,11 @@ The owner confirmed: **no existing product code before the event; Muse Recall wa
 
 - [ ] Owner opens the Codespaces path once if choosing to offer it to judges. It supports seeded offline browsing; live generation still needs the documented CLI setup.
 - [ ] Owner reviews and accepts the Official Rules on the submission platform if required.
-- [ ] Owner submits the repository URL, final video URL and accurate [submission copy](submission/SUBMISSION_COPY.md) through the platform.
-- [ ] Record the actual submitted commit, video identity, submission time and receipt only after submission. Publishing v0.1.0 is not submission.
+- [x] Owner submits the repository URL, final video URL and accurate [submission copy](submission/SUBMISSION_COPY.md) through the platform. Done: the original entry was confirmed on 29 October 2026 and the beta update to it was verified saved on 4 November 2026. Which exact text and video URL the platform now holds is not readable from here, so this records the owner's confirmation rather than a repository-side re-check.
+- [ ] Record the submission time, any receipt, and — if the platform still shows them — the field values of the 29 October entry and the 4 November update. Publishing v0.1.0 is not submission. **The commit that stood behind the entry on either date was never recorded, so the original submitted commit is unknown**; do not back-fill a plausible-looking SHA.
+- [ ] Preserve the submitted tree with a submission tag and an archived Release. Separate unfinished work, and it cannot be pinned honestly while the submitted commit is unknown: recovering the platform-side record comes first.
 
-The earlier recorded deadline is 4 November 2026, 9:00 PM ET; confirm it on the platform. Keep existing frozen submission/research tags and checksummed evidence unchanged. A new submission tag must identify the actual submitted tree. Checked against the remote on 4 November: `git ls-remote --tags origin` lists `v0.1.0`, `submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*` — there is **no** `submission-2026-11-04` tag yet, so no document may describe it as existing.
+The earlier recorded deadline is 4 November 2026, 9:00 PM ET; confirm it on the platform. Keep existing frozen submission/research tags and checksummed evidence unchanged. A new submission tag must identify the actual submitted tree. Checked against the remote on 4 November: `git ls-remote --tags origin` lists `v0.1.0`, `submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*` — there is **no** `submission-2026-11-04` tag yet, so no document may describe it as existing. That absence is unfinished preservation work, not evidence that no submission happened: the entry itself predates every one of those tags.
 
 ## Product boundaries to disclose
 

@@ -71,8 +71,11 @@ Do not cite these as the current file. Both remain in Git history at the commits
 nothing for a 4 November submission tree. The [roadmap](../../roadmap/POST_HACKATHON_ROADMAP.md)
 and [preservation manifest](../../release/SUBMISSION_PRESERVATION.md) describe such a tag as work
 still to do ("to record"), and [`docs/release/notes/submission-2026-11-04.md`](../../release/notes/submission-2026-11-04.md)
-is an unpublished template. Nothing in this record depends on that tag; submission has not
-happened. The previous cut is reachable at `v0.1.0` and through `main`'s history at
+is an unpublished template. Nothing in this record depends on that tag. The submission itself is a
+separate fact, and it happened: the original entry was confirmed on 29 October 2026 and the beta
+update to it was verified saved on 4 November 2026. Neither recorded the commit behind the entry, so
+that tag stays unfinished preservation work rather than a missing submission record. The previous cut
+is reachable at `v0.1.0` and through `main`'s history at
 `707921db83a374d155d3929ef9b99092bcd4e8f1`, not through a submission tag.
 
 The tag `v0.1.0` and everything published from it still carry the George-narrated 4 November cut.

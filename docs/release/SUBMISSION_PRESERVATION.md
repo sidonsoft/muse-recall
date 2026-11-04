@@ -6,8 +6,14 @@ This file records which commit was submitted to the Cerebral Valley Meta AI Deve
 Hackathon and how to check that it hasn't changed. It is gate G0 in the
 [post-hackathon roadmap](../roadmap/POST_HACKATHON_ROADMAP.md).
 
-**Status:** waiting for submission (deadline 4 November 2026, 9:00 PM ET). The fields marked
-_to record_ are filled in once, after the form is submitted, in a PR into `integration`.
+**Status: submitted; preservation incomplete.** The original entry was confirmed on **29 October
+2026**, and the beta update to that entry was **verified saved on 4 November 2026** (owner-confirmed
+— the submission platform cannot be read from this repository, so the stored field values and the
+exact submitted text are not re-verified here). What was never recorded on either date is the commit
+that stood behind the entry, so the submitted tree is **unknown**, not merely unfilled: that makes the
+tag and archive rows below unfinished work which cannot be closed honestly until the platform-side
+record is recovered. It does not change the fact of submission. Fields still marked _to record_ need a
+PR into `integration`.
 
 ## References
 
@@ -16,8 +22,8 @@ _to record_ are filled in once, after the form is submitted, in a PR into `integ
 | Repository | https://github.com/sidonsoft/muse-recall |
 | Submission candidate on 30 Oct 2026 | `main` = `c32d03b4b6bbbce4249de6d3eb0333028d5960bd` (merge of PR #29); `integration` points at the same commit |
 | **Current candidate, 4 Nov 2026 after the website/demo promotions** | `main` = `36938f51e8b24b8cc6a8761c224165224c5826cd` (merge of PR #276; carries `f28f1ba` and `3fdab13`); `integration` = `f28f1baee2d0c5bd7c2ed925977c3d871c5be91b`. If the form is sent from this tree, the submitted demo is 180.000 s · 14,903,823 B · SHA-256 `d1695c04fbac57779f14be7d834478b86e868291d0f326710cc62dc5fe3a440d`, transcript `947425424804ed3f68ba8adadf5e53beef6070bf2eb8b6c0b1cec3d620987b2a`, poster `51dc41b1b00a19d81b6bd5136310a0e303b7076bb88626b61614a8c1c980a918`. The site at https://sidonsoft.github.io/muse-recall/ is built from `main` and was live-verified against those bytes on 4 November; verify again at submission time and record what you actually saw |
-| Submitted commit (`main` when the form was sent) | _to record_ |
-| Tag | `submission-2026-11-04` (annotated) → _to record_ |
+| Submitted commit (`main` when the form was sent) | **unknown** — neither the 29 Oct 2026 entry nor the 4 Nov 2026 update recorded the commit behind `main` at that moment. The two candidate rows above are candidates, not the submitted tree; do not back-fill a guess |
+| Tag | `submission-2026-11-04` (annotated) → **does not exist**. Checked on 4 Nov 2026: `git ls-remote --tags origin` lists `v0.1.0`, `submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*`. A tag naming the submitted tree cannot be created while that tree is unknown, so this row stays open with the row above |
 | Release | _to record_ (URL) |
 | Source archive | `muse-recall-submission-2026-11-04.tar.gz`, attached to the Release |
 | Archive SHA-256 | _to record_ |
