@@ -127,17 +127,22 @@ note beside them saying why. That is a deliberate starting configuration, not a 
 installing the CLI yourself, running `muse login`, and starting with `MODEL_PROVIDER=muse-cli`
 is the same Path 2 you would run locally. **This project has not run Path 2 from a
 codespace**, so nothing here claims that it works there; `pnpm judge:check` reads that
-machine's actual configuration and reports what it finds — the CLI row is `not here` when no
-binary is on PATH, `unverified` when one is (login is never probed), and it never says
+machine's actual configuration and reports what it finds — the CLI row is `not here` when
+the offline provider is selected, `missing` with the live provider and no binary,
+`unverified` when one is (login is never probed), and it never says
 "configured" just because `MODEL_PROVIDER` is set.
+
+Setup preserves existing demo state, starts the app once on container start, and only
+prints status on reattach. Stop the background instance with
+`bash .devcontainer/stop.sh` before changing providers; restart with
+`bash .devcontainer/start.sh`. `SEED_DEMO=force` explicitly resets the demo;
+`SEED_DEMO=never` skips seeding. Browser installation and a headless launch check run
+as the application user; failed installation warns and leaves exploration available.
+A fresh cloud Codespace has not been verified in this review.
 
 If you generate from a codespace, note the browser: `pnpm dev` does not install Chromium
 there beyond the container's post-create step, and approval requires a staged application to
 load in a real browser.
-
-The container's own README documents the walkthrough and one network detail worth knowing:
-codespace setup makes a single anonymous launch-counter request, opt-out with
-`DO_NOT_TRACK=1` or `MUSE_RECALL_NO_COUNT=1` ([.devcontainer/README.md](../../.devcontainer/README.md)).
 
 The container's own README documents the walkthrough and one network detail worth knowing:
 codespace setup makes a single anonymous launch-counter request, opt-out with
@@ -160,7 +165,7 @@ Row meanings, including the ones that are easy to misread:
 | --- | --- | --- | --- |
 | `ready` | `configured` (media), `installed` (browser), `seeded` (demo) | the prerequisite is present, by a read-only check | the word says what was checked, not that it works end to end |
 | `missing` | `MISSING` | needed and absent | run the `fix:` line the row prints |
-| `not_available` | `not here` | this setup deliberately omits it — for example the `echo` provider, or a codespace with no CLI on PATH | choose another path, or change the configuration; this is not a broken install |
+| `not_available` | `not here` | this setup deliberately omits it — for example the deliberately selected `echo` provider | choose another path, or change the configuration; this is not a broken install |
 | `not_probed` | `unverified` | the piece may be present, but a deeper fact was not checked — CLI login, a browser that was never launched, a demo nobody inspected | `muse login`, or a live check: **System → live check** (`POST /api/health/muse`) |
 
 The probe performs **no model call, no network request and no quota spend**, and never
