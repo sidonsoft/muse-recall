@@ -10,6 +10,7 @@ const RESULTS = `${REPO}/blob/main/docs/hackathon-evidence/phase17/RESULTS.md`;
 const STATS17 = `${REPO}/blob/main/docs/hackathon-evidence/phase17/STATS_CORRECTION.md`;
 const DOCS16 = `${REPO}/blob/main/docs/hackathon-evidence/phase16/EVIDENCE_CARD.md`;
 const GUIDE = `${REPO}/blob/main/docs/guide/README.md`;
+const JUDGES = `${REPO}/blob/main/docs/guide/FOR_JUDGES.md`;
 const CODESPACES = 'https://codespaces.new/sidonsoft/muse-recall?quickstart=1';
 const LIMITS = `${REPO}/blob/main/docs/guide/limitations.md`;
 const MEDIA = `${REPO}/blob/main/docs/MULTIMODAL_STUDIO_STATUS.md`;
@@ -1000,6 +1001,25 @@ export function Evidence() {
 export function ForJudges() {
   const cards = [
     {
+      icon: 'check',
+      h: 'Run it yourself — three paths, two minutes to check yours',
+      p: (
+        <>
+          <code>pnpm judge:check</code> prints which paths this machine can finish and the exact
+          fix for anything missing: <b>coding CLI</b>, <b>media API configured</b>,{' '}
+          <b>browser validation</b> and the seeded offline demo — with no model call and no
+          credential. Exploring offline needs nothing; generating needs a logged-in Muse Code
+          CLI; media and SAM need their own server-side key.{' '}
+          <b>Codespaces runs the exploration path only</b> — its Generate buttons are disabled,
+          because the container has no logged-in CLI.{' '}
+          <a href={JUDGES} target="_blank" rel="noreferrer">
+            For judges: start here
+          </a>{' '}
+          carries the commands, the expected results and troubleshooting.
+        </>
+      ),
+    },
+    {
       icon: 'video',
       h: 'Beta demo — 3:00, every beat labelled on screen',
       p: (
@@ -1102,7 +1122,7 @@ export function ForJudges() {
             <a href={EVMAP} target="_blank" rel="noreferrer">evidence map</a>.
           </p>
         </div>
-        <div className="features-grid grid-5">
+        <div className="features-grid grid-6">
           {cards.map((c) => (
             <div className="feature reveal" key={c.h}>
               <div className="icon" aria-hidden="true">
