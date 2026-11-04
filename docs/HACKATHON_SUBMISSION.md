@@ -1,6 +1,6 @@
 # Muse Recall — submission description
 
-> **Historical document.** This is an earlier product description (the Phase 5 memory companion with generated forms and tools). The published demo is now the three-minute beta cut (`docs/demo/video/`, identity in its [QA record](demo/video/V21_QA.md)) and the behavioural record is the Phase 17 trial; no hackathon submission has been made; see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
+> **Historical document.** This is an earlier product description (the Phase 5 memory companion with generated forms and tools). The published demo is now the three-minute beta cut (`docs/demo/video/`, identity in its [QA record](demo/video/V21_QA.md)) and the behavioural record is the Phase 17 trial; the hackathon entry was confirmed on 29 Oct 2026 and updated with the beta on 4 Nov 2026 (see [submission preservation](release/SUBMISSION_PRESERVATION.md)); see the [README](../README.md) and the [submission copy](submission/SUBMISSION_COPY.md). Kept for the development record.
 
 ## Problem
 

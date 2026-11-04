@@ -2,12 +2,42 @@
 
 # Submission preservation manifest
 
-This file records which commit was submitted to the Cerebral Valley Meta AI Developer
-Hackathon and how to check that it hasn't changed. It is gate G0 in the
+This file records what is actually known about which commit stood behind the Cerebral Valley
+Meta AI Developer Hackathon entry, what has been preserved since, and how to check that what was
+preserved has not changed. It is gate G0 in the
 [post-hackathon roadmap](../roadmap/POST_HACKATHON_ROADMAP.md).
 
-**Status:** waiting for submission (deadline 4 November 2026, 9:00 PM ET). The fields marked
-_to record_ are filled in once, after the form is submitted, in a PR into `integration`.
+**Status: submitted; preservation of the submitted tree stays open.** Three records were
+established in different ways and say different things, so they are kept apart rather than
+collapsed into one date:
+
+1. **Original entry — confirmed at 2026-10-29T11:01:12Z** by the platform's submission receipt
+   for the team behind this repository (subject: *Hackathon Project "sidonsoft" Submitted!*).
+   The entry stores the **unversioned** repository URL
+   (https://github.com/sidonsoft/muse-recall) and a static-website demo link, so it never pinned
+   a commit. Which commit stood behind `main` on that date was not recorded anywhere at the time
+   and is **unknown**; no tag may claim to name it. The receipt itself, the platform-side entry
+   id and the personal survey answers stay in the owner's private records — this repository
+   carries the timestamps and identifiers needed to check the story, not the private content.
+2. **Beta update — verified persisted at 2026-11-04T01:30:03Z.** The owner used **Update Project**
+   on the existing entry, and the saved state was then re-read after reloading the submission
+   page: the updated beta description and the unchanged repository/demo links were present. The
+   precise save time is **not** established — the click came before the read-back. `main` at the
+   moment of that read-back was `577030378ceb0424708fcac09d303c227efde3de` (the PR #278
+   promotion, committed 2026-11-04T01:09:44Z, about twenty minutes earlier, and an ancestor of
+   every later `main`). That commit is recorded below as **the source snapshot observed when the
+   update was verified**. It is not the 29 October submitted commit, and it is not proof of the
+   exact tree the save used — those two facts stay separate.
+3. **Final preservation — open, and separable from (1).** An archive of the observed snapshot
+   already exists: `muse-recall-candidate-5770303.tar.gz`, SHA-256
+   `f98635208cd45b12004fba17024260c3c92b9ca1e084710b569484ab84046aae`, produced with `git archive`
+   from that commit and compared against the commit tree file-for-file (2,525 tracked files) with
+   spot-check blob hashes on 4 November 2026. It is held outside GitHub and has **not** been
+   published: no tag, Release or release asset was created or moved in this step, and `v0.1.0`
+   plus the frozen tags are untouched. Publishing a dated snapshot of that commit is a separate
+   owner decision, and it does **not** wait on recovering the October record. What stays
+   impossible while the October tree is unknown is tagging or releasing some other tree *as* the
+   submitted tree. Nothing here back-fills a SHA to close that row.
 
 ## References
 
@@ -15,13 +45,15 @@ _to record_ are filled in once, after the form is submitted, in a PR into `integ
 | --- | --- |
 | Repository | https://github.com/sidonsoft/muse-recall |
 | Submission candidate on 30 Oct 2026 | `main` = `c32d03b4b6bbbce4249de6d3eb0333028d5960bd` (merge of PR #29); `integration` points at the same commit |
-| **Current candidate, 4 Nov 2026 after the website/demo promotions** | `main` = `36938f51e8b24b8cc6a8761c224165224c5826cd` (merge of PR #276; carries `f28f1ba` and `3fdab13`); `integration` = `f28f1baee2d0c5bd7c2ed925977c3d871c5be91b`. If the form is sent from this tree, the submitted demo is 180.000 s · 14,903,823 B · SHA-256 `d1695c04fbac57779f14be7d834478b86e868291d0f326710cc62dc5fe3a440d`, transcript `947425424804ed3f68ba8adadf5e53beef6070bf2eb8b6c0b1cec3d620987b2a`, poster `51dc41b1b00a19d81b6bd5136310a0e303b7076bb88626b61614a8c1c980a918`. The site at https://sidonsoft.github.io/muse-recall/ is built from `main` and was live-verified against those bytes on 4 November; verify again at submission time and record what you actually saw |
-| Submitted commit (`main` when the form was sent) | _to record_ |
-| Tag | `submission-2026-11-04` (annotated) → _to record_ |
-| Release | _to record_ (URL) |
-| Source archive | `muse-recall-submission-2026-11-04.tar.gz`, attached to the Release |
-| Archive SHA-256 | _to record_ |
-| Submitted at | _to record_ (date and time, ET) |
+| **Current candidate, 4 Nov 2026 after the website/demo promotions and the demo-section cleanup** | `main` = `be8eb97a373fa8385a0f0cd292f5d575cea18b62` (merge of PR #280; carries #279, #277, #275, #273); `integration` = `d65f674214ed113c5b43e4cfa28da0a4d5714e90`. If the form is sent from this tree, the submitted demo is 180.000 s · 14,903,823 B · SHA-256 `d1695c04fbac57779f14be7d834478b86e868291d0f326710cc62dc5fe3a440d`, transcript `947425424804ed3f68ba8adadf5e53beef6070bf2eb8b6c0b1cec3d620987b2a`, poster `51dc41b1b00a19d81b6bd5136310a0e303b7076bb88626b61614a8c1c980a918`. The site at https://sidonsoft.github.io/muse-recall/ is built from `main` and was live-verified against those bytes on 4 November — re-checked after the #280 deploy (website workflow run `41774329864`: `build-pages` ✓, `deploy` ✓; the live MP4 is still 14,903,823 B, `d1695c04…40d`, and the demo-section cleanup changed no media path); verify again at submission time and record what you actually saw |
+| Submitted commit (`main` when the form was sent) | **unknown** — neither the 29 Oct 2026 entry nor the 4 Nov 2026 update recorded the commit behind `main` at that moment, and the entry's repository field is the unversioned URL, which cannot identify a commit. The candidate rows above are candidates, not the submitted tree; do not back-fill a guess |
+| **Source snapshot observed when the 4 Nov update was verified** | `577030378ceb0424708fcac09d303c227efde3de` — `main` as read back at **2026-11-04T01:30:03Z**, when the updated entry was confirmed present after a reload. Commit time 2026-11-04T01:09:44Z (PR #278, promotion of `integration`); ancestor of every later `main`. Its tree carries the demo the entry links to: `website/public/video/muse-recall-demo.mp4` = 14,903,823 B, SHA-256 `d1695c04fbac57779f14be7d834478b86e868291d0f326710cc62dc5fe3a440d`. **Not** the 29 Oct submitted commit and **not** established as the tree the save used |
+| Archive of that snapshot | `muse-recall-candidate-5770303.tar.gz` — SHA-256 `f98635208cd45b12004fba17024260c3c92b9ca1e084710b569484ab84046aae`, from `git archive` of the commit above; verified 4 Nov 2026 against the commit tree (2,525 files listed, matching names) and by spot-check blob hashes for `package.json`, `README.md`, the demo MP4 and `apps/server/src/app.ts`; no `.env`, `data/`, `workspaces/`, `.git/` or `node_modules` entries. Held locally outside GitHub; **not published**, and publishing it is a separate owner act |
+| Tag | `submission-2026-11-04` (annotated) → **does not exist**. Checked on 4 Nov 2026: `git ls-remote --tags origin` lists `v0.1.0`, `submission-v14`, `submission-v15`, `phase17-preregistration` and `archive/*`. Two different things must not be merged here: a tag naming the **29 Oct submitted tree** cannot be created while that tree is unknown (it would be a guess), while a dated tag of the **observed snapshot** above is available and unblocked — an owner decision, deliberately not taken in this step |
+| Release | _to record_ (URL) — none created for the submission; `v0.1.0` is a beta release, not a submission artifact |
+| Source archive | _planned, not created_: `muse-recall-submission-2026-11-04.tar.gz`, attached to the Release. The observed-snapshot archive row above is a different artifact and already exists |
+| Archive SHA-256 | _to record_ for the planned submission archive. The observed-snapshot archive is `f9863520…aae` (row above) |
+| Entry timeline | Original entry confirmed **2026-10-29T11:01:12Z** (= 07:01:12 ET). Beta update verified persisted **2026-11-04T01:30:03Z** (= 2026-11-03T21:30:03 ET); the exact platform save time is not established. The submitted commit was never recorded on either date |
 | Judge entry points | README on `main`; https://sidonsoft.github.io/muse-recall/ (built from `main`); Codespaces button (default branch) |
 
 ### Existing frozen tags — census verified 31 Oct 2026
@@ -47,7 +79,17 @@ the table exactly, as re-confirmed 31 Oct.
 If anything is promoted to `main` before submitting, the candidate SHA above is out of date.
 Use whatever `main` points at when you press Submit.
 
-## Steps at submission time
+## What preservation can and cannot mean now
+
+Two acts with different statuses, so the open row above is not mistaken for one blocked task:
+
+| Act | Status | Why |
+| --- | --- | --- |
+| Preserve the **observed snapshot** (`5770303…`): dated tag + archive + Release asset naming it as "the source snapshot at the 4 Nov update verification" | **Available; not taken.** Awaiting an owner decision on publishing another public artifact | Nothing about it depends on the October record; the archive is already built and checksum-verified |
+| Name a tree as the **29 Oct submitted tree** (tag, Release or manifest row) | **Blocked by the facts, not by effort** | The commit behind `main` on that date was never recorded, and the entry links the unversioned URL; picking a commit now would manufacture a provenance claim the repository cannot support |
+| Recover the October record (platform-side submission time, field values, and any commit the platform itself captured) | **Open** | Only the submission platform can answer; this repository has no read access to it |
+
+## Steps for a submission act (kept, because an act can be repeated)
 
 1. Submit the form. Then note the exact `main` SHA:
    `git fetch origin main && git rev-parse origin/main`.

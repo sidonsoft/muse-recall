@@ -46,7 +46,7 @@ git show <commit>:<path>                              # read it without checking
 | PR #1 branch tip | `5bd287a`; merged code head `0fbc1ef`; local-beta hardening merged by PR #1 |
 | Tests on the merged tree | `pnpm verify` — 644 passed, 3 skipped (647 total, 41 files) |
 | Tags | `submission-v14`, `submission-v15`, `phase17-preregistration` remain frozen; none moved |
-| Deployment / submission | not deployed, not submitted; local-only and loopback-only |
+| Deployment / submission | the **application** is not hosted: local-only and loopback-only. The **landing page** is deployed on GitHub Pages, built from `main` (live since 29 Oct 2026). The hackathon entry was confirmed on 29 Oct 2026 and updated with the beta on 4 Nov 2026; the commit behind the entry was not recorded — see [SUBMISSION_PRESERVATION.md](../release/SUBMISSION_PRESERVATION.md) |
 | Phase 17 review | PR #2 review disposition: R1–R4 fixed; R5–R10 remain documented in locked files (five latent conditions did not occur; R9 is a cosmetic detector-description error) |
 
 The numbering below is historical. C20 and C21 are the current behavioural evidence; C10's test
