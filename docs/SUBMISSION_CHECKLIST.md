@@ -12,6 +12,22 @@ Status on 4 November 2026: **v0.1.0 published; hackathon not yet submitted.** Th
 - [x] Recut published on 4 November against the latest owner-supplied Discord guidance: it opens with the owner-confirmed statement that no product code existed before the event, leads with the recorded generate → review → reject → correct → approve loop, keeps about 156.6 of its 180 seconds on moving product or terminal footage, names the model roles (Muse Code CLI for application generation and change, Meta model APIs for media) and the Meta SAM cutout workflow, is English, and runs exactly 3:00. Beat-level provenance and evidence classes are in [V21_QA.md](demo/video/V21_QA.md).
 - [ ] Owner decides whether that cut satisfies the guidance point about **live Meta calls being visible**. Two facts must not be merged. The footage does contain live calls: the first minute is labelled on screen as "Recorded live Muse Spark · actual CLI requests and results", showing the CLI request, the running job and the returned application. What did not happen is new inference calls **while assembling** the cut — that is production provenance, and the later beats are labelled retained media outputs, product replays or deterministic fixtures. Whether the guidance asks for calls performed live while recording, or recorded calls made visible on screen, is the owner's reading to make. Nothing here claims Official-Rules compliance, and submission has not happened.
 
+### Publication and judge-link verification (4 November, after promotion)
+
+The website branch merged to `integration` as `3fdab13` (PR #273), a one-sentence accuracy fix followed as `f28f1ba` (PR #275), and both were promoted to `main` by PR #274 (`08eeb6a`) and PR #276 (`36938f5`). The Pages workflow ran on the pushed `main`: `qa`, `gecko`, `build-pages` and `deploy` all succeeded (run 41749990101; `build-pages` 00:52:54 → 00:53:06 and `deploy` 00:53:10 → 00:54:10 UTC on 4 November), so **the live landing page and the live demo file are the current cut, not the 4 November release cut**.
+
+Checked against the live site and the raw `main` paths, not the local build:
+
+| Judge entry point | Result |
+| --- | --- |
+| `https://sidonsoft.github.io/muse-recall/video/muse-recall-demo.mp4` | 200 · 14,903,823 B · SHA-256 `d1695c04…40d` — the Bella / Eleven v4 cut |
+| `https://github.com/sidonsoft/muse-recall/blob/main/docs/demo/video/Muse_Recall_Demo_V21_1080p.mp4?raw=true` (README link) | 200 · same 14,903,823 B, same SHA-256 — the two paths are byte-identical |
+| `https://raw.githubusercontent.com/sidonsoft/muse-recall/main/website/public/video/muse-recall-demo.mp4` | 200 · same SHA-256 |
+| Poster / WebVTT / transcript | 200 · 122,193 B · 57 cues, SHA-256 `39e11c69…` · 2,835 characters, SHA-256 `94742542…` |
+| Playback in a browser (desktop 1280 px and iPhone 12 Pro 390×844) | `readyState=4`, duration reads exactly **3:00**, seek to 1:42–1:43 shows the Meta SAM chapter card with the alpha-checkerboard cutout, burned-in caption renders **once** (the sidecar track is `disabled` by design), player position 1:43 |
+| Mobile layout and navigation | no horizontal overflow (scrollWidth == clientWidth at 390 px), video box 325 px inside the viewport, mobile menu is a native `<details><summary>Menu` with section links, first tab stop is "Skip to content" and its target exists |
+| Copy that was live-checked | the Watch footnote now names both historical cuts by reference (3:00 at tag `v0.1.0`, 2:50.47 at commit `c32d03b`) and states neither is a submission record — the earlier wording called the 2:50 file a "submission cut" |
+
 ## Guidance and remaining owner actions
 
 The owner supplied Discord guidance on 4 November: a hosted app is optional; judges need a runnable public repo and a demo of three minutes or less. Marketing production tools are distinct from models called by the product at runtime. Product runtime model calls must use Meta models. This records the supplied guidance, not independent verification of the complete Official Rules.
