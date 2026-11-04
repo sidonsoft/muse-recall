@@ -44,7 +44,9 @@ experimental until it has passed in an actual Codespace;
 the container README documents the opt-in live setup (`INSTALL_MUSE_CLI=1`, `muse login`,
 and a separate `FORGE_MUSE_API_KEY` secret for media). Follow the
 [five-minute offline walkthrough](../../.devcontainer/README.md#a-five-minute-walkthrough-offline)
-for what to look at and what each screen should show.
+for what to look at and what each screen should show. Live Codespaces generation and
+login remain experimental and unverified; `pnpm judge:check` reports local prerequisites
+without checking login or spending quota.
 
 ## Install and run
 
@@ -154,9 +156,9 @@ The deterministic `echo` provider needs no credentials or network. It is labelle
 UI and API, and it refuses to impersonate Muse. Use it to browse the seeded project, inspect memory
 and exercise the API in CI.
 
-**HTML Studio generation still needs the Muse Code CLI even when `MODEL_PROVIDER=echo`.** Forge
-spawns `muse` directly; the chat provider setting does not replace it. The offline provider does not
-fabricate a Studio generation.
+**The offline provider disables HTML Studio generation.** To generate, stop the app,
+select `MODEL_PROVIDER=muse-cli`, ensure the Muse CLI is installed and logged in, then restart.
+The offline provider does not fabricate a Studio generation.
 
 ## Verification commands
 
@@ -165,7 +167,7 @@ The root `package.json` is the source of truth. These are the useful entry point
 | Command | What it does |
 | --- | --- |
 | `pnpm verify` | Lint, typecheck and the unit/integration test suite. |
-| `pnpm judge:check` | Which of the three documented paths this machine can complete — coding CLI, media key, verification browser, offline demo data — with the fix for each gap. Read-only: no model call, no network request, no quota spend, and it prints the same rows the API logs at startup and the System screen shows. |
+| `pnpm judge:check` | Local prerequisites for the three documented paths — coding CLI, media key, verification browser, offline demo data — with the fix for each gap. Read-only: no model call, no network request, no quota spend, and it prints the same rows the API logs at startup and the System screen shows. |
 | `pnpm build` | Production web and server builds. |
 | `pnpm muse:probe` | One real headless Muse call, with latency and token usage. |
 | `MML_LIVE_MUSE=1 pnpm test` | Adds the opt-in live Muse integration tests. |
@@ -198,7 +200,7 @@ That deletes memories and approved versions permanently; there is no restore end
 | Symptom | Check |
 | --- | --- |
 | `muse` not found or generation fails immediately | `muse --version`, `muse login`, and `pnpm muse:probe`. If the binary is not on `PATH`, set `MUSE_BIN` (chat) or `FORGE_MUSE_BIN` (Studio) to an absolute path. |
-| Chat works offline but Studio generation fails | `MODEL_PROVIDER=echo` does not power Forge. Point the Studio at a working Muse CLI or set `FORGE_MUSE_BIN`. |
+| Chat works offline but Studio generation fails | Stop the app, select `MODEL_PROVIDER=muse-cli`, and restart with a working Muse CLI; `FORGE_MUSE_BIN` overrides its path. |
 | Approval fails with a browser-launch message | Install managed Chromium with `pnpm exec playwright-core install chromium`, or deliberately set `FORGE_RUNTIME_BROWSER=chrome`. There is no silent fallback. |
 | Settings in `.env` appear ignored | Check which file the startup log names. A root `.env` wins over `apps/server/.env`, only one file is read, and shell variables override both. |
 | Projects or memories are missing after an upgrade | Builds before 29 October 2026 stored data under `apps/server/`. Stop the server and move `apps/server/data/` and `apps/server/workspaces/` to the repository root, or set absolute paths. |

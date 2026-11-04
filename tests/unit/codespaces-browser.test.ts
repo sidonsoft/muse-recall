@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { chromium } from 'playwright-core';
+import { describe, expect, it, vi } from 'vitest';
 import { verifyBrowserLaunch } from '../../scripts/lib/codespaces-browser.js';
 
 /**
@@ -21,7 +22,7 @@ describe('browser launch verification', () => {
     expect(result.version).toBeNull();
     expect(result.executablePath).toBe('/nonexistent/chromium-for-test-only');
     expect(result.error).toContain('did not launch');
-    expect(result.error).toContain('pnpm exec playwright-core install --with-deps chromium');
+    expect(result.error).toContain('pnpm exec playwright-core install-deps chromium');
   });
 
   it('reports launch success as ready and launch failure with recovery', async () => {
@@ -39,6 +40,18 @@ describe('browser launch verification', () => {
       expect(result.error).toContain('pnpm exec playwright-core install');
     }
   }, 90_000);
+
+  it('uses the browser driver timeout so timed-out launches are cleaned up', async () => {
+    const launch = vi.spyOn(chromium, 'launch').mockRejectedValue(new Error('launch timed out'));
+    try {
+      const result = await verifyBrowserLaunch({ timeoutMs: 25 });
+      expect(launch).toHaveBeenCalledWith({ headless: true, timeout: 25 });
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain('launch timed out');
+    } finally {
+      launch.mockRestore();
+    }
+  });
 
   it('never throws on an unresolvable browser', async () => {
     const result = await verifyBrowserLaunch({

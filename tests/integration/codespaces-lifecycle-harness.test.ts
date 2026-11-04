@@ -27,7 +27,7 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 const [apiPort, webPort, bootLog, childLog] = process.argv.slice(2);
 if (childLog) {
   const { spawn } = await import('node:child_process');
-  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 3600000)'], { stdio: 'ignore' });
+  const child = spawn(process.execPath, ['-e', (process.env.STUB_CHILD_STUBBORN ? "process.on('SIGTERM', () => {});" : '') + 'setInterval(() => {}, 3600000)'], { stdio: 'ignore' });
   child.unref();
   writeFileSync(childLog, String(child.pid));
 }
@@ -146,7 +146,9 @@ function bootCount(h: Harness): number {
 function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
-    return true;
+    return !execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).includes(
+      'Z',
+    );
   } catch {
     return false;
   }
@@ -244,6 +246,27 @@ describe('lifecycle behaviour', () => {
     for (const result of results) expect(result.status).toBe(0);
     expect(bootCount(h)).toBe(1);
   }, 120_000);
+
+  it('concurrent stale-lock recovery still launches exactly one instance', async () => {
+    const h = setupHarness();
+    mkdirSync(join(h.logDir, 'start.lock'), { recursive: true });
+    writeFileSync(join(h.logDir, 'start.lock', 'pid'), 'not-a-pid');
+    const env = scriptEnv(h, { CODESPACES_START_CMD: startCmd(h) });
+    const results = await Promise.all(Array.from({ length: 4 }, () => runScriptAsync(START, env)));
+    for (const result of results) expect(result.status).toBe(0);
+    expect(bootCount(h)).toBe(1);
+  }, 120_000);
+
+  it('stop kills a stubborn child after its parent exits', () => {
+    const h = setupHarness();
+    const env = scriptEnv(h, { CODESPACES_START_CMD: startCmd(h, true), STUB_CHILD_STUBBORN: '1' });
+    expect(runScript(START, env).status).toBe(0);
+    const child = Number(readFileSync(h.childLog, 'utf8'));
+    const stopped = runScript(STOP, { ...env, CODESPACES_STOP_WAIT_SECS: '1' });
+    expect(stopped.status).toBe(0);
+    expect(pidAlive(child)).toBe(false);
+    expect(existsSync(h.pidFile)).toBe(false);
+  }, 60_000);
 
   it('a start that never becomes healthy fails with the log location', () => {
     const h = setupHarness();

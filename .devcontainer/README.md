@@ -31,6 +31,15 @@ Setup is safe to re-run: it keeps an existing `.env` and never reseeds an existi
 demo to the recorded version 1: stop the app, then
 `SEED_DEMO=force bash .devcontainer/setup.sh`.
 
+Run `pnpm judge:check` for the read-only CLI, media-key, browser and demo-seed
+prerequisites; the System screen shows the same rows. Login, provider access and quota
+remain unverified. See [For judges: start here](../docs/guide/FOR_JUDGES.md).
+
+The lifecycle is exercised locally and in Linux CI with disposable app processes.
+A fresh cloud Codespace has not been run in this review; the available GitHub connection
+has no Codespaces permission. Browser setup failures warn and leave offline exploration
+available. A successful install is reported only after a real headless launch.
+
 ## A five-minute walkthrough (offline)
 
 Each step says what you should see. The app link is printed on every attach; it looks
@@ -157,7 +166,9 @@ pnpm build     # production web + server builds
   are still rejected — no public port or relaxed origin is needed, and none is added.
 - Application validation needs the managed Chromium that setup installs. Without it,
   staging still works but approval cannot run its load-time browser check; rerun
-  `pnpm exec playwright-core install --with-deps chromium` (needs root via sudo).
+  `sudo pnpm exec playwright-core install-deps chromium`, then, as the app user,
+  `pnpm exec playwright-core install chromium` and
+  `pnpm exec tsx scripts/codespaces-verify-browser.ts`.
 - To start over, stop the app (`bash .devcontainer/stop.sh`), delete `data/` and `workspaces/`, then run
   `bash .devcontainer/setup.sh` (or `SEED_DEMO=force` to reseed without deleting).
 - **Launch count.** When the codespace is created, setup makes one anonymous request

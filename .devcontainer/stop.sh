@@ -20,7 +20,10 @@ PID_FILE="${CODESPACES_PID_FILE:-$LOG_DIR/dev.pid}"
 WAIT_SECS="${CODESPACES_STOP_WAIT_SECS:-10}"
 
 pid_alive() {
-  [ -n "${1:-}" ] && kill -0 "$1" 2>/dev/null
+  case "${1:-}" in ''|*[!0-9]*|0) return 1 ;; esac
+  kill -0 "$1" 2>/dev/null || return 1
+  # A zombie no longer runs or owns a port; its parent may reap it later.
+  case "$(ps -o stat= -p "$1" 2>/dev/null)" in *Z*) return 1 ;; esac
 }
 
 if [ ! -f "$PID_FILE" ]; then
@@ -48,29 +51,42 @@ descendants() {
     descendants "$child"
   done
 }
+# Keep the snapshot after the parent exits: otherwise a child which ignores
+# SIGTERM becomes an orphan and disappears from a second descendant query.
+tree="$(descendants "$pid")"
 group_signalled=0
 if kill -- "-$pid" 2>/dev/null; then
   group_signalled=1
 else
-  tree="$(descendants "$pid")"
   kill "$pid" 2>/dev/null || true
   for child in $tree; do
     kill "$child" 2>/dev/null || true
   done
 fi
 
+app_alive() {
+  if [ "$group_signalled" = "1" ]; then
+    ps -eo pgid=,stat= | awk -v group="$pid" '$1 == group && $2 !~ /^Z/ { alive=1 } END { exit !alive }'
+  else
+    local member
+    for member in "$pid" $tree; do
+      if pid_alive "$member"; then return 0; fi
+    done
+    return 1
+  fi
+}
+
 waited=0
-while pid_alive "$pid" && [ "$waited" -lt "$WAIT_SECS" ]; do
+while app_alive && [ "$waited" -lt "$WAIT_SECS" ]; do
   sleep 1
   waited=$((waited + 1))
 done
 
-if pid_alive "$pid"; then
-  echo "Process $pid ignored termination; sending SIGKILL to the group."
+if app_alive; then
+  echo "The app tree ignored termination; sending SIGKILL to the remaining processes."
   if [ "$group_signalled" = "1" ]; then
     kill -KILL -- "-$pid" 2>/dev/null || true
   else
-    tree="$(descendants "$pid")"
     kill -KILL "$pid" 2>/dev/null || true
     for child in $tree; do
       kill -KILL "$child" 2>/dev/null || true
@@ -79,8 +95,8 @@ if pid_alive "$pid"; then
   sleep 1
 fi
 
-if pid_alive "$pid"; then
-  echo "Process $pid is still alive; leaving $PID_FILE in place for inspection."
+if app_alive; then
+  echo "The app tree is still alive; leaving $PID_FILE in place for inspection."
   exit 1
 fi
 rm -f "$PID_FILE"

@@ -22,7 +22,7 @@ export interface BrowserVerification {
 }
 
 const RECOVERY =
-  'pnpm exec playwright-core install --with-deps chromium (system libraries need root: prefix with sudo when setup cannot elevate itself)';
+  'sudo pnpm exec playwright-core install-deps chromium; then, as the app user, pnpm exec playwright-core install chromium; pnpm exec tsx scripts/codespaces-verify-browser.ts';
 
 export async function verifyBrowserLaunch(options: {
   /** Override for tests: a bogus path must fail with the recovery line. */
@@ -52,13 +52,11 @@ export async function verifyBrowserLaunch(options: {
   const timeoutMs = options.timeoutMs ?? 60_000;
   let browser = null;
   try {
-    const launched = options.executablePath
-      ? chromium.launch({ executablePath, headless: true })
-      : chromium.launch({ headless: true });
-    const timeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`launch timed out after ${timeoutMs}ms`)), timeoutMs);
+    browser = await chromium.launch({
+      headless: true,
+      timeout: timeoutMs,
+      ...(options.executablePath ? { executablePath } : {}),
     });
-    browser = await Promise.race([launched, timeout]);
     const version = browser.version();
     await browser.close();
     browser = null;

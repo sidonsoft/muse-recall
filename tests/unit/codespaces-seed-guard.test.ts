@@ -152,6 +152,28 @@ describe('seed guard uses the same resolution as the seed', () => {
     expect(kept.decision).toBe('skip');
   });
 
+  it.each([' ./quoted workspace ', ''])('preserves the seed path exactly for %j', (value) => {
+    const workspace = value === '' ? root : join(root, value);
+    seedFakeDemo(workspace);
+    const result = checkSeedGuard({ cwd: root, env: fixtureEnv({ WORKSPACE_ROOT: value }) });
+    expect(result.decision).toBe('skip');
+    expect(result.projectDir).toBe(join(workspace, 'forge', 'forge-demo'));
+  });
+
+  it('does not auto-seed a different SEED_PROJECT target', () => {
+    const result = checkSeedGuard({ cwd: root, env: fixtureEnv({ SEED_PROJECT: 'judge-work' }) });
+    expect(result.decision).toBe('skip');
+    expect(result.reason).toContain('SEED_PROJECT');
+  });
+
+  it('keeps arbitrary files in a project directory', () => {
+    const project = join(root, 'workspaces', 'forge', 'forge-demo');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(join(project, 'judge-notes.txt'), 'keep this');
+    expect(checkSeedGuard({ cwd: root, env: fixtureEnv() }).decision).toBe('skip');
+    expect(readFileSync(join(project, 'judge-notes.txt'), 'utf8')).toBe('keep this');
+  });
+
   it('an absolute WORKSPACE_ROOT passes through instead of anchoring at the root', () => {
     const absolute = join(root, 'abs-ws');
     seedFakeDemo(absolute);

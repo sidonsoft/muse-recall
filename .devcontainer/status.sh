@@ -32,11 +32,7 @@ else
   echo "  start it:  bash .devcontainer/start.sh   (runs on container start; safe to re-run)"
   echo "  logs:      tail -f .devcontainer/.logs/dev.log"
 fi
-if [ -f .env ]; then
-  echo "  provider: $(grep -E '^MODEL_PROVIDER=' .env 2>/dev/null | tail -1 || echo MODEL_PROVIDER unset)"
-else
-  echo "  provider: no .env yet — run bash .devcontainer/setup.sh first"
-fi
+echo "  setup:       pnpm judge:check (read-only prerequisites; login remains unverified)"
 echo "  walkthrough: .devcontainer/README.md (5-minute offline tour + optional live setup)"
 echo "  stop:        bash .devcontainer/stop.sh   (signals only the background app tree)"
 echo

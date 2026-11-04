@@ -89,7 +89,7 @@ else
     echo "No privilege elevation available: installing the browser without system libraries (launch may fail; the recovery command will be printed)."
   fi
   if ! as_app_user pnpm exec playwright-core install chromium; then
-    echo "WARNING: managed Chromium is not installed. Approval and 'pnpm verify:studio-workflow' will fail until 'pnpm exec playwright-core install --with-deps chromium' succeeds."
+    echo "WARNING: managed Chromium is not installed. Approval needs Chromium. Recover as the app user: sudo pnpm exec playwright-core install-deps chromium; pnpm exec playwright-core install chromium; pnpm exec tsx scripts/codespaces-verify-browser.ts."
   elif ! as_app_user pnpm exec tsx scripts/codespaces-verify-browser.ts; then
     echo "WARNING: managed Chromium is installed but did not launch (see above). Approval needs it; offline browsing does not."
   fi
@@ -103,7 +103,7 @@ fi
 if [ "${INSTALL_MUSE_CLI:-}" = "1" ]; then
   bash .devcontainer/install-muse-cli.sh
 else
-  echo "Muse Code CLI not installed (default): Studio generation stays disabled."
+  echo "Automatic Muse Code CLI installation is disabled; any existing CLI is kept."
   echo "To enable the optional live path, re-run with INSTALL_MUSE_CLI=1 (then 'muse login')."
 fi
 

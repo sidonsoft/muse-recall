@@ -45,7 +45,8 @@ app_up() {
 }
 
 pid_alive() {
-  [ -n "${1:-}" ] && kill -0 "$1" 2>/dev/null
+  case "${1:-}" in ''|*[!0-9]*|0) return 1 ;; esac
+  kill -0 "$1" 2>/dev/null
 }
 
 # --- One-at-a-time start ----------------------------------------------------
@@ -61,12 +62,23 @@ acquire_lock() {
   local holder=""
   holder="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
   if [ -n "$holder" ] && ! pid_alive "$holder"; then
-    echo "A previous start (pid $holder) died holding the lock; taking over."
-    rm -rf "$LOCK_DIR"
-    if mkdir "$LOCK_DIR" 2>/dev/null; then
-      echo "$$" >"$LOCK_DIR/pid"
-      lock_holder="$$"
-      return 0
+    # Serialize stale-lock recovery as well: two recoverers must never remove
+    # a fresh lock that the other one just acquired. If recovery is interrupted,
+    # leave its guard for inspection rather than stealing a live start's lock.
+    local recovery="$LOG_DIR/start.recovery"
+    if mkdir "$recovery" 2>/dev/null; then
+      holder="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+      if [ -n "$holder" ] && ! pid_alive "$holder"; then
+        echo "A previous start (pid $holder) died holding the lock; taking over."
+        rm -rf "$LOCK_DIR"
+        if mkdir "$LOCK_DIR" 2>/dev/null; then
+          echo "$$" >"$LOCK_DIR/pid"
+          lock_holder="$$"
+          rmdir "$recovery"
+          return 0
+        fi
+      fi
+      rmdir "$recovery"
     fi
   fi
   return 1

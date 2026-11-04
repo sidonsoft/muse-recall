@@ -18,7 +18,7 @@
  * `seed`. Only an explicit `SEED_DEMO=force` permits resetting existing demo
  * state; `SEED_DEMO=never` never seeds.
  */
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { loadDotEnv, resolveProjectRoot } from '../../apps/server/src/config.js';
 import { DEMO_PROJECT_ID } from './demo-seed.js';
@@ -57,11 +57,11 @@ function projectHasState(projectDir: string): boolean {
     if (entry === 'state.json') return true;
     const full = join(projectDir, entry);
     try {
-      if (!statSync(full).isDirectory()) return false;
+      if (!statSync(full).isDirectory()) return true;
       if (entry === 'versions' || entry === 'staging' || entry === 'jobs') {
         return readdirSync(full).length > 0;
       }
-      return false;
+      return true;
     } catch {
       // An entry that cannot be inspected is state we cannot account for.
       return true;
@@ -130,9 +130,22 @@ function checkSeedGuardInner(options: SeedGuardOptions & { cwd: string }): SeedG
   // Shell-exported WORKSPACE_ROOT wins over the file — exactly as the seed
   // resolves it. resolve() anchors a relative value at the repository root
   // and passes an absolute value through, matching the seed's projectPath.
-  const configured = (env.WORKSPACE_ROOT ?? process.env.WORKSPACE_ROOT ?? './workspaces').trim();
-  const anchored = resolve(projectRoot, configured.length > 0 ? configured : './workspaces');
+  const configured = env.WORKSPACE_ROOT ?? process.env.WORKSPACE_ROOT ?? './workspaces';
+  const anchored = resolve(projectRoot, configured);
   const projectDir = join(anchored, 'forge', DEMO_PROJECT_ID);
+
+  const projectOverride = env.SEED_PROJECT ?? process.env.SEED_PROJECT;
+  if (projectOverride !== undefined && projectOverride !== DEMO_PROJECT_ID) {
+    return {
+      decision: 'skip',
+      reason:
+        'SEED_PROJECT selects a different project; automatic setup will not reset it. Run the seed explicitly after inspecting that project.',
+      projectRoot,
+      workspaceRoot: anchored,
+      projectDir,
+      envFile,
+    };
+  }
 
   if (seedDemo === 'force') {
     return {
@@ -159,9 +172,15 @@ function checkSeedGuardInner(options: SeedGuardOptions & { cwd: string }): SeedG
 
   let present: boolean;
   try {
-    if (!existsSync(projectDir)) {
+    let info: ReturnType<typeof statSync> | undefined;
+    try {
+      info = statSync(projectDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+    if (info === undefined) {
       present = false;
-    } else if (!statSync(projectDir).isDirectory()) {
+    } else if (!info.isDirectory()) {
       // A file where the project directory should be is not seedable state
       // and not seedable ground: ambiguous, so do not touch it.
       return {

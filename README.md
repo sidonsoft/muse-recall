@@ -10,7 +10,7 @@ The first version is only the beginning. Next week, your AI builder needs to rem
 
 [Quick start](#quick-start) · [Demo](#see-the-workflow) · [Beta capabilities](#what-the-beta-can-do) · [Architecture](#architecture) · [Evidence](#what-is-verified) · [Limitations](#limitations)
 
-> **v0.1.1 beta.** A local-first, single-user studio, with correctable memory, media references and staged application review. [Download the latest release](https://github.com/sidonsoft/muse-recall/releases/latest) · [Beta release notes](docs/release/notes/v0.1.1-beta.md).
+> **v0.1.2 beta.** A local-first, single-user studio, with correctable memory, media references and staged application review. [Download the latest release](https://github.com/sidonsoft/muse-recall/releases/latest) · [Beta release notes](docs/release/notes/v0.1.2-beta.md).
 
 ### For judges: start here
 
