@@ -50,12 +50,12 @@ can confirm each label against the frame.
 | 2:30.0 | Phase 17 with its scope: Muse Spark 37/57 → 0/58, Muse Spark Open 49/60 → 1/60, 480 runs, six fixed tasks, source-code checks, 8 timeouts, and no claim of general correctness or media-quality validation | card: "Evidence has a scope. The product still needs review … Phase 17 is a separate fixed-task trial" beside the Palette Bench application | running beta UI over retained output; the trial is separate bounded evidence |
 | 2:55.4 | Close: "Muse Recall. The memory your project keeps." | title card | title card |
 
-The Phase 17 denominators quoted in the cut are per-task run counts inside the 480-run
-source-pattern experiment — 37/57 and 0/58 are the **Muse Spark** task pair, not the whole
-experiment — and the cut itself says the trial "does not establish general correctness or
-validate the newer media features". Guard and screenshot review remain advisory. Human approval
-remains necessary, and the approval gate checks loading — not general correctness, accessibility,
-or every interaction.
+The denominators quoted in the cut count usable runs within each model and condition,
+aggregated across all six fixed task strata. For **Muse Spark**, 37/57 is the no-memory arm
+and 0/58 is the retrieved-memory arm. The full experiment retained 480 runs across two models,
+six strata and four arms. The cut states that it does not establish general correctness or
+validate newer media features. Guard and screenshot review remain advisory; approval checks
+loading rather than correctness, accessibility or every interaction.
 
 ## Previous cuts at the same paths (historical)
 

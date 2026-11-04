@@ -102,8 +102,8 @@ index.html               meta, JSON-LD, preloads, no-JS fallback
 vite.config.js
 public/
   assets/                real screenshots (+ WebP variants and srcset sizes)
-                         og-image.png — 1200×630 social card, 230,993 B, SHA-256
-                         b7a41709c4c3c7d8c0eb90c169caf57362cc0688aea648fa7b7b6ad54e468714
+                         og-image.png — 1200×630 social card, 235,046 B, SHA-256
+                         7424e37452afc09fd222eda59fd74c6c84b910d68d26dbda5b86fe3ccd492f0b
   video/                 current demo cut, WebVTT sidecar, transcript, poster
   404.html  robots.txt  site.webmanifest  icons/
 scripts/
@@ -128,23 +128,19 @@ src/
   beta, loopback by default, optional shared bearer access; offline setup browses and chats but
   generating an application needs the Muse Code CLI, and media needs separate credentials.
 - The social card (`public/assets/og-image.png`) quotes research numbers, so it has to label them
-  the way the evidence docs do: the `37/57 → 0/58` pair is the **Muse Spark** stratum inside the
-  480-run pre-registered experiment across two models and six fixed strata, and the card says the
-  checks are source-pattern checks on generated source, not general correctness. `og:image:alt`
+  the way the evidence docs do: `37/57 → 0/58` compares the no-memory and retrieved-memory
+  arms for **Muse Spark**, aggregated across all six task strata in the 480-run, two-model
+  experiment. The card describes source-pattern checks on generated source, not general
+  correctness. `og:image:alt`
   carries the same qualification. It is generated from an HTML mock outside the repository; if you
   regenerate it, update the SHA-256 above and re-check the alt text.
 - After changing copy, media or links: `npm run site && npm run qa && npm run links`. If you add
   a QA check, update the count in the `SiteVerified` stats — the badge gate will fail otherwise.
-- What the metadata actually does, so nobody re-invents a switch: `scripts/prerender.mjs` has no
-  `SITE` setting. It reads `SITE_URL` from the environment only to build absolute URLs
-  (`SITE_URL || DEFAULT_ORIGIN`, default `https://muse-recall.pages.dev`), and the prerendered head
-  keeps the absolute URLs `index.html` already carries — which are hardcoded to GitHub Pages
-  (`og:url`, `og:image`, `twitter:image`, JSON-LD `url`). The `<head>` asset links are relative
-  (`./assets/…`) and resolve wherever the site is served. This branch added
-  `<link rel="canonical" href="https://sidonsoft.github.io/muse-recall">` to match `og:url`, and
-  `qa.mjs` pins canonical, `og:url` and `og:image` as exact strings. There is no single switch to
-  repoint the site: moving the deployment means changing those absolute URLs in `index.html` (and
-  the prerender default) together, and the QA probes will tell you which ones you missed.
+- Deployment metadata lives in `index.html`: canonical, `og:url`, `og:image`, `twitter:image`
+  and the JSON-LD URLs use `https://sidonsoft.github.io/muse-recall/`. The prerender script
+  renders the React page and inlines CSS; it has no `SITE`, `SITE_URL` or `DEFAULT_ORIGIN`
+  configuration. Relative asset links resolve against the served page. If the deployment
+  origin changes, update the absolute URLs in `index.html` and the corresponding QA probes.
 
 ## Deploy
 
