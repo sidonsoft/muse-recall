@@ -1005,12 +1005,13 @@ export function ForJudges() {
       h: 'Run it yourself — three paths, two minutes to check yours',
       p: (
         <>
-          <code>pnpm judge:check</code> prints which paths this machine can finish and the exact
-          fix for anything missing: <b>coding CLI</b>, <b>media API</b>,{' '}
+          <code>pnpm judge:check</code> reports local prerequisites and fixes for anything missing:
+          {' '}<b>coding CLI</b>, <b>media API</b>,{' '}
           <b>verification browser</b> and the <b>offline demo data</b>. The check itself is
           read-only — no model call, no network request, no quota spend, and it prints no
-          credential. Exploring offline needs nothing; generating needs the Muse Code CLI
-          installed <i>and</i> logged in; media and SAM need their own server-side key.{' '}
+          credential. Login, provider access and quota remain unverified. Offline exploration
+          needs no provider credential; generating needs the Muse Code CLI installed <i>and</i>
+          {' '}logged in; media and SAM need their own server-side key.{' '}
           <b>Codespaces gives you the exploration path as shipped:</b> the image installs no CLI
           and starts on the offline provider, so Generate is disabled with a note beside it. There
           is no automatic CLI or browser installation, no startup guarantee for a container you
