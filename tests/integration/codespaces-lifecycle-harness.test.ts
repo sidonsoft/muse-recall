@@ -328,6 +328,23 @@ describe('lifecycle behaviour', () => {
     }
   }, 120_000);
 
+  it('refuses a live PID belonging to a different process identity', async () => {
+    const h = setupHarness();
+    const { spawn } = await import('node:child_process');
+    const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 3600000)'], {
+      stdio: 'ignore',
+      detached: true,
+    });
+    sentinel.unref();
+    mkdirSync(h.logDir, { recursive: true });
+    writeFileSync(h.pidFile, String(sentinel.pid));
+    writeFileSync(`${h.pidFile}.identity`, 'different-container-and-process');
+    const stopped = runScript(STOP, scriptEnv(h));
+    expect(stopped.status).toBe(1);
+    expect(stopped.stdout).toContain('identity');
+    expect(pidAlive(sentinel.pid as number)).toBe(true);
+  }, 30_000);
+
   it('stopping an already-stopped app is a no-op success', () => {
     const h = setupHarness();
     const result = runScript(STOP, scriptEnv(h));

@@ -23,6 +23,7 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
+source .devcontainer/process-identity.sh
 
 API="${CODESPACES_APP_API:-http://127.0.0.1:8787/api/live}"
 WEB="${CODESPACES_APP_WEB:-http://127.0.0.1:5173}"
@@ -149,14 +150,19 @@ fi
 # means someone else owns the app.
 if [ -f "$PID_FILE" ]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
-  if pid_alive "$old_pid"; then
+  if pid_alive "$old_pid" && [ ! -r "$PID_FILE.identity" ]; then
+    echo "A live pid $old_pid has no process identity; inspect the old record before starting another app."
+    exit 1
+  fi
+  if pid_alive "$old_pid" && recorded_process_matches "$old_pid" "$PID_FILE.identity"; then
     echo "A previous background start (pid $old_pid) is still alive but unhealthy; leaving it alone."
     echo "Stop it ('bash .devcontainer/stop.sh'), then re-run this script."
     release_lock
     exit 0
   else
     echo "Removing the stale pid file from dead process ${old_pid:-unknown}."
-    rm -f "$PID_FILE"
+    # A reused PID belongs to somebody else: discard only our stale record.
+    rm -f "$PID_FILE" "$PID_FILE.identity"
   fi
 fi
 
@@ -171,7 +177,12 @@ else
   # shellcheck disable=SC2086
   nohup bash -c "$START_CMD" >"$LOG_DIR/dev.log" 2>&1 &
 fi
-echo "$!" >"$PID_FILE"
+app_pid="$!"
+process_identity "$app_pid" >"$PID_FILE.identity" || {
+  echo "The app exited before its process identity could be recorded; inspect $LOG_DIR/dev.log."
+  exit 1
+}
+echo "$app_pid" >"$PID_FILE"
 disown 2>/dev/null || true
 
 READY=0

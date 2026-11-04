@@ -26,6 +26,11 @@ reattach prints its links and health without restarting anything.
 | Logs | `tail -f .devcontainer/.logs/dev.log` | background `pnpm dev` output |
 | Stop the app | `bash .devcontainer/stop.sh` | signals only the background app tree; `bash .devcontainer/start.sh` brings it back |
 
+The background PID is paired with a process identity (Linux boot ID and process start
+clock). Stop refuses a missing or mismatched identity, so a reused PID after a container
+restart cannot signal an unrelated process. Old PID-only records require inspection;
+start discards stale records without signalling their processes.
+
 Setup is safe to re-run: it keeps an existing `.env` and never reseeds an existing
 `forge-demo` project, so your generated versions, staging and jobs survive. To reset the
 demo to the recorded version 1: stop the app, then
