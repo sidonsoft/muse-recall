@@ -1,0 +1,150 @@
+{
+  "generated_at": "2026-10-31T02:15:25.095Z",
+  "source_design": "docs/hackathon-evidence/phase17/design.json",
+  "prompt_builder": "apps/server/src/forge/prompt.ts#buildForgePrompt (production signature)",
+  "retrieval": "packages/memory-engine#MemoryEngine.retrieve mode:forge (=6/3000)",
+  "arm": "memory",
+  "baselines": [
+    {
+      "key": "farmyard",
+      "label": "Farmyard Memory Match",
+      "stratum": "farm-arcade",
+      "request_id": "arcade",
+      "rule_id": "child_safety",
+      "baseline_path": "demo/forge-baseline/index.html",
+      "baseline_sha256": "79c9d67a654e39a6ec78807a6bc7d1875e371643aa8dc7f3f8fbfc8de9ba9e41",
+      "baseline_chars": 11529,
+      "request_text": "Make the game more exciting and challenging, like an arcade game.",
+      "rule_text": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "context_text": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43.",
+      "project_id": "p17",
+      "seeded": [
+        {
+          "id": "8d1ed116-47a0-4738-aefe-aa4b07fe9e13",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "83c82924-0a18-43c4-8640-647da7f4c610",
+          "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+        }
+      ],
+      "retrieval": {
+        "mode": "forge",
+        "budget": {
+          "max_memories": 6,
+          "max_characters": 3000
+        },
+        "queried_at": "2026-10-31T00:00:00.000Z",
+        "count": 2,
+        "memory_ids": [
+          "8d1ed116-47a0-4738-aefe-aa4b07fe9e13",
+          "83c82924-0a18-43c4-8640-647da7f4c610"
+        ],
+        "injected_characters": 181,
+        "memory_block_present": true
+      },
+      "prompt_file": "/tmp/study02-qual/prompts/farmyard.txt",
+      "prompt_sha256": "ddc0d0c1a98749ef8cbb2dc012287aec3766732ebfc6ee492a80932052e37ef8",
+      "prompt_chars": 14306,
+      "prompt_bytes": 14318,
+      "rule_in_prompt": true,
+      "context_in_prompt": true,
+      "baseline_in_prompt": true,
+      "ends_with_return_instruction": true
+    },
+    {
+      "key": "orchard",
+      "label": "Orchard Catch",
+      "stratum": "orchard-arcade",
+      "request_id": "arcade",
+      "rule_id": "child_safety",
+      "baseline_path": "docs/hackathon-evidence/phase17/baselines/orchard-catch.html",
+      "baseline_sha256": "492ef9414dc8b339138660bb989c43818aa5803ffbe519f722e9fec40f866537",
+      "baseline_chars": 17419,
+      "request_text": "Make the game more exciting and challenging, like an arcade game.",
+      "rule_text": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+      "context_text": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24.",
+      "project_id": "p17",
+      "seeded": [
+        {
+          "id": "2dad5cee-06a7-4427-a5aa-9e8ce0228265",
+          "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+        },
+        {
+          "id": "93d33eb7-b057-48ab-943f-afa10f84b331",
+          "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+        }
+      ],
+      "retrieval": {
+        "mode": "forge",
+        "budget": {
+          "max_memories": 6,
+          "max_characters": 3000
+        },
+        "queried_at": "2026-10-31T00:00:00.000Z",
+        "count": 2,
+        "memory_ids": [
+          "2dad5cee-06a7-4427-a5aa-9e8ce0228265",
+          "93d33eb7-b057-48ab-943f-afa10f84b331"
+        ],
+        "injected_characters": 176,
+        "memory_block_present": true
+      },
+      "prompt_file": "/tmp/study02-qual/prompts/orchard.txt",
+      "prompt_sha256": "105834fb770d66cd3a316e17dda5bea5313c1ca0dd3fe2b42b72db95087aa743",
+      "prompt_chars": 20191,
+      "prompt_bytes": 20211,
+      "rule_in_prompt": true,
+      "context_in_prompt": true,
+      "baseline_in_prompt": true,
+      "ends_with_return_instruction": true
+    },
+    {
+      "key": "focusflow",
+      "label": "FocusFlow task planner",
+      "stratum": "focus-reward",
+      "request_id": "reward",
+      "rule_id": "calm_motion",
+      "baseline_path": "docs/demo/evidence/artifacts/v3-staged.html",
+      "baseline_sha256": "1d0ea67f383bd4ec2f172d93fc97e82d53a889c3376491b33d0c22f4fbbb881d",
+      "baseline_chars": 15819,
+      "request_text": "Make completing a task feel more rewarding and celebratory.",
+      "rule_text": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+      "context_text": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients.",
+      "project_id": "p17",
+      "seeded": [
+        {
+          "id": "acf48dad-aa43-46e7-a058-259e3313cd53",
+          "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+        },
+        {
+          "id": "805f0868-ff80-4dd3-8cf4-cf7bcdd188cc",
+          "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+        }
+      ],
+      "retrieval": {
+        "mode": "forge",
+        "budget": {
+          "max_memories": 6,
+          "max_characters": 3000
+        },
+        "queried_at": "2026-10-31T00:00:00.000Z",
+        "count": 2,
+        "memory_ids": [
+          "805f0868-ff80-4dd3-8cf4-cf7bcdd188cc",
+          "acf48dad-aa43-46e7-a058-259e3313cd53"
+        ],
+        "injected_characters": 305,
+        "memory_block_present": true
+      },
+      "prompt_file": "/tmp/study02-qual/prompts/focusflow.txt",
+      "prompt_sha256": "db95bc5cddc78f803243377d108da2d68fde1548f2e2f15d3d62e3191838a07e",
+      "prompt_chars": 18714,
+      "prompt_bytes": 18734,
+      "rule_in_prompt": true,
+      "context_in_prompt": true,
+      "baseline_in_prompt": true,
+      "ends_with_return_instruction": true
+    }
+  ]
+}

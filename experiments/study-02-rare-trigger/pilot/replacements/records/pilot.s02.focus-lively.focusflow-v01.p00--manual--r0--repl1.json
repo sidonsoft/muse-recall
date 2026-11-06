@@ -1,0 +1,107 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+  "stratum": "focus-lively",
+  "arm": "manual",
+  "rep": 0,
+  "repeat_id": "replacement-1",
+  "repeat_of": "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0",
+  "seed_mode": "replacement-same-seed",
+  "seed": 719651122,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v01.p00:manual:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3156276944,
+  "order_key": "df9b38027fe0872c10791c6323f9578ae4b3500ac0fb3ff3b5ac01ded095c210",
+  "variant_id": "focusflow-v01",
+  "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+  "request_text": "Make the planner feel lively and engaging.\n\nFocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+  "prompt_file": "pilot/replacements/prompts/pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1.txt",
+  "prompt_sha256": "b32a9fa7759f7a41cbb87598dc636cc7538bcf61f6a4f66bfa4b49c20e9ad2f3",
+  "prompt_bytes": 22939,
+  "request_sha256": "38dcfa378eafe4c56d0f3f105fb9c946f34dec4d33f044add9eaf3342d881188",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "1bb5597b-a7ae-426b-b9d0-2acbcb2b09b8"
+  ],
+  "memory_contents": [
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "1bb5597b-a7ae-426b-b9d0-2acbcb2b09b8",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 1,
+    "characters_used": 535,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 1,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T17:25:29.030Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 273.249,
+      "raw_file": "pilot/replacements/raw/pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1.attempt1.json",
+      "sse_file": "pilot/replacements/raw/pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1.attempt1.sse.txt",
+      "response_sha256": "fb52f3755c27d85dac5963974f6bd8ca18dddf0cc1c74cfe530c710764856373"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6831,
+    "completion_tokens": 6263,
+    "total_tokens": 13094,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6831,
+    "prompt_ms": 17758.7,
+    "prompt_per_token_ms": 2.6,
+    "prompt_per_second": 384.7,
+    "predicted_n": 6263,
+    "predicted_ms": 252411.7,
+    "predicted_per_token_ms": 40.302,
+    "predicted_per_second": 24.8,
+    "draft_n": 5233,
+    "draft_n_accepted": 5214
+  },
+  "http": 200,
+  "output_file": "pilot/replacements/outputs/pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1.html",
+  "output_bytes": 20198,
+  "output_sha256": "09fd0856349f9731303378a2c3255423359be3c1247698b02a2cf4ea8354e034",
+  "raw_file": "pilot/replacements/raw/pilot.s02.focus-lively.focusflow-v01.p00--manual--r0--repl1.attempt1.json",
+  "started_at": "2026-10-31T17:25:29.029Z",
+  "finished_at": "2026-10-31T17:30:07.284Z",
+  "seconds_total": 278.255,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null,
+  "replacement_for": "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0",
+  "replacement_reason": "timeout",
+  "replacement_rule": "one replacement per unusable pilot run; original failure retained; pilot-only"
+}

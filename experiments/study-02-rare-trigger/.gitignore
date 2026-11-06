@@ -1,0 +1,5 @@
+# Raw SSE stream transcripts are large (~150 MB) and are retained on the authoring machine only.
+# Their SHA-256 values are committed in pilot/raw/SHA256SUMS-sse.txt; parsed responses, outputs,
+# prompts and records are committed.
+pilot/raw/*.sse.txt
+pilot/replacements/raw/*.sse.txt

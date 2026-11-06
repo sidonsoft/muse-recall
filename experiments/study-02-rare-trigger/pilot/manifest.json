@@ -1,0 +1,4257 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "created_at": "2026-10-31T09:31:16.203Z",
+  "endpoint": "http://192.168.86.39:8080/v1/chat/completions",
+  "models_url": "http://192.168.86.39:8080/v1/models",
+  "model": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "max_tokens": 16384,
+  "timeout_ms": 1800000,
+  "concurrency": 1,
+  "dry_run": false,
+  "order_seed": 2760742,
+  "order_formula": "sha256(\"<seed>:<scenario_id>:<arm>:<rep>\") ascending ASCII",
+  "seed_formula": "uint32(sha256(\"<ORDER_SEED>:seed:<scenario_id>:<arm>:<rep>\")[0:8])",
+  "plan_file": "pilot/pilot-plan.json",
+  "corpus_root": ".",
+  "repeats": {
+    "total": 12,
+    "same_seed": 8,
+    "new_seed": 4
+  },
+  "counts": {
+    "planned": 132,
+    "selected": 132,
+    "primary": 120,
+    "repeats": 12
+  },
+  "runs": [
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v01.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v01.p00",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 300761754,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v01.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 802722391,
+      "order_key": "00528e29ac06e574570a8197236536b774e6e84d02a0fc61bd0769e2be379ba3",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "f25f78417f00db2384fe40ad0c5a4dfe870a6b5c75560fa33bfccd039eee75dd",
+      "prompt_bytes": 20968,
+      "memory_ids": [
+        "015981ae-6db7-4b34-ba2c-71d1559ec4cf",
+        "8b85bb82-20ba-4c19-b205-b9e5e4b4b6a4"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v00.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1603763526,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3935537186,
+      "order_key": "010cb52257b138586be68b6bf8296efe4613428091d0bc82f7f794e30801d701",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "0224252e774ee35df3ba4169c659fae6528a43234aa65e54006d989442fb0935",
+      "prompt_bytes": 20040,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v11.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v11.p00",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 105711185,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v11.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1999797329,
+      "order_key": "042832f90752245026a231d47bea5328094c1d7118f1fdf5dae75a36b078441a",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "ee899f183ebdb58d8e5b0eb60314b9e5eb91775af7d0771a3865e3ffc90699c0",
+      "prompt_bytes": 20490,
+      "memory_ids": [
+        "3e522823-b1f2-48cf-94fe-ce667bbb193d",
+        "52a3be50-10e5-4dec-9380-463d5469e4ab"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v11.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v11.p00",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1077607931,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v11.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2107915683,
+      "order_key": "046fa628b89e3b541efcdbdd45b0f5c7b4051da699729f9f9ef13f8d6ca64d81",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "ae7f1b72ce2b791eb50c004b4f579316e1eb4df85ad8a06047b29d15787a3086",
+      "prompt_bytes": 18728,
+      "memory_ids": [
+        "87118f69-bc54-465e-b6d8-23f8427f2135"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1195512332,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 183189637,
+      "order_key": "0559aabde6f28f6860a367b547938ca0c1b9cbf8178576a7d2b859ebc5f7da9a",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "02a78d20705c196368dd90f40967e084f2c7d925489717b3cb5db4fbcfd728c7",
+      "prompt_bytes": 20072,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--manual--r1",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "rep": 1,
+      "repeat_id": "repeat-07",
+      "repeat_of": "pilot.s02.focus-reward.focusflow-v00.p00--manual--r0",
+      "seed_mode": "same",
+      "seed": 2122180535,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 2968126030,
+      "order_key": "063ca950046f2af0df4dc700d64988803e9c2158c18905a9d9a07b513afc6ce0",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "94cd8d4caea062c55ad77d43b50ca6cb51ae0f3ee4bac53f026a3ba4285a5fc2",
+      "prompt_bytes": 22561,
+      "memory_ids": [
+        "d5b51507-753e-4f6a-873a-68320a8ef510"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v02.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v02.p00",
+      "stratum": "orchard-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1930358810,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v02.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4007747413,
+      "order_key": "069c69a6da35a5b999a047d5ca6d47b85c2aa45ea7373624fe95d99a2b7655d1",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "e83ddf8bd48587fb5be7ad2cf143e8a4874351d0708108e992bf30b645d681f4",
+      "prompt_bytes": 21245,
+      "memory_ids": [
+        "e9d4f4c1-9522-47dd-a72c-a630e786cf6f",
+        "e98f216b-ee8b-4cb4-a19e-429280244fa5"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 613608162,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v01.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3221738452,
+      "order_key": "06e76f1e2ec81b81bde0f2ada572c9b714e953b062ca16645d00e97522f4728e",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "ab5800a4b5fb9b29a8252d31bb0de396dac40613ddddd0065fbda80f852094c3",
+      "prompt_bytes": 23014,
+      "memory_ids": [
+        "208bfb0c-4b2b-45d3-b95f-b116f0cfa1a4",
+        "e5ef07f1-e6ed-40e4-8ab0-07b57768b216"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v00.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1778940966,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3433832354,
+      "order_key": "07f46d3fe1a006539ea7ff60817719e6e099f3a874c8c53fa004286a75f4a7d1",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "93c3fc575f2cfe4d58c84b2374a282112eae0a32fe5489903e65cd94572ef834",
+      "prompt_bytes": 20829,
+      "memory_ids": [
+        "5ede9a75-d7e7-45ed-997c-c695ae5f5b4b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v11.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v11.p00",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 194604588,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v11.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3622919194,
+      "order_key": "0ab1408c5d366833975cf89ccf4505bf9073bae8debb7ffcef579dd6643440f7",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "eec9d01c7e23d00d9747b5f77d6010af165e5c0f93cd7886510f0c279105b508",
+      "prompt_bytes": 19455,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v10.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v10.p00",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1338848842,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v10.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3574403623,
+      "order_key": "0b7c17b4d114b35cd634b17a22ff916aa40d843a5a82b6986fdf92552c6c1265",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "6686deab192c6ead3bdab892e8e65c595745bd5cdfb8ee52b3b145947495b68a",
+      "prompt_bytes": 18783,
+      "memory_ids": [
+        "a7f681be-581f-4c38-b45f-86f70e1730c1",
+        "c030bf78-a1f2-45ca-85fd-fdadb0236c61"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v02.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v02.p00",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 267636933,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v02.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 837294474,
+      "order_key": "0b82faa2b3956b49641fc96688fb75b74fc0fc981ee5addb1391be00d20381cf",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "ade9e889e9894f6650c9261ddf7ade21c766c9050bb6fce5c8db32b14763e89e",
+      "prompt_bytes": 20927,
+      "memory_ids": [
+        "31e468fd-dcc6-4719-b1b1-6acef45802a8"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v01.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v01.p00",
+      "stratum": "farm-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 968558907,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v01.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3994668189,
+      "order_key": "0d9cf6e209de68e0bee3289fd3ddf34ff6ae7690fb99266659879ee0ebd5f8c9",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "6a01dfb4857f079408d030427f5947150853d626cb4555244fde2508429f9fb3",
+      "prompt_bytes": 21000,
+      "memory_ids": [
+        "e9d702b9-9989-4547-996b-0e1987be0a81",
+        "c90d41c9-b56e-4bdb-a70e-bc364ae0bf89"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 432950682,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2777079688,
+      "order_key": "105060fe67435ad70c148f2034914865e8c66c204991fc115346e8f3965d7465",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "a8da88ab8225d953a7176e738e2542b1fd03b91936e458b5d3c50ecbbca1d8b8",
+      "prompt_bytes": 21122,
+      "memory_ids": [
+        "2b2c8206-bc94-48bb-b166-5e2ca339580c",
+        "4df2d1dd-ca37-4b16-a4ee-21989f108cad"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v02.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v02.p00",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1628997830,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v02.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3920571728,
+      "order_key": "14d9686d26b086e4c68866e163298a11d5ada2834f48327cdff2c09ccc54f0f6",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "1feca77e50c6d14516594ee06133f9ccec48dd6830c18c74a2db2aa9c1200890",
+      "prompt_bytes": 21049,
+      "memory_ids": [
+        "8bcda93c-4129-4270-9116-c279d944add8",
+        "3d51d84e-fe2d-42a9-88f0-c1747b3a01a9"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1398335065,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v01.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3890270120,
+      "order_key": "1524a2f1df2047022704e1586e1a7df890d6c6cdc9a2efe888003b61926a8fb8",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "a0339d0fca8e1080544cc33eb923d0dcad6fe9f023d9f9f4f3b269bb9a7e42c7",
+      "prompt_bytes": 22038,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v02.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v02.p00",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 979160010,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v02.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 567770972,
+      "order_key": "19957157fdb33149393285aaa0dcf3093f5702baccfd6d594a6c3f4312b96798",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "73b48aa3d926ea5c7d958fb6bff67e1230c510f9a77d48d94addecfbfac609ca",
+      "prompt_bytes": 20307,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v02.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v02.p00",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1914078039,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v02.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 641376503,
+      "order_key": "19ed9017ab0915d481784895b623ce54fc95842298808cfa59bb0bb852826f18",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "4ec57be721d547c3077cfdba8b61f43e875c54c44a31f7b8134e75564ef22817",
+      "prompt_bytes": 22872,
+      "memory_ids": [
+        "57abbc3c-52e9-407a-aa4f-c4c454daf253",
+        "5ce565e3-3b07-4ade-88e0-fe0bff723dea"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v11.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v11.p00",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 529993447,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v11.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1399039544,
+      "order_key": "1b751581aa20958708867acef0c4093d14bc8ae71738a327c5ae641de36f0b0e",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "86ef44c17ce7a1b7a712bfd2e3c6b126fcd4dac27903104a253ddd052b257cd3",
+      "prompt_bytes": 17733,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v11.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v11.p00",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1750678563,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v11.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3361884409,
+      "order_key": "1e17a7d59dce237df8751e4e76b40abe0ef5f01410502e4c5e2c1894aaa7d260",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "502d7bd968459facc1d47bf905be6e071986963b8dd96d0c7f982f5bb64e6940",
+      "prompt_bytes": 20368,
+      "memory_ids": [
+        "0b86983d-09e3-4017-a23a-caa37d545817"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 603856955,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v01.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2128352155,
+      "order_key": "1f963a8b0491dc1aca239a49cd91e803358a63e2debb0c83e3ff6152d11d55f7",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "a15146c845d41919fa13918ae0224ed31db846108772bdad57d7751035b6c360",
+      "prompt_bytes": 23061,
+      "memory_ids": [
+        "1ca54231-a72a-483e-a6e7-00debbc717d0",
+        "1bab89dc-80ff-49f4-8b6a-0adc512ce19b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v02.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1344808752,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v02.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1300764064,
+      "order_key": "228344515e40d42f8fb1124f0a463265db195e95acc43abcbc0eebd061eeb4f9",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "9aff7e86e9e6f5bce97b1ec30e9465d77c10bea0dfa50f048bc623628f64ad65",
+      "prompt_bytes": 21106,
+      "memory_ids": [
+        "3d3f49db-a94c-409d-bc6b-56b18d526205"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v10.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v10.p00",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2070239167,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v10.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2842292249,
+      "order_key": "2338b3d0ab150d7659e967794c98dff7c2cf848882c11b8eb9dd4920ce697300",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "d3e26310294efd13a114b2edef75a5ef9a3d98e77484a155a461df876dd3267c",
+      "prompt_bytes": 18490,
+      "memory_ids": [
+        "b468f103-b513-4fbc-b420-ca9c58e0eeae"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v00.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2093285441,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1465334861,
+      "order_key": "2428c3f94194fd0e851e3284711922f65f6f5f5a8608e619053b6ad40034c39c",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "50dbddffa7807bcd306a06cb5f18be5543b3036ee6eae403f5752455784a2b0e",
+      "prompt_bytes": 21636,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r1",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "rep": 1,
+      "repeat_id": "repeat-02",
+      "repeat_of": "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0",
+      "seed_mode": "same",
+      "seed": 803834682,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 3124917953,
+      "order_key": "271263e903f88a3e3f4d385aa34c7de9f33717f9fe5dc93b670fe19cd4fa6e09",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "1cfc88e1eabeb2fa6e2fa157ab99439e131f664d77ff8f53c49cadc10216de7f",
+      "prompt_bytes": 20936,
+      "memory_ids": [
+        "80ce3549-8b1c-4260-9e04-81a38507c041",
+        "6daf9bce-4298-4e9d-9ea0-b6b55dad1729"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v10.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v10.p00",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1443002441,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v10.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 742277144,
+      "order_key": "2a536f27a7343b8aa899cf5b04ef17b8eac7e033cc572426a44f4a91770bea1d",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "7ec538ef7797be6007bad0a7ec338ff5e2bfacdd36268ab4d42b3645754ffce8",
+      "prompt_bytes": 17701,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 675121712,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v02.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3345089051,
+      "order_key": "2c6a59582752c191901bc4adc6ca1eeebaa8fec5d173b07f23fea62f1d680c08",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "3d6ec077a457567b5946a3d6baee93e01e9e27c74189f2feeb11b4e5563bb581",
+      "prompt_bytes": 21228,
+      "memory_ids": [
+        "5f38c451-3aac-466f-9ae5-780e489f2534",
+        "d2f033e0-965f-4969-bf38-2aee34894de6"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v02.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v02.p00",
+      "stratum": "orchard-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 83699880,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v02.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1067088305,
+      "order_key": "2d1f0f8200d30296e27d48bcf887571e228396b8e9ee753d9b6511b1592dba08",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "04c5d9746cda29670600f3bcfcf60443418d138847a20df614ec059f152747ae",
+      "prompt_bytes": 21213,
+      "memory_ids": [
+        "00e2a868-1bfc-4eea-9099-c3810c749b2d",
+        "c4ecce31-7150-402f-a149-5f9b7b5b988e"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 803834682,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3124917953,
+      "order_key": "2f6b9bbae3299a316f4c0d2a28cdadeb2e1dddb87277d89cfee231284a4eb093",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "0cd3eec52eb920dee23cd6200fa4d19c0e74f90463fb6c2d2550147f5dc731fa",
+      "prompt_bytes": 20936,
+      "memory_ids": [
+        "51df33ab-c09d-4e86-b6ea-43ab9aefc010",
+        "a663ebe4-7b92-4ae4-afbf-dff49d8d4b74"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v10.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v10.p00",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1025774625,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v10.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3034582012,
+      "order_key": "31399f20c265ce4b44c3a1ceae1b4585f8d7093b57275f5e6b89328a03ce6f4d",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "93f62a167f47c78d0ab23807c83741e409fb64b807720672f0fcd6a5046d2cfe",
+      "prompt_bytes": 19990,
+      "memory_ids": [
+        "6d2c7c92-46e6-4530-a5ea-9419e0e8cea8"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v11.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v11.p00",
+      "stratum": "orchard-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 591430330,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v11.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1071787266,
+      "order_key": "324737e32cfe57a0e3d48799b45286f93aab44dc65b08f38ad9ee8cc09589e17",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "681e35cb3066154f8db408018ce7747a7a361f52f85d562888a974710df76c32",
+      "prompt_bytes": 18835,
+      "memory_ids": [
+        "325c8e84-6711-49f9-8978-56998cd5d355",
+        "b571952d-a212-4ea9-9b5f-68f4bc1a820b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v00.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 235832847,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 806900782,
+      "order_key": "32af74ebf525c2e0ae35e0f60942699c43f38b184c2233d10fc15a07234437ba",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "66e956ff5037a3eec2fd28ca673fb118c7272d97ab518af277740629bfd540c3",
+      "prompt_bytes": 20983,
+      "memory_ids": [
+        "adb9d8d4-af9b-4f3b-aa5b-4a589af464b0",
+        "57876128-71c0-4c6a-b5cf-e3afbee35bf6"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r1",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "rep": 1,
+      "repeat_id": "repeat-03",
+      "repeat_of": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r0",
+      "seed_mode": "same",
+      "seed": 794595706,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 286210455,
+      "order_key": "338f81f5329628a452ec9ee40a3666380d3ca310db8b4eaf4a056e3afd3598d9",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "41e245e8b63b1942bc137194798ed1f2f61a7fbb351ece42c8b00e381e247e5a",
+      "prompt_bytes": 20814,
+      "memory_ids": [
+        "63f54553-463e-49cd-9eee-0188c052c74b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v02.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v02.p00",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1134524854,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v02.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1134658668,
+      "order_key": "34690e9139eeaab9e606db293c2291cb0bc8c5573c7afb5593e5a834fc06929e",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "395b5c7f3687392dcd9ec979ab0ba0aa8fe56fb4c42aec43cf83e6bf834288a3",
+      "prompt_bytes": 22884,
+      "memory_ids": [
+        "7633c552-82b5-429c-a9cf-fdcbaf0612df",
+        "b11430f5-3a71-4119-86ec-7b9207a33496"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 794595706,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 286210455,
+      "order_key": "3476b1e4333bd97dff81c5301788faee1238eeeacf1862729d8c6ad34bef4e7f",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "a1e14c1986394baa5715e1d2e75f419716c364f81ed9a3cd2a61488c9e9d3ecf",
+      "prompt_bytes": 20814,
+      "memory_ids": [
+        "0344882d-4fb6-4835-bc44-23b27a4053c7"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v01.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v01.p00",
+      "stratum": "farm-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 831652136,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v01.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3770990847,
+      "order_key": "3501d0977b5fb721b3ba7a92532c9cbb910266a2c77e31d0aaf472806ab4b522",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "219bf6df7e5150bdf71338e87a8c0288760aaf4ca3735377ccd6fba255ae4494",
+      "prompt_bytes": 20057,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v02.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v02.p00",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1631206330,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v02.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3734624711,
+      "order_key": "3717856b21a2ecb9c373382ffbc10564d3894bc9f46ea93c0c4393c7b2035689",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "7ad9bc56e3a95587f81d83e94202748ef02ca6b4933b474f915bfafde37bbbed",
+      "prompt_bytes": 22762,
+      "memory_ids": [
+        "54abfb28-64e1-4830-a367-2414853ddb25"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v10.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v10.p00",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 382929041,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v10.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2374350909,
+      "order_key": "3727d9a1fcc7a603a46d0b6c6d722ef8d7af6aed9a5a5f5e72b1817a6a3d5322",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "f01aa34ec540628c7178860c1c6b5312e680c281cc2dad3b94ef7ef677b2167e",
+      "prompt_bytes": 20065,
+      "memory_ids": [
+        "aedad81b-c9df-4881-986e-e777fd827e94",
+        "b232b39c-0327-4142-b8bc-5bfac291b311"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+      "stratum": "orchard-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1117048913,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2381185685,
+      "order_key": "37e7461303a610b88d4dc195012f4c6e4b95c7629133169874878d06ac913edd",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "81dbe4d9b2e8c3a5989b4cc2b33c754c32842d333af0f13cc021f5a6993f3fc2",
+      "prompt_bytes": 21206,
+      "memory_ids": [
+        "636f25d9-6c87-4df0-ad9b-6c851d669cfc",
+        "ed68bbc5-c55f-492c-abd3-2321588e59f0"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+      "stratum": "farm-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1607647004,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v10.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2872793254,
+      "order_key": "3a7e775067d9f5bdbe09c37980c6a22a25b1aa65fb6383a5a63c8db95733b4e4",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "660997195d007529a16d570b2b7beb56f22a9e5cbb1c0b3459a7e6dc86de2efd",
+      "prompt_bytes": 17686,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+      "stratum": "orchard-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 413816858,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3986854004,
+      "order_key": "3ab3208aa29c5d09b7fde373888db7c9dc51e8e76d21f5619a1d5f7006285019",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "29442b266088cbc540225be81939054a5de37cd4f2f46e71e53831ad02313897",
+      "prompt_bytes": 21174,
+      "memory_ids": [
+        "254ce1ff-e8d7-409c-b6d9-cc67ad2296ef",
+        "4fc05084-3f93-4821-b577-9d709dc01048"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v01.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v01.p00",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1292159580,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v01.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3699844681,
+      "order_key": "3b2a005fa0e9926d942fafe9e626649c212a8b77c91d8cb69b1bd0ea2530a89c",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "682031126ce7fed40da9b630bc8dc30c72d38489e981cd0957666f36c7d6375f",
+      "prompt_bytes": 21189,
+      "memory_ids": [
+        "1e418f1f-99b2-4c2b-956b-54f82ff44f1f",
+        "29dd5691-cbfb-451a-969e-01378528a562"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v10.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v10.p00",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1425538169,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v10.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1194500818,
+      "order_key": "3e748a14489d4e501ead0df0687a20bfa46b9300d78750bbe85b3b5c874c28d4",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "052026f1d77f72e5fb473bf42e77191440c7a59b1b8dfd397310c6e62d5b1baa",
+      "prompt_bytes": 19065,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v01.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v01.p00",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 460139153,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v01.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3370119672,
+      "order_key": "3fa15b0f3ca9c13f393e5bfcba64d0f1e01d66fd7279e1b70acc786ad26f0d04",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "5e2d2d43570a9183e0abeea12e0b6b1b0168265f1c73ddd5871403c2d669c52d",
+      "prompt_bytes": 21221,
+      "memory_ids": [
+        "99906c0f-905c-4975-b278-70b39bf471f1",
+        "e512b7a2-202a-490a-ab1f-cbf5ca544266"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v11.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v11.p00",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2057575081,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v11.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 588991098,
+      "order_key": "41fda186234204d65b8fc54e8ac05122a68377947335468b67238e2e40e8e27a",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "519b126ddd7798fe6ebe50a9b29d1a550b42d809382b8bcf34faa0c1e584198f",
+      "prompt_bytes": 18850,
+      "memory_ids": [
+        "30273421-5343-420d-86d3-07717e860429",
+        "29c97696-0d67-4f8a-8177-5e6258ba98d6"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r1",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "corrected",
+      "rep": 1,
+      "repeat_id": "repeat-04",
+      "repeat_of": "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0",
+      "seed_mode": "same",
+      "seed": 328673691,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 3498656512,
+      "order_key": "427bb7b47e53f8dab6e14e44aedef1a19d9ffb220be4d844e0f942fe1c823b8d",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "13e4a759858d1a50771cbba76f29708aa4e6515fd55de698c716e5cb46186dd3",
+      "prompt_bytes": 20968,
+      "memory_ids": [
+        "5de9ba0f-7981-42ad-adf5-97edf61a84e8",
+        "50fbeead-3ef3-4417-ade6-e0bea6493d50"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--memory--r1",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "rep": 1,
+      "repeat_id": "repeat-06",
+      "repeat_of": "pilot.s02.focus-reward.focusflow-v00.p00--memory--r0",
+      "seed_mode": "same",
+      "seed": 366710044,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 1559410599,
+      "order_key": "46d0bbd677297c49a4cfcd1c0c1b8647092247a65e3281e21da4d1c309178a6d",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "e8f35e2a1116681c211d7ffa6c9429e58adac8a610cb62f54eec1587bcb375ed",
+      "prompt_bytes": 22683,
+      "memory_ids": [
+        "c8f9fbfa-eb5b-4cea-bb00-4fecde7c2820",
+        "f6772cc8-6bed-4a6e-865b-ac455bf53fe0"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v10.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v10.p00",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 536041108,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v10.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2433579393,
+      "order_key": "477ba4e92c33972c194edba8eb66d64d6f80c71c22b694396423310617af43cb",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "9784fbabf61fef6034b3e485c80c4bca21146a86b7fc69f883c009331143fe5b",
+      "prompt_bytes": 19077,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1392918688,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3497266710,
+      "order_key": "48d132588a80fb018ec7433a9fbeeb244c7a5df72e60fb312ed346d1072484aa",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "1207cbdbd5b8c223fa8075db95bb68afc7e7ad407a0d5453c36cc85ffec75c80",
+      "prompt_bytes": 21648,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v00.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v00.p00",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 112008669,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1310510354,
+      "order_key": "4a262486cb9c8bfc2bd307c8786ee3655de81e7ef0c93737cb33efd4a845422c",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "5f6fc089e8af2b36e40d0cf4dd71fd7705f50638289f95ecf8b8d8760ceef72a",
+      "prompt_bytes": 20201,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+      "stratum": "farm-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1131845226,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 927343936,
+      "order_key": "4e9700be7d1813a2812ff7fa317d31a54cd9c59f239c21097d378755bb0f7b77",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "2de65e94c94fac5fda666dc4f03f4a95fe32a362af712970849f4f6227315077",
+      "prompt_bytes": 17718,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 618688143,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3974176027,
+      "order_key": "51619261cdae1ee5a6ba97867569f92b603135d87eff814d3f03400348ed6872",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "36238964e8bf898a5b18af9c26aa73daf54a4c5dc4fa702c688bb057484f51ba",
+      "prompt_bytes": 21015,
+      "memory_ids": [
+        "7e05f206-0d30-444c-b09c-d912e5c9c34b",
+        "e6f2323e-c2ae-4b1f-923b-cc3578a28c1a"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v10.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v10.p00",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 516408234,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v10.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3315894663,
+      "order_key": "51ba6fc8c8df76815b60c011d69a4e7dc38440439509ec6ac10b7be75e657986",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "89d2ee3117cb76c737eaf69d45f5fc82bbb90aed7125bf73ec78b983be60c89b",
+      "prompt_bytes": 20100,
+      "memory_ids": [
+        "3bff4c19-e4fe-4c6a-9f37-c8092872fcdd",
+        "7eafbbfb-28d5-4d1e-84a2-362fbf6bd628"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r1",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "memory",
+      "rep": 1,
+      "repeat_id": "repeat-10",
+      "repeat_of": "pilot.s02.orchard-challenge.orchard-v00.p00--memory--r0",
+      "seed_mode": "new",
+      "seed": 143194222,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:memory:1\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 1658446294,
+      "order_key": "52153c4496cddf1f02bcfb3fa8f9f0380cfc5757dea0731f1e7b7dd768d6ddca",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "d22abf7f889b7bb1823a87888064d11df670a7c7272a46b15fd16c9387483f90",
+      "prompt_bytes": 21122,
+      "memory_ids": [
+        "9c5ad8f4-95b9-42b1-badc-f4f32ada4f0a",
+        "ef0fa0a0-96a5-4104-af2d-3ae3f57a676a"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v02.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 327093979,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v02.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1696154538,
+      "order_key": "5a0ee3b10c64b31259d4dc7d63b8f8de73e0f128c121aaeab4f07ef53df1d774",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "13805da80346be702e2495a1ee0bbe495c5ac9eb70233c54f98d694f3f236e49",
+      "prompt_bytes": 20322,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r1",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "rep": 1,
+      "repeat_id": "repeat-11",
+      "repeat_of": "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r0",
+      "seed_mode": "new",
+      "seed": 795501531,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:manual:1\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 4009152212,
+      "order_key": "5b425963624b28db8d78f869b451a945d22d94bee49989fa5f6d3a2ec2b0cfbe",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "62cd0752ddd7860c26372e1a9a597465fd2852a4b7b25e59a5095f4c554f05ca",
+      "prompt_bytes": 21000,
+      "memory_ids": [
+        "44c17618-bf1b-48a6-a552-c52ca047634f"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v02.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v02.p00",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 83194284,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v02.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1675968915,
+      "order_key": "5b6bc6cdc7537f4444617b89d0e733bfee09e13bdf13ba852c74562705949eb2",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "e7c3c7e122ec7b52aff682eccea835953a5bbfa03fe720bd0af0bf8e6e637be5",
+      "prompt_bytes": 21849,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 345091751,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v10.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1705950848,
+      "order_key": "5b720314d48a14fcf24b719da2d0c1e1ddb64628af7995e335c7d949f5c05f88",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "e850e654e2b2de05a48e1b8ca48f2605bdd67411a04f1c57ab33a20757497942",
+      "prompt_bytes": 18597,
+      "memory_ids": [
+        "07352e0e-d0ad-4628-b306-ecc6a9298428",
+        "4d17b0f3-c3d9-4929-9867-a849fa7b1def"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v10.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v10.p00",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1002625687,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v10.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4016985493,
+      "order_key": "602ddbcad1e4e2869f4d81fe7d661b81a525ea447ffdecc865c78d79e2ecb3f7",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "4373608c9b062d621b184f94a26d57571c6c10b99255a2f722ba35b74b5cc4ad",
+      "prompt_bytes": 17862,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1210928258,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 40893081,
+      "order_key": "6362ed381ff4be849c04eb76adfd9cc505902783f741e8f1d36705e7844fc89b",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "ab91eda81b7119db8e0e7b4aef335e95fe8005078fb9783b8a41cdd59b8b2ebc",
+      "prompt_bytes": 21154,
+      "memory_ids": [
+        "ab658c8e-0a87-4dc2-8cbe-93442ff1ff96",
+        "8ef889c2-43be-4518-88a7-169cbb8dcb9d"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v00.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 402637766,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3295602021,
+      "order_key": "64278fe38dac98116d400c335699c7546174a47ba49fd63b9d483e8ea311cc1f",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "c40c8b6f844f19bdb0cd94607cf07adb201cf407989b5ad3680153b642432e25",
+      "prompt_bytes": 22549,
+      "memory_ids": [
+        "0b9f6481-0dbe-4aa0-8252-4039e2089ba3"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v00.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v00.p00",
+      "stratum": "orchard-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 186662356,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1309847550,
+      "order_key": "64e0825e06717bda4dc7e5f66a6156fa7a9f319097e0f19308d9ab55fd1cf501",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "285f597d568f97f3eb17ca234c86c7c6a6765c914c94b8dddd4df42c6a15c0ad",
+      "prompt_bytes": 21107,
+      "memory_ids": [
+        "f719be96-d9ed-4a5a-9fc0-12fb8bcd8841",
+        "043c4c8e-02b7-462d-aec8-6af89a62f81c"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v11.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v11.p00",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 374452380,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v11.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 238631979,
+      "order_key": "652309908d82ed62b005cca363dd87545dcb7cf778ed22860930f6436c953e25",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "ab379119e66789628b0dfb612af4a7afccfdcc9e00c5ffe56df9d4d52a359d12",
+      "prompt_bytes": 18676,
+      "memory_ids": [
+        "144820ca-c4b6-4526-b90a-f6d30c8451d0",
+        "0e613560-01e5-4cb1-80ae-5dbf83cee4ff"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v11.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v11.p00",
+      "stratum": "orchard-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2140315117,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v11.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2179828401,
+      "order_key": "6627e35ac234938c5760ebd042a6bda2af16ad192129f33ee3ab020b380de546",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "203a09b7240d9da8ba969f6ff5819f1ff4f193a9555be3de9c6cc916965cc32e",
+      "prompt_bytes": 18867,
+      "memory_ids": [
+        "ebed302d-b9dd-44a7-bb20-55bc01bd1a5f",
+        "fd2a4e64-58e2-4926-88a1-9db5bc507a3a"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v11.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v11.p00",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1577252982,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v11.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 47461606,
+      "order_key": "6e353465170dba365196556a4d78af6ea6cc4fecfcdfc95a4516ca96552ba088",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "d66bc60a4f6b34bed34cd9423e79d63806d53e1ffe19864bf5eaeb0cb5f2fdc9",
+      "prompt_bytes": 20502,
+      "memory_ids": [
+        "203a43bb-49d4-48a1-98b2-604f3772bf28",
+        "cb79803f-e7e5-4326-88f8-4a3ded999b4c"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 366710044,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1559410599,
+      "order_key": "742344b5b5f4a1c999e31909fde3700b407ec70afbe5bfd166620d734296487e",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "a649358720d7262307d22b7b4f74242f5391e4dfe767fbaea025bf3ae1370c8e",
+      "prompt_bytes": 22683,
+      "memory_ids": [
+        "0b3768c1-5a75-4b39-81eb-eec742deae98",
+        "9c1f7d97-094e-4126-87da-22a16ca1ecab"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v02.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v02.p00",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 57826055,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v02.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 927961125,
+      "order_key": "7430679e2dd931ec5a83bd3418d39bfa41a4b77e576d8da192cbb40f7b141959",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "06ff48c93c18c5d08446c55fddf8240bcec23c64d78c6bb1ec449c9d53258f15",
+      "prompt_bytes": 21837,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v00.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 587962949,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2691958842,
+      "order_key": "745aa4dcf5539d9eb83d2ad77c2b99605c1e0e9593b552228c8e729cc93aad19",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "e9a27a7fafb2650de64a53add854cc6a2c1ee909f01e5e34eb7080cef306e32b",
+      "prompt_bytes": 22624,
+      "memory_ids": [
+        "4177e4ec-b7aa-4506-a68a-5e46fa44343e",
+        "340d5011-ad70-410f-924d-48765285e94e"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v00.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v00.p00",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 437555411,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4059834954,
+      "order_key": "754f33a45d8dd4a7c16e7f2122bdee73ea946430462ccb3d436cfda3fd2a9e03",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "cdee4baeceeb21cb062369c4b74b36f669cf65b27ddabf1658497c9e62e46486",
+      "prompt_bytes": 20951,
+      "memory_ids": [
+        "1bb9ac01-8789-4b84-b042-de71ea168ead",
+        "23417bbb-1e21-4aa7-bb83-f260cb119fb8"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 662336354,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v01.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3436232605,
+      "order_key": "76fcf8b9a1ddac1748da2fb927943447335427e75c610517dcc9aea388a60076",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "60ff457ccf90e24f21591f8dbec4ce736ace0204b172e7b62b24fe70d6d908b7",
+      "prompt_bytes": 23073,
+      "memory_ids": [
+        "9fabf2ef-b857-40ff-9806-379519fa224f",
+        "bdbf8f1f-5912-466e-b1db-2eb669b4711b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v10.p00--memory--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v10.p00",
+      "stratum": "orchard-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1524002373,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v10.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2886505044,
+      "order_key": "7c915af02b879c0f7e677643718ffe3c18e99a7dc6771d7a9565da297c72b941",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "fad622ffa3403d3248698357efae07d452221fed86ff0063fc9afb228e3caf63",
+      "prompt_bytes": 18768,
+      "memory_ids": [
+        "20d0ad18-ea9a-4fda-8dd1-f5edf236b685",
+        "3c07223c-3401-4106-8a44-e44ad73593e2"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v11.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v11.p00",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1736399468,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v11.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4209923350,
+      "order_key": "7fce1333df832e5f37042bbddd7d07fcdbdc2d67a3f3896adad716cfef05fd4c",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "4bfb482742adde881517c8492d74f3530313f243ac570e125157fa47ed4c117f",
+      "prompt_bytes": 19467,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v11.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v11.p00",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 206229333,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v11.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2167581822,
+      "order_key": "81cdb0cf8a39432a60b17fbecd0ba8b80bc6d91b1e676eb124a777eb9a000993",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "c5395b7e4e0b6af1b35a653d04038dc3d9995117f11860f47df59ab1ec4efb67",
+      "prompt_bytes": 18644,
+      "memory_ids": [
+        "4425a73f-9513-4927-9095-37c100fd998a",
+        "1e56bc99-6431-4159-938e-a5429c21228b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 823070651,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3915963493,
+      "order_key": "8895621a2ddbce14f31a21d1c03c19caba5d034a06a277410d5fbef9dddc3286",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "9eff1be0083000874f64d89dc06a2832085b656d697f2ccc5ee7cffa3d2f2abc",
+      "prompt_bytes": 20861,
+      "memory_ids": [
+        "cadf362f-b537-4c90-9258-afa65555bd3f"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v01.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v01.p00",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1514349500,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v01.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3118615027,
+      "order_key": "8a94647fe3be85bdf838c186e4e67c32860ee51809f6cc607167d58239988b3d",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "6e9a4d1de27716f65d4954d5fc31249bdda869e12d4dba6c5326607c8b05a91a",
+      "prompt_bytes": 21067,
+      "memory_ids": [
+        "25b3f5d6-0376-403d-ae14-ec86e3918222"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 313529342,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1134461132,
+      "order_key": "8da86dcc64aa4db3aeacbcf767995e436128870d89c0ab12c5448444191731fc",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "19a4ddb14a85d6daefdd9f1fc0a251933821f8d065c230f04a4ce6444aa2859a",
+      "prompt_bytes": 20025,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--none--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+      "stratum": "focus-lively",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 484281808,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v01.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3014806655,
+      "order_key": "8e428876b9a323b54cfa00606772023426922dd945ca74f67c6f6da1a1f395f6",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "a594f71a074719a397063d54d2bef957ec5e473f936b6b51bc2eb3f3318dd50a",
+      "prompt_bytes": 22026,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v00.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v00.p00",
+      "stratum": "orchard-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 202895542,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3659866777,
+      "order_key": "8ecb9065b77c843252db75fa8f5209b6f1d81418261ddd179d48dbe88ea29cc7",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "791373a98da666687b89e726634abe0eca2e5c4f0584e6a97a9051e3fa939d6d",
+      "prompt_bytes": 21139,
+      "memory_ids": [
+        "d0eb0157-889a-4aa7-817d-d5ad8042b607",
+        "9710251f-0299-48d9-898c-c970382ac887"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v02.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v02.p00",
+      "stratum": "farm-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 674509018,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v02.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 433707784,
+      "order_key": "8f19b092c2e971716395f774787510aef3d55b3ab8f96f6ee464304964570108",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "730c0a6acc49777bd7d2f3721bea20511664963ac869e4a2f105f324718ae51b",
+      "prompt_bytes": 21081,
+      "memory_ids": [
+        "72c68853-5f21-43b4-85b4-14ac17d4a75c",
+        "5fbd5264-25e2-49d1-9be5-1ef4e3b13727"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1661303338,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4149005146,
+      "order_key": "9342cb241dc11d18f8ba9e2e215aef1d66defc715bf32beda810302206a10544",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "11357022226c43b59f90281f49f0983bc497cfc583f7273cce844249e9d923a8",
+      "prompt_bytes": 20268,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v11.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v11.p00",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 401987978,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v11.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4220447029,
+      "order_key": "94e4ebe4231209c452c2cf396554c41827ca261998873591f48cfeeb4153e542",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "362e5fa1d67acd0c7c543cba42fe24726391337699c90f0cc142d58d2231b69b",
+      "prompt_bytes": 17944,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v11.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v11.p00",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 526064000,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v11.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3207894577,
+      "order_key": "96badb757f7fd192b44539e9869a601e73e3657dddc935806fcf0d3ac790a980",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "8712d1c04d15d370e33fdc6c9eb0e2e29b5d64338cbf2bea2557cfdd84588437",
+      "prompt_bytes": 20443,
+      "memory_ids": [
+        "feb24c5d-1aea-4239-a314-0e34cbaa1c47",
+        "7da6124f-f45d-47aa-9bde-48ddd98dfa3d"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v10.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v10.p00",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1024177331,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v10.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1194151471,
+      "order_key": "988c17b9c364029f8e49a8386bd59ba8e6abf61cef430629ea4cc61fa8df59b1",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "05a60064b948d3d8b09e6d3ca2cde05bc225cd274e6bef14d9b41378b1b62bd1",
+      "prompt_bytes": 19978,
+      "memory_ids": [
+        "e1783985-c461-44e5-922e-b3467531b47b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v10.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v10.p00",
+      "stratum": "focus-reward",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1326337380,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v10.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3306735417,
+      "order_key": "98df80becb517bfd264f618ad7c0f926a09914e2cd78e35426e0f75d0db9de8e",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "898c750673ef9d7bf1575eeabd354734b19dae58d9126c9a61cb04d6192962b4",
+      "prompt_bytes": 20112,
+      "memory_ids": [
+        "1c775f64-cca0-4793-8562-1e91d25d05a4",
+        "ab344c55-3348-48ca-b50a-1e6d299390be"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v02.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v02.p00",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1091885870,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v02.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2364575985,
+      "order_key": "9924cc6465b0d1fe56a6768db24b08541700c86cbc60c943d9a7811a1432cf20",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "9ef1db92f5ce9995af872b6a79e365c4cc86416a2f85d4204cf57832f8591d76",
+      "prompt_bytes": 20942,
+      "memory_ids": [
+        "c8c456ba-4551-4d4c-bc6d-68dd94220032"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r1",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "none",
+      "rep": 1,
+      "repeat_id": "repeat-01",
+      "repeat_of": "pilot.s02.farm-arcade.farmyard-v00.p00--none--r0",
+      "seed_mode": "same",
+      "seed": 313529342,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 1134461132,
+      "order_key": "9af67b9d80d77090c14d1d3d599c1ef7cbea80a56dfe565f3099be6b9586a68b",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "19a4ddb14a85d6daefdd9f1fc0a251933821f8d065c230f04a4ce6444aa2859a",
+      "prompt_bytes": 20025,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v10.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v10.p00",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 370646282,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v10.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2496899080,
+      "order_key": "9df81575642fcdba0c506eade2f634632484bfc3ab782244cb05bbecbd9bd051",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "b9e5f269d093d48a3ba9626897c790d9b1effe322b4abd588b27bbea662b9cc7",
+      "prompt_bytes": 18644,
+      "memory_ids": [
+        "cd8ab3d9-8c0d-404f-b125-ab6c494c4ea0",
+        "d8763e96-036a-499d-b0ca-1e9754fe699e"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v02.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v02.p00",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 169171790,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v02.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1970121861,
+      "order_key": "a03c170cb302a4bd3e2fe85c6f25a268c6fb6ca64c18eff767666d77b1d0cac1",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "160e24d9fe1a01ed5deb8e89cf6d973dbc786b4ce479b5fc93c13d1c17b8fc9d",
+      "prompt_bytes": 22837,
+      "memory_ids": [
+        "64b180d0-7453-401c-9708-2c6907595d0b",
+        "df5efe50-35b7-4e8e-a00e-3d5497393dbb"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v00.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v00.p00",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1606041805,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 422867866,
+      "order_key": "a33432b3811abaa08f523e5cf2c2078093ab6ccfc51777337e1d9a3d5fc85c5e",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "aeb7da2cd6a801d6e3ff80cf6f691d42bc50be8a969f5ad43bf5c47d5f6d661f",
+      "prompt_bytes": 20985,
+      "memory_ids": [
+        "7b62f2d9-980a-43ca-8657-979de3077f88"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "rep": 1,
+      "repeat_id": "repeat-12",
+      "repeat_of": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r0",
+      "seed_mode": "new",
+      "seed": 1833298294,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:corrected:1\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 2916306659,
+      "order_key": "a4113104e2eb255da580b1c3501256e67f1b085e2a8e1b5ee2ef6d9bafe3e978",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "616685ca288aae7ffb06a9fbde601e11c4fe2b654cec844680c17085e12814a3",
+      "prompt_bytes": 21154,
+      "memory_ids": [
+        "60f9e2d6-03fc-4cd3-bc68-a8b22398e876",
+        "34baa9cb-908d-4db4-a0ab-f5e75a1c6c1a"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v10.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v10.p00",
+      "stratum": "orchard-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1535253973,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v10.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1975008178,
+      "order_key": "a8eb630e6e06cc07f1ce4726d965aeb9641cc71edf3d48a38d37f75a303b9668",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "5977d49be28b8360bf1094b10cc73916e8f692b5494303a60712274105ecf29d",
+      "prompt_bytes": 18800,
+      "memory_ids": [
+        "93b968b1-109f-47d5-a47e-1843ab5062fb",
+        "bb92465c-101b-4bb9-a32c-0b03869f15b8"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v10.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v10.p00",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1275745660,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v10.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2994213953,
+      "order_key": "a97a4872fc3a2d8788fd9b00e8b8d9c4ff715413805d81cd48dcf12a6ba4d364",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "2269de386ac6c5a94f1949dab948d34fc6f99c71d74abcb963eff88a3ea2d87f",
+      "prompt_bytes": 18661,
+      "memory_ids": [
+        "9bde11cb-d4c4-4295-99bb-61fafe989b13"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v02.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v02.p00",
+      "stratum": "farm-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2124002966,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v02.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1883813899,
+      "order_key": "aeac78d7475693df635441e04d1cce353ed466d950e1ce2e3c2108b82eca18e0",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "06495f26b5be138c4b78b8005cd08cb5df700d19ec3e6bed3ec4ff26df87b0c7",
+      "prompt_bytes": 20153,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v01.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v01.p00",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 561769470,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v01.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 4277859891,
+      "order_key": "affd9f276e97735f081afa16532a4c8a143692bdc416207f01f5d97b56f176d8",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "5a0f602fe328c0ab7c6a1ac7aae70d49f6bb4b6fbe046893d31725b683d5b8ca",
+      "prompt_bytes": 20283,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v11.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v11.p00",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1342501840,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v11.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1209054024,
+      "order_key": "b1496ba04373d0a7559f757c3f98e251f4588eb4414486231700b7c1fbc25f1f",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "bc4943ed769b4f6024ef3f6d4fbee3ef2a8eec9495dd047a43c55f8822956118",
+      "prompt_bytes": 18882,
+      "memory_ids": [
+        "6d316db6-a6c5-44f1-bda4-0ed9ddb7cd59",
+        "10608716-1be0-4bb0-b4cb-ba985b78eebc"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r1",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "rep": 1,
+      "repeat_id": "repeat-09",
+      "repeat_of": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r0",
+      "seed_mode": "new",
+      "seed": 234167252,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:none:1\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 4034269096,
+      "order_key": "b39676e1d8935fd46a64f06c65947fc30823512ac4e03001dc3e0f8a17fba334",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "71ec965f7fb42a1696338a1865acb1c0ffa40e6d4077cd84f6c2cf46e1c3d0ac",
+      "prompt_bytes": 20216,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v10.p00",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 765184235,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v10.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 299496412,
+      "order_key": "b4e6a5ded0a8fb85323f324dbbd92df4c89b7869bc7e1501f1db6615118dfcf6",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "682efb39bd4c98d2db5f54332d7083a9165e707ab5c33e8dc0651b20462991fb",
+      "prompt_bytes": 18612,
+      "memory_ids": [
+        "a332df8e-9715-466e-8427-cbbd5d28c459",
+        "94cde419-793f-41d8-814c-49ec8a3db87f"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v02.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v02.p00",
+      "stratum": "farm-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 15982367,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v02.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 273370364,
+      "order_key": "b923ddfc504663a210ccabdc699652035a50f9f10e04059c5599a2d33349121e",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "8e384a552da4daaaf75728b6ba3d682a9c3440fe09e83ad57007bbe235f2bddf",
+      "prompt_bytes": 21096,
+      "memory_ids": [
+        "626cb56c-3415-4f62-ba52-deb1d2be10ed",
+        "e6cd63b4-e322-42e2-ac24-609e33da5997"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2122180535,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2968126030,
+      "order_key": "b96857e3e93887460774ee2695f9a74b52bdfbf800993bd78ec5bd9c9156418c",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "ecd9816a3d3b58709012d40d93681ab1f49d1c7274426ef73827cad4d1cb7fa2",
+      "prompt_bytes": 22561,
+      "memory_ids": [
+        "4defc2d2-9633-4b14-b02a-7bb0ec7e8c3a"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v01.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v01.p00",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 331387551,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v01.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1659339897,
+      "order_key": "bc9864e539c7d56bd89b918ad143ce0fe37894479f6f7d2dcdfc343253068fa0",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "918a540de828a38cb9fe84e80c4e9d7ab1b3e2888d20e2d4ccd9e8a79f32feb9",
+      "prompt_bytes": 20846,
+      "memory_ids": [
+        "314d0e23-76fc-45e6-aa0c-eb743dd76151"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v02.p00--none--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v02.p00",
+      "stratum": "farm-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1646817454,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v02.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 622682069,
+      "order_key": "bd742fb7d24c4231b37cf2b37e7cb18de1e3273c6cab2d6eb995681107498282",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "69b7f216f24c22084c3d20a683978594e2b9f82969d65927249c4335230bca13",
+      "prompt_bytes": 20138,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "rep": 1,
+      "repeat_id": "repeat-08",
+      "repeat_of": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r0",
+      "seed_mode": "same",
+      "seed": 812154474,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 3304104668,
+      "order_key": "be7f799a99fef1ccf16f3a3dff2f528d2e10aacae7ec44424bb3ee293b5c4328",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "fc436490c7ce5811936399840fe479f37f6ced996372e5b2aa42bfb56f782ea5",
+      "prompt_bytes": 22636,
+      "memory_ids": [
+        "b7ff6bac-6cd2-4dbc-9d1f-ac40c0be8c29",
+        "e63103f3-c950-464c-b41f-fc010342879e"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v11.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v11.p00",
+      "stratum": "orchard-arcade",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 243405742,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v11.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3646875766,
+      "order_key": "c002e0d84fb71372b1d7a67fc2f614c743cab896b0ea5efe35112f272fbef463",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "cf1a896e7556be2ab68539afc55055df156be368a5b89446931515d2144240e3",
+      "prompt_bytes": 17929,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+      "stratum": "farm-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 328673691,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3498656512,
+      "order_key": "c18c93d5efe150d2073e0986a10ad1f8bd97e79fe5b3528d92aa4daf5403f5ae",
+      "variant_id": "farmyard-v00",
+      "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+      "prompt_sha256": "ebf4f04d34fb1dcd1b83df4aec2b05b1c904038c8946ba4421dde2975ee9fc27",
+      "prompt_bytes": 20968,
+      "memory_ids": [
+        "e00952cd-31c5-4952-ab6f-85404bde9200",
+        "feff4202-34f1-46c6-8c76-87a857428c29"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v11.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v11.p00",
+      "stratum": "farm-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 34408322,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v11.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1403108317,
+      "order_key": "c228f97e6053f888bbe451e95666e43590e65c6835e99f9a2025ee9cffefce21",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "65890d41c1a90bae0cdc0ed2430fd99eb4c3471c9a81c526478346ecfc284b75",
+      "prompt_bytes": 18522,
+      "memory_ids": [
+        "8bdf0d94-1300-46b3-866a-6bdcc3ae8515"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+      "stratum": "farm-arcade",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 215679032,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 561630375,
+      "order_key": "c47f887f0d419dce650520c12d4bc1e375b14ee599a7eed3739274fa174deac0",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "1c52e97c246d012527d3658e61ea869fdbe7af59025a87ef39937280c3a310a5",
+      "prompt_bytes": 18629,
+      "memory_ids": [
+        "bdd63272-969d-4fff-bcac-14f73f60df7d",
+        "b4340936-9fd8-4c67-a3c0-56a071f487ce"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+      "stratum": "farm-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1939042191,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 52264715,
+      "order_key": "c4ff27e7a6a04aaf2210637ede4850f771aa8d6d9acf1c5db9cff86d95c089a5",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "482d80430ac5d29431043c9a130c528b562f6f015751f2394a4e8b1a9e908a39",
+      "prompt_bytes": 18661,
+      "memory_ids": [
+        "a6117240-50b3-4381-9473-582806e89045",
+        "8cefbc5a-7d67-4ba6-b0fe-3a16f90fc13c"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v02.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v02.p00",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 370625051,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v02.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3738140735,
+      "order_key": "c566d2875f43adf033cd3c830e3c6df0fae10cb06a4691f32ea3dab676a24edb",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "d64f9484adb2f41eec7b241985acb2d792e9d19f658fbd257433327e95f1f15f",
+      "prompt_bytes": 22825,
+      "memory_ids": [
+        "796fc5bf-1ca6-4645-9a80-0ea5bcdcbb04",
+        "63a35778-b407-4565-8469-8cf24e623dc8"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 726254274,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3157046373,
+      "order_key": "c94c63067e584d29be74f83058a9736f51354764fde323c4f1a116c5ce5ecf26",
+      "variant_id": "farmyard-v11",
+      "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+      "prompt_sha256": "5c7138e5193d30caddd002b856b615648c48d6ffd4e18f964dd319d14f3f639c",
+      "prompt_bytes": 18507,
+      "memory_ids": [
+        "16a9d60c-71b4-452f-bf1a-870ce9a30a95"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v11.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v11.p00",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 638759048,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v11.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3081220341,
+      "order_key": "d040a97a25a0e6bf0e6840c9b4619b93f4b338b1086df08f29fcd5c94e2458bd",
+      "variant_id": "orchard-v11",
+      "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+      "prompt_sha256": "1c62db45fc8fe35875f0b43e561fd2509a016706bed79a61834d9fff5c6d62e8",
+      "prompt_bytes": 18713,
+      "memory_ids": [
+        "df23b56e-45e9-4b81-aa50-6208f2fc13b8"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v10.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v10.p00",
+      "stratum": "focus-lively",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 2024570309,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v10.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3159417598,
+      "order_key": "d2ce76dfdaa03b696c4ef2ce73530f9c8a82e680d7df035955350e07c813b5d5",
+      "variant_id": "focusflow-v10",
+      "baseline_sha256": "92d580cf8a544251e9be50d905de443c8b4147349fdcf7bf345ff6c1a44ee15c",
+      "prompt_sha256": "efec41e65735a3c937e834a8738cf3d8ed7c10f97db364151ab68ee46beb432b",
+      "prompt_bytes": 20053,
+      "memory_ids": [
+        "b85f1d28-423a-4cd9-bbb8-7bb20bd8254c",
+        "a5f0dde2-f223-4a25-b6d7-74d8f6976ae2"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v10.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v10.p00",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 578489918,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v10.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3985229158,
+      "order_key": "d2dde72db25538ba6a1bf5d62cd6b6a4eb0fcb6668c7566b0cc5d918e200ca0c",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "4f2deb6d2b0276aecb99205746336b33a2004b30bf20d0cbe28d944816151ec8",
+      "prompt_bytes": 18815,
+      "memory_ids": [
+        "640fcda3-fd80-462b-80ef-4709c113f56b",
+        "2d0e4968-2430-43e9-ab10-44d4e29684bf"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v11.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v11.p00",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 287131845,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v11.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3898514930,
+      "order_key": "d3efa58ce96ffc580a3aad9800d4ac6961a8b1fbbdeabf234fdcfccaf3ff46f5",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "4517698a36daa1f3ecef6ea4539858c6802ec2c26b234dac76562190d238b3ee",
+      "prompt_bytes": 20380,
+      "memory_ids": [
+        "c9e4065c-5ec8-43d8-b821-74961d108ac1"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v02.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v02.p00",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 44581322,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v02.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 568319900,
+      "order_key": "d47ce2fc581a4aa4ce4a1eb775d2f4f4134e10d29df69451c2028d8f536d8b25",
+      "variant_id": "focusflow-v02",
+      "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+      "prompt_sha256": "aa759b902f34ff38735732cab4ce841c12b2face91d1913b2171443e17deaa24",
+      "prompt_bytes": 22750,
+      "memory_ids": [
+        "927e5546-e7d7-462c-afe0-ff8f3d8fcaa8"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v02.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v02.p00",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 319732036,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v02.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 167805999,
+      "order_key": "d482ecae8b3acff376f5fbee5cea36ca821f608877e93caf586f3ccb149f8ca5",
+      "variant_id": "farmyard-v02",
+      "baseline_sha256": "984bc2d3c478c520e04a2ab5b91e246d9c61856468233fddacd66fa7e3f76385",
+      "prompt_sha256": "da23df00fb8b17011552961e61954dadcce45df9d55537e5b36d41b570c4985a",
+      "prompt_bytes": 21064,
+      "memory_ids": [
+        "fb9e025e-7290-42cb-8a74-ad45a7b79a99",
+        "fe3bd53d-eba5-4ebc-a32d-cfbf85ff00a0"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 161267924,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v01.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3654107569,
+      "order_key": "d7ba3ef980fbea29aaa50daebe47bbc00a926daa15029fb7b583b7bee968d812",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "139cb0afde09fe0fe6c9d0f6804130b9b3f4df59afcac152ba4dd7f5eb691578",
+      "prompt_bytes": 23026,
+      "memory_ids": [
+        "496889ba-c7a8-4ef4-9bef-83bfc78b3ceb",
+        "6dcfd6a1-5342-4d99-aa2b-9c76ca5b68b2"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 93863221,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2602056350,
+      "order_key": "d9b7c7371897ba2292bccd834ba1756f9c305ca4d6ee40100ca08889a70cb871",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "71ec965f7fb42a1696338a1865acb1c0ffa40e6d4077cd84f6c2cf46e1c3d0ac",
+      "prompt_bytes": 20216,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v00.p00--memory--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v00.p00",
+      "stratum": "focus-lively",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1074647271,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v00.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 29756528,
+      "order_key": "da629d3b8d441862dee678234244a2d529ea43360d4f71c3e2f48b437023153c",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "01ddc0939fb0d1ae92672b0ce0f535a14c6b445c313639885f3c5dd09c5ed432",
+      "prompt_bytes": 22671,
+      "memory_ids": [
+        "7005e40c-f84c-4177-afd5-a9f8ff829ed8",
+        "036bf550-5fac-49df-af90-71c92344af2a"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v10.p00--none--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v10.p00",
+      "stratum": "orchard-challenge",
+      "arm": "none",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 171114582,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v10.p00:none:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 191689472,
+      "order_key": "dab95902737b47fac97851d69326d73363ae1fff8ac0d17ed333c3ef4f85b630",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "ea2d026d2ad34f6dbdedd8338dc8afe7858acfae3189047a1fe943fd5b13bb5e",
+      "prompt_bytes": 17877,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--none--r1",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "none",
+      "rep": 1,
+      "repeat_id": "repeat-05",
+      "repeat_of": "pilot.s02.focus-reward.focusflow-v00.p00--none--r0",
+      "seed_mode": "same",
+      "seed": 1392918688,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:none:0\")[0:8])",
+      "seed_source": "plan_repeat_seed",
+      "derived_seed": 3497266710,
+      "order_key": "dae2820bf99f8222b33269f3a02f03b715a2fba73cb5caf49d7e27059993c76c",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "1207cbdbd5b8c223fa8075db95bb68afc7e7ad407a0d5453c36cc85ffec75c80",
+      "prompt_bytes": 21648,
+      "memory_ids": [],
+      "rule_in_prompt": false,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 0,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v02.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v02.p00",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1699791908,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v02.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 762600418,
+      "order_key": "df66ea35edd83b654ca03deb6bf559938f4d547ecbb4f3432290d08e73a1cc92",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "67f6f98db1b86ba444ea08a91544fc1ea069f4c69ffbe93b027e6a8442b00601",
+      "prompt_bytes": 21091,
+      "memory_ids": [
+        "97fce55e-fd60-4505-ac0b-eb4fa2175b5b"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+      "stratum": "focus-lively",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 719651122,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v01.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3156276944,
+      "order_key": "df9b38027fe0872c10791c6323f9578ae4b3500ac0fb3ff3b5ac01ded095c210",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "8e6a612b2e54aeab177c4b08e2cb517a3934dd8fed1e4a645bec99d25ec01fdc",
+      "prompt_bytes": 22939,
+      "memory_ids": [
+        "0afa9957-3388-4d1d-b8c8-bcf1d114c4f9"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--memory--r0",
+      "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+      "stratum": "farm-challenge",
+      "arm": "memory",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 633568182,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:memory:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 2327124681,
+      "order_key": "dfa0f9afd9d22c6179a5ea1fcd8f9869dc5e45d7471690ee386cc010395d9307",
+      "variant_id": "farmyard-v01",
+      "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+      "prompt_sha256": "bda3445631f122588c444ee1f0a6f488a9a9328bc6346fed0cc10a7193658bb1",
+      "prompt_bytes": 20983,
+      "memory_ids": [
+        "07506073-0143-4f02-8268-76425aa06bcd",
+        "65175f0d-a395-4825-bd9f-f5b8102ec50d"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--manual--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+      "stratum": "focus-reward",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1687856621,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v01.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 960530491,
+      "order_key": "e2a8e4f7d0f077ad034f079090784a77e07adb846f9105d22f244c8d6b27b9fc",
+      "variant_id": "focusflow-v01",
+      "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+      "prompt_sha256": "92e057a5eba0b03225391b8cdaae5bf94f81e90f078109ecdd20f4f114118029",
+      "prompt_bytes": 22951,
+      "memory_ids": [
+        "73d71564-740e-472b-82f9-442603e1fe8d"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+      "stratum": "orchard-challenge",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1011294846,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3175201644,
+      "order_key": "e416910305a3e40c6bd9afb31064c24ab58ec2f10107620f62f5fdc6aab85f58",
+      "variant_id": "orchard-v00",
+      "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+      "prompt_sha256": "d5e02f78ff8fadfbe906df6a308e7084ae8db6095f6f41b8b159c1e0d73407e0",
+      "prompt_bytes": 21000,
+      "memory_ids": [
+        "0581b78e-76c3-439e-aad0-e4da26c6c265"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v10.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v10.p00",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1921571459,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v10.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1793890396,
+      "order_key": "e5e21859478969b4ca93b5c7cb1c7cfcc6af44cadb2f872ab42894c4dbed517c",
+      "variant_id": "orchard-v10",
+      "baseline_sha256": "e33aa3e5a27af66e5edca3dec93b16b204fd154f122d5905e16b7bfb1efc5e76",
+      "prompt_sha256": "dac39e409fa5c84d798b5f0b1e1c3bd9c128169cbf7282e5ab477efc0ebd2ede",
+      "prompt_bytes": 18646,
+      "memory_ids": [
+        "e6b224b5-79e9-48d7-be53-a331a0560972"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-challenge.orchard-v02.p00--corrected--r0",
+      "scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+      "stratum": "orchard-challenge",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 97945623,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v02.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 603310285,
+      "order_key": "e788ba79a09b26de7dd19d30821482d8f3a4cad5a4e813481345c73715788b4b",
+      "variant_id": "orchard-v02",
+      "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+      "prompt_sha256": "29b6595561dfade60c23c637f00d81d692c982918c151426eb192fc418982049",
+      "prompt_bytes": 21260,
+      "memory_ids": [
+        "cfb80f2c-6fc4-4ecc-bee0-97b60924354b",
+        "1e503c23-dfd0-4e2b-a5a4-4bc5ceb42032"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+      "stratum": "farm-arcade",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 772554114,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v10.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3880677828,
+      "order_key": "eeb3a9b94464f1396230b0102f35f99c918c24bcdf8caf99c1ce24fcb80e0bb2",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "011100beb5f63043e9f0a93d11c51bf8ca687d5497641b6d9414daa4bf41d2b2",
+      "prompt_bytes": 18629,
+      "memory_ids": [
+        "46031953-26d7-44e3-a95e-fbc6f8e8ab2c",
+        "1b7c745a-6d55-490c-b26d-e13f5f5f37df"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v11.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v11.p00",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 632753497,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v11.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3239880261,
+      "order_key": "f4fb6fe1f00cb47e287433cccb25fdec7bdc2028a6b9963d4d71dd33a64910b3",
+      "variant_id": "focusflow-v11",
+      "baseline_sha256": "b499cc18fa36390e4a047df8f03dffa0535c0ddbca959194592ab32f9e9a0ae0",
+      "prompt_sha256": "dd7ceb076337f26caa1bef3447c9bab11b24de9ccffaf7738b1d1df2d37f351e",
+      "prompt_bytes": 20455,
+      "memory_ids": [
+        "93853b68-d147-4075-912f-ae822fa48479",
+        "ea9ca3c5-6bda-46e8-b8cc-08dbdbae0a78"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--manual--r0",
+      "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+      "stratum": "orchard-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 1926676832,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 827571126,
+      "order_key": "f758cf46df2416c88eee538210723b4a9830be14bcfa5717eef6e3a277f9d9fd",
+      "variant_id": "orchard-v01",
+      "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+      "prompt_sha256": "c7df2ac93e1c68c60f02a8fb1a15292d092de99d5b6809c0c376361b3f8defc9",
+      "prompt_bytes": 21052,
+      "memory_ids": [
+        "a64d6552-e515-4afb-a44d-82ecf51acfdd"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--manual--r0",
+      "scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+      "stratum": "farm-arcade",
+      "arm": "manual",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 719562052,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v10.p00:manual:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 1700827212,
+      "order_key": "f8ce910ea416e3c9a0e5df50267771734d857e016a94e2e6dedd69a357e54957",
+      "variant_id": "farmyard-v10",
+      "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+      "prompt_sha256": "c50cec2366358467184c5726288897dff86904fab510f0095ab1291486127127",
+      "prompt_bytes": 18475,
+      "memory_ids": [
+        "94ce714a-39e1-4efa-ad51-a1488e3eeed2"
+      ],
+      "rule_in_prompt": true,
+      "correction_in_prompt": false,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 1,
+          "rule_in_prompt": true
+        }
+      }
+    },
+    {
+      "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r0",
+      "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+      "stratum": "focus-reward",
+      "arm": "corrected",
+      "rep": 0,
+      "repeat_id": null,
+      "repeat_of": null,
+      "seed_mode": "primary",
+      "seed": 812154474,
+      "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:corrected:0\")[0:8])",
+      "seed_source": "plan_seed",
+      "derived_seed": 3304104668,
+      "order_key": "ff8bac73bf441b5c2c4752a57d53ba6a9134ab6f2f857e2eaa39e2224ba3844d",
+      "variant_id": "focusflow-v00",
+      "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+      "prompt_sha256": "701350031e4edc67020c0c9d4fe51ddb9b87fd0ea33ef42b26a486cf8139878e",
+      "prompt_bytes": 22636,
+      "memory_ids": [
+        "5e0eb28c-092b-42f8-b6aa-8c1dd0f12e07",
+        "627a3eab-5d41-4181-a481-8bfdf91ae935"
+      ],
+      "rule_in_prompt": false,
+      "correction_in_prompt": true,
+      "manipulation": {
+        "passed": true,
+        "problems": [],
+        "expected": {
+          "memories": 2,
+          "rule_in_prompt": false
+        }
+      }
+    }
+  ],
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "models_served": [
+    "qwen3.6-35b-a3b-ud-q3_k_m"
+  ]
+}

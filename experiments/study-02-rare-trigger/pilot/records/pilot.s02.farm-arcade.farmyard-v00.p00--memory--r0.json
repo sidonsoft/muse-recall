@@ -1,0 +1,117 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+  "stratum": "farm-arcade",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 803834682,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3124917953,
+  "order_key": "2f6b9bbae3299a316f4c0d2a28cdadeb2e1dddb87277d89cfee231284a4eb093",
+  "variant_id": "farmyard-v00",
+  "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0.txt",
+  "prompt_sha256": "f9966e2cc8c4590826baf9e5db855eeda2ba30986ecc22fb8b3e729d6f5c98a6",
+  "prompt_bytes": 20936,
+  "request_sha256": "13f27c1a537393fff2c75bb2a0c63e4f6a2d5b8fc7e4400d7a842905aeae2f7f",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "cb512225-08a2-4382-af64-4b52fc9d228e",
+    "3f34307a-3b68-4376-81a4-c7f198d80160"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "cb512225-08a2-4382-af64-4b52fc9d228e",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "3f34307a-3b68-4376-81a4-c7f198d80160",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 723,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T06:25:23.615Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 335.274
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T06:31:01.892Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 279.511,
+      "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0.attempt2.sse.txt",
+      "response_sha256": "af64b2c54863b504a31ac1e4dbfe9246b5777b2ad792d192d696ac51ad350297"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6638,
+    "completion_tokens": 6794,
+    "total_tokens": 13432,
+    "prompt_tokens_details": {
+      "cached_tokens": 6637
+    }
+  },
+  "timings": {
+    "cache_n": 6637,
+    "prompt_n": 1,
+    "prompt_ms": 81.1,
+    "prompt_per_token_ms": 81.1,
+    "prompt_per_second": 12.3,
+    "predicted_n": 6794,
+    "predicted_ms": 276331.2,
+    "predicted_per_token_ms": 40.673,
+    "predicted_per_second": 24.6,
+    "draft_n": 5571,
+    "draft_n_accepted": 5509
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0.html",
+  "output_bytes": 20537,
+  "output_sha256": "fded834d44af7e1a873ea78be261e5ba2da63fbef4d9ca6001facabf510381c2",
+  "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v00.p00--memory--r0.attempt2.json",
+  "started_at": "2026-10-31T06:25:23.615Z",
+  "finished_at": "2026-10-31T06:35:46.412Z",
+  "seconds_total": 622.8,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

@@ -1,0 +1,102 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--none--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+  "stratum": "farm-arcade",
+  "arm": "none",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1131845226,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:none:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 927343936,
+  "order_key": "4e9700be7d1813a2812ff7fa317d31a54cd9c59f239c21097d378755bb0f7b77",
+  "variant_id": "farmyard-v11",
+  "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v11.p00--none--r0.txt",
+  "prompt_sha256": "2de65e94c94fac5fda666dc4f03f4a95fe32a362af712970849f4f6227315077",
+  "prompt_bytes": 17718,
+  "request_sha256": "89237210f62c82d533b3b36412774860f686d198be15210f3301ce62b693831f",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T08:31:42.269Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 260.011
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T08:36:05.281Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 227.904,
+      "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--none--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--none--r0.attempt2.sse.txt",
+      "response_sha256": "a95e39ab7d93ba2d86ca69c79bbe92e3ed6fe16c3e2dac506e82ee8b731fec9d"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5599,
+    "completion_tokens": 5582,
+    "total_tokens": 11181,
+    "prompt_tokens_details": {
+      "cached_tokens": 5598
+    }
+  },
+  "timings": {
+    "cache_n": 5598,
+    "prompt_n": 1,
+    "prompt_ms": 80.7,
+    "prompt_per_token_ms": 80.7,
+    "prompt_per_second": 12.4,
+    "predicted_n": 5582,
+    "predicted_ms": 224764.2,
+    "predicted_per_token_ms": 40.266,
+    "predicted_per_second": 24.8,
+    "draft_n": 4652,
+    "draft_n_accepted": 4627
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-arcade.farmyard-v11.p00--none--r0.html",
+  "output_bytes": 16635,
+  "output_sha256": "61e2551b186352dce7736c577a660eaa000bb522b7103488a0a97e13cfef5971",
+  "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--none--r0.attempt2.json",
+  "started_at": "2026-10-31T08:31:42.269Z",
+  "finished_at": "2026-10-31T08:39:58.189Z",
+  "seconds_total": 495.92,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

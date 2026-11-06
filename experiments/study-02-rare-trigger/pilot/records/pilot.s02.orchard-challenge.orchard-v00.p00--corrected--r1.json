@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1",
+  "scenario_id": "pilot.s02.orchard-challenge.orchard-v00.p00",
+  "stratum": "orchard-challenge",
+  "arm": "corrected",
+  "rep": 1,
+  "repeat_id": "repeat-12",
+  "repeat_of": "pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r0",
+  "seed_mode": "new",
+  "seed": 1833298294,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v00.p00:corrected:1\")[0:8])",
+  "seed_source": "plan_repeat_seed",
+  "derived_seed": 2916306659,
+  "order_key": "a4113104e2eb255da580b1c3501256e67f1b085e2a8e1b5ee2ef6d9bafe3e978",
+  "variant_id": "orchard-v00",
+  "baseline_sha256": "0f19ceb89ec9e182c2fadc768a1c028c8fbf0acbd2caba192c2c64d3aabff8f3",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1.txt",
+  "prompt_sha256": "616685ca288aae7ffb06a9fbde601e11c4fe2b654cec844680c17085e12814a3",
+  "prompt_bytes": 21154,
+  "request_sha256": "7f1dd8c92cc8bd8ac9de37c1e63776ff2fb27c415bfd154d7ff7cdf25b21f2a5",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "60f9e2d6-03fc-4cd3-bc68-a8b22398e876",
+    "34baa9cb-908d-4db4-a0ab-f5e75a1c6c1a"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "3f862c3b-2d0f-4b3d-8a72-8849e8f5eba1",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "34baa9cb-908d-4db4-a0ab-f5e75a1c6c1a",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": {
+    "superseded_id": "3f862c3b-2d0f-4b3d-8a72-8849e8f5eba1",
+    "replacement_id": "60f9e2d6-03fc-4cd3-bc68-a8b22398e876"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 750,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T12:44:52.132Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 287.244,
+      "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1.attempt1.sse.txt",
+      "response_sha256": "0ef88a8cf7b032f54f71e3623e68b2d0c8eb27b5616cff96beda62705d26b1a0"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6806,
+    "completion_tokens": 6437,
+    "total_tokens": 13243,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6806,
+    "prompt_ms": 17697.6,
+    "prompt_per_token_ms": 2.6,
+    "prompt_per_second": 384.6,
+    "predicted_n": 6437,
+    "predicted_ms": 266480.8,
+    "predicted_per_token_ms": 41.398,
+    "predicted_per_second": 24.2,
+    "draft_n": 5161,
+    "draft_n_accepted": 5055
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1.html",
+  "output_bytes": 19266,
+  "output_sha256": "1832980a0cab6405a72b6f4bac4770a44bc8ee6eed5037a4f8fef712f3104814",
+  "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v00.p00--corrected--r1.attempt1.json",
+  "started_at": "2026-10-31T12:44:52.132Z",
+  "finished_at": "2026-10-31T12:49:44.381Z",
+  "seconds_total": 292.249,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

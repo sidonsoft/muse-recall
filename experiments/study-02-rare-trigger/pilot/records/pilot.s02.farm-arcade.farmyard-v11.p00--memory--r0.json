@@ -1,0 +1,117 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v11.p00",
+  "stratum": "farm-arcade",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 215679032,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v11.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 561630375,
+  "order_key": "c47f887f0d419dce650520c12d4bc1e375b14ee599a7eed3739274fa174deac0",
+  "variant_id": "farmyard-v11",
+  "baseline_sha256": "cea2103ca2e78a8b68230494bd141790748dce12fa7870f160b22e467d18c5fa",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0.txt",
+  "prompt_sha256": "1c52e97c246d012527d3658e61ea869fdbe7af59025a87ef39937280c3a310a5",
+  "prompt_bytes": 18629,
+  "request_sha256": "54a27f09dc39d82dd99c074fa2e4ff856ccd1c645879deaa9b7515f92b3013d3",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "bdd63272-969d-4fff-bcac-14f73f60df7d",
+    "b4340936-9fd8-4c67-a3c0-56a071f487ce"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "bdd63272-969d-4fff-bcac-14f73f60df7d",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "b4340936-9fd8-4c67-a3c0-56a071f487ce",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 723,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T14:11:05.666Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Failed to connect to 192.168.86.39 port 8080 after 7835 ms: Couldn't connect to server)",
+      "timeout_ms": 1800000,
+      "seconds": 113.464
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T14:13:29.131Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 247.318,
+      "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0.attempt2.sse.txt",
+      "response_sha256": "138be0d98dc194a678f029c9556cacc65bfbe96d3077fe8c5ea560536648d3b6"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5851,
+    "completion_tokens": 5874,
+    "total_tokens": 11725,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 5851,
+    "prompt_ms": 15516.6,
+    "prompt_per_token_ms": 2.652,
+    "prompt_per_second": 377.1,
+    "predicted_n": 5874,
+    "predicted_ms": 228715.9,
+    "predicted_per_token_ms": 38.937,
+    "predicted_per_second": 25.7,
+    "draft_n": 4855,
+    "draft_n_accepted": 4797
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0.html",
+  "output_bytes": 17974,
+  "output_sha256": "fb30b80cbc427e1fd66345f33467254f0ac6c6663a3d5f883fed94b3ef504f6f",
+  "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v11.p00--memory--r0.attempt2.json",
+  "started_at": "2026-10-31T14:11:05.666Z",
+  "finished_at": "2026-10-31T14:17:41.453Z",
+  "seconds_total": 395.787,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

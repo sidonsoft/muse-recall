@@ -1,0 +1,76 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--none--r0",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+  "stratum": "focus-reward",
+  "arm": "none",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1398335065,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v01.p00:none:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3890270120,
+  "order_key": "1524a2f1df2047022704e1586e1a7df890d6c6cdc9a2efe888003b61926a8fb8",
+  "variant_id": "focusflow-v01",
+  "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v01.p00--none--r0.txt",
+  "prompt_sha256": "a0339d0fca8e1080544cc33eb923d0dcad6fe9f023d9f9f4f3b269bb9a7e42c7",
+  "prompt_bytes": 22038,
+  "request_sha256": "5655e6091e5bb4be9c47fe6ad3056cbac631eada7d27e9e77ff5811d74538735",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T04:22:58.129Z",
+      "error": "curl transport failed: curl: (56) Recv failure: Operation timed out\n",
+      "seconds": 780.259
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T04:36:01.390Z",
+      "error": "curl transport failed: curl: (56) Recv failure: Operation timed out\n",
+      "seconds": 660.323
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "curl transport failed: curl: (56) Recv failure: Operation timed out\n",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T04:22:58.129Z",
+  "finished_at": "2026-10-31T04:47:01.714Z",
+  "seconds_total": 1443.587,
+  "attempt_count": 2,
+  "failure_kind": "transport"
+}

@@ -1,0 +1,111 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v01.p00",
+  "stratum": "focus-lively",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 613608162,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v01.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3221738452,
+  "order_key": "06e76f1e2ec81b81bde0f2ada572c9b714e953b062ca16645d00e97522f4728e",
+  "variant_id": "focusflow-v01",
+  "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+  "request_text": "Make the planner feel lively and engaging.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0.txt",
+  "prompt_sha256": "9b39d989003503d9c3015f0298c614ca5e948b505000c9b14589d10674257846",
+  "prompt_bytes": 23014,
+  "request_sha256": "cc058910cc1a5984300e3ddaec68b7a84fc919cae3e3cc521a6cf00ad3931c06",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "43bbba10-f321-4b70-91a5-af8f7366a2bc",
+    "091de218-9c8b-46de-958c-5c326c39699b"
+  ],
+  "memory_contents": [
+    "Design direction changed: FocusFlow may now use lively animation where it improves feedback; the earlier no-animation restriction no longer applies.",
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "c50bbc7d-fdbf-439c-afce-ef5fe8aa5c76",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "091de218-9c8b-46de-958c-5c326c39699b",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": {
+    "superseded_id": "c50bbc7d-fdbf-439c-afce-ef5fe8aa5c76",
+    "replacement_id": "43bbba10-f321-4b70-91a5-af8f7366a2bc"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 802,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T03:24:26.864Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 276.96,
+      "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0.attempt1.json",
+      "response_sha256": "23b30abf15690926b828506ee0a936a43a56c6c9724cf0e2ac18e315e7f5cc0e"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6880,
+    "completion_tokens": 6329,
+    "total_tokens": 13209,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6880,
+    "prompt_ms": 17824,
+    "prompt_per_token_ms": 2.591,
+    "prompt_per_second": 386,
+    "predicted_n": 6329,
+    "predicted_ms": 259105.9,
+    "predicted_per_token_ms": 40.939,
+    "predicted_per_second": 24.4,
+    "draft_n": 5124,
+    "draft_n_accepted": 5103
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0.html",
+  "output_bytes": 20341,
+  "output_sha256": "bbdac1961c4b257166652d96a883caac74eec740f956f6816a0ccf20d7647596",
+  "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v01.p00--corrected--r0.attempt1.json",
+  "started_at": "2026-10-31T03:24:26.864Z",
+  "finished_at": "2026-10-31T03:29:03.826Z",
+  "seconds_total": 276.963,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

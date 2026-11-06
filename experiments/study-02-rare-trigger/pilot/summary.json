@@ -1,0 +1,61 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "completed_at": "2026-10-31T16:38:47.407Z",
+  "endpoint": "http://192.168.86.39:8080/v1/chat/completions",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "planned": 132,
+  "recorded": 132,
+  "remaining": 0,
+  "usable": 123,
+  "unusable": 9,
+  "manipulation_failures": 0,
+  "by_status": {
+    "succeeded": 123,
+    "failed": 9
+  },
+  "by_arm": {
+    "memory": {
+      "total": 33,
+      "usable": 30
+    },
+    "none": {
+      "total": 33,
+      "usable": 31
+    },
+    "manual": {
+      "total": 33,
+      "usable": 29
+    },
+    "corrected": {
+      "total": 33,
+      "usable": 33
+    }
+  },
+  "by_stratum": {
+    "farm-arcade": {
+      "total": 24,
+      "usable": 21
+    },
+    "farm-challenge": {
+      "total": 20,
+      "usable": 18
+    },
+    "focus-lively": {
+      "total": 20,
+      "usable": 19
+    },
+    "orchard-challenge": {
+      "total": 24,
+      "usable": 24
+    },
+    "focus-reward": {
+      "total": 24,
+      "usable": 22
+    },
+    "orchard-arcade": {
+      "total": 20,
+      "usable": 19
+    }
+  }
+}

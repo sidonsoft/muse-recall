@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1",
+  "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+  "stratum": "orchard-arcade",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": "replacement-1",
+  "repeat_of": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0",
+  "seed_mode": "replacement-same-seed",
+  "seed": 413816858,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3986854004,
+  "order_key": "3ab3208aa29c5d09b7fde373888db7c9dc51e8e76d21f5619a1d5f7006285019",
+  "variant_id": "orchard-v01",
+  "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/replacements/prompts/pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1.txt",
+  "prompt_sha256": "0f17f9b8207686290b2dcbc1450b31b176edbd9be80572f0466a7898b9bb26f5",
+  "prompt_bytes": 21174,
+  "request_sha256": "a2f701e6595ca4498f94a313a13cb2ff703dc51a8fc15da440ddbdbd3aa4ca90",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "6cb25786-07dc-4ed8-9331-2917f54c0179",
+    "9981fbcc-41ff-48c2-9de6-e154908b27e6"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "6cb25786-07dc-4ed8-9331-2917f54c0179",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "9981fbcc-41ff-48c2-9de6-e154908b27e6",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 718,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T16:44:28.579Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 291.34,
+      "raw_file": "pilot/replacements/raw/pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1.attempt1.json",
+      "sse_file": "pilot/replacements/raw/pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1.attempt1.sse.txt",
+      "response_sha256": "587ff8ed798c47eab4d39bfb6580c41ffb7d4393df25fd63d2e656ef86343765"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6835,
+    "completion_tokens": 6821,
+    "total_tokens": 13656,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6835,
+    "prompt_ms": 18088.2,
+    "prompt_per_token_ms": 2.646,
+    "prompt_per_second": 377.9,
+    "predicted_n": 6821,
+    "predicted_ms": 270175.3,
+    "predicted_per_token_ms": 39.609,
+    "predicted_per_second": 25.2,
+    "draft_n": 5608,
+    "draft_n_accepted": 5519
+  },
+  "http": 200,
+  "output_file": "pilot/replacements/outputs/pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1.html",
+  "output_bytes": 20312,
+  "output_sha256": "09c586b6b1d42e7191a27476b459a1eec772326076b084199265348fbe1cb5e0",
+  "raw_file": "pilot/replacements/raw/pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0--repl1.attempt1.json",
+  "started_at": "2026-10-31T16:44:28.579Z",
+  "finished_at": "2026-10-31T16:49:24.922Z",
+  "seconds_total": 296.343,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null,
+  "replacement_for": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0",
+  "replacement_reason": "timeout",
+  "replacement_rule": "one replacement per unusable pilot run; original failure retained; pilot-only"
+}

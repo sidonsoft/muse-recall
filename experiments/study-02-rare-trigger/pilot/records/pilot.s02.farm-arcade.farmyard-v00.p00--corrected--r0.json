@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v00.p00",
+  "stratum": "farm-arcade",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 328673691,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v00.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3498656512,
+  "order_key": "c18c93d5efe150d2073e0986a10ad1f8bd97e79fe5b3528d92aa4daf5403f5ae",
+  "variant_id": "farmyard-v00",
+  "baseline_sha256": "8fd8ac6710847dbe44109deb8fa4069e7682a964b2d535771519c1305d806d83",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0.txt",
+  "prompt_sha256": "ebf4f04d34fb1dcd1b83df4aec2b05b1c904038c8946ba4421dde2975ee9fc27",
+  "prompt_bytes": 20968,
+  "request_sha256": "698be2a66708d3f8d18b63257b2e68a0b0353b17334e35fcd8d2ec0a38f36011",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "e00952cd-31c5-4952-ab6f-85404bde9200",
+    "feff4202-34f1-46c6-8c76-87a857428c29"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "85b6bef9-93d2-416d-a689-3f4b0959f93e",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "feff4202-34f1-46c6-8c76-87a857428c29",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": {
+    "superseded_id": "85b6bef9-93d2-416d-a689-3f4b0959f93e",
+    "replacement_id": "e00952cd-31c5-4952-ab6f-85404bde9200"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 755,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T14:02:09.198Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 308.841,
+      "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0.attempt1.sse.txt",
+      "response_sha256": "5d5f6105d2c0bff0a5865a933bf61700644e7a229a8ca37e94c12a3491cf8faf"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6646,
+    "completion_tokens": 6615,
+    "total_tokens": 13261,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6646,
+    "prompt_ms": 18026.4,
+    "prompt_per_token_ms": 2.712,
+    "prompt_per_second": 368.7,
+    "predicted_n": 6615,
+    "predicted_ms": 287737.9,
+    "predicted_per_token_ms": 43.498,
+    "predicted_per_second": 23,
+    "draft_n": 4943,
+    "draft_n_accepted": 4856
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0.html",
+  "output_bytes": 19496,
+  "output_sha256": "83566030e3aa88f07a203181399458408e5a67bc219d86aac14f7741baecb873",
+  "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v00.p00--corrected--r0.attempt1.json",
+  "started_at": "2026-10-31T14:02:09.198Z",
+  "finished_at": "2026-10-31T14:07:23.045Z",
+  "seconds_total": 313.849,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

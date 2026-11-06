@@ -1,0 +1,260 @@
+{
+  "generated_at": "2026-10-31T02:37:23.878Z",
+  "endpoint": "http://192.168.86.39:8080",
+  "model_id": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "generation_params": {
+    "model": "qwen3.6-35b-a3b-ud-q3_k_m",
+    "reasoning_effort": "none",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "presence_penalty": 1.5,
+    "min_p": 0,
+    "max_tokens_full_file": 16384,
+    "stream": false,
+    "distinct_explicit_seed_per_request": true
+  },
+  "per_baseline": [
+    {
+      "baseline": "farmyard",
+      "baseline_path": "demo/forge-baseline/index.html",
+      "prompt_chars": 14306,
+      "prompt_tokens": 5154,
+      "completion_tokens": 5861,
+      "wall_s": 261.99,
+      "finish_reason": "stop",
+      "output_html_bytes": 15932,
+      "output_sha256": "7faad37e35febc79a0b6e79eab93a64706d715616cd3cc07556288bf3e17463e",
+      "prompt_ms": 14136,
+      "predicted_ms": 247775.4,
+      "prompt_per_second": 364.6,
+      "predicted_per_second": 23.7,
+      "cache_n": 0,
+      "html_block_extracted": true,
+      "html_complete": true,
+      "thinking_off_honoured": true,
+      "model_echoed_ok": true
+    },
+    {
+      "baseline": "orchard",
+      "baseline_path": "docs/hackathon-evidence/phase17/baselines/orchard-catch.html",
+      "prompt_chars": 20191,
+      "prompt_tokens": 6447,
+      "completion_tokens": 6387,
+      "wall_s": 282.8,
+      "finish_reason": "stop",
+      "output_html_bytes": 19030,
+      "output_sha256": "53c6ad6d928ac62a883a86130615369bc5b07efa8ef46439e5bfcf73bfdaaeb5",
+      "prompt_ms": 17219.3,
+      "predicted_ms": 265512.2,
+      "prompt_per_second": 374.4,
+      "predicted_per_second": 24.1,
+      "cache_n": 0,
+      "html_block_extracted": true,
+      "html_complete": true,
+      "thinking_off_honoured": true,
+      "model_echoed_ok": true
+    },
+    {
+      "baseline": "focusflow",
+      "baseline_path": "docs/demo/evidence/artifacts/v3-staged.html",
+      "prompt_chars": 18714,
+      "prompt_tokens": 5672,
+      "completion_tokens": 5178,
+      "wall_s": 225.81,
+      "finish_reason": "stop",
+      "output_html_bytes": 16328,
+      "output_sha256": "25880094c88d4315880597093f3f67bee3eb094d174e8516df1e730e1cac3dd0",
+      "prompt_ms": 14932.3,
+      "predicted_ms": 210844.1,
+      "prompt_per_second": 379.8,
+      "predicted_per_second": 24.6,
+      "cache_n": 0,
+      "html_block_extracted": true,
+      "html_complete": true,
+      "thinking_off_honoured": true,
+      "model_echoed_ok": true
+    }
+  ],
+  "repeated_runs": [
+    {
+      "id": "q04-farmyard-sameseed",
+      "baseline": "farmyard",
+      "seed": 1001,
+      "wall_s": 196.48,
+      "completion_tokens": 4327,
+      "output_html_bytes": 11485,
+      "output_sha256": "8bb3b59e655b6d63b7da1ad0392dccf5390edfde3869de7249437b46e74b02a7",
+      "finish_reason": "stop",
+      "cache_n": 0,
+      "prompt_ms": 14446
+    },
+    {
+      "id": "q05-farmyard-newseed",
+      "baseline": "farmyard",
+      "seed": 1004,
+      "wall_s": 223.61,
+      "completion_tokens": 5467,
+      "output_html_bytes": 14827,
+      "output_sha256": "6b180d4ef72af241ce7e9d4dddf2e431df1a16454077dabdfe1e484bbbee05d4",
+      "finish_reason": "stop",
+      "cache_n": 5153,
+      "prompt_ms": 93.3
+    }
+  ],
+  "cap_probe": {
+    "id": "q06-farmyard-cap512",
+    "max_tokens": 512,
+    "completion_tokens": 512,
+    "finish_reason": "length",
+    "wall_s": 23.16,
+    "html_block_extracted": false,
+    "note": "max_tokens was honoured exactly (512); output cut mid-file; finish_reason \"length\"; no html block -> extraction must treat length as a failed/censored run"
+  },
+  "determinism": {
+    "finding": "same explicit seed does NOT reproduce output at temperature > 0; greedy (temperature 0) IS reproducible; different seeds can change the sample stream",
+    "same_seed_same_prompt_full_file": {
+      "first": "q01-farmyard-primary",
+      "repeat": "q04-farmyard-sameseed",
+      "seed": 1001,
+      "completion_tokens": [
+        5861,
+        4327
+      ],
+      "html_bytes": [
+        15932,
+        11485
+      ],
+      "byte_identical_output": false
+    },
+    "different_seed_same_prompt_full_file": {
+      "id": "q05-farmyard-newseed",
+      "seed": 1004,
+      "completion_tokens": 5467,
+      "html_bytes": 14827,
+      "differs_from_seed_1001": true
+    },
+    "micro_probe_1": {
+      "prompt": "List five single words",
+      "max_tokens": 24,
+      "temperature": 0.7,
+      "seed": 7,
+      "repeats": 2,
+      "contents": [
+        "apple banana cherry date elderberry",
+        "apple banana cherry dog elephant",
+        "apple banana cherry date elderberry",
+        "apple banana cherry date elderberry",
+        "apple banana cherry date elderberry"
+      ],
+      "identical": false,
+      "different_seed_8_identical_to_seed_7": true,
+      "greedy_identical": true
+    },
+    "micro_probe_2": {
+      "prompt": "Write a comma-separated list of 20 distinct animal names",
+      "max_tokens": 60,
+      "temperature": 0.7,
+      "seed": 7,
+      "repeats": 3,
+      "contents": [
+        "Lion, Tiger, Elephant, Giraffe, Zebra, Kangaroo, Penguin, Dolphin, Shark, Eagle, Owl, Wolf, Fox, Bea",
+        "Lion, Tiger, Elephant, Giraffe, Zebra, Kangaroo, Penguin, Dolphin, Shark, Eagle, Wolf, Bear, Fox, Ra",
+        "Lion, Tiger, Elephant, Giraffe, Zebra, Kangaroo, Penguin, Dolphin, Shark, Eagle, Owl, Wolf, Fox, Bea"
+      ],
+      "identical_pairs": [
+        [
+          0,
+          1,
+          false
+        ],
+        [
+          0,
+          2,
+          true
+        ],
+        [
+          1,
+          2,
+          false
+        ]
+      ],
+      "different_seed_8_identical": false,
+      "greedy_identical": true,
+      "greedy_equals_temp07": false
+    }
+  },
+  "distribution_seconds": {
+    "sample": "full-file generations only (n=5; excludes the 512-token cap probe)",
+    "n": 5,
+    "values": [
+      196.48,
+      223.61,
+      225.81,
+      261.99,
+      282.8
+    ],
+    "mean": 238.14,
+    "median": 225.81,
+    "stdev": 34.14,
+    "min": 196.48,
+    "max": 282.8,
+    "p90": 274.48,
+    "p95": 278.64,
+    "p95_note": "n=5: p95 is interpolated and ~the max; max is the conservative bound",
+    "primary_baselines_mean_s": 256.87
+  },
+  "projection": {
+    "assumption": "sequential single-slot execution; wall = prompt_ms + predicted_ms + ~0.1 s; per-run mean of the measured full-file distribution; no prefix-cache benefit assumed for distinct pilot prompts (cache_n=0 whenever the preceding prompt differed)",
+    "pilot_132": {
+      "hours_at_mean": 8.73,
+      "hours_at_median": 8.28,
+      "hours_at_primary_mean": 9.42,
+      "hours_at_p95_conservative": 10.22,
+      "hours_at_max": 10.37
+    },
+    "confirmatory_4800": {
+      "hours_at_mean": 317.52,
+      "hours_at_median": 301.08,
+      "hours_at_primary_mean": 342.49,
+      "hours_at_max": 377.07,
+      "days_at_mean": 13.2
+    },
+    "formula_check": "wall_s ~= prompt_tokens/370 + completion_tokens/24.2; predicted from measured prefill 356-380 tok/s and decode 23.7-24.6 tok/s"
+  },
+  "stop_rule": {
+    "rule": "132-execution projected wall time > 10 h OR measured p95 per run > 8 min (480 s)",
+    "projected_132h_central_mean": 8.73,
+    "projected_132h_primary_mean": 9.42,
+    "projected_132h_p95_conservative": 10.22,
+    "projected_132h_max": 10.37,
+    "p95_seconds": 278.6,
+    "p95_under_8min": true,
+    "triggered_by_projected_hours": false,
+    "triggered_by_p95": false,
+    "triggered": false,
+    "margin_note": "central projection 8.73 h is 13% below the 10 h threshold; the p95-per-run and max-per-run projections (10.22 h / 10.37 h) would exceed it, so the margin is thin. A pilot rolling mean above 272.7 s/run would breach 10 h.",
+    "rolling_breach_threshold_seconds_per_run": 272.7
+  },
+  "stop_rule_triggered": false,
+  "recommendation": "GO_WITH_CAVEATS",
+  "recommendation_reasons": [
+    "central projection 8.73 h (median 8.28 h) for 132 executions is below the 10 h stop threshold",
+    "p95 per run 278.6 s (4.6 min) is below the 8 min threshold",
+    "margin is thin: +13% per-run time breaches 10 h; two of five full-file runs already exceeded 260 s",
+    "the endpoint is not a managed service and the seed does not provide determinism"
+  ],
+  "harness_requirements": [
+    "client timeout >= 400 s (recommend 900 s; observed max 282.8 s)",
+    "sequential, single in-flight request; /v1/status concurrency is 1",
+    "assert response.model == qwen3.6-35b-a3b-ud-q3_k_m",
+    "always send reasoning_effort:\"none\" and chat_template_kwargs.enable_thinking=false",
+    "treat finish_reason != \"stop\" as failed/censored; at 512-token cap no html block existed",
+    "do not rely on seed for byte-identical replay; greedy (temperature 0) is the only reproducible mode",
+    "no prefix-cache benefit for distinct prompts (cache_n=0 unless the immediately preceding prompt was identical)",
+    "record usage/timings/wall/seed per run; keep resumable checkpoints"
+  ]
+}

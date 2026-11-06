@@ -1,0 +1,102 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-arcade.orchard-v11.p00--none--r0",
+  "scenario_id": "pilot.s02.orchard-arcade.orchard-v11.p00",
+  "stratum": "orchard-arcade",
+  "arm": "none",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 243405742,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v11.p00:none:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3646875766,
+  "order_key": "c002e0d84fb71372b1d7a67fc2f614c743cab896b0ea5efe35112f272fbef463",
+  "variant_id": "orchard-v11",
+  "baseline_sha256": "7d7f379a19794174db392d8adefea3728251313717ca2f7457055df402302a3a",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-arcade.orchard-v11.p00--none--r0.txt",
+  "prompt_sha256": "cf1a896e7556be2ab68539afc55055df156be368a5b89446931515d2144240e3",
+  "prompt_bytes": 17929,
+  "request_sha256": "7d545ea411250b24df5e31b21c16268e80c2fea0b3a4e5376a3c3c70831b90ca",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [],
+  "memory_contents": [],
+  "seeded": [],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 0,
+    "characters_used": 0,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "none"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 0,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T13:53:01.182Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 263.041
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T13:57:54.225Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 249.96,
+      "raw_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v11.p00--none--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v11.p00--none--r0.attempt2.sse.txt",
+      "response_sha256": "8fe2559900ba10ba99dba47dd5c3719b3e6a99c5c81e8992e0153b2132815e76"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5778,
+    "completion_tokens": 5735,
+    "total_tokens": 11513,
+    "prompt_tokens_details": {
+      "cached_tokens": 5777
+    }
+  },
+  "timings": {
+    "cache_n": 5777,
+    "prompt_n": 1,
+    "prompt_ms": 108.2,
+    "prompt_per_token_ms": 108.2,
+    "prompt_per_second": 9.2,
+    "predicted_n": 5735,
+    "predicted_ms": 246759.4,
+    "predicted_per_token_ms": 43.027,
+    "predicted_per_second": 23.2,
+    "draft_n": 4463,
+    "draft_n_accepted": 4382
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-arcade.orchard-v11.p00--none--r0.html",
+  "output_bytes": 17080,
+  "output_sha256": "9fe9b3f605d53d762a0afde2cab5737f18ff6e6e8ce01c937d75c42513dcf4e5",
+  "raw_file": "pilot/raw/pilot.s02.orchard-arcade.orchard-v11.p00--none--r0.attempt2.json",
+  "started_at": "2026-10-31T13:53:01.182Z",
+  "finished_at": "2026-10-31T14:02:09.194Z",
+  "seconds_total": 548.012,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

@@ -1,0 +1,120 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0",
+  "scenario_id": "pilot.s02.farm-arcade.farmyard-v10.p00",
+  "stratum": "farm-arcade",
+  "arm": "corrected",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 772554114,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-arcade.farmyard-v10.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3880677828,
+  "order_key": "eeb3a9b94464f1396230b0102f35f99c918c24bcdf8caf99c1ce24fcb80e0bb2",
+  "variant_id": "farmyard-v10",
+  "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0.txt",
+  "prompt_sha256": "011100beb5f63043e9f0a93d11c51bf8ca687d5497641b6d9414daa4bf41d2b2",
+  "prompt_bytes": 18629,
+  "request_sha256": "718ba832acd9910105d1ef008b33ff95c8faba8d0d2f65d36965c70530d3bb9f",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "46031953-26d7-44e3-a95e-fbc6f8e8ab2c",
+    "1b7c745a-6d55-490c-b26d-e13f5f5f37df"
+  ],
+  "memory_contents": [
+    "Audience changed: this game is now for teenagers and adults (13+), so the earlier children’s-game restrictions no longer apply.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "9af4886b-a79b-4222-86c8-ff158728b925",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "1b7c745a-6d55-490c-b26d-e13f5f5f37df",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": {
+    "superseded_id": "9af4886b-a79b-4222-86c8-ff158728b925",
+    "replacement_id": "46031953-26d7-44e3-a95e-fbc6f8e8ab2c"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 755,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T16:04:28.965Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 276.051
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T16:09:35.018Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 229.264,
+      "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0.attempt2.sse.txt",
+      "response_sha256": "5a26fb0f129185293a498f916393242c40e5b8adaf2787043f74f7f714d7b55d"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5844,
+    "completion_tokens": 5874,
+    "total_tokens": 11718,
+    "prompt_tokens_details": {
+      "cached_tokens": 5843
+    }
+  },
+  "timings": {
+    "cache_n": 5843,
+    "prompt_n": 1,
+    "prompt_ms": 101.1,
+    "prompt_per_token_ms": 101.1,
+    "prompt_per_second": 9.9,
+    "predicted_n": 5874,
+    "predicted_ms": 226067.2,
+    "predicted_per_token_ms": 38.486,
+    "predicted_per_second": 26,
+    "draft_n": 4583,
+    "draft_n_accepted": 4430
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0.html",
+  "output_bytes": 17303,
+  "output_sha256": "fcb71e95a6dfb5dd38dc8162fa98a74aada895cbfd7b6bebe279a3447506ccae",
+  "raw_file": "pilot/raw/pilot.s02.farm-arcade.farmyard-v10.p00--corrected--r0.attempt2.json",
+  "started_at": "2026-10-31T16:04:28.965Z",
+  "finished_at": "2026-10-31T16:13:29.292Z",
+  "seconds_total": 540.327,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

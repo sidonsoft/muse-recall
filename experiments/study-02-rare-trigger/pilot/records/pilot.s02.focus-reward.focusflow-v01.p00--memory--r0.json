@@ -1,0 +1,93 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v01.p00--memory--r0",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v01.p00",
+  "stratum": "focus-reward",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 662336354,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v01.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3436232605,
+  "order_key": "76fcf8b9a1ddac1748da2fb927943447335427e75c610517dcc9aea388a60076",
+  "variant_id": "focusflow-v01",
+  "baseline_sha256": "1ac07d7a3cf62613ce546666595493a0e1d02424a5e272b7d574e27c6cdcb999",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v01.p00--memory--r0.txt",
+  "prompt_sha256": "60ff457ccf90e24f21591f8dbec4ce736ace0204b172e7b62b24fe70d6d908b7",
+  "prompt_bytes": 23073,
+  "request_sha256": "a5969ec62c282af9d0d467b039133fc2cb956c1b460c5c0b23837d97aa3adf34",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [
+    "9fabf2ef-b857-40ff-9806-379519fa224f",
+    "bdbf8f1f-5912-466e-b1db-2eb669b4711b"
+  ],
+  "memory_contents": [
+    "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "9fabf2ef-b857-40ff-9806-379519fa224f",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "bdbf8f1f-5912-466e-b1db-2eb669b4711b",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 847,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T10:25:36.907Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 363.303
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T10:32:10.212Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 148.564
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T10:25:36.907Z",
+  "finished_at": "2026-10-31T10:34:38.777Z",
+  "seconds_total": 541.872,
+  "attempt_count": 2,
+  "failure_kind": "timeout"
+}

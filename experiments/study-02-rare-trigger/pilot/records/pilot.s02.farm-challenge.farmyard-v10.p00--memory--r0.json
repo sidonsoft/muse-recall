@@ -1,0 +1,117 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v10.p00",
+  "stratum": "farm-challenge",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 765184235,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v10.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 299496412,
+  "order_key": "b4e6a5ded0a8fb85323f324dbbd92df4c89b7869bc7e1501f1db6615118dfcf6",
+  "variant_id": "farmyard-v10",
+  "baseline_sha256": "8a69599e0dfa8b0b3eee54fce9842aa8849eac41ff677f2d3de150ca8c79cf92",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0.txt",
+  "prompt_sha256": "682efb39bd4c98d2db5f54332d7083a9165e707ab5c33e8dc0651b20462991fb",
+  "prompt_bytes": 18612,
+  "request_sha256": "851ee4fd92b046d0f5e1002f385a6e6a69b4ba2f626bf0fb454043bd7531e252",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "a332df8e-9715-466e-8427-cbbd5d28c459",
+    "94cde419-793f-41d8-814c-49ec8a3db87f"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "a332df8e-9715-466e-8427-cbbd5d28c459",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "94cde419-793f-41d8-814c-49ec8a3db87f",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 723,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T13:17:36.991Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Failed to connect to 192.168.86.39 port 8080 after 7780 ms: Couldn't connect to server)",
+      "timeout_ms": 1800000,
+      "seconds": 10.821
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T13:18:17.813Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 260.968,
+      "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0.attempt2.sse.txt",
+      "response_sha256": "6e4e96edd494499437c40da7628aa202d9347eb5ae4a386525c0df70d98d2092"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 5835,
+    "completion_tokens": 5600,
+    "total_tokens": 11435,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 5835,
+    "prompt_ms": 15150.6,
+    "prompt_per_token_ms": 2.597,
+    "prompt_per_second": 385.1,
+    "predicted_n": 5600,
+    "predicted_ms": 229905.9,
+    "predicted_per_token_ms": 41.055,
+    "predicted_per_second": 24.4,
+    "draft_n": 4458,
+    "draft_n_accepted": 4413
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0.html",
+  "output_bytes": 17267,
+  "output_sha256": "343fd7251ecac10346235e45af15cab5a6f8111493b6749705bc18f7d5db7045",
+  "raw_file": "pilot/raw/pilot.s02.farm-challenge.farmyard-v10.p00--memory--r0.attempt2.json",
+  "started_at": "2026-10-31T13:17:36.991Z",
+  "finished_at": "2026-10-31T13:22:43.786Z",
+  "seconds_total": 306.797,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

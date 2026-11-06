@@ -1,0 +1,110 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0",
+  "scenario_id": "pilot.s02.orchard-challenge.orchard-v02.p00",
+  "stratum": "orchard-challenge",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 675121712,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-challenge.orchard-v02.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3345089051,
+  "order_key": "2c6a59582752c191901bc4adc6ca1eeebaa8fec5d173b07f23fea62f1d680c08",
+  "variant_id": "orchard-v02",
+  "baseline_sha256": "93c405e381c7b4bed269ab7e1e9220ae5728e7df9175dec0fe3ccccce0cda5bc",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0.txt",
+  "prompt_sha256": "306707a074dffc4cf2ab5c07563ad88cb2a0e6a0f4a2551171611482af9ef15e",
+  "prompt_bytes": 21228,
+  "request_sha256": "a89e6acecbcb94d81dcf505323bb3cae841fe297ebd62edf8d44a0e46e799c64",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "38ae580e-2dd8-478c-9b83-5e4ae1882646",
+    "df7f0fcb-0ef5-49f2-bf8e-3ad1141dc20e"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "38ae580e-2dd8-478c-9b83-5e4ae1882646",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "df7f0fcb-0ef5-49f2-bf8e-3ad1141dc20e",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 718,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T06:14:57.316Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 303.704,
+      "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0.attempt1.sse.txt",
+      "response_sha256": "1a6a0ad475f09a0bb0a9f96a9121efbf7268c8a089ea8d54973c4bc47f6ea106"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6828,
+    "completion_tokens": 6735,
+    "total_tokens": 13563,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6828,
+    "prompt_ms": 17719.5,
+    "prompt_per_token_ms": 2.595,
+    "prompt_per_second": 385.3,
+    "predicted_n": 6735,
+    "predicted_ms": 282920.9,
+    "predicted_per_token_ms": 42.008,
+    "predicted_per_second": 23.8,
+    "draft_n": 5048,
+    "draft_n_accepted": 4942
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0.html",
+  "output_bytes": 20269,
+  "output_sha256": "55f87d8de1143e96735b6b1a4199640ccf5a9088f072fe8ebbd7434615d6777a",
+  "raw_file": "pilot/raw/pilot.s02.orchard-challenge.orchard-v02.p00--memory--r0.attempt1.json",
+  "started_at": "2026-10-31T06:14:57.316Z",
+  "finished_at": "2026-10-31T06:20:06.025Z",
+  "seconds_total": 308.709,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

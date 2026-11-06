@@ -1,0 +1,113 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1",
+  "scenario_id": "pilot.s02.focus-reward.focusflow-v00.p00",
+  "stratum": "focus-reward",
+  "arm": "corrected",
+  "rep": 1,
+  "repeat_id": "repeat-08",
+  "repeat_of": "pilot.s02.focus-reward.focusflow-v00.p00--corrected--r0",
+  "seed_mode": "same",
+  "seed": 812154474,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-reward.focusflow-v00.p00:corrected:0\")[0:8])",
+  "seed_source": "plan_repeat_seed",
+  "derived_seed": 3304104668,
+  "order_key": "be7f799a99fef1ccf16f3a3dff2f528d2e10aacae7ec44424bb3ee293b5c4328",
+  "variant_id": "focusflow-v00",
+  "baseline_sha256": "bcf474e7cf476a7aba1dd005bac3e4a64f6d1190812c77dff7c0e7cbb039c8ec",
+  "request_text": "Make completing a task feel rewarding and celebratory.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1.txt",
+  "prompt_sha256": "fc436490c7ce5811936399840fe479f37f6ced996372e5b2aa42bfb56f782ea5",
+  "prompt_bytes": 22636,
+  "request_sha256": "84b9ea0021905909d5f3b95bc65b7c9273b4dd76cce35aa6974d2454d2cc4aa0",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "b7ff6bac-6cd2-4dbc-9d1f-ac40c0be8c29",
+    "e63103f3-c950-464c-b41f-fc010342879e"
+  ],
+  "memory_contents": [
+    "Design direction changed: FocusFlow may now use lively animation where it improves feedback; the earlier no-animation restriction no longer applies.",
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "8d1b25ad-a3ae-4484-8ab3-3d0eeccbafb2",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "e63103f3-c950-464c-b41f-fc010342879e",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": {
+    "superseded_id": "8d1b25ad-a3ae-4484-8ab3-3d0eeccbafb2",
+    "replacement_id": "b7ff6bac-6cd2-4dbc-9d1f-ac40c0be8c29"
+  },
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 802,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": false,
+  "correction_in_prompt": true,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": false
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T13:47:48.840Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 307.334,
+      "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1.attempt1.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1.attempt1.sse.txt",
+      "response_sha256": "62fff18b94222a7302aec58c22b6c95d7d306783f3a85026753a8534105a3778"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6753,
+    "completion_tokens": 6865,
+    "total_tokens": 13618,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6753,
+    "prompt_ms": 17591.3,
+    "prompt_per_token_ms": 2.605,
+    "prompt_per_second": 383.9,
+    "predicted_n": 6865,
+    "predicted_ms": 286671.1,
+    "predicted_per_token_ms": 41.758,
+    "predicted_per_second": 23.9,
+    "draft_n": 5203,
+    "draft_n_accepted": 5115
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1.html",
+  "output_bytes": 22035,
+  "output_sha256": "68a9867781dd61b69348de696b4258c848fc0daec664ed25e3a35c0fb3d9da8d",
+  "raw_file": "pilot/raw/pilot.s02.focus-reward.focusflow-v00.p00--corrected--r1.attempt1.json",
+  "started_at": "2026-10-31T13:47:48.840Z",
+  "finished_at": "2026-10-31T13:53:01.179Z",
+  "seconds_total": 312.339,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 1,
+  "failure_kind": null
+}

@@ -1,0 +1,117 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.focus-lively.focusflow-v02.p00--memory--r0",
+  "scenario_id": "pilot.s02.focus-lively.focusflow-v02.p00",
+  "stratum": "focus-lively",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 1914078039,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.focus-lively.focusflow-v02.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 641376503,
+  "order_key": "19ed9017ab0915d481784895b623ce54fc95842298808cfa59bb0bb852826f18",
+  "variant_id": "focusflow-v02",
+  "baseline_sha256": "91028e264c0ee45439aaf77e67cf34179fc4bbe789308b30462c4b84e7aa6496",
+  "request_text": "Make the planner feel lively and engaging.",
+  "prompt_file": "pilot/prompts/pilot.s02.focus-lively.focusflow-v02.p00--memory--r0.txt",
+  "prompt_sha256": "4a2f1a4648f18593479e26882a95864ecff5cfa6420e1c93ffcf06830031e86d",
+  "prompt_bytes": 22872,
+  "request_sha256": "90dea5184cda83deb256b690dac10859bc45a8cf92249527891f1099d24b3496",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "memory_ids": [
+    "0073f840-9f3c-4318-a8a6-70384cc24b70",
+    "500ef482-03ab-430d-90f6-289fec07f7ff"
+  ],
+  "memory_contents": [
+    "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine.",
+    "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+  ],
+  "seeded": [
+    {
+      "id": "0073f840-9f3c-4318-a8a6-70384cc24b70",
+      "content": "FocusFlow is a calm, distraction-free planner: do not add animation — no keyframe animations, confetti, bouncing, pulsing or other motion effects. Simple colour or opacity transitions are fine."
+    },
+    {
+      "id": "500ef482-03ab-430d-90f6-289fec07f7ff",
+      "content": "FocusFlow visual identity: warm amber accent #e7c17c on a deep charcoal surface. Avoid blue or purple gradients."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 847,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T05:15:29.649Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 179.659
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T05:18:32.311Z",
+      "http": 200,
+      "ok": true,
+      "seconds": 268.474,
+      "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v02.p00--memory--r0.attempt2.json",
+      "sse_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v02.p00--memory--r0.attempt2.sse.txt",
+      "response_sha256": "c2235be4dec822951917d90cb1a1ea69314d5f76700bb8bf2c55546e3d3a0f0d"
+    }
+  ],
+  "status": "succeeded",
+  "usable": true,
+  "error": null,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 6849,
+    "completion_tokens": 6235,
+    "total_tokens": 13084,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 6849,
+    "prompt_ms": 17652.6,
+    "prompt_per_token_ms": 2.577,
+    "prompt_per_second": 388,
+    "predicted_n": 6235,
+    "predicted_ms": 250763.3,
+    "predicted_per_token_ms": 40.219,
+    "predicted_per_second": 24.9,
+    "draft_n": 5163,
+    "draft_n_accepted": 5142
+  },
+  "http": 200,
+  "output_file": "pilot/outputs/pilot.s02.focus-lively.focusflow-v02.p00--memory--r0.html",
+  "output_bytes": 20065,
+  "output_sha256": "e618d362b30fa938af05479ae36330d0e0ac6ef3869f16abc7465a36da83498b",
+  "raw_file": "pilot/raw/pilot.s02.focus-lively.focusflow-v02.p00--memory--r0.attempt2.json",
+  "started_at": "2026-10-31T05:15:29.649Z",
+  "finished_at": "2026-10-31T05:23:00.793Z",
+  "seconds_total": 451.146,
+  "streamed": true,
+  "extraction": "fence",
+  "attempt_count": 2,
+  "failure_kind": null
+}

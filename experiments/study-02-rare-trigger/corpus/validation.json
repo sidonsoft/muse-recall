@@ -1,0 +1,898 @@
+{
+  "counts": {
+    "labels": 400,
+    "pilot_primary_executions": 120,
+    "pilot_repeat_executions": 12,
+    "pilot_scenarios": 30,
+    "pilot_total_executions": 132,
+    "scenarios": 400,
+    "scenarios_high": 200,
+    "scenarios_low": 200,
+    "strata": {
+      "farm-arcade": 60,
+      "farm-challenge": 60,
+      "focus-lively": 80,
+      "focus-reward": 80,
+      "orchard-arcade": 60,
+      "orchard-challenge": 60
+    },
+    "twin_pairs": 30,
+    "variants": 60,
+    "variants_high": 30,
+    "variants_low": 30
+  },
+  "errors": [],
+  "generator_version": "study02-corpus-1.0",
+  "hook_rules": {
+    "H_min_hooks": 3,
+    "H_min_observed": 3,
+    "L_max_hooks": 1,
+    "L_max_observed": 1
+  },
+  "html": {
+    "all_single_file": true,
+    "external_references": false,
+    "js_failures": 0,
+    "js_syntax_checked_with_node": true
+  },
+  "labels_version": "s02-labels-cp2-1.0",
+  "ok": true,
+  "per_variant": [
+    {
+      "bytes": 18180,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T00",
+      "variant_id": "farmyard-v00"
+    },
+    {
+      "bytes": 18212,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T01",
+      "variant_id": "farmyard-v01"
+    },
+    {
+      "bytes": 18293,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T02",
+      "variant_id": "farmyard-v02"
+    },
+    {
+      "bytes": 18382,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T03",
+      "variant_id": "farmyard-v03"
+    },
+    {
+      "bytes": 18162,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T04",
+      "variant_id": "farmyard-v04"
+    },
+    {
+      "bytes": 18284,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T05",
+      "variant_id": "farmyard-v05"
+    },
+    {
+      "bytes": 18197,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T06",
+      "variant_id": "farmyard-v06"
+    },
+    {
+      "bytes": 17997,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T07",
+      "variant_id": "farmyard-v07"
+    },
+    {
+      "bytes": 18169,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T08",
+      "variant_id": "farmyard-v08"
+    },
+    {
+      "bytes": 18147,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 3,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T09",
+      "variant_id": "farmyard-v09"
+    },
+    {
+      "bytes": 15841,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T00",
+      "variant_id": "farmyard-v10"
+    },
+    {
+      "bytes": 15873,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T01",
+      "variant_id": "farmyard-v11"
+    },
+    {
+      "bytes": 15954,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T02",
+      "variant_id": "farmyard-v12"
+    },
+    {
+      "bytes": 16043,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T03",
+      "variant_id": "farmyard-v13"
+    },
+    {
+      "bytes": 15823,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T04",
+      "variant_id": "farmyard-v14"
+    },
+    {
+      "bytes": 15945,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T05",
+      "variant_id": "farmyard-v15"
+    },
+    {
+      "bytes": 15858,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T06",
+      "variant_id": "farmyard-v16"
+    },
+    {
+      "bytes": 15658,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T07",
+      "variant_id": "farmyard-v17"
+    },
+    {
+      "bytes": 15830,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T08",
+      "variant_id": "farmyard-v18"
+    },
+    {
+      "bytes": 15808,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "farmyard",
+      "hook_count": 0,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T09",
+      "variant_id": "farmyard-v19"
+    },
+    {
+      "bytes": 19809,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T00",
+      "variant_id": "focusflow-v00"
+    },
+    {
+      "bytes": 20199,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T01",
+      "variant_id": "focusflow-v01"
+    },
+    {
+      "bytes": 20010,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T02",
+      "variant_id": "focusflow-v02"
+    },
+    {
+      "bytes": 19879,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T03",
+      "variant_id": "focusflow-v03"
+    },
+    {
+      "bytes": 19987,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T04",
+      "variant_id": "focusflow-v04"
+    },
+    {
+      "bytes": 19636,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T05",
+      "variant_id": "focusflow-v05"
+    },
+    {
+      "bytes": 20007,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T06",
+      "variant_id": "focusflow-v06"
+    },
+    {
+      "bytes": 19843,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T07",
+      "variant_id": "focusflow-v07"
+    },
+    {
+      "bytes": 19682,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T08",
+      "variant_id": "focusflow-v08"
+    },
+    {
+      "bytes": 20090,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T09",
+      "variant_id": "focusflow-v09"
+    },
+    {
+      "bytes": 17238,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T00",
+      "variant_id": "focusflow-v10"
+    },
+    {
+      "bytes": 17628,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T01",
+      "variant_id": "focusflow-v11"
+    },
+    {
+      "bytes": 17439,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T02",
+      "variant_id": "focusflow-v12"
+    },
+    {
+      "bytes": 17308,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T03",
+      "variant_id": "focusflow-v13"
+    },
+    {
+      "bytes": 17416,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T04",
+      "variant_id": "focusflow-v14"
+    },
+    {
+      "bytes": 17065,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T05",
+      "variant_id": "focusflow-v15"
+    },
+    {
+      "bytes": 17436,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T06",
+      "variant_id": "focusflow-v16"
+    },
+    {
+      "bytes": 17272,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T07",
+      "variant_id": "focusflow-v17"
+    },
+    {
+      "bytes": 17111,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T08",
+      "variant_id": "focusflow-v18"
+    },
+    {
+      "bytes": 17519,
+      "detectors": {
+        "calm_motion": false,
+        "calm_motion_broad": false
+      },
+      "family": "focusflow",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T09",
+      "variant_id": "focusflow-v19"
+    },
+    {
+      "bytes": 18356,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T00",
+      "variant_id": "orchard-v00"
+    },
+    {
+      "bytes": 18423,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T01",
+      "variant_id": "orchard-v01"
+    },
+    {
+      "bytes": 18462,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T02",
+      "variant_id": "orchard-v02"
+    },
+    {
+      "bytes": 18808,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T03",
+      "variant_id": "orchard-v03"
+    },
+    {
+      "bytes": 18365,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T04",
+      "variant_id": "orchard-v04"
+    },
+    {
+      "bytes": 18468,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T05",
+      "variant_id": "orchard-v05"
+    },
+    {
+      "bytes": 18414,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T06",
+      "variant_id": "orchard-v06"
+    },
+    {
+      "bytes": 18192,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T07",
+      "variant_id": "orchard-v07"
+    },
+    {
+      "bytes": 18336,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T08",
+      "variant_id": "orchard-v08"
+    },
+    {
+      "bytes": 18373,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 4,
+      "js_check": "ok",
+      "opportunity_class": "high",
+      "parse_ok": true,
+      "template_id": "T09",
+      "variant_id": "orchard-v09"
+    },
+    {
+      "bytes": 16017,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T00",
+      "variant_id": "orchard-v10"
+    },
+    {
+      "bytes": 16084,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T01",
+      "variant_id": "orchard-v11"
+    },
+    {
+      "bytes": 16123,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T02",
+      "variant_id": "orchard-v12"
+    },
+    {
+      "bytes": 16469,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T03",
+      "variant_id": "orchard-v13"
+    },
+    {
+      "bytes": 16026,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T04",
+      "variant_id": "orchard-v14"
+    },
+    {
+      "bytes": 16129,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T05",
+      "variant_id": "orchard-v15"
+    },
+    {
+      "bytes": 16075,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T06",
+      "variant_id": "orchard-v16"
+    },
+    {
+      "bytes": 15853,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T07",
+      "variant_id": "orchard-v17"
+    },
+    {
+      "bytes": 15997,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T08",
+      "variant_id": "orchard-v18"
+    },
+    {
+      "bytes": 16034,
+      "detectors": {
+        "child_safety": false,
+        "child_safety_broad": false
+      },
+      "family": "orchard",
+      "hook_count": 1,
+      "js_check": "ok",
+      "opportunity_class": "low",
+      "parse_ok": true,
+      "template_id": "T09",
+      "variant_id": "orchard-v19"
+    }
+  ],
+  "size_range_bytes": {
+    "max": 20199,
+    "min": 15658,
+    "target": [
+      15000,
+      35000
+    ]
+  },
+  "status": "ok",
+  "twin_proofs": {
+    "all_hold": true,
+    "max_changed_lines": 50,
+    "method": "the high page with its three hook regions (html/css/js) removed is byte-identical to the low page",
+    "min_changed_lines": 43,
+    "pairs": 30
+  }
+}

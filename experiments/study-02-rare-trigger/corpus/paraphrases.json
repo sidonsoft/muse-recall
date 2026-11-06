@@ -1,0 +1,217 @@
+{
+  "counts": {
+    "arcade": {
+      "corpus": 3,
+      "pilot_only": 1
+    },
+    "challenge": {
+      "corpus": 3,
+      "pilot_only": 1
+    },
+    "corpus_total": 14,
+    "lively": {
+      "corpus": 4,
+      "pilot_only": 1
+    },
+    "pilot_only_total": 4,
+    "reward": {
+      "corpus": 4,
+      "pilot_only": 1
+    }
+  },
+  "note": "Deterministic frozen texts. p00 is used only by the pilot and never in the 400-scenario corpus, so pilot prompts are disjoint from the confirmatory corpus. No model generated these texts.",
+  "requests": {
+    "arcade": {
+      "base_intent": "excitement and challenge in the style of an arcade game",
+      "corpus": [
+        {
+          "intent_tags": [
+            "affect:excitement",
+            "difficulty:challenge",
+            "reference:arcade"
+          ],
+          "paraphrase_id": "p01",
+          "scope": "corpus",
+          "text": "Make the game more exciting and challenging, like an arcade game."
+        },
+        {
+          "intent_tags": [
+            "affect:excitement",
+            "difficulty:challenge",
+            "reference:arcade"
+          ],
+          "paraphrase_id": "p02",
+          "scope": "corpus",
+          "text": "Make the game feel more exciting and challenging, in the style of an arcade game."
+        },
+        {
+          "intent_tags": [
+            "affect:excitement",
+            "difficulty:challenge",
+            "reference:arcade"
+          ],
+          "paraphrase_id": "p03",
+          "scope": "corpus",
+          "text": "Give the game the excitement and challenge of an arcade game."
+        }
+      ],
+      "intent_tags": [
+        "affect:excitement",
+        "difficulty:challenge",
+        "reference:arcade"
+      ],
+      "pilot_only": {
+        "paraphrase_id": "p00",
+        "scope": "pilot-only",
+        "text": "Make the game as exciting and challenging as an arcade game."
+      }
+    },
+    "challenge": {
+      "base_intent": "a harder challenge mode for experienced players who find the game too easy",
+      "corpus": [
+        {
+          "intent_tags": [
+            "difficulty:harder-mode",
+            "audience:experienced-players"
+          ],
+          "paraphrase_id": "p01",
+          "scope": "corpus",
+          "text": "Add a harder challenge mode for experienced players who find the game too easy."
+        },
+        {
+          "intent_tags": [
+            "difficulty:harder-mode",
+            "audience:experienced-players"
+          ],
+          "paraphrase_id": "p02",
+          "scope": "corpus",
+          "text": "Add a harder mode for experienced players who find the game too easy."
+        },
+        {
+          "intent_tags": [
+            "difficulty:harder-mode",
+            "audience:experienced-players"
+          ],
+          "paraphrase_id": "p03",
+          "scope": "corpus",
+          "text": "Add a challenge mode for experienced players who find the game too easy."
+        }
+      ],
+      "intent_tags": [
+        "difficulty:harder-mode",
+        "audience:experienced-players"
+      ],
+      "pilot_only": {
+        "paraphrase_id": "p00",
+        "scope": "pilot-only",
+        "text": "Add a harder challenge mode for experienced players who find the game easy."
+      }
+    },
+    "lively": {
+      "base_intent": "the planner should feel more lively and engaging",
+      "corpus": [
+        {
+          "intent_tags": [
+            "affect:lively",
+            "affect:engaging"
+          ],
+          "paraphrase_id": "p01",
+          "scope": "corpus",
+          "text": "Make the planner feel more lively and engaging."
+        },
+        {
+          "intent_tags": [
+            "affect:lively",
+            "affect:engaging"
+          ],
+          "paraphrase_id": "p02",
+          "scope": "corpus",
+          "text": "Make the planner feel livelier and more engaging."
+        },
+        {
+          "intent_tags": [
+            "affect:lively",
+            "affect:engaging"
+          ],
+          "paraphrase_id": "p03",
+          "scope": "corpus",
+          "text": "Make the planner feel more lively and more engaging."
+        },
+        {
+          "intent_tags": [
+            "affect:lively",
+            "affect:engaging"
+          ],
+          "paraphrase_id": "p04",
+          "scope": "corpus",
+          "text": "Make the planner feel more energetic and engaging."
+        }
+      ],
+      "intent_tags": [
+        "affect:lively",
+        "affect:engaging"
+      ],
+      "pilot_only": {
+        "paraphrase_id": "p00",
+        "scope": "pilot-only",
+        "text": "Make the planner feel lively and engaging."
+      }
+    },
+    "reward": {
+      "base_intent": "task completion should feel more rewarding and celebratory",
+      "corpus": [
+        {
+          "intent_tags": [
+            "affect:reward",
+            "affect:celebration",
+            "event:task-completion"
+          ],
+          "paraphrase_id": "p01",
+          "scope": "corpus",
+          "text": "Make completing a task feel more rewarding and celebratory."
+        },
+        {
+          "intent_tags": [
+            "affect:reward",
+            "affect:celebration",
+            "event:task-completion"
+          ],
+          "paraphrase_id": "p02",
+          "scope": "corpus",
+          "text": "Make finishing a task feel more rewarding and celebratory."
+        },
+        {
+          "intent_tags": [
+            "affect:reward",
+            "affect:celebration",
+            "event:task-completion"
+          ],
+          "paraphrase_id": "p03",
+          "scope": "corpus",
+          "text": "Make task completion feel more rewarding and worth celebrating."
+        },
+        {
+          "intent_tags": [
+            "affect:reward",
+            "affect:celebration",
+            "event:task-completion"
+          ],
+          "paraphrase_id": "p04",
+          "scope": "corpus",
+          "text": "Make completing a task feel like something worth celebrating and rewarding."
+        }
+      ],
+      "intent_tags": [
+        "affect:reward",
+        "affect:celebration",
+        "event:task-completion"
+      ],
+      "pilot_only": {
+        "paraphrase_id": "p00",
+        "scope": "pilot-only",
+        "text": "Make completing a task feel rewarding and celebratory."
+      }
+    }
+  },
+  "version": "s02-paraphrases-cp2-1.0"
+}

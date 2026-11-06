@@ -1,0 +1,87 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0",
+  "scenario_id": "pilot.s02.farm-challenge.farmyard-v01.p00",
+  "stratum": "farm-challenge",
+  "arm": "manual",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 823070651,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.farm-challenge.farmyard-v01.p00:manual:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3915963493,
+  "order_key": "8895621a2ddbce14f31a21d1c03c19caba5d034a06a277410d5fbef9dddc3286",
+  "variant_id": "farmyard-v01",
+  "baseline_sha256": "7ba639ab18d5f6faf44df84438d77ad9077bf6218d87ff8b30df3318efef97b7",
+  "request_text": "Add a harder challenge mode for experienced players who find the game easy.\n\nThis children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+  "prompt_file": "pilot/prompts/pilot.s02.farm-challenge.farmyard-v01.p00--manual--r0.txt",
+  "prompt_sha256": "9eff1be0083000874f64d89dc06a2832085b656d697f2ccc5ee7cffa3d2f2abc",
+  "prompt_bytes": 20861,
+  "request_sha256": "237754fd494c8b39b044df73278b1b1f430ba04a5e0060c0137cd35ee94fa32a",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [
+    "cadf362f-b537-4c90-9258-afa65555bd3f"
+  ],
+  "memory_contents": [
+    "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+  ],
+  "seeded": [
+    {
+      "id": "cadf362f-b537-4c90-9258-afa65555bd3f",
+      "content": "Art direction: use a cool ocean palette. Primary accent #4EA8DE and dark text #102A43."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 1,
+    "characters_used": 509,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "fallback"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 1,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T10:52:08.046Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 399.402
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T10:59:17.449Z",
+      "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+      "timeout_ms": 1800000,
+      "seconds": 194.674
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "request timeout/stream inactivity abort after 1800000 ms (curl 28: curl: (28) Operation too slow. Less than 1 bytes/sec transferred the last 120 seconds)",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T10:52:08.046Z",
+  "finished_at": "2026-10-31T11:02:32.123Z",
+  "seconds_total": 624.078,
+  "attempt_count": 2,
+  "failure_kind": "timeout"
+}

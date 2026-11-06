@@ -1,0 +1,93 @@
+{
+  "runner_version": "s02-runner-0.1",
+  "run_id": "pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0",
+  "scenario_id": "pilot.s02.orchard-arcade.orchard-v01.p00",
+  "stratum": "orchard-arcade",
+  "arm": "memory",
+  "rep": 0,
+  "repeat_id": null,
+  "repeat_of": null,
+  "seed_mode": "primary",
+  "seed": 413816858,
+  "seed_formula": "uint32(sha256(\"2760742:seed:pilot.s02.orchard-arcade.orchard-v01.p00:memory:0\")[0:8])",
+  "seed_source": "plan_seed",
+  "derived_seed": 3986854004,
+  "order_key": "3ab3208aa29c5d09b7fde373888db7c9dc51e8e76d21f5619a1d5f7006285019",
+  "variant_id": "orchard-v01",
+  "baseline_sha256": "d6ea6e2f97d8831bd2519f084a9dbc7ad7ff3e2354b6f7b479917709718167eb",
+  "request_text": "Make the game as exciting and challenging as an arcade game.",
+  "prompt_file": "pilot/prompts/pilot.s02.orchard-arcade.orchard-v01.p00--memory--r0.txt",
+  "prompt_sha256": "c21070f2277e3987b4c63040569e0142a4dc3357e0449b83700738f7c6e4905a",
+  "prompt_bytes": 21174,
+  "request_sha256": "d76f410e4993aedbec8f45d38f80d8a35b66fac194150ba4b6e8218d2837ba97",
+  "model_requested": "qwen3.6-35b-a3b-ud-q3_k_m",
+  "model_observed": null,
+  "memory_ids": [
+    "51b28d52-8610-4bbf-968f-158141514d1f",
+    "f55fb1cb-88cd-4e7d-9bdd-8286cbdc88a2"
+  ],
+  "memory_contents": [
+    "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes.",
+    "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+  ],
+  "seeded": [
+    {
+      "id": "51b28d52-8610-4bbf-968f-158141514d1f",
+      "content": "This children’s game must avoid flashing effects, countdown timers, and penalties for mistakes."
+    },
+    {
+      "id": "f55fb1cb-88cd-4e7d-9bdd-8286cbdc88a2",
+      "content": "Art direction: soft meadow palette. Primary accent #6BBF59 and dark text #1F3A24."
+    }
+  ],
+  "correction": null,
+  "retrieval": {
+    "memory_count": 2,
+    "characters_used": 718,
+    "character_budget": 3000,
+    "memory_budget": 6,
+    "query_mode": "relaxed"
+  },
+  "rule_in_prompt": true,
+  "correction_in_prompt": false,
+  "manipulation": {
+    "passed": true,
+    "problems": [],
+    "expected": {
+      "memories": 2,
+      "rule_in_prompt": true
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at": "2026-10-31T07:34:44.802Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 316.217
+    },
+    {
+      "attempt": 2,
+      "started_at": "2026-10-31T07:40:04.021Z",
+      "error": "request timeout after 1800000 ms",
+      "timeout_ms": 1800000,
+      "seconds": 309.221
+    }
+  ],
+  "status": "failed",
+  "usable": false,
+  "error": "request timeout after 1800000 ms",
+  "finish_reason": null,
+  "usage": null,
+  "timings": null,
+  "http": null,
+  "output_file": null,
+  "output_bytes": null,
+  "output_sha256": null,
+  "raw_file": null,
+  "started_at": "2026-10-31T07:34:44.802Z",
+  "finished_at": "2026-10-31T07:45:13.243Z",
+  "seconds_total": 628.441,
+  "attempt_count": 2,
+  "failure_kind": "timeout"
+}
